@@ -1,5 +1,11 @@
 # Tippspiel & Fantasy App
 
+**Live-Demo:** https://sleeperdach.github.io/meine_app/
+
+Neu deployen: `flutter build web --base-href "/meine_app/" --dart-define=…`
+(Keys aus `supabase/.env.local`), dann den Inhalt von `build/web`
+auf den Branch `gh-pages` pushen.
+
 Fantasy-Sport-App nach dem Vorbild von Sleeper, kombiniert mit einem
 Tippspiel-Modus à la Kicktipp. Start: Bundesliga-Tippspiel (MVP).
 Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
