@@ -30,10 +30,11 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
 - ✅ Supabase-Anbindung im Client: Registrierung/Login, Tipprunden
   erstellen & per Einladungscode beitreten, Tipps serverseitig
   (Deadline per RLS), Rangliste pro Runde
-- 🟡 Fantasy-Modus (Hauptfokus): Fundament steht — Liga/Dynasty-Modi,
-  Liga-Erstellung mit Snake-Draft-Pickzeit (30 Sek–1 Tag), Manager-Beitritt
-  per Code, Seed-Spielerpool (Bundesliga) mit Alter/U20/Auslands-Flag.
-  Offen: Draft-Raum, Kickbase-Scoring (Live-Stats), Dynasty-U20-Draft
+- 🟡 Fantasy-Modus (Hauptfokus): Liga/Dynasty-Modi, Liga-Erstellung,
+  Manager-Beitritt per Code, Seed-Spielerpool (Bundesliga) mit
+  Alter/U20/Auslands-Flag. **Snake-Draft-Raum** mit einstellbarer Pickzeit
+  (30 Sek–1 Tag, Live + Slow), Auto-Pick und Realtime — server-autoritativ.
+  Offen: Kickbase-Scoring (Live-Stats), Dynasty-U20-Draft
 - ⬜ Push-Benachrichtigungen, Profil-Verwaltung
 
 ## Entwicklung
