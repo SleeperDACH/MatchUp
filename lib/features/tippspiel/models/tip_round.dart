@@ -33,24 +33,41 @@ class TipRound {
       );
 }
 
-/// Eine Zeile der Tipprunden-Rangliste.
-class StandingsEntry {
-  const StandingsEntry({
-    required this.userId,
-    required this.username,
-    required this.points,
-    required this.scoredTips,
-  });
+/// Ein Mitglied einer Liga.
+class RoundMember {
+  const RoundMember({required this.userId, required this.username});
 
   final String userId;
   final String username;
-  final int points;
-  final int scoredTips;
 
-  factory StandingsEntry.fromJson(Map<String, dynamic> json) => StandingsEntry(
+  factory RoundMember.fromJson(Map<String, dynamic> json) => RoundMember(
         userId: json['user_id'] as String,
-        username: json['username'] as String,
-        points: (json['points'] as num).toInt(),
-        scoredTips: (json['scored_tips'] as num).toInt(),
+        username:
+            (json['profiles'] as Map<String, dynamic>?)?['username'] as String? ??
+                '?',
       );
 }
+
+/// Ein Tipp eines (beliebigen) Mitglieds — für die Tipp-Tabelle.
+/// Fremde Tipps liefert der Server erst nach Anstoß (RLS).
+class MemberTip {
+  const MemberTip({
+    required this.userId,
+    required this.fixtureId,
+    required this.homeGoals,
+    required this.awayGoals,
+  });
+
+  final String userId;
+  final String fixtureId;
+  final int homeGoals;
+  final int awayGoals;
+
+  factory MemberTip.fromJson(Map<String, dynamic> json) => MemberTip(
+        userId: json['user_id'] as String,
+        fixtureId: json['fixture_id'] as String,
+        homeGoals: json['home_goals'] as int,
+        awayGoals: json['away_goals'] as int,
+      );
+}
+

@@ -96,9 +96,16 @@ void activateRound(WidgetRef ref, TipRound round) {
   ref.read(activeRoundProvider.notifier).state = round;
 }
 
-final standingsProvider =
-    FutureProvider.family<List<StandingsEntry>, String>((ref, roundId) {
-  return ref.watch(tipRoundRepositoryProvider).standings(roundId);
+/// Mitglieder einer Liga (inkl. Mitglieder ohne Tipps).
+final roundMembersProvider =
+    FutureProvider.family<List<RoundMember>, String>((ref, roundId) {
+  return ref.watch(tipRoundRepositoryProvider).members(roundId);
+});
+
+/// Alle sichtbaren Tipps einer Liga (fremde erst nach Anstoß).
+final allRoundTipsProvider =
+    FutureProvider.family<List<MemberTip>, String>((ref, roundId) {
+  return ref.watch(tipRoundRepositoryProvider).allTips(roundId);
 });
 
 /// Punkteschema der aktiven Tipprunde, sonst Kicktipp-Standard.

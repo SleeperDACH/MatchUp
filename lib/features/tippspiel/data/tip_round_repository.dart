@@ -49,12 +49,24 @@ class TipRoundRepository {
     return TipRound.fromJson(row);
   }
 
-  Future<List<StandingsEntry>> standings(String roundId) async {
+  /// Alle Mitglieder der Liga — auch die, die noch keinen Tipp abgegeben
+  /// haben (wichtig: neue Mitglieder sollen sofort sichtbar sein).
+  Future<List<RoundMember>> members(String roundId) async {
     final rows = await _client
-        .from('tip_round_standings')
-        .select()
-        .eq('round_id', roundId)
-        .order('points', ascending: false);
-    return rows.map(StandingsEntry.fromJson).toList();
+        .from('tip_round_members')
+        .select('user_id, profiles(username)')
+        .eq('round_id', roundId);
+    return rows.map(RoundMember.fromJson).toList();
   }
+
+  /// Alle für mich sichtbaren Tipps der Liga: eigene immer, fremde
+  /// erst nach Anstoß (erzwingt die RLS-Policy serverseitig).
+  Future<List<MemberTip>> allTips(String roundId) async {
+    final rows = await _client
+        .from('tips')
+        .select('user_id, fixture_id, home_goals, away_goals')
+        .eq('round_id', roundId);
+    return rows.map(MemberTip.fromJson).toList();
+  }
+
 }

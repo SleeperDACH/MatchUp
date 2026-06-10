@@ -6,7 +6,7 @@ import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/matchday_screen.dart';
 import '../features/tippspiel/ui/points_screen.dart';
-import '../features/tippspiel/ui/standings_tab.dart';
+import '../features/tippspiel/ui/tips_table_tab.dart';
 
 /// Liga-Ansicht: Hier findet das Tippen statt — entweder in einer
 /// Server-Liga (mit Rangliste) oder im lokalen Schnelltipp-Modus
@@ -31,7 +31,7 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
 
     final tabs = <Widget>[
       const MatchdayScreen(),
-      if (round != null) StandingsTab(round: round),
+      if (round != null) TipsTableTab(round: round),
       const PointsScreen(),
     ];
 
@@ -85,9 +85,9 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
           ),
           if (round != null)
             const NavigationDestination(
-              icon: Icon(Icons.leaderboard_outlined),
-              selectedIcon: Icon(Icons.leaderboard),
-              label: 'Rangliste',
+              icon: Icon(Icons.table_chart_outlined),
+              selectedIcon: Icon(Icons.table_chart),
+              label: 'Tabelle',
             ),
           const NavigationDestination(
             icon: Icon(Icons.person_outline),
