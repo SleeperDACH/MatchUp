@@ -1,0 +1,164 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/config/app_config.dart';
+import '../../core/data/openligadb/openligadb_provider.dart';
+import '../../core/data/sports_data_provider.dart';
+import '../../core/models/models.dart';
+import '../auth/providers.dart';
+import 'data/local_tip_store.dart';
+import 'data/tip_round_repository.dart';
+import 'data/tip_store.dart';
+import 'models/tip.dart';
+import 'models/tip_round.dart';
+
+/// Aktiver Wettbewerb; umschaltbar über den Titel der App-Bar.
+/// Standard ist die WM 2026, solange sie läuft.
+final selectedLeagueProvider =
+    StateProvider<LeagueInfo>((ref) => Leagues.wm2026);
+
+/// Saison-Startjahr des aktiven Wettbewerbs (Turniere: festes Jahr,
+/// Vereinsligen: Saisonwechsel im Juli).
+final seasonProvider = Provider<int>((ref) {
+  return ref.watch(selectedLeagueProvider).seasonFor(DateTime.now());
+});
+
+final sportsDataProvider = Provider<SportsDataProvider>((ref) {
+  final league = ref.watch(selectedLeagueProvider);
+  // Pro Liga der passende Adapter; aktuell gibt es nur OpenLigaDB.
+  switch (league.providerId) {
+    case 'openligadb':
+      return OpenLigaDbProvider();
+    default:
+      throw StateError('Unbekannter Datenprovider: ${league.providerId}');
+  }
+});
+
+final currentRoundProvider = FutureProvider<int>((ref) {
+  final league = ref.watch(selectedLeagueProvider);
+  final season = ref.watch(seasonProvider);
+  return ref.watch(sportsDataProvider).getCurrentRound(league, season);
+});
+
+/// Alle Runden des aktiven Wettbewerbs (inkl. noch nicht ausgeloster
+/// K.o.-Runden bei Turnieren) mit offiziellen Namen.
+final availableRoundsProvider = FutureProvider<List<RoundInfo>>((ref) {
+  final league = ref.watch(selectedLeagueProvider);
+  final season = ref.watch(seasonProvider);
+  return ref.watch(sportsDataProvider).getRounds(league, season);
+});
+
+/// Vom Nutzer gewählte Runde; `null` = aktuelle Runde. Setzt sich beim
+/// Wettbewerbswechsel automatisch zurück.
+final selectedRoundProvider = StateProvider<int?>((ref) {
+  ref.watch(selectedLeagueProvider);
+  return null;
+});
+
+final roundFixturesProvider =
+    FutureProvider.family<List<Fixture>, int>((ref, round) {
+  final league = ref.watch(selectedLeagueProvider);
+  final season = ref.watch(seasonProvider);
+  return ref.watch(sportsDataProvider).getRoundFixtures(league, season, round);
+});
+
+final seasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
+  final league = ref.watch(selectedLeagueProvider);
+  final season = ref.watch(seasonProvider);
+  return ref.watch(sportsDataProvider).getSeasonFixtures(league, season);
+});
+
+// ---------------------------------------------------------------------
+// Tipprunden (Supabase)
+// ---------------------------------------------------------------------
+
+final tipRoundRepositoryProvider = Provider<TipRoundRepository>(
+    (ref) => TipRoundRepository(Supabase.instance.client));
+
+final myRoundsProvider = FutureProvider<List<TipRound>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Future.value(const <TipRound>[]);
+  return ref.watch(tipRoundRepositoryProvider).myRounds();
+});
+
+/// Die Tipprunde, in der gerade getippt wird; `null` = lokaler Modus.
+final activeRoundProvider = StateProvider<TipRound?>((ref) {
+  // Bei Logout zurück in den lokalen Modus.
+  if (ref.watch(currentUserProvider) == null) return null;
+  return null;
+});
+
+/// Aktiviert eine Tipprunde und schaltet den Wettbewerb passend um —
+/// immer zusammen verwenden, damit Tippen-Tab und Runde zusammenpassen.
+void activateRound(WidgetRef ref, TipRound round) {
+  ref.read(selectedLeagueProvider.notifier).state =
+      Leagues.byId(round.leagueId);
+  ref.read(activeRoundProvider.notifier).state = round;
+}
+
+final standingsProvider =
+    FutureProvider.family<List<StandingsEntry>, String>((ref, roundId) {
+  return ref.watch(tipRoundRepositoryProvider).standings(roundId);
+});
+
+/// Punkteschema der aktiven Tipprunde, sonst Kicktipp-Standard.
+final scoringRulesProvider = Provider<ScoringRules>((ref) {
+  return ref.watch(activeRoundProvider)?.scoring ?? ScoringRules.kicktippDefault;
+});
+
+// ---------------------------------------------------------------------
+// Tipps
+// ---------------------------------------------------------------------
+
+final tipsProvider =
+    StateNotifierProvider<TipsNotifier, Map<String, Tip>>((ref) {
+  final league = ref.watch(selectedLeagueProvider);
+  final season = ref.watch(seasonProvider);
+  final activeRound = ref.watch(activeRoundProvider);
+  final user = ref.watch(currentUserProvider);
+
+  if (AppConfig.isSupabaseConfigured && activeRound != null && user != null) {
+    return TipsNotifier(
+        SupabaseTipStore(Supabase.instance.client, activeRound.id));
+  }
+  return TipsNotifier(LocalTipStore(league.id, season));
+});
+
+class TipsNotifier extends StateNotifier<Map<String, Tip>> {
+  TipsNotifier(this._store) : super(const {}) {
+    _load();
+  }
+
+  final TipStore _store;
+
+  Future<void> _load() async {
+    final tips = await _store.load();
+    if (mounted) state = tips;
+  }
+
+  /// Optimistisches Update; bei Ablehnung (z. B. Tippfrist) wird der
+  /// alte Zustand wiederhergestellt und [TipRejected] weitergereicht.
+  Future<void> setTip(String fixtureId, int homeGoals, int awayGoals) async {
+    final previous = state;
+    final tip = Tip(
+        fixtureId: fixtureId, homeGoals: homeGoals, awayGoals: awayGoals);
+    state = {...state, fixtureId: tip};
+    try {
+      await _store.save(tip);
+    } catch (_) {
+      if (mounted) state = previous;
+      rethrow;
+    }
+  }
+
+  Future<void> clearTip(String fixtureId) async {
+    final previous = state;
+    state = {...state}..remove(fixtureId);
+    try {
+      await _store.remove(fixtureId);
+    } catch (_) {
+      if (mounted) state = previous;
+      rethrow;
+    }
+  }
+}

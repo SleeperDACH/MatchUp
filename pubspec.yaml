@@ -1,5 +1,5 @@
 name: meine_app
-description: "A new Flutter project."
+description: "Fantasy- und Tippspiel-App: Start mit Bundesliga-Tippspiel, erweiterbar auf Fantasy-Modus, Top-5-Ligen, NFL und NBA."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -34,6 +34,12 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  http: ^1.2.0
+  flutter_riverpod: ^2.6.1
+  shared_preferences: ^2.3.0
+  supabase_flutter: ^2.8.0
+  intl: ^0.20.0
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   flutter_test:
