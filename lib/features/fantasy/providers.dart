@@ -2,13 +2,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/data/openligadb/openligadb_provider.dart';
 import '../../core/models/models.dart';
 import '../auth/providers.dart';
 import 'data/db_fantasy_data_provider.dart';
 import 'data/draft_repository.dart';
 import 'data/fantasy_data_provider.dart';
 import 'data/fantasy_league_repository.dart';
+import 'data/round_scoring_service.dart';
 import 'data/seed_player_pool.dart';
+import 'logic/fantasy_scoring_engine.dart';
 import 'models/fantasy_models.dart';
 
 final fantasyLeagueRepositoryProvider = Provider<FantasyLeagueRepository>(
@@ -58,4 +61,27 @@ final draftLeagueProvider =
 final draftPicksProvider =
     StreamProvider.family<List<DraftPick>, String>((ref, leagueId) {
   return ref.watch(draftRepositoryProvider).picksStream(leagueId);
+});
+
+// ------------------------------------------------------------------
+// Scoring (echte OpenLigaDB-Daten: Tore + Zu-Null)
+// ------------------------------------------------------------------
+
+final roundScoringServiceProvider =
+    Provider<RoundScoringService>((ref) => RoundScoringService());
+
+/// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).
+final fantasyCurrentRoundProvider = FutureProvider<int>((ref) {
+  final season = ref.watch(fantasySeasonProvider);
+  return OpenLigaDbProvider().getCurrentRound(Leagues.bundesliga, season);
+});
+
+/// Roh-Leistungsdaten (Tore/Zu-Null) aller Poolspieler für einen Spieltag.
+final roundStatsProvider =
+    FutureProvider.family<Map<String, PlayerMatchStats>, int>((ref, round) async {
+  final pool = await ref.watch(playerPoolProvider.future);
+  final season = ref.watch(fantasySeasonProvider);
+  return ref
+      .watch(roundScoringServiceProvider)
+      .roundStats(pool: pool, season: season, round: round);
 });

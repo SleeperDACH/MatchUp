@@ -6,6 +6,8 @@ import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'draft_room_screen.dart';
+import 'fantasy_table_screen.dart';
+import 'my_team_screen.dart';
 import 'player_pool_screen.dart';
 
 /// Lobby einer Fantasy-Liga: Einstellungen, Manager, Einladungscode und
@@ -121,6 +123,32 @@ class FantasyLobbyScreen extends ConsumerWidget {
                     builder: (_) => const PlayerPoolScreen())),
               ),
             ),
+            if (live.draftStatus != DraftStatus.setup) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.shield_outlined),
+                      label: const Text('Mein Team'),
+                      onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => MyTeamScreen(league: live))),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.leaderboard_outlined),
+                      label: const Text('Tabelle'),
+                      onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => FantasyTableScreen(league: live))),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
             _draftButton(context, ref, live, isAdmin),
           ],
