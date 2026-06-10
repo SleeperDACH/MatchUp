@@ -38,6 +38,10 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   (Tore + Zu-Null); „Mein Team" + Liga-Tabelle mit bester Startelf.
   **Dynasty**: U20-Sperre im Haupt-Draft + separater U20-Draft
   (U20-Spieler & Auslands-Neuzugänge) für die neue Saison.
+  **Free Agency**: mutierbarer Kader, Drop & Aufnahme mit Kadergrößen-Limit,
+  05.09.-Sperre, U20-Draft erst nach Saisonende.
+- 🟡 Waiver-System: Anträge + terminierte Abarbeitung (2 Tage vor Spieltag,
+  umgekehrte Tabelle) — in Arbeit
 - ⬜ Voller Stats-Feed (Assists/Karten/Minuten), manuelle Aufstellung,
   Saison-Rollover (Dynasty), Push-Benachrichtigungen
 - ⬜ Push-Benachrichtigungen, Profil-Verwaltung
