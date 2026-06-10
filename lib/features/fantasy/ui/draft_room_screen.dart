@@ -112,23 +112,39 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     final playerById = {for (final p in pool) p.id: p};
     final nameById = {for (final m in managers) m.userId: m.username};
     final pickedIds = {for (final p in picks) p.playerId};
-    final available =
-        pool.where((p) => !pickedIds.contains(p.id)).toList();
+
+    // Dynasty: Haupt-Draft = etablierte Spieler, U20-Draft = U20 +
+    // Auslands-Neuzugänge. Liga-Modus: ganzer Pool.
+    bool inPhasePool(FantasyPlayer p) {
+      if (league.mode != FantasyMode.dynasty) return true;
+      final rookie = p.isRookieFor(league.season);
+      return league.draftPhase == DraftPhase.u20 ? rookie : !rookie;
+    }
+
+    final available = pool
+        .where((p) => !pickedIds.contains(p.id) && inPhasePool(p))
+        .toList();
+    final phasePicks =
+        picks.where((p) => p.phase == league.draftPhase).toList();
 
     final cur = currentManager(managers, league.picksMade);
     final myTurn = league.draftStatus == DraftStatus.drafting &&
         cur != null &&
         cur.userId == myId;
-    final total = totalPicks(managers.length, league.roster);
+    final total = managers.length * league.roundsThisPhase;
+    final round =
+        managers.isEmpty ? 1 : league.picksMade ~/ managers.length + 1;
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: Text(league.name),
-          bottom: const TabBar(tabs: [
-            Tab(text: 'Verfügbar'),
-            Tab(text: 'Board'),
+          bottom: TabBar(tabs: [
+            const Tab(text: 'Verfügbar'),
+            Tab(text: league.mode == FantasyMode.dynasty
+                ? league.draftPhase.label
+                : 'Board'),
           ]),
         ),
         body: Column(
@@ -138,6 +154,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
               current: cur,
               myTurn: myTurn,
               total: total,
+              round: round,
             ),
             Expanded(
               child: TabBarView(
@@ -148,7 +165,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
                     onPick: _pick,
                   ),
                   _BoardTab(
-                    picks: picks,
+                    picks: phasePicks,
                     playerById: playerById,
                     nameById: nameById,
                     myId: myId,
@@ -169,12 +186,14 @@ class _StatusBanner extends StatelessWidget {
     required this.current,
     required this.myTurn,
     required this.total,
+    required this.round,
   });
 
   final FantasyLeague league;
   final FantasyManager? current;
   final bool myTurn;
   final int total;
+  final int round;
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +229,7 @@ class _StatusBanner extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Runde ${(league.picksMade ~/ (total ~/ league.roster.squadSize).clamp(1, 99)) + 1} · Pick ${league.picksMade + 1} von $total',
+            '${league.mode == FantasyMode.dynasty ? '${league.draftPhase.label} · ' : ''}Runde $round · Pick ${league.picksMade + 1} von $total',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: scheme.onSurfaceVariant),
           ),

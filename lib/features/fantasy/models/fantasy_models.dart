@@ -64,6 +64,20 @@ DraftStatus _draftStatusFromId(String id) =>
     DraftStatus.values.firstWhere((s) => s.name == id,
         orElse: () => DraftStatus.setup);
 
+/// Draft-Phase im Dynasty-Modus: Haupt-Draft (etablierte Spieler) und
+/// U20-Draft (U20-Spieler + Auslands-Neuzugänge). Liga-Modus bleibt
+/// immer in [startup].
+enum DraftPhase {
+  startup,
+  u20;
+
+  String get label =>
+      this == DraftPhase.u20 ? 'U20-Draft' : 'Haupt-Draft';
+
+  static DraftPhase fromId(String id) =>
+      values.firstWhere((p) => p.name == id, orElse: () => DraftPhase.startup);
+}
+
 enum PlayerPosition {
   gk('TW', 'Tor'),
   def('ABW', 'Abwehr'),
@@ -214,6 +228,12 @@ class FantasyPlayer {
   /// U20 = jünger als 20 Jahre zum Stichtag.
   bool isU20On(DateTime date) => ageOn(date) < 20;
 
+  /// Im U20-Draft wählbar: U20 zum 1. Spieltag der Saison oder
+  /// Auslands-Neuzugang. Stichtag ~ 1. August des Saison-Startjahrs.
+  /// Muss der Server-Funktion fantasy_is_rookie entsprechen.
+  bool isRookieFor(int season) =>
+      isForeignNewcomer || isU20On(DateTime(season, 8, 1));
+
   factory FantasyPlayer.fromJson(Map<String, dynamic> json) => FantasyPlayer(
         id: json['id'] as String,
         name: json['name'] as String,
@@ -251,6 +271,8 @@ class FantasyLeague {
     required this.createdBy,
     this.picksMade = 0,
     this.currentPickDeadline,
+    this.draftPhase = DraftPhase.startup,
+    this.u20Rounds = 3,
   });
 
   final String id;
@@ -272,6 +294,12 @@ class FantasyLeague {
   /// Ablaufzeitpunkt des aktuellen Picks; null außerhalb des laufenden Drafts.
   final DateTime? currentPickDeadline;
 
+  /// Aktuelle Draft-Phase (Dynasty: Haupt- vs. U20-Draft).
+  final DraftPhase draftPhase;
+
+  /// Anzahl Runden im U20-Draft (Dynasty).
+  final int u20Rounds;
+
   factory FantasyLeague.fromJson(Map<String, dynamic> json) => FantasyLeague(
         id: json['id'] as String,
         name: json['name'] as String,
@@ -289,12 +317,19 @@ class FantasyLeague {
         currentPickDeadline: json['current_pick_deadline'] == null
             ? null
             : DateTime.parse(json['current_pick_deadline'] as String),
+        draftPhase: DraftPhase.fromId(json['draft_phase'] as String? ?? 'startup'),
+        u20Rounds: json['u20_rounds'] as int? ?? 3,
       );
+
+  /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden).
+  int get roundsThisPhase =>
+      draftPhase == DraftPhase.u20 ? u20Rounds : roster.squadSize;
 }
 
 /// Ein getätigter Draft-Pick.
 class DraftPick {
   const DraftPick({
+    required this.phase,
     required this.pickNumber,
     required this.round,
     required this.managerId,
@@ -302,6 +337,7 @@ class DraftPick {
     required this.isAuto,
   });
 
+  final DraftPhase phase;
   final int pickNumber;
   final int round;
   final String managerId;
@@ -309,6 +345,7 @@ class DraftPick {
   final bool isAuto;
 
   factory DraftPick.fromJson(Map<String, dynamic> json) => DraftPick(
+        phase: DraftPhase.fromId(json['phase'] as String? ?? 'startup'),
         pickNumber: json['pick_number'] as int,
         round: json['round'] as int,
         managerId: json['manager_id'] as String,

@@ -58,6 +58,31 @@ void main() {
     });
   });
 
+  group('isRookieFor (Dynasty U20-Draft-Pool)', () {
+    FantasyPlayer player(int birthYear, {bool foreign = false}) => FantasyPlayer(
+          id: 'x',
+          name: 'T',
+          position: PlayerPosition.fwd,
+          club: 'C',
+          birthDate: DateTime(birthYear, 1, 1),
+          nationality: 'de',
+          isForeignNewcomer: foreign,
+        );
+
+    test('U20 zum 1. Spieltag ist Rookie', () {
+      expect(player(2006).isRookieFor(2025), isTrue); // 19 -> U20
+      expect(player(2005).isRookieFor(2025), isFalse); // 20 -> etabliert
+    });
+
+    test('Auslands-Neuzugang ist Rookie unabhängig vom Alter', () {
+      expect(player(1995, foreign: true).isRookieFor(2025), isTrue);
+    });
+
+    test('etablierter Inländer ist kein Rookie', () {
+      expect(player(1998).isRookieFor(2025), isFalse);
+    });
+  });
+
   group('Serialisierung', () {
     test('FantasyScoring JSON round-trip', () {
       final json = FantasyScoring.kickbaseStyle.toJson();

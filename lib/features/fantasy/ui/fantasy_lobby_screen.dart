@@ -162,6 +162,22 @@ class FantasyLobbyScreen extends ConsumerWidget {
     void openRoom() => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => DraftRoomScreen(league: live)));
 
+    Future<void> run(Future<void> Function() action) async {
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+      try {
+        await action();
+        ref.invalidate(fantasyManagersProvider(league.id));
+        navigator.push(
+            MaterialPageRoute(builder: (_) => DraftRoomScreen(league: live)));
+      } catch (e) {
+        messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+      }
+    }
+
+    final dynasty = live.mode == FantasyMode.dynasty;
+    final repo = ref.read(draftRepositoryProvider);
+
     switch (live.draftStatus) {
       case DraftStatus.setup:
         if (!isAdmin) {
@@ -171,28 +187,40 @@ class FantasyLobbyScreen extends ConsumerWidget {
         }
         return FilledButton.icon(
           icon: const Icon(Icons.sports),
-          label: const Text('Draft starten'),
-          onPressed: () async {
-            final messenger = ScaffoldMessenger.of(context);
-            final navigator = Navigator.of(context);
-            try {
-              await ref.read(draftRepositoryProvider).startDraft(league.id);
-              ref.invalidate(fantasyManagersProvider(league.id));
-              navigator.push(MaterialPageRoute(
-                  builder: (_) => DraftRoomScreen(league: live)));
-            } catch (e) {
-              messenger.showSnackBar(
-                  SnackBar(content: Text('Start fehlgeschlagen: $e')));
-            }
-          },
+          label: Text(dynasty ? 'Haupt-Draft starten' : 'Draft starten'),
+          onPressed: () => run(() => repo.startDraft(league.id)),
         );
       case DraftStatus.drafting:
         return FilledButton.icon(
           icon: const Icon(Icons.sports),
-          label: const Text('Zum Draft'),
+          label: Text(dynasty ? 'Zum ${live.draftPhase.label}' : 'Zum Draft'),
           onPressed: openRoom,
         );
       case DraftStatus.done:
+        // Dynasty: nach dem Haupt-Draft folgt der U20-Draft.
+        if (dynasty && live.draftPhase == DraftPhase.startup) {
+          if (!isAdmin) {
+            return const _DisabledHint(
+                icon: Icons.hourglass_empty,
+                text: 'Haupt-Draft beendet — der Admin startet den U20-Draft');
+          }
+          return Column(
+            children: [
+              FilledButton.icon(
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text('U20-Draft starten'),
+                onPressed: () => run(() => repo.startU20Draft(league.id)),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'U20-Spieler & Auslands-Neuzugänge sind jetzt wählbar.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
+          );
+        }
         return FilledButton.icon(
           icon: const Icon(Icons.emoji_events),
           label: const Text('Draft-Ergebnis'),

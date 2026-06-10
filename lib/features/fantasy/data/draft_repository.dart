@@ -13,6 +13,10 @@ class DraftRepository {
   Future<void> startDraft(String leagueId) =>
       _client.rpc('start_fantasy_draft', params: {'p_league_id': leagueId});
 
+  /// Startet den U20-Draft (Dynasty, nach dem Haupt-Draft).
+  Future<void> startU20Draft(String leagueId) =>
+      _client.rpc('start_u20_draft', params: {'p_league_id': leagueId});
+
   Future<void> makePick(String leagueId, String playerId) => _client.rpc(
         'fantasy_make_pick',
         params: {'p_league_id': leagueId, 'p_player_id': playerId},
@@ -38,5 +42,7 @@ class DraftRepository {
       .stream(primaryKey: ['league_id', 'pick_number'])
       .eq('league_id', leagueId)
       .map((rows) => (rows.map(DraftPick.fromJson).toList())
-        ..sort((a, b) => a.pickNumber.compareTo(b.pickNumber)));
+        ..sort((a, b) => a.phase == b.phase
+            ? a.pickNumber.compareTo(b.pickNumber)
+            : a.phase.index.compareTo(b.phase.index)));
 }
