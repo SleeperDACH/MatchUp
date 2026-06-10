@@ -42,6 +42,12 @@ final fantasyManagersProvider =
   return ref.watch(fantasyLeagueRepositoryProvider).managers(leagueId);
 });
 
+/// Aktuelle Kader der Liga in Echtzeit (Draft + Free Agency).
+final leagueRosterProvider =
+    StreamProvider.family<List<RosterEntry>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).rosterStream(leagueId);
+});
+
 final playerPoolProvider = FutureProvider<List<FantasyPlayer>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
   return ref.watch(fantasyDataProvider).getPlayerPool(season: season);

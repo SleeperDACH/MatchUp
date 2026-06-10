@@ -29,8 +29,8 @@ class _FantasyTableScreenState extends ConsumerState<FantasyTableScreen> {
 
     final managersAsync = ref.watch(fantasyManagersProvider(league.id));
     final poolAsync = ref.watch(playerPoolProvider);
-    final picks = ref.watch(draftPicksProvider(league.id)).valueOrNull ??
-        const <DraftPick>[];
+    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+        const <RosterEntry>[];
     final statsAsync = ref.watch(roundStatsProvider(round));
     final myId = ref.watch(currentUserProvider)?.id;
 
@@ -47,10 +47,10 @@ class _FantasyTableScreenState extends ConsumerState<FantasyTableScreen> {
               final rows = <({String name, bool me, int total})>[];
               for (final m in managers) {
                 final players = [
-                  for (final pk in picks)
-                    if (pk.managerId == m.userId &&
-                        playerById[pk.playerId] != null)
-                      playerById[pk.playerId]!
+                  for (final r in roster)
+                    if (r.managerId == m.userId &&
+                        playerById[r.playerId] != null)
+                      playerById[r.playerId]!
                 ];
                 final points = {
                   for (final p in players)

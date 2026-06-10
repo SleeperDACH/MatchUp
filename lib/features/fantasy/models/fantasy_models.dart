@@ -234,6 +234,12 @@ class FantasyPlayer {
   bool isRookieFor(int season) =>
       isForeignNewcomer || isU20On(DateTime(season, 8, 1));
 
+  /// Ab 05.09. (nach Transferschluss) gesperrt: für den U20-Draft
+  /// reserviert, nicht per Free Agency holbar. Entspricht
+  /// fantasy_is_locked auf dem Server.
+  bool isLockedNow(int season) =>
+      isRookieFor(season) && !DateTime.now().isBefore(DateTime(season, 9, 5));
+
   factory FantasyPlayer.fromJson(Map<String, dynamic> json) => FantasyPlayer(
         id: json['id'] as String,
         name: json['name'] as String,
@@ -321,9 +327,34 @@ class FantasyLeague {
         u20Rounds: json['u20_rounds'] as int? ?? 3,
       );
 
-  /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden).
-  int get roundsThisPhase =>
-      draftPhase == DraftPhase.u20 ? u20Rounds : roster.squadSize;
+  /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden). Im
+  /// Dynasty-Haupt-Draft bleibt Platz für den U20-Draft, damit die
+  /// Kadergröße nicht überschritten wird.
+  int get roundsThisPhase {
+    if (draftPhase == DraftPhase.u20) return u20Rounds;
+    return mode == FantasyMode.dynasty
+        ? roster.squadSize - u20Rounds
+        : roster.squadSize;
+  }
+}
+
+/// Ein Kadereintrag (aktueller Besitz eines Spielers in einer Liga).
+class RosterEntry {
+  const RosterEntry({
+    required this.managerId,
+    required this.playerId,
+    required this.acquiredVia,
+  });
+
+  final String managerId;
+  final String playerId;
+  final String acquiredVia; // draft | fa | waiver
+
+  factory RosterEntry.fromJson(Map<String, dynamic> json) => RosterEntry(
+        managerId: json['manager_id'] as String,
+        playerId: json['player_id'] as String,
+        acquiredVia: json['acquired_via'] as String? ?? 'draft',
+      );
 }
 
 /// Ein getätigter Draft-Pick.

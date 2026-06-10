@@ -63,4 +63,24 @@ class FantasyLeagueRepository {
         .order('joined_at');
     return rows.map(FantasyManager.fromJson).toList();
   }
+
+  /// Aktuelle Kader der Liga in Echtzeit (Draft + Free Agency).
+  Stream<List<RosterEntry>> rosterStream(String leagueId) => _client
+      .from('fantasy_rosters')
+      .stream(primaryKey: ['league_id', 'player_id'])
+      .eq('league_id', leagueId)
+      .map((rows) => rows.map(RosterEntry.fromJson).toList());
+
+  Future<void> dropPlayer(String leagueId, String playerId) => _client.rpc(
+        'fantasy_drop_player',
+        params: {'p_league_id': leagueId, 'p_player_id': playerId},
+      );
+
+  Future<void> addFreeAgent(String leagueId, String addPlayerId,
+          {String? dropPlayerId}) =>
+      _client.rpc('fantasy_add_free_agent', params: {
+        'p_league_id': leagueId,
+        'p_add_player_id': addPlayerId,
+        'p_drop_player_id': dropPlayerId,
+      });
 }

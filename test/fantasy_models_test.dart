@@ -102,4 +102,31 @@ void main() {
       expect(FantasyMode.fromId('quatsch'), FantasyMode.liga);
     });
   });
+
+  group('roundsThisPhase (Kadergröße wird nie überschritten)', () {
+    FantasyLeague league(FantasyMode mode, DraftPhase phase) => FantasyLeague(
+          id: 'l',
+          name: 'L',
+          mode: mode,
+          season: 2025,
+          pickTime: DraftPickTime.m1,
+          scoring: FantasyScoring.kickbaseStyle,
+          roster: const RosterConfig(), // squad 16
+          inviteCode: 'x',
+          draftStatus: DraftStatus.drafting,
+          createdBy: 'u',
+          draftPhase: phase,
+          u20Rounds: 3,
+        );
+
+    test('Liga: Haupt-Draft füllt den ganzen Kader', () {
+      expect(league(FantasyMode.liga, DraftPhase.startup).roundsThisPhase, 16);
+    });
+
+    test('Dynasty: Haupt-Draft lässt Platz für U20-Runden', () {
+      expect(league(FantasyMode.dynasty, DraftPhase.startup).roundsThisPhase,
+          16 - 3);
+      expect(league(FantasyMode.dynasty, DraftPhase.u20).roundsThisPhase, 3);
+    });
+  });
 }
