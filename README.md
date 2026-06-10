@@ -34,7 +34,9 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   Manager-Beitritt per Code, Seed-Spielerpool (Bundesliga) mit
   Alter/U20/Auslands-Flag. **Snake-Draft-Raum** mit einstellbarer Pickzeit
   (30 Sek–1 Tag, Live + Slow), Auto-Pick und Realtime — server-autoritativ.
-  Offen: Kickbase-Scoring (Live-Stats), Dynasty-U20-Draft
+  **Scoring** (Kickbase-Stil, konfigurierbar) aus echten OpenLigaDB-Daten
+  (Tore + Zu-Null); „Mein Team" + Liga-Tabelle mit bester Startelf.
+  Offen: voller Stats-Feed (Assists/Karten), Dynasty-U20-Draft
 - ⬜ Push-Benachrichtigungen, Profil-Verwaltung
 
 ## Entwicklung
