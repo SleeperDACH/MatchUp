@@ -5,22 +5,27 @@ import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/login_screen.dart';
+import '../features/fantasy/models/fantasy_models.dart';
+import '../features/fantasy/providers.dart';
+import '../features/fantasy/ui/create_fantasy_league.dart';
+import '../features/fantasy/ui/fantasy_lobby_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import 'league_screen.dart';
 
-/// Startbildschirm: meine Ligen (Tipprunden) auswählen, neue erstellen
-/// oder beitreten. Die Tippabgabe gibt es erst innerhalb einer Liga.
+/// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
+/// Tippspiel folgt als zweiter Bereich darunter.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final configured = AppConfig.isSupabaseConfigured;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tippspiel'),
+        title: const Text('Fantasy'),
         actions: [
           if (user != null)
             IconButton(
@@ -31,22 +36,36 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(myRoundsProvider),
+        onRefresh: () async {
+          ref.invalidate(myFantasyLeaguesProvider);
+          ref.invalidate(myRoundsProvider);
+        },
         child: ListView(
           padding: const EdgeInsets.all(12),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            _SectionHeader(title: 'Meine Ligen'),
-            ..._buildLeagueSection(context, ref, user != null),
-            const SizedBox(height: 20),
-            _SectionHeader(title: 'Ohne Liga'),
+            if (!configured)
+              const _InfoCard(
+                'Fantasy & Ligen brauchen eine Server-Verbindung. Starte die '
+                'App über ./run_dev.sh (siehe README) — Schnelltippen geht '
+                'auch ohne.',
+              )
+            else if (user == null)
+              const _LoginCard()
+            else ...[
+              ..._fantasySection(context, ref),
+              const SizedBox(height: 24),
+              ..._tippspielSection(context, ref),
+            ],
+            const SizedBox(height: 24),
+            _sectionHeader(context, 'Ohne Konto'),
             Card(
               child: ListTile(
                 leading: Icon(Icons.phone_iphone,
                     color: Theme.of(context).colorScheme.primary),
                 title: const Text('Schnelltippen'),
                 subtitle: const Text(
-                    'Lokal auf diesem Gerät, ohne Konto und Mitspieler'),
+                    'Tippspiel lokal auf diesem Gerät, ohne Konto'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   ref.read(activeRoundProvider.notifier).state = null;
@@ -61,74 +80,113 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildLeagueSection(
-      BuildContext context, WidgetRef ref, bool loggedIn) {
-    if (!AppConfig.isSupabaseConfigured) {
-      return const [
-        Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Ligen brauchen eine Server-Verbindung. Starte die App über '
-              './run_dev.sh (siehe README) — Schnelltippen geht auch so.',
-            ),
-          ),
-        ),
-      ];
-    }
-
-    if (!loggedIn) {
-      return [
-        Card(
-          child: ListTile(
-            leading: Icon(Icons.login,
-                color: Theme.of(context).colorScheme.primary),
-            title: const Text('Anmelden oder registrieren'),
-            subtitle: const Text(
-                'Ligen mit Freunden: erstellen, beitreten, gegeneinander tippen'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LoginScreen())),
-          ),
-        ),
-      ];
-    }
-
-    final rounds = ref.watch(myRoundsProvider);
+  // ------------------------------------------------------------------
+  // Fantasy (Hauptbereich)
+  // ------------------------------------------------------------------
+  List<Widget> _fantasySection(BuildContext context, WidgetRef ref) {
+    final leagues = ref.watch(myFantasyLeaguesProvider);
     return [
-      rounds.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(24),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-        error: (e, _) => Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text('Ligen konnten nicht geladen werden: $e'),
-          ),
-        ),
-        data: (list) => Column(
-          children: [
-            if (list.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text(
-                  'Noch keine Liga. Erstelle eine und lade Freunde mit dem '
-                  'Einladungscode ein!',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            for (final round in list) _LeagueCard(round: round),
-          ],
+      Row(
+        children: [
+          Icon(Icons.sports_soccer,
+              color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Text('Fantasy',
+              style: Theme.of(context).textTheme.headlineSmall),
+        ],
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 2, 4, 12),
+        child: Text(
+          'Drafte echte Spieler und sammle Punkte nach ihrer Leistung.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ),
-      const SizedBox(height: 8),
       Row(
         children: [
           Expanded(
-            child: FilledButton.icon(
+            child: _ModeHero(
+              icon: Icons.calendar_today,
+              title: 'Fantasy Liga',
+              subtitle: 'Eine Saison · Draft',
+              onTap: () => createFantasyLeagueFlow(context, FantasyMode.liga),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _ModeHero(
+              icon: Icons.auto_awesome,
+              title: 'Dynasty',
+              subtitle: 'Kader über Jahre · U20-Draft',
+              onTap: () =>
+                  createFantasyLeagueFlow(context, FantasyMode.dynasty),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          icon: const Icon(Icons.key, size: 18),
+          label: const Text('Mit Code beitreten'),
+          onPressed: () => joinFantasyLeagueFlow(context, ref),
+        ),
+      ),
+      leagues.when(
+        loading: () => const Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (e, _) =>
+            _InfoCard('Fantasy-Ligen konnten nicht geladen werden: $e'),
+        data: (list) => Column(
+          children: [
+            if (list.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Noch keine Fantasy-Liga — erstelle oben eine Liga oder '
+                  'Dynasty.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+              ),
+            for (final league in list) _FantasyLeagueCard(league: league),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  // ------------------------------------------------------------------
+  // Tippspiel (zweiter Bereich)
+  // ------------------------------------------------------------------
+  List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
+    final rounds = ref.watch(myRoundsProvider);
+    return [
+      _sectionHeader(context, 'Tippspiel'),
+      rounds.when(
+        loading: () => const Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (e, _) => _InfoCard('Tipprunden konnten nicht geladen werden: $e'),
+        data: (list) => Column(
+          children: [
+            for (final round in list) _TipRoundCard(round: round),
+          ],
+        ),
+      ),
+      const SizedBox(height: 4),
+      Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
               icon: const Icon(Icons.add),
-              label: const Text('Neue Liga'),
+              label: const Text('Tipprunde'),
               onPressed: () => createRoundFlow(context, ref),
             ),
           ),
@@ -144,10 +202,97 @@ class HomeScreen extends ConsumerWidget {
       ),
     ];
   }
+
+  Widget _sectionHeader(BuildContext context, String title) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      );
 }
 
-class _LeagueCard extends ConsumerWidget {
-  const _LeagueCard({required this.round});
+class _ModeHero extends StatelessWidget {
+  const _ModeHero({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      color: scheme.primary.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: scheme.primary.withValues(alpha: 0.4)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 14),
+          child: Column(
+            children: [
+              Icon(icon, size: 34, color: scheme.primary),
+              const SizedBox(height: 10),
+              Text(title,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FantasyLeagueCard extends StatelessWidget {
+  const _FantasyLeagueCard({required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: scheme.primary.withValues(alpha: 0.15),
+          child: Icon(
+            league.mode == FantasyMode.dynasty
+                ? Icons.auto_awesome
+                : Icons.calendar_today,
+            color: scheme.primary,
+            size: 20,
+          ),
+        ),
+        title: Text(league.name),
+        subtitle: Text(
+            '${league.mode.label} · ${league.draftStatus == DraftStatus.setup ? 'Setup' : league.draftStatus == DraftStatus.drafting ? 'Draft läuft' : 'Saison läuft'}'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => FantasyLobbyScreen(league: league))),
+      ),
+    );
+  }
+}
+
+class _TipRoundCard extends ConsumerWidget {
+  const _TipRoundCard({required this.round});
 
   final TipRound round;
 
@@ -168,30 +313,53 @@ class _LeagueCard extends ConsumerWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           activateRound(ref, round);
-          Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => LeagueScreen(round: round)));
+          Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
         },
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-
-  final String title;
+class _LoginCard extends StatelessWidget {
+  const _LoginCard();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-      child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.primary.withValues(alpha: 0.12),
+      child: ListTile(
+        leading: Icon(Icons.login, color: scheme.primary),
+        title: const Text('Anmelden oder registrieren'),
+        subtitle: const Text(
+            'Fantasy-Ligen und Tipprunden mit Freunden spielen'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const LoginScreen())),
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(text),
+      ),
     );
   }
 }
 
 // ---------------------------------------------------------------------
-// Liga erstellen / beitreten (auch vom LeagueScreen aus nutzbar)
+// Tippspiel: Tipprunde erstellen / beitreten
 // ---------------------------------------------------------------------
 
 Future<void> createRoundFlow(BuildContext context, WidgetRef ref) async {
@@ -215,7 +383,7 @@ Future<void> createRoundFlow(BuildContext context, WidgetRef ref) async {
   } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Liga konnte nicht erstellt werden: $e')));
+        SnackBar(content: Text('Tipprunde konnte nicht erstellt werden: $e')));
   }
 }
 
@@ -224,7 +392,7 @@ Future<void> joinRoundFlow(BuildContext context, WidgetRef ref) async {
   final code = await showDialog<String>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Liga beitreten'),
+      title: const Text('Tipprunde beitreten'),
       content: TextField(
         controller: controller,
         autofocus: true,
@@ -288,7 +456,7 @@ class _CreateRoundDialogState extends State<_CreateRoundDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Neue Liga erstellen'),
+      title: const Text('Neue Tipprunde'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -296,7 +464,7 @@ class _CreateRoundDialogState extends State<_CreateRoundDialog> {
             controller: _name,
             autofocus: true,
             decoration: const InputDecoration(
-              labelText: 'Name der Liga',
+              labelText: 'Name der Tipprunde',
               contentPadding: EdgeInsets.symmetric(horizontal: 12),
             ),
             onSubmitted: (_) => _submit(),
