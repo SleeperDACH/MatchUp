@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'draft_room_screen.dart';
 import 'player_pool_screen.dart';
 
 /// Lobby einer Fantasy-Liga: Einstellungen, Manager, Einladungscode und
@@ -20,6 +21,9 @@ class FantasyLobbyScreen extends ConsumerWidget {
     final pool = ref.watch(playerPoolProvider);
     final myUserId = ref.watch(currentUserProvider)?.id;
     final scheme = Theme.of(context).colorScheme;
+    // Live-Status, damit der Button nach Draft-Start sofort umschaltet.
+    final live = ref.watch(draftLeagueProvider(league.id)).valueOrNull ?? league;
+    final isAdmin = myUserId == league.createdBy;
 
     return Scaffold(
       appBar: AppBar(
@@ -118,34 +122,81 @@ class FantasyLobbyScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton.icon(
-              icon: const Icon(Icons.sports),
-              label: Text(league.draftStatus == DraftStatus.setup
-                  ? 'Draft starten'
-                  : 'Zum Draft'),
-              onPressed: () => _draftComingSoon(context),
-            ),
+            _draftButton(context, ref, live, isAdmin),
           ],
         ),
       ),
     );
   }
 
-  void _draftComingSoon(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Draft-Raum kommt als Nächstes'),
-        content: Text(
-          'Der Snake-Draft mit Pick-Timer (${league.pickTime.label}) ist der '
-          'nächste Bauabschnitt. Liga, Manager-Beitritt und der Spielerpool '
-          'stehen bereits — du kannst den Pool schon ansehen.',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Verstanden'),
-          ),
+  Widget _draftButton(
+      BuildContext context, WidgetRef ref, FantasyLeague live, bool isAdmin) {
+    void openRoom() => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => DraftRoomScreen(league: live)));
+
+    switch (live.draftStatus) {
+      case DraftStatus.setup:
+        if (!isAdmin) {
+          return const _DisabledHint(
+              icon: Icons.hourglass_empty,
+              text: 'Warten auf den Draft-Start durch den Admin');
+        }
+        return FilledButton.icon(
+          icon: const Icon(Icons.sports),
+          label: const Text('Draft starten'),
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            final navigator = Navigator.of(context);
+            try {
+              await ref.read(draftRepositoryProvider).startDraft(league.id);
+              ref.invalidate(fantasyManagersProvider(league.id));
+              navigator.push(MaterialPageRoute(
+                  builder: (_) => DraftRoomScreen(league: live)));
+            } catch (e) {
+              messenger.showSnackBar(
+                  SnackBar(content: Text('Start fehlgeschlagen: $e')));
+            }
+          },
+        );
+      case DraftStatus.drafting:
+        return FilledButton.icon(
+          icon: const Icon(Icons.sports),
+          label: const Text('Zum Draft'),
+          onPressed: openRoom,
+        );
+      case DraftStatus.done:
+        return FilledButton.icon(
+          icon: const Icon(Icons.emoji_events),
+          label: const Text('Draft-Ergebnis'),
+          onPressed: openRoom,
+        );
+    }
+  }
+}
+
+class _DisabledHint extends StatelessWidget {
+  const _DisabledHint({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Flexible(
+              child: Text(text,
+                  style: TextStyle(color: scheme.onSurfaceVariant))),
         ],
       ),
     );

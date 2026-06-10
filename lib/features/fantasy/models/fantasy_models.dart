@@ -249,6 +249,8 @@ class FantasyLeague {
     required this.inviteCode,
     required this.draftStatus,
     required this.createdBy,
+    this.picksMade = 0,
+    this.currentPickDeadline,
   });
 
   final String id;
@@ -264,6 +266,12 @@ class FantasyLeague {
   final DraftStatus draftStatus;
   final String createdBy;
 
+  /// Anzahl bereits getätigter Picks (0-basierter Index des nächsten Picks).
+  final int picksMade;
+
+  /// Ablaufzeitpunkt des aktuellen Picks; null außerhalb des laufenden Drafts.
+  final DateTime? currentPickDeadline;
+
   factory FantasyLeague.fromJson(Map<String, dynamic> json) => FantasyLeague(
         id: json['id'] as String,
         name: json['name'] as String,
@@ -277,6 +285,35 @@ class FantasyLeague {
         inviteCode: json['invite_code'] as String,
         draftStatus: _draftStatusFromId(json['draft_status'] as String),
         createdBy: json['created_by'] as String,
+        picksMade: json['picks_made'] as int? ?? 0,
+        currentPickDeadline: json['current_pick_deadline'] == null
+            ? null
+            : DateTime.parse(json['current_pick_deadline'] as String),
+      );
+}
+
+/// Ein getätigter Draft-Pick.
+class DraftPick {
+  const DraftPick({
+    required this.pickNumber,
+    required this.round,
+    required this.managerId,
+    required this.playerId,
+    required this.isAuto,
+  });
+
+  final int pickNumber;
+  final int round;
+  final String managerId;
+  final String playerId;
+  final bool isAuto;
+
+  factory DraftPick.fromJson(Map<String, dynamic> json) => DraftPick(
+        pickNumber: json['pick_number'] as int,
+        round: json['round'] as int,
+        managerId: json['manager_id'] as String,
+        playerId: json['player_id'] as String,
+        isAuto: json['is_auto'] as bool? ?? false,
       );
 }
 
@@ -293,6 +330,12 @@ class FantasyManager {
 
   /// Position in der Draft-Reihenfolge (1-basiert), null bis ausgelost.
   final int? draftPosition;
+
+  FantasyManager copyWith({int? draftPosition}) => FantasyManager(
+        userId: userId,
+        username: username,
+        draftPosition: draftPosition ?? this.draftPosition,
+      );
 
   factory FantasyManager.fromJson(Map<String, dynamic> json) => FantasyManager(
         userId: json['user_id'] as String,

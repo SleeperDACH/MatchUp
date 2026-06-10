@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/models/models.dart';
 import '../auth/providers.dart';
+import 'data/db_fantasy_data_provider.dart';
+import 'data/draft_repository.dart';
 import 'data/fantasy_data_provider.dart';
 import 'data/fantasy_league_repository.dart';
 import 'data/seed_player_pool.dart';
@@ -11,10 +14,15 @@ import 'models/fantasy_models.dart';
 final fantasyLeagueRepositoryProvider = Provider<FantasyLeagueRepository>(
     (ref) => FantasyLeagueRepository(Supabase.instance.client));
 
-/// Datenquelle für Spielerpool und (später) Live-Punkte. Aktuell der
-/// Seed-Pool; ein echter Stats-Adapter wird hier ausgetauscht.
-final fantasyDataProvider =
-    Provider<FantasyDataProvider>((ref) => const SeedFantasyDataProvider());
+final draftRepositoryProvider =
+    Provider<DraftRepository>((ref) => DraftRepository(Supabase.instance.client));
+
+/// Datenquelle für Spielerpool und (später) Live-Punkte. Mit Server der
+/// DB-Pool; ohne Konfiguration der Offline-Seed.
+final fantasyDataProvider = Provider<FantasyDataProvider>((ref) =>
+    AppConfig.isSupabaseConfigured
+        ? DbFantasyDataProvider(Supabase.instance.client)
+        : const SeedFantasyDataProvider());
 
 /// Startjahr der aktuellen Fantasy-Saison (Bundesliga-Rhythmus).
 final fantasySeasonProvider =
@@ -34,4 +42,20 @@ final fantasyManagersProvider =
 final playerPoolProvider = FutureProvider<List<FantasyPlayer>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
   return ref.watch(fantasyDataProvider).getPlayerPool(season: season);
+});
+
+// ------------------------------------------------------------------
+// Draft (Realtime)
+// ------------------------------------------------------------------
+
+/// Liga-Zustand in Echtzeit (Draft-Status, Picks, Deadline).
+final draftLeagueProvider =
+    StreamProvider.family<FantasyLeague?, String>((ref, leagueId) {
+  return ref.watch(draftRepositoryProvider).leagueStream(leagueId);
+});
+
+/// Alle Picks der Liga in Echtzeit.
+final draftPicksProvider =
+    StreamProvider.family<List<DraftPick>, String>((ref, leagueId) {
+  return ref.watch(draftRepositoryProvider).picksStream(leagueId);
 });
