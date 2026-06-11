@@ -40,6 +40,42 @@ void main() {
               PlayerPosition.fwd, scoring),
           2); // Zu-Null zählt für Stürmer nicht
     });
+
+    test('Assists und Karten fließen ein (voller Feed)', () {
+      final pts = scorePlayer(
+          const PlayerMatchStats(
+              played: true, assists: 2, yellow: 1, minutes: 90),
+          PlayerPosition.mid,
+          scoring);
+      // appearance 2 + 2*assist(3) + 1*yellow(-1)
+      expect(pts, 2 + 2 * 3 - 1);
+    });
+  });
+
+  group('PlayerMatchStats.fromDb (Stats-Feed-Zeile)', () {
+    test('liest alle Felder; appeared steuert played', () {
+      final s = PlayerMatchStats.fromDb({
+        'goals': 1,
+        'assists': 2,
+        'minutes': 90,
+        'yellow': 1,
+        'red': 0,
+        'clean_sheet': true,
+        'appeared': true,
+      });
+      expect(s.goals, 1);
+      expect(s.assists, 2);
+      expect(s.minutes, 90);
+      expect(s.yellow, 1);
+      expect(s.cleanSheet, isTrue);
+      expect(s.played, isTrue);
+    });
+
+    test('played-Fallback aus Toren/Minuten, wenn appeared fehlt', () {
+      expect(PlayerMatchStats.fromDb({'goals': 1}).played, isTrue);
+      expect(PlayerMatchStats.fromDb({'minutes': 45}).played, isTrue);
+      expect(PlayerMatchStats.fromDb({'goals': 0, 'minutes': 0}).played, isFalse);
+    });
   });
 
   group('bestEleven', () {

@@ -12,6 +12,7 @@ class PlayerMatchStats {
     this.cleanSheet = false,
     this.yellow = 0,
     this.red = 0,
+    this.minutes = 0,
   });
 
   final int goals;
@@ -21,8 +22,26 @@ class PlayerMatchStats {
   final int yellow;
   final int red;
 
+  /// Einsatzminuten (0, solange nur OpenLigaDB die Quelle ist).
+  final int minutes;
+
   bool get hasContribution =>
       played || goals > 0 || assists > 0 || cleanSheet || yellow > 0 || red > 0;
+
+  /// Aus einer Zeile der Tabelle player_match_stats (serverseitiger Feed).
+  factory PlayerMatchStats.fromDb(Map<String, dynamic> r) {
+    final goals = r['goals'] as int? ?? 0;
+    final minutes = r['minutes'] as int? ?? 0;
+    return PlayerMatchStats(
+      goals: goals,
+      assists: r['assists'] as int? ?? 0,
+      minutes: minutes,
+      played: (r['appeared'] as bool?) ?? (minutes > 0 || goals > 0),
+      cleanSheet: r['clean_sheet'] as bool? ?? false,
+      yellow: r['yellow'] as int? ?? 0,
+      red: r['red'] as int? ?? 0,
+    );
+  }
 }
 
 /// Fantasy-Punkte eines Spielers (Kickbase-Stil, über [FantasyScoring]

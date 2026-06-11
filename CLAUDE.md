@@ -41,6 +41,13 @@ und Code-Kommentare: Deutsch.
   Zeitplan via pg_cron (Job `sync-fixtures`, alle 10 Min, ruft die
   Function per pg_net auf). Mapping muss mit dem
   `OpenLigaDbProvider` der App konsistent bleiben.
+- Stats-Sync: Edge Function `supabase/functions/sync-stats/` (gleiche
+  Schutz-/Deploy-Konvention) füllt `player_match_stats` (Tore/Zu-Null aus
+  OpenLigaDB). Die Matching-Logik ist 1:1 zu
+  `RoundScoringService.computeStats` — bei Änderungen beide anpassen. Der
+  Client liest die Tabelle über `FantasyStatsSource` und fällt für nicht
+  gespiegelte Spieltage auf die Live-Berechnung zurück. Roh-Stats, keine
+  Punkte (die hängen an `FantasyScoring`).
 - Fixture-IDs sind Provider-qualifiziert (`openligadb:77554`) — identisch in
   App und Datenbank.
 - Saison = Startjahr (2025 ⇒ 2025/26).

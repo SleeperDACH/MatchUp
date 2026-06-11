@@ -9,6 +9,7 @@ import 'data/db_fantasy_data_provider.dart';
 import 'data/draft_repository.dart';
 import 'data/fantasy_data_provider.dart';
 import 'data/fantasy_league_repository.dart';
+import 'data/fantasy_stats_source.dart';
 import 'data/round_scoring_service.dart';
 import 'data/seed_player_pool.dart';
 import 'logic/fantasy_scoring_engine.dart';
@@ -102,11 +103,21 @@ final draftPicksProvider =
 });
 
 // ------------------------------------------------------------------
-// Scoring (echte OpenLigaDB-Daten: Tore + Zu-Null)
+// Scoring (Stats-Feed: serverseitig gespiegelt, Fallback live OpenLigaDB)
 // ------------------------------------------------------------------
 
 final roundScoringServiceProvider =
     Provider<RoundScoringService>((ref) => RoundScoringService());
+
+/// Quelle der Roh-Stats: mit Supabase die Tabelle player_match_stats
+/// (Quelle der Wahrheit, Schema bereit für Assists/Karten/Minuten), sonst
+/// bzw. als Fallback die Live-Berechnung aus OpenLigaDB.
+final fantasyStatsSourceProvider = Provider<FantasyStatsSource>((ref) {
+  final live = LiveStatsSource(ref.watch(roundScoringServiceProvider));
+  return AppConfig.isSupabaseConfigured
+      ? DbStatsSource(Supabase.instance.client, live)
+      : live;
+});
 
 /// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).
 final fantasyCurrentRoundProvider = FutureProvider<int>((ref) {
@@ -114,12 +125,12 @@ final fantasyCurrentRoundProvider = FutureProvider<int>((ref) {
   return OpenLigaDbProvider().getCurrentRound(Leagues.bundesliga, season);
 });
 
-/// Roh-Leistungsdaten (Tore/Zu-Null) aller Poolspieler für einen Spieltag.
+/// Roh-Leistungsdaten aller Poolspieler für einen Spieltag.
 final roundStatsProvider =
     FutureProvider.family<Map<String, PlayerMatchStats>, int>((ref, round) async {
   final pool = await ref.watch(playerPoolProvider.future);
   final season = ref.watch(fantasySeasonProvider);
   return ref
-      .watch(roundScoringServiceProvider)
+      .watch(fantasyStatsSourceProvider)
       .roundStats(pool: pool, season: season, round: round);
 });

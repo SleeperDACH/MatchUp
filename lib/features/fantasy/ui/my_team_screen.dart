@@ -234,7 +234,12 @@ class _PlayerRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final detail = <String>[
       if ((stats?.goals ?? 0) > 0) '${stats!.goals} Tor${stats!.goals > 1 ? 'e' : ''}',
+      if ((stats?.assists ?? 0) > 0)
+        '${stats!.assists} Assist${stats!.assists > 1 ? 's' : ''}',
       if (stats?.cleanSheet ?? false) 'Zu Null',
+      if ((stats?.yellow ?? 0) > 0) 'Gelb',
+      if ((stats?.red ?? 0) > 0) 'Rot',
+      if ((stats?.minutes ?? 0) > 0) '${stats!.minutes}′',
     ].join(' · ');
 
     return Opacity(

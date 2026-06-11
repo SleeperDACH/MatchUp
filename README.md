@@ -49,10 +49,16 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   Formation aus der Kader-Konfiguration), serverseitige Deadline zum ersten
   Anstoß; ohne Wahl zählt automatisch die beste Elf. „Mein Team" & Tabelle
   werten die effektive Aufstellung.
+  **Stats-Feed**: anbieter-neutrale Tabelle `player_match_stats` als Quelle
+  der Wahrheit, serverseitig befüllt (Edge Function `sync-stats` spiegelt
+  Tore/Zu-Null aus OpenLigaDB); Schema & Scoring sind bereits auf Assists,
+  Karten und Minuten vorbereitet. Client liest die Tabelle, fällt für noch
+  nicht gespiegelte Spieltage auf die Live-Berechnung zurück.
+- ⬜ Reicherer Stats-Feed anbinden (Assists/Karten/Minuten/Aufstellungen —
+  z. B. api-sports), füllt dieselben Spalten ohne Client-Umbau
 - ⬜ Waiver-Priorität aus echter umgekehrter Saisontabelle (sobald
   serverseitige kumulierte Punkte existieren)
-- ⬜ Voller Stats-Feed (Assists/Karten/Minuten), flexible Formationen,
-  Saison-Rollover (Dynasty), Push-Benachrichtigungen
+- ⬜ Flexible Formationen, Saison-Rollover (Dynasty)
 - ⬜ Push-Benachrichtigungen, Profil-Verwaltung
 
 ## Entwicklung
