@@ -31,7 +31,8 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   erstellen & per Einladungscode beitreten, Tipps serverseitig
   (Deadline per RLS), Rangliste pro Runde
 - ✅ Fantasy-Modus (Hauptfokus): Liga/Dynasty-Modi, Liga-Erstellung,
-  Manager-Beitritt per Code, Spielerpool (Bundesliga) mit
+  Manager-Beitritt per Code, Spielerpool (Bundesliga, ~214 Spieler:
+  kuratierter Seed + aktuelle Kader aus TheSportsDB, Gratis-Feed) mit
   Alter/U20/Auslands-Flag. **Snake-Draft-Raum** mit einstellbarer Pickzeit
   (30 Sek–1 Tag, Live + Slow), Auto-Pick und Realtime — server-autoritativ.
   **Scoring** (Kickbase-Stil, konfigurierbar) aus echten OpenLigaDB-Daten

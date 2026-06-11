@@ -51,6 +51,11 @@ und Code-Kommentare: Deutsch.
 - Fixture-IDs sind Provider-qualifiziert (`openligadb:77554`) — identisch in
   App und Datenbank.
 - Saison = Startjahr (2025 ⇒ 2025/26).
+- Spielerpool in `public.players`: kuratierter Seed (Migration 0004) plus
+  aktuelle Kader aus TheSportsDB (Gratis-Key, je Verein max. 10 Spieler;
+  Migration 0010, generiert per `tools/import_player_pool.py`). `club` ist
+  immer der kanonische OpenLigaDB-Name, sonst bricht das Stats-Matching.
+  ids: `seed:*` bzw. `tsdb:*`. Echter Voll-Kader nur mit Bezahl-Feed.
 
 ## Befehle
 
