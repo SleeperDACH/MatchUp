@@ -357,6 +357,29 @@ class RosterEntry {
       );
 }
 
+/// Die für einen Spieltag gewählte Startelf eines Managers. Leer/keine
+/// Aufstellung ⇒ es zählt die automatische beste Elf.
+class FantasyLineup {
+  const FantasyLineup({
+    required this.managerId,
+    required this.round,
+    required this.playerIds,
+  });
+
+  final String managerId;
+  final int round;
+  final Set<String> playerIds;
+
+  factory FantasyLineup.fromJson(Map<String, dynamic> json) => FantasyLineup(
+        managerId: json['manager_id'] as String,
+        round: json['round'] as int,
+        playerIds: {
+          for (final id in (json['player_ids'] as List? ?? const []))
+            id as String
+        },
+      );
+}
+
 /// Ein getätigter Draft-Pick.
 class DraftPick {
   const DraftPick({

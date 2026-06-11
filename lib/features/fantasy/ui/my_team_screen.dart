@@ -6,6 +6,7 @@ import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'free_agency_screen.dart';
+import 'lineup_screen.dart';
 import 'matchday_stepper.dart';
 import 'player_flag.dart';
 
@@ -66,12 +67,20 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
         const <RosterEntry>[];
     final poolAsync = ref.watch(playerPoolProvider);
     final statsAsync = ref.watch(roundStatsProvider(round));
+    final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
+        const <FantasyLineup>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mein Team'),
         actions: [
+          IconButton(
+            tooltip: 'Aufstellung',
+            icon: const Icon(Icons.sports_soccer),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => LineupScreen(league: league))),
+          ),
           IconButton(
             tooltip: 'Free Agency',
             icon: const Icon(Icons.person_add_alt),
@@ -96,7 +105,12 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
               p: scorePlayer(stats[p.id] ?? const PlayerMatchStats(),
                   p.position, league.scoring)
           };
-          final lineup = bestEleven(points, league.roster);
+          final myManualLineup = lineups
+              .where((l) => l.round == round && l.managerId == myId)
+              .map((l) => l.playerIds)
+              .firstOrNull;
+          final lineup =
+              effectiveLineup(points, league.roster, myManualLineup);
 
           return Column(
             children: [

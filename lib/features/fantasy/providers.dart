@@ -67,6 +67,19 @@ final waiverWindowProvider =
   return ref.watch(fantasyLeagueRepositoryProvider).waiverWindow(season);
 });
 
+/// Alle manuellen Aufstellungen einer Liga in Echtzeit (alle Spieltage).
+final leagueLineupsProvider =
+    StreamProvider.family<List<FantasyLineup>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).lineupsStream(leagueId);
+});
+
+/// Aufstellungs-Deadline (erster Anstoß) eines Spieltags der Saison.
+final roundDeadlineProvider =
+    FutureProvider.family<DateTime?, int>((ref, round) {
+  final season = ref.watch(fantasySeasonProvider);
+  return ref.watch(fantasyLeagueRepositoryProvider).roundDeadline(season, round);
+});
+
 final playerPoolProvider = FutureProvider<List<FantasyPlayer>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
   return ref.watch(fantasyDataProvider).getPlayerPool(season: season);

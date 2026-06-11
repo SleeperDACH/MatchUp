@@ -85,3 +85,31 @@ Lineup bestEleven(Map<FantasyPlayer, int> points, RosterConfig roster) {
   });
   return Lineup(starterIds: starters, total: total);
 }
+
+/// Aufstellung aus einer manuell gewählten Starter-Menge: summiert die
+/// Punkte der gewählten Spieler (Bank zählt nicht). Spieler in
+/// [starterIds], die nicht (mehr) im Kader sind, werden ignoriert.
+Lineup chosenLineup(Map<FantasyPlayer, int> points, Set<String> starterIds) {
+  final starters = <String>{};
+  var total = 0;
+  points.forEach((player, pts) {
+    if (starterIds.contains(player.id)) {
+      starters.add(player.id);
+      total += pts;
+    }
+  });
+  return Lineup(starterIds: starters, total: total);
+}
+
+/// Effektive Aufstellung eines Spieltags: die manuell gewählte Startelf,
+/// falls vorhanden, sonst die automatische beste Elf.
+Lineup effectiveLineup(
+  Map<FantasyPlayer, int> points,
+  RosterConfig roster,
+  Set<String>? manualStarterIds,
+) {
+  if (manualStarterIds != null && manualStarterIds.isNotEmpty) {
+    return chosenLineup(points, manualStarterIds);
+  }
+  return bestEleven(points, roster);
+}

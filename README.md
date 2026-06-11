@@ -45,9 +45,13 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   in rollender Waiver-Priorität (Start = umgekehrte Draft-Reihenfolge als
   Näherung an die umgekehrte Tabelle, Gewinner rutscht ans Ende). Eigener
   Anträge-Screen mit Rang & Stornierung.
+  **Manuelle Aufstellung**: Startelf je Spieltag selbst wählen (feste
+  Formation aus der Kader-Konfiguration), serverseitige Deadline zum ersten
+  Anstoß; ohne Wahl zählt automatisch die beste Elf. „Mein Team" & Tabelle
+  werten die effektive Aufstellung.
 - ⬜ Waiver-Priorität aus echter umgekehrter Saisontabelle (sobald
   serverseitige kumulierte Punkte existieren)
-- ⬜ Voller Stats-Feed (Assists/Karten/Minuten), manuelle Aufstellung,
+- ⬜ Voller Stats-Feed (Assists/Karten/Minuten), flexible Formationen,
   Saison-Rollover (Dynasty), Push-Benachrichtigungen
 - ⬜ Push-Benachrichtigungen, Profil-Verwaltung
 

@@ -56,6 +56,57 @@ void main() {
     });
   });
 
+  group('chosenLineup / effectiveLineup (manuelle Aufstellung)', () {
+    final gk = _p('gk1', 'GK1', PlayerPosition.gk, 'C');
+    final fwd1 = _p('fwd1', 'FWD1', PlayerPosition.fwd, 'C');
+    final fwd2 = _p('fwd2', 'FWD2', PlayerPosition.fwd, 'C');
+    final fwd3 = _p('fwd3', 'FWD3', PlayerPosition.fwd, 'C');
+    final points = {gk: 5, fwd1: 9, fwd2: 7, fwd3: 3};
+
+    test('chosenLineup summiert genau die gewählten Spieler', () {
+      final lineup = chosenLineup(points, {'gk1', 'fwd3'});
+      expect(lineup.starterIds, {'gk1', 'fwd3'});
+      expect(lineup.total, 5 + 3);
+    });
+
+    test('chosenLineup ignoriert Spieler ohne Kader-/Punkteeintrag', () {
+      final lineup = chosenLineup(points, {'fwd1', 'weg'});
+      expect(lineup.starterIds, {'fwd1'});
+      expect(lineup.total, 9);
+    });
+
+    test('effectiveLineup: manuelle Wahl schlägt beste Elf', () {
+      // Manuell die schwächeren Stürmer aufstellen.
+      final manual = effectiveLineup(points, const RosterConfig(),
+          {'gk1', 'fwd2', 'fwd3'});
+      expect(manual.total, 5 + 7 + 3);
+    });
+
+    test('effectiveLineup: ohne Wahl automatisch beste Elf', () {
+      final auto = effectiveLineup(points, const RosterConfig(), null);
+      final autoEmpty = effectiveLineup(points, const RosterConfig(), const {});
+      expect(auto.total, 5 + 9 + 7); // fwd3 ist Bank
+      expect(autoEmpty.total, 5 + 9 + 7);
+    });
+  });
+
+  group('FantasyLineup.fromJson', () {
+    test('liest player_ids als Set', () {
+      final l = FantasyLineup.fromJson({
+        'manager_id': 'm1',
+        'round': 7,
+        'player_ids': ['seed:1', 'seed:2'],
+      });
+      expect(l.round, 7);
+      expect(l.playerIds, {'seed:1', 'seed:2'});
+    });
+
+    test('leere/fehlende player_ids -> leeres Set', () {
+      final l = FantasyLineup.fromJson({'manager_id': 'm1', 'round': 1});
+      expect(l.playerIds, isEmpty);
+    });
+  });
+
   group('RoundScoringService.computeStats (echte OpenLigaDB-Form)', () {
     test('Tore per Nachname + Zu-Null per Verein', () {
       final pool = [

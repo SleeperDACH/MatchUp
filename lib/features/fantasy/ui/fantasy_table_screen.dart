@@ -32,6 +32,8 @@ class _FantasyTableScreenState extends ConsumerState<FantasyTableScreen> {
     final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
     final statsAsync = ref.watch(roundStatsProvider(round));
+    final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
+        const <FantasyLineup>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
     return Scaffold(
@@ -57,10 +59,14 @@ class _FantasyTableScreenState extends ConsumerState<FantasyTableScreen> {
                     p: scorePlayer(stats[p.id] ?? const PlayerMatchStats(),
                         p.position, league.scoring)
                 };
+                final manual = lineups
+                    .where((l) => l.round == round && l.managerId == m.userId)
+                    .map((l) => l.playerIds)
+                    .firstOrNull;
                 rows.add((
                   name: m.username,
                   me: m.userId == myId,
-                  total: bestEleven(points, league.roster).total,
+                  total: effectiveLineup(points, league.roster, manual).total,
                 ));
               }
               rows.sort((a, b) => b.total.compareTo(a.total));
@@ -111,8 +117,8 @@ class _FantasyTableScreenState extends ConsumerState<FantasyTableScreen> {
                         Padding(
                           padding: const EdgeInsets.all(16),
                           child: Text(
-                            'Punkte = beste Startelf des Spieltags. Wertung '
-                            'aus OpenLigaDB (Tore, Zu-Null).',
+                            'Punkte = gewählte Startelf (sonst automatisch die '
+                            'beste Elf). Wertung aus OpenLigaDB (Tore, Zu-Null).',
                             textAlign: TextAlign.center,
                             style: Theme.of(context)
                                 .textTheme

@@ -139,4 +139,31 @@ class FantasyLeagueRepository {
         'fantasy_cancel_waiver_claim',
         params: {'p_claim_id': claimId},
       );
+
+  // ----------------------------------------------------------------
+  // Manuelle Aufstellung
+  // ----------------------------------------------------------------
+
+  /// Alle Aufstellungen der Liga in Echtzeit (für „Mein Team" & Tabelle);
+  /// nach Spieltag wird im Client gefiltert.
+  Stream<List<FantasyLineup>> lineupsStream(String leagueId) => _client
+      .from('fantasy_lineups')
+      .stream(primaryKey: ['league_id', 'manager_id', 'season', 'round'])
+      .eq('league_id', leagueId)
+      .map((rows) => rows.map(FantasyLineup.fromJson).toList());
+
+  /// Aufstellungs-Deadline (erster Anstoß des Spieltags); null, wenn der
+  /// Spieltag (noch) nicht in den gespiegelten Fixtures liegt.
+  Future<DateTime?> roundDeadline(int season, int round) async {
+    final ts = await _client.rpc<String?>('fantasy_round_deadline',
+        params: {'p_season': season, 'p_round': round});
+    return ts == null ? null : DateTime.parse(ts);
+  }
+
+  Future<void> setLineup(String leagueId, int round, List<String> playerIds) =>
+      _client.rpc('fantasy_set_lineup', params: {
+        'p_league_id': leagueId,
+        'p_round': round,
+        'p_player_ids': playerIds,
+      });
 }
