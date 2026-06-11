@@ -134,3 +134,11 @@ final roundStatsProvider =
       .watch(fantasyStatsSourceProvider)
       .roundStats(pool: pool, season: season, round: round);
 });
+
+/// Alle gespielten Spieltage der Saison (Spieltag → Spieler-ID → Stats);
+/// Grundlage der Head-to-Head-Bilanz. Leer ohne serverseitige Stats.
+final seasonStatsProvider =
+    FutureProvider<Map<int, Map<String, PlayerMatchStats>>>((ref) {
+  final season = ref.watch(fantasySeasonProvider);
+  return ref.watch(fantasyStatsSourceProvider).seasonStats(season: season);
+});

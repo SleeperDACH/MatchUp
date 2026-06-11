@@ -54,6 +54,10 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   Tore/Zu-Null aus OpenLigaDB); Schema & Scoring sind bereits auf Assists,
   Karten und Minuten vorbereitet. Client liest die Tabelle, fällt für noch
   nicht gespiegelte Spieltage auf die Live-Berechnung zurück.
+  **Head-to-Head-Matchups**: pro Spieltag 1-gegen-1-Paarungen (deterministischer
+  Round-Robin-Spielplan nach der Kreismethode, Bye bei ungerader Managerzahl),
+  Sieg/Niederlage/Unentschieden aus den Punkten der effektiven Aufstellung,
+  plus Saison-Bilanztabelle (S-N-U, Punktedifferenz).
 - ⬜ Reicherer Stats-Feed anbinden (Assists/Karten/Minuten/Aufstellungen —
   z. B. api-sports), füllt dieselben Spalten ohne Client-Umbau
 - ⬜ Waiver-Priorität aus echter umgekehrter Saisontabelle (sobald

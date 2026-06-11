@@ -8,6 +8,7 @@ import '../providers.dart';
 import 'draft_room_screen.dart';
 import 'fantasy_table_screen.dart';
 import 'free_agency_screen.dart';
+import 'matchups_screen.dart';
 import 'my_team_screen.dart';
 import 'player_pool_screen.dart';
 
@@ -139,6 +140,20 @@ class FantasyLobbyScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
+                    child: FilledButton.tonalIcon(
+                      icon: const Icon(Icons.sports_kabaddi),
+                      label: const Text('Matchups'),
+                      onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => MatchupsScreen(league: live))),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.leaderboard_outlined),
                       label: const Text('Tabelle'),
@@ -147,14 +162,17 @@ class FantasyLobbyScreen extends ConsumerWidget {
                               builder: (_) => FantasyTableScreen(league: live))),
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.person_add_alt),
+                      label: const Text('Free Agency'),
+                      onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => FreeAgencyScreen(league: live))),
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.person_add_alt),
-                label: const Text('Free Agency'),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => FreeAgencyScreen(league: live))),
               ),
             ],
             const SizedBox(height: 16),

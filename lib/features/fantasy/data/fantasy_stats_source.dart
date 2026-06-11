@@ -13,6 +13,13 @@ abstract class FantasyStatsSource {
     required int season,
     required int round,
   });
+
+  /// Alle gespielten Spieltage einer Saison auf einmal (Spieltag →
+  /// Spieler-ID → Stats). Für die Head-to-Head-Bilanz über die Saison.
+  /// Leer, wenn keine serverseitigen Stats vorliegen (lokaler Modus).
+  Future<Map<int, Map<String, PlayerMatchStats>>> seasonStats({
+    required int season,
+  });
 }
 
 /// Live aus OpenLigaDB berechnet (Tore + Zu-Null). Quelle im lokalen Modus
@@ -29,6 +36,14 @@ class LiveStatsSource implements FantasyStatsSource {
     required int round,
   }) =>
       _service.roundStats(pool: pool, season: season, round: round);
+
+  // Saison-weite Stats wären live zu teuer (ein Abruf je Spieltag) — die
+  // H2H-Bilanz setzt serverseitige Stats voraus.
+  @override
+  Future<Map<int, Map<String, PlayerMatchStats>>> seasonStats({
+    required int season,
+  }) async =>
+      const {};
 }
 
 /// Liest die serverseitig befüllte Tabelle player_match_stats (Quelle der
@@ -63,5 +78,20 @@ class DbStatsSource implements FantasyStatsSource {
       for (final p in pool)
         if (byId.containsKey(p.id)) p.id: byId[p.id]!
     };
+  }
+
+  @override
+  Future<Map<int, Map<String, PlayerMatchStats>>> seasonStats({
+    required int season,
+  }) async {
+    final rows =
+        await _client.from('player_match_stats').select().eq('season', season);
+    final out = <int, Map<String, PlayerMatchStats>>{};
+    for (final r in rows) {
+      final round = r['round'] as int;
+      (out[round] ??= {})[r['player_id'] as String] =
+          PlayerMatchStats.fromDb(r);
+    }
+    return out;
   }
 }
