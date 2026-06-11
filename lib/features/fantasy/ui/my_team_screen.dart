@@ -30,8 +30,9 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
       builder: (context) => AlertDialog(
         title: Text('${player.name} abgeben?'),
         content: const Text(
-            'Der Spieler wird in die Free Agency entlassen und ist dann für '
-            'alle holbar.'),
+            'Der Spieler kommt auf den Waiver-Wire: Bis zur nächsten Deadline '
+            '(2 Tage vor dem Spieltag) ist er nur per Antrag holbar, danach für '
+            'alle frei.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(context).pop(false),

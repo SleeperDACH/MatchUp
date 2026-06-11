@@ -58,7 +58,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> managers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, draft_position, profiles(username)')
+        .select('user_id, draft_position, waiver_priority, profiles(username)')
         .eq('league_id', leagueId)
         .order('joined_at');
     return rows.map(FantasyManager.fromJson).toList();
@@ -83,4 +83,60 @@ class FantasyLeagueRepository {
         'p_add_player_id': addPlayerId,
         'p_drop_player_id': dropPlayerId,
       });
+
+  // ----------------------------------------------------------------
+  // Waiver-Wire
+  // ----------------------------------------------------------------
+
+  /// Spieler-IDs, die aktuell auf dem Waiver-Wire liegen (claim-only).
+  Stream<Set<String>> waiverPlayersStream(String leagueId) => _client
+      .from('fantasy_waiver_players')
+      .stream(primaryKey: ['league_id', 'player_id'])
+      .eq('league_id', leagueId)
+      .map((rows) => {
+            for (final r in rows)
+              if (DateTime.parse(r['clears_at'] as String).isAfter(DateTime.now()))
+                r['player_id'] as String
+          });
+
+  /// Eigene Waiver-Anträge der Liga in Echtzeit (RLS: nur die eigenen).
+  Stream<List<WaiverClaim>> myWaiverClaimsStream(String leagueId) => _client
+      .from('fantasy_waiver_claims')
+      .stream(primaryKey: ['id'])
+      .eq('league_id', leagueId)
+      .order('created_at')
+      .map((rows) => rows.map(WaiverClaim.fromJson).toList());
+
+  /// Nächste Runde + Waiver-Deadline (2 Tage vor Anstoß). Beide null, wenn
+  /// kein Spieltag mehr ansteht.
+  Future<({int? round, DateTime? deadline})> waiverWindow(int season) async {
+    final res = await _client.rpc(
+      'fantasy_next_waiver_window',
+      params: {'p_season': season},
+    );
+    // PostgREST liefert je nach Version ein Objekt oder ein 1-Element-Array.
+    final row = res is List
+        ? (res.isEmpty ? null : res.first as Map<String, dynamic>)
+        : res as Map<String, dynamic>?;
+    if (row == null) return (round: null, deadline: null);
+    final deadline = row['deadline'];
+    return (
+      round: row['round'] as int?,
+      deadline: deadline == null ? null : DateTime.parse(deadline as String),
+    );
+  }
+
+  Future<void> submitWaiverClaim(String leagueId, String addPlayerId,
+          {String? dropPlayerId, int rank = 1}) =>
+      _client.rpc('fantasy_submit_waiver_claim', params: {
+        'p_league_id': leagueId,
+        'p_add_player_id': addPlayerId,
+        'p_drop_player_id': dropPlayerId,
+        'p_rank': rank,
+      });
+
+  Future<void> cancelWaiverClaim(String claimId) => _client.rpc(
+        'fantasy_cancel_waiver_claim',
+        params: {'p_claim_id': claimId},
+      );
 }

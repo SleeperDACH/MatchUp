@@ -103,6 +103,58 @@ void main() {
     });
   });
 
+  group('Waiver', () {
+    test('WaiverStatus fromId mit Fallback auf pending', () {
+      expect(WaiverStatus.fromId('won'), WaiverStatus.won);
+      expect(WaiverStatus.fromId('cancelled'), WaiverStatus.cancelled);
+      expect(WaiverStatus.fromId('unbekannt'), WaiverStatus.pending);
+      expect(WaiverStatus.pending.isPending, isTrue);
+      expect(WaiverStatus.won.isPending, isFalse);
+    });
+
+    test('WaiverClaim.fromJson liest alle Felder', () {
+      final c = WaiverClaim.fromJson({
+        'id': 'c1',
+        'league_id': 'l1',
+        'manager_id': 'm1',
+        'add_player_id': 'seed:5',
+        'drop_player_id': 'seed:9',
+        'rank': 2,
+        'status': 'won',
+        'reason': null,
+        'created_at': '2026-06-11T10:00:00Z',
+      });
+      expect(c.addPlayerId, 'seed:5');
+      expect(c.dropPlayerId, 'seed:9');
+      expect(c.rank, 2);
+      expect(c.status, WaiverStatus.won);
+    });
+
+    test('WaiverClaim.fromJson: Defaults ohne drop/rank/status', () {
+      final c = WaiverClaim.fromJson({
+        'id': 'c2',
+        'league_id': 'l1',
+        'manager_id': 'm1',
+        'add_player_id': 'seed:1',
+        'created_at': '2026-06-11T10:00:00Z',
+      });
+      expect(c.dropPlayerId, isNull);
+      expect(c.rank, 1);
+      expect(c.status, WaiverStatus.pending);
+    });
+
+    test('FantasyManager.fromJson liest waiver_priority', () {
+      final m = FantasyManager.fromJson({
+        'user_id': 'u1',
+        'draft_position': 3,
+        'waiver_priority': 5,
+        'profiles': {'username': 'Felix'},
+      });
+      expect(m.waiverPriority, 5);
+      expect(m.username, 'Felix');
+    });
+  });
+
   group('roundsThisPhase (Kadergröße wird nie überschritten)', () {
     FantasyLeague league(FantasyMode mode, DraftPhase phase) => FantasyLeague(
           id: 'l',

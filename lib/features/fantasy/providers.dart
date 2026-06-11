@@ -48,6 +48,25 @@ final leagueRosterProvider =
   return ref.watch(fantasyLeagueRepositoryProvider).rosterStream(leagueId);
 });
 
+/// Spieler-IDs auf dem Waiver-Wire (nach Drop claim-only) in Echtzeit.
+final waiverPlayersProvider =
+    StreamProvider.family<Set<String>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).waiverPlayersStream(leagueId);
+});
+
+/// Eigene Waiver-Anträge der Liga in Echtzeit.
+final myWaiverClaimsProvider =
+    StreamProvider.family<List<WaiverClaim>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).myWaiverClaimsStream(leagueId);
+});
+
+/// Nächste Runde + Waiver-Deadline (2 Tage vor Anstoß) der Saison.
+final waiverWindowProvider =
+    FutureProvider<({int? round, DateTime? deadline})>((ref) {
+  final season = ref.watch(fantasySeasonProvider);
+  return ref.watch(fantasyLeagueRepositoryProvider).waiverWindow(season);
+});
+
 final playerPoolProvider = FutureProvider<List<FantasyPlayer>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
   return ref.watch(fantasyDataProvider).getPlayerPool(season: season);

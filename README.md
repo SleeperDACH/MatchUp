@@ -40,8 +40,13 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   (U20-Spieler & Auslands-Neuzugänge) für die neue Saison.
   **Free Agency**: mutierbarer Kader, Drop & Aufnahme mit Kadergrößen-Limit,
   05.09.-Sperre, U20-Draft erst nach Saisonende.
-- 🟡 Waiver-System: Anträge + terminierte Abarbeitung (2 Tage vor Spieltag,
-  umgekehrte Tabelle) — in Arbeit
+  **Waiver-Wire**: gedroppte Spieler sind bis zur Deadline (2 Tage vor dem
+  Spieltag) nur per Antrag holbar; Abarbeitung läuft terminiert per pg_cron
+  in rollender Waiver-Priorität (Start = umgekehrte Draft-Reihenfolge als
+  Näherung an die umgekehrte Tabelle, Gewinner rutscht ans Ende). Eigener
+  Anträge-Screen mit Rang & Stornierung.
+- ⬜ Waiver-Priorität aus echter umgekehrter Saisontabelle (sobald
+  serverseitige kumulierte Punkte existieren)
 - ⬜ Voller Stats-Feed (Assists/Karten/Minuten), manuelle Aufstellung,
   Saison-Rollover (Dynasty), Push-Benachrichtigungen
 - ⬜ Push-Benachrichtigungen, Profil-Verwaltung

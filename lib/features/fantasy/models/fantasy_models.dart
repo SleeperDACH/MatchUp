@@ -391,6 +391,7 @@ class FantasyManager {
     required this.userId,
     required this.username,
     this.draftPosition,
+    this.waiverPriority,
   });
 
   final String userId;
@@ -399,10 +400,16 @@ class FantasyManager {
   /// Position in der Draft-Reihenfolge (1-basiert), null bis ausgelost.
   final int? draftPosition;
 
-  FantasyManager copyWith({int? draftPosition}) => FantasyManager(
+  /// Rollende Waiver-Priorität (1 = zuerst dran), null bis zur ersten
+  /// Waiver-Abarbeitung.
+  final int? waiverPriority;
+
+  FantasyManager copyWith({int? draftPosition, int? waiverPriority}) =>
+      FantasyManager(
         userId: userId,
         username: username,
         draftPosition: draftPosition ?? this.draftPosition,
+        waiverPriority: waiverPriority ?? this.waiverPriority,
       );
 
   factory FantasyManager.fromJson(Map<String, dynamic> json) => FantasyManager(
@@ -411,5 +418,66 @@ class FantasyManager {
             (json['profiles'] as Map<String, dynamic>?)?['username'] as String? ??
                 '?',
         draftPosition: json['draft_position'] as int?,
+        waiverPriority: json['waiver_priority'] as int?,
+      );
+}
+
+/// Status eines Waiver-Antrags (entspricht der Server-Enum).
+enum WaiverStatus {
+  pending('Offen'),
+  won('Erfolgreich'),
+  lost('Verpasst'),
+  invalid('Ungültig'),
+  cancelled('Storniert');
+
+  const WaiverStatus(this.label);
+
+  final String label;
+
+  bool get isPending => this == WaiverStatus.pending;
+
+  static WaiverStatus fromId(String id) => values.firstWhere(
+        (s) => s.name == id,
+        orElse: () => WaiverStatus.pending,
+      );
+}
+
+/// Ein Waiver-Antrag: hole [addPlayerId], gib dafür optional [dropPlayerId]
+/// ab. Wird terminiert in Prioritätsreihenfolge abgearbeitet.
+class WaiverClaim {
+  const WaiverClaim({
+    required this.id,
+    required this.leagueId,
+    required this.managerId,
+    required this.addPlayerId,
+    required this.rank,
+    required this.status,
+    required this.createdAt,
+    this.dropPlayerId,
+    this.reason,
+  });
+
+  final String id;
+  final String leagueId;
+  final String managerId;
+  final String addPlayerId;
+  final String? dropPlayerId;
+
+  /// Eigene Reihenfolge mehrerer Anträge (1 = wichtigster).
+  final int rank;
+  final WaiverStatus status;
+  final String? reason;
+  final DateTime createdAt;
+
+  factory WaiverClaim.fromJson(Map<String, dynamic> json) => WaiverClaim(
+        id: json['id'] as String,
+        leagueId: json['league_id'] as String,
+        managerId: json['manager_id'] as String,
+        addPlayerId: json['add_player_id'] as String,
+        dropPlayerId: json['drop_player_id'] as String?,
+        rank: json['rank'] as int? ?? 1,
+        status: WaiverStatus.fromId(json['status'] as String? ?? 'pending'),
+        reason: json['reason'] as String?,
+        createdAt: DateTime.parse(json['created_at'] as String),
       );
 }
