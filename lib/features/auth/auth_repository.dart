@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/config/app_config.dart';
+
 /// Login, Registrierung und Profil. Wirft [AuthFailure] mit
 /// deutschsprachigen Meldungen für die UI.
 class AuthRepository {
@@ -53,6 +55,43 @@ class AuthRepository {
       throw AuthFailure(e.code == '23505'
           ? 'Der Nutzername "$trimmed" ist bereits vergeben.'
           : 'Profil konnte nicht angelegt werden: ${e.message}');
+    }
+  }
+
+  /// Schickt eine „Passwort zurücksetzen"-Mail an [email]. Aus
+  /// Datenschutzgründen verrät Supabase nicht, ob die Adresse existiert —
+  /// die UI meldet daher immer neutralen Erfolg.
+  Future<void> resetPassword(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) {
+      throw const AuthFailure('Bitte gib deine E-Mail-Adresse ein.');
+    }
+    final redirect = AppConfig.passwordResetRedirect;
+    try {
+      await _client.auth.resetPasswordForEmail(
+        trimmed,
+        redirectTo: redirect.isEmpty ? null : redirect,
+      );
+    } on AuthException catch (e) {
+      throw AuthFailure('Reset-Mail konnte nicht gesendet werden: ${e.message}');
+    }
+  }
+
+  /// Setzt das Passwort des aktuell (per Recovery-Link) angemeldeten
+  /// Nutzers neu. Wird vom „Neues Passwort"-Screen aufgerufen.
+  Future<void> updatePassword(String newPassword) async {
+    if (newPassword.length < 6) {
+      throw const AuthFailure('Das Passwort muss mindestens 6 Zeichen haben.');
+    }
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (e) {
+      throw AuthFailure(switch (e.code) {
+        'same_password' =>
+          'Das neue Passwort darf nicht dem alten entsprechen.',
+        'weak_password' => 'Das Passwort ist zu schwach (min. 6 Zeichen).',
+        _ => 'Passwort konnte nicht geändert werden: ${e.message}',
+      });
     }
   }
 

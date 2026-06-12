@@ -56,6 +56,37 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     }
   }
 
+  /// Öffnet einen Dialog zum Anfordern einer Passwort-Reset-Mail. Die
+  /// E-Mail aus dem Login-Feld wird vorbefüllt.
+  Future<void> _forgotPassword() async {
+    final email = await showDialog<String>(
+      context: context,
+      builder: (_) => _ForgotPasswordDialog(initialEmail: _email.text.trim()),
+    );
+    if (email == null || email.isEmpty || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(authRepositoryProvider).resetPassword(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Falls ein Konto zu dieser E-Mail existiert, ist der '
+              'Reset-Link unterwegs.'),
+        ));
+      }
+    } on AuthFailure catch (e) {
+      setState(() => _error = e.message);
+    } catch (e) {
+      setState(() => _error = 'Unerwarteter Fehler: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -130,6 +161,11 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                       )
                     : Text(_registerMode ? 'Registrieren' : 'Anmelden'),
               ),
+              if (!_registerMode)
+                TextButton(
+                  onPressed: _busy ? null : _forgotPassword,
+                  child: const Text('Passwort vergessen?'),
+                ),
               TextButton(
                 onPressed: _busy
                     ? null
@@ -145,6 +181,64 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Dialog zum Anfordern einer Passwort-Reset-Mail. Eigenes StatefulWidget,
+/// damit der TextEditingController erst beim Unmount des Dialogs sauber
+/// freigegeben wird (kein manuelles dispose während der Schließ-Animation).
+class _ForgotPasswordDialog extends StatefulWidget {
+  const _ForgotPasswordDialog({required this.initialEmail});
+
+  final String initialEmail;
+
+  @override
+  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+  late final TextEditingController _email =
+      TextEditingController(text: widget.initialEmail);
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Passwort vergessen'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+              'Wir senden dir einen Link zum Zurücksetzen an deine '
+              'E-Mail-Adresse.'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'E-Mail'),
+            onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_email.text.trim()),
+          child: const Text('Link senden'),
+        ),
+      ],
     );
   }
 }

@@ -15,6 +15,12 @@ abstract final class AppConfig {
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
+  /// Ziel-URL, auf der der Passwort-Reset-Link landet (z. B. die Web-Demo
+  /// oder ein App-Deep-Link). Muss in Supabase unter den erlaubten
+  /// Redirect-URLs eingetragen sein. Leer = Supabase nimmt die Site-URL.
+  static const passwordResetRedirect =
+      String.fromEnvironment('PASSWORD_RESET_REDIRECT');
+
   static bool get isSupabaseConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 }
