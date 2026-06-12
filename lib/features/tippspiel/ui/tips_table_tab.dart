@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,14 +47,42 @@ class TipsTableTab extends ConsumerWidget {
   }
 }
 
-class _TableBody extends ConsumerWidget {
+class _TableBody extends ConsumerStatefulWidget {
   const _TableBody({required this.round, required this.matchday});
 
   final TipRound round;
   final int matchday;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TableBody> createState() => _TableBodyState();
+}
+
+class _TableBodyState extends ConsumerState<_TableBody> {
+  /// Auto-Refresh, solange ein Spiel der Runde live ist.
+  Timer? _liveTimer;
+
+  @override
+  void dispose() {
+    _liveTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Startet/stoppt den 60-Sekunden-Takt je nachdem, ob gerade ein
+  /// Spiel läuft — kein Polling, wenn alles beendet/geplant ist.
+  void _syncAutoRefresh(bool hasLive) {
+    if (hasLive && _liveTimer == null) {
+      _liveTimer =
+          Timer.periodic(const Duration(seconds: 60), (_) => _refresh());
+    } else if (!hasLive && _liveTimer != null) {
+      _liveTimer!.cancel();
+      _liveTimer = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final round = widget.round;
+    final matchday = widget.matchday;
     final membersAsync = ref.watch(roundMembersProvider(round.id));
     final tipsAsync = ref.watch(allRoundTipsProvider(round.id));
     final fixturesAsync = ref.watch(roundFixturesProvider(matchday));
@@ -79,7 +109,7 @@ class _TableBody extends ConsumerWidget {
                   textAlign: TextAlign.center),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: () => _refresh(ref),
+                onPressed: _refresh,
                 child: const Text('Erneut laden'),
               ),
             ],
@@ -112,8 +142,12 @@ class _TableBody extends ConsumerWidget {
       for (final t in tips) '${t.userId}|${t.fixtureId}': t,
     };
 
+    // Auto-Refresh nur, solange ein Spiel der Runde läuft (Seiteneffekt,
+    // löst selbst keinen Rebuild aus).
+    _syncAutoRefresh(fixtures.any((f) => f.status == FixtureStatus.live));
+
     return RefreshIndicator(
-      onRefresh: () async => _refresh(ref),
+      onRefresh: () async => _refresh(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
         physics: const AlwaysScrollableScrollPhysics(),
@@ -178,10 +212,10 @@ class _TableBody extends ConsumerWidget {
     );
   }
 
-  void _refresh(WidgetRef ref) {
-    ref.invalidate(roundMembersProvider(round.id));
-    ref.invalidate(allRoundTipsProvider(round.id));
-    ref.invalidate(roundFixturesProvider(matchday));
+  void _refresh() {
+    ref.invalidate(roundMembersProvider(widget.round.id));
+    ref.invalidate(allRoundTipsProvider(widget.round.id));
+    ref.invalidate(roundFixturesProvider(widget.matchday));
     ref.invalidate(seasonFixturesProvider);
   }
 }

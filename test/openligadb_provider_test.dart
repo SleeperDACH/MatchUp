@@ -43,6 +43,24 @@ void main() {
       expect(fixture.kickoff.isUtc, isTrue);
     });
 
+    test('Endergebnis vorhanden, aber „beendet"-Haken fehlt -> finished', () {
+      // OpenLigaDB liefert manchmal das Endergebnis (resultTypeID 2),
+      // ohne matchIsFinished zu setzen — darf nicht ewig „live" bleiben.
+      final stuckLive = Map<String, dynamic>.from(finishedMatch)
+        ..['matchIsFinished'] = false
+        ..['matchDateTimeUTC'] = DateTime.now()
+            .toUtc()
+            .subtract(const Duration(hours: 2))
+            .toIso8601String();
+
+      final fixture =
+          OpenLigaDbProvider.parseMatch(stuckLive, Leagues.bundesliga, 2025);
+
+      expect(fixture.status, FixtureStatus.finished);
+      expect(fixture.homeScore, 5);
+      expect(fixture.awayScore, 1);
+    });
+
     test('zukünftiges Spiel ohne Ergebnis ist scheduled', () {
       final future = Map<String, dynamic>.from(finishedMatch)
         ..['matchIsFinished'] = false

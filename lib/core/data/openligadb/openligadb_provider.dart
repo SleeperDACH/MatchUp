@@ -73,7 +73,16 @@ class OpenLigaDbProvider implements SportsDataProvider {
   static Fixture parseMatch(
       Map<String, dynamic> m, LeagueInfo league, int season) {
     final kickoff = DateTime.parse(m['matchDateTimeUTC'] as String);
-    final isFinished = m['matchIsFinished'] as bool? ?? false;
+
+    // Manche Feeds liefern ein Endergebnis (resultTypeID 2), ohne den
+    // „beendet"-Haken (matchIsFinished) zu setzen. Solche Spiele werten
+    // wir trotzdem als beendet, sonst hängen sie ewig auf „LIVE".
+    final endResult = (m['matchResults'] as List<dynamic>? ?? const [])
+        .cast<Map<String, dynamic>>()
+        .where((r) => r['resultTypeID'] == 2)
+        .firstOrNull;
+    final isFinished =
+        (m['matchIsFinished'] as bool? ?? false) || endResult != null;
 
     final status = isFinished
         ? FixtureStatus.finished
