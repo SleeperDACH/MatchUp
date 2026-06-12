@@ -75,15 +75,22 @@ final seasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
 // Wettquoten (the-odds-api.com) — nur Anzeige
 // ---------------------------------------------------------------------
 
-final oddsProviderProvider =
-    Provider<OddsProvider>((ref) => TheOddsApiProvider());
+/// Mit Backend läuft der Abruf über die Edge Function (Key bleibt geheim);
+/// nur im lokalen Modus ohne Supabase wird direkt mit dart-define-Key geholt.
+final oddsProviderProvider = Provider<OddsProvider>((ref) {
+  return AppConfig.isSupabaseConfigured
+      ? SupabaseOddsProvider()
+      : TheOddsApiProvider();
+});
 
 /// Aktuelle Quoten des gewählten Wettbewerbs. Wird pro Liga einmal geholt
-/// und für die Session gecacht (schont das 500/Monat-Limit). Leere Liste,
-/// wenn die Liga keine Quoten-Quelle hat oder kein Key gesetzt ist.
+/// und für die Session gecacht (die Edge Function cached zusätzlich
+/// serverseitig). Leere Liste, wenn die Liga keine Quoten-Quelle hat oder
+/// keine Quelle verfügbar ist.
 final leagueOddsProvider = FutureProvider<List<MatchOdds>>((ref) async {
   final sportKey = ref.watch(selectedLeagueProvider).oddsSportKey;
-  if (sportKey == null || !AppConfig.hasOdds) return const [];
+  final available = AppConfig.isSupabaseConfigured || AppConfig.hasOdds;
+  if (sportKey == null || !available) return const [];
   return ref.watch(oddsProviderProvider).fetchOdds(sportKey);
 });
 
