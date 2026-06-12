@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/data/odds/match_odds.dart';
+import '../../core/data/odds/odds_matching.dart';
+import '../../core/data/odds/odds_provider.dart';
 import '../../core/data/openligadb/openligadb_provider.dart';
 import '../../core/data/sports_data_provider.dart';
 import '../../core/models/models.dart';
@@ -66,6 +69,34 @@ final seasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
   final league = ref.watch(selectedLeagueProvider);
   final season = ref.watch(seasonProvider);
   return ref.watch(sportsDataProvider).getSeasonFixtures(league, season);
+});
+
+// ---------------------------------------------------------------------
+// Wettquoten (the-odds-api.com) — nur Anzeige
+// ---------------------------------------------------------------------
+
+final oddsProviderProvider =
+    Provider<OddsProvider>((ref) => TheOddsApiProvider());
+
+/// Aktuelle Quoten des gewählten Wettbewerbs. Wird pro Liga einmal geholt
+/// und für die Session gecacht (schont das 500/Monat-Limit). Leere Liste,
+/// wenn die Liga keine Quoten-Quelle hat oder kein Key gesetzt ist.
+final leagueOddsProvider = FutureProvider<List<MatchOdds>>((ref) async {
+  final sportKey = ref.watch(selectedLeagueProvider).oddsSportKey;
+  if (sportKey == null || !AppConfig.hasOdds) return const [];
+  return ref.watch(oddsProviderProvider).fetchOdds(sportKey);
+});
+
+/// Quoten einer Runde, fertig auf Fixture-IDs gematcht. Leeres Map, solange
+/// Quoten/Spiele noch laden oder nichts passt — die UI bleibt dann ohne.
+final roundOddsProvider =
+    Provider.family<Map<String, MatchOdds>, int>((ref, round) {
+  final sportKey = ref.watch(selectedLeagueProvider).oddsSportKey;
+  if (sportKey == null) return const {};
+  final odds = ref.watch(leagueOddsProvider).valueOrNull;
+  final fixtures = ref.watch(roundFixturesProvider(round)).valueOrNull;
+  if (odds == null || odds.isEmpty || fixtures == null) return const {};
+  return matchOdds(sportKey, fixtures, odds);
 });
 
 // ---------------------------------------------------------------------

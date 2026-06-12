@@ -17,6 +17,7 @@ class LeagueInfo {
     required this.providerId,
     required this.providerLeagueKey,
     this.fixedSeason,
+    this.oddsSportKey,
   });
 
   /// App-interne, stabile ID, z. B. `bundesliga`.
@@ -35,6 +36,10 @@ class LeagueInfo {
 
   /// Für Turniere (WM, EM): festes Jahr statt rollierender Saison.
   final int? fixedSeason;
+
+  /// Sport-Key bei der Quoten-Quelle (The Odds API), z. B.
+  /// `soccer_germany_bundesliga`. `null` = keine Wettquoten für diese Liga.
+  final String? oddsSportKey;
 
   /// Saison-Startjahr zu einem Zeitpunkt: Turniere haben ein festes Jahr,
   /// Vereinsligen wechseln im Juli (Saison 2025/26 → 2025).
@@ -116,6 +121,7 @@ abstract final class Leagues {
     roundLabel: 'Spieltag',
     providerId: 'openligadb',
     providerLeagueKey: 'bl1',
+    oddsSportKey: 'soccer_germany_bundesliga',
   );
 
   static const wm2026 = LeagueInfo(
@@ -126,6 +132,7 @@ abstract final class Leagues {
     providerId: 'openligadb',
     providerLeagueKey: 'wm26',
     fixedSeason: 2026,
+    oddsSportKey: 'soccer_fifa_world_cup',
   );
 
   static const all = [wm2026, bundesliga];

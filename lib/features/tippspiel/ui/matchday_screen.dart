@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/data/odds/match_odds.dart';
 import '../../../core/models/models.dart';
 import '../data/tip_store.dart';
 import '../logic/tip_scoring.dart';
@@ -156,6 +157,7 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
     final tip = ref.watch(tipsProvider)[fixture.id];
     final locked = fixture.hasStarted;
     final hasDraft = ref.watch(tipDraftProvider).containsKey(fixture.id);
+    final odds = ref.watch(roundOddsProvider(fixture.round))[fixture.id];
 
     // Geladene/aktualisierte Tipps zuverlässig in die Felder spiegeln —
     // auch wenn sie erst nach dem ersten Build ankommen (z. B. beim
@@ -185,6 +187,7 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
                 ),
               ],
             ),
+            if (odds != null) _OddsRow(odds: odds),
             const SizedBox(height: 10),
             if (locked)
               _LockedTipRow(fixture: fixture, tip: tip)
@@ -374,6 +377,49 @@ class _TeamLabel extends StatelessWidget {
       children: alignEnd
           ? [name, const SizedBox(width: 8), avatar]
           : [avatar, const SizedBox(width: 8), name],
+    );
+  }
+}
+
+/// Dezente 1X2-Quotenzeile unter den Teams (Dezimalquoten) — eine schlichte,
+/// gedämpfte Zeile als Info für die Tippentscheidung, ohne Auswirkung auf
+/// die Wertung.
+class _OddsRow extends StatelessWidget {
+  const _OddsRow({required this.odds});
+
+  final MatchOdds odds;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final base = TextStyle(fontSize: 11, color: muted, height: 1.1);
+
+    Widget part(String label, double value) => Text.rich(
+          TextSpan(
+            style: base,
+            children: [
+              TextSpan(text: '$label '),
+              TextSpan(
+                  text: value.toStringAsFixed(2),
+                  style: base.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        );
+
+    Widget dot() => Text('  ·  ', style: base);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          part('1', odds.homeWin),
+          dot(),
+          part('X', odds.draw),
+          dot(),
+          part('2', odds.awayWin),
+        ],
+      ),
     );
   }
 }

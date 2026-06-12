@@ -23,4 +23,10 @@ abstract final class AppConfig {
 
   static bool get isSupabaseConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+
+  /// API-Key für die Wettquoten (the-odds-api.com), per
+  /// `--dart-define=ODDS_API_KEY=…`. Leer = Quoten werden ausgeblendet.
+  static const oddsApiKey = String.fromEnvironment('ODDS_API_KEY');
+
+  static bool get hasOdds => oddsApiKey.isNotEmpty;
 }
