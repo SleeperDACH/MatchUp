@@ -16,6 +16,12 @@ import 'round_selector.dart';
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
 const Color _liveColor = Color(0xFFEF6C00); // Orange 800 — in beiden Themes gut
 
+/// Feste Höhen für die zwei nebeneinanderliegenden Tabellenhälften
+/// (eingefrorene Namen + scrollende Ergebnisse) — nur so fluchten die
+/// Zeilen über die Trennlinie hinweg.
+const double _headingHeight = 52;
+const double _rowHeight = 48;
+
 /// Tipp-Tabelle à la Kicktipp: alle Mitglieder als Zeilen, die Spiele
 /// der gewählten Runde als Spalten. Fremde Tipps erscheinen erst nach
 /// Anstoß (serverseitig erzwungen); pro Tipp gibt es die Punkte nach
@@ -153,47 +159,90 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           Card(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: DataTable(
-                columnSpacing: 14,
-                horizontalMargin: 8,
-                headingRowHeight: 52,
-                columns: [
-                  const DataColumn(label: Text('Spieler')),
-                  const DataColumn(label: Text('Pkt.'), numeric: true),
-                  for (final fixture in fixtures)
-                    DataColumn(label: _FixtureHeader(fixture: fixture)),
-                ],
-                rows: [
-                  for (final member in members)
-                    DataRow(
-                      cells: [
-                        DataCell(Text(
-                          member.username,
-                          style: member.userId == myUserId
-                              ? const TextStyle(fontWeight: FontWeight.bold)
-                              : null,
-                        )),
-                        DataCell(Text(
-                          '${totals[member.userId] ?? 0}',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary),
-                        )),
-                        for (final fixture in fixtures)
-                          DataCell(_TipCell(
-                            tip: tipByMemberAndFixture[
-                                '${member.userId}|${fixture.id}'],
-                            fixture: fixture,
-                            isOwn: member.userId == myUserId,
-                            rules: rules,
-                          )),
-                      ],
+            // Zwei fluchtende Tabellen: links der eingefrorene Namens-/Pkt.-
+            // Block (scrollt nicht mit), rechts die Ergebnis-Spalten als
+            // horizontaler Scroll. Gleiche feste Zeilenhöhen halten beide
+            // Hälften zeilengenau auf einer Linie.
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: Theme.of(context).dividerColor),
                     ),
-                ],
-              ),
+                  ),
+                  child: DataTable(
+                    columnSpacing: 8,
+                    horizontalMargin: 8,
+                    headingRowHeight: _headingHeight,
+                    dataRowMinHeight: _rowHeight,
+                    dataRowMaxHeight: _rowHeight,
+                    columns: const [
+                      DataColumn(label: Text('Spieler')),
+                      DataColumn(label: Text('Pkt.'), numeric: true),
+                    ],
+                    rows: [
+                      for (final member in members)
+                        DataRow(
+                          cells: [
+                            DataCell(SizedBox(
+                              width: 84,
+                              child: Text(
+                                member.username,
+                                overflow: TextOverflow.ellipsis,
+                                style: member.userId == myUserId
+                                    ? const TextStyle(
+                                        fontWeight: FontWeight.bold)
+                                    : null,
+                              ),
+                            )),
+                            DataCell(Text(
+                              '${totals[member.userId] ?? 0}',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      Theme.of(context).colorScheme.primary),
+                            )),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+                if (fixtures.isNotEmpty)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: DataTable(
+                        columnSpacing: 14,
+                        horizontalMargin: 8,
+                        headingRowHeight: _headingHeight,
+                        dataRowMinHeight: _rowHeight,
+                        dataRowMaxHeight: _rowHeight,
+                        columns: [
+                          for (final fixture in fixtures)
+                            DataColumn(label: _FixtureHeader(fixture: fixture)),
+                        ],
+                        rows: [
+                          for (final member in members)
+                            DataRow(
+                              cells: [
+                                for (final fixture in fixtures)
+                                  DataCell(_TipCell(
+                                    tip: tipByMemberAndFixture[
+                                        '${member.userId}|${fixture.id}'],
+                                    fixture: fixture,
+                                    isOwn: member.userId == myUserId,
+                                    rules: rules,
+                                  )),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           Padding(
