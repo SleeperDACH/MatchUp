@@ -31,6 +31,25 @@
 
   <title>meine_app</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Die Demo soll beim Neuladen immer den aktuellen Stand zeigen. Wir
+    bauen ohne Service Worker (--pwa-strategy=none); dieses Skript meldet
+    zusätzlich einen evtl. früher registrierten Service Worker ab und
+    leert dessen Caches, damit kein alter Build mehr ausgeliefert wird.
+  -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (r) { r.unregister(); });
+      });
+    }
+    if (self.caches && caches.keys) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (k) { caches.delete(k); });
+      });
+    }
+  </script>
 </head>
 <body>
   <!--
