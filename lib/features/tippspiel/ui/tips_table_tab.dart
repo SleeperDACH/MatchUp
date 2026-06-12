@@ -11,10 +11,14 @@ import '../models/tip_round.dart';
 import '../providers.dart';
 import 'round_selector.dart';
 
+/// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
+const Color _liveColor = Color(0xFFEF6C00); // Orange 800 — in beiden Themes gut
+
 /// Tipp-Tabelle à la Kicktipp: alle Mitglieder als Zeilen, die Spiele
 /// der gewählten Runde als Spalten. Fremde Tipps erscheinen erst nach
 /// Anstoß (serverseitig erzwungen); pro Tipp gibt es die Punkte nach
-/// Kicktipp-System, sortiert wird nach Gesamtpunkten.
+/// Kicktipp-System, sortiert wird nach Gesamtpunkten. Laufende Spiele
+/// sind farblich (orange) markiert und zählen live mit.
 class TipsTableTab extends ConsumerWidget {
   const TipsTableTab({super.key, required this.round});
 
@@ -182,7 +186,8 @@ class _TableBody extends ConsumerWidget {
   }
 }
 
-/// Spaltenkopf: Teamkürzel + Endstand (falls vorhanden).
+/// Spaltenkopf: Teamkürzel + Spielstand. Laufende Spiele zeigen den
+/// Live-Stand orange mit „LIVE"-Markierung.
 class _FixtureHeader extends StatelessWidget {
   const _FixtureHeader({required this.fixture});
 
@@ -191,21 +196,27 @@ class _FixtureHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final small = Theme.of(context).textTheme.labelSmall;
+    final live = fixture.status == FixtureStatus.live;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text('${fixture.home.shortName} – ${fixture.away.shortName}',
             style: small),
-        Text(
-          fixture.hasResult
-              ? '${fixture.homeScore}:${fixture.awayScore}'
-              : (fixture.status == FixtureStatus.live ? 'LIVE' : '–'),
-          style: small?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: fixture.status == FixtureStatus.live
-                  ? Theme.of(context).colorScheme.primary
-                  : null),
-        ),
+        if (live && fixture.hasScore) ...[
+          Text('${fixture.homeScore}:${fixture.awayScore}',
+              style: small?.copyWith(
+                  fontWeight: FontWeight.bold, color: _liveColor)),
+          const Text('● LIVE',
+              style: TextStyle(
+                  fontSize: 8, fontWeight: FontWeight.bold, color: _liveColor)),
+        ] else
+          Text(
+            fixture.hasResult
+                ? '${fixture.homeScore}:${fixture.awayScore}'
+                : (live ? 'LIVE' : '–'),
+            style: small?.copyWith(
+                fontWeight: FontWeight.bold, color: live ? _liveColor : null),
+          ),
       ],
     );
   }
@@ -237,8 +248,11 @@ class _TipCell extends StatelessWidget {
     }
 
     final text = Text('${tip!.homeGoals}:${tip!.awayGoals}');
-    if (!fixture.hasResult) return text;
+    if (!fixture.hasScore) return text;
 
+    // Live-Spiele werten vorläufig mit; Punkte erscheinen orange, bis
+    // das Spiel beendet ist.
+    final live = fixture.status == FixtureStatus.live;
     final points = scoreTip(
       tipHome: tip!.homeGoals,
       tipAway: tip!.awayGoals,
@@ -246,7 +260,9 @@ class _TipCell extends StatelessWidget {
       resultAway: fixture.awayScore!,
       rules: rules,
     );
-    final color = points == 0 ? scheme.onSurfaceVariant : scheme.primary;
+    final color = live
+        ? _liveColor
+        : (points == 0 ? scheme.onSurfaceVariant : scheme.primary);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [

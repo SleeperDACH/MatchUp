@@ -12,9 +12,14 @@ Map<String, int> totalPointsByMember({
   required List<Fixture> fixtures,
   required ScoringRules rules,
 }) {
+  // Live-Spiele zählen mit ihrem aktuellen Spielstand mit (vorläufige
+  // Punkte, die sich je Tor ändern); endgültig wird's mit `finished`.
+  // Bewusst client-seitig — die SQL-View `tip_round_standings` bleibt
+  // die gesetzte Endabrechnung (nur `finished`). Die Wertungsformel
+  // ([scoreTip]) ist in beiden identisch.
   final results = {
     for (final f in fixtures)
-      if (f.hasResult) f.id: f,
+      if (f.hasScore) f.id: f,
   };
   final totals = {for (final m in members) m.userId: 0};
   for (final tip in tips) {

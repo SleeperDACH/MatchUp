@@ -51,4 +51,34 @@ void main() {
     expect(totals['b'], 2);
     expect(totals['n'], 0, reason: 'Neue Mitglieder erscheinen mit 0 Punkten');
   });
+
+  test('totalPointsByMember: laufende Spiele zählen mit Live-Stand mit', () {
+    final live = Fixture(
+      id: 'fLive',
+      leagueId: 'wm2026',
+      season: 2026,
+      round: 1,
+      roundName: 'Gruppenphase 1',
+      kickoff: DateTime.utc(2026, 6, 11, 19),
+      home: const TeamRef(id: 't1', name: 'Mexiko', shortName: 'MEX'),
+      away: const TeamRef(id: 't2', name: 'Südafrika', shortName: 'RSA'),
+      status: FixtureStatus.live,
+      homeScore: 1,
+      awayScore: 0,
+    );
+    final tips = [
+      // exakter Live-Tipp 1:0 -> volle Punkte (4)
+      const MemberTip(
+          userId: 'a', fixtureId: 'fLive', homeGoals: 1, awayGoals: 0),
+    ];
+
+    final totals = totalPointsByMember(
+      members: const [RoundMember(userId: 'a', username: 'anna')],
+      tips: tips,
+      fixtures: [live],
+      rules: ScoringRules.kicktippDefault,
+    );
+
+    expect(totals['a'], ScoringRules.kicktippDefault.exact);
+  });
 }

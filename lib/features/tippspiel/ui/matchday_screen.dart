@@ -157,17 +157,19 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
     final locked = fixture.hasStarted;
     final hasDraft = ref.watch(tipDraftProvider).containsKey(fixture.id);
 
-    // Gespeicherten Tipp in die Felder ziehen, falls er asynchron
-    // nachgeladen wurde — aber nie, während der Nutzer tippt oder einen
-    // ungespeicherten Entwurf für dieses Spiel hat.
-    if (tip != null &&
-        !hasDraft &&
-        _homeController.text.isEmpty &&
-        _awayController.text.isEmpty &&
-        !FocusScope.of(context).hasFocus) {
-      _homeController.text = tip.homeGoals.toString();
-      _awayController.text = tip.awayGoals.toString();
-    }
+    // Geladene/aktualisierte Tipps zuverlässig in die Felder spiegeln —
+    // auch wenn sie erst nach dem ersten Build ankommen (z. B. beim
+    // erneuten Öffnen der App). Nicht überschreiben, solange ein
+    // ungespeicherter Entwurf für dieses Spiel existiert.
+    ref.listen<Map<String, Tip>>(tipsProvider, (_, next) {
+      if (ref.read(tipDraftProvider).containsKey(fixture.id)) return;
+      final t = next[fixture.id];
+      if (t == null) return;
+      final h = t.homeGoals.toString();
+      final a = t.awayGoals.toString();
+      if (_homeController.text != h) _homeController.text = h;
+      if (_awayController.text != a) _awayController.text = a;
+    });
 
     return Card(
       child: Padding(
@@ -184,13 +186,16 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
               ],
             ),
             const SizedBox(height: 10),
-            locked
-                ? _LockedTipRow(fixture: fixture, tip: tip)
-                : _TipInputRow(
-                    homeController: _homeController,
-                    awayController: _awayController,
-                    onChanged: _onChanged,
-                  ),
+            if (locked)
+              _LockedTipRow(fixture: fixture, tip: tip)
+            else ...[
+              _TipInputRow(
+                homeController: _homeController,
+                awayController: _awayController,
+                onChanged: _onChanged,
+              ),
+              _SavedHint(saved: tip != null, dirty: hasDraft),
+            ],
           ],
         ),
       ),
@@ -436,6 +441,40 @@ class _TipInputRow extends StatelessWidget {
         ),
         _GoalField(controller: awayController, onChanged: onChanged),
       ],
+    );
+  }
+}
+
+/// Kleiner Status unter der Tipp-Eingabe: „Gespeichert" (grün) sobald
+/// ein Tipp serverseitig liegt, „Nicht gespeichert" (orange) bei
+/// ungespeicherter Änderung. Aktualisiert sich beim Tippen und nach dem
+/// Druck auf „Tipps speichern".
+class _SavedHint extends StatelessWidget {
+  const _SavedHint({required this.saved, required this.dirty});
+
+  final bool saved;
+  final bool dirty;
+
+  @override
+  Widget build(BuildContext context) {
+    final (IconData icon, Color color, String label) = dirty
+        ? (Icons.edit_outlined, const Color(0xFFEF6C00), 'Nicht gespeichert')
+        : saved
+            ? (Icons.check_circle, const Color(0xFF2E7D32), 'Gespeichert')
+            : (Icons.remove, Colors.transparent, '');
+    if (label.isEmpty) return const SizedBox(height: 6);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
     );
   }
 }

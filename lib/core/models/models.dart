@@ -100,6 +100,10 @@ class Fixture {
 
   bool get hasResult =>
       status == FixtureStatus.finished && homeScore != null && awayScore != null;
+
+  /// Ein (vorläufiger) Spielstand liegt vor — live oder endgültig.
+  /// Grundlage für die Live-Wertung in der Tabelle.
+  bool get hasScore => homeScore != null && awayScore != null;
 }
 
 /// Vorkonfigurierte Wettbewerbe. Hier kommen später Premier League,
