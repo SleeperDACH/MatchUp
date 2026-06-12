@@ -393,15 +393,26 @@ class _OddsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final base = TextStyle(fontSize: 11, color: muted, height: 1.1);
+    // Label (1/X/2) klein und gedämpft, die Quote kräftig.
+    final labelStyle = TextStyle(
+        fontSize: 9,
+        height: 1.1,
+        fontWeight: FontWeight.w500,
+        color: muted.withValues(alpha: 0.7));
+    final valueStyle = TextStyle(
+        fontSize: 12.5,
+        height: 1.1,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurface);
 
     Widget part(String label, double value) => Text.rich(
           TextSpan(
             style: base,
             children: [
-              TextSpan(text: '$label '),
+              TextSpan(text: '$label ', style: labelStyle),
               TextSpan(
                   text: value.toStringAsFixed(2),
-                  style: base.copyWith(fontWeight: FontWeight.w600)),
+                  style: valueStyle),
             ],
           ),
         );
