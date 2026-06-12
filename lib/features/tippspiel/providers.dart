@@ -117,6 +117,39 @@ final scoringRulesProvider = Provider<ScoringRules>((ref) {
 // Tipps
 // ---------------------------------------------------------------------
 
+/// Roher Feldinhalt je Fixture, solange der Nutzer noch nicht
+/// „Tipps speichern" gedrückt hat. Setzt sich beim Wechsel von Runde
+/// oder Wettbewerb automatisch zurück, damit keine Eingaben in eine
+/// fremde Runde übertragen werden.
+final tipDraftProvider =
+    StateNotifierProvider<TipDraftNotifier, Map<String, TipDraftEntry>>((ref) {
+  ref.watch(activeRoundProvider);
+  ref.watch(selectedLeagueProvider);
+  return TipDraftNotifier();
+});
+
+/// Heim-/Auswärts-Feldinhalt eines noch nicht gespeicherten Tipps.
+class TipDraftEntry {
+  const TipDraftEntry(this.home, this.away);
+  final String home;
+  final String away;
+}
+
+class TipDraftNotifier extends StateNotifier<Map<String, TipDraftEntry>> {
+  TipDraftNotifier() : super(const {});
+
+  /// Merkt sich die aktuelle Eingabe; persistiert noch nichts.
+  void edit(String fixtureId, String home, String away) {
+    state = {...state, fixtureId: TipDraftEntry(home, away)};
+  }
+
+  /// Nach erfolgreichem Speichern eines Fixtures aus dem Entwurf nehmen.
+  void clearEntry(String fixtureId) {
+    if (!state.containsKey(fixtureId)) return;
+    state = {...state}..remove(fixtureId);
+  }
+}
+
 final tipsProvider =
     StateNotifierProvider<TipsNotifier, Map<String, Tip>>((ref) {
   final league = ref.watch(selectedLeagueProvider);

@@ -66,6 +66,9 @@ class _FixtureList extends ConsumerWidget {
           );
         }
         final dayFormat = DateFormat('EEEE, d. MMMM', 'de_DE');
+        // Tipps lassen sich nur abgeben, solange mindestens ein Spiel
+        // der Runde noch nicht angepfiffen ist.
+        final hasOpen = list.any((f) => !f.hasStarted);
         final children = <Widget>[];
         String? lastDay;
         for (final fixture in list) {
@@ -88,7 +91,7 @@ class _FixtureList extends ConsumerWidget {
               key: ValueKey('${fixture.id}:$activeRoundId'),
               fixture: fixture));
         }
-        return RefreshIndicator(
+        final listView = RefreshIndicator(
           onRefresh: () async => ref.invalidate(roundFixturesProvider(round)),
           child: ListView(
             padding: const EdgeInsets.only(bottom: 24),
@@ -96,6 +99,13 @@ class _FixtureList extends ConsumerWidget {
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             children: children,
           ),
+        );
+        if (!hasOpen) return listView;
+        return Column(
+          children: [
+            _SaveTipsBar(fixtures: list),
+            Expanded(child: listView),
+          ],
         );
       },
     );
@@ -132,29 +142,12 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
     super.dispose();
   }
 
-  Future<void> _onChanged() async {
-    final home = int.tryParse(_homeController.text);
-    final away = int.tryParse(_awayController.text);
-    final notifier = ref.read(tipsProvider.notifier);
-    try {
-      if (home != null && away != null) {
-        await notifier.setTip(widget.fixture.id, home, away);
-      } else if (_homeController.text.isEmpty &&
-          _awayController.text.isEmpty) {
-        await notifier.clearTip(widget.fixture.id);
-      }
-    } on TipRejected catch (e) {
-      _showError(e.message);
-    } catch (_) {
-      _showError('Tipp konnte nicht gespeichert werden — bist du online?');
-    }
-  }
-
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
+  // Eingabe nur puffern; gespeichert wird gesammelt über „Tipps
+  // speichern", damit Fehler dort sichtbar gemeldet werden.
+  void _onChanged() {
+    ref
+        .read(tipDraftProvider.notifier)
+        .edit(widget.fixture.id, _homeController.text, _awayController.text);
   }
 
   @override
@@ -162,11 +155,13 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
     final fixture = widget.fixture;
     final tip = ref.watch(tipsProvider)[fixture.id];
     final locked = fixture.hasStarted;
+    final hasDraft = ref.watch(tipDraftProvider).containsKey(fixture.id);
 
-    // Falls der Tipp anderswo geladen wurde (z. B. asynchron aus dem
-    // lokalen Speicher), Eingabefelder nachziehen — aber nie während
-    // der Nutzer tippt.
+    // Gespeicherten Tipp in die Felder ziehen, falls er asynchron
+    // nachgeladen wurde — aber nie, während der Nutzer tippt oder einen
+    // ungespeicherten Entwurf für dieses Spiel hat.
     if (tip != null &&
+        !hasDraft &&
         _homeController.text.isEmpty &&
         _awayController.text.isEmpty &&
         !FocusScope.of(context).hasFocus) {
@@ -196,6 +191,154 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
                     awayController: _awayController,
                     onChanged: _onChanged,
                   ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sammel-Speichern aller eingegebenen Tipps mit sichtbarer
+/// Erfolgs-/Fehlermeldung. Liegt über der Spieleliste.
+class _SaveTipsBar extends ConsumerStatefulWidget {
+  const _SaveTipsBar({required this.fixtures});
+
+  final List<Fixture> fixtures;
+
+  @override
+  ConsumerState<_SaveTipsBar> createState() => _SaveTipsBarState();
+}
+
+class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
+  bool _saving = false;
+  bool _savedOk = false;
+  List<String> _errors = const [];
+
+  String _label(String fixtureId) {
+    for (final f in widget.fixtures) {
+      if (f.id == fixtureId) return '${f.home.shortName} – ${f.away.shortName}';
+    }
+    return fixtureId;
+  }
+
+  Future<void> _save() async {
+    final draft = ref.read(tipDraftProvider);
+    final tips = ref.read(tipsProvider.notifier);
+    final draftNotifier = ref.read(tipDraftProvider.notifier);
+
+    setState(() {
+      _saving = true;
+      _errors = const [];
+      _savedOk = false;
+    });
+
+    final errors = <String>[];
+    var saved = 0;
+    for (final entry in draft.entries) {
+      final id = entry.key;
+      final home = entry.value.home.trim();
+      final away = entry.value.away.trim();
+      final homeGoals = int.tryParse(home);
+      final awayGoals = int.tryParse(away);
+      try {
+        if (home.isEmpty && away.isEmpty) {
+          await tips.clearTip(id);
+          draftNotifier.clearEntry(id);
+        } else if (homeGoals != null && awayGoals != null) {
+          await tips.setTip(id, homeGoals, awayGoals);
+          draftNotifier.clearEntry(id);
+          saved++;
+        } else {
+          errors.add('${_label(id)}: Bitte Heim- und Auswärtstore eintragen.');
+        }
+      } on TipRejected catch (e) {
+        errors.add('${_label(id)}: ${e.message}');
+      } catch (_) {
+        errors.add('${_label(id)}: Speichern fehlgeschlagen — bist du online?');
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _errors = errors;
+      _savedOk = errors.isEmpty;
+    });
+
+    final messenger = ScaffoldMessenger.of(context)..clearSnackBars();
+    messenger.showSnackBar(SnackBar(
+      content: Text(errors.isEmpty
+          ? (saved > 0 ? 'Tipps gespeichert.' : 'Keine Änderungen zu speichern.')
+          : '${errors.length} Tipp(s) nicht gespeichert.'),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Sobald der Nutzer weitertippt, die alte Meldung ausblenden.
+    ref.listen(tipDraftProvider, (_, _) {
+      if (_savedOk || _errors.isNotEmpty) {
+        setState(() {
+          _savedOk = false;
+          _errors = const [];
+        });
+      }
+    });
+
+    return Material(
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: const Text('Tipps speichern'),
+            ),
+            if (_errors.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: scheme.errorContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final e in _errors)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          e,
+                          style: TextStyle(color: scheme.onErrorContainer),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ] else if (_savedOk) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle_outline,
+                      size: 16, color: scheme.primary),
+                  const SizedBox(width: 6),
+                  Text('Tipps gespeichert',
+                      style: TextStyle(color: scheme.primary)),
+                ],
+              ),
+            ],
           ],
         ),
       ),
