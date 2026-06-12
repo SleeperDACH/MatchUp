@@ -79,6 +79,42 @@ void main() {
       expect(fixture.awayScore, 1);
     });
 
+    test('laufendes Spiel ohne Tore steht 0:0 (für Live-Wertung)', () {
+      final live = Map<String, dynamic>.from(finishedMatch)
+        ..['matchIsFinished'] = false
+        ..['matchResults'] = <dynamic>[]
+        ..['matchDateTimeUTC'] = DateTime.now()
+            .toUtc()
+            .subtract(const Duration(minutes: 10))
+            .toIso8601String()
+        ..['goals'] = <dynamic>[];
+
+      final fixture =
+          OpenLigaDbProvider.parseMatch(live, Leagues.bundesliga, 2025);
+
+      expect(fixture.status, FixtureStatus.live);
+      expect(fixture.homeScore, 0);
+      expect(fixture.awayScore, 0);
+      expect(fixture.hasScore, isTrue);
+    });
+
+    test('geplantes Spiel bleibt ohne Spielstand', () {
+      final scheduled = Map<String, dynamic>.from(finishedMatch)
+        ..['matchIsFinished'] = false
+        ..['matchResults'] = <dynamic>[]
+        ..['matchDateTimeUTC'] = DateTime.now()
+            .toUtc()
+            .add(const Duration(days: 1))
+            .toIso8601String()
+        ..['goals'] = <dynamic>[];
+
+      final fixture =
+          OpenLigaDbProvider.parseMatch(scheduled, Leagues.bundesliga, 2025);
+
+      expect(fixture.status, FixtureStatus.scheduled);
+      expect(fixture.hasScore, isFalse);
+    });
+
     test('leerer shortName fällt auf teamName zurück', () {
       final match = Map<String, dynamic>.from(finishedMatch)
         ..['team1'] = {

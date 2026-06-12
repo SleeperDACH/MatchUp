@@ -199,9 +199,10 @@ class _FixtureHeader extends StatelessWidget {
     final live = fixture.status == FixtureStatus.live;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text('${fixture.home.shortName} – ${fixture.away.shortName}',
-            style: small),
+            style: small, textAlign: TextAlign.center),
         if (live && fixture.hasScore) ...[
           Text('${fixture.homeScore}:${fixture.awayScore}',
               style: small?.copyWith(
@@ -242,13 +243,16 @@ class _TipCell extends StatelessWidget {
     if (tip == null) {
       // Vor Anstoß sind fremde Tipps verborgen (Schloss); danach heißt
       // eine leere Zelle „kein Tipp abgegeben".
-      return fixture.hasStarted || isOwn
-          ? Text('–', style: TextStyle(color: scheme.onSurfaceVariant))
-          : Icon(Icons.lock_outline, size: 14, color: scheme.onSurfaceVariant);
+      return Center(
+        child: fixture.hasStarted || isOwn
+            ? Text('–', style: TextStyle(color: scheme.onSurfaceVariant))
+            : Icon(Icons.lock_outline,
+                size: 14, color: scheme.onSurfaceVariant),
+      );
     }
 
     final text = Text('${tip!.homeGoals}:${tip!.awayGoals}');
-    if (!fixture.hasScore) return text;
+    if (!fixture.hasScore) return Center(child: text);
 
     // Live-Spiele werten vorläufig mit; Punkte erscheinen orange, bis
     // das Spiel beendet ist.
@@ -263,14 +267,16 @@ class _TipCell extends StatelessWidget {
     final color = live
         ? _liveColor
         : (points == 0 ? scheme.onSurfaceVariant : scheme.primary);
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        text,
-        Text('+$points',
-            style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.bold, color: color)),
-      ],
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          text,
+          Text('+$points',
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
     );
   }
 }

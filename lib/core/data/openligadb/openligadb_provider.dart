@@ -75,18 +75,21 @@ class OpenLigaDbProvider implements SportsDataProvider {
     final kickoff = DateTime.parse(m['matchDateTimeUTC'] as String);
     final isFinished = m['matchIsFinished'] as bool? ?? false;
 
-    (int, int)? score;
-    if (isFinished) {
-      score = _finalScore(m);
-    } else {
-      score = _liveScore(m);
-    }
-
     final status = isFinished
         ? FixtureStatus.finished
         : (DateTime.now().toUtc().isAfter(kickoff)
             ? FixtureStatus.live
             : FixtureStatus.scheduled);
+
+    (int, int)? score;
+    if (isFinished) {
+      score = _finalScore(m);
+    } else if (status == FixtureStatus.live) {
+      // Ein angepfiffenes Spiel steht mindestens 0:0 — ohne Tore liefert
+      // die Torliste nichts, sonst gäbe es keine Live-Wertung.
+      score = _liveScore(m) ?? (0, 0);
+    }
+    // Geplante Spiele bleiben ohne Spielstand (null).
 
     final group = m['group'] as Map<String, dynamic>? ?? const {};
 
