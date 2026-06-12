@@ -484,13 +484,11 @@ class _TipInputRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Boxen mittig unter der Anstoßzeit (= Kartenmitte): das „:" als
+    // Mittelpunkt der zentrierten Reihe fluchtet genau darunter.
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('Tipp:',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        const SizedBox(width: 12),
         _GoalField(controller: homeController, onChanged: onChanged),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
