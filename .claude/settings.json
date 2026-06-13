@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(python3 -c 'import sys,json;print(json.load(sys.stdin).get(\"tool_input\",{}).get(\"file_path\",\"\"))' 2>/dev/null); case \"$f\" in *.dart) p=$(pgrep -f \"flutter_tools.snapshot run\" | head -1); [ -n \"$p\" ] && kill -USR1 \"$p\" ;; esac; exit 0",
+            "statusMessage": "Hot reload im Simulator"
+          }
+        ]
+      }
+    ]
+  }
+}

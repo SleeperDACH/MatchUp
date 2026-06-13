@@ -1,5 +1,7 @@
 package com.example.meine_app
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// FlutterFragmentActivity statt FlutterActivity: von local_auth (Biometrie)
+// vorausgesetzt, damit der System-Biometrie-Dialog angezeigt werden kann.
+class MainActivity : FlutterFragmentActivity()

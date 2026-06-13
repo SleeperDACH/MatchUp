@@ -40,6 +40,10 @@ dependencies:
   supabase_flutter: ^2.8.0
   intl: ^0.20.0
   flutter_svg: ^2.0.10
+  # Face-ID-/Fingerabdruck-Schnellanmeldung (nur nativ; im Web No-Op).
+  # Zugangsdaten liegen verschlüsselt im Schlüsselbund (Keychain/Keystore).
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.2
 
 dev_dependencies:
   flutter_test:

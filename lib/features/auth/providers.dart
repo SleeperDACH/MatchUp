@@ -3,9 +3,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
 import 'auth_repository.dart';
+import 'biometric_login.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(Supabase.instance.client);
+});
+
+/// E-Mail merken + Face-ID-/Fingerabdruck-Schnellanmeldung.
+final biometricLoginProvider = Provider<BiometricLoginService>((ref) {
+  return BiometricLoginService();
 });
 
 /// Auth-Zustand als Stream; leer, wenn Supabase nicht konfiguriert ist
