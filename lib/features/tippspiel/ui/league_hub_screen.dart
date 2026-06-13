@@ -420,44 +420,61 @@ class _RulesSheet extends StatelessWidget {
                             ?.copyWith(color: scheme.onSurfaceVariant)),
                     const SizedBox(height: 20),
                     Text('Punkteverteilung', style: textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pro Spiel zählt nur die höchste zutreffende Stufe – '
+                      'innerhalb eines Spiels addieren sich diese Punkte nicht.',
+                      style: textTheme.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
                     const SizedBox(height: 8),
                     _RuleRow(
                       points: scoring.exact,
                       label: 'Exaktes Ergebnis',
-                      detail: 'Der getippte Endstand entspricht exakt dem '
-                          'tatsächlichen Resultat.',
+                      detail: 'Du tippst den Endstand genau richtig. '
+                          'Beispiel: Tipp 2:1, Endstand 2:1.',
                     ),
                     _RuleRow(
                       points: scoring.goalDiff,
                       label: 'Richtige Tordifferenz',
-                      detail: 'Die Tordifferenz stimmt überein – bei einem '
-                          'Unentschieden ein abweichendes Remis-Ergebnis.',
+                      detail: 'Richtiger Sieger und gleicher Tor-Abstand wie im '
+                          'Endstand, aber anderes Ergebnis. Beispiel: Tipp 2:1, '
+                          'Endstand 3:2. Bei einem Remis: du tippst '
+                          'unentschieden, nur mit anderem Stand (Tipp 1:1, '
+                          'Endstand 2:2).',
                     ),
                     _RuleRow(
                       points: scoring.tendency,
                       label: 'Richtige Tendenz',
-                      detail: 'Der Spielausgang – Sieger oder Unentschieden – '
-                          'wurde korrekt vorhergesagt.',
+                      detail: 'Du tippst den richtigen Sieger, aber Tor-Abstand '
+                          'und Ergebnis stimmen nicht. Beispiel: Tipp 3:0, '
+                          'Endstand 1:0.',
                     ),
                     const _RuleRow(
                       points: 0,
                       label: 'Daneben',
-                      detail: 'Der getippte Spielausgang ist nicht '
-                          'eingetreten.',
+                      detail: 'Der getippte Ausgang (Heimsieg, Remis oder '
+                          'Auswärtssieg) ist nicht eingetreten.',
                     ),
                     const SizedBox(height: 24),
                     Text('Quoten-Bonus ★', style: textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    const _Bullet('Ausschlaggebend ist die richtige Tendenz '
-                        '(Sieger bzw. Unentschieden) – nicht das exakte '
-                        'Ergebnis. Der Bonus kommt zusätzlich zur Wertung '
-                        'oben.'),
-                    const _Bullet('+5 Punkte, wenn die Quote des eingetretenen '
-                        'Ergebnisses zum Anstoß über 5,0 lag (klarer '
-                        'Außenseiter).'),
+                    const _Bullet('Gibt es nur, wenn du die richtige Tendenz '
+                        'getippt hast (Sieger bzw. Unentschieden) – das exakte '
+                        'Ergebnis spielt keine Rolle. Der Bonus kommt '
+                        'zusätzlich zur Wertung oben.'),
+                    const _Bullet('Maßgeblich ist die Quote für deine getippte '
+                        'Tendenz (Heimsieg, Remis oder Auswärtssieg), '
+                        'eingefroren zum Anstoß: Je unwahrscheinlicher dein '
+                        'richtiger Tipp war, desto mehr Bonus.'),
+                    const _Bullet('+5 Punkte, wenn diese Quote über 5,0 lag – '
+                        'du also einen klaren Außenseiter richtig getippt '
+                        'hast.'),
                     const _Bullet('+1 Punkt, wenn diese Quote mindestens 2,0 '
-                        'über der des Favoriten lag. Die beiden Stufen werden '
-                        'nicht kombiniert.'),
+                        'höher war als die niedrigste der drei Quoten (der '
+                        'Favorit).'),
+                    const _Bullet('Die beiden Stufen addieren sich nicht – pro '
+                        'Spiel zählt der höhere der beiden Boni.'),
                     const SizedBox(height: 24),
                     Text('Tippabgabe', style: textTheme.titleMedium),
                     const SizedBox(height: 8),
