@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/data/odds/frozen_odds.dart';
 import '../../../core/models/models.dart';
+import '../models/chat_message.dart';
 import '../models/tip_round.dart';
 
 /// Tipprunden-Verwaltung gegen Supabase. RLS sorgt dafür, dass nur die
@@ -69,4 +71,39 @@ class TipRoundRepository {
     return rows.map(MemberTip.fromJson).toList();
   }
 
+  /// Zum Anstoß eingefrorene Quoten je Fixture (für den Quoten-Bonus).
+  /// Öffentlich lesbar; der Schlüssel ist die globale Fixture-ID, daher
+  /// genügt ein Map über alle gespeicherten Spiele.
+  Future<Map<String, FrozenOdds>> frozenOdds() async {
+    final rows = await _client
+        .from('fixture_odds')
+        .select('fixture_id, home_win, draw, away_win');
+    return {
+      for (final r in rows) r['fixture_id'] as String: FrozenOdds.fromJson(r),
+    };
+  }
+
+  /// Live-Stream der Chat-Nachrichten einer Liga (älteste zuerst). Läuft
+  /// über Supabase Realtime; die RLS lässt nur Mitglieder mitlesen.
+  Stream<List<ChatMessage>> messageStream(String roundId) {
+    return _client
+        .from('tip_round_messages')
+        .stream(primaryKey: ['id'])
+        .eq('round_id', roundId)
+        // Älteste zuerst (Supabase sortiert sonst absteigend) — so stehen
+        // neue Nachrichten unten.
+        .order('created_at', ascending: true)
+        .map((rows) => rows.map(ChatMessage.fromJson).toList());
+  }
+
+  /// Schreibt eine Nachricht in den Liga-Chat (nur als Mitglied erlaubt,
+  /// erzwingt die RLS-Policy serverseitig).
+  Future<void> sendMessage(String roundId, String body) async {
+    final userId = _client.auth.currentUser!.id;
+    await _client.from('tip_round_messages').insert({
+      'round_id': roundId,
+      'user_id': userId,
+      'body': body.trim(),
+    });
+  }
 }

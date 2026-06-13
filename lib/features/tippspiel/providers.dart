@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/data/odds/frozen_odds.dart';
 import '../../core/data/odds/match_odds.dart';
 import '../../core/data/odds/odds_matching.dart';
 import '../../core/data/odds/odds_provider.dart';
@@ -12,6 +14,7 @@ import '../auth/providers.dart';
 import 'data/local_tip_store.dart';
 import 'data/tip_round_repository.dart';
 import 'data/tip_store.dart';
+import 'models/chat_message.dart';
 import 'models/tip.dart';
 import 'models/tip_round.dart';
 
@@ -113,6 +116,16 @@ final roundOddsProvider =
 final tipRoundRepositoryProvider = Provider<TipRoundRepository>(
     (ref) => TipRoundRepository(Supabase.instance.client));
 
+/// Zum Anstoß eingefrorene Quoten je Fixture — Grundlage für den
+/// Quoten-Bonus in der Wertung. Nur mit Backend; im lokalen Modus leer
+/// (dort gibt es keinen serverseitigen Snapshot).
+final frozenOddsProvider = FutureProvider<Map<String, FrozenOdds>>((ref) {
+  if (!AppConfig.isSupabaseConfigured) {
+    return Future.value(const <String, FrozenOdds>{});
+  }
+  return ref.watch(tipRoundRepositoryProvider).frozenOdds();
+});
+
 final myRoundsProvider = FutureProvider<List<TipRound>>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return Future.value(const <TipRound>[]);
@@ -138,6 +151,53 @@ void activateRound(WidgetRef ref, TipRound round) {
 final roundMembersProvider =
     FutureProvider.family<List<RoundMember>, String>((ref, roundId) {
   return ref.watch(tipRoundRepositoryProvider).members(roundId);
+});
+
+/// Live-Stream der Chat-Nachrichten einer Liga (älteste zuerst).
+final roundMessagesProvider =
+    StreamProvider.family<List<ChatMessage>, String>((ref, roundId) {
+  return ref.watch(tipRoundRepositoryProvider).messageStream(roundId);
+});
+
+/// Zeitpunkt, bis zu dem der Liga-Chat zuletzt gelesen wurde — lokal je
+/// Gerät gespeichert (SharedPreferences). `null` = noch nie geöffnet.
+final chatLastReadProvider =
+    StateNotifierProvider.family<ChatReadNotifier, DateTime?, String>(
+        (ref, roundId) => ChatReadNotifier(roundId));
+
+class ChatReadNotifier extends StateNotifier<DateTime?> {
+  ChatReadNotifier(this.roundId) : super(null) {
+    _load();
+  }
+
+  final String roundId;
+
+  String get _key => 'chat_last_read_$roundId';
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = prefs.getString(_key);
+    if (s != null) state = DateTime.tryParse(s);
+  }
+
+  /// Setzt die „gelesen bis"-Marke; nur vorwärts (nie zurück).
+  Future<void> markRead(DateTime at) async {
+    if (state != null && !at.isAfter(state!)) return;
+    state = at;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, at.toIso8601String());
+  }
+}
+
+/// Gibt es ungelesene Chat-Nachrichten von anderen Mitgliedern? Grundlage
+/// für den Hinweis am Liga-Symbol.
+final unreadChatProvider = Provider.family<bool, String>((ref, roundId) {
+  final myId = ref.watch(currentUserProvider)?.id;
+  final lastRead = ref.watch(chatLastReadProvider(roundId));
+  final messages =
+      ref.watch(roundMessagesProvider(roundId)).valueOrNull ?? const [];
+  return messages.any((m) =>
+      m.userId != myId && (lastRead == null || m.createdAt.isAfter(lastRead)));
 });
 
 /// Alle sichtbaren Tipps einer Liga (fremde erst nach Anstoß).

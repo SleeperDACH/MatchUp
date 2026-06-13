@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/models/models.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
+import '../features/tippspiel/ui/league_hub_screen.dart';
 import '../features/tippspiel/ui/matchday_screen.dart';
 import '../features/tippspiel/ui/points_screen.dart';
 import '../features/tippspiel/ui/tips_table_tab.dart';
@@ -29,10 +30,32 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
     final round = widget.round;
     final league = ref.watch(selectedLeagueProvider);
 
+    // Hinweis am Liga-Symbol bei ungelesenen Chat-Nachrichten. Auf dem
+    // Liga-Tab selbst (Index 2) gibt es keinen Hinweis — dort wird alles
+    // als gelesen markiert.
+    var ligaUnread = false;
+    if (round != null) {
+      if (_index == 2) {
+        final msgs = ref.watch(roundMessagesProvider(round.id)).valueOrNull;
+        if (msgs != null && msgs.isNotEmpty) {
+          final latest = msgs
+              .map((m) => m.createdAt)
+              .reduce((a, b) => a.isAfter(b) ? a : b);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(chatLastReadProvider(round.id).notifier).markRead(latest);
+          });
+        }
+      } else {
+        ligaUnread = ref.watch(unreadChatProvider(round.id));
+      }
+    }
+
     final tabs = <Widget>[
       const MatchdayScreen(),
       if (round != null) TipsTableTab(round: round),
-      const PointsScreen(),
+      // In einer Server-Liga: Chat + Regeln. Im lokalen Schnelltipp-Modus
+      // (keine Liga, kein Chat) bleibt die eigene Punkteübersicht.
+      if (round != null) LeagueHubScreen(round: round) else const PointsScreen(),
     ];
 
     return Scaffold(
@@ -89,11 +112,21 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
               selectedIcon: Icon(Icons.table_chart),
               label: 'Tabelle',
             ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Meine Punkte',
-          ),
+          if (round != null)
+            NavigationDestination(
+              icon: Badge(
+                isLabelVisible: ligaUnread,
+                child: const Icon(Icons.forum_outlined),
+              ),
+              selectedIcon: const Icon(Icons.forum),
+              label: 'Liga',
+            )
+          else
+            const NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Meine Punkte',
+            ),
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/data/odds/frozen_odds.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../logic/round_table.dart';
@@ -130,12 +131,17 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     final seasonFixtures = seasonAsync.requireValue;
     final rules = round.scoring;
     final myUserId = ref.watch(currentUserProvider)?.id;
+    // Eingefrorene Quoten für den Bonus; blockiert die Tabelle nicht,
+    // wenn sie (noch) fehlen — dann gibt es schlicht keinen Bonus.
+    final frozenOdds =
+        ref.watch(frozenOddsProvider).valueOrNull ?? const <String, FrozenOdds>{};
 
     final totals = totalPointsByMember(
       members: members,
       tips: tips,
       fixtures: seasonFixtures,
       rules: rules,
+      frozenOdds: frozenOdds,
     );
     members.sort((a, b) {
       final byPoints = (totals[b.userId] ?? 0) - (totals[a.userId] ?? 0);
@@ -235,6 +241,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                                     fixture: fixture,
                                     isOwn: member.userId == myUserId,
                                     rules: rules,
+                                    odds: frozenOdds[fixture.id],
                                   )),
                               ],
                             ),
@@ -249,7 +256,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
             padding: const EdgeInsets.all(10),
             child: Text(
               'Punkte: ${rules.exact} Ergebnis · ${rules.goalDiff} Tordifferenz '
-              '· ${rules.tendency} Tendenz — fremde Tipps ab Anstoß sichtbar',
+              '· ${rules.tendency} Tendenz · ★ Quoten-Bonus — '
+              'fremde Tipps ab Anstoß sichtbar',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant),
@@ -312,12 +320,14 @@ class _TipCell extends StatelessWidget {
     required this.fixture,
     required this.isOwn,
     required this.rules,
+    required this.odds,
   });
 
   final MemberTip? tip;
   final Fixture fixture;
   final bool isOwn;
   final ScoringRules rules;
+  final FrozenOdds? odds;
 
   @override
   Widget build(BuildContext context) {
@@ -340,13 +350,23 @@ class _TipCell extends StatelessWidget {
     // Live-Spiele werten vorläufig mit; Punkte erscheinen orange, bis
     // das Spiel beendet ist.
     final live = fixture.status == FixtureStatus.live;
-    final points = scoreTip(
+    final base = scoreTip(
       tipHome: tip!.homeGoals,
       tipAway: tip!.awayGoals,
       resultHome: fixture.homeScore!,
       resultAway: fixture.awayScore!,
       rules: rules,
     );
+    final bonus = oddsBonus(
+      tipHome: tip!.homeGoals,
+      tipAway: tip!.awayGoals,
+      resultHome: fixture.homeScore!,
+      resultAway: fixture.awayScore!,
+      homeWin: odds?.homeWin,
+      draw: odds?.draw,
+      awayWin: odds?.awayWin,
+    );
+    final points = base + bonus;
     final color = live
         ? _liveColor
         : (points == 0 ? scheme.onSurfaceVariant : scheme.primary);
@@ -355,9 +375,12 @@ class _TipCell extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           text,
-          Text('+$points',
-              style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+          Text(
+            // Der Quoten-Bonus wird mit einem Stern markiert (z. B. „+9 ★").
+            bonus > 0 ? '+$points ★' : '+$points',
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.bold, color: color),
+          ),
         ],
       ),
     );

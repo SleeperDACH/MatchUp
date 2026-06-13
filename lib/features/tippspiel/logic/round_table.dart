@@ -1,3 +1,4 @@
+import '../../../core/data/odds/frozen_odds.dart';
 import '../../../core/models/models.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
@@ -11,6 +12,7 @@ Map<String, int> totalPointsByMember({
   required List<MemberTip> tips,
   required List<Fixture> fixtures,
   required ScoringRules rules,
+  Map<String, FrozenOdds> frozenOdds = const {},
 }) {
   // Live-Spiele zählen mit ihrem aktuellen Spielstand mit (vorläufige
   // Punkte, die sich je Tor ändern); endgültig wird's mit `finished`.
@@ -25,14 +27,24 @@ Map<String, int> totalPointsByMember({
   for (final tip in tips) {
     final fixture = results[tip.fixtureId];
     if (fixture == null || !totals.containsKey(tip.userId)) continue;
-    totals[tip.userId] = totals[tip.userId]! +
-        scoreTip(
-          tipHome: tip.homeGoals,
-          tipAway: tip.awayGoals,
-          resultHome: fixture.homeScore!,
-          resultAway: fixture.awayScore!,
-          rules: rules,
-        );
+    final base = scoreTip(
+      tipHome: tip.homeGoals,
+      tipAway: tip.awayGoals,
+      resultHome: fixture.homeScore!,
+      resultAway: fixture.awayScore!,
+      rules: rules,
+    );
+    final fo = frozenOdds[tip.fixtureId];
+    final bonus = oddsBonus(
+      tipHome: tip.homeGoals,
+      tipAway: tip.awayGoals,
+      resultHome: fixture.homeScore!,
+      resultAway: fixture.awayScore!,
+      homeWin: fo?.homeWin,
+      draw: fo?.draw,
+      awayWin: fo?.awayWin,
+    );
+    totals[tip.userId] = totals[tip.userId]! + base + bonus;
   }
   return totals;
 }
