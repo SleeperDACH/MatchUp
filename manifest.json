@@ -1,6 +1,6 @@
 {
-    "name": "meine_app",
-    "short_name": "meine_app",
+    "name": "MatchUp",
+    "short_name": "MatchUp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

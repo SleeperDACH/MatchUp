@@ -31306,7 +31306,7 @@ $.ack=$.aca=null}if($.aYn() instanceof A.BJ)$.brL=A.brK()
 s=2
 return A.q(A.d9(null,t.H),$async$acl)
 case 2:s=3
-return A.q(A.aBy("sb_publishable_lJBIlqeAYTILnQTInsK71Q_n2kCb7tN","https://zleuiewcydrazogkfafp.supabase.co"),$async$acl)
+return A.q(A.aBy("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsZXVpZXdjeWRyYXpvZ2tmYWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODQyOTEsImV4cCI6MjA5NjY2MDI5MX0.yVJHzIgssxXPK68MwXzlsXbqflqzs-pEDZHK--sEoJA","https://zleuiewcydrazogkfafp.supabase.co"),$async$acl)
 case 3:q=$.fH().b
 q===$&&A.a()
 q=q.geQ().as
@@ -105556,7 +105556,7 @@ aKx(a){var s=0,r=A.w(t.H),q=1,p=[],o=this,n,m,l,k,j,i,h
 var $async$HX=A.x(function(b,c){if(b===1){p.push(c)
 s=q}for(;;)switch(s){case 0:i=B.c.c7(a)
 if(J.bE(i)===0)throw A.h(B.Ok)
-n="https://sleeperdach.github.io/meine_app/"
+n="https://sleeperdach.github.io/MatchUp/"
 q=3
 l=o.a.geQ()
 k=J.bE(n)===0?null:n
