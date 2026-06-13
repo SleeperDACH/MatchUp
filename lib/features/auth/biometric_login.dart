@@ -45,8 +45,22 @@ class BiometricLoginService {
 
   // --- Biometrie-Verfügbarkeit (nur nativ) -------------------------------
 
-  /// True, wenn das Gerät Biometrie kann und mindestens eine Methode
-  /// eingerichtet ist. Im Web immer false.
+  /// True, wenn das Gerät grundsätzlich Biometrie-Hardware besitzt — auch
+  /// wenn aktuell noch keine Methode eingerichtet ist (z. B. frischer
+  /// Simulator ohne enrolltes Face ID). Maßgeblich dafür, ob wir die
+  /// Einrichtung überhaupt anbieten. Im Web immer false.
+  Future<bool> isSupported() async {
+    if (kIsWeb) return false;
+    try {
+      return await _auth.isDeviceSupported();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// True, wenn Biometrie nutzbar ist: Hardware vorhanden UND mindestens eine
+  /// Methode eingerichtet. Maßgeblich für den „Mit Face ID anmelden"-Button.
+  /// Im Web immer false.
   Future<bool> isAvailable() async {
     if (kIsWeb) return false;
     try {

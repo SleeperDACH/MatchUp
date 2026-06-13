@@ -23,8 +23,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   String? _error;
 
   // Schnellanmeldung per Face ID / Fingerabdruck (nur nativ).
-  bool _bioAvailable = false; // Gerät kann Biometrie
-  bool _hasSavedCreds = false; // Zugangsdaten hinterlegt -> Button anzeigen
+  bool _bioSupported = false; // Gerät hat Biometrie-Hardware (Setup anbieten)
+  bool _hasSavedCreds = false; // Zugangsdaten hinterlegt + nutzbar -> Button
   bool _enableBio = false; // Nutzer will Biometrie beim nächsten Login einrichten
   String _bioLabel = 'Biometrie';
 
@@ -39,15 +39,16 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   Future<void> _loadPrefs() async {
     final bio = ref.read(biometricLoginProvider);
     final email = await bio.lastEmail();
+    final supported = await bio.isSupported();
     final available = await bio.isAvailable();
     final hasCreds = available && await bio.hasSavedCredentials();
-    final label = available ? await bio.label() : 'Biometrie';
+    final label = supported ? await bio.label() : 'Biometrie';
     if (!mounted) return;
     setState(() {
       if (email != null && email.isNotEmpty && _email.text.isEmpty) {
         _email.text = email;
       }
-      _bioAvailable = available;
+      _bioSupported = supported;
       _hasSavedCreds = hasCreds;
       _bioLabel = label;
     });
@@ -172,9 +173,9 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     // Biometrie-Login anbieten, wenn Daten hinterlegt sind und wir uns im
     // Anmelde- (nicht Registrierungs-)Modus befinden.
     final showBioButton = _hasSavedCreds && !_registerMode;
-    // Einrichtung anbieten, wenn Biometrie verfügbar, aber noch nichts
-    // hinterlegt ist.
-    final showBioSetup = _bioAvailable && !_hasSavedCreds;
+    // Einrichtung anbieten, wenn das Gerät Biometrie unterstützt, aber noch
+    // nichts hinterlegt ist.
+    final showBioSetup = _bioSupported && !_hasSavedCreds;
 
     return Center(
       child: SingleChildScrollView(
