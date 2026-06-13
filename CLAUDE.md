@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Flutter-App (iOS/Android/Web): Tippspiel à la Kicktipp + später Fantasy à la
 Sleeper. Start Bundesliga, ausbaubar auf Top-5-Ligen, NFL, NBA. UI-Sprache
-und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/meine_app/
+und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
 
 ## Architektur-Leitlinien
 
@@ -104,7 +104,7 @@ Web-Demo (`gh-pages`): bewusst **ohne** Service Worker bauen, sonst cacht der
 alte Build aggressiv:
 
 ```sh
-flutter build web --release --pwa-strategy=none --base-href "/meine_app/" \
+flutter build web --release --pwa-strategy=none --base-href "/MatchUp/" \
   --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=…
 # danach flutter_service_worker.js löschen, .nojekyll setzen,
 # Inhalt von build/web auf Branch gh-pages pushen
