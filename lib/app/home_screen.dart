@@ -25,13 +25,24 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Fantasy'),
+        centerTitle: true,
+        title: const Text('MatchUp'),
+        // Abmelden links in der Kopfzeile.
+        leading: user != null
+            ? IconButton(
+                tooltip: 'Abmelden',
+                icon: const Icon(Icons.logout),
+                onPressed: () => ref.read(authRepositoryProvider).signOut(),
+              )
+            : null,
         actions: [
-          if (user != null)
-            IconButton(
-              tooltip: 'Abmelden',
-              icon: const Icon(Icons.logout),
-              onPressed: () => ref.read(authRepositoryProvider).signOut(),
+          // Gemeinsamer Beitreten-Knopf für alle Spielmodi (Fantasy + Tippspiel),
+          // rechts in der Kopfzeile.
+          if (configured && user != null)
+            TextButton.icon(
+              icon: const Icon(Icons.group_add_outlined),
+              label: const Text('Beitreten'),
+              onPressed: () => joinAnyFlow(context, ref),
             ),
         ],
       ),
@@ -126,14 +137,6 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
       const SizedBox(height: 8),
-      Align(
-        alignment: Alignment.centerRight,
-        child: TextButton.icon(
-          icon: const Icon(Icons.key, size: 18),
-          label: const Text('Mit Code beitreten'),
-          onPressed: () => joinFantasyLeagueFlow(context, ref),
-        ),
-      ),
       leagues.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(20),
@@ -181,24 +184,10 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
       const SizedBox(height: 4),
-      Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Tipprunde'),
-              onPressed: () => createRoundFlow(context, ref),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.key),
-              label: const Text('Beitreten'),
-              onPressed: () => joinRoundFlow(context, ref),
-            ),
-          ),
-        ],
+      OutlinedButton.icon(
+        icon: const Icon(Icons.add),
+        label: const Text('Tipprunde erstellen'),
+        onPressed: () => createRoundFlow(context, ref),
       ),
     ];
   }
@@ -387,20 +376,31 @@ Future<void> createRoundFlow(BuildContext context, WidgetRef ref) async {
   }
 }
 
-Future<void> joinRoundFlow(BuildContext context, WidgetRef ref) async {
+/// Gemeinsamer Beitreten-Flow für alle Spielmodi: Ein Einladungscode kann zu
+/// einer Fantasy-Liga oder einer Tipprunde gehören. Wir probieren zuerst
+/// Fantasy, fällt der Code dort als unbekannt durch, dann das Tippspiel.
+Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
   final controller = TextEditingController();
   final code = await showDialog<String>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Tipprunde beitreten'),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        decoration: const InputDecoration(
-          labelText: 'Einladungscode',
-          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-        ),
-        onSubmitted: (value) => Navigator.of(context).pop(value),
+      title: const Text('Beitreten'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Gib den Einladungscode ein – für eine Fantasy-Liga '
+              'oder eine Tipprunde.'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Einladungscode',
+              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+            ),
+            onSubmitted: (value) => Navigator.of(context).pop(value),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -415,8 +415,36 @@ Future<void> joinRoundFlow(BuildContext context, WidgetRef ref) async {
     ),
   );
   if (code == null || code.trim().isEmpty) return;
+  final trimmed = code.trim();
+
+  // 1) Als Fantasy-Liga versuchen.
   try {
-    final round = await ref.read(tipRoundRepositoryProvider).joinRound(code);
+    final league =
+        await ref.read(fantasyLeagueRepositoryProvider).joinLeague(trimmed);
+    ref.invalidate(myFantasyLeaguesProvider);
+    if (!context.mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => FantasyLobbyScreen(league: league)));
+    return;
+  } catch (e) {
+    final msg = e.toString();
+    if (!msg.contains('Ungültiger Einladungscode')) {
+      // Der Code gehört zu einer Fantasy-Liga, der Beitritt scheiterte aber
+      // aus einem anderen Grund (z. B. Draft bereits begonnen).
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg.contains('bereits begonnen')
+            ? 'Der Draft dieser Liga hat bereits begonnen.'
+            : 'Beitritt fehlgeschlagen: $e'),
+      ));
+      return;
+    }
+    // Sonst: kein Fantasy-Code -> als Tipprunde weiterversuchen.
+  }
+
+  // 2) Als Tipprunde versuchen.
+  try {
+    final round = await ref.read(tipRoundRepositoryProvider).joinRound(trimmed);
     ref.invalidate(myRoundsProvider);
     activateRound(ref, round);
     if (!context.mounted) return;
@@ -424,10 +452,12 @@ Future<void> joinRoundFlow(BuildContext context, WidgetRef ref) async {
         .push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
   } catch (e) {
     if (!context.mounted) return;
+    final msg = e.toString();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(e.toString().contains('Ungültiger Einladungscode')
-            ? 'Ungültiger Einladungscode.'
-            : 'Beitritt fehlgeschlagen: $e')));
+      content: Text(msg.contains('Ungültiger Einladungscode')
+          ? 'Dieser Code passt zu keiner Fantasy-Liga und keiner Tipprunde.'
+          : 'Beitritt fehlgeschlagen: $e'),
+    ));
   }
 }
 

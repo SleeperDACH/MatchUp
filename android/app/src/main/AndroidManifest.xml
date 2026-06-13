@@ -2,7 +2,7 @@
     <!-- Biometrie (local_auth) für die Face-ID-/Fingerabdruck-Schnellanmeldung -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <application
-        android:label="meine_app"
+        android:label="MatchUp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
