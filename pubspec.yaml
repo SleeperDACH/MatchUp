@@ -55,6 +55,26 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  # Generiert die App-Icons für alle Plattformen aus assets/branding.
+  flutter_launcher_icons: ^0.14.1
+
+# App-Icon (MatchUp-Chevron auf Base). Neu erzeugen mit:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/branding/matchup_appicon_1024.png"
+  android: true
+  adaptive_icon_background: "#12141C"
+  adaptive_icon_foreground: "assets/branding/matchup_appicon_1024.png"
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    background_color: "#12141C"
+    theme_color: "#4ADE6A"
+  macos:
+    generate: true
+  windows:
+    generate: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
