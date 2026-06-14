@@ -182,6 +182,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                     columnSpacing: 8,
                     horizontalMargin: 8,
                     headingRowHeight: _headingHeight,
+                    headingRowColor: WidgetStatePropertyAll(
+                        Theme.of(context).colorScheme.surfaceContainerHighest),
                     dataRowMinHeight: _rowHeight,
                     dataRowMaxHeight: _rowHeight,
                     columns: const [
@@ -224,6 +226,10 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                         columnSpacing: 14,
                         horizontalMargin: 8,
                         headingRowHeight: _headingHeight,
+                        headingRowColor: WidgetStatePropertyAll(
+                            Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest),
                         dataRowMinHeight: _rowHeight,
                         dataRowMaxHeight: _rowHeight,
                         columns: [
