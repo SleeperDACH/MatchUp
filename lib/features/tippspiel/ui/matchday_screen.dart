@@ -513,9 +513,9 @@ class _SavedHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (IconData icon, Color color, String label) = dirty
-        ? (Icons.edit_outlined, const Color(0xFFEF6C00), 'Nicht gespeichert')
+        ? (Icons.edit_outlined, const Color(0xFFF23030), 'Nicht gespeichert')
         : saved
-            ? (Icons.check_circle, const Color(0xFF2E7D32), 'Gespeichert')
+            ? (Icons.check_circle, const Color(0xFF4ADE6A), 'Gespeichert')
             : (Icons.remove, Colors.transparent, '');
     if (label.isEmpty) return const SizedBox(height: 6);
     return Padding(

@@ -12,6 +12,7 @@ import '../features/fantasy/ui/fantasy_lobby_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import 'league_screen.dart';
+import 'theme.dart';
 
 /// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
 /// Tippspiel folgt als zweiter Bereich darunter.
@@ -26,7 +27,7 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('MatchUp'),
+        title: const _MatchUpTitle(),
         // Abmelden links in der Kopfzeile.
         leading: user != null
             ? IconButton(
@@ -345,6 +346,109 @@ class _InfoCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------
+// MatchUp-Wortmarke für die Kopfzeile: zweifarbiger Doppel-Chevron
+// (links Green, rechts Red) + „Match"/„Up". Nativ nachgebaut nach dem
+// Marken-SVG (assets/branding/matchup_logo_primary.svg), weil flutter_svg
+// dessen Text-Element nicht rendert.
+// ---------------------------------------------------------------------
+class _MatchUpTitle extends StatelessWidget {
+  const _MatchUpTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const _ChevronMark(size: 22),
+        const SizedBox(width: 8),
+        Text.rich(
+          TextSpan(
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+              color: MatchUpColors.snow,
+            ),
+            children: const [
+              TextSpan(text: 'Match'),
+              TextSpan(
+                  text: 'Up',
+                  style: TextStyle(color: MatchUpColors.green)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Der Doppel-Chevron des Logos, exakt nach den SVG-Koordinaten gezeichnet:
+/// linke Hälfte Green, rechte Hälfte Red, mittig an den Spitzen geteilt.
+class _ChevronMark extends StatelessWidget {
+  const _ChevronMark({required this.size});
+
+  /// Höhe in Logischen Pixeln (Breite folgt dem Seitenverhältnis).
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size * _ChevronPainter.refW / _ChevronPainter.refH, size),
+      painter: _ChevronPainter(),
+    );
+  }
+}
+
+class _ChevronPainter extends CustomPainter {
+  // Referenz-Box um den Chevron (inkl. Platz für die runden Kappen),
+  // entnommen aus dem Marken-SVG (viewBox 600×200).
+  static const refW = 58.0; // x 164 … 222
+  static const refH = 54.4; // y 73.4 … 127.8
+  static const _ox = 164.0;
+  static const _oy = 73.4;
+  static const _centerX = 193.0; // Teilung Green|Red an der Spitze
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sx = size.width / refW;
+    final sy = size.height / refH;
+    Offset p(double x, double y) => Offset((x - _ox) * sx, (y - _oy) * sy);
+
+    final path = Path()
+      // oberer Chevron
+      ..moveTo(p(169, 102.4).dx, p(169, 102.4).dy)
+      ..lineTo(p(193, 78.4).dx, p(193, 78.4).dy)
+      ..lineTo(p(217, 102.4).dx, p(217, 102.4).dy)
+      // unterer Chevron
+      ..moveTo(p(169, 122.8).dx, p(169, 122.8).dy)
+      ..lineTo(p(193, 98.8).dx, p(193, 98.8).dy)
+      ..lineTo(p(217, 122.8).dx, p(217, 122.8).dy);
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10.0 * (sx + sy) / 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final centerX = (_centerX - _ox) * sx;
+    // Linke Hälfte grün.
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, 0, centerX, size.height));
+    canvas.drawPath(path, paint..color = MatchUpColors.green);
+    canvas.restore();
+    // Rechte Hälfte rot.
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(centerX, 0, size.width - centerX, size.height));
+    canvas.drawPath(path, paint..color = MatchUpColors.red);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ---------------------------------------------------------------------

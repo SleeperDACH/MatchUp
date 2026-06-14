@@ -15,7 +15,7 @@ import '../providers.dart';
 import 'round_selector.dart';
 
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
-const Color _liveColor = Color(0xFFEF6C00); // Orange 800 — in beiden Themes gut
+const Color _liveColor = Color(0xFFF23030); // MatchUp Red — Live-Spiele
 
 /// Feste Höhen für die zwei nebeneinanderliegenden Tabellenhälften
 /// (eingefrorene Namen + scrollende Ergebnisse) — nur so fluchten die
