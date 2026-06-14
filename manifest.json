@@ -3,9 +3,9 @@
     "short_name": "MatchUp",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#12141C",
+    "theme_color": "#4ADE6A",
+    "description": "Tippspiel & Fantasy mit Freunden.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
