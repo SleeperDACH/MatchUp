@@ -111,6 +111,33 @@ class Fixture {
   bool get hasScore => homeScore != null && awayScore != null;
 }
 
+/// Eine Zeile der Liga-/Gruppentabelle.
+class StandingRow {
+  const StandingRow({
+    required this.rank,
+    required this.team,
+    required this.points,
+    required this.played,
+    required this.won,
+    required this.draw,
+    required this.lost,
+    required this.goalsFor,
+    required this.goalsAgainst,
+  });
+
+  final int rank;
+  final TeamRef team;
+  final int points;
+  final int played;
+  final int won;
+  final int draw;
+  final int lost;
+  final int goalsFor;
+  final int goalsAgainst;
+
+  int get goalDiff => goalsFor - goalsAgainst;
+}
+
 /// Vorkonfigurierte Wettbewerbe. Hier kommen später Premier League,
 /// NFL & Co. dazu.
 abstract final class Leagues {

@@ -22,4 +22,8 @@ abstract class SportsDataProvider {
 
   /// Alle Spiele einer Saison (für Punkteberechnung über die ganze Saison).
   Future<List<Fixture>> getSeasonFixtures(LeagueInfo league, int season);
+
+  /// Tabelle/Rangliste des Wettbewerbs (sortiert nach Punkten, dann
+  /// Tordifferenz, dann erzielten Toren).
+  Future<List<StandingRow>> getTable(LeagueInfo league, int season);
 }

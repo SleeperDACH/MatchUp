@@ -52,6 +52,57 @@ class OpenLigaDbProvider implements SportsDataProvider {
     return _parseMatches(json as List<dynamic>, league, season);
   }
 
+  @override
+  Future<List<StandingRow>> getTable(LeagueInfo league, int season) async {
+    final json =
+        await _getJson('/getbltable/${league.providerLeagueKey}/$season');
+    final raw = (json as List<dynamic>).cast<Map<String, dynamic>>().map((t) {
+      final name = t['teamName'] as String? ?? '';
+      final short = t['shortName'] as String?;
+      final icon = (t['teamIconUrl'] as String?)
+          ?.replaceFirst(RegExp('^http://'), 'https://');
+      return (
+        team: TeamRef(
+          // teamInfoId == teamId der Spiele -> konsistent für Favoriten.
+          id: 'openligadb:${t['teamInfoId']}',
+          name: name,
+          shortName: (short == null || short.isEmpty) ? name : short,
+          iconUrl: (icon == null || icon.isEmpty) ? null : icon,
+        ),
+        points: t['points'] as int? ?? 0,
+        played: t['matches'] as int? ?? 0,
+        won: t['won'] as int? ?? 0,
+        draw: t['draw'] as int? ?? 0,
+        lost: t['lost'] as int? ?? 0,
+        goalsFor: t['goals'] as int? ?? 0,
+        goalsAgainst: t['opponentGoals'] as int? ?? 0,
+      );
+    }).toList();
+
+    raw.sort((a, b) {
+      final byPoints = b.points - a.points;
+      if (byPoints != 0) return byPoints;
+      final byDiff = (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst);
+      if (byDiff != 0) return byDiff;
+      return b.goalsFor - a.goalsFor;
+    });
+
+    return [
+      for (var i = 0; i < raw.length; i++)
+        StandingRow(
+          rank: i + 1,
+          team: raw[i].team,
+          points: raw[i].points,
+          played: raw[i].played,
+          won: raw[i].won,
+          draw: raw[i].draw,
+          lost: raw[i].lost,
+          goalsFor: raw[i].goalsFor,
+          goalsAgainst: raw[i].goalsAgainst,
+        ),
+    ];
+  }
+
   Future<dynamic> _getJson(String path) async {
     final response = await _client.get(Uri.parse('$_baseUrl$path'));
     if (response.statusCode != 200) {

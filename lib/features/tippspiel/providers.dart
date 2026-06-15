@@ -74,6 +74,31 @@ final seasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
   return ref.watch(sportsDataProvider).getSeasonFixtures(league, season);
 });
 
+/// Saison-Fixtures einer beliebigen Liga (per ID) — für ligenübergreifende
+/// Ansichten wie den Live-Tab, unabhängig vom aktuell gewählten Wettbewerb.
+final leagueSeasonFixturesProvider =
+    FutureProvider.family<List<Fixture>, String>((ref, leagueId) {
+  final league = Leagues.byId(leagueId);
+  final season = league.seasonFor(DateTime.now());
+  final provider = switch (league.providerId) {
+    'openligadb' => OpenLigaDbProvider(),
+    _ => throw StateError('Unbekannter Datenprovider: ${league.providerId}'),
+  };
+  return provider.getSeasonFixtures(league, season);
+});
+
+/// Tabelle einer beliebigen Liga (per ID) — für die Liga-Übersicht.
+final leagueTableProvider =
+    FutureProvider.family<List<StandingRow>, String>((ref, leagueId) {
+  final league = Leagues.byId(leagueId);
+  final season = league.seasonFor(DateTime.now());
+  final provider = switch (league.providerId) {
+    'openligadb' => OpenLigaDbProvider(),
+    _ => throw StateError('Unbekannter Datenprovider: ${league.providerId}'),
+  };
+  return provider.getTable(league, season);
+});
+
 // ---------------------------------------------------------------------
 // Wettquoten (the-odds-api.com) — nur Anzeige
 // ---------------------------------------------------------------------
