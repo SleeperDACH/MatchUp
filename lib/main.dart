@@ -4,7 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'app/home_screen.dart';
+import 'app/main_shell.dart';
 import 'app/theme.dart';
 import 'core/config/app_config.dart';
 import 'features/auth/ui/update_password_screen.dart';
@@ -62,7 +62,7 @@ class FantasyApp extends StatelessWidget {
       title: 'Tippspiel',
       theme: buildAppTheme(),
       navigatorKey: navigatorKey,
-      home: const HomeScreen(),
+      home: const MainShell(),
     );
   }
 }

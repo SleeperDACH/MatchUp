@@ -28,14 +28,6 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         centerTitle: true,
         title: const _MatchUpTitle(),
-        // Abmelden links in der Kopfzeile.
-        leading: user != null
-            ? IconButton(
-                tooltip: 'Abmelden',
-                icon: const Icon(Icons.logout),
-                onPressed: () => ref.read(authRepositoryProvider).signOut(),
-              )
-            : null,
         actions: [
           // Gemeinsamer Beitreten-Knopf für alle Spielmodi (Fantasy + Tippspiel),
           // rechts in der Kopfzeile.
@@ -65,6 +57,8 @@ class HomeScreen extends ConsumerWidget {
             else if (user == null)
               const _LoginCard()
             else ...[
+              const _WelcomeHeader(),
+              const SizedBox(height: 16),
               ..._fantasySection(context, ref),
               const SizedBox(height: 24),
               ..._tippspielSection(context, ref),
@@ -197,6 +191,40 @@ class HomeScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
         child: Text(title, style: Theme.of(context).textTheme.titleMedium),
       );
+}
+
+/// Persönliche Begrüßung oben auf dem Home-Tab.
+class _WelcomeHeader extends ConsumerWidget {
+  const _WelcomeHeader();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final name = ref.watch(currentUsernameProvider).valueOrNull;
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name == null ? 'Willkommen 👋' : 'Hallo, $name 👋',
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Deine Ligen & Tipprunden auf einen Blick.',
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ModeHero extends StatelessWidget {

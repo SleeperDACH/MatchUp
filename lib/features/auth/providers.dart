@@ -27,3 +27,10 @@ final currentUserProvider = Provider<User?>((ref) {
   ref.watch(authStateProvider);
   return Supabase.instance.client.auth.currentUser;
 });
+
+/// Nutzername des angemeldeten Profils (für Begrüßung/Profil-Tab).
+final currentUsernameProvider = FutureProvider<String?>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+  return ref.watch(authRepositoryProvider).fetchUsername();
+});
