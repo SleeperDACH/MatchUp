@@ -49,7 +49,28 @@ class SupabaseTipStore implements TipStore {
   @override
   Future<void> save(Tip tip) async {
     try {
-      await _client.from('tips').upsert({
+      await _upsert(tip);
+    } on PostgrestException catch (e) {
+      // 42501 (RLS) bzw. 23503 (Fremdschlüssel) können auch daran liegen,
+      // dass das Spiel in der App schon sichtbar, serverseitig aber noch
+      // nicht gespiegelt ist (Sync läuft nur alle ~10 Min). In dem Fall
+      // den Sync einmal anstoßen und erneut speichern — sonst geht ein vor
+      // Anstoß abgegebener Tipp unbemerkt verloren.
+      if ((e.code == '42501' || e.code == '23503') &&
+          !await _isFixtureMirrored(tip.fixtureId)) {
+        await _triggerSync();
+        try {
+          await _upsert(tip);
+          return;
+        } on PostgrestException catch (retryError) {
+          throw _rejected(retryError);
+        }
+      }
+      throw _rejected(e);
+    }
+  }
+
+  Future<void> _upsert(Tip tip) => _client.from('tips').upsert({
         'round_id': roundId,
         'user_id': _userId,
         'fixture_id': tip.fixtureId,
@@ -57,17 +78,35 @@ class SupabaseTipStore implements TipStore {
         'away_goals': tip.awayGoals,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       });
-    } on PostgrestException catch (e) {
-      // 42501 = RLS-Verstoß: Tippfrist abgelaufen oder kein Mitglied.
-      // 23503 = Fixture (noch) nicht in der Datenbank gespiegelt.
-      throw TipRejected(switch (e.code) {
+
+  /// Steht das Spiel schon in der gespiegelten `fixtures`-Tabelle? Wenn nicht,
+  /// ist ein Fehlschlag vermutlich nur eine Sync-Lücke, kein echtes Aus.
+  Future<bool> _isFixtureMirrored(String fixtureId) async {
+    final row = await _client
+        .from('fixtures')
+        .select('id')
+        .eq('id', fixtureId)
+        .maybeSingle();
+    return row != null;
+  }
+
+  /// Stößt den serverseitigen Fixture-Sync an (als eingeloggter Nutzer
+  /// erlaubt). Fehler hier werden geschluckt — der anschließende erneute
+  /// Speicherversuch meldet das eigentliche Ergebnis.
+  Future<void> _triggerSync() async {
+    try {
+      await _client.functions.invoke('sync-fixtures');
+    } catch (_) {/* Retry meldet das Ergebnis */}
+  }
+
+  // 42501 = RLS-Verstoß: Tippfrist abgelaufen oder kein Mitglied.
+  // 23503 = Fixture (noch) nicht in der Datenbank gespiegelt.
+  TipRejected _rejected(PostgrestException e) => TipRejected(switch (e.code) {
         '42501' => 'Tippfrist abgelaufen — das Spiel hat schon begonnen.',
         '23503' =>
           'Dieses Spiel ist noch nicht synchronisiert. Versuch es gleich nochmal.',
         _ => 'Tipp konnte nicht gespeichert werden: ${e.message}',
       });
-    }
-  }
 
   @override
   Future<void> remove(String fixtureId) async {

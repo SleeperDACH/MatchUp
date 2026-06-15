@@ -235,7 +235,29 @@ async function freezeOdds(supabase: any, sportKey: string, matches: any[], now: 
 
 Deno.serve(async (req) => {
   const secret = Deno.env.get("SYNC_SECRET");
-  if (!secret || req.headers.get("x-sync-secret") !== secret) {
+  const hasSecret = !!secret && req.headers.get("x-sync-secret") === secret;
+
+  // Neben dem Cron-Secret darf auch ein eingeloggter Nutzer den Sync
+  // anstoßen (On-Demand): nötig, wenn ein in der App sichtbares Spiel
+  // serverseitig noch nicht gespiegelt ist und ein Tipp darauf sonst am
+  // Fremdschlüssel/der Deadline-RLS scheitert.
+  let authedUser = false;
+  if (!hasSecret) {
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const userClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!,
+          { global: { headers: { Authorization: authHeader } } },
+        );
+        const { data } = await userClient.auth.getUser();
+        authedUser = !!data.user;
+      } catch (_) { /* nicht autorisiert */ }
+    }
+  }
+
+  if (!hasSecret && !authedUser) {
     return new Response("Forbidden", { status: 403 });
   }
 

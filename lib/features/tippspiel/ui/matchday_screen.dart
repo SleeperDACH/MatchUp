@@ -284,14 +284,11 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Sobald der Nutzer weitertippt, die alte Meldung ausblenden.
+    // Beim Weitertippen die Erfolgsmeldung ausblenden. Fehler bleiben
+    // dagegen stehen, bis erneut gespeichert wird — ein nicht gespeicherter
+    // Tipp soll nicht stillschweigend verschwinden.
     ref.listen(tipDraftProvider, (_, _) {
-      if (_savedOk || _errors.isNotEmpty) {
-        setState(() {
-          _savedOk = false;
-          _errors = const [];
-        });
-      }
+      if (_savedOk) setState(() => _savedOk = false);
     });
 
     return Material(
