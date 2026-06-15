@@ -49,7 +49,10 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   (Deploy mit `--no-verify-jwt`, geschützt über Header `x-sync-secret`),
   Zeitplan via pg_cron (Job `sync-fixtures`, alle 10 Min, ruft die
   Function per pg_net auf). Mapping muss mit dem
-  `OpenLigaDbProvider` der App konsistent bleiben.
+  `OpenLigaDbProvider` der App konsistent bleiben. Zusätzlich darf ein
+  **eingeloggter Nutzer** den Sync on-demand auslösen (JWT-Verifikation in
+  der Function): `SupabaseTipStore.save` stößt ihn an, wenn ein Tipp scheitert,
+  weil das Spiel in der App schon sichtbar, aber noch nicht gespiegelt ist.
 - Stats-Sync: Edge Function `supabase/functions/sync-stats/` (gleiche
   Schutz-/Deploy-Konvention) füllt `player_match_stats` (Tore/Zu-Null aus
   OpenLigaDB). Die Matching-Logik ist 1:1 zu
