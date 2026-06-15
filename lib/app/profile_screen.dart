@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/config/app_config.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/login_screen.dart';
+import '../features/favorites/ui/favorites_settings_screen.dart';
 
 /// Profil-Tab: Konto-Übersicht und -Aktionen (Abmelden, App-Info).
 class ProfileScreen extends ConsumerWidget {
@@ -74,6 +75,18 @@ class _Profile extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 28),
+        _SectionLabel('Einstellungen'),
+        Card(
+          child: ListTile(
+            leading: Icon(Icons.star_outline, color: scheme.primary),
+            title: const Text('Favoriten'),
+            subtitle: const Text('Teams & Ligen für den Live-Tab'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const FavoritesSettingsScreen())),
+          ),
+        ),
+        const SizedBox(height: 16),
         _SectionLabel('Konto'),
         Card(
           child: ListTile(
