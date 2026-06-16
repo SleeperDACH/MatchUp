@@ -203,6 +203,55 @@ void createFantasyLeagueFlow(BuildContext context, FantasyMode mode) {
       builder: (_) => CreateFantasyLeagueScreen(mode: mode)));
 }
 
+/// Schnell-Erstellen vom Homescreen: nur den Namen abfragen, sofort anlegen
+/// und in die Lobby — dort sind Teilnehmer und Pickzeit einstellbar.
+Future<void> createFantasyQuickFlow(
+    BuildContext context, WidgetRef ref, FantasyMode mode) async {
+  final controller = TextEditingController();
+  final name = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('${mode.label}-Liga erstellen'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: 'Name der Liga',
+          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+        ),
+        onSubmitted: (v) => Navigator.of(ctx).pop(v),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(controller.text),
+          child: const Text('Erstellen'),
+        ),
+      ],
+    ),
+  );
+  if (name == null || name.trim().length < 3 || !context.mounted) return;
+  try {
+    final league = await ref.read(fantasyLeagueRepositoryProvider).createLeague(
+          name: name.trim(),
+          mode: mode,
+          season: ref.read(fantasySeasonProvider),
+          pickTime: DraftPickTime.m1,
+        );
+    ref.invalidate(myFantasyLeaguesProvider);
+    if (!context.mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => FantasyLobbyScreen(league: league)));
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Liga konnte nicht erstellt werden: $e')));
+  }
+}
+
 Future<void> joinFantasyLeagueFlow(BuildContext context, WidgetRef ref) async {
   final controller = TextEditingController();
   final code = await showDialog<String>(

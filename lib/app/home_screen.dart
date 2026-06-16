@@ -26,10 +26,19 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
+        // Erstellen-Knopf oben links (mit Label, damit klar ist wofür):
+        // Tippspiel / Redraft / Dynasty zur Auswahl.
+        leadingWidth: 116,
+        leading: (configured && user != null)
+            ? TextButton.icon(
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Erstellen'),
+                onPressed: () => showCreateChooser(context, ref),
+              )
+            : null,
         title: const _MatchUpTitle(),
         actions: [
-          // Gemeinsamer Beitreten-Knopf für alle Spielmodi (Fantasy + Tippspiel),
-          // rechts in der Kopfzeile.
+          // Gemeinsamer Beitreten-Knopf für alle Spielmodi (Fantasy + Tippspiel).
           if (configured && user != null)
             TextButton.icon(
               icon: const Icon(Icons.group_add_outlined),
@@ -71,46 +80,7 @@ class HomeScreen extends ConsumerWidget {
   List<Widget> _fantasySection(BuildContext context, WidgetRef ref) {
     final leagues = ref.watch(myFantasyLeaguesProvider);
     return [
-      Row(
-        children: [
-          Icon(Icons.sports_soccer,
-              color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          Text('Fantasy',
-              style: Theme.of(context).textTheme.headlineSmall),
-        ],
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(4, 2, 4, 12),
-        child: Text(
-          'Drafte echte Spieler und sammle Punkte nach ihrer Leistung.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-      ),
-      Row(
-        children: [
-          Expanded(
-            child: _ModeHero(
-              icon: Icons.calendar_today,
-              title: 'Fantasy Liga',
-              subtitle: 'Eine Saison · Draft',
-              onTap: () => createFantasyLeagueFlow(context, FantasyMode.liga),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _ModeHero(
-              icon: Icons.auto_awesome,
-              title: 'Dynasty',
-              subtitle: 'Kader über Jahre · U20-Draft',
-              onTap: () =>
-                  createFantasyLeagueFlow(context, FantasyMode.dynasty),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8),
+      _sectionHeader(context, 'Fantasy'),
       leagues.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(20),
@@ -118,22 +88,15 @@ class HomeScreen extends ConsumerWidget {
         ),
         error: (e, _) =>
             _InfoCard('Fantasy-Ligen konnten nicht geladen werden: $e'),
-        data: (list) => Column(
-          children: [
-            if (list.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  'Noch keine Fantasy-Liga — erstelle oben eine Liga oder '
-                  'Dynasty.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
+        data: (list) => list.isEmpty
+            ? const _EmptyHint(
+                'Noch keine Fantasy-Liga — oben links mit + eine Redraft- '
+                'oder Dynasty-Liga erstellen.')
+            : Column(
+                children: [
+                  for (final league in list) _FantasyLeagueCard(league: league),
+                ],
               ),
-            for (final league in list) _FantasyLeagueCard(league: league),
-          ],
-        ),
       ),
     ];
   }
@@ -151,17 +114,15 @@ class HomeScreen extends ConsumerWidget {
           child: Center(child: CircularProgressIndicator()),
         ),
         error: (e, _) => _InfoCard('Tipprunden konnten nicht geladen werden: $e'),
-        data: (list) => Column(
-          children: [
-            for (final round in list) _TipRoundCard(round: round),
-          ],
-        ),
-      ),
-      const SizedBox(height: 4),
-      OutlinedButton.icon(
-        icon: const Icon(Icons.add),
-        label: const Text('Tipprunde erstellen'),
-        onPressed: () => createRoundFlow(context, ref),
+        data: (list) => list.isEmpty
+            ? const _EmptyHint(
+                'Noch keine Tipprunde — oben links mit + ein Tippspiel '
+                'erstellen.')
+            : Column(
+                children: [
+                  for (final round in list) _TipRoundCard(round: round),
+                ],
+              ),
       ),
     ];
   }
@@ -206,52 +167,21 @@ class _WelcomeHeader extends ConsumerWidget {
   }
 }
 
-class _ModeHero extends StatelessWidget {
-  const _ModeHero({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+/// Dezenter Hinweis, wenn ein Bereich noch leer ist.
+class _EmptyHint extends StatelessWidget {
+  const _EmptyHint(this.text);
 
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: EdgeInsets.zero,
-      color: scheme.primary.withValues(alpha: 0.12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: scheme.primary.withValues(alpha: 0.4)),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 14),
-          child: Column(
-            children: [
-              Icon(icon, size: 34, color: scheme.primary),
-              const SizedBox(height: 10),
-              Text(title,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text(subtitle,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant)),
-            ],
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -469,6 +399,85 @@ Future<void> createRoundFlow(BuildContext context, WidgetRef ref) async {
 /// Gemeinsamer Beitreten-Flow für alle Spielmodi: Ein Einladungscode kann zu
 /// einer Fantasy-Liga oder einer Tipprunde gehören. Wir probieren zuerst
 /// Fantasy, fällt der Code dort als unbekannt durch, dann das Tippspiel.
+/// Auswahl-Sheet für den Erstellen-Knopf: Tippspiel, Redraft oder Dynasty.
+void showCreateChooser(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Neu erstellen',
+                  style: Theme.of(ctx).textTheme.titleMedium),
+            ),
+          ),
+          _CreateOption(
+            icon: Icons.emoji_events_outlined,
+            title: 'Tippspiel',
+            subtitle: 'Ergebnisse tippen, Punkte sammeln',
+            onTap: () {
+              Navigator.of(ctx).pop();
+              createRoundFlow(context, ref);
+            },
+          ),
+          _CreateOption(
+            icon: Icons.calendar_today,
+            title: 'Redraft',
+            subtitle: 'Fantasy: eine Saison, danach neuer Draft',
+            onTap: () {
+              Navigator.of(ctx).pop();
+              createFantasyQuickFlow(context, ref, FantasyMode.liga);
+            },
+          ),
+          _CreateOption(
+            icon: Icons.auto_awesome,
+            title: 'Dynasty',
+            subtitle: 'Fantasy: Kader über Jahre, U20-Draft',
+            onTap: () {
+              Navigator.of(ctx).pop();
+              createFantasyQuickFlow(context, ref, FantasyMode.dynasty);
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+}
+
+class _CreateOption extends StatelessWidget {
+  const _CreateOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: scheme.primary.withValues(alpha: 0.15),
+        child: Icon(icon, color: scheme.primary),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(subtitle),
+      onTap: onTap,
+    );
+  }
+}
+
 Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
   final controller = TextEditingController();
   final code = await showDialog<String>(

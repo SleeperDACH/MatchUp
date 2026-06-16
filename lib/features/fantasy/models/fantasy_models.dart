@@ -16,7 +16,7 @@ enum FantasyMode {
   dynasty;
 
   String get label => switch (this) {
-        FantasyMode.liga => 'Liga',
+        FantasyMode.liga => 'Redraft',
         FantasyMode.dynasty => 'Dynasty',
       };
 
