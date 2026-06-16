@@ -402,12 +402,17 @@ class _InviteCodeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        leading: const Icon(Icons.key),
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        leading: const Icon(Icons.key, size: 18),
         title: Text(round.inviteCode,
-            style:
-                const TextStyle(fontFamily: 'monospace', letterSpacing: 1.5)),
+            style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 13,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w600)),
         subtitle: const Text('Einladungscode — antippen zum Kopieren'),
-        trailing: const Icon(Icons.copy, size: 18),
+        trailing: const Icon(Icons.copy, size: 16),
         onTap: () async {
           await Clipboard.setData(ClipboardData(text: round.inviteCode));
           if (context.mounted) {
