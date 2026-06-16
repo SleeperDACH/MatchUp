@@ -295,8 +295,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                             _error = null;
                           }),
                   child: Text(_registerMode
-                      ? 'Schon ein Konto? Anmelden'
-                      : 'Neu hier? Konto erstellen'),
+                      ? 'Du hast schon ein Konto? Anmelden'
+                      : 'Du hast noch kein Konto? Registrieren'),
                 ),
               ],
             ),

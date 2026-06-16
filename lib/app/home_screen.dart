@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../features/auth/providers.dart';
-import '../features/auth/ui/login_screen.dart';
 import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
@@ -53,8 +52,6 @@ class HomeScreen extends ConsumerWidget {
                 'Fantasy & Ligen brauchen eine Server-Verbindung. Starte die '
                 'App über ./run_dev.sh (siehe README).',
               )
-            else if (user == null)
-              const _LoginCard()
             else ...[
               const _WelcomeHeader(),
               const SizedBox(height: 16),
@@ -316,27 +313,6 @@ class _TipRoundCard extends ConsumerWidget {
           Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
         },
-      ),
-    );
-  }
-}
-
-class _LoginCard extends StatelessWidget {
-  const _LoginCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      color: scheme.primary.withValues(alpha: 0.12),
-      child: ListTile(
-        leading: Icon(Icons.login, color: scheme.primary),
-        title: const Text('Anmelden oder registrieren'),
-        subtitle: const Text(
-            'Fantasy-Ligen und Tipprunden mit Freunden spielen'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const LoginScreen())),
       ),
     );
   }

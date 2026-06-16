@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/main_shell.dart';
 import 'app/theme.dart';
 import 'core/config/app_config.dart';
+import 'features/auth/providers.dart';
+import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/update_password_screen.dart';
 
 /// Globaler Navigator-Schlüssel, damit der Recovery-Handler auch ohne
@@ -62,7 +64,20 @@ class FantasyApp extends StatelessWidget {
       title: 'Tippspiel',
       theme: buildAppTheme(),
       navigatorKey: navigatorKey,
-      home: const MainShell(),
+      home: const _RootGate(),
     );
+  }
+}
+
+/// Gate: ohne Anmeldung führt direkt der bildschirmfüllende Login-Screen,
+/// angemeldet die App-Shell. Im lokalen Modus (ohne Supabase) immer die Shell.
+class _RootGate extends ConsumerWidget {
+  const _RootGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!AppConfig.isSupabaseConfigured) return const MainShell();
+    final user = ref.watch(currentUserProvider);
+    return user == null ? const LoginScreen() : const MainShell();
   }
 }
