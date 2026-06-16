@@ -42,6 +42,20 @@ class FantasyLeagueRepository {
     return FantasyLeague.fromJson(row);
   }
 
+  /// Löscht eine Fantasy-Liga endgültig (nur Ersteller, per RLS). Abhängige
+  /// Daten (Mitglieder, Kader, Lineups, Waiver, Draft) gehen per Cascade mit.
+  Future<void> deleteLeague(String leagueId) =>
+      _client.from('fantasy_leagues').delete().eq('id', leagueId);
+
+  /// Ändert die Pickzeit nachträglich — nur vor dem Draft (Status `setup`).
+  /// RLS erlaubt das Update nur dem Ersteller.
+  Future<void> updatePickTime(String leagueId, DraftPickTime pickTime) =>
+      _client
+          .from('fantasy_leagues')
+          .update({'draft_pick_seconds': pickTime.seconds})
+          .eq('id', leagueId)
+          .eq('draft_status', 'setup');
+
   Future<FantasyLeague> joinLeague(String inviteCode) async {
     final leagueId = await _client.rpc<String>(
       'join_fantasy_league',

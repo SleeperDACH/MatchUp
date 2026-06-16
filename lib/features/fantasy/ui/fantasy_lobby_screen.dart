@@ -6,6 +6,7 @@ import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'draft_room_screen.dart';
+import 'fantasy_settings_screen.dart';
 import 'fantasy_table_screen.dart';
 import 'free_agency_screen.dart';
 import 'matchups_screen.dart';
@@ -43,6 +44,14 @@ class FantasyLobbyScreen extends ConsumerWidget {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Einstellungen',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => FantasyLeagueSettingsScreen(league: live))),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -52,7 +61,19 @@ class FantasyLobbyScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(12),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            _SettingsCard(league: league),
+            _SettingsCard(
+              league: live,
+              onPickTimeChanged:
+                  (live.draftStatus == DraftStatus.setup && isAdmin)
+                      ? (t) async {
+                          await ref
+                              .read(fantasyLeagueRepositoryProvider)
+                              .updatePickTime(live.id, t);
+                          ref.invalidate(draftLeagueProvider(live.id));
+                          ref.invalidate(myFantasyLeaguesProvider);
+                        }
+                      : null,
+            ),
             const SizedBox(height: 4),
             if (league.draftStatus == DraftStatus.setup)
               Card(
@@ -286,9 +307,12 @@ class _DisabledHint extends StatelessWidget {
 }
 
 class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.league});
+  const _SettingsCard({required this.league, this.onPickTimeChanged});
 
   final FantasyLeague league;
+
+  /// Wenn gesetzt (Ersteller, vor Draftstart), ist die Pickzeit änderbar.
+  final ValueChanged<DraftPickTime>? onPickTimeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -300,14 +324,51 @@ class _SettingsCard extends StatelessWidget {
             _row(context, Icons.auto_awesome, 'Modus',
                 '${league.mode.label} — ${league.mode.tagline}'),
             const Divider(height: 18),
-            _row(context, Icons.timer, 'Pickzeit',
-                '${league.pickTime.label} (${league.pickTime.isLive ? 'Live-Draft' : 'Slow-Draft'})'),
+            onPickTimeChanged == null
+                ? _row(context, Icons.timer, 'Pickzeit',
+                    '${league.pickTime.label} (${league.pickTime.isLive ? 'Live-Draft' : 'Slow-Draft'})')
+                : _pickTimeRow(context),
             const Divider(height: 18),
             _row(context, Icons.people, 'Kader',
                 '${league.roster.squadSize} Spieler · ${league.roster.starters} in der Startelf'),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _pickTimeRow(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(Icons.timer, size: 18, color: scheme.primary),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 70,
+          child: Text('Pickzeit',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: scheme.onSurfaceVariant)),
+        ),
+        Expanded(
+          child: DropdownButton<DraftPickTime>(
+            isExpanded: true,
+            value: league.pickTime,
+            underline: const SizedBox.shrink(),
+            items: [
+              for (final t in DraftPickTime.values)
+                DropdownMenuItem(
+                  value: t,
+                  child: Text('${t.label} · ${t.isLive ? 'Live' : 'Slow'}'),
+                ),
+            ],
+            onChanged: (t) {
+              if (t != null) onPickTimeChanged!(t);
+            },
+          ),
+        ),
+      ],
     );
   }
 
