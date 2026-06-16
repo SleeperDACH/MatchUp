@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -40,6 +42,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   _Filter? _filter;
   late DateTime _selectedDay;
   ScrollController? _dayController;
+  Timer? _refreshTimer;
 
   static const _dayItemExtent = 60.0; // Breite + Rand je Tageszelle
 
@@ -48,12 +51,38 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     super.initState();
     final now = DateTime.now();
     _selectedDay = DateTime(now.year, now.month, now.day);
+    // Eigener Takt (unabhängig von Rebuilds): lädt die Spieldaten neu,
+    // solange ein Spiel live ist bzw. zeitnah ansteht/gerade lief — sonst
+    // nur ein günstiger Check auf zwischengespeicherten Daten, kein Abruf.
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 45), (_) => _maybeRefresh());
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _dayController?.dispose();
     super.dispose();
+  }
+
+  void _maybeRefresh() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    var hasNear = false;
+    for (final l in Leagues.all) {
+      final fx = ref.read(leagueSeasonFixturesProvider(l.id)).valueOrNull;
+      if (fx == null) continue;
+      if (fx.any((f) =>
+          f.status != FixtureStatus.finished &&
+          f.kickoff.difference(now).abs() < const Duration(hours: 3))) {
+        hasNear = true;
+        break;
+      }
+    }
+    if (!hasNear) return;
+    for (final l in Leagues.all) {
+      ref.invalidate(leagueSeasonFixturesProvider(l.id));
+    }
   }
 
   @override
