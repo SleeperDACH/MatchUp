@@ -28,20 +28,36 @@ function currentSeason(now: Date): number {
 
 // deno-lint-ignore no-explicit-any
 function toFixtureRow(m: any, leagueId: string, season: number, now: Date) {
-  const finished = m.matchIsFinished === true;
   // deno-lint-ignore no-explicit-any
   const endResult = (m.matchResults ?? []).find((r: any) => r.resultTypeID === 2);
   const lastGoal = (m.goals ?? []).at(-1);
-  const started = new Date(m.matchDateTimeUTC) <= now;
+  const kickoff = new Date(m.matchDateTimeUTC);
+  const started = kickoff <= now;
+
+  // OpenLigaDB pflegt das „Endergebnis" (resultTypeID 2) teils schon während
+  // des Spiels (WM-Feed). Beendet nur: expliziter Haken ODER Endergebnis liegt
+  // vor UND Anstoß ist >3 h her. Sonst ist ein angepfiffenes Spiel LIVE.
+  // Muss zu OpenLigaDbProvider.parseMatch in der App passen.
+  const longOver = now.getTime() > kickoff.getTime() + 3 * 60 * 60 * 1000;
+  const finished = m.matchIsFinished === true || (!!endResult && longOver);
 
   let homeScore: number | null = null;
   let awayScore: number | null = null;
   if (finished && endResult) {
     homeScore = endResult.pointsTeam1;
     awayScore = endResult.pointsTeam2;
-  } else if (started && lastGoal) {
-    homeScore = lastGoal.scoreTeam1 ?? 0;
-    awayScore = lastGoal.scoreTeam2 ?? 0;
+  } else if (started) {
+    // Live-Stand: Torliste, sonst Endergebnis, sonst 0:0.
+    if (lastGoal) {
+      homeScore = lastGoal.scoreTeam1 ?? 0;
+      awayScore = lastGoal.scoreTeam2 ?? 0;
+    } else if (endResult) {
+      homeScore = endResult.pointsTeam1;
+      awayScore = endResult.pointsTeam2;
+    } else {
+      homeScore = 0;
+      awayScore = 0;
+    }
   }
 
   return {

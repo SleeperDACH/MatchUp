@@ -43,14 +43,15 @@ void main() {
       expect(fixture.kickoff.isUtc, isTrue);
     });
 
-    test('Endergebnis vorhanden, aber „beendet"-Haken fehlt -> finished', () {
-      // OpenLigaDB liefert manchmal das Endergebnis (resultTypeID 2),
-      // ohne matchIsFinished zu setzen — darf nicht ewig „live" bleiben.
+    test('Endergebnis vorhanden + Anstoß lange her, kein Haken -> finished', () {
+      // OpenLigaDB liefert manchmal das Endergebnis (resultTypeID 2), ohne
+      // matchIsFinished zu setzen — nach realistischer Spieldauer (>3 h) darf
+      // das Spiel nicht ewig „live" bleiben.
       final stuckLive = Map<String, dynamic>.from(finishedMatch)
         ..['matchIsFinished'] = false
         ..['matchDateTimeUTC'] = DateTime.now()
             .toUtc()
-            .subtract(const Duration(hours: 2))
+            .subtract(const Duration(hours: 4))
             .toIso8601String();
 
       final fixture =
@@ -59,6 +60,32 @@ void main() {
       expect(fixture.status, FixtureStatus.finished);
       expect(fixture.homeScore, 5);
       expect(fixture.awayScore, 1);
+    });
+
+    test('Endergebnis schon da, aber Spiel läuft noch -> live (WM-Feed)', () {
+      // OpenLigaDB pflegt das „Endergebnis" teils schon während des Spiels;
+      // kurz nach Anstoß ist es trotzdem LIVE (zählt live in der Tabelle).
+      final liveWithResult = Map<String, dynamic>.from(finishedMatch)
+        ..['matchIsFinished'] = false
+        ..['matchDateTimeUTC'] = DateTime.now()
+            .toUtc()
+            .subtract(const Duration(minutes: 60))
+            .toIso8601String()
+        ..['matchResults'] = [
+          {'resultTypeID': 1, 'pointsTeam1': 0, 'pointsTeam2': 0},
+          {'resultTypeID': 2, 'pointsTeam1': 1, 'pointsTeam2': 2},
+        ]
+        ..['goals'] = [
+          {'scoreTeam1': 1, 'scoreTeam2': 0},
+          {'scoreTeam1': 1, 'scoreTeam2': 2},
+        ];
+
+      final fixture = OpenLigaDbProvider.parseMatch(
+          liveWithResult, Leagues.bundesliga, 2025);
+
+      expect(fixture.status, FixtureStatus.live);
+      expect(fixture.homeScore, 1);
+      expect(fixture.awayScore, 2);
     });
 
     test('zukünftiges Spiel ohne Ergebnis ist scheduled', () {

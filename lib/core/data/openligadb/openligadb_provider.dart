@@ -124,20 +124,26 @@ class OpenLigaDbProvider implements SportsDataProvider {
   static Fixture parseMatch(
       Map<String, dynamic> m, LeagueInfo league, int season) {
     final kickoff = DateTime.parse(m['matchDateTimeUTC'] as String);
+    final nowUtc = DateTime.now().toUtc();
 
-    // Manche Feeds liefern ein Endergebnis (resultTypeID 2), ohne den
-    // „beendet"-Haken (matchIsFinished) zu setzen. Solche Spiele werten
-    // wir trotzdem als beendet, sonst hängen sie ewig auf „LIVE".
     final endResult = (m['matchResults'] as List<dynamic>? ?? const [])
         .cast<Map<String, dynamic>>()
         .where((r) => r['resultTypeID'] == 2)
         .firstOrNull;
-    final isFinished =
-        (m['matchIsFinished'] as bool? ?? false) || endResult != null;
+
+    // OpenLigaDB pflegt das „Endergebnis" (resultTypeID 2) teils schon
+    // WÄHREND des Spiels (v. a. WM-Feed). Als beendet werten wir daher nur:
+    // explizit beendet ODER ein Endergebnis liegt vor UND der Anstoß ist so
+    // lange her, dass das Spiel sicher vorbei ist (auch mit Verlängerung).
+    // Sonst ist ein angepfiffenes Spiel LIVE — sonst stünde ein laufendes
+    // Spiel fälschlich auf „beendet" (und zählte in der Tabelle nicht live).
+    final flaggedFinished = m['matchIsFinished'] as bool? ?? false;
+    final longOver = nowUtc.isAfter(kickoff.add(const Duration(hours: 3)));
+    final isFinished = flaggedFinished || (endResult != null && longOver);
 
     final status = isFinished
         ? FixtureStatus.finished
-        : (DateTime.now().toUtc().isAfter(kickoff)
+        : (nowUtc.isAfter(kickoff)
             ? FixtureStatus.live
             : FixtureStatus.scheduled);
 
@@ -145,9 +151,13 @@ class OpenLigaDbProvider implements SportsDataProvider {
     if (isFinished) {
       score = _finalScore(m);
     } else if (status == FixtureStatus.live) {
-      // Ein angepfiffenes Spiel steht mindestens 0:0 — ohne Tore liefert
-      // die Torliste nichts, sonst gäbe es keine Live-Wertung.
-      score = _liveScore(m) ?? (0, 0);
+      // Live-Stand: aus der Torliste; sonst aus dem (live gepflegten)
+      // Endergebnis; sonst 0:0 (ein angepfiffenes Spiel steht mind. 0:0).
+      score = _liveScore(m) ??
+          (endResult != null
+              ? (endResult['pointsTeam1'] as int,
+                  endResult['pointsTeam2'] as int)
+              : (0, 0));
     }
     // Geplante Spiele bleiben ohne Spielstand (null).
 
