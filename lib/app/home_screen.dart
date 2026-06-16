@@ -51,8 +51,7 @@ class HomeScreen extends ConsumerWidget {
             if (!configured)
               const _InfoCard(
                 'Fantasy & Ligen brauchen eine Server-Verbindung. Starte die '
-                'App über ./run_dev.sh (siehe README) — Schnelltippen geht '
-                'auch ohne.',
+                'App über ./run_dev.sh (siehe README).',
               )
             else if (user == null)
               const _LoginCard()
@@ -63,23 +62,6 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               ..._tippspielSection(context, ref),
             ],
-            const SizedBox(height: 24),
-            _sectionHeader(context, 'Ohne Konto'),
-            Card(
-              child: ListTile(
-                leading: Icon(Icons.phone_iphone,
-                    color: Theme.of(context).colorScheme.primary),
-                title: const Text('Schnelltippen'),
-                subtitle: const Text(
-                    'Tippspiel lokal auf diesem Gerät, ohne Konto'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  ref.read(activeRoundProvider.notifier).state = null;
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const LeagueScreen(round: null)));
-                },
-              ),
-            ),
           ],
         ),
       ),

@@ -26,12 +26,12 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   wertet laufende Spiele zusätzlich live mit — dieselbe Formel, anderer Zeitpunkt.
 - **Spielmodi sind Feature-Module** unter `lib/features/` (tippspiel, später
   fantasy) und teilen sich den Core.
-- **Navigation:** `HomeScreen` (Ligen wählen/erstellen/beitreten) →
-  `LeagueScreen`. In einer Server-Liga: Tabs **Tippen / Tabelle / Liga**
-  (`LeagueHubScreen` = ligainterner Chat + Regeln-Sheet). Im lokalen
-  Schnelltipp-Modus (ohne Supabase): **Tippen / Meine Punkte** (kein Chat,
-  keine Tabelle). Beim Einstieg in eine Liga `activateRound()` benutzen
-  (setzt Runde + Wettbewerb zusammen).
+- **Navigation:** App-Shell `MainShell` mit unterer Leiste **Home / Live /
+  Profil**. Eine Tipprunde öffnet `LeagueScreen` mit Tabs **Tippen / Tabelle
+  / Liga** (`LeagueHubScreen` = ligainterner Chat + Regeln-Sheet); der
+  Start-Tab ist die **Tabelle**. Beim Einstieg in eine Liga `activateRound()`
+  benutzen (setzt Runde + Wettbewerb zusammen). Tippen gibt es nur in einer
+  Liga (mit Konto) — den früheren lokalen Schnelltipp-Modus gibt es nicht mehr.
 - **Deadlines serverseitig.** Tipp-Abgabe nur vor Anstoß wird per RLS in
   Supabase erzwungen (Fixtures werden dafür serverseitig gespiegelt);
   die Client-Sperre ist nur UX.

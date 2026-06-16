@@ -11,7 +11,6 @@ import '../../core/data/openligadb/openligadb_provider.dart';
 import '../../core/data/sports_data_provider.dart';
 import '../../core/models/models.dart';
 import '../auth/providers.dart';
-import 'data/local_tip_store.dart';
 import 'data/tip_round_repository.dart';
 import 'data/tip_store.dart';
 import 'models/chat_message.dart';
@@ -275,8 +274,6 @@ class TipDraftNotifier extends StateNotifier<Map<String, TipDraftEntry>> {
 
 final tipsProvider =
     StateNotifierProvider<TipsNotifier, Map<String, Tip>>((ref) {
-  final league = ref.watch(selectedLeagueProvider);
-  final season = ref.watch(seasonProvider);
   final activeRound = ref.watch(activeRoundProvider);
   final user = ref.watch(currentUserProvider);
 
@@ -284,7 +281,8 @@ final tipsProvider =
     return TipsNotifier(
         SupabaseTipStore(Supabase.instance.client, activeRound.id));
   }
-  return TipsNotifier(LocalTipStore(league.id, season));
+  // Außerhalb einer Liga (kein aktiver Round/Login) gibt es kein Tippen.
+  return TipsNotifier(const EmptyTipStore());
 });
 
 class TipsNotifier extends StateNotifier<Map<String, Tip>> {

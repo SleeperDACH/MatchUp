@@ -2,13 +2,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/tip.dart';
 
-/// Ablage für die eigenen Tipps. Zwei Implementierungen:
-/// [LocalTipStore] (Gerät, ohne Konto) und [SupabaseTipStore]
-/// (Tipprunde auf dem Server, Deadline per RLS erzwungen).
+/// Ablage für die eigenen Tipps einer Tipprunde: [SupabaseTipStore]
+/// (Server, Deadline per RLS erzwungen). [EmptyTipStore] ist ein No-Op-
+/// Fallback, solange keine aktive Runde/kein Konto vorliegt.
 abstract class TipStore {
   Future<Map<String, Tip>> load();
   Future<void> save(Tip tip);
   Future<void> remove(String fixtureId);
+}
+
+/// Leerer Fallback-Store ohne Persistenz. Greift nur außerhalb einer
+/// aktiven Tipprunde (im Liga-Modus nicht erreichbar).
+class EmptyTipStore implements TipStore {
+  const EmptyTipStore();
+
+  @override
+  Future<Map<String, Tip>> load() async => const {};
+
+  @override
+  Future<void> save(Tip tip) async {}
+
+  @override
+  Future<void> remove(String fixtureId) async {}
 }
 
 /// Wird geworfen, wenn der Server einen Tipp ablehnt — praktisch immer,
