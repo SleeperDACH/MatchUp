@@ -230,6 +230,14 @@ final allRoundTipsProvider =
   return ref.watch(tipRoundRepositoryProvider).allTips(roundId);
 });
 
+/// Existenz abgegebener Tipps (`userId|fixtureId`) — für das Schloss-Symbol
+/// vor Anstoß (Gegner hat getippt), ohne den Tipp selbst zu zeigen.
+final tipPresenceProvider =
+    FutureProvider.family<Set<String>, String>((ref, roundId) {
+  ref.watch(currentUserProvider);
+  return ref.watch(tipRoundRepositoryProvider).tipPresence(roundId);
+});
+
 /// Punkteschema der aktiven Tipprunde, sonst Kicktipp-Standard.
 final scoringRulesProvider = Provider<ScoringRules>((ref) {
   return ref.watch(activeRoundProvider)?.scoring ?? ScoringRules.kicktippDefault;

@@ -135,6 +135,9 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     // wenn sie (noch) fehlen — dann gibt es schlicht keinen Bonus.
     final frozenOdds =
         ref.watch(frozenOddsProvider).valueOrNull ?? const <String, FrozenOdds>{};
+    // Wer hat (verborgen) getippt? Nur Existenz, für das Schloss-Symbol.
+    final tipPresence =
+        ref.watch(tipPresenceProvider(round.id)).valueOrNull ?? const <String>{};
 
     final totals = totalPointsByMember(
       members: members,
@@ -245,7 +248,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                                     tip: tipByMemberAndFixture[
                                         '${member.userId}|${fixture.id}'],
                                     fixture: fixture,
-                                    isOwn: member.userId == myUserId,
+                                    hasHiddenTip: tipPresence.contains(
+                                        '${member.userId}|${fixture.id}'),
                                     rules: rules,
                                     odds: frozenOdds[fixture.id],
                                   )),
@@ -278,6 +282,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
   void _refresh() {
     ref.invalidate(roundMembersProvider(widget.round.id));
     ref.invalidate(allRoundTipsProvider(widget.round.id));
+    ref.invalidate(tipPresenceProvider(widget.round.id));
     ref.invalidate(roundFixturesProvider(widget.matchday));
     ref.invalidate(seasonFixturesProvider);
   }
@@ -324,31 +329,32 @@ class _TipCell extends StatelessWidget {
   const _TipCell({
     required this.tip,
     required this.fixture,
-    required this.isOwn,
+    required this.hasHiddenTip,
     required this.rules,
     required this.odds,
   });
 
   final MemberTip? tip;
   final Fixture fixture;
-  final bool isOwn;
+
+  /// Es existiert ein (vor Anstoß verborgener) Tipp für diese Zelle.
+  final bool hasHiddenTip;
   final ScoringRules rules;
   final FrozenOdds? odds;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
+    // Kein sichtbarer Tipp: hat der Gegner (verborgen) getippt -> Schloss,
+    // sonst leere Zelle — wie bei Kicktipp.
     if (tip == null) {
-      // Vor Anstoß sind fremde Tipps verborgen (Schloss); danach heißt
-      // eine leere Zelle „kein Tipp abgegeben".
-      return Center(
-        child: fixture.hasStarted || isOwn
-            ? Text('–', style: TextStyle(color: scheme.onSurfaceVariant))
-            : Icon(Icons.lock_outline,
-                size: 14, color: scheme.onSurfaceVariant),
-      );
+      return hasHiddenTip
+          ? Center(
+              child: Icon(Icons.lock_outline,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant))
+          : const SizedBox.shrink();
     }
+    final scheme = Theme.of(context).colorScheme;
 
     final text = Text('${tip!.homeGoals}:${tip!.awayGoals}');
     if (!fixture.hasScore) return Center(child: text);

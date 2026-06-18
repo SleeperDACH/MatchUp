@@ -71,6 +71,18 @@ class TipRoundRepository {
     return rows.map(MemberTip.fromJson).toList();
   }
 
+  /// Existenz-Auskunft: Set aus `userId|fixtureId` aller bereits abgegebenen
+  /// Tipps der Runde — ohne die Tipp-Werte. Für das Schloss-Symbol vor
+  /// Anstoß (Gegner hat getippt). Serverseitig nur für Mitglieder.
+  Future<Set<String>> tipPresence(String roundId) async {
+    final rows = await _client
+        .rpc('round_tip_presence', params: {'p_round_id': roundId}) as List;
+    return {
+      for (final r in rows)
+        '${(r as Map)['user_id']}|${r['fixture_id']}',
+    };
+  }
+
   /// Zum Anstoß eingefrorene Quoten je Fixture (für den Quoten-Bonus).
   /// Öffentlich lesbar; der Schlüssel ist die globale Fixture-ID, daher
   /// genügt ein Map über alle gespeicherten Spiele.
