@@ -7,13 +7,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/main_shell.dart';
 import 'app/theme.dart';
 import 'core/config/app_config.dart';
+import 'features/auth/password_recovery.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/update_password_screen.dart';
-
-/// Globaler Navigator-Schlüssel, damit der Recovery-Handler auch ohne
-/// BuildContext (aus dem main-Listener) navigieren kann.
-final navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,30 +26,18 @@ Future<void> main() async {
       publishableKey: AppConfig.supabaseAnonKey,
     );
 
-    // Recovery-Link: Supabase löst den Code schon beim Start ein und feuert
-    // passwordRecovery. Der Listener muss deshalb so früh wie möglich (vor
-    // runApp) hängen, sonst verpufft das Event auf dem Broadcast-Stream.
+    // Recovery-Link: Supabase löst den `?code=` schon beim Start ein und
+    // feuert passwordRecovery. Statt einen Screen zu pushen (fragil ggü.
+    // Rebuilds/Auto-Navigation) setzen wir nur ein Flag — den Rest macht
+    // das Gate. Listener vor runApp, damit das Event nicht verpufft.
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.passwordRecovery) {
-        _openPasswordReset();
+        passwordRecoveryMode.value = true;
       }
     });
   }
 
   runApp(const ProviderScope(child: FantasyApp()));
-}
-
-/// Öffnet den „Neues Passwort"-Screen. Feuert das Event, bevor der Navigator
-/// steht, versuchen wir es nach dem nächsten Frame erneut.
-void _openPasswordReset() {
-  final nav = navigatorKey.currentState;
-  if (nav == null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openPasswordReset());
-    return;
-  }
-  nav.push(
-    MaterialPageRoute(builder: (_) => const UpdatePasswordScreen()),
-  );
 }
 
 class FantasyApp extends StatelessWidget {
@@ -63,21 +48,28 @@ class FantasyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Tippspiel',
       theme: buildAppTheme(),
-      navigatorKey: navigatorKey,
       home: const _RootGate(),
     );
   }
 }
 
-/// Gate: ohne Anmeldung führt direkt der bildschirmfüllende Login-Screen,
-/// angemeldet die App-Shell. Im lokalen Modus (ohne Supabase) immer die Shell.
+/// Gate: per Recovery-Link der „Neues Passwort"-Screen; sonst ohne Anmeldung
+/// der bildschirmfüllende Login, angemeldet die App-Shell. Im lokalen Modus
+/// (ohne Supabase) immer die Shell.
 class _RootGate extends ConsumerWidget {
   const _RootGate();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!AppConfig.isSupabaseConfigured) return const MainShell();
-    final user = ref.watch(currentUserProvider);
-    return user == null ? const LoginScreen() : const MainShell();
+    final user =
+        AppConfig.isSupabaseConfigured ? ref.watch(currentUserProvider) : null;
+    return ValueListenableBuilder<bool>(
+      valueListenable: passwordRecoveryMode,
+      builder: (context, recovery, _) {
+        if (recovery) return const UpdatePasswordScreen();
+        if (!AppConfig.isSupabaseConfigured) return const MainShell();
+        return user == null ? const LoginScreen() : const MainShell();
+      },
+    );
   }
 }

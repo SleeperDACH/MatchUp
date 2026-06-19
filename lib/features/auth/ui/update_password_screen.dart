@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth_repository.dart';
+import '../password_recovery.dart';
 import '../providers.dart';
 
 /// Wird nach dem Klick auf den Reset-Link geöffnet (Supabase hat den
@@ -42,7 +43,8 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Passwort geändert — du bist jetzt angemeldet.')));
-      Navigator.of(context).pop();
+      // Recovery beenden -> das Gate zeigt jetzt die App (man ist angemeldet).
+      passwordRecoveryMode.value = false;
     } on AuthFailure catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
