@@ -52,6 +52,30 @@ void main() {
     expect(totals['n'], 0, reason: 'Neue Mitglieder erscheinen mit 0 Punkten');
   });
 
+  test('ranksByPoints: Plätze mit Gleichstand (1, 2, 2, 4)', () {
+    const a = RoundMember(userId: 'a', username: 'anna');
+    const b = RoundMember(userId: 'b', username: 'ben');
+    const c = RoundMember(userId: 'c', username: 'cara');
+    const d = RoundMember(userId: 'd', username: 'dan');
+    final ranks = ranksByPoints(
+      const [a, b, c, d],
+      {'a': 10, 'b': 7, 'c': 7, 'd': 3},
+    );
+    expect(ranks['a'], 1);
+    expect(ranks['b'], 2);
+    expect(ranks['c'], 2, reason: 'Gleiche Punkte -> gleicher Platz');
+    expect(ranks['d'], 4, reason: 'Nach Gleichstand wird der Platz übersprungen');
+  });
+
+  test('ranksByPoints: Bewegung ggü. vorherigem Stand', () {
+    const a = RoundMember(userId: 'a', username: 'anna');
+    const b = RoundMember(userId: 'b', username: 'ben');
+    final before = ranksByPoints(const [a, b], {'a': 3, 'b': 5}); // b vorn
+    final after = ranksByPoints(const [a, b], {'a': 9, 'b': 5}); // a überholt
+    expect(before['a']! - after['a']!, 1, reason: 'anna klettert von 2 auf 1');
+    expect(before['b']! - after['b']!, -1, reason: 'ben fällt von 1 auf 2');
+  });
+
   test('totalPointsByMember: laufende Spiele zählen mit Live-Stand mit', () {
     final live = Fixture(
       id: 'fLive',

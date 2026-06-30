@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../models/fantasy_models.dart';
 
 /// Leistungsdaten eines Spielers an einem Spieltag — die Form, die ein
@@ -77,9 +79,10 @@ class Lineup {
 }
 
 /// Beste Startelf aus den gedrafteten Spielern nach Punkten dieses
-/// Spieltags (Formation aus [RosterConfig]). Approximiert das
-/// Kickbase-Prinzip „deine elf Besten zählen", solange es noch keine
-/// manuelle Aufstellung gibt. Bench-Spieler zählen nicht.
+/// Spieltags. Mit **flexibler Formation** (Min/Max je Position aus
+/// [RosterConfig]) wird die punktbeste *gültige* Formation gewählt — das
+/// Kickbase-Prinzip „deine elf Besten in einer erlaubten Aufstellung".
+/// Bench-Spieler zählen nicht.
 Lineup bestEleven(Map<FantasyPlayer, int> points, RosterConfig roster) {
   final byPos = <PlayerPosition, List<MapEntry<FantasyPlayer, int>>>{};
   points.forEach((player, pts) =>
@@ -87,19 +90,68 @@ Lineup bestEleven(Map<FantasyPlayer, int> points, RosterConfig roster) {
   for (final list in byPos.values) {
     list.sort((a, b) => b.value.compareTo(a.value));
   }
-  final slots = {
+
+  List<MapEntry<FantasyPlayer, int>> list(PlayerPosition p) =>
+      byPos[p] ?? const [];
+  int sumTop(PlayerPosition p, int n) {
+    final l = list(p);
+    var s = 0;
+    for (var i = 0; i < n && i < l.length; i++) {
+      s += l[i].value;
+    }
+    return s;
+  }
+
+  // Beste gültige Formation suchen: Torwart fix, Feldspieler in ihrer Spanne,
+  // Summe = starters, und genug Spieler je Position vorhanden.
+  final outfield = roster.starters - roster.gk;
+  var bestTotal = -1, bestDef = 0, bestMid = 0, bestFwd = 0;
+  var found = false;
+  for (var d = roster.defMin; d <= roster.defMax; d++) {
+    for (var m = roster.midMin; m <= roster.midMax; m++) {
+      final f = outfield - d - m;
+      if (f < roster.fwdMin || f > roster.fwdMax) continue;
+      if (d > list(PlayerPosition.def).length ||
+          m > list(PlayerPosition.mid).length ||
+          f > list(PlayerPosition.fwd).length ||
+          roster.gk > list(PlayerPosition.gk).length) {
+        continue;
+      }
+      final t = sumTop(PlayerPosition.gk, roster.gk) +
+          sumTop(PlayerPosition.def, d) +
+          sumTop(PlayerPosition.mid, m) +
+          sumTop(PlayerPosition.fwd, f);
+      if (t > bestTotal) {
+        bestTotal = t;
+        bestDef = d;
+        bestMid = m;
+        bestFwd = f;
+        found = true;
+      }
+    }
+  }
+
+  if (!found) {
+    // Degenerierter Kader (zu wenige auf einer Position für eine gültige
+    // Formation): best effort innerhalb der Maxima füllen.
+    bestDef = min(list(PlayerPosition.def).length, roster.defMax);
+    bestMid = min(list(PlayerPosition.mid).length, roster.midMax);
+    bestFwd = min(list(PlayerPosition.fwd).length, roster.fwdMax);
+  }
+
+  final counts = {
     PlayerPosition.gk: roster.gk,
-    PlayerPosition.def: roster.def,
-    PlayerPosition.mid: roster.mid,
-    PlayerPosition.fwd: roster.fwd,
+    PlayerPosition.def: bestDef,
+    PlayerPosition.mid: bestMid,
+    PlayerPosition.fwd: bestFwd,
   };
   final starters = <String>{};
   var total = 0;
-  slots.forEach((pos, n) {
-    final list = byPos[pos] ?? const [];
-    for (var i = 0; i < n && i < list.length; i++) {
-      starters.add(list[i].key.id);
-      total += list[i].value;
+  counts.forEach((pos, n) {
+    final l = list(pos);
+    for (var i = 0; i < n && i < l.length; i++) {
+      starters.add(l[i].key.id);
+      total += l[i].value;
     }
   });
   return Lineup(starterIds: starters, total: total);

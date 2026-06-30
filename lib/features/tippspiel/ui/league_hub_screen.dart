@@ -475,6 +475,18 @@ class _RulesSheet extends StatelessWidget {
                         'Favorit).'),
                     const _Bullet('Die beiden Stufen addieren sich nicht – pro '
                         'Spiel zählt der höhere der beiden Boni.'),
+                    if (league.fixedSeason != null) ...[
+                      const SizedBox(height: 24),
+                      Text('K.-o.-Runde', style: textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      const _Bullet('In der K.-o.-Runde zählt das Ergebnis '
+                          'nach Verlängerung (120 Minuten).'),
+                      const _Bullet('Ein Elfmeterschießen wird nicht '
+                          'mitgewertet: Maßgeblich ist der Spielstand am Ende '
+                          'der Verlängerung. Beispiel: 1:1 nach Verlängerung, '
+                          'das Team gewinnt im Elfmeterschießen – gewertet wird '
+                          'der Tipp gegen 1:1.'),
+                    ],
                     const SizedBox(height: 24),
                     Text('Tippabgabe', style: textTheme.titleMedium),
                     const SizedBox(height: 8),

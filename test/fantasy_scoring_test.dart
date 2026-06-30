@@ -78,17 +78,55 @@ void main() {
     });
   });
 
-  group('bestEleven', () {
-    test('wählt je Position die besten und summiert nur die Startelf', () {
-      final players = {
-        _p('gk1', 'GK1', PlayerPosition.gk, 'C'): 5,
-        _p('fwd1', 'FWD1', PlayerPosition.fwd, 'C'): 9,
-        _p('fwd2', 'FWD2', PlayerPosition.fwd, 'C'): 7,
-        _p('fwd3', 'FWD3', PlayerPosition.fwd, 'C'): 3, // Bank (nur 2 ST-Slots)
+  group('bestEleven (flexible Formation)', () {
+    // Voller Kader, sodass eine gültige Formation (FPL: ABW 3–5, MF 2–5,
+    // ST 1–3, Summe 11) gebildet werden kann.
+    Map<FantasyPlayer, int> squad(Map<String, int> defs, Map<String, int> mids,
+        Map<String, int> fwds, int gkPts) {
+      final m = <FantasyPlayer, int>{
+        _p('gk1', 'GK1', PlayerPosition.gk, 'C'): gkPts,
       };
+      defs.forEach((id, p) => m[_p(id, id, PlayerPosition.def, 'C')] = p);
+      mids.forEach((id, p) => m[_p(id, id, PlayerPosition.mid, 'C')] = p);
+      fwds.forEach((id, p) => m[_p(id, id, PlayerPosition.fwd, 'C')] = p);
+      return m;
+    }
+
+    int posCount(Lineup l, Map<FantasyPlayer, int> all, PlayerPosition pos) =>
+        all.keys
+            .where((p) => l.starterIds.contains(p.id) && p.position == pos)
+            .length;
+
+    test('wählt die punktbeste gültige Formation (hier 3-4-3)', () {
+      final players = squad(
+        {'d1': 10, 'd2': 9, 'd3': 8, 'd4': 1, 'd5': 1},
+        {'m1': 10, 'm2': 9, 'm3': 8, 'm4': 7, 'm5': 1},
+        {'f1': 10, 'f2': 9, 'f3': 8},
+        5,
+      );
       final lineup = bestEleven(players, const RosterConfig());
-      expect(lineup.starterIds.contains('fwd3'), isFalse);
-      expect(lineup.total, 5 + 9 + 7);
+      expect(lineup.starterIds.length, 11);
+      expect(posCount(lineup, players, PlayerPosition.gk), 1);
+      expect(posCount(lineup, players, PlayerPosition.def), 3);
+      expect(posCount(lineup, players, PlayerPosition.mid), 4);
+      expect(posCount(lineup, players, PlayerPosition.fwd), 3);
+      // 3-4-3: gk5 + (10+9+8) + (10+9+8+7) + (10+9+8)
+      expect(lineup.total, 5 + 27 + 34 + 27);
+    });
+
+    test('respektiert die Untergrenze (mind. 3 ABW, auch wenn schwächer)', () {
+      // Viele starke MF, schwache ABW: trotzdem müssen 3 ABW ran.
+      final players = squad(
+        {'d1': 2, 'd2': 2, 'd3': 2},
+        {'m1': 9, 'm2': 9, 'm3': 9, 'm4': 9, 'm5': 9},
+        {'f1': 9, 'f2': 9},
+        5,
+      );
+      final lineup = bestEleven(players, const RosterConfig());
+      expect(posCount(lineup, players, PlayerPosition.def), 3);
+      expect(posCount(lineup, players, PlayerPosition.mid), 5);
+      expect(posCount(lineup, players, PlayerPosition.fwd), 2);
+      expect(lineup.starterIds.length, 11);
     });
   });
 
@@ -119,10 +157,12 @@ void main() {
     });
 
     test('effectiveLineup: ohne Wahl automatisch beste Elf', () {
+      // Degenerierter Kader (nur TW + 3 ST) -> keine gültige Formation
+      // möglich, Fallback füllt best effort bis zum Positions-Maximum (ST 3).
       final auto = effectiveLineup(points, const RosterConfig(), null);
       final autoEmpty = effectiveLineup(points, const RosterConfig(), const {});
-      expect(auto.total, 5 + 9 + 7); // fwd3 ist Bank
-      expect(autoEmpty.total, 5 + 9 + 7);
+      expect(auto.total, 5 + 9 + 7 + 3);
+      expect(autoEmpty.total, 5 + 9 + 7 + 3);
     });
   });
 

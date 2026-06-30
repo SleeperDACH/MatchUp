@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../models/match_detail.dart';
 import '../../models/models.dart';
 import '../sports_data_provider.dart';
 
@@ -103,6 +104,95 @@ class OpenLigaDbProvider implements SportsDataProvider {
     ];
   }
 
+  /// Detaildaten eines einzelnen Spiels (Ergebnis, Halbzeit, Torschützen,
+  /// Spielort) für die Spiel-Detailansicht.
+  Future<MatchDetail> getMatchDetail(int matchId) async {
+    final json = await _getJson('/getmatchdata/$matchId');
+    return parseMatchDetail(json as Map<String, dynamic>);
+  }
+
+  /// Public für Tests. Parst die Detaildaten eines Spiels.
+  static MatchDetail parseMatchDetail(Map<String, dynamic> m) {
+    final kickoff = DateTime.parse(m['matchDateTimeUTC'] as String);
+    final nowUtc = DateTime.now().toUtc();
+    final results = (m['matchResults'] as List<dynamic>? ?? const [])
+        .cast<Map<String, dynamic>>();
+
+    (int, int)? byType(int type) {
+      final r = results.where((e) => e['resultTypeID'] == type).firstOrNull;
+      return r == null
+          ? null
+          : (r['pointsTeam1'] as int, r['pointsTeam2'] as int);
+    }
+
+    final regular = byType(2);
+    final extra = byType(4);
+    final endResult = regular != null;
+
+    final flaggedFinished = m['matchIsFinished'] as bool? ?? false;
+    final longOver = nowUtc.isAfter(kickoff.add(const Duration(hours: 3)));
+    final isFinished = flaggedFinished || (endResult && longOver);
+    final started = nowUtc.isAfter(kickoff);
+    final status = isFinished
+        ? FixtureStatus.finished
+        : (started ? FixtureStatus.live : FixtureStatus.scheduled);
+
+    // Tore in Spielreihenfolge; die treffende Seite ergibt sich daraus,
+    // welcher Spielstand gestiegen ist (robust auch bei Eigentoren).
+    final goalsRaw =
+        (m['goals'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+    final goals = <MatchGoal>[];
+    var prevH = 0, prevA = 0;
+    for (final g in goalsRaw) {
+      final h = g['scoreTeam1'] as int? ?? prevH;
+      final a = g['scoreTeam2'] as int? ?? prevA;
+      goals.add(MatchGoal(
+        minute: g['matchMinute'] as int?,
+        scorer: (g['goalGetterName'] as String?)?.trim().isNotEmpty == true
+            ? g['goalGetterName'] as String
+            : 'Tor',
+        scoreHome: h,
+        scoreAway: a,
+        forHomeTeam: h > prevH,
+        penalty: g['isPenalty'] as bool? ?? false,
+        ownGoal: g['isOwnGoal'] as bool? ?? false,
+      ));
+      prevH = h;
+      prevA = a;
+    }
+
+    // Maßgebliches Ergebnis: nach Verlängerung > regulär; live aus der
+    // Torliste (sonst 0:0), vor Anstoß null.
+    (int, int)? score;
+    if (isFinished) {
+      score = extra ?? regular ?? (goals.isNotEmpty
+          ? (goals.last.scoreHome, goals.last.scoreAway)
+          : null);
+    } else if (status == FixtureStatus.live) {
+      score = goals.isNotEmpty
+          ? (goals.last.scoreHome, goals.last.scoreAway)
+          : (0, 0);
+    }
+
+    final loc = m['location'] as Map<String, dynamic>?;
+
+    return MatchDetail(
+      id: 'openligadb:${m['matchID']}',
+      home: _parseTeam(m['team1'] as Map<String, dynamic>),
+      away: _parseTeam(m['team2'] as Map<String, dynamic>),
+      kickoff: kickoff,
+      status: status,
+      homeScore: score?.$1,
+      awayScore: score?.$2,
+      halfTime: byType(1),
+      afterExtraTime: extra,
+      penalties: byType(5),
+      goals: goals,
+      stadium: loc?['locationStadium'] as String?,
+      city: loc?['locationCity'] as String?,
+    );
+  }
+
   Future<dynamic> _getJson(String path) async {
     final response = await _client.get(Uri.parse('$_baseUrl$path'));
     if (response.statusCode != 200) {
@@ -193,12 +283,21 @@ class OpenLigaDbProvider implements SportsDataProvider {
     );
   }
 
-  /// Endergebnis: resultTypeID 2.
+  /// Maßgebliches Ergebnis für die Wertung.
+  ///
+  /// K.-o.-Spiele werden **nach Verlängerung (120 Min)** gewertet; das
+  /// Elfmeterschießen zählt nicht zum Ergebnis. Deshalb:
+  /// `resultTypeID 4` (nach Verlängerung) hat Vorrang, sonst `resultTypeID 2`
+  /// („Endergebnis"/reguläre Spielzeit). `resultTypeID 5` (Elfmeterschießen)
+  /// wird nie verwendet — der OpenLigaDB-Feed schreibt es bei K.-o.-Spielen
+  /// teils sogar fälschlich ins „Endergebnis" (Typ 2), daher der Vorrang von
+  /// Typ 4 und die Filterung von Typ 5 im Fallback.
   static (int, int)? _finalScore(Map<String, dynamic> m) {
     final results = (m['matchResults'] as List<dynamic>? ?? const [])
         .cast<Map<String, dynamic>>();
-    final end = results.where((r) => r['resultTypeID'] == 2).firstOrNull ??
-        results.lastOrNull;
+    final end = results.where((r) => r['resultTypeID'] == 4).firstOrNull ??
+        results.where((r) => r['resultTypeID'] == 2).firstOrNull ??
+        results.where((r) => r['resultTypeID'] != 5).lastOrNull;
     if (end == null) return null;
     return (end['pointsTeam1'] as int, end['pointsTeam2'] as int);
   }

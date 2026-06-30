@@ -153,6 +153,30 @@ class _TableBodyState extends ConsumerState<_TableBody> {
           : a.username.toLowerCase().compareTo(b.username.toLowerCase());
     });
 
+    // Platzierung + Bewegung ggü. dem Stand vor dem gewählten Spieltag.
+    final currentRanks = ranksByPoints(members, totals);
+    final priorFixtures = [
+      for (final f in seasonFixtures)
+        if (f.round < matchday) f
+    ];
+    final hasPrior = priorFixtures.any((f) => f.hasScore);
+    final priorRanks = hasPrior
+        ? ranksByPoints(
+            members,
+            totalPointsByMember(
+              members: members,
+              tips: tips,
+              fixtures: priorFixtures,
+              rules: rules,
+              frozenOdds: frozenOdds,
+            ),
+          )
+        : const <String, int>{};
+
+    Color? rowColor(String userId) => userId == myUserId
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.07)
+        : null;
+
     final tipByMemberAndFixture = {
       for (final t in tips) '${t.userId}|${t.fixtureId}': t,
     };
@@ -196,17 +220,17 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                     rows: [
                       for (final member in members)
                         DataRow(
+                          color: WidgetStatePropertyAll(
+                              rowColor(member.userId)),
                           cells: [
-                            DataCell(SizedBox(
-                              width: 84,
-                              child: Text(
-                                member.username,
-                                overflow: TextOverflow.ellipsis,
-                                style: member.userId == myUserId
-                                    ? const TextStyle(
-                                        fontWeight: FontWeight.bold)
-                                    : null,
-                              ),
+                            DataCell(_NameCell(
+                              rank: currentRanks[member.userId] ?? 0,
+                              movement: hasPrior
+                                  ? (priorRanks[member.userId] ?? 0) -
+                                      (currentRanks[member.userId] ?? 0)
+                                  : null,
+                              username: member.username,
+                              isMe: member.userId == myUserId,
                             )),
                             DataCell(Text(
                               '${totals[member.userId] ?? 0}',
@@ -242,6 +266,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                         rows: [
                           for (final member in members)
                             DataRow(
+                              color: WidgetStatePropertyAll(
+                                  rowColor(member.userId)),
                               cells: [
                                 for (final fixture in fixtures)
                                   DataCell(_TipCell(
@@ -285,6 +311,72 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     ref.invalidate(tipPresenceProvider(widget.round.id));
     ref.invalidate(roundFixturesProvider(widget.matchday));
     ref.invalidate(seasonFixturesProvider);
+  }
+}
+
+/// Namens-Zelle der Tabelle: Platzierung, Bewegungspfeil (ggü. dem Stand vor
+/// dem Spieltag) und Spielername. Platz 1 wird golden hervorgehoben.
+class _NameCell extends StatelessWidget {
+  const _NameCell({
+    required this.rank,
+    required this.movement,
+    required this.username,
+    required this.isMe,
+  });
+
+  final int rank;
+
+  /// >0 = aufgestiegen, <0 = abgestiegen, 0 = gleich, null = kein Vergleich.
+  final int? movement;
+  final String username;
+  final bool isMe;
+
+  static const _up = Color(0xFF2ECC71);
+  static const _down = Color(0xFFF23030);
+  static const _gold = Color(0xFFFFC83D);
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 104,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            child: Text(
+              '$rank',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: rank == 1 ? _gold : scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          SizedBox(width: 14, child: _arrow()),
+          Expanded(
+            child: Text(
+              username,
+              overflow: TextOverflow.ellipsis,
+              style: isMe ? const TextStyle(fontWeight: FontWeight.bold) : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _arrow() {
+    final m = movement;
+    if (m == null) return const SizedBox.shrink();
+    if (m > 0) {
+      return const Icon(Icons.arrow_drop_up, color: _up, size: 20);
+    }
+    if (m < 0) {
+      return const Icon(Icons.arrow_drop_down, color: _down, size: 20);
+    }
+    return const Icon(Icons.remove, color: Colors.grey, size: 10);
   }
 }
 

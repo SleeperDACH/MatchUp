@@ -7,9 +7,10 @@ import '../../../core/util/country_flags.dart';
 /// Rundes Team-Badge: Länderflagge (über flagcdn, einheitlich) bzw.
 /// Vereinslogo; Fallback sind die Initialen.
 class TeamBadge extends StatelessWidget {
-  const TeamBadge({super.key, required this.team});
+  const TeamBadge({super.key, required this.team, this.size = _size});
 
   final TeamRef team;
+  final double size;
 
   static const _size = 28.0;
 
@@ -22,7 +23,7 @@ class TeamBadge extends StatelessWidget {
         Image.network(
           flagUrl,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _InitialsBadge(team: team),
+          errorBuilder: (_, _, _) => _InitialsBadge(team: team, size: size),
         ),
       );
     }
@@ -39,7 +40,7 @@ class TeamBadge extends StatelessWidget {
           : Image.network(
               url,
               fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => _InitialsBadge(team: team),
+              errorBuilder: (_, _, _) => _InitialsBadge(team: team, size: size),
             );
       return _circle(
         Container(
@@ -50,22 +51,23 @@ class TeamBadge extends StatelessWidget {
       );
     }
 
-    return _InitialsBadge(team: team);
+    return _InitialsBadge(team: team, size: size);
   }
 
   Widget _circle(Widget child) {
     return SizedBox(
-      width: _size,
-      height: _size,
+      width: size,
+      height: size,
       child: ClipOval(child: child),
     );
   }
 }
 
 class _InitialsBadge extends StatelessWidget {
-  const _InitialsBadge({required this.team});
+  const _InitialsBadge({required this.team, this.size = TeamBadge._size});
 
   final TeamRef team;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +76,10 @@ class _InitialsBadge extends StatelessWidget {
         ? team.shortName.substring(0, 3).toUpperCase()
         : team.shortName.toUpperCase();
     return CircleAvatar(
-      radius: TeamBadge._size / 2,
+      radius: size / 2,
       backgroundColor: scheme.primary.withValues(alpha: 0.15),
-      child:
-          Text(initials, style: TextStyle(fontSize: 9, color: scheme.primary)),
+      child: Text(initials,
+          style: TextStyle(fontSize: size * 0.32, color: scheme.primary)),
     );
   }
 }

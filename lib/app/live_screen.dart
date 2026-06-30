@@ -9,7 +9,9 @@ import '../features/favorites/favorites.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'league_overview_screen.dart';
+import 'match_detail_screen.dart';
 import 'theme.dart';
+import 'widgets/pulsing_dot.dart';
 
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -178,6 +180,15 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         if (_sameDay(it.fixture.kickoff.toLocal(), _selectedDay)) it
     ]..sort((a, b) => a.fixture.kickoff.compareTo(b.fixture.kickoff));
 
+    final liveItems = [
+      for (final it in list)
+        if (it.fixture.status == FixtureStatus.live) it
+    ];
+    final others = [
+      for (final it in list)
+        if (it.fixture.status != FixtureStatus.live) it
+    ];
+
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
       child: list.isEmpty
@@ -185,7 +196,18 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
               physics: const AlwaysScrollableScrollPhysics(),
-              children: [for (final it in list) _MatchTile(item: it)],
+              children: [
+                if (liveItems.isNotEmpty) const _LiveHeader(),
+                for (final it in liveItems) _MatchTile(item: it),
+                if (liveItems.isNotEmpty && others.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
+                    child: Text('Weitere Spiele',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  ),
+                for (final it in others) _MatchTile(item: it),
+              ],
             ),
     );
   }
@@ -414,44 +436,80 @@ class _MatchTile extends StatelessWidget {
     final live = f.status == FixtureStatus.live;
     final finished = f.status == FixtureStatus.finished;
 
+    final scoreOrTime = SizedBox(
+      width: 70,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (f.hasScore)
+            // Score wechselt animiert (Tor-Effekt): bei Live-Spielen skaliert
+            // der neue Stand kurz ein, sobald ein Tor fällt.
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              transitionBuilder: (child, anim) => ScaleTransition(
+                  scale: Tween(begin: 0.6, end: 1.0).animate(anim),
+                  child: FadeTransition(opacity: anim, child: child)),
+              child: Text('${f.homeScore}:${f.awayScore}',
+                  key: ValueKey('${f.homeScore}:${f.awayScore}'),
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: live ? MatchUpColors.red : scheme.onSurface)),
+            )
+          else
+            Text(DateFormat('HH:mm').format(f.kickoff.toLocal()),
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          if (live)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                PulsingDot(size: 7),
+                SizedBox(width: 4),
+                Text('LIVE',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: MatchUpColors.red)),
+              ],
+            )
+          else
+            Text(finished ? 'beendet' : 'Anstoß',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant)),
+        ],
+      ),
+    );
+
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        child: Row(
-          children: [
-            _LeagueTag(leagueId: item.league.id),
-            const SizedBox(width: 6),
-            Expanded(child: _TeamSide(team: f.home)),
-            SizedBox(
-              width: 70,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (f.hasScore)
-                    Text('${f.homeScore}:${f.awayScore}',
-                        style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: live ? MatchUpColors.red : scheme.onSurface))
-                  else
-                    Text(DateFormat('HH:mm').format(f.kickoff.toLocal()),
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  if (live)
-                    const Text('● LIVE',
-                        style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: MatchUpColors.red))
-                  else
-                    Text(finished ? 'beendet' : 'Anstoß',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant)),
-                ],
+      // Live-Spiele heben sich mit rotem Akzent (Tönung + Streifen) ab.
+      color: live ? MatchUpColors.red.withValues(alpha: 0.08) : null,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => MatchDetailScreen(fixtureId: f.id))),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (live) Container(width: 4, color: MatchUpColors.red),
+              Expanded(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  child: Row(
+                    children: [
+                      _LeagueTag(leagueId: item.league.id),
+                      const SizedBox(width: 6),
+                      Expanded(child: _TeamSide(team: f.home)),
+                      scoreOrTime,
+                      Expanded(child: _TeamSide(team: f.away, alignEnd: true)),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            Expanded(child: _TeamSide(team: f.away, alignEnd: true)),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -504,6 +562,27 @@ class _TeamSide extends StatelessWidget {
       children: alignEnd
           ? [label, const SizedBox(width: 8), badge]
           : [badge, const SizedBox(width: 8), label],
+    );
+  }
+}
+
+/// Abschnittskopf „Jetzt live" über den laufenden Spielen.
+class _LiveHeader extends StatelessWidget {
+  const _LiveHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
+      child: Row(
+        children: [
+          const PulsingDot(),
+          const SizedBox(width: 6),
+          Text('Jetzt live',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold, color: MatchUpColors.red)),
+        ],
+      ),
     );
   }
 }

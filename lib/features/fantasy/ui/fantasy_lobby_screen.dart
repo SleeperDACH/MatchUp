@@ -9,6 +9,7 @@ import 'draft_room_screen.dart';
 import 'fantasy_settings_screen.dart';
 import 'fantasy_table_screen.dart';
 import 'free_agency_screen.dart';
+import 'lineup_screen.dart';
 import 'matchups_screen.dart';
 import 'my_team_screen.dart';
 import 'player_pool_screen.dart';
@@ -147,6 +148,16 @@ class FantasyLobbyScreen extends ConsumerWidget {
               ),
             ),
             if (live.draftStatus != DraftStatus.setup) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.sports_soccer),
+                  label: const Text('Aufstellung'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => LineupScreen(league: live))),
+                ),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [

@@ -5,6 +5,8 @@ import '../core/config/app_config.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/favorites/ui/favorites_settings_screen.dart';
+import '../features/tippspiel/logic/tip_stats.dart';
+import '../features/tippspiel/providers.dart';
 
 /// Profil-Tab: Konto-Übersicht und -Aktionen (Abmelden, App-Info).
 class ProfileScreen extends ConsumerWidget {
@@ -75,6 +77,7 @@ class _Profile extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 28),
+        const _StatsSection(),
         _SectionLabel('Einstellungen'),
         Card(
           child: ListTile(
@@ -103,6 +106,164 @@ class _Profile extends ConsumerWidget {
             title: Text('MatchUp'),
             subtitle: Text('Tippspiel & Fantasy mit Freunden'),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Profil-Dashboard: aggregierte Tipp-Bilanz über alle Tipprunden.
+class _StatsSection extends ConsumerWidget {
+  const _StatsSection();
+
+  static const _exactColor = Color(0xFF2ECC71);
+  static const _diffColor = Color(0xFF4FC3A1);
+  static const _tendColor = Color(0xFFFFC83D);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(myTipStatsProvider);
+    final stats = statsAsync.valueOrNull;
+    // Nichts anzeigen, solange keine Mitgliedschaft/Bilanz vorliegt.
+    if (stats == null || stats.rounds == 0) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    String quote(int n) =>
+        stats.scored == 0 ? '–' : '${(n * 100 / stats.scored).round()}%';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel('Deine Tipp-Bilanz'),
+        Row(
+          children: [
+            _StatTile(
+                label: 'Exakt',
+                value: quote(stats.exact),
+                accent: _exactColor),
+            const SizedBox(width: 10),
+            _StatTile(
+                label: 'Tordifferenz',
+                value: quote(stats.goalDiff),
+                accent: _diffColor),
+            const SizedBox(width: 10),
+            _StatTile(
+                label: 'Tendenz',
+                value: quote(stats.tendency),
+                accent: _tendColor),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (stats.scored > 0) ...[
+          _BreakdownBar(stats: stats),
+          const SizedBox(height: 8),
+          Text(
+            '${stats.points} Punkte · '
+            '${stats.rounds} Tipprunde${stats.rounds == 1 ? '' : 'n'} · '
+            '${stats.scored} gewertete Tipps',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant),
+          ),
+        ] else
+          Text(
+            '${stats.rounds} Tipprunde${stats.rounds == 1 ? '' : 'n'} · '
+            'noch keine gewerteten Tipps',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant),
+          ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+}
+
+/// Eine Kennzahl-Kachel im Dashboard.
+class _StatTile extends StatelessWidget {
+  const _StatTile(
+      {required this.label, required this.value, required this.accent});
+
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            Text(value,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold, color: accent)),
+            const SizedBox(height: 2),
+            Text(label,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Gestapelter Balken: Anteil exakt / Tordifferenz / Tendenz / daneben.
+class _BreakdownBar extends StatelessWidget {
+  const _BreakdownBar({required this.stats});
+
+  final TipStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final segments = <(int, Color, String)>[
+      (stats.exact, _StatsSection._exactColor, 'Exakt'),
+      (stats.goalDiff, _StatsSection._diffColor, 'Tordiff.'),
+      (stats.tendency, _StatsSection._tendColor, 'Tendenz'),
+      (stats.missed, scheme.surfaceContainerHighest, 'Daneben'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            height: 12,
+            child: Row(
+              children: [
+                for (final (count, color, _) in segments)
+                  if (count > 0)
+                    Expanded(flex: count, child: ColoredBox(color: color)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 14,
+          runSpacing: 4,
+          children: [
+            for (final (count, color, label) in segments)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                        color: color, borderRadius: BorderRadius.circular(3)),
+                  ),
+                  const SizedBox(width: 5),
+                  Text('$label $count',
+                      style: Theme.of(context).textTheme.labelSmall),
+                ],
+              ),
+          ],
         ),
       ],
     );

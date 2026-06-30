@@ -160,13 +160,31 @@ class RosterConfig {
     this.mid = 4,
     this.fwd = 2,
     this.bench = 5,
+    this.defMin = 3,
+    this.defMax = 5,
+    this.midMin = 2,
+    this.midMax = 5,
+    this.fwdMin = 1,
+    this.fwdMax = 3,
   });
 
+  /// Kader-Zusammensetzung (Anzahl der gedrafteten Spieler je „Basis"-Slot
+  /// plus Bank). Steuert die Draft-Runden und die Startelf-Größe.
   final int gk;
   final int def;
   final int mid;
   final int fwd;
   final int bench;
+
+  /// Flexible Formation: erlaubte Spanne je Position in der Startelf.
+  /// Torwart ist immer genau [gk] (= 1). Die Summe ergibt stets [starters]
+  /// (= 11). Defaults im FPL-Stil: ABW 3–5, MF 2–5, ST 1–3.
+  final int defMin;
+  final int defMax;
+  final int midMin;
+  final int midMax;
+  final int fwdMin;
+  final int fwdMax;
 
   static const standard = RosterConfig();
 
@@ -174,12 +192,73 @@ class RosterConfig {
   int get squadSize => gk + def + mid + fwd + bench;
   int get starters => gk + def + mid + fwd;
 
+  int minFor(PlayerPosition pos) => switch (pos) {
+        PlayerPosition.gk => gk,
+        PlayerPosition.def => defMin,
+        PlayerPosition.mid => midMin,
+        PlayerPosition.fwd => fwdMin,
+      };
+
+  int maxFor(PlayerPosition pos) => switch (pos) {
+        PlayerPosition.gk => gk,
+        PlayerPosition.def => defMax,
+        PlayerPosition.mid => midMax,
+        PlayerPosition.fwd => fwdMax,
+      };
+
+  /// Prüft, ob eine Positionsverteilung eine gültige Startelf-Formation ist:
+  /// Torwart exakt, Feldspieler in ihrer Spanne, Summe = [starters].
+  bool isValidFormation({
+    required int gkCount,
+    required int defCount,
+    required int midCount,
+    required int fwdCount,
+  }) =>
+      gkCount == gk &&
+      defCount >= defMin &&
+      defCount <= defMax &&
+      midCount >= midMin &&
+      midCount <= midMax &&
+      fwdCount >= fwdMin &&
+      fwdCount <= fwdMax &&
+      gkCount + defCount + midCount + fwdCount == starters;
+
+  /// Kurzschreibweise der Feldspieler-Formation, z. B. „4-4-2".
+  String formationLabel({
+    required int defCount,
+    required int midCount,
+    required int fwdCount,
+  }) =>
+      '$defCount-$midCount-$fwdCount';
+
+  /// Alle gültigen Feldspieler-Formationen `(def, mid, fwd)` — Torwart ist
+  /// immer [gk], die Summe ergibt [starters]. Sortiert nach ABW, dann MF.
+  List<(int def, int mid, int fwd)> validFormations() {
+    final out = <(int, int, int)>[];
+    final outfield = starters - gk;
+    for (var d = defMin; d <= defMax; d++) {
+      for (var m = midMin; m <= midMax; m++) {
+        final f = outfield - d - m;
+        if (f < fwdMin || f > fwdMax) continue;
+        out.add((d, m, f));
+      }
+    }
+    out.sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
+    return out;
+  }
+
   factory RosterConfig.fromJson(Map<String, dynamic> json) => RosterConfig(
         gk: json['gk'] as int? ?? 1,
         def: json['def'] as int? ?? 4,
         mid: json['mid'] as int? ?? 4,
         fwd: json['fwd'] as int? ?? 2,
         bench: json['bench'] as int? ?? 5,
+        defMin: json['defMin'] as int? ?? 3,
+        defMax: json['defMax'] as int? ?? 5,
+        midMin: json['midMin'] as int? ?? 2,
+        midMax: json['midMax'] as int? ?? 5,
+        fwdMin: json['fwdMin'] as int? ?? 1,
+        fwdMax: json['fwdMax'] as int? ?? 3,
       );
 
   Map<String, dynamic> toJson() => {
@@ -188,6 +267,12 @@ class RosterConfig {
         'mid': mid,
         'fwd': fwd,
         'bench': bench,
+        'defMin': defMin,
+        'defMax': defMax,
+        'midMin': midMin,
+        'midMax': midMax,
+        'fwdMin': fwdMin,
+        'fwdMax': fwdMax,
       };
 }
 

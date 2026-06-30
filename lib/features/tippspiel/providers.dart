@@ -9,10 +9,12 @@ import '../../core/data/odds/odds_matching.dart';
 import '../../core/data/odds/odds_provider.dart';
 import '../../core/data/openligadb/openligadb_provider.dart';
 import '../../core/data/sports_data_provider.dart';
+import '../../core/models/match_detail.dart';
 import '../../core/models/models.dart';
 import '../auth/providers.dart';
 import 'data/tip_round_repository.dart';
 import 'data/tip_store.dart';
+import 'logic/tip_stats.dart';
 import 'models/chat_message.dart';
 import 'models/tip.dart';
 import 'models/tip_round.dart';
@@ -75,6 +77,19 @@ final seasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
 
 /// Saison-Fixtures einer beliebigen Liga (per ID) — für ligenübergreifende
 /// Ansichten wie den Live-Tab, unabhängig vom aktuell gewählten Wettbewerb.
+/// Detaildaten eines einzelnen Spiels (Ergebnis, Torschützen, Spielort) —
+/// für die Spiel-Detailansicht. Family-Key ist die Fixture-ID
+/// (z. B. `openligadb:80140`).
+final matchDetailProvider =
+    FutureProvider.family<MatchDetail, String>((ref, fixtureId) {
+  final raw = fixtureId.split(':').last;
+  final id = int.tryParse(raw);
+  if (id == null) {
+    throw ArgumentError('Ungültige Fixture-ID: $fixtureId');
+  }
+  return OpenLigaDbProvider().getMatchDetail(id);
+});
+
 final leagueSeasonFixturesProvider =
     FutureProvider.family<List<Fixture>, String>((ref, leagueId) {
   final league = Leagues.byId(leagueId);
@@ -154,6 +169,36 @@ final myRoundsProvider = FutureProvider<List<TipRound>>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return Future.value(const <TipRound>[]);
   return ref.watch(tipRoundRepositoryProvider).myRounds();
+});
+
+/// Eigene Tipp-Bilanz über alle Tipprunden — für das Profil-Dashboard.
+final myTipStatsProvider = FutureProvider<TipStats>((ref) async {
+  final myId = ref.watch(currentUserProvider)?.id;
+  if (myId == null) return TipStats.empty;
+  final rounds = await ref.watch(myRoundsProvider.future);
+  if (rounds.isEmpty) return TipStats.empty;
+
+  final frozen = await ref.watch(frozenOddsProvider.future);
+  final tipsByRound = <String, List<MemberTip>>{};
+  final fixturesById = <String, Fixture>{};
+  final loadedLeagues = <String>{};
+  for (final r in rounds) {
+    tipsByRound[r.id] = await ref.watch(allRoundTipsProvider(r.id).future);
+    if (loadedLeagues.add(r.leagueId)) {
+      final fixtures =
+          await ref.watch(leagueSeasonFixturesProvider(r.leagueId).future);
+      for (final f in fixtures) {
+        fixturesById[f.id] = f;
+      }
+    }
+  }
+  return computeTipStats(
+    userId: myId,
+    rounds: rounds,
+    tipsByRound: tipsByRound,
+    fixturesById: fixturesById,
+    frozenOdds: frozen,
+  );
 });
 
 /// Die Tipprunde, in der gerade getippt wird; `null` = lokaler Modus.

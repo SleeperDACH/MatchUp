@@ -48,3 +48,26 @@ Map<String, int> totalPointsByMember({
   }
   return totals;
 }
+
+/// Platzierung (1-basiert) je Mitglied aus den Punkten. Gleiche Punktzahl =
+/// gleicher Platz (Wettkampf-Ranking, z. B. 1, 2, 2, 4). Grundlage für die
+/// Bewegungspfeile in der Tabelle (Vergleich Platz jetzt ↔ vorher).
+Map<String, int> ranksByPoints(
+  List<RoundMember> members,
+  Map<String, int> totals,
+) {
+  final sorted = [...members]..sort((a, b) {
+      final byPoints = (totals[b.userId] ?? 0) - (totals[a.userId] ?? 0);
+      return byPoints != 0
+          ? byPoints
+          : a.username.toLowerCase().compareTo(b.username.toLowerCase());
+    });
+  final ranks = <String, int>{};
+  for (var i = 0; i < sorted.length; i++) {
+    final id = sorted[i].userId;
+    final samePointsAsPrev = i > 0 &&
+        (totals[id] ?? 0) == (totals[sorted[i - 1].userId] ?? 0);
+    ranks[id] = samePointsAsPrev ? ranks[sorted[i - 1].userId]! : i + 1;
+  }
+  return ranks;
+}

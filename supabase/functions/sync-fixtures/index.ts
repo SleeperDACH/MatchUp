@@ -29,7 +29,13 @@ function currentSeason(now: Date): number {
 // deno-lint-ignore no-explicit-any
 function toFixtureRow(m: any, leagueId: string, season: number, now: Date) {
   // deno-lint-ignore no-explicit-any
-  const endResult = (m.matchResults ?? []).find((r: any) => r.resultTypeID === 2);
+  const results = (m.matchResults ?? []) as any[];
+  const endResult = results.find((r) => r.resultTypeID === 2);
+  // Maßgebliches Ergebnis für die Wertung: K.-o.-Spiele zählen nach
+  // Verlängerung (120 Min), Elfmeterschießen (Typ 5) nicht. Daher hat
+  // „nach Verlängerung" (Typ 4) Vorrang vor dem „Endergebnis" (Typ 2);
+  // Typ 5 wird nie genommen. Muss zu OpenLigaDbProvider._finalScore passen.
+  const finalResult = results.find((r) => r.resultTypeID === 4) ?? endResult;
   const lastGoal = (m.goals ?? []).at(-1);
   const kickoff = new Date(m.matchDateTimeUTC);
   const started = kickoff <= now;
@@ -43,9 +49,9 @@ function toFixtureRow(m: any, leagueId: string, season: number, now: Date) {
 
   let homeScore: number | null = null;
   let awayScore: number | null = null;
-  if (finished && endResult) {
-    homeScore = endResult.pointsTeam1;
-    awayScore = endResult.pointsTeam2;
+  if (finished && finalResult) {
+    homeScore = finalResult.pointsTeam1;
+    awayScore = finalResult.pointsTeam2;
   } else if (started) {
     // Live-Stand: Torliste, sonst Endergebnis, sonst 0:0.
     if (lastGoal) {

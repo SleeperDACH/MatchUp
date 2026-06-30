@@ -97,6 +97,59 @@ void main() {
       expect(r.starters, 11);
     });
 
+    test('RosterConfig: flexible Formation (FPL-Grenzen)', () {
+      const r = RosterConfig();
+      // gültige Formationen
+      expect(
+          r.isValidFormation(gkCount: 1, defCount: 4, midCount: 4, fwdCount: 2),
+          isTrue);
+      expect(
+          r.isValidFormation(gkCount: 1, defCount: 3, midCount: 4, fwdCount: 3),
+          isTrue);
+      expect(
+          r.isValidFormation(gkCount: 1, defCount: 5, midCount: 4, fwdCount: 1),
+          isTrue);
+      // zu wenige Abwehrspieler
+      expect(
+          r.isValidFormation(gkCount: 1, defCount: 2, midCount: 5, fwdCount: 3),
+          isFalse);
+      // zu viele Stürmer
+      expect(
+          r.isValidFormation(gkCount: 1, defCount: 3, midCount: 3, fwdCount: 4),
+          isFalse);
+      // falsche Gesamtzahl
+      expect(
+          r.isValidFormation(gkCount: 1, defCount: 4, midCount: 4, fwdCount: 1),
+          isFalse);
+      // zwei Torhüter
+      expect(
+          r.isValidFormation(gkCount: 2, defCount: 4, midCount: 3, fwdCount: 2),
+          isFalse);
+    });
+
+    test('RosterConfig: validFormations zählt nur gültige 11er auf', () {
+      const r = RosterConfig();
+      final fms = r.validFormations();
+      for (final (d, m, f) in fms) {
+        expect(1 + d + m + f, 11);
+        expect(d, inInclusiveRange(3, 5));
+        expect(m, inInclusiveRange(2, 5));
+        expect(f, inInclusiveRange(1, 3));
+      }
+      expect(fms, contains((4, 4, 2)));
+      expect(fms, contains((3, 5, 2)));
+      expect(fms, contains((4, 3, 3)));
+      expect(fms, isNot(contains((2, 5, 3))));
+    });
+
+    test('RosterConfig: Formations-Grenzen über JSON round-trip', () {
+      final r = RosterConfig.fromJson(const RosterConfig().toJson());
+      expect(r.defMin, 3);
+      expect(r.defMax, 5);
+      expect(r.midMin, 2);
+      expect(r.fwdMax, 3);
+    });
+
     test('FantasyMode fromId Fallback', () {
       expect(FantasyMode.fromId('dynasty'), FantasyMode.dynasty);
       expect(FantasyMode.fromId('quatsch'), FantasyMode.liga);

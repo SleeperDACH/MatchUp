@@ -160,6 +160,51 @@ void main() {
       expect(fixture.hasScore, isFalse);
     });
 
+    test('K.-o.: Verlängerung (Typ 4) wird gewertet, nicht reguläre Zeit', () {
+      // OpenLigaDB schreibt bei K.-o.-Spielen das Ergebnis nach Verlängerung
+      // in Typ 4; Typ 2 ist dort unzuverlässig. Gewertet wird Typ 4.
+      final koMatch = Map<String, dynamic>.from(finishedMatch)
+        ..['matchResults'] = [
+          {'resultTypeID': 1, 'pointsTeam1': 0, 'pointsTeam2': 0},
+          {'resultTypeID': 2, 'pointsTeam1': 1, 'pointsTeam2': 1},
+          {'resultTypeID': 4, 'pointsTeam1': 2, 'pointsTeam2': 1},
+        ];
+
+      final fixture =
+          OpenLigaDbProvider.parseMatch(koMatch, Leagues.wm2026, 2026);
+
+      expect(fixture.status, FixtureStatus.finished);
+      expect(fixture.homeScore, 2);
+      expect(fixture.awayScore, 1);
+    });
+
+    test('K.-o.: Elfmeterschießen (Typ 5) zählt nicht', () {
+      // 0:0 nach Verlängerung, Sieg im Elfmeterschießen (3:0). Gewertet wird
+      // 0:0 (Typ 4), nicht das Elfmeter-Ergebnis (Typ 5) — auch wenn der Feed
+      // Typ 5 fälschlich ins Endergebnis (Typ 2) schreibt.
+      final penaltyMatch = Map<String, dynamic>.from(finishedMatch)
+        ..['matchResults'] = [
+          {'resultTypeID': 1, 'pointsTeam1': 0, 'pointsTeam2': 0},
+          {'resultTypeID': 2, 'pointsTeam1': 3, 'pointsTeam2': 0},
+          {'resultTypeID': 5, 'pointsTeam1': 3, 'pointsTeam2': 0},
+          {'resultTypeID': 4, 'pointsTeam1': 0, 'pointsTeam2': 0},
+        ];
+
+      final fixture =
+          OpenLigaDbProvider.parseMatch(penaltyMatch, Leagues.wm2026, 2026);
+
+      expect(fixture.status, FixtureStatus.finished);
+      expect(fixture.homeScore, 0);
+      expect(fixture.awayScore, 0);
+    });
+
+    test('Gruppenspiel ohne Verlängerung: weiter Endergebnis (Typ 2)', () {
+      final fixture = OpenLigaDbProvider.parseMatch(
+          finishedMatch, Leagues.bundesliga, 2025);
+      expect(fixture.homeScore, 5);
+      expect(fixture.awayScore, 1);
+    });
+
     test('leerer shortName fällt auf teamName zurück', () {
       final match = Map<String, dynamic>.from(finishedMatch)
         ..['team1'] = {
@@ -173,6 +218,86 @@ void main() {
           OpenLigaDbProvider.parseMatch(match, Leagues.bundesliga, 2025);
 
       expect(fixture.home.shortName, 'FC Bayern München');
+    });
+  });
+
+  group('OpenLigaDbProvider.parseMatchDetail', () {
+    Map<String, dynamic> base(List<Map<String, dynamic>> results,
+            List<Map<String, dynamic>> goals) =>
+        {
+          'matchID': 80140,
+          'matchDateTimeUTC': '2026-06-22T17:00:00Z',
+          'matchIsFinished': true,
+          'team1': {'teamId': 1, 'teamName': 'Argentinien', 'shortName': 'ARG'},
+          'team2': {'teamId': 2, 'teamName': 'Österreich', 'shortName': 'AUT'},
+          'matchResults': results,
+          'goals': goals,
+          'location': {
+            'locationStadium': 'AT&T Stadium',
+            'locationCity': 'Dallas',
+          },
+        };
+
+    test('Ergebnis, Halbzeit, Torschützen-Seite und Flags', () {
+      final d = OpenLigaDbProvider.parseMatchDetail(base(
+        [
+          {'resultTypeID': 1, 'pointsTeam1': 1, 'pointsTeam2': 0},
+          {'resultTypeID': 2, 'pointsTeam1': 2, 'pointsTeam2': 1},
+        ],
+        [
+          {
+            'matchMinute': 38,
+            'goalGetterName': 'Messi',
+            'scoreTeam1': 1,
+            'scoreTeam2': 0,
+          },
+          {
+            'matchMinute': 60,
+            'goalGetterName': 'Gegner',
+            'scoreTeam1': 1,
+            'scoreTeam2': 1,
+            'isPenalty': true,
+          },
+          {
+            'matchMinute': 90,
+            'goalGetterName': 'Eigentor',
+            'scoreTeam1': 2,
+            'scoreTeam2': 1,
+            'isOwnGoal': true,
+          },
+        ],
+      ));
+
+      expect(d.status, FixtureStatus.finished);
+      expect(d.homeScore, 2);
+      expect(d.awayScore, 1);
+      expect(d.halfTime, (1, 0));
+      expect(d.stadium, 'AT&T Stadium');
+      expect(d.city, 'Dallas');
+      expect(d.goals.length, 3);
+      expect(d.goals[0].scorer, 'Messi');
+      expect(d.goals[0].forHomeTeam, isTrue);
+      expect(d.goals[1].forHomeTeam, isFalse, reason: 'Auswärts erhöht');
+      expect(d.goals[1].penalty, isTrue);
+      expect(d.goals[2].forHomeTeam, isTrue);
+      expect(d.goals[2].ownGoal, isTrue);
+    });
+
+    test('K.-o.: nach Verlängerung maßgeblich, Elfmeter als Zusatz', () {
+      final d = OpenLigaDbProvider.parseMatchDetail(base(
+        [
+          {'resultTypeID': 1, 'pointsTeam1': 0, 'pointsTeam2': 0},
+          {'resultTypeID': 2, 'pointsTeam1': 1, 'pointsTeam2': 1},
+          {'resultTypeID': 4, 'pointsTeam1': 1, 'pointsTeam2': 1},
+          {'resultTypeID': 5, 'pointsTeam1': 4, 'pointsTeam2': 3},
+        ],
+        const [],
+      ));
+
+      expect(d.homeScore, 1);
+      expect(d.awayScore, 1);
+      expect(d.afterExtraTime, (1, 1));
+      expect(d.penalties, (4, 3));
     });
   });
 }
