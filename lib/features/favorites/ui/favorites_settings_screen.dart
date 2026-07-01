@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
+import '../../../app/widgets/competition_emblem.dart';
 import '../../tippspiel/ui/team_badge.dart';
 import '../favorites.dart';
 
@@ -30,7 +31,7 @@ class FavoritesSettingsScreen extends ConsumerWidget {
                         f.type == FavoriteType.league && f.key == league.id),
                     onChanged: (_) => notifier.toggle(Favorite.league(league)),
                     title: Text(league.name),
-                    secondary: const Icon(Icons.emoji_events_outlined),
+                    secondary: CompetitionEmblem(leagueId: league.id, size: 34),
                   ),
               ],
             ),

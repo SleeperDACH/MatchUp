@@ -12,6 +12,7 @@ import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import 'league_screen.dart';
 import 'theme.dart';
+import 'widgets/competition_emblem.dart';
 
 /// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
 /// Tippspiel folgt als zweiter Bereich darunter.
@@ -226,13 +227,9 @@ class _TipRoundCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final league = Leagues.byId(round.leagueId);
-    final scheme = Theme.of(context).colorScheme;
     return Card(
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: scheme.primary.withValues(alpha: 0.15),
-          child: Icon(Icons.emoji_events, color: scheme.primary, size: 20),
-        ),
+        leading: CompetitionEmblem(leagueId: league.id),
         title: Text(round.name),
         subtitle: Text(league.fixedSeason != null
             ? league.name

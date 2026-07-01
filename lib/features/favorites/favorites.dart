@@ -143,11 +143,22 @@ final leagueTeamsProvider =
   return ref.watch(leagueSeasonFixturesProvider(leagueId)).whenData((fixtures) {
     final byId = <String, TeamRef>{};
     for (final f in fixtures) {
-      byId[f.home.id] = f.home;
-      byId[f.away.id] = f.away;
+      if (!isPlaceholderTeam(f.home)) byId[f.home.id] = f.home;
+      if (!isPlaceholderTeam(f.away)) byId[f.away.id] = f.away;
     }
     final teams = byId.values.toList()
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return teams;
   });
 });
+
+/// Platzhalter-„Teams" der K.-o.-Runde sind keine echten Mannschaften und
+/// gehören nicht in die Favoritenauswahl: Sieger-Paarungen („ARG/CPV") oder
+/// Gruppen-Platzierungen („2H", „1A"). Echte Team-/Ländernamen enthalten
+/// kein „/" und beginnen nicht mit einer Ziffer.
+bool isPlaceholderTeam(TeamRef team) {
+  final name = team.name.trim();
+  return name.contains('/') ||
+      team.shortName.contains('/') ||
+      RegExp(r'^\d').hasMatch(name);
+}
