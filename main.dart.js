@@ -116509,7 +116509,7 @@ ap(){var s,r,q=this
 q.aN()
 s=q.a.d
 r=s.CW
-q.w=B.e.cr(r==null?4:r,2,8)
+q.w=B.e.cr(r==null?4:r,4,8)
 r=s.cx
 q.x=r==null?1:r
 r=s.cy
@@ -116573,16 +116573,16 @@ g=A.he(j,j,j,j,j,B.Pn)
 r=t.p
 s=A.b([],r)
 if(!h)s.push(new A.EX(k.a.d,i,j))
+s.push(new A.ab9(o,j))
+s.push(B.nb)
 i=k.w
 n=(i&1)===1?"Ungerade \u2014 Platz 1 bekommt ein Freilos":j
-i=h?new A.zE(i,2,8,new A.aYl(k),j):new A.nr(A.i(i),j)
+i=h?new A.zE(i,4,8,new A.aYl(k),j):new A.nr(A.i(i),j)
 if(h)m=new A.CV(B.a4G,A.cY([k.x],t.S),new A.aYm(k),!1,j,t.WE)
 else m=new A.nr(k.x===2?"2 Wochen":"1 Woche",j)
 l=k.y
 l=h?new A.zE(l,5,10,new A.aYn(k),j):new A.nr(A.i(l),j)
 s.push(new A.uI(A.b([new A.nt(B.lb,"Playoff-Teams",n,i,j),B.h2,new A.nt(B.a_B,"Partie-Dauer",j,m,j),B.h2,new A.nt(B.wX,"Trade-Deadline","Spieltage vor Playoff-Start (5\u201310)",l,j)],r),j))
-s.push(B.nb)
-s.push(new A.ab9(o,j))
 if(h){i=k.z
 B.b.H(s,A.b([B.eJ,new A.Fx(i,o.gcd()?k.gyF():j,j)],r))}return A.h_(g,A.fh(s,j,B.cz,j,j,B.M,!1),j,j)}}
 A.aYg.prototype={
