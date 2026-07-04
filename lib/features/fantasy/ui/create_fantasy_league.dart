@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/fantasy_models.dart';
 import '../providers.dart';
-import 'fantasy_lobby_screen.dart';
+import 'fantasy_league_screen.dart';
 
 /// Erstellen einer Fantasy-Liga: Modus (Liga/Dynasty), Name und Pickzeit.
 class CreateFantasyLeagueScreen extends ConsumerStatefulWidget {
@@ -50,7 +50,7 @@ class _CreateFantasyLeagueScreenState
       ref.invalidate(myFantasyLeaguesProvider);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (_) => FantasyLobbyScreen(league: league)));
+          builder: (_) => FantasyLeagueScreen(league: league)));
     } catch (e) {
       setState(() => _error = 'Liga konnte nicht erstellt werden: $e');
     } finally {
@@ -244,7 +244,7 @@ Future<void> createFantasyQuickFlow(
     ref.invalidate(myFantasyLeaguesProvider);
     if (!context.mounted) return;
     Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => FantasyLobbyScreen(league: league)));
+        builder: (_) => FantasyLeagueScreen(league: league)));
   } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -286,7 +286,7 @@ Future<void> joinFantasyLeagueFlow(BuildContext context, WidgetRef ref) async {
     ref.invalidate(myFantasyLeaguesProvider);
     if (!context.mounted) return;
     Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => FantasyLobbyScreen(league: league)));
+        builder: (_) => FantasyLeagueScreen(league: league)));
   } catch (e) {
     if (!context.mounted) return;
     final msg = e.toString();

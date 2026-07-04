@@ -8,19 +8,35 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'matchday_stepper.dart';
 
-/// Head-to-Head-Matchups: pro Spieltag 1-gegen-1-Paarungen plus die
-/// Saison-Bilanztabelle (Siege-Niederlagen-Unentschieden). Der Spielplan
-/// ist deterministisch aus der Manager-Reihenfolge (Round-Robin).
-class MatchupsScreen extends ConsumerStatefulWidget {
+/// Eigenständiger Screen (mit AppBar) — dünne Hülle um [MatchupsBody].
+class MatchupsScreen extends StatelessWidget {
   const MatchupsScreen({super.key, required this.league});
 
   final FantasyLeague league;
 
   @override
-  ConsumerState<MatchupsScreen> createState() => _MatchupsScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Matchups')),
+      body: MatchupsBody(league: league),
+    );
+  }
 }
 
-class _MatchupsScreenState extends ConsumerState<MatchupsScreen> {
+/// Head-to-Head-Matchups: pro Spieltag 1-gegen-1-Paarungen plus die
+/// Saison-Bilanztabelle (Siege-Niederlagen-Unentschieden). Der Spielplan
+/// ist deterministisch aus der Manager-Reihenfolge (Round-Robin).
+/// Body ohne Scaffold, damit er als Tab einsetzbar ist.
+class MatchupsBody extends ConsumerStatefulWidget {
+  const MatchupsBody({super.key, required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  ConsumerState<MatchupsBody> createState() => _MatchupsBodyState();
+}
+
+class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
   int? _round;
 
   /// Effektive Punkte aller Manager für einen Spieltag.
@@ -70,11 +86,9 @@ class _MatchupsScreenState extends ConsumerState<MatchupsScreen> {
     final seasonStats = ref.watch(seasonStatsProvider).valueOrNull ?? const {};
     final myId = ref.watch(currentUserProvider)?.id;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Matchups')),
-      body: (managersAsync.isLoading || poolAsync.isLoading)
-          ? const Center(child: CircularProgressIndicator())
-          : Builder(builder: (context) {
+    return (managersAsync.isLoading || poolAsync.isLoading)
+        ? const Center(child: CircularProgressIndicator())
+        : Builder(builder: (context) {
               final managers = managersAsync.requireValue;
               final pool = poolAsync.requireValue;
               final playerById = {for (final p in pool) p.id: p};
@@ -169,8 +183,7 @@ class _MatchupsScreenState extends ConsumerState<MatchupsScreen> {
                   const SizedBox(height: 16),
                 ],
               );
-            }),
-    );
+            });
   }
 }
 

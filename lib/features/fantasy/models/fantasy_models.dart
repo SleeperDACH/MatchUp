@@ -192,6 +192,22 @@ class RosterConfig {
   int get squadSize => gk + def + mid + fwd + bench;
   int get starters => gk + def + mid + fwd;
 
+  /// Neue Konfiguration mit geänderter Rundenzahl (= Kadergröße). Die
+  /// Startelf bleibt fix; die Differenz landet auf der Bank.
+  RosterConfig withRounds(int rounds) => RosterConfig(
+        gk: gk,
+        def: def,
+        mid: mid,
+        fwd: fwd,
+        bench: (rounds - starters).clamp(0, 99),
+        defMin: defMin,
+        defMax: defMax,
+        midMin: midMin,
+        midMax: midMax,
+        fwdMin: fwdMin,
+        fwdMax: fwdMax,
+      );
+
   int minFor(PlayerPosition pos) => switch (pos) {
         PlayerPosition.gk => gk,
         PlayerPosition.def => defMin,
@@ -364,6 +380,13 @@ class FantasyLeague {
     this.currentPickDeadline,
     this.draftPhase = DraftPhase.startup,
     this.u20Rounds = 3,
+    this.maxTeams,
+    this.pauseStart,
+    this.pauseEnd,
+    this.playoffTeams,
+    this.playoffWeeks,
+    this.tradeDeadlineOffset,
+    this.draftOrderMode = 'auto',
   });
 
   final String id;
@@ -391,6 +414,33 @@ class FantasyLeague {
   /// Anzahl Runden im U20-Draft (Dynasty).
   final int u20Rounds;
 
+  /// Maximale Teilnehmerzahl (null = unbegrenzt).
+  final int? maxTeams;
+
+  /// Slow-Draft-Pausenfenster als Minute des Tages (0–1439, Europe/Berlin);
+  /// null = keine Pause. In diesem Fenster picken abgelaufene Picks nicht auto.
+  final int? pauseStart;
+  final int? pauseEnd;
+
+  /// Playoff-Einstellungen (null = noch nicht konfiguriert).
+  final int? playoffTeams;
+
+  /// Dauer einer Playoff-Partie in Spieltagen (1 oder 2).
+  final int? playoffWeeks;
+
+  /// Trade-Deadline in Spieltagen vor Playoff-Start (5–10).
+  final int? tradeDeadlineOffset;
+
+  /// Draft-Reihenfolge: `auto` (Zufall beim Start) oder `manual` (vorab gesetzt).
+  final String draftOrderMode;
+
+  /// Anzahl Draft-Runden insgesamt (= Kadergröße = Startelf + Bank).
+  int get rounds => roster.squadSize;
+
+  bool get hasPause => pauseStart != null && pauseEnd != null;
+  bool get hasPlayoffs => playoffTeams != null;
+  bool get manualDraftOrder => draftOrderMode == 'manual';
+
   factory FantasyLeague.fromJson(Map<String, dynamic> json) => FantasyLeague(
         id: json['id'] as String,
         name: json['name'] as String,
@@ -410,6 +460,13 @@ class FantasyLeague {
             : DateTime.parse(json['current_pick_deadline'] as String),
         draftPhase: DraftPhase.fromId(json['draft_phase'] as String? ?? 'startup'),
         u20Rounds: json['u20_rounds'] as int? ?? 3,
+        maxTeams: json['max_teams'] as int?,
+        pauseStart: json['draft_pause_start'] as int?,
+        pauseEnd: json['draft_pause_end'] as int?,
+        playoffTeams: json['playoff_teams'] as int?,
+        playoffWeeks: json['playoff_weeks'] as int?,
+        tradeDeadlineOffset: json['trade_deadline_offset'] as int?,
+        draftOrderMode: json['draft_order_mode'] as String? ?? 'auto',
       );
 
   /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden). Im

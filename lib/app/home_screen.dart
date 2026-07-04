@@ -7,12 +7,11 @@ import '../features/auth/providers.dart';
 import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
-import '../features/fantasy/ui/fantasy_lobby_screen.dart';
+import '../features/fantasy/ui/fantasy_league_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import 'league_screen.dart';
 import 'theme.dart';
-import 'widgets/competition_emblem.dart';
 
 /// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
 /// Tippspiel folgt als zweiter Bereich darunter.
@@ -81,7 +80,7 @@ class HomeScreen extends ConsumerWidget {
   List<Widget> _fantasySection(BuildContext context, WidgetRef ref) {
     final leagues = ref.watch(myFantasyLeaguesProvider);
     return [
-      _sectionHeader(context, 'Fantasy'),
+      _sectionHeader(context, 'Fantasy', Icons.shield_outlined),
       leagues.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(20),
@@ -108,7 +107,7 @@ class HomeScreen extends ConsumerWidget {
   List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
     final rounds = ref.watch(myRoundsProvider);
     return [
-      _sectionHeader(context, 'Tippspiel'),
+      _sectionHeader(context, 'Tippspiel', Icons.emoji_events_outlined),
       rounds.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(20),
@@ -128,9 +127,16 @@ class HomeScreen extends ConsumerWidget {
     ];
   }
 
-  Widget _sectionHeader(BuildContext context, String title) => Padding(
+  Widget _sectionHeader(BuildContext context, String title, IconData icon) =>
+      Padding(
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
       );
 }
 
@@ -141,27 +147,40 @@ class _WelcomeHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final name = ref.watch(currentUsernameProvider).valueOrNull;
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF18271D), MatchUpColors.base],
+        ),
+        border: Border.all(color: MatchUpColors.green.withValues(alpha: 0.22)),
+      ),
+      child: Row(
         children: [
-          Text(
-            name == null ? 'Willkommen 👋' : 'Hallo, $name 👋',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name == null ? 'Willkommen 👋' : 'Hallo, $name 👋',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Deine Ligen & Tipprunden auf einen Blick.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.72)),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            'Deine Ligen & Tipprunden auf einen Blick.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: scheme.onSurfaceVariant),
-          ),
+          Icon(Icons.sports_soccer,
+              size: 40, color: MatchUpColors.green.withValues(alpha: 0.55)),
         ],
       ),
     );
@@ -196,25 +215,22 @@ class _FantasyLeagueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: scheme.primary.withValues(alpha: 0.15),
-          child: Icon(
-            league.mode == FantasyMode.dynasty
-                ? Icons.auto_awesome
-                : Icons.calendar_today,
-            color: scheme.primary,
-            size: 20,
-          ),
-        ),
-        title: Text(league.name),
-        subtitle: Text(
-            '${league.mode.label} · ${league.draftStatus == DraftStatus.setup ? 'Setup' : league.draftStatus == DraftStatus.drafting ? 'Draft läuft' : 'Saison läuft'}'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => FantasyLobbyScreen(league: league))),
-      ),
+    final (statusLabel, statusColor) = switch (league.draftStatus) {
+      DraftStatus.setup => ('Setup', scheme.onSurfaceVariant),
+      DraftStatus.drafting => ('Draft läuft', scheme.primary),
+      DraftStatus.done => ('Saison läuft', scheme.primary),
+    };
+    return _LeagueTile(
+      icon: league.mode == FantasyMode.dynasty
+          ? Icons.auto_awesome
+          : Icons.calendar_today,
+      title: league.name,
+      subtitle:
+          '${league.mode.label} · Saison ${league.season}/${(league.season + 1) % 100}',
+      chipLabel: statusLabel,
+      chipColor: statusColor,
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => FantasyLeagueScreen(league: league))),
     );
   }
 }
@@ -227,19 +243,133 @@ class _TipRoundCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final league = Leagues.byId(round.leagueId);
+    final icon = switch (league.id) {
+      'wm2026' => Icons.public,
+      'bundesliga' => Icons.sports_soccer,
+      _ => Icons.emoji_events_outlined,
+    };
+    return _LeagueTile(
+      icon: icon,
+      title: round.name,
+      subtitle: league.fixedSeason != null
+          ? 'Tippspiel'
+          : 'Saison ${round.season}/${(round.season + 1) % 100}',
+      chipLabel: league.name,
+      chipColor: Theme.of(context).colorScheme.primary,
+      onTap: () {
+        activateRound(ref, round);
+        Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
+      },
+    );
+  }
+}
+
+/// Einheitliche, ruhig getönte Liga-Karte für den Homescreen (Fantasy &
+/// Tippspiel): Icon-Kachel, Name, Status-Chip und Kontextzeile.
+class _LeagueTile extends StatelessWidget {
+  const _LeagueTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.chipLabel,
+    required this.chipColor,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String chipLabel;
+  final Color chipColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Card(
-      child: ListTile(
-        leading: CompetitionEmblem(leagueId: league.id),
-        title: Text(round.name),
-        subtitle: Text(league.fixedSeason != null
-            ? league.name
-            : '${league.name} · Saison ${round.season}/${(round.season + 1) % 100}'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          activateRound(ref, round);
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
-        },
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: scheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        _StatusChip(label: chipLabel, color: chipColor),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 5),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
@@ -520,7 +650,7 @@ Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
     ref.invalidate(myFantasyLeaguesProvider);
     if (!context.mounted) return;
     Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => FantasyLobbyScreen(league: league)));
+        builder: (_) => FantasyLeagueScreen(league: league)));
     return;
   } catch (e) {
     final msg = e.toString();

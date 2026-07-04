@@ -56,6 +56,66 @@ class FantasyLeagueRepository {
           .eq('id', leagueId)
           .eq('draft_status', 'setup');
 
+  /// Draft-Einstellungen (Pickzeit, Runden über die roster-JSONB,
+  /// Slow-Draft-Pause) — nur vor dem Draft (`.eq('draft_status','setup')`
+  /// erzwingt das serverseitig; RLS erlaubt es nur dem Ersteller).
+  Future<void> updateDraftSettings(
+    String leagueId, {
+    required DraftPickTime pickTime,
+    required RosterConfig roster,
+    required int? pauseStart,
+    required int? pauseEnd,
+    required String orderMode,
+  }) =>
+      _client
+          .from('fantasy_leagues')
+          .update({
+            'draft_pick_seconds': pickTime.seconds,
+            'roster': roster.toJson(),
+            'draft_pause_start': pauseStart,
+            'draft_pause_end': pauseEnd,
+            'draft_order_mode': orderMode,
+          })
+          .eq('id', leagueId)
+          .eq('draft_status', 'setup');
+
+  /// Manuelle Draft-Reihenfolge setzen (Ersteller, nur im Setup). Die
+  /// Positionen ergeben sich aus der Reihenfolge von [orderedUserIds].
+  Future<void> setDraftOrder(String leagueId, List<String> orderedUserIds) =>
+      _client.rpc('set_fantasy_draft_order', params: {
+        'p_league_id': leagueId,
+        'p_user_ids': orderedUserIds,
+      });
+
+  /// Liga-Einstellungen (Teilnehmer-Limit) — ebenfalls nur vor dem Draft.
+  Future<void> updateLeagueSettings(
+    String leagueId, {
+    required int? maxTeams,
+  }) =>
+      _client
+          .from('fantasy_leagues')
+          .update({'max_teams': maxTeams})
+          .eq('id', leagueId)
+          .eq('draft_status', 'setup');
+
+  /// Playoff-Einstellungen (Teams, Wochen je Runde, Trade-Deadline-Offset) —
+  /// nur vor dem Draft.
+  Future<void> updatePlayoffSettings(
+    String leagueId, {
+    required int teams,
+    required int weeks,
+    required int tradeDeadlineOffset,
+  }) =>
+      _client
+          .from('fantasy_leagues')
+          .update({
+            'playoff_teams': teams,
+            'playoff_weeks': weeks,
+            'trade_deadline_offset': tradeDeadlineOffset,
+          })
+          .eq('id', leagueId)
+          .eq('draft_status', 'setup');
+
   Future<FantasyLeague> joinLeague(String inviteCode) async {
     final leagueId = await _client.rpc<String>(
       'join_fantasy_league',

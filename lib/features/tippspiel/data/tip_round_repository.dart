@@ -118,4 +118,9 @@ class TipRoundRepository {
       'body': body.trim(),
     });
   }
+
+  /// Löscht eine Tipprunde endgültig (nur der Ersteller, per RLS). Mitglieder,
+  /// Tipps und Chat gehen per Cascade mit.
+  Future<void> deleteRound(String roundId) =>
+      _client.from('tip_rounds').delete().eq('id', roundId);
 }

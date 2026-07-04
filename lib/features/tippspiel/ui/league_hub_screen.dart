@@ -62,6 +62,79 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
     );
   }
 
+  void _openSettings() {
+    final scheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Liga-Einstellungen',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: scheme.error),
+              title: Text('Tippspiel löschen',
+                  style: TextStyle(
+                      color: scheme.error, fontWeight: FontWeight.bold)),
+              subtitle: const Text(
+                  'Entfernt die Tipprunde mit allen Tipps und dem Chat — '
+                  'für alle Mitglieder.'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _confirmDelete();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete() async {
+    final scheme = Theme.of(context).colorScheme;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tippspiel löschen?'),
+        content: Text(
+            '„${widget.round.name}" wird mit allen Tipps und dem Chat '
+            'endgültig gelöscht. Das kann nicht rückgängig gemacht werden.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Abbrechen')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: scheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Löschen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(tipRoundRepositoryProvider).deleteRound(widget.round.id);
+      ref.invalidate(myRoundsProvider);
+      navigator.popUntil((r) => r.isFirst);
+      messenger
+          .showSnackBar(const SnackBar(content: Text('Tippspiel gelöscht.')));
+    } catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('Löschen fehlgeschlagen: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(roundMessagesProvider(widget.round.id));
@@ -77,6 +150,8 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
     return Column(
       children: [
         _RulesBanner(onTap: _openRules),
+        if (myId == widget.round.createdBy)
+          _SettingsBanner(onTap: _openSettings),
         Expanded(
           child: messages.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -124,6 +199,35 @@ class _RulesBanner extends StatelessWidget {
               const Expanded(
                 child: Text('Regeln & Punkteverteilung'),
               ),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Einstieg zu den Liga-Einstellungen (nur für den Ersteller sichtbar).
+class _SettingsBanner extends StatelessWidget {
+  const _SettingsBanner({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Icon(Icons.settings_outlined, size: 20, color: scheme.primary),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Liga-Einstellungen')),
               Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
             ],
           ),

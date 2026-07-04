@@ -7,18 +7,33 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'matchday_stepper.dart';
 
-/// Liga-Tabelle: Punkte je Manager an einem Spieltag (beste Startelf),
-/// absteigend sortiert.
-class FantasyTableScreen extends ConsumerStatefulWidget {
+/// Eigenständiger Screen (mit AppBar) — dünne Hülle um [FantasyTableBody].
+class FantasyTableScreen extends StatelessWidget {
   const FantasyTableScreen({super.key, required this.league});
 
   final FantasyLeague league;
 
   @override
-  ConsumerState<FantasyTableScreen> createState() => _FantasyTableScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Liga-Tabelle')),
+      body: FantasyTableBody(league: league),
+    );
+  }
 }
 
-class _FantasyTableScreenState extends ConsumerState<FantasyTableScreen> {
+/// Liga-Tabelle: Punkte je Manager an einem Spieltag (beste Startelf),
+/// absteigend sortiert. Body ohne Scaffold, damit er als Tab einsetzbar ist.
+class FantasyTableBody extends ConsumerStatefulWidget {
+  const FantasyTableBody({super.key, required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  ConsumerState<FantasyTableBody> createState() => _FantasyTableBodyState();
+}
+
+class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
   int? _round;
 
   @override
@@ -36,11 +51,9 @@ class _FantasyTableScreenState extends ConsumerState<FantasyTableScreen> {
         const <FantasyLineup>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Liga-Tabelle')),
-      body: (managersAsync.isLoading || poolAsync.isLoading)
-          ? const Center(child: CircularProgressIndicator())
-          : Builder(builder: (context) {
+    return (managersAsync.isLoading || poolAsync.isLoading)
+        ? const Center(child: CircularProgressIndicator())
+        : Builder(builder: (context) {
               final managers = managersAsync.requireValue;
               final pool = poolAsync.requireValue;
               final playerById = {for (final p in pool) p.id: p};
@@ -134,7 +147,6 @@ class _FantasyTableScreenState extends ConsumerState<FantasyTableScreen> {
                   ),
                 ],
               );
-            }),
-    );
+            });
   }
 }

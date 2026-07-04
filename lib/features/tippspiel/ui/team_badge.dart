@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/models/models.dart';
+import '../../../core/util/club_logos.dart';
 import '../../../core/util/country_flags.dart';
 
 /// Rundes Team-Badge: Länderflagge (über flagcdn, einheitlich) bzw.
@@ -28,8 +29,10 @@ class TeamBadge extends StatelessWidget {
       );
     }
 
-    // Vereine: Logo (PNG oder SVG) im Kreis, mit Luft drumherum.
-    final url = team.iconUrl;
+    // Vereine: Logo (PNG oder SVG) direkt anzeigen — kein weißer Kreis, das
+    // eckige Wappen wird nicht beschnitten. `contain` hält die Proportionen
+    // in einer einheitlichen Box.
+    final url = clubLogoUrl(team.name, team.iconUrl);
     if (url != null) {
       final logo = url.toLowerCase().endsWith('.svg')
           ? SvgPicture.network(
@@ -42,10 +45,11 @@ class TeamBadge extends StatelessWidget {
               fit: BoxFit.contain,
               errorBuilder: (_, _, _) => _InitialsBadge(team: team, size: size),
             );
-      return _circle(
-        Container(
-          color: Colors.white.withValues(alpha: 0.9),
-          padding: const EdgeInsets.all(3),
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Padding(
+          padding: EdgeInsets.all(size * 0.06),
           child: logo,
         ),
       );
