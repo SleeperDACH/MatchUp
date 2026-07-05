@@ -107,8 +107,9 @@ class _PriorityHeader extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Anträge werden 2 Tage vor dem Spieltag in Prioritätsreihenfolge '
-            'abgearbeitet. Nach einem Zuschlag rutschst du ans Ende.',
+            'Jeder gedroppte Spieler ist 24 Stunden claim-only; danach werden '
+            'die Anträge in Prioritätsreihenfolge abgearbeitet. Nach einem '
+            'Zuschlag rutschst du ans Ende.',
             textAlign: TextAlign.center,
             style: Theme.of(context)
                 .textTheme

@@ -71,20 +71,43 @@ class FantasyLeagueRepository {
       .stream(primaryKey: ['trade_id', 'player_id'])
       .map((rows) => rows.map(TradeItem.fromJson).toList());
 
-  Future<void> proposeTrade(
+  /// Erstellt ein Angebot und gibt dessen ID zurück (für die Chat-Verknüpfung).
+  Future<String> proposeTrade(
     String leagueId,
     String toManager, {
     required List<String> offerPlayers,
     required List<String> requestPlayers,
     String? message,
-  }) =>
-      _client.rpc('fantasy_propose_trade', params: {
-        'p_league_id': leagueId,
-        'p_to_manager': toManager,
-        'p_offer_players': offerPlayers,
-        'p_request_players': requestPlayers,
-        'p_message': message,
-      });
+  }) async {
+    final id = await _client.rpc('fantasy_propose_trade', params: {
+      'p_league_id': leagueId,
+      'p_to_manager': toManager,
+      'p_offer_players': offerPlayers,
+      'p_request_players': requestPlayers,
+      'p_message': message,
+    });
+    return id as String;
+  }
+
+  /// Einzelnes Angebot samt Positionen (für die Chat-Karte).
+  Future<({TradeOffer trade, List<TradeItem> items})?> tradeById(
+      String tradeId) async {
+    final row = await _client
+        .from('fantasy_trades')
+        .select('*, fantasy_trade_items(giver, player_id)')
+        .eq('id', tradeId)
+        .maybeSingle();
+    if (row == null) return null;
+    final items = [
+      for (final m in (row['fantasy_trade_items'] as List? ?? const []))
+        TradeItem(
+          tradeId: tradeId,
+          giver: m['giver'] as String,
+          playerId: m['player_id'] as String,
+        )
+    ];
+    return (trade: TradeOffer.fromJson(row), items: items);
+  }
 
   Future<void> respondTrade(String tradeId, bool accept) =>
       _client.rpc('fantasy_respond_trade',
@@ -178,10 +201,64 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> managers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, draft_position, waiver_priority, profiles(username)')
+        .select('user_id, draft_position, waiver_priority, vacant, profiles(username)')
         .eq('league_id', leagueId)
+        .eq('vacant', false)
         .order('joined_at');
     return rows.map(FantasyManager.fromJson).toList();
+  }
+
+  /// Verwaiste Teams (verlassen/gekickt) — der Admin kann sie neu zuweisen.
+  Future<List<FantasyManager>> vacantTeams(String leagueId) async {
+    final rows = await _client
+        .from('fantasy_league_members')
+        .select('user_id, draft_position, waiver_priority, vacant, profiles(username)')
+        .eq('league_id', leagueId)
+        .eq('vacant', true)
+        .order('joined_at');
+    return rows.map(FantasyManager.fromJson).toList();
+  }
+
+  Future<void> kickMember(String leagueId, String userId) =>
+      _client.rpc('fantasy_kick_member',
+          params: {'p_league_id': leagueId, 'p_user': userId});
+
+  Future<void> assignTeam(
+          String leagueId, String vacantUser, String newUser) =>
+      _client.rpc('fantasy_assign_team', params: {
+        'p_league_id': leagueId,
+        'p_vacant_user': vacantUser,
+        'p_new_user': newUser,
+      });
+
+  Future<void> adminDrop(String leagueId, String target, String playerId) =>
+      _client.rpc('fantasy_admin_drop', params: {
+        'p_league_id': leagueId,
+        'p_target': target,
+        'p_player_id': playerId,
+      });
+
+  Future<void> adminAdd(String leagueId, String target, String playerId) =>
+      _client.rpc('fantasy_admin_add', params: {
+        'p_league_id': leagueId,
+        'p_target': target,
+        'p_player_id': playerId,
+      });
+
+  /// Nutzer per Benutzername suchen (für die Team-Zuweisung durch den Admin).
+  Future<List<({String id, String username})>> searchProfiles(
+      String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return const [];
+    final me = _client.auth.currentUser?.id;
+    var builder =
+        _client.from('profiles').select('id, username').ilike('username', '%$q%');
+    if (me != null) builder = builder.neq('id', me);
+    final rows = await builder.order('username').limit(20);
+    return [
+      for (final r in rows)
+        (id: r['id'] as String, username: r['username'] as String)
+    ];
   }
 
   /// Aktuelle Kader der Liga in Echtzeit (Draft + Free Agency).

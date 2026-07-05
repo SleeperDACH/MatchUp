@@ -8,6 +8,7 @@ import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
+import '../features/messaging/ui/conversations_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import 'league_screen.dart';
@@ -180,8 +181,13 @@ class _WelcomeHeader extends ConsumerWidget {
               ],
             ),
           ),
-          Icon(Icons.sports_soccer,
-              size: 40, color: MatchUpColors.green.withValues(alpha: 0.55)),
+          IconButton(
+            tooltip: 'Direktnachrichten',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const ConversationsScreen())),
+            icon: const Icon(Icons.forum_outlined,
+                size: 30, color: MatchUpColors.green),
+          ),
         ],
       ),
     );

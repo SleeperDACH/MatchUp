@@ -18,7 +18,11 @@ class LeagueChat extends StatefulWidget {
     required this.onRetry,
     this.hintText = 'Nachricht an die Liga …',
     this.emptyText = 'Noch keine Nachrichten.\nSchreib der Liga als Erster!',
+    this.extraBuilder,
   });
+
+  /// Optionale Zusatzkarte unter einer Nachricht (z. B. Trade-Aktionen).
+  final Widget? Function(BuildContext, ChatMessage)? extraBuilder;
 
   /// Live-Zustand der Nachrichten (älteste zuerst).
   final AsyncValue<List<ChatMessage>> messages;
@@ -84,6 +88,7 @@ class _LeagueChatState extends State<LeagueChat> {
                     messages: list,
                     names: widget.names,
                     myId: widget.myId,
+                    extraBuilder: widget.extraBuilder,
                   ),
           ),
         ),
@@ -103,11 +108,13 @@ class _MessageList extends StatefulWidget {
     required this.messages,
     required this.names,
     required this.myId,
+    this.extraBuilder,
   });
 
   final List<ChatMessage> messages;
   final Map<String, String> names;
   final String? myId;
+  final Widget? Function(BuildContext, ChatMessage)? extraBuilder;
 
   @override
   State<_MessageList> createState() => _MessageListState();
@@ -159,12 +166,86 @@ class _MessageListState extends State<_MessageList> {
       itemCount: widget.messages.length,
       itemBuilder: (context, i) {
         final msg = widget.messages[i];
-        return _MessageBubble(
+        if (msg.isSystem) return _SystemLine(text: msg.body);
+        final isMine = msg.userId == widget.myId;
+        final bubble = _MessageBubble(
           message: msg,
           author: widget.names[msg.userId] ?? '?',
-          isMine: msg.userId == widget.myId,
+          isMine: isMine,
+        );
+        final extra = widget.extraBuilder?.call(context, msg);
+        if (extra == null) return bubble;
+        return Column(
+          crossAxisAlignment:
+              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [bubble, extra],
         );
       },
+    );
+  }
+}
+
+/// Automatische System-Mitteilung (Kaderänderung o. Ä.): zentrierte Karte
+/// mit Akzentrand, flankiert von dünnen Linien wie ein Ereignis-Marker.
+class _SystemLine extends StatelessWidget {
+  const _SystemLine({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Emoji am Anfang (falls vorhanden) vom Text trennen, damit es als
+    // farbiges Badge links steht.
+    final parts = text.split(' ');
+    final hasIcon = parts.isNotEmpty && parts.first.runes.length <= 2 &&
+        parts.first.codeUnits.first > 0x2000;
+    final icon = hasIcon ? parts.first : null;
+    final body = hasIcon ? parts.sublist(1).join(' ') : text;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Divider(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+          ),
+          Flexible(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: scheme.primary.withValues(alpha: 0.22)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Text(icon, style: const TextStyle(fontSize: 14)),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Text(
+                      body,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Divider(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+          ),
+        ],
+      ),
     );
   }
 }

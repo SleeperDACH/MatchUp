@@ -557,6 +557,7 @@ class FantasyManager {
     required this.username,
     this.draftPosition,
     this.waiverPriority,
+    this.vacant = false,
   });
 
   final String userId;
@@ -569,12 +570,17 @@ class FantasyManager {
   /// Waiver-Abarbeitung.
   final int? waiverPriority;
 
+  /// Verwaistes Team: der bisherige Manager hat die Liga verlassen/ wurde
+  /// gekickt; der Kader bleibt, bis der Admin einen neuen Nutzer zuweist.
+  final bool vacant;
+
   FantasyManager copyWith({int? draftPosition, int? waiverPriority}) =>
       FantasyManager(
         userId: userId,
         username: username,
         draftPosition: draftPosition ?? this.draftPosition,
         waiverPriority: waiverPriority ?? this.waiverPriority,
+        vacant: vacant,
       );
 
   factory FantasyManager.fromJson(Map<String, dynamic> json) => FantasyManager(
@@ -584,6 +590,7 @@ class FantasyManager {
                 '?',
         draftPosition: json['draft_position'] as int?,
         waiverPriority: json['waiver_priority'] as int?,
+        vacant: json['vacant'] as bool? ?? false,
       );
 }
 

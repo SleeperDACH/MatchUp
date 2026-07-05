@@ -7,17 +7,31 @@ class ChatMessage {
     required this.userId,
     required this.body,
     required this.createdAt,
+    this.isSystem = false,
+    this.tradeId,
   });
 
   final String id;
-  final String userId;
+
+  /// Absender-ID; `null` bei automatischen System-Nachrichten.
+  final String? userId;
   final String body;
   final DateTime createdAt;
 
+  /// Automatische Mitteilung (z. B. Kaderänderung) — ohne Absender, wird
+  /// als dezente Zeile statt als Sprechblase dargestellt.
+  final bool isSystem;
+
+  /// Verknüpftes Trade-Angebot (nur Direktnachrichten) — der Chat rendert
+  /// dann eine Aktionskarte zum Annehmen/Ablehnen.
+  final String? tradeId;
+
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
         id: json['id'] as String,
-        userId: json['user_id'] as String,
+        userId: json['user_id'] as String?,
         body: json['body'] as String,
         createdAt: DateTime.parse(json['created_at'] as String),
+        isSystem: json['is_system'] as bool? ?? false,
+        tradeId: json['trade_id'] as String?,
       );
 }

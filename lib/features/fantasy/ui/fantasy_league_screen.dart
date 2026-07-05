@@ -383,54 +383,56 @@ class _RostersTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [
-        LineupEditor(league: league),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 2),
+          child: Row(
             children: [
-              _BigActionBox(
-                label: 'Free Agency',
-                subtitle: 'Freie Spieler holen & abgeben',
-                icon: Icons.person_add_alt,
-                color: _cAmber,
-                onTap: () => open(FreeAgencyScreen(league: league)),
+              Expanded(
+                child: _MiniAction(
+                  label: 'Free Agency',
+                  icon: Icons.person_add_alt,
+                  color: _cAmber,
+                  onTap: () => open(FreeAgencyScreen(league: league)),
+                ),
               ),
-              const SizedBox(height: 10),
-              _BigActionBox(
-                label: 'Trade',
-                subtitle: 'Spieler mit anderen Managern tauschen',
-                icon: Icons.swap_horiz,
-                color: _cRed,
-                onTap: () => open(TradeScreen(league: league)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MiniAction(
+                  label: 'Trade',
+                  icon: Icons.swap_horiz,
+                  color: _cRed,
+                  onTap: () => open(TradeScreen(league: league)),
+                ),
               ),
-              const SizedBox(height: 10),
-              _BigActionBox(
-                label: 'Spielersuche',
-                subtitle: 'Alle Spieler des Pools durchsuchen',
-                icon: Icons.search,
-                color: _cGreen,
-                onTap: () => open(const PlayerPoolScreen()),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MiniAction(
+                  label: 'Spielersuche',
+                  icon: Icons.search,
+                  color: _cGreen,
+                  onTap: () => open(const PlayerPoolScreen()),
+                ),
               ),
             ],
           ),
         ),
+        LineupEditor(league: league),
       ],
     );
   }
 }
 
 /// Große, farbige Aktions-Box (Kader-Tab).
-class _BigActionBox extends StatelessWidget {
-  const _BigActionBox({
+/// Kompakte, farbige Aktions-Kachel (Kader-Tab, drei nebeneinander).
+class _MiniAction extends StatelessWidget {
+  const _MiniAction({
     required this.label,
-    required this.subtitle,
     required this.icon,
     required this.color,
     required this.onTap,
   });
 
   final String label;
-  final String subtitle;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
@@ -439,40 +441,32 @@ class _BigActionBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: color.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.45)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withValues(alpha: 0.40)),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Icon(icon, color: _cBase, size: 24),
+                child: Icon(icon, color: _cBase, size: 20),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text(subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(height: 6),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 11.5, fontWeight: FontWeight.w600)),
             ],
           ),
         ),

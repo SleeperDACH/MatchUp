@@ -11,9 +11,9 @@ import 'waiver_claims_screen.dart';
 ///
 /// * Echte Free Agents (nie gedraftet oder vom Wire gefallen) sind sofort
 ///   holbar — respektiert Kadergröße (sonst Drop nötig) und die 05.09.-Sperre.
-/// * Frisch gedroppte Spieler liegen bis zur nächsten Deadline (2 Tage vor
-///   dem Spieltag) auf dem Waiver-Wire und sind nur per Antrag holbar; die
-///   Anträge werden terminiert in Prioritätsreihenfolge abgearbeitet.
+/// * Frisch gedroppte Spieler liegen 24 Stunden auf dem Waiver-Wire und sind
+///   nur per Antrag holbar; nach Ablauf werden die Anträge in
+///   Prioritätsreihenfolge abgearbeitet, sonst wird der Spieler frei.
 class FreeAgencyScreen extends ConsumerStatefulWidget {
   const FreeAgencyScreen({super.key, required this.league});
 

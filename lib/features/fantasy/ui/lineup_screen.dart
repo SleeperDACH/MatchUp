@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +8,6 @@ import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
-import 'matchday_stepper.dart';
 import 'pitch_painter.dart';
 import 'player_flag.dart';
 
@@ -52,16 +53,32 @@ const _pitchOrder = [
 ];
 
 class _LineupEditorState extends ConsumerState<LineupEditor> {
-  int? _round;
-
   /// Aufstellung als feste Slot-Listen je Position (Länge = Formation),
   /// Einträge können leer (null) sein. null = noch ungespeicherte Saat zeigen.
   Map<PlayerPosition, List<String?>>? _slots;
   bool _saving = false;
 
   List<String> _lastIds = const [];
+  bool _valid = false;
+  int _effRound = 34;
+  Timer? _saveTimer;
 
   RosterConfig get _roster => widget.league.roster;
+
+  @override
+  void dispose() {
+    _saveTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Änderungen automatisch (leicht verzögert) speichern, sobald die
+  /// Aufstellung gültig ist — kein extra Speichern-Button nötig.
+  void _autoSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted && _valid && !_saving) _save(_effRound, _lastIds);
+    });
+  }
 
   /// Alle aktuell aufgestellten Spieler-IDs (über alle Positionen).
   Set<String> _assignedIds(Map<PlayerPosition, List<String?>> slots) => {
@@ -105,14 +122,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       await ref
           .read(fantasyLeagueRepositoryProvider)
           .setLineup(widget.league.id, round, ids);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Aufstellung gespeichert')));
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -123,7 +136,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   Widget build(BuildContext context) {
     final league = widget.league;
     final current = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
-    final round = _round ?? current ?? 34;
+    final round = current ?? 34;
 
     final poolAsync = ref.watch(playerPoolProvider);
     final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
@@ -188,8 +201,6 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
           final slots = _slots ?? _seedSlots(seedIds, byPos);
 
           final assigned = _assignedIds(slots);
-          final total = [for (final id in assigned) points[playerById[id]] ?? 0]
-              .fold<int>(0, (a, b) => a + b);
           final (d, m, f) = _formationOf(slots);
           final valid = _roster.isValidFormation(
               gkCount: slots[PlayerPosition.gk]?.whereType<String>().length ?? 0,
@@ -200,6 +211,8 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               fwdCount:
                   slots[PlayerPosition.fwd]?.whereType<String>().length ?? 0);
           _lastIds = assigned.toList();
+          _valid = valid;
+          _effRound = round;
 
           // Bank: Kaderspieler, die nicht aufgestellt sind.
           final bench = [
@@ -213,29 +226,23 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              MatchdayStepper(
-                round: round,
-                onChanged: (r) => setState(() {
-                  _round = r;
-                  _slots = null; // neue Runde -> neu saaten
-                }),
-              ),
-              _Header(
-                total: total,
-                formation:
-                    _roster.formationLabel(defCount: d, midCount: m, fwdCount: f),
-                valid: valid,
-                locked: locked,
-                deadline: deadline,
-                loadingStats: statsAsync.isLoading,
-              ),
-              if (!locked)
-                _FormationChips(
-                  roster: _roster,
-                  byPos: byPos,
-                  current: (d, m, f),
-                  onSelected: (fm) => setState(
-                      () => _slots = _buildSlots(fm, assigned, byPos)),
+              if (locked)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 6),
+                      Text('Aufstellung gesperrt — der Spieltag läuft.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
+                    ],
+                  ),
                 ),
               _Pitch(
                 slots: slots,
@@ -249,6 +256,17 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                     ? null
                     : (data, pos, i) => _applyDrop(slots, data, pos, i),
               ),
+              // Formationen unter dem Spielfeld.
+              if (!locked)
+                _FormationChips(
+                  roster: _roster,
+                  byPos: byPos,
+                  current: (d, m, f),
+                  onSelected: (fm) {
+                    setState(() => _slots = _buildSlots(fm, assigned, byPos));
+                    _autoSave();
+                  },
+                ),
               _Bench(
                 bench: bench,
                 points: points,
@@ -257,21 +275,23 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               ),
               if (!locked)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: (_saving || !valid)
-                          ? null
-                          : () => _save(round, _lastIds),
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.check),
-                      label: const Text('Aufstellung speichern'),
-                    ),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_saving ? Icons.sync : Icons.cloud_done_outlined,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 6),
+                      Text(
+                          _saving
+                              ? 'Speichere …'
+                              : 'Änderungen werden automatisch gespeichert',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
+                    ],
                   ),
                 )
               else
@@ -353,6 +373,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       next[pos]![slotIndex] = picked == _clearSentinel ? null : picked;
       _slots = next;
     });
+    _autoSave();
   }
 
   Map<PlayerPosition, List<String?>> _copy(
@@ -375,6 +396,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     next[pos]![index] = data.playerId;
     HapticFeedback.selectionClick();
     setState(() => _slots = next);
+    _autoSave();
   }
 
   /// Einen aufgestellten Spieler per Drag auf die Bank setzen (Platz wird frei).
@@ -385,6 +407,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     next[from.$1]![from.$2] = null;
     HapticFeedback.selectionClick();
     setState(() => _slots = next);
+    _autoSave();
   }
 }
 
@@ -397,82 +420,6 @@ class _DragData {
   final String playerId;
   final PlayerPosition pos;
   final (PlayerPosition, int)? from;
-}
-
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.total,
-    required this.formation,
-    required this.valid,
-    required this.locked,
-    required this.deadline,
-    required this.loadingStats,
-  });
-
-  final int total;
-  final String formation;
-  final bool valid;
-  final bool locked;
-  final DateTime? deadline;
-  final bool loadingStats;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final hint = locked
-        ? 'Gesperrt — der Spieltag hat begonnen.'
-        : !valid
-            ? 'Noch nicht vollständig — alle Positionen besetzen.'
-            : deadline == null
-                ? 'Jederzeit änderbar — noch kein Anstoß-Termin.'
-                : 'Änderbar bis ${_fmt(deadline!)} (Anstoß).';
-    final hintColor = !locked && !valid ? scheme.error : scheme.onSurfaceVariant;
-    return Container(
-      width: double.infinity,
-      color: scheme.primary.withValues(alpha: 0.10),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-      child: Column(
-        children: [
-          Text(loadingStats ? '… Pkt.' : '$total Pkt.',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(color: scheme.primary)),
-          Text('Formation $formation',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: valid ? scheme.onSurfaceVariant : scheme.error)),
-          const SizedBox(height: 2),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                  locked
-                      ? Icons.lock_outline
-                      : !valid
-                          ? Icons.warning_amber_rounded
-                          : Icons.schedule,
-                  size: 14,
-                  color: hintColor),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(hint,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: hintColor)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _fmt(DateTime d) {
-    final l = d.toLocal();
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(l.day)}.${two(l.month)}. ${two(l.hour)}:${two(l.minute)}';
-  }
 }
 
 class _FormationChips extends StatelessWidget {

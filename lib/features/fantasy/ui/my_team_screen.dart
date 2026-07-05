@@ -31,8 +31,8 @@ class _MyTeamScreenState extends ConsumerState<MyTeamScreen> {
       builder: (context) => AlertDialog(
         title: Text('${player.name} abgeben?'),
         content: const Text(
-            'Der Spieler kommt auf den Waiver-Wire: Bis zur nächsten Deadline '
-            '(2 Tage vor dem Spieltag) ist er nur per Antrag holbar, danach für '
+            'Der Spieler kommt für 24 Stunden auf den Waiver-Wire: In dieser '
+            'Zeit ist er nur per Antrag holbar (rollende Priorität), danach für '
             'alle frei.'),
         actions: [
           TextButton(

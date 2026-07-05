@@ -6,6 +6,7 @@ class DirectMessage {
     required this.recipientId,
     required this.body,
     required this.createdAt,
+    this.tradeId,
   });
 
   final String id;
@@ -13,6 +14,9 @@ class DirectMessage {
   final String recipientId;
   final String body;
   final DateTime createdAt;
+
+  /// Verknüpftes Trade-Angebot (falls die Nachricht eines begleitet).
+  final String? tradeId;
 
   /// Die andere Partei aus Sicht von [me].
   String partnerOf(String me) => senderId == me ? recipientId : senderId;
@@ -23,6 +27,7 @@ class DirectMessage {
         recipientId: json['recipient_id'] as String,
         body: json['body'] as String,
         createdAt: DateTime.parse(json['created_at'] as String),
+        tradeId: json['trade_id'] as String?,
       );
 }
 

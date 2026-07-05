@@ -20,13 +20,15 @@ class MessagingRepository {
       .order('created_at')
       .map((rows) => rows.map(DirectMessage.fromJson).toList());
 
-  Future<void> sendMessage(String recipientId, String body) async {
+  Future<void> sendMessage(String recipientId, String body,
+      {String? tradeId}) async {
     final uid = _uid;
     if (uid == null) throw StateError('Nicht angemeldet');
     await _client.from('direct_messages').insert({
       'sender_id': uid,
       'recipient_id': recipientId,
       'body': body.trim(),
+      'trade_id': ?tradeId,
     });
   }
 

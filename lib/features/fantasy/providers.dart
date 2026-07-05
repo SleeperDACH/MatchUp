@@ -45,6 +45,12 @@ final fantasyManagersProvider =
   return ref.watch(fantasyLeagueRepositoryProvider).managers(leagueId);
 });
 
+/// Verwaiste Teams einer Liga (für die Admin-Zuweisung).
+final vacantTeamsProvider =
+    FutureProvider.family<List<FantasyManager>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).vacantTeams(leagueId);
+});
+
 /// Aktuelle Kader der Liga in Echtzeit (Draft + Free Agency).
 final leagueRosterProvider =
     StreamProvider.family<List<RosterEntry>, String>((ref, leagueId) {
@@ -61,6 +67,12 @@ final fantasyMessagesProvider =
 final leagueTradesProvider =
     StreamProvider.family<List<TradeOffer>, String>((ref, leagueId) {
   return ref.watch(fantasyLeagueRepositoryProvider).tradesStream(leagueId);
+});
+
+/// Einzelnes Trade-Angebot samt Positionen (für die Chat-Karte).
+final tradeDetailProvider = FutureProvider.family<
+    ({TradeOffer trade, List<TradeItem> items})?, String>((ref, tradeId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).tradeById(tradeId);
 });
 
 /// Positionen aller eigenen Trades, gruppiert nach `trade_id` (Echtzeit).

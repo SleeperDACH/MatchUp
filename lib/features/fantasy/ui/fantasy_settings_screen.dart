@@ -6,6 +6,7 @@ import '../../auth/providers.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'fantasy_admin_screen.dart';
 
 // Akzentfarben für die Liga-Info-Kacheln.
 const _cGreen = Color(0xFF4ADE6A);
@@ -123,6 +124,21 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               ),
             ),
           ],
+          if (isOwner) ...[
+            const SizedBox(height: 24),
+            _Section('Admin'),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.admin_panel_settings_outlined,
+                    color: scheme.primary),
+                title: const Text('Mitglieder & Kader verwalten'),
+                subtitle: const Text(
+                    'Kicken, verwaiste Teams zuweisen, Kader bearbeiten'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => open(FantasyAdminScreen(league: l)),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           _Section('Gefahrenzone'),
           if (isOwner)
@@ -146,8 +162,8 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                     style: TextStyle(
                         color: scheme.error, fontWeight: FontWeight.bold)),
                 subtitle: const Text(
-                    'Du steigst aus der Liga aus — dein Kader, deine '
-                    'Aufstellungen und Anträge werden entfernt.'),
+                    'Du steigst aus — dein Team bleibt als verwaister Slot '
+                    'bestehen und kann neu zugewiesen werden.'),
                 onTap: () => _confirmLeave(context, ref, l),
               ),
             ),
@@ -166,9 +182,9 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Liga verlassen?'),
         content: Text(
-            'Du verlässt „${l.name}". Dein Kader, deine Aufstellungen und '
-            'offenen Anträge werden entfernt. Das kann nicht rückgängig '
-            'gemacht werden.'),
+            'Du verlässt „${l.name}". Dein Team bleibt als verwaister Slot '
+            'bestehen — der Admin kann es einem neuen Nutzer zuweisen, der '
+            'deinen Kader übernimmt.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

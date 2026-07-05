@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers.dart';
+import '../../messaging/providers.dart';
+import '../../messaging/ui/conversation_screen.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../models/trade.dart';
@@ -150,27 +152,56 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
     super.dispose();
   }
 
+  /// Namen der ausgewählten Spieler für die Nachricht auflösen.
+  String _names(Set<String> ids, Map<String, FantasyPlayer> byId) => ids.isEmpty
+      ? '—'
+      : ids.map((id) => byId[id]?.name ?? id).join(', ');
+
   Future<void> _send() async {
     setState(() => _sending = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final note = _msgCtrl.text.trim();
+    final String tradeId;
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).proposeTrade(
+      tradeId = await ref.read(fantasyLeagueRepositoryProvider).proposeTrade(
             widget.league.id,
             widget.partner.userId,
             offerPlayers: _offer.toList(),
             requestPlayers: _request.toList(),
-            message: _msgCtrl.text.trim().isEmpty ? null : _msgCtrl.text.trim(),
+            message: note.isEmpty ? null : note,
           );
-      navigator.pop();
-      messenger.showSnackBar(SnackBar(
-          content: Text('Angebot an ${widget.partner.username} gesendet.')));
     } catch (e) {
-      messenger
-          .showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
-    } finally {
+      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
       if (mounted) setState(() => _sending = false);
+      return;
     }
+
+    // Trade steht — dazu eine Direktnachricht mit der Zusammenfassung senden.
+    // Existiert noch kein Chat mit dem Partner, entsteht er automatisch;
+    // sonst wird die Nachricht an die bestehende Konversation angehängt.
+    try {
+      final pool = ref.read(playerPoolProvider).valueOrNull ??
+          const <FantasyPlayer>[];
+      final byId = {for (final p in pool) p.id: p};
+      final body = StringBuffer('🔄 Trade-Angebot in ${widget.league.name}\n'
+          'Ich biete: ${_names(_offer, byId)}\n'
+          'Dafür möchte ich: ${_names(_request, byId)}');
+      if (note.isNotEmpty) body.write('\n„$note"');
+      await ref
+          .read(messagingRepositoryProvider)
+          .sendMessage(widget.partner.userId, body.toString(), tradeId: tradeId);
+    } catch (_) {
+      // Chat-Nachricht ist optional — Trade wurde bereits gesendet.
+    }
+
+    if (!mounted) return;
+    // Compose-Screen durch den Direktnachrichten-Chat ersetzen.
+    navigator.pushReplacement(MaterialPageRoute(
+        builder: (_) => ConversationScreen(
+              partnerId: widget.partner.userId,
+              partnerName: widget.partner.username,
+            )));
   }
 
   @override
