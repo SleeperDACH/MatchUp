@@ -78,6 +78,7 @@ class FantasyLeagueRepository {
     required List<String> offerPlayers,
     required List<String> requestPlayers,
     String? message,
+    String? counterOf,
   }) async {
     final id = await _client.rpc('fantasy_propose_trade', params: {
       'p_league_id': leagueId,
@@ -85,6 +86,7 @@ class FantasyLeagueRepository {
       'p_offer_players': offerPlayers,
       'p_request_players': requestPlayers,
       'p_message': message,
+      'p_counter_of': counterOf,
     });
     return id as String;
   }

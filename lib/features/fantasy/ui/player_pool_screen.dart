@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
-import 'player_flag.dart';
+import 'club_badge.dart';
+import 'player_action_buttons.dart';
 
-/// Durchsuchbarer Spielerpool. Zeigt Position, Verein, Alter sowie die
-/// für Dynasty relevanten Markierungen (U20, Auslands-Neuzugang).
+/// Spielersuche: durchsuchbarer Spielerpool mit Direktaktion je Spieler —
+/// grün „Holen" (frei), gelb „Waiver" (auf dem Wire) oder rot „Trade"
+/// (gehört einem anderen Team). Zeigt Position, Verein, Alter sowie die
+/// Dynasty-Markierungen (U20, Auslands-Neuzugang).
 class PlayerPoolScreen extends ConsumerStatefulWidget {
-  const PlayerPoolScreen({super.key});
+  const PlayerPoolScreen({super.key, required this.league});
+
+  final FantasyLeague league;
 
   @override
   ConsumerState<PlayerPoolScreen> createState() => _PlayerPoolScreenState();
@@ -20,20 +26,40 @@ class _PlayerPoolScreenState extends ConsumerState<PlayerPoolScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pool = ref.watch(playerPoolProvider);
+    final league = widget.league;
+    final poolAsync = ref.watch(playerPoolProvider);
     final season = ref.watch(fantasySeasonProvider);
     // Stichtag für Alter/U20: ungefähr der 1. Spieltag (Saisonstart).
     final cutoff = DateTime(season, 8, 1);
+    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+        const <RosterEntry>[];
+    final onWaivers = ref.watch(waiverPlayersProvider(league.id)).valueOrNull ??
+        const <String>{};
+    final claims = ref.watch(myWaiverClaimsProvider(league.id)).valueOrNull ??
+        const <WaiverClaim>[];
+    final clubIcons =
+        ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
+    final myId = ref.watch(currentUserProvider)?.id;
+
+    final ownerByPlayer = {for (final r in roster) r.playerId: r.managerId};
+    final pendingClaims = claims.where((c) => c.status.isPending).toList();
+    final claimedIds = {for (final c in pendingClaims) c.addPlayerId};
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Spielerpool')),
-      body: pool.when(
+      appBar: AppBar(title: const Text('Spielersuche')),
+      body: poolAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (players) {
-          var list = players
-              .where((p) =>
-                  _position == null || p.position == _position)
+          final playerById = {for (final p in players) p.id: p};
+          final myPlayers = [
+            for (final r in roster)
+              if (r.managerId == myId && playerById[r.playerId] != null)
+                playerById[r.playerId]!
+          ];
+
+          final list = players
+              .where((p) => _position == null || p.position == _position)
               .where((p) =>
                   _query.isEmpty ||
                   p.name.toLowerCase().contains(_query.toLowerCase()) ||
@@ -76,70 +102,39 @@ class _PlayerPoolScreenState extends ConsumerState<PlayerPoolScreen> {
               Expanded(
                 child: ListView.builder(
                   itemCount: list.length,
-                  itemBuilder: (context, i) =>
-                      _PlayerTile(player: list[i], cutoff: cutoff),
+                  itemBuilder: (context, i) {
+                    final p = list[i];
+                    final age = p.ageOn(cutoff);
+                    final detail = <String>[
+                      p.position.label,
+                      p.club,
+                      '$age J.',
+                      if (p.isU20On(cutoff)) 'U20',
+                      if (p.isForeignNewcomer) 'Ausland',
+                    ].join(' · ');
+                    return ListTile(
+                      leading:
+                          ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
+                      title: Text(p.name),
+                      subtitle: Text(detail),
+                      trailing: PlayerActionButton(
+                        league: league,
+                        player: p,
+                        ownerId: ownerByPlayer[p.id],
+                        onWaiver: onWaivers.contains(p.id),
+                        claimed: claimedIds.contains(p.id),
+                        myPlayers: myPlayers,
+                        nextRank: pendingClaims.length + 1,
+                        myId: myId,
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
           );
         },
       ),
-    );
-  }
-}
-
-class _PlayerTile extends StatelessWidget {
-  const _PlayerTile({required this.player, required this.cutoff});
-
-  final FantasyPlayer player;
-  final DateTime cutoff;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final age = player.ageOn(cutoff);
-    return ListTile(
-      leading: PlayerFlag(code: player.nationality),
-      title: Text(player.name),
-      subtitle: Text('${player.position.label} · ${player.club}'),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text('$age J.', style: Theme.of(context).textTheme.bodyMedium),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (player.isU20On(cutoff))
-                _Badge(text: 'U20', color: scheme.primary),
-              if (player.isForeignNewcomer)
-                _Badge(text: 'Ausland', color: scheme.tertiary),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.text, required this.color});
-
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(left: 4, top: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(text,
-          style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.bold, color: color)),
     );
   }
 }

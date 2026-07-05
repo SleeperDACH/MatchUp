@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
-import 'player_flag.dart';
+import 'club_badge.dart';
+import 'player_action_buttons.dart';
 import 'waiver_claims_screen.dart';
 
 /// Free Agency & Waiver-Wire.
@@ -27,85 +28,6 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
   String _query = '';
   PlayerPosition? _position;
 
-  /// Lässt – falls der Kader voll ist – einen abzugebenden Spieler wählen.
-  /// [optional] = true erlaubt „keinen abgeben" (nur wenn Platz frei).
-  Future<String?> _chooseDrop(
-    List<FantasyPlayer> myPlayers, {
-    required bool optional,
-  }) {
-    return showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text(
-            optional ? 'Wen abgeben? (optional)' : 'Kader voll — wen abgeben?'),
-        children: [
-          if (optional)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(''),
-              child: const Text('Keinen — nur bei freiem Platz'),
-            ),
-          for (final p in myPlayers)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(p.id),
-              child: Text('${p.position.short} · ${p.name}'),
-            ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Abbrechen'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _add(FantasyPlayer player, List<FantasyPlayer> myPlayers) async {
-    final league = widget.league;
-    String? dropId;
-
-    if (myPlayers.length >= league.roster.squadSize) {
-      dropId = await _chooseDrop(myPlayers, optional: false);
-      if (dropId == null) return; // abgebrochen
-    }
-
-    try {
-      await ref
-          .read(fantasyLeagueRepositoryProvider)
-          .addFreeAgent(league.id, player.id, dropPlayerId: dropId);
-      _toast('${player.name} aufgenommen');
-    } catch (e) {
-      _toast('Fehlgeschlagen: $e');
-    }
-  }
-
-  Future<void> _claim(
-    FantasyPlayer player,
-    List<FantasyPlayer> myPlayers,
-    int nextRank,
-  ) async {
-    // Drop ist beim Waiver-Antrag optional (Kader kann bis dahin Platz haben).
-    final dropChoice = await _chooseDrop(myPlayers, optional: true);
-    if (dropChoice == null) return; // abgebrochen
-    final dropId = dropChoice.isEmpty ? null : dropChoice;
-
-    try {
-      await ref.read(fantasyLeagueRepositoryProvider).submitWaiverClaim(
-            widget.league.id,
-            player.id,
-            dropPlayerId: dropId,
-            rank: nextRank,
-          );
-      _toast('Antrag für ${player.name} gestellt');
-    } catch (e) {
-      _toast('Fehlgeschlagen: $e');
-    }
-  }
-
-  void _toast(String msg) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final league = widget.league;
@@ -116,7 +38,8 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
         const <String>{};
     final claims = ref.watch(myWaiverClaimsProvider(league.id)).valueOrNull ??
         const <WaiverClaim>[];
-    final window = ref.watch(waiverWindowProvider).valueOrNull;
+    final clubIcons =
+        ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
 
     final pendingClaims = claims.where((c) => c.status.isPending).toList();
@@ -167,7 +90,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
 
           return Column(
             children: [
-              _WaiverBanner(round: window?.round, deadline: window?.deadline),
+              const _WaiverBanner(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                 child: TextField(
@@ -197,22 +120,23 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                   itemCount: freeAgents.length,
                   itemBuilder: (context, i) {
                     final p = freeAgents[i];
-                    final locked = p.isLockedNow(league.season);
                     final waiver = onWaivers.contains(p.id);
                     final claimed = claimedPlayerIds.contains(p.id);
                     return ListTile(
-                      leading: PlayerFlag(code: p.nationality),
+                      leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                       title: Text(p.name),
                       subtitle: Text(waiver
                           ? '${p.position.short} · ${p.club} · Waiver-Wire'
                           : '${p.position.short} · ${p.club}'),
-                      trailing: _trailing(
+                      trailing: PlayerActionButton(
+                        league: league,
                         player: p,
-                        locked: locked,
-                        waiver: waiver,
+                        ownerId: null,
+                        onWaiver: waiver,
                         claimed: claimed,
                         myPlayers: myPlayers,
                         nextRank: pendingClaims.length + 1,
+                        myId: myId,
                       ),
                     );
                   },
@@ -225,33 +149,6 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
     );
   }
 
-  Widget _trailing({
-    required FantasyPlayer player,
-    required bool locked,
-    required bool waiver,
-    required bool claimed,
-    required List<FantasyPlayer> myPlayers,
-    required int nextRank,
-  }) {
-    if (locked) return const _LockedChip();
-    if (waiver) {
-      if (claimed) {
-        return const Chip(
-          visualDensity: VisualDensity.compact,
-          label: Text('Beantragt'),
-        );
-      }
-      return OutlinedButton(
-        onPressed: () => _claim(player, myPlayers, nextRank),
-        child: const Text('Beantragen'),
-      );
-    }
-    return FilledButton(
-      onPressed: () => _add(player, myPlayers),
-      child: const Text('Holen'),
-    );
-  }
-
   Widget _chip(String label, bool selected, VoidCallback onTap) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: ChoiceChip(
@@ -259,20 +156,13 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
       );
 }
 
-/// Hinweis auf die nächste Waiver-Deadline.
+/// Hinweis auf die Waiver-Regel (24 Stunden je gedropptem Spieler).
 class _WaiverBanner extends StatelessWidget {
-  const _WaiverBanner({this.round, this.deadline});
-
-  final int? round;
-  final DateTime? deadline;
+  const _WaiverBanner();
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final text = deadline == null
-        ? 'Kein Spieltag in Sicht — gedroppte Spieler sind sofort frei.'
-        : 'Waiver-Anträge für Spieltag $round bis '
-            '${_fmt(deadline!)} · danach Direkt-Aufnahme frei.';
     return Container(
       width: double.infinity,
       color: scheme.secondaryContainer,
@@ -282,40 +172,14 @@ class _WaiverBanner extends StatelessWidget {
           Icon(Icons.schedule, size: 18, color: scheme.onSecondaryContainer),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text,
+            child: Text(
+                'Gedroppte Spieler sind 24 Stunden nur per Antrag holbar '
+                '(Waiver, rollende Priorität) — danach frei.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: scheme.onSecondaryContainer)),
           ),
         ],
       ),
-    );
-  }
-
-  static String _fmt(DateTime d) {
-    final l = d.toLocal();
-    final dd = l.day.toString().padLeft(2, '0');
-    final mm = l.month.toString().padLeft(2, '0');
-    final hh = l.hour.toString().padLeft(2, '0');
-    final mi = l.minute.toString().padLeft(2, '0');
-    return '$dd.$mm. $hh:$mi';
-  }
-}
-
-class _LockedChip extends StatelessWidget {
-  const _LockedChip();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.lock_outline, size: 14, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 4),
-        Text('U20-Draft',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant)),
-      ],
     );
   }
 }

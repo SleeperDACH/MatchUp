@@ -8,8 +8,8 @@ import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'club_badge.dart';
 import 'pitch_painter.dart';
-import 'player_flag.dart';
 
 /// Aufstellung als Fußballfeld: Startelf je Spieltag visuell auf dem Platz
 /// wählen. Oben Chips für gültige Formationen (flexibel, Min/Max je Position
@@ -62,6 +62,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   bool _valid = false;
   int _effRound = 34;
   Timer? _saveTimer;
+  Map<String, String?> _clubIcons = const {};
 
   RosterConfig get _roster => widget.league.roster;
 
@@ -145,6 +146,8 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
         const <FantasyLineup>[];
     final statsAsync = ref.watch(roundStatsProvider(round));
     final deadline = ref.watch(roundDeadlineProvider(round)).valueOrNull;
+    final clubIcons =
+        ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
 
     final locked = deadline != null && !DateTime.now().isBefore(deadline);
@@ -213,6 +216,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
           _lastIds = assigned.toList();
           _valid = valid;
           _effRound = round;
+          _clubIcons = clubIcons;
 
           // Bank: Kaderspieler, die nicht aufgestellt sind.
           final bench = [
@@ -248,6 +252,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                 slots: slots,
                 playerById: playerById,
                 points: points,
+                clubIcons: clubIcons,
                 onTapSlot: locked
                     ? null
                     : (pos, i) =>
@@ -270,6 +275,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               _Bench(
                 bench: bench,
                 points: points,
+                clubIcons: clubIcons,
                 onDropToBench:
                     locked ? null : (data) => _benchDrop(slots, data),
               ),
@@ -362,6 +368,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
         candidates: candidates,
         points: points,
         stats: stats,
+        clubIcons: _clubIcons,
         canClear: occupied,
       ),
     );
@@ -472,6 +479,7 @@ class _Pitch extends StatelessWidget {
     required this.slots,
     required this.playerById,
     required this.points,
+    required this.clubIcons,
     required this.onTapSlot,
     required this.onDrop,
   });
@@ -479,6 +487,7 @@ class _Pitch extends StatelessWidget {
   final Map<PlayerPosition, List<String?>> slots;
   final Map<String, FantasyPlayer> playerById;
   final Map<FantasyPlayer, int> points;
+  final Map<String, String?> clubIcons;
   final void Function(PlayerPosition pos, int index)? onTapSlot;
   final void Function(_DragData data, PlayerPosition pos, int index)? onDrop;
 
@@ -524,8 +533,10 @@ class _Pitch extends StatelessWidget {
       builder: (context, candidate, rejected) {
         final slot = _Slot(
           player: player,
+          pos: pos,
           posLabel: pos.short,
           points: pts,
+          iconUrl: player == null ? null : clubIcons[player.club],
           highlight: candidate.isNotEmpty,
           onTap: onTapSlot == null ? null : () => onTapSlot!(pos, i),
         );
@@ -534,7 +545,7 @@ class _Pitch extends StatelessWidget {
         return LongPressDraggable<_DragData>(
           data: data,
           dragAnchorStrategy: pointerDragAnchorStrategy,
-          feedback: _DragFeedback(player: player),
+          feedback: _DragFeedback(player: player, iconUrl: clubIcons[player.club]),
           childWhenDragging: Opacity(opacity: 0.3, child: slot),
           child: slot,
         );
@@ -546,15 +557,19 @@ class _Pitch extends StatelessWidget {
 class _Slot extends StatelessWidget {
   const _Slot({
     required this.player,
+    required this.pos,
     required this.posLabel,
     required this.points,
+    required this.iconUrl,
     required this.onTap,
     this.highlight = false,
   });
 
   final FantasyPlayer? player;
+  final PlayerPosition pos;
   final String posLabel;
   final int? points;
+  final String? iconUrl;
   final VoidCallback? onTap;
 
   /// Hervorhebung, wenn ein passender Spieler über diesen Platz gezogen wird.
@@ -589,7 +604,9 @@ class _Slot extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white24,
-                  border: Border.all(color: Colors.white54, width: 1.5),
+                  border: Border.all(
+                      color: positionColor(pos).withValues(alpha: 0.9),
+                      width: 2),
                 ),
                 child: const Icon(Icons.add, color: Colors.white, size: 22),
               )
@@ -597,14 +614,7 @@ class _Slot extends StatelessWidget {
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                    ),
-                    padding: const EdgeInsets.all(2),
-                    child: PlayerFlag(code: p.nationality),
-                  ),
+                  ClubBadge(club: p.club, iconUrl: iconUrl, size: 42),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -634,15 +644,24 @@ class _Slot extends StatelessWidget {
                 style: const TextStyle(color: Colors.white, fontSize: 11),
               ),
             ),
-            const SizedBox(height: 1),
-            // Positions-Kennzeichnung unter jedem Spieler.
-            Text(
-              posLabel,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
+            const SizedBox(height: 2),
+            // Positions-Kennzeichnung (farbig) unter jedem Spieler.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: positionColor(pos),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                posLabel,
+                style: TextStyle(
+                  color: pos == PlayerPosition.def
+                      ? Colors.black
+                      : Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
           ],
@@ -659,9 +678,10 @@ class _Slot extends StatelessWidget {
 
 /// Spieler-Avatar als Drag-Vorschau unter dem Finger.
 class _DragFeedback extends StatelessWidget {
-  const _DragFeedback({required this.player});
+  const _DragFeedback({required this.player, required this.iconUrl});
 
   final FantasyPlayer player;
+  final String? iconUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -683,7 +703,7 @@ class _DragFeedback extends StatelessWidget {
             ],
           ),
           padding: const EdgeInsets.all(3),
-          child: PlayerFlag(code: player.nationality),
+          child: ClubBadge(club: player.club, iconUrl: iconUrl, size: 46),
         ),
       ),
     );
@@ -691,11 +711,16 @@ class _DragFeedback extends StatelessWidget {
 }
 
 class _Bench extends StatelessWidget {
-  const _Bench(
-      {required this.bench, required this.points, required this.onDropToBench});
+  const _Bench({
+    required this.bench,
+    required this.points,
+    required this.clubIcons,
+    required this.onDropToBench,
+  });
 
   final List<FantasyPlayer> bench;
   final Map<FantasyPlayer, int> points;
+  final Map<String, String?> clubIcons;
 
   /// Aufgestellten Spieler per Drag auf die Bank setzen (`null` = gesperrt).
   final void Function(_DragData data)? onDropToBench;
@@ -741,13 +766,40 @@ class _Bench extends StatelessWidget {
                           .bodySmall
                           ?.copyWith(color: scheme.onSurfaceVariant))
                 else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final p in bench) _benchChip(p),
+                  // Nach Position gruppiert (TW → ABW → MF → ST), farbig.
+                  for (final pos in PlayerPosition.values)
+                    if (bench.any((p) => p.position == pos)) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                  color: positionColor(pos),
+                                  shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(pos.label,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
+                                    ?.copyWith(
+                                        color: positionColor(pos),
+                                        fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final p in bench)
+                            if (p.position == pos) _benchChip(p),
+                        ],
+                      ),
                     ],
-                  ),
               ],
             ),
           );
@@ -757,16 +809,18 @@ class _Bench extends StatelessWidget {
   }
 
   Widget _benchChip(FantasyPlayer p) {
+    final color = positionColor(p.position);
     final chip = Chip(
-      avatar: PlayerFlag(code: p.nationality),
-      label: Text('${p.position.short} · ${_short(p.name)} · ${points[p] ?? 0}'),
+      avatar: ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 22),
+      side: BorderSide(color: color.withValues(alpha: 0.6)),
+      label: Text('${_short(p.name)} · ${points[p] ?? 0}'),
     );
     if (onDropToBench == null) return chip;
     final data = _DragData(playerId: p.id, pos: p.position);
     return LongPressDraggable<_DragData>(
       data: data,
       dragAnchorStrategy: pointerDragAnchorStrategy,
-      feedback: _DragFeedback(player: p),
+      feedback: _DragFeedback(player: p, iconUrl: clubIcons[p.club]),
       childWhenDragging: Opacity(opacity: 0.3, child: chip),
       child: chip,
     );
@@ -785,6 +839,7 @@ class _PlayerPicker extends StatelessWidget {
     required this.candidates,
     required this.points,
     required this.stats,
+    required this.clubIcons,
     required this.canClear,
   });
 
@@ -792,6 +847,7 @@ class _PlayerPicker extends StatelessWidget {
   final List<FantasyPlayer> candidates;
   final Map<FantasyPlayer, int> points;
   final Map<String, PlayerMatchStats> stats;
+  final Map<String, String?> clubIcons;
   final bool canClear;
 
   @override
@@ -840,7 +896,7 @@ class _PlayerPicker extends StatelessWidget {
                       if (s?.cleanSheet ?? false) 'Zu Null',
                     ].join(' · ');
                     return ListTile(
-                      leading: PlayerFlag(code: p.nationality),
+                      leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                       title: Text(p.name),
                       subtitle: Text(detail),
                       trailing: Text('${points[p] ?? 0}',

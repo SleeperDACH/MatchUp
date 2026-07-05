@@ -8,7 +8,7 @@ import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 import '../providers.dart';
-import 'player_flag.dart';
+import 'club_badge.dart';
 
 /// Trade-Zentrale einer Liga: neue Angebote erstellen (Kader nebeneinander)
 /// und ein- wie ausgehende Angebote verwalten (annehmen / ablehnen /
@@ -129,11 +129,24 @@ class _PartnerList extends ConsumerWidget {
 /// Angebot erstellen: eigener Kader links, Partner-Kader rechts. Auf beiden
 /// Seiten die Spieler antippen, die getauscht werden sollen.
 class TradeComposeScreen extends ConsumerStatefulWidget {
-  const TradeComposeScreen(
-      {super.key, required this.league, required this.partner});
+  const TradeComposeScreen({
+    super.key,
+    required this.league,
+    required this.partner,
+    this.initialOffer = const {},
+    this.initialRequest = const {},
+    this.counterOf,
+  });
 
   final FantasyLeague league;
   final FantasyManager partner;
+
+  /// Vorauswahl (z. B. beim Kontern eines Angebots).
+  final Set<String> initialOffer;
+  final Set<String> initialRequest;
+
+  /// ID des ursprünglichen Angebots, das hiermit gekontert (geschlossen) wird.
+  final String? counterOf;
 
   @override
   ConsumerState<TradeComposeScreen> createState() =>
@@ -141,8 +154,8 @@ class TradeComposeScreen extends ConsumerStatefulWidget {
 }
 
 class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
-  final _offer = <String>{}; // eigene Spieler, die ich abgebe
-  final _request = <String>{}; // Spieler des Partners, die ich will
+  late final Set<String> _offer = {...widget.initialOffer}; // ich gebe ab
+  late final Set<String> _request = {...widget.initialRequest}; // ich will
   final _msgCtrl = TextEditingController();
   bool _sending = false;
 
@@ -151,11 +164,6 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
     _msgCtrl.dispose();
     super.dispose();
   }
-
-  /// Namen der ausgewählten Spieler für die Nachricht auflösen.
-  String _names(Set<String> ids, Map<String, FantasyPlayer> byId) => ids.isEmpty
-      ? '—'
-      : ids.map((id) => byId[id]?.name ?? id).join(', ');
 
   Future<void> _send() async {
     setState(() => _sending = true);
@@ -170,6 +178,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
             offerPlayers: _offer.toList(),
             requestPlayers: _request.toList(),
             message: note.isEmpty ? null : note,
+            counterOf: widget.counterOf,
           );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
@@ -177,20 +186,18 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
       return;
     }
 
-    // Trade steht — dazu eine Direktnachricht mit der Zusammenfassung senden.
-    // Existiert noch kein Chat mit dem Partner, entsteht er automatisch;
-    // sonst wird die Nachricht an die bestehende Konversation angehängt.
+    // Beim Kontern das Original als „gekontert" auffrischen.
+    if (widget.counterOf != null) {
+      ref.invalidate(tradeDetailProvider(widget.counterOf!));
+      ref.invalidate(leagueTradesProvider(widget.league.id));
+    }
+
+    // Direktnachricht als Träger der Trade-Karte (ohne vorgefertigten Text).
+    // Existiert noch kein Chat, entsteht er automatisch; sonst wird angehängt.
     try {
-      final pool = ref.read(playerPoolProvider).valueOrNull ??
-          const <FantasyPlayer>[];
-      final byId = {for (final p in pool) p.id: p};
-      final body = StringBuffer('🔄 Trade-Angebot in ${widget.league.name}\n'
-          'Ich biete: ${_names(_offer, byId)}\n'
-          'Dafür möchte ich: ${_names(_request, byId)}');
-      if (note.isNotEmpty) body.write('\n„$note"');
       await ref
           .read(messagingRepositoryProvider)
-          .sendMessage(widget.partner.userId, body.toString(), tradeId: tradeId);
+          .sendMessage(widget.partner.userId, 'Trade-Angebot', tradeId: tradeId);
     } catch (_) {
       // Chat-Nachricht ist optional — Trade wurde bereits gesendet.
     }
@@ -206,10 +213,13 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final myId = ref.watch(currentUserProvider)?.id;
     final poolAsync = ref.watch(playerPoolProvider);
     final roster = ref.watch(leagueRosterProvider(widget.league.id)).valueOrNull ??
         const <RosterEntry>[];
+    final clubIcons =
+        ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
 
     return Scaffold(
       appBar: AppBar(title: Text('Trade mit ${widget.partner.username}')),
@@ -233,6 +243,18 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
 
           return Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                child: Text(
+                  'Tippe auf beiden Seiten die Spieler an, die getauscht werden '
+                  'sollen.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -240,18 +262,22 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                     Expanded(
                       child: _RosterColumn(
                         title: 'Du gibst',
+                        accent: scheme.primary,
                         players: mine,
                         selected: _offer,
+                        clubIcons: clubIcons,
                         onToggle: (id) => setState(() =>
                             _offer.contains(id) ? _offer.remove(id) : _offer.add(id)),
                       ),
                     ),
-                    const VerticalDivider(width: 1),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: _RosterColumn(
                         title: '${widget.partner.username} gibt',
+                        accent: scheme.tertiary,
                         players: theirs,
                         selected: _request,
+                        clubIcons: clubIcons,
                         onToggle: (id) => setState(() => _request.contains(id)
                             ? _request.remove(id)
                             : _request.add(id)),
@@ -305,28 +331,47 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
 class _RosterColumn extends StatelessWidget {
   const _RosterColumn({
     required this.title,
+    required this.accent,
     required this.players,
     required this.selected,
+    required this.clubIcons,
     required this.onToggle,
   });
 
   final String title;
+  final Color accent;
   final List<FantasyPlayer> players;
   final Set<String> selected;
+  final Map<String, String?> clubIcons;
   final ValueChanged<String> onToggle;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final selCount = players.where((p) => selected.contains(p.id)).length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-          color: scheme.surfaceContainerHighest,
-          child: Text(title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.14),
+            border: Border(bottom: BorderSide(color: accent, width: 2)),
+          ),
+          child: Column(
+            children: [
+              Text(title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.bold, color: accent)),
+              Text(selCount == 0 ? 'nichts gewählt' : '$selCount ausgewählt',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: scheme.onSurfaceVariant)),
+            ],
+          ),
         ),
         Expanded(
           child: players.isEmpty
@@ -337,61 +382,83 @@ class _RosterColumn extends StatelessWidget {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
                   itemCount: players.length,
-                  itemBuilder: (context, i) {
-                    final p = players[i];
-                    final sel = selected.contains(p.id);
-                    return InkWell(
-                      onTap: () => onToggle(p.id),
-                      child: Container(
-                        color: sel
-                            ? scheme.primary.withValues(alpha: 0.16)
-                            : null,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 6),
-                        child: Row(
-                          children: [
-                            Icon(
-                              sel
-                                  ? Icons.check_circle
-                                  : Icons.circle_outlined,
-                              size: 18,
-                              color: sel
-                                  ? scheme.primary
-                                  : scheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 6),
-                            SizedBox(
-                                width: 22,
-                                child: PlayerFlag(code: p.nationality)),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(p.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 13)),
-                                  Text('${p.position.short} · ${p.club}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: scheme.onSurfaceVariant)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                  itemBuilder: (context, i) =>
+                      _tile(context, players[i], selected.contains(players[i].id)),
                 ),
         ),
       ],
     );
+  }
+
+  Widget _tile(BuildContext context, FantasyPlayer p, bool sel) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+      child: Material(
+        color: sel
+            ? accent.withValues(alpha: 0.18)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => onToggle(p.id),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: sel ? accent : Colors.transparent,
+                width: 1.6,
+              ),
+            ),
+            child: Column(
+              children: [
+                Stack(
+                  alignment: Alignment.topRight,
+                  clipBehavior: Clip.none,
+                  children: [
+                    ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 40),
+                    if (sel)
+                      Positioned(
+                        right: -6,
+                        top: -6,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: scheme.surface, width: 1.5),
+                          ),
+                          padding: const EdgeInsets.all(1),
+                          child: const Icon(Icons.check,
+                              size: 12, color: Colors.white),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _lastName(p.name),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                PositionPill(pos: p.position),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _lastName(String name) {
+    final parts = name.trim().split(' ');
+    return parts.length > 1 ? parts.last : name;
   }
 }
 
@@ -402,18 +469,8 @@ class _OffersTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final myId = ref.watch(currentUserProvider)?.id;
     final trades = ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
         const <TradeOffer>[];
-    final items = ref.watch(tradeItemsProvider).valueOrNull ??
-        const <String, List<TradeItem>>{};
-    final pool = ref.watch(playerPoolProvider).valueOrNull ??
-        const <FantasyPlayer>[];
-    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
-        const <FantasyManager>[];
-
-    final byId = {for (final p in pool) p.id: p};
-    final names = {for (final m in managers) m.userId: m.username};
 
     // Offene zuerst, dann nach Datum absteigend.
     final sorted = [...trades]..sort((a, b) {
@@ -432,41 +489,35 @@ class _OffersTab extends ConsumerWidget {
       );
     }
 
+    // Dieselbe Karte wie im Chat (holt Angebot + Positionen selbst).
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       children: [
-        for (final t in sorted)
-          _TradeCard(
-            trade: t,
-            items: items[t.id] ?? const [],
-            playerById: byId,
-            names: names,
-            myId: myId,
-          ),
+        for (final t in sorted) TradeCard(tradeId: t.id, inList: true),
       ],
     );
   }
 }
 
-class _TradeCard extends ConsumerWidget {
-  const _TradeCard({
-    required this.trade,
-    required this.items,
-    required this.playerById,
-    required this.names,
-    required this.myId,
-  });
+/// Wiederverwendbare Trade-Karte (Chat & „Angebote"-Tab): lädt Angebot +
+/// Positionen selbst und zeigt Status; der Empfänger kann annehmen/ablehnen/
+/// kontern, der Absender zurückziehen. [inList] = volle Breite (Listen-Kontext)
+/// statt Sprechblasen-Breite (Chat).
+class TradeCard extends ConsumerWidget {
+  const TradeCard({super.key, required this.tradeId, this.inList = false});
 
-  final TradeOffer trade;
-  final List<TradeItem> items;
-  final Map<String, FantasyPlayer> playerById;
-  final Map<String, String> names;
-  final String? myId;
+  final String tradeId;
+  final bool inList;
 
-  Future<void> _respond(BuildContext context, WidgetRef ref, bool accept) async {
+  Future<void> _respond(
+      BuildContext context, WidgetRef ref, TradeOffer trade, bool accept) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).respondTrade(trade.id, accept);
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .respondTrade(tradeId, accept);
+      ref.invalidate(tradeDetailProvider(tradeId));
+      ref.invalidate(leagueTradesProvider(trade.leagueId));
       messenger.showSnackBar(SnackBar(
           content: Text(accept ? 'Trade angenommen.' : 'Angebot abgelehnt.')));
     } catch (e) {
@@ -474,10 +525,13 @@ class _TradeCard extends ConsumerWidget {
     }
   }
 
-  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+  Future<void> _cancel(
+      BuildContext context, WidgetRef ref, TradeOffer trade) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).cancelTrade(trade.id);
+      await ref.read(fantasyLeagueRepositoryProvider).cancelTrade(tradeId);
+      ref.invalidate(tradeDetailProvider(tradeId));
+      ref.invalidate(leagueTradesProvider(trade.leagueId));
       messenger.showSnackBar(
           const SnackBar(content: Text('Angebot zurückgezogen.')));
     } catch (e) {
@@ -485,99 +539,215 @@ class _TradeCard extends ConsumerWidget {
     }
   }
 
+  /// Gegenangebot: den Trade-Compose mit vertauschter Vorauswahl öffnen.
+  void _counter(BuildContext context, WidgetRef ref, TradeOffer trade,
+      List<TradeItem> items) {
+    final league = ref.read(draftLeagueProvider(trade.leagueId)).valueOrNull;
+    final managers =
+        ref.read(fantasyManagersProvider(trade.leagueId)).valueOrNull ??
+            const <FantasyManager>[];
+    FantasyManager? sender;
+    for (final m in managers) {
+      if (m.userId == trade.fromManager) {
+        sender = m;
+        break;
+      }
+    }
+    if (league == null || sender == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kontern gerade nicht möglich.')));
+      return;
+    }
+    final myGive = {
+      for (final it in items)
+        if (it.giver == trade.toManager) it.playerId
+    };
+    final theirGive = {
+      for (final it in items)
+        if (it.giver == trade.fromManager) it.playerId
+    };
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => TradeComposeScreen(
+        league: league,
+        partner: sender!,
+        initialOffer: myGive,
+        initialRequest: theirGive,
+        counterOf: trade.id,
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final incoming = trade.toManager == myId;
-    final offered = [
-      for (final it in items)
-        if (it.giver == trade.fromManager) playerById[it.playerId]?.name ?? it.playerId
-    ];
-    final requested = [
-      for (final it in items)
-        if (it.giver == trade.toManager) playerById[it.playerId]?.name ?? it.playerId
-    ];
-    final fromName = names[trade.fromManager] ?? '—';
-    final toName = names[trade.toManager] ?? '—';
+    final myId = ref.watch(currentUserProvider)?.id;
+    final detailAsync = ref.watch(tradeDetailProvider(tradeId));
+    final pool =
+        ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
+    final nameById = {for (final p in pool) p.id: p.name};
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    incoming
-                        ? 'Angebot von $fromName'
-                        : 'Dein Angebot an $toName',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+    return detailAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, _) => const SizedBox.shrink(),
+      data: (d) {
+        if (d == null) {
+          return _shell(context,
+              child: Text('Angebot nicht mehr verfügbar.',
+                  style: TextStyle(color: scheme.onSurfaceVariant)));
+        }
+        final trade = d.trade;
+        final offered = [
+          for (final it in d.items)
+            if (it.giver == trade.fromManager)
+              nameById[it.playerId] ?? it.playerId
+        ];
+        final requested = [
+          for (final it in d.items)
+            if (it.giver == trade.toManager)
+              nameById[it.playerId] ?? it.playerId
+        ];
+        final incoming = trade.toManager == myId;
+        // Liga (Name + fürs Kontern) & Manager laden.
+        final leagueName =
+            ref.watch(draftLeagueProvider(trade.leagueId)).valueOrNull?.name;
+        ref.watch(fantasyManagersProvider(trade.leagueId));
+
+        return _shell(
+          context,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.swap_horiz, size: 18, color: scheme.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Trade-Angebot',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        if (leagueName != null)
+                          Text(leagueName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant)),
+                      ],
+                    ),
                   ),
-                ),
-                _StatusChip(status: trade.status),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _side(context, '$fromName gibt', offered, scheme.primary),
-            const SizedBox(height: 4),
-            _side(context, '$toName gibt', requested, scheme.tertiary),
-            if (trade.message != null && trade.message!.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  _statusChip(context, trade.status),
+                ],
+              ),
               const SizedBox(height: 8),
-              Text('„${trade.message}"',
-                  style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: scheme.onSurfaceVariant)),
-            ],
-            if (trade.status.isPending) ...[
-              const SizedBox(height: 10),
-              if (incoming)
+              _line(context, 'Du bekommst',
+                  incoming ? offered : requested, scheme.primary),
+              const SizedBox(height: 2),
+              _line(context, 'Du gibst',
+                  incoming ? requested : offered, scheme.tertiary),
+              if (trade.message != null && trade.message!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text('„${trade.message}"',
+                    style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: scheme.onSurfaceVariant)),
+              ],
+              if (trade.status.isPending && incoming) ...[
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => _respond(context, ref, false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: scheme.error,
+                          side: BorderSide(
+                              color: scheme.error.withValues(alpha: 0.5)),
+                        ),
+                        onPressed: () => _respond(context, ref, trade, false),
                         child: const Text('Ablehnen'),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: FilledButton(
-                        onPressed: () => _respond(context, ref, true),
+                        onPressed: () => _respond(context, ref, trade, true),
                         child: const Text('Annehmen'),
                       ),
                     ),
                   ],
-                )
-              else
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: () => _cancel(context, ref),
-                    icon: const Icon(Icons.undo, size: 18),
-                    label: const Text('Zurückziehen'),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _counter(context, ref, trade, d.items),
+                    icon: const Icon(Icons.swap_calls, size: 18),
+                    label: const Text('Kontern'),
                   ),
                 ),
+              ] else if (trade.status.isPending) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text('Warten auf Antwort …',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant)),
+                    const Spacer(),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(foregroundColor: scheme.error),
+                      onPressed: () => _cancel(context, ref, trade),
+                      icon: const Icon(Icons.undo, size: 18),
+                      label: const Text('Zurückziehen'),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _side(
+  Widget _shell(BuildContext context, {required Widget child}) {
+    final scheme = Theme.of(context).colorScheme;
+    final card = Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.25)),
+      ),
+      child: child,
+    );
+    if (inList) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: card,
+      );
+    }
+    return Container(
+      constraints:
+          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+      margin: const EdgeInsets.only(top: 2, bottom: 6, left: 4, right: 4),
+      child: card,
+    );
+  }
+
+  Widget _line(
       BuildContext context, String label, List<String> players, Color color) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 96,
+          width: 82,
           child: Text(label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ),
         Expanded(
           child: Text(players.isEmpty ? '—' : players.join(', '),
@@ -586,28 +756,23 @@ class _TradeCard extends ConsumerWidget {
       ],
     );
   }
-}
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final TradeStatus status;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _statusChip(BuildContext context, TradeStatus status) {
     final scheme = Theme.of(context).colorScheme;
     final (Color bg, Color fg) = switch (status) {
       TradeStatus.pending => (scheme.secondaryContainer, scheme.onSecondaryContainer),
       TradeStatus.accepted => (scheme.primaryContainer, scheme.onPrimaryContainer),
       TradeStatus.rejected => (scheme.errorContainer, scheme.onErrorContainer),
       TradeStatus.cancelled => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
+      TradeStatus.countered => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration:
           BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
       child: Text(status.label,
-          style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
+          style:
+              TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }

@@ -8,6 +8,7 @@ import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
+import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
@@ -149,6 +150,7 @@ class _WelcomeHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final name = ref.watch(currentUsernameProvider).valueOrNull;
+    final unread = ref.watch(hasUnreadDmsProvider);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
@@ -181,12 +183,31 @@ class _WelcomeHeader extends ConsumerWidget {
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Direktnachrichten',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const ConversationsScreen())),
-            icon: const Icon(Icons.forum_outlined,
-                size: 30, color: MatchUpColors.green),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                tooltip: 'Direktnachrichten',
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const ConversationsScreen())),
+                icon: const Icon(Icons.forum_outlined,
+                    size: 30, color: MatchUpColors.green),
+              ),
+              if (unread)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: MatchUpColors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: MatchUpColors.base, width: 2),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),

@@ -12,7 +12,6 @@ import 'fantasy_table_screen.dart';
 import 'free_agency_screen.dart';
 import 'lineup_screen.dart';
 import 'matchups_screen.dart';
-import 'my_team_screen.dart';
 import 'player_pool_screen.dart';
 import 'trade_screen.dart';
 
@@ -124,11 +123,11 @@ class _OverviewTab extends ConsumerWidget {
           children: [
             if (drafted) ...[
               _ActionTile(
-                icon: Icons.shield_outlined,
-                label: 'Mein Team',
+                icon: Icons.sports_soccer,
+                label: 'Aufstellung',
                 color: _cTeal,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => MyTeamScreen(league: league))),
+                    builder: (_) => LineupScreen(league: league))),
               ),
               _ActionTile(
                 icon: Icons.person_add_alt,
@@ -136,6 +135,13 @@ class _OverviewTab extends ConsumerWidget {
                 color: _cAmber,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => FreeAgencyScreen(league: league))),
+              ),
+              _ActionTile(
+                icon: Icons.swap_horiz,
+                label: 'Trade',
+                color: _cRed,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => TradeScreen(league: league))),
               ),
             ],
             if (!draftFullyDone)
@@ -152,13 +158,6 @@ class _OverviewTab extends ConsumerWidget {
               color: _cGreen,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => FantasyChatScreen(league: league))),
-            ),
-            _ActionTile(
-              icon: Icons.groups_2,
-              label: 'Spielerpool',
-              color: _cRed,
-              onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PlayerPoolScreen())),
             ),
           ],
         ),
@@ -410,7 +409,7 @@ class _RostersTab extends ConsumerWidget {
                   label: 'Spielersuche',
                   icon: Icons.search,
                   color: _cGreen,
-                  onTap: () => open(const PlayerPoolScreen()),
+                  onTap: () => open(PlayerPoolScreen(league: league)),
                 ),
               ),
             ],

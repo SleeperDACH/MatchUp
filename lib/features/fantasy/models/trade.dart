@@ -3,7 +3,8 @@ enum TradeStatus {
   pending('Offen'),
   accepted('Angenommen'),
   rejected('Abgelehnt'),
-  cancelled('Zurückgezogen');
+  cancelled('Zurückgezogen'),
+  countered('Gekontert');
 
   const TradeStatus(this.label);
 

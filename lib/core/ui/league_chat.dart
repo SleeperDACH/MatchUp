@@ -168,17 +168,18 @@ class _MessageListState extends State<_MessageList> {
         final msg = widget.messages[i];
         if (msg.isSystem) return _SystemLine(text: msg.body);
         final isMine = msg.userId == widget.myId;
-        final bubble = _MessageBubble(
+        // Sonderinhalt (z. B. Trade-Karte) ersetzt die Textblase.
+        final extra = widget.extraBuilder?.call(context, msg);
+        if (extra != null) {
+          return Align(
+            alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+            child: extra,
+          );
+        }
+        return _MessageBubble(
           message: msg,
           author: widget.names[msg.userId] ?? '?',
           isMine: isMine,
-        );
-        final extra = widget.extraBuilder?.call(context, msg);
-        if (extra == null) return bubble;
-        return Column(
-          crossAxisAlignment:
-              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [bubble, extra],
         );
       },
     );
@@ -204,47 +205,39 @@ class _SystemLine extends StatelessWidget {
     final body = hasIcon ? parts.sublist(1).join(' ') : text;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Divider(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-          ),
-          Flexible(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: scheme.primary.withValues(alpha: 0.22)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[
-                    Text(icon, style: const TextStyle(fontSize: 14)),
-                    const SizedBox(width: 6),
-                  ],
-                  Flexible(
-                    child: Text(
-                      body,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                  ),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.86),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: scheme.primary.withValues(alpha: 0.22)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (icon != null) ...[
+                  Text(icon, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 6),
                 ],
-              ),
+                Flexible(
+                  child: Text(
+                    body,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ),
+              ],
             ),
           ),
-          Expanded(
-            child: Divider(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-          ),
-        ],
+        ),
       ),
     );
   }

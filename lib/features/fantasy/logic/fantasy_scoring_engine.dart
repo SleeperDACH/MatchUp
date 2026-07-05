@@ -184,3 +184,40 @@ Lineup effectiveLineup(
   }
   return bestEleven(points, roster);
 }
+
+/// Effektive Startelf-Punkte aller Manager für einen Spieltag [round]
+/// (manuelle Aufstellung, sonst automatisch beste Elf). Grundlage für die
+/// Liga-Tabelle und die Head-to-Head-Bilanz.
+Map<String, int> effectiveTotalsForRound({
+  required Map<String, PlayerMatchStats> stats,
+  required int round,
+  required List<FantasyManager> managers,
+  required List<RosterEntry> roster,
+  required Map<String, FantasyPlayer> playerById,
+  required List<FantasyLineup> lineups,
+  required FantasyScoring scoring,
+  required RosterConfig rosterConfig,
+}) {
+  final out = <String, int>{};
+  for (final m in managers) {
+    final players = [
+      for (final r in roster)
+        if (r.managerId == m.userId && playerById[r.playerId] != null)
+          playerById[r.playerId]!
+    ];
+    final points = {
+      for (final p in players)
+        p: scorePlayer(
+            stats[p.id] ?? const PlayerMatchStats(), p.position, scoring)
+    };
+    Set<String>? manual;
+    for (final l in lineups) {
+      if (l.round == round && l.managerId == m.userId) {
+        manual = l.playerIds;
+        break;
+      }
+    }
+    out[m.userId] = effectiveLineup(points, rosterConfig, manual).total;
+  }
+  return out;
+}

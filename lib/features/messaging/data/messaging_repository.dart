@@ -17,7 +17,8 @@ class MessagingRepository {
   Stream<List<DirectMessage>> messagesStream() => _client
       .from('direct_messages')
       .stream(primaryKey: ['id'])
-      .order('created_at')
+      // Älteste zuerst — neue Nachrichten erscheinen unten (wie im Liga-Chat).
+      .order('created_at', ascending: true)
       .map((rows) => rows.map(DirectMessage.fromJson).toList());
 
   Future<void> sendMessage(String recipientId, String body,

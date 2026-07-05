@@ -39,7 +39,7 @@ class MatchupsBody extends ConsumerStatefulWidget {
 class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
   int? _round;
 
-  /// Effektive Punkte aller Manager für einen Spieltag.
+  /// Effektive Punkte aller Manager für einen Spieltag (geteilte Logik).
   Map<String, int> _totals(
     Map<String, PlayerMatchStats> stats,
     int round, {
@@ -47,28 +47,17 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
     required List<RosterEntry> roster,
     required Map<String, FantasyPlayer> playerById,
     required List<FantasyLineup> lineups,
-  }) {
-    final league = widget.league;
-    final out = <String, int>{};
-    for (final m in managers) {
-      final players = [
-        for (final r in roster)
-          if (r.managerId == m.userId && playerById[r.playerId] != null)
-            playerById[r.playerId]!
-      ];
-      final points = {
-        for (final p in players)
-          p: scorePlayer(
-              stats[p.id] ?? const PlayerMatchStats(), p.position, league.scoring)
-      };
-      final manual = lineups
-          .where((l) => l.round == round && l.managerId == m.userId)
-          .map((l) => l.playerIds)
-          .firstOrNull;
-      out[m.userId] = effectiveLineup(points, league.roster, manual).total;
-    }
-    return out;
-  }
+  }) =>
+      effectiveTotalsForRound(
+        stats: stats,
+        round: round,
+        managers: managers,
+        roster: roster,
+        playerById: playerById,
+        lineups: lineups,
+        scoring: widget.league.scoring,
+        rosterConfig: widget.league.roster,
+      );
 
   @override
   Widget build(BuildContext context) {
