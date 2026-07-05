@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+
+// Akzentfarben für die Liga-Info-Kacheln.
+const _cGreen = Color(0xFF4ADE6A);
+const _cTeal = Color(0xFF4FC3A1);
+const _cAmber = Color(0xFFFFC83D);
 
 /// Einstellungen einer Fantasy-Liga als Menü: je Bereich eine eigene Seite.
 class FantasyLeagueSettingsScreen extends ConsumerWidget {
@@ -18,6 +24,8 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     // Live-Stand, damit die Zusammenfassungen nach dem Speichern stimmen.
     final l = ref.watch(draftLeagueProvider(league.id)).valueOrNull ?? league;
     final isOwner = ref.watch(currentUserProvider)?.id == l.createdBy;
+    final managers =
+        ref.watch(fantasyManagersProvider(l.id)).valueOrNull?.length;
 
     void open(Widget page) => Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => page));
@@ -39,6 +47,30 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _InviteBanner(code: l.inviteCode),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _StatPill(
+                  icon: Icons.groups,
+                  value: managers?.toString() ?? '–',
+                  label: 'Teilnehmer',
+                  color: _cGreen),
+              const SizedBox(width: 10),
+              _StatPill(
+                  icon: Icons.badge_outlined,
+                  value: '${l.roster.squadSize}',
+                  label: 'Kadergröße',
+                  color: _cTeal),
+              const SizedBox(width: 10),
+              _StatPill(
+                  icon: Icons.sports_soccer,
+                  value: '${l.roster.starters}',
+                  label: 'Startelf',
+                  color: _cAmber),
+            ],
+          ),
+          const SizedBox(height: 20),
           Card(
             child: ListTile(
               leading: Icon(Icons.sports, color: scheme.primary),
@@ -73,6 +105,24 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               onTap: () => open(PlayoffSettingsPage(league: l)),
             ),
           ),
+          if (l.mode == FantasyMode.dynasty &&
+              isOwner &&
+              l.draftStatus == DraftStatus.done &&
+              l.draftPhase == DraftPhase.u20) ...[
+            const SizedBox(height: 24),
+            _Section('Neue Saison'),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.calendar_month, color: scheme.primary),
+                title: const Text('Saison-Rollover'),
+                subtitle: Text(
+                    'Startet Saison ${l.season + 1}/${(l.season + 2) % 100}: '
+                    'Kader bleibt, danach ein neuer U20-Draft für die Rookies.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _confirmRollover(context, ref, l),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           _Section('Gefahrenzone'),
           if (isOwner)
@@ -89,10 +139,100 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               ),
             )
           else
-            const _Note('Nur der Ersteller der Liga kann sie löschen.'),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.logout, color: scheme.error),
+                title: Text('Liga verlassen',
+                    style: TextStyle(
+                        color: scheme.error, fontWeight: FontWeight.bold)),
+                subtitle: const Text(
+                    'Du steigst aus der Liga aus — dein Kader, deine '
+                    'Aufstellungen und Anträge werden entfernt.'),
+                onTap: () => _confirmLeave(context, ref, l),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmLeave(
+      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+    final scheme = Theme.of(context).colorScheme;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Liga verlassen?'),
+        content: Text(
+            'Du verlässt „${l.name}". Dein Kader, deine Aufstellungen und '
+            'offenen Anträge werden entfernt. Das kann nicht rückgängig '
+            'gemacht werden.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: scheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Verlassen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(fantasyLeagueRepositoryProvider).leaveLeague(l.id);
+      ref.invalidate(myFantasyLeaguesProvider);
+      navigator.popUntil((r) => r.isFirst);
+      messenger.showSnackBar(const SnackBar(content: Text('Liga verlassen.')));
+    } catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
+    }
+  }
+
+  Future<void> _confirmRollover(
+      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Saison ${l.season + 1}/${(l.season + 2) % 100} starten?'),
+        content: const Text(
+            'Der komplette Kader bleibt erhalten. Der bisherige Draft-Verlauf '
+            'und offene Waiver-Anträge werden zurückgesetzt. Danach kannst du '
+            'den neuen U20-Draft starten. Das kann nicht rückgängig gemacht '
+            'werden.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Saison starten'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(draftRepositoryProvider).rolloverSeason(l.id);
+      ref.invalidate(draftLeagueProvider(l.id));
+      ref.invalidate(myFantasyLeaguesProvider);
+      navigator.pop();
+      messenger.showSnackBar(SnackBar(
+          content: Text(
+              'Saison ${l.season + 1}/${(l.season + 2) % 100} gestartet — '
+              'jetzt den U20-Draft starten.')));
+    } catch (e) {
+      messenger
+          .showSnackBar(SnackBar(content: Text('Rollover fehlgeschlagen: $e')));
+    }
   }
 
   Future<void> _confirmDelete(
@@ -920,3 +1060,97 @@ class _Note extends StatelessWidget {
 
 TimeOfDay _fromMinute(int m) => TimeOfDay(hour: m ~/ 60, minute: m % 60);
 int _toMinute(TimeOfDay t) => t.hour * 60 + t.minute;
+
+/// Kompakte Kennzahl-Kachel (Teilnehmer / Kadergröße / Startelf).
+class _StatPill extends StatelessWidget {
+  const _StatPill(
+      {required this.icon,
+      required this.value,
+      required this.label,
+      required this.color});
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.30)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 6),
+            Text(value,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold, color: color)),
+            Text(label,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Hervorgehobener Einladungscode zum Kopieren.
+class _InviteBanner extends StatelessWidget {
+  const _InviteBanner({required this.code});
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.primary.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () async {
+          await Clipboard.setData(ClipboardData(text: code));
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Einladungscode kopiert')));
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(Icons.key, color: scheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Einladungscode',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant)),
+                    Text(code,
+                        style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2)),
+                  ],
+                ),
+              ),
+              Icon(Icons.copy, size: 18, color: scheme.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

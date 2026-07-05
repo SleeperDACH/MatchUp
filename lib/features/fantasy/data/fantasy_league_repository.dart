@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/models/chat_message.dart';
 import '../models/fantasy_models.dart';
+import '../models/trade.dart';
 
 /// Fantasy-Liga-Verwaltung gegen Supabase. RLS sorgt dafür, dass nur
 /// die eigenen Ligen sichtbar sind.
@@ -46,6 +48,50 @@ class FantasyLeagueRepository {
   /// Daten (Mitglieder, Kader, Lineups, Waiver, Draft) gehen per Cascade mit.
   Future<void> deleteLeague(String leagueId) =>
       _client.from('fantasy_leagues').delete().eq('id', leagueId);
+
+  /// Ein Teilnehmer (nicht der Ersteller) verlässt die Liga; seine
+  /// ligagebundenen Daten werden serverseitig entfernt.
+  Future<void> leaveLeague(String leagueId) =>
+      _client.rpc('leave_fantasy_league', params: {'p_league_id': leagueId});
+
+  // --- Trades ---------------------------------------------------------
+
+  /// Trade-Angebote der Liga in Echtzeit (RLS: nur eigene Beteiligung).
+  Stream<List<TradeOffer>> tradesStream(String leagueId) => _client
+      .from('fantasy_trades')
+      .stream(primaryKey: ['id'])
+      .eq('league_id', leagueId)
+      .order('created_at')
+      .map((rows) => rows.map(TradeOffer.fromJson).toList());
+
+  /// Alle Positionen der eigenen Trades in Echtzeit (RLS-gefiltert), im
+  /// Client per `trade_id` gruppiert.
+  Stream<List<TradeItem>> tradeItemsStream() => _client
+      .from('fantasy_trade_items')
+      .stream(primaryKey: ['trade_id', 'player_id'])
+      .map((rows) => rows.map(TradeItem.fromJson).toList());
+
+  Future<void> proposeTrade(
+    String leagueId,
+    String toManager, {
+    required List<String> offerPlayers,
+    required List<String> requestPlayers,
+    String? message,
+  }) =>
+      _client.rpc('fantasy_propose_trade', params: {
+        'p_league_id': leagueId,
+        'p_to_manager': toManager,
+        'p_offer_players': offerPlayers,
+        'p_request_players': requestPlayers,
+        'p_message': message,
+      });
+
+  Future<void> respondTrade(String tradeId, bool accept) =>
+      _client.rpc('fantasy_respond_trade',
+          params: {'p_trade_id': tradeId, 'p_accept': accept});
+
+  Future<void> cancelTrade(String tradeId) => _client
+      .rpc('fantasy_cancel_trade', params: {'p_trade_id': tradeId});
 
   /// Ändert die Pickzeit nachträglich — nur vor dem Draft (Status `setup`).
   /// RLS erlaubt das Update nur dem Ersteller.
@@ -144,6 +190,23 @@ class FantasyLeagueRepository {
       .stream(primaryKey: ['league_id', 'player_id'])
       .eq('league_id', leagueId)
       .map((rows) => rows.map(RosterEntry.fromJson).toList());
+
+  /// Live-Stream des ligainternen Chats (älteste zuerst, neue unten).
+  Stream<List<ChatMessage>> messageStream(String leagueId) => _client
+      .from('fantasy_league_messages')
+      .stream(primaryKey: ['id'])
+      .eq('league_id', leagueId)
+      .order('created_at', ascending: true)
+      .map((rows) => rows.map(ChatMessage.fromJson).toList());
+
+  Future<void> sendMessage(String leagueId, String body) async {
+    final userId = _client.auth.currentUser!.id;
+    await _client.from('fantasy_league_messages').insert({
+      'league_id': leagueId,
+      'user_id': userId,
+      'body': body.trim(),
+    });
+  }
 
   Future<void> dropPlayer(String leagueId, String playerId) => _client.rpc(
         'fantasy_drop_player',

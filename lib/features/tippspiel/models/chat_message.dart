@@ -1,23 +1,3 @@
-/// Eine Chat-Nachricht im ligainternen Chat einer Tipprunde.
-/// Der Anzeigename wird nicht mitgespeichert, sondern über die
-/// Mitgliederliste der Liga aufgelöst (siehe `roundMembersProvider`).
-class ChatMessage {
-  const ChatMessage({
-    required this.id,
-    required this.userId,
-    required this.body,
-    required this.createdAt,
-  });
-
-  final String id;
-  final String userId;
-  final String body;
-  final DateTime createdAt;
-
-  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        id: json['id'] as String,
-        userId: json['user_id'] as String,
-        body: json['body'] as String,
-        createdAt: DateTime.parse(json['created_at'] as String),
-      );
-}
+// Der Chat-Nachrichtentyp liegt jetzt im Core und wird von Tippspiel wie
+// Fantasy geteilt. Re-Export, damit bestehende Importe gültig bleiben.
+export '../../../core/models/chat_message.dart';

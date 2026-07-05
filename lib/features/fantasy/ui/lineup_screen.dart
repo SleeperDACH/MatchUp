@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +7,7 @@ import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'matchday_stepper.dart';
+import 'pitch_painter.dart';
 import 'player_flag.dart';
 
 /// Aufstellung als Fußballfeld: Startelf je Spieltag visuell auf dem Platz
@@ -17,13 +16,31 @@ import 'player_flag.dart';
 /// verfügbaren Spieler **derselben Position** (ein Stürmer kann nicht in die
 /// Abwehr). Vor Anstoß änderbar, danach gesperrt. Ohne gespeicherte
 /// Aufstellung zählt die automatische beste Elf.
-class LineupScreen extends ConsumerStatefulWidget {
+/// Eigenständiger Aufstellungs-Screen (Editor mit AppBar).
+class LineupScreen extends StatelessWidget {
   const LineupScreen({super.key, required this.league});
 
   final FantasyLeague league;
 
   @override
-  ConsumerState<LineupScreen> createState() => _LineupScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Aufstellung')),
+      body: SingleChildScrollView(child: LineupEditor(league: league)),
+    );
+  }
+}
+
+/// Einbettbarer Aufstellungs-Editor (Platz + Formation + Speichern) ohne
+/// eigenes Scaffold — steht im Kader-Tab auch unter weiteren Inhalten und
+/// wird vom umgebenden Screen gescrollt.
+class LineupEditor extends ConsumerStatefulWidget {
+  const LineupEditor({super.key, required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  ConsumerState<LineupEditor> createState() => _LineupEditorState();
 }
 
 /// Reihenfolge auf dem Platz: Sturm oben, Torwart unten.
@@ -34,7 +51,7 @@ const _pitchOrder = [
   PlayerPosition.gk,
 ];
 
-class _LineupScreenState extends ConsumerState<LineupScreen> {
+class _LineupEditorState extends ConsumerState<LineupEditor> {
   int? _round;
 
   /// Aufstellung als feste Slot-Listen je Position (Länge = Formation),
@@ -42,7 +59,6 @@ class _LineupScreenState extends ConsumerState<LineupScreen> {
   Map<PlayerPosition, List<String?>>? _slots;
   bool _saving = false;
 
-  bool _valid = false;
   List<String> _lastIds = const [];
 
   RosterConfig get _roster => widget.league.roster;
@@ -83,12 +99,12 @@ class _LineupScreenState extends ConsumerState<LineupScreen> {
         slots[PlayerPosition.fwd]?.length ?? 0,
       );
 
-  Future<void> _save(List<String> ids) async {
+  Future<void> _save(int round, List<String> ids) async {
     setState(() => _saving = true);
     try {
       await ref
           .read(fantasyLeagueRepositoryProvider)
-          .setLineup(widget.league.id, _round!, ids);
+          .setLineup(widget.league.id, round, ids);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Aufstellung gespeichert')));
@@ -120,12 +136,12 @@ class _LineupScreenState extends ConsumerState<LineupScreen> {
 
     final locked = deadline != null && !DateTime.now().isBefore(deadline);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Aufstellung')),
-      body: poolAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Fehler: $e')),
-        data: (pool) {
+    return poolAsync.when(
+      loading: () => const SizedBox(
+          height: 320, child: Center(child: CircularProgressIndicator())),
+      error: (e, _) =>
+          SizedBox(height: 320, child: Center(child: Text('Fehler: $e'))),
+      data: (pool) {
           final playerById = {for (final p in pool) p.id: p};
           final myPlayers = [
             for (final r in roster)
@@ -149,12 +165,10 @@ class _LineupScreenState extends ConsumerState<LineupScreen> {
           }
 
           if (myPlayers.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('Noch kein Kader — der Draft muss erst laufen.',
-                    textAlign: TextAlign.center),
-              ),
+            return const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('Noch kein Kader — der Draft muss erst laufen.',
+                  textAlign: TextAlign.center),
             );
           }
 
@@ -185,7 +199,6 @@ class _LineupScreenState extends ConsumerState<LineupScreen> {
                   slots[PlayerPosition.mid]?.whereType<String>().length ?? 0,
               fwdCount:
                   slots[PlayerPosition.fwd]?.whereType<String>().length ?? 0);
-          _valid = valid;
           _lastIds = assigned.toList();
 
           // Bank: Kaderspieler, die nicht aufgestellt sind.
@@ -198,6 +211,7 @@ class _LineupScreenState extends ConsumerState<LineupScreen> {
             });
 
           return Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               MatchdayStepper(
                 round: round,
@@ -223,51 +237,49 @@ class _LineupScreenState extends ConsumerState<LineupScreen> {
                   onSelected: (fm) => setState(
                       () => _slots = _buildSlots(fm, assigned, byPos)),
                 ),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _Pitch(
-                        slots: slots,
-                        playerById: playerById,
-                        points: points,
-                        onTapSlot: locked
-                            ? null
-                            : (pos, i) =>
-                                _openPicker(pos, i, slots, byPos, points, stats),
-                        onDrop: locked
-                            ? null
-                            : (data, pos, i) => _applyDrop(slots, data, pos, i),
-                      ),
-                      _Bench(
-                        bench: bench,
-                        points: points,
-                        onDropToBench:
-                            locked ? null : (data) => _benchDrop(slots, data),
-                      ),
-                      const SizedBox(height: 80),
-                    ],
-                  ),
-                ),
+              _Pitch(
+                slots: slots,
+                playerById: playerById,
+                points: points,
+                onTapSlot: locked
+                    ? null
+                    : (pos, i) =>
+                        _openPicker(pos, i, slots, byPos, points, stats),
+                onDrop: locked
+                    ? null
+                    : (data, pos, i) => _applyDrop(slots, data, pos, i),
               ),
+              _Bench(
+                bench: bench,
+                points: points,
+                onDropToBench:
+                    locked ? null : (data) => _benchDrop(slots, data),
+              ),
+              if (!locked)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: (_saving || !valid)
+                          ? null
+                          : () => _save(round, _lastIds),
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.check),
+                      label: const Text('Aufstellung speichern'),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(height: 16),
             ],
           );
         },
-      ),
-      floatingActionButton: poolAsync.hasValue && !locked
-          ? FloatingActionButton.extended(
-              backgroundColor: _valid ? null : Theme.of(context).disabledColor,
-              onPressed: (_saving || !_valid) ? null : () => _save(_lastIds),
-              icon: _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.check),
-              label: const Text('Speichern'),
-            )
-          : null,
-    );
+      );
   }
 
   /// Saat-Slots aus einer Startelf-Menge; nimmt deren Formation, fällt bei
@@ -530,14 +542,10 @@ class _Pitch extends StatelessWidget {
       height: 420,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
-        ),
+        gradient: pitchGradient,
       ),
       child: CustomPaint(
-        painter: _PitchLinesPainter(),
+        painter: const PitchLinesPainter(),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
           child: Column(
@@ -821,81 +829,6 @@ class _Bench extends StatelessWidget {
     final parts = name.trim().split(' ');
     return parts.length > 1 ? parts.last : name;
   }
-}
-
-/// Zeichnet die Linien einer Fußballfeld-Hälfte: Außenlinie, Mittelkreis
-/// (oben, halb), Straf- und Torraum samt Elfmeterpunkt und Bogen (unten, beim
-/// Torwart). Liegt hinter den Spieler-Slots.
-class _PitchLinesPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final line = Paint()
-      ..color = Colors.white.withValues(alpha: 0.30)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final dot = Paint()
-      ..color = Colors.white.withValues(alpha: 0.30)
-      ..style = PaintingStyle.fill;
-
-    const inset = 8.0;
-    final w = size.width;
-    final h = size.height;
-    final top = inset, bottom = h - inset;
-    final cx = w / 2;
-
-    // Außenlinie (oben = Mittellinie, unten = Torlinie).
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          Rect.fromLTRB(inset, top, w - inset, bottom),
-          const Radius.circular(8)),
-      line,
-    );
-
-    // Mittelkreis als unterer Halbbogen + Anstoßpunkt auf der Mittellinie.
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(cx, top), radius: w * 0.16),
-      0,
-      3.14159,
-      false,
-      line,
-    );
-    canvas.drawCircle(Offset(cx, top), 2.5, dot);
-
-    // Strafraum unten (3 Seiten; Torlinie ist die Außenlinie).
-    final paW = w * 0.58, paH = h * 0.20;
-    void box(double bw, double bh) {
-      canvas.drawPath(
-        Path()
-          ..moveTo(cx - bw / 2, bottom)
-          ..lineTo(cx - bw / 2, bottom - bh)
-          ..lineTo(cx + bw / 2, bottom - bh)
-          ..lineTo(cx + bw / 2, bottom),
-        line,
-      );
-    }
-
-    box(paW, paH); // Strafraum
-    box(w * 0.30, h * 0.09); // Torraum
-
-    // Elfmeterpunkt + Strafraumbogen („D"): nur der Teil oberhalb der
-    // Strafraumkante. Die Bogen-Enden treffen exakt auf die Kante — Winkel aus
-    // dem Abstand Elfmeterpunkt→Kante und dem Radius berechnet.
-    final penSpotY = bottom - paH * 0.62;
-    canvas.drawCircle(Offset(cx, penSpotY), 2.5, dot);
-    final arcR = w * 0.15;
-    final boxTopOffset = penSpotY - (bottom - paH); // Abstand Punkt→Strafraumkante
-    final a = math.asin((boxTopOffset / arcR).clamp(-1.0, 1.0));
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(cx, penSpotY), radius: arcR),
-      math.pi + a, // oben-links auf der Kante
-      math.pi - 2 * a, // über den Scheitel bis oben-rechts auf der Kante
-      false,
-      line,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Bottom-Sheet: verfügbare Spieler einer Position auswählen (oder Slot leeren).

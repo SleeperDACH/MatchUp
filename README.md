@@ -59,11 +59,19 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   Round-Robin-Spielplan nach der Kreismethode, Bye bei ungerader Managerzahl),
   Sieg/Niederlage/Unentschieden aus den Punkten der effektiven Aufstellung,
   plus Saison-Bilanztabelle (S-N-U, Punktedifferenz).
+  **Flexible Formationen**: Startelf frei innerhalb der Min/Max-Spannen je
+  Position (FPL-Stil: ABW 3–5, MF 2–5, ST 1–3); Auto-Elf wählt die punktbeste
+  gültige Formation, serverseitig erzwungen.
+  **Saison-Rollover (Dynasty)**: Ersteller überführt die Liga nach Saisonende
+  in die neue Saison — der komplette Kader bleibt, Draft-Verlauf und offene
+  Waiver werden zurückgesetzt, danach ein frischer U20-Draft für die neuen
+  Rookies.
 - ⬜ Reicherer Stats-Feed anbinden (Assists/Karten/Minuten/Aufstellungen —
   z. B. api-sports), füllt dieselben Spalten ohne Client-Umbau
 - ⬜ Waiver-Priorität aus echter umgekehrter Saisontabelle (sobald
   serverseitige kumulierte Punkte existieren)
-- ⬜ Flexible Formationen, Saison-Rollover (Dynasty)
+- ⬜ Keeper-Limit / Kader-Cutdown beim Rollover (aktuell: kompletter Kader,
+  der Kader wächst pro Saison um die U20-Runden)
 - ⬜ Push-Benachrichtigungen, Profil-Verwaltung
 
 ## Entwicklung

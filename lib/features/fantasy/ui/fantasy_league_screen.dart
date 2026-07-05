@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widgets/matchup_chevron.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'draft_room_screen.dart';
+import 'fantasy_chat_screen.dart';
 import 'fantasy_settings_screen.dart';
 import 'fantasy_table_screen.dart';
 import 'free_agency_screen.dart';
 import 'lineup_screen.dart';
 import 'matchups_screen.dart';
 import 'my_team_screen.dart';
-import 'player_flag.dart';
 import 'player_pool_screen.dart';
+import 'trade_screen.dart';
 
 /// Vollwertiger Fantasy-Liga-Screen mit Tabs. Zeigt schon vor dem Draft
 /// Tabelle, Teilnehmer und (leeren) Kader an; die Übersicht führt durch
@@ -25,7 +26,6 @@ class FantasyLeagueScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     // Live-Status, damit Draft-Änderungen sofort durchschlagen.
     final live = ref.watch(draftLeagueProvider(league.id)).valueOrNull ?? league;
     final isAdmin = ref.watch(currentUserProvider)?.id == league.createdBy;
@@ -34,18 +34,7 @@ class FantasyLeagueScreen extends ConsumerWidget {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: Column(
-            children: [
-              Text(live.name),
-              Text(
-                '${live.mode.label} · Saison ${live.season}/${(live.season + 1) % 100}',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
-                    ?.copyWith(color: scheme.primary),
-              ),
-            ],
-          ),
+          title: Text(live.name),
           actions: [
             IconButton(
               icon: const Icon(Icons.settings_outlined),
@@ -54,23 +43,27 @@ class FantasyLeagueScreen extends ConsumerWidget {
                   builder: (_) => FantasyLeagueSettingsScreen(league: live))),
             ),
           ],
+          // Feste Vier-Tab-Leiste (Icon + Label), alle auf einen Blick.
           bottom: const TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
+            labelPadding: EdgeInsets.zero,
             tabs: [
-              Tab(text: 'Übersicht'),
-              Tab(text: 'Tabelle'),
-              Tab(text: 'Kader'),
-              Tab(text: 'Matchups'),
+              Tab(
+                  icon: Icon(Icons.dashboard_outlined, size: 20),
+                  text: 'Übersicht'),
+              Tab(icon: MatchUpChevron(size: 20), text: 'MatchUp'),
+              Tab(icon: Icon(Icons.shield_outlined, size: 20), text: 'Kader'),
+              Tab(
+                  icon: Icon(Icons.leaderboard_outlined, size: 20),
+                  text: 'Tabelle'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
             _OverviewTab(league: live, isAdmin: isAdmin),
-            FantasyTableBody(league: live),
-            _RostersTab(league: live),
             MatchupsBody(league: live),
+            _RostersTab(league: live),
+            FantasyTableBody(league: live),
           ],
         ),
       ),
@@ -87,6 +80,7 @@ const _cGreen = Color(0xFF4ADE6A);
 const _cTeal = Color(0xFF4FC3A1);
 const _cAmber = Color(0xFFFFC83D);
 const _cRed = Color(0xFFF23030);
+const _cBlue = Color(0xFF5B9DF9);
 const _cBase = Color(0xFF12141C);
 
 class _OverviewTab extends ConsumerWidget {
@@ -97,45 +91,25 @@ class _OverviewTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final setup = league.draftStatus == DraftStatus.setup;
-    final drafted = !setup;
-    final managers =
-        ref.watch(fantasyManagersProvider(league.id)).valueOrNull?.length;
+    final drafted = league.draftStatus != DraftStatus.setup;
+    // Draft komplett durch: Redraft fertig oder Dynasty nach dem U20-Draft.
+    // Dann wird der Draft-Raum nicht mehr gebraucht (bei Dynasty steht nach
+    // dem Haupt-Draft noch der U20-Draft aus → Raum bleibt sichtbar).
+    final draftFullyDone = league.draftStatus == DraftStatus.done &&
+        (league.mode != FantasyMode.dynasty ||
+            league.draftPhase == DraftPhase.u20);
     final labelStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.bold,
         color: Theme.of(context).colorScheme.onSurfaceVariant);
+    final action = _draftAction(context, ref, league, isAdmin);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         _StatusHero(league: league),
-        const SizedBox(height: 14),
-        _draftButton(context, ref, league, isAdmin),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            _StatPill(
-                icon: Icons.groups,
-                value: managers?.toString() ?? '–',
-                label: 'Teilnehmer',
-                color: _cGreen),
-            const SizedBox(width: 10),
-            _StatPill(
-                icon: Icons.badge_outlined,
-                value: '${league.roster.squadSize}',
-                label: 'Kadergröße',
-                color: _cTeal),
-            const SizedBox(width: 10),
-            _StatPill(
-                icon: Icons.sports_soccer,
-                value: '${league.roster.starters}',
-                label: 'Startelf',
-                color: _cAmber),
-          ],
-        ),
-        if (setup) ...[
-          const SizedBox(height: 16),
-          _InviteBanner(code: league.inviteCode),
+        if (action != null) ...[
+          const SizedBox(height: 14),
+          action,
         ],
         const SizedBox(height: 24),
         Text('Schnellzugriff', style: labelStyle),
@@ -149,13 +123,6 @@ class _OverviewTab extends ConsumerWidget {
           childAspectRatio: 1.5,
           children: [
             if (drafted) ...[
-              _ActionTile(
-                icon: Icons.sports_soccer,
-                label: 'Aufstellung',
-                color: _cGreen,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => LineupScreen(league: league))),
-              ),
               _ActionTile(
                 icon: Icons.shield_outlined,
                 label: 'Mein Team',
@@ -171,6 +138,21 @@ class _OverviewTab extends ConsumerWidget {
                     builder: (_) => FreeAgencyScreen(league: league))),
               ),
             ],
+            if (!draftFullyDone)
+              _ActionTile(
+                icon: Icons.meeting_room_outlined,
+                label: 'Draft-Raum',
+                color: _cBlue,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => DraftRoomScreen(league: league))),
+              ),
+            _ActionTile(
+              icon: Icons.forum_outlined,
+              label: 'Liga-Chat',
+              color: _cGreen,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => FantasyChatScreen(league: league))),
+            ),
             _ActionTile(
               icon: Icons.groups_2,
               label: 'Spielerpool',
@@ -184,7 +166,10 @@ class _OverviewTab extends ConsumerWidget {
     );
   }
 
-  Widget _draftButton(
+  /// Primäre Draft-Aktion für den aktuellen Zustand — oder `null`, wenn es
+  /// gerade nichts zu tun gibt (dann führt das „Draft-Raum"-Tile in den Raum,
+  /// wo auch der Warte-Hinweis steht).
+  Widget? _draftAction(
       BuildContext context, WidgetRef ref, FantasyLeague live, bool isAdmin) {
     void openRoom() => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => DraftRoomScreen(league: live)));
@@ -208,11 +193,7 @@ class _OverviewTab extends ConsumerWidget {
 
     switch (live.draftStatus) {
       case DraftStatus.setup:
-        if (!isAdmin) {
-          return const _DisabledHint(
-              icon: Icons.hourglass_empty,
-              text: 'Warten auf den Draft-Start durch den Admin');
-        }
+        if (!isAdmin) return null;
         return FilledButton.icon(
           icon: const Icon(Icons.sports),
           label: Text(dynasty ? 'Haupt-Draft starten' : 'Draft starten'),
@@ -225,23 +206,14 @@ class _OverviewTab extends ConsumerWidget {
           onPressed: openRoom,
         );
       case DraftStatus.done:
-        if (dynasty && live.draftPhase == DraftPhase.startup) {
-          if (!isAdmin) {
-            return const _DisabledHint(
-                icon: Icons.hourglass_empty,
-                text: 'Haupt-Draft beendet — der Admin startet den U20-Draft');
-          }
+        if (dynasty && live.draftPhase == DraftPhase.startup && isAdmin) {
           return FilledButton.icon(
             icon: const Icon(Icons.auto_awesome),
             label: const Text('U20-Draft starten'),
             onPressed: () => run(() => repo.startU20Draft(live.id)),
           );
         }
-        return OutlinedButton.icon(
-          icon: const Icon(Icons.emoji_events),
-          label: const Text('Draft-Ergebnis'),
-          onPressed: openRoom,
-        );
+        return null;
     }
   }
 }
@@ -333,48 +305,6 @@ class _StatusHero extends StatelessWidget {
 }
 
 /// Farbige Kennzahl-Pille (Teilnehmer / Kadergröße / Startelf).
-class _StatPill extends StatelessWidget {
-  const _StatPill(
-      {required this.icon,
-      required this.value,
-      required this.label,
-      required this.color});
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.30)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 6),
-            Text(value,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold, color: color)),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Farbige Aktions-Kachel im Schnellzugriff-Raster.
 class _ActionTile extends StatelessWidget {
   const _ActionTile(
@@ -420,90 +350,12 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
-/// Hervorgehobener Einladungscode zum Kopieren.
-class _InviteBanner extends StatelessWidget {
-  const _InviteBanner({required this.code});
-  final String code;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.primary.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () async {
-          await Clipboard.setData(ClipboardData(text: code));
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Einladungscode kopiert')));
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(Icons.key, color: scheme.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Einladungscode',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant)),
-                    Text(code,
-                        style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2)),
-                  ],
-                ),
-              ),
-              Icon(Icons.copy, size: 18, color: scheme.primary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DisabledHint extends StatelessWidget {
-  const _DisabledHint({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 18, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Flexible(
-              child:
-                  Text(text, style: TextStyle(color: scheme.onSurfaceVariant))),
-        ],
-      ),
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Kader
 // ---------------------------------------------------------------------------
 
+/// Kader-Tab: oben der Aufstellungs-Editor, darunter die Aktionen
+/// Free Agency (gelb), Trade (rot) und Spielersuche (grün).
 class _RostersTab extends ConsumerWidget {
   const _RostersTab({required this.league});
 
@@ -511,103 +363,120 @@ class _RostersTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final managersAsync = ref.watch(fantasyManagersProvider(league.id));
-    final poolAsync = ref.watch(playerPoolProvider);
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
-        const <RosterEntry>[];
-    final myId = ref.watch(currentUserProvider)?.id;
-
-    if (managersAsync.isLoading || poolAsync.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    final err = managersAsync.error ?? poolAsync.error;
-    if (err != null) return Center(child: Text('Fehler: $err'));
-
-    final managers = managersAsync.requireValue;
-    final playerById = {for (final p in poolAsync.requireValue) p.id: p};
     final drafted = league.draftStatus != DraftStatus.setup;
+    if (!drafted) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Die Kader entstehen im Draft — sobald er läuft, stellst du hier '
+            'deine Elf auf, holst Free Agents und tradest.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    void open(Widget page) => Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => page));
 
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.only(bottom: 16),
       children: [
-        if (!drafted)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(4, 4, 4, 12),
-            child: Text(
-              'Die Kader entstehen im Draft — hier siehst du sie, sobald es '
-              'losgeht.',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        for (final m in managers)
-          _ManagerRoster(
-            name: m.username,
-            isMe: m.userId == myId,
-            players: [
-              for (final r in roster)
-                if (r.managerId == m.userId && playerById[r.playerId] != null)
-                  playerById[r.playerId]!
+        LineupEditor(league: league),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              _BigActionBox(
+                label: 'Free Agency',
+                subtitle: 'Freie Spieler holen & abgeben',
+                icon: Icons.person_add_alt,
+                color: _cAmber,
+                onTap: () => open(FreeAgencyScreen(league: league)),
+              ),
+              const SizedBox(height: 10),
+              _BigActionBox(
+                label: 'Trade',
+                subtitle: 'Spieler mit anderen Managern tauschen',
+                icon: Icons.swap_horiz,
+                color: _cRed,
+                onTap: () => open(TradeScreen(league: league)),
+              ),
+              const SizedBox(height: 10),
+              _BigActionBox(
+                label: 'Spielersuche',
+                subtitle: 'Alle Spieler des Pools durchsuchen',
+                icon: Icons.search,
+                color: _cGreen,
+                onTap: () => open(const PlayerPoolScreen()),
+              ),
             ],
           ),
+        ),
       ],
     );
   }
 }
 
-class _ManagerRoster extends StatelessWidget {
-  const _ManagerRoster(
-      {required this.name, required this.isMe, required this.players});
+/// Große, farbige Aktions-Box (Kader-Tab).
+class _BigActionBox extends StatelessWidget {
+  const _BigActionBox({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
-  final String name;
-  final bool isMe;
-  final List<FantasyPlayer> players;
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      child: ExpansionTile(
-        initiallyExpanded: isMe,
-        title: Text(name,
-            style: isMe ? const TextStyle(fontWeight: FontWeight.bold) : null),
-        subtitle: Text('${players.length} Spieler',
-            style: TextStyle(color: scheme.onSurfaceVariant)),
-        childrenPadding: const EdgeInsets.only(bottom: 8),
-        children: players.isEmpty
-            ? [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Text('Noch keine Spieler.',
-                      style: TextStyle(color: scheme.onSurfaceVariant)),
+    return Material(
+      color: color.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.45)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: Icon(icon, color: _cBase, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(subtitle,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  ],
                 ),
-              ]
-            : [
-                for (final pos in PlayerPosition.values)
-                  ..._positionGroup(context, pos, players),
-              ],
+              ),
+              Icon(Icons.chevron_right,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
-  }
-
-  List<Widget> _positionGroup(
-      BuildContext context, PlayerPosition pos, List<FantasyPlayer> all) {
-    final inPos = all.where((p) => p.position == pos).toList();
-    if (inPos.isEmpty) return const [];
-    return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-        child: Text(pos.label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      ),
-      for (final p in inPos)
-        ListTile(
-          dense: true,
-          visualDensity: VisualDensity.compact,
-          leading: PlayerFlag(code: p.nationality),
-          title: Text(p.name),
-          subtitle: Text(p.club),
-        ),
-    ];
   }
 }

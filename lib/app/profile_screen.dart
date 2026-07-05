@@ -5,6 +5,7 @@ import '../core/config/app_config.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/favorites/ui/favorites_settings_screen.dart';
+import '../features/messaging/ui/conversations_screen.dart';
 import '../features/tippspiel/logic/tip_stats.dart';
 import '../features/tippspiel/providers.dart';
 
@@ -78,6 +79,18 @@ class _Profile extends ConsumerWidget {
         ),
         const SizedBox(height: 28),
         const _StatsSection(),
+        _SectionLabel('Nachrichten'),
+        Card(
+          child: ListTile(
+            leading: Icon(Icons.forum_outlined, color: scheme.primary),
+            title: const Text('Direktnachrichten'),
+            subtitle: const Text('Chatte mit anderen Nutzern — ligaübergreifend'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const ConversationsScreen())),
+          ),
+        ),
+        const SizedBox(height: 16),
         _SectionLabel('Einstellungen'),
         Card(
           child: ListTile(

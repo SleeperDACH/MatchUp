@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/data/openligadb/openligadb_provider.dart';
+import '../../core/models/chat_message.dart';
 import '../../core/models/models.dart';
 import '../auth/providers.dart';
 import 'data/db_fantasy_data_provider.dart';
@@ -14,6 +15,7 @@ import 'data/round_scoring_service.dart';
 import 'data/seed_player_pool.dart';
 import 'logic/fantasy_scoring_engine.dart';
 import 'models/fantasy_models.dart';
+import 'models/trade.dart';
 
 final fantasyLeagueRepositoryProvider = Provider<FantasyLeagueRepository>(
     (ref) => FantasyLeagueRepository(Supabase.instance.client));
@@ -47,6 +49,33 @@ final fantasyManagersProvider =
 final leagueRosterProvider =
     StreamProvider.family<List<RosterEntry>, String>((ref, leagueId) {
   return ref.watch(fantasyLeagueRepositoryProvider).rosterStream(leagueId);
+});
+
+/// Live-Stream der Chat-Nachrichten einer Fantasy-Liga (älteste zuerst).
+final fantasyMessagesProvider =
+    StreamProvider.family<List<ChatMessage>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).messageStream(leagueId);
+});
+
+/// Trade-Angebote einer Liga (RLS: nur eigene Beteiligung) in Echtzeit.
+final leagueTradesProvider =
+    StreamProvider.family<List<TradeOffer>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).tradesStream(leagueId);
+});
+
+/// Positionen aller eigenen Trades, gruppiert nach `trade_id` (Echtzeit).
+final tradeItemsProvider =
+    StreamProvider<Map<String, List<TradeItem>>>((ref) {
+  return ref
+      .watch(fantasyLeagueRepositoryProvider)
+      .tradeItemsStream()
+      .map((items) {
+    final byTrade = <String, List<TradeItem>>{};
+    for (final it in items) {
+      byTrade.putIfAbsent(it.tradeId, () => []).add(it);
+    }
+    return byTrade;
+  });
 });
 
 /// Spieler-IDs auf dem Waiver-Wire (nach Drop claim-only) in Echtzeit.
@@ -86,6 +115,19 @@ final playerPoolProvider = FutureProvider<List<FantasyPlayer>>((ref) {
   return ref.watch(fantasyDataProvider).getPlayerPool(season: season);
 });
 
+/// Vereinslogos (kanonischer Name → Icon-URL) aus der Bundesliga-Tabelle,
+/// um bei Spielern das Vereinswappen zu zeigen. Fällt auf die Vorsaison
+/// zurück, falls die aktuelle Tabelle noch leer ist (Saisonstart).
+final clubIconsProvider = FutureProvider<Map<String, String?>>((ref) async {
+  final season = ref.watch(fantasySeasonProvider);
+  final provider = OpenLigaDbProvider();
+  var rows = await provider.getTable(Leagues.bundesliga, season);
+  if (rows.isEmpty) {
+    rows = await provider.getTable(Leagues.bundesliga, season - 1);
+  }
+  return {for (final r in rows) r.team.name: r.team.iconUrl};
+});
+
 // ------------------------------------------------------------------
 // Draft (Realtime)
 // ------------------------------------------------------------------
@@ -100,6 +142,12 @@ final draftLeagueProvider =
 final draftPicksProvider =
     StreamProvider.family<List<DraftPick>, String>((ref, leagueId) {
   return ref.watch(draftRepositoryProvider).picksStream(leagueId);
+});
+
+/// Eigene Draft-Queue (Spieler-IDs nach Rang) in Echtzeit.
+final draftQueueProvider =
+    StreamProvider.family<List<String>, String>((ref, leagueId) {
+  return ref.watch(draftRepositoryProvider).queueStream(leagueId);
 });
 
 // ------------------------------------------------------------------
