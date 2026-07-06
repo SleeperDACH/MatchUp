@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'club_badge.dart';
 import 'trade_screen.dart';
 
 const _cAdd = Color(0xFF4ADE6A); // grün — freien Spieler holen
@@ -100,16 +101,28 @@ class PlayerActionButton extends ConsumerWidget {
   }
 
   Future<void> _add(BuildContext context, WidgetRef ref) async {
-    String? dropId;
-    if (myPlayers.length >= league.roster.squadSize) {
-      dropId = await _chooseDrop(context, optional: false);
-      if (dropId == null) return;
-    }
-    if (!context.mounted) return;
+    final needsDrop = myPlayers.length >= league.roster.squadSize;
+    // Roster-Move zur Bestätigung anzeigen (rein / ggf. raus).
+    final confirm = await showModalBottomSheet<_MoveConfirm>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _RosterMoveSheet(
+        incoming: player,
+        myPlayers: myPlayers,
+        needsDrop: needsDrop,
+      ),
+    );
+    if (confirm == null || !context.mounted) return;
     try {
       await ref
           .read(fantasyLeagueRepositoryProvider)
-          .addFreeAgent(league.id, player.id, dropPlayerId: dropId);
+          .addFreeAgent(league.id, player.id, dropPlayerId: confirm.dropId);
+      // Realtime greift bei RPC-Moves nicht zuverlässig — Kader/Wire/Aufstellung
+      // sofort neu laden, damit der Move überall konsistent sichtbar ist.
+      ref.invalidate(leagueRosterProvider(league.id));
+      ref.invalidate(waiverPlayersProvider(league.id));
+      ref.invalidate(leagueLineupsProvider(league.id));
       if (context.mounted) _toast(context, '${player.name} aufgenommen');
     } catch (e) {
       if (context.mounted) _toast(context, 'Fehlgeschlagen: $e');
@@ -126,6 +139,8 @@ class PlayerActionButton extends ConsumerWidget {
             dropPlayerId: choice.isEmpty ? null : choice,
             rank: nextRank,
           );
+      ref.invalidate(myWaiverClaimsProvider(league.id));
+      ref.invalidate(waiverPlayersProvider(league.id));
       if (context.mounted) _toast(context, 'Antrag für ${player.name} gestellt');
     } catch (e) {
       if (context.mounted) _toast(context, 'Fehlgeschlagen: $e');
@@ -231,6 +246,195 @@ class _LockedChip extends StatelessWidget {
                 .labelSmall
                 ?.copyWith(color: scheme.onSurfaceVariant)),
       ],
+    );
+  }
+}
+
+/// Ergebnis des Roster-Move-Sheets: gewählter Abgang (oder null = kein Drop).
+class _MoveConfirm {
+  const _MoveConfirm(this.dropId);
+  final String? dropId;
+}
+
+/// Bestätigungs-Sheet für einen Free-Agent-Move: zeigt den Neuzugang und —
+/// falls der Kader voll ist — die Auswahl, wer dafür Platz macht.
+class _RosterMoveSheet extends StatefulWidget {
+  const _RosterMoveSheet({
+    required this.incoming,
+    required this.myPlayers,
+    required this.needsDrop,
+  });
+
+  final FantasyPlayer incoming;
+  final List<FantasyPlayer> myPlayers;
+  final bool needsDrop;
+
+  @override
+  State<_RosterMoveSheet> createState() => _RosterMoveSheetState();
+}
+
+class _RosterMoveSheetState extends State<_RosterMoveSheet> {
+  String? _dropId;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final canConfirm = !widget.needsDrop || _dropId != null;
+    // Nach Position sortiert (TW → ABW → MF → ST), dann Name.
+    final sorted = [...widget.myPlayers]..sort((a, b) =>
+        a.position.index != b.position.index
+            ? a.position.index.compareTo(b.position.index)
+            : a.name.compareTo(b.name));
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Kader-Move',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 14),
+            _block(
+              context,
+              icon: Icons.add,
+              label: 'Kommt rein',
+              color: _cAdd,
+              child: _playerRow(widget.incoming),
+            ),
+            if (widget.needsDrop) ...[
+              const SizedBox(height: 8),
+              Icon(Icons.arrow_downward, color: scheme.onSurfaceVariant),
+              const SizedBox(height: 8),
+              _block(
+                context,
+                icon: Icons.remove,
+                label: 'Kader voll — wer macht Platz?',
+                color: _cTrade,
+                child: Column(
+                  children: [
+                    for (final p in sorted) _dropRow(p, _dropId == p.id),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Abbrechen'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: canConfirm
+                        ? () => Navigator.of(context).pop(_MoveConfirm(_dropId))
+                        : null,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Bestätigen'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _block(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          ]),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _playerRow(FantasyPlayer p) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PositionPill(pos: p.position),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text('${p.name} · ${p.club}',
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ],
+    );
+  }
+
+  Widget _dropRow(FantasyPlayer p, bool selected) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: selected
+            ? _cTrade.withValues(alpha: 0.18)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => setState(() => _dropId = selected ? null : p.id),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? _cTrade : Colors.transparent,
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                PositionPill(pos: p.position),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(p.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14)),
+                ),
+                Icon(
+                  selected
+                      ? Icons.check_circle
+                      : Icons.radio_button_unchecked,
+                  size: 20,
+                  color: selected ? _cTrade : scheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

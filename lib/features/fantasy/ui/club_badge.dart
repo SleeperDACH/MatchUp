@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -11,6 +13,51 @@ Color positionColor(PlayerPosition pos) => switch (pos) {
       PlayerPosition.mid => const Color(0xFF4ADE6A),
       PlayerPosition.fwd => const Color(0xFFF23030),
     };
+
+/// Vereinslogo als flächenfüllender Hintergrund (BoxFit.cover). Ohne Logo
+/// bleibt der Bereich leer (der darunterliegende Karten-Hintergrund zeigt sich).
+/// [blurSigma] > 0 zeichnet das Logo weich — so wirken auch niedrig aufgelöste
+/// oder quadratisch beschnittene Wappen als sauberer Farb-Backdrop.
+class ClubLogoBackground extends StatelessWidget {
+  const ClubLogoBackground({
+    super.key,
+    required this.club,
+    this.iconUrl,
+    this.blurSigma = 0,
+  });
+
+  final String club;
+  final String? iconUrl;
+  final double blurSigma;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = clubLogoUrl(club, iconUrl);
+    if (url == null) return const SizedBox.expand();
+    final Widget logo = url.toLowerCase().endsWith('.svg')
+        ? SvgPicture.network(
+            url,
+            fit: BoxFit.cover,
+            placeholderBuilder: (_) => const SizedBox.expand(),
+          )
+        : Image.network(
+            url,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (_, _, _) => const SizedBox.expand(),
+          );
+    if (blurSigma <= 0) return logo;
+    // Etwas über die Kante skalieren, damit der Weichzeichner keine
+    // durchscheinenden Ränder erzeugt; der Rest wird von der Karte geclippt.
+    return ClipRect(
+      child: ImageFiltered(
+        imageFilter: ui.ImageFilter.blur(
+            sigmaX: blurSigma, sigmaY: blurSigma, tileMode: TileMode.clamp),
+        child: Transform.scale(scale: 1.2, child: logo),
+      ),
+    );
+  }
+}
 
 /// Kleine, farbige Positions-Pille (TW/ABW/MF/ST).
 class PositionPill extends StatelessWidget {

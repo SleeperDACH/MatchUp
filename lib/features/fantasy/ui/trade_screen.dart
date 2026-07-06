@@ -211,6 +211,27 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
             )));
   }
 
+  /// Zeigt das finale Angebot zur Bestätigung (inkl. optionaler Nachricht) und
+  /// sendet erst nach Bestätigung.
+  Future<void> _confirmAndSend(
+    BuildContext context,
+    List<FantasyPlayer> offer,
+    List<FantasyPlayer> request,
+  ) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _ConfirmOfferSheet(
+        partnerName: widget.partner.username,
+        offer: offer,
+        request: request,
+        messageController: _msgCtrl,
+      ),
+    );
+    if (confirmed == true) await _send();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -238,23 +259,15 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
 
           final mine = myId == null ? <FantasyPlayer>[] : playersOf(myId);
           final theirs = playersOf(widget.partner.userId);
+          final offerSel = mine.where((p) => _offer.contains(p.id)).toList();
+          final requestSel =
+              theirs.where((p) => _request.contains(p.id)).toList();
           final canSend =
               (_offer.isNotEmpty || _request.isNotEmpty) && !_sending;
 
           return Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                child: Text(
-                  'Tippe auf beiden Seiten die Spieler an, die getauscht werden '
-                  'sollen.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: scheme.onSurfaceVariant),
-                ),
-              ),
+              const SizedBox(height: 4),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -287,42 +300,151 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                 ),
               ),
               const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _msgCtrl,
-                      minLines: 1,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        hintText: 'Nachricht (optional)',
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                      ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: canSend
+                          ? () => _confirmAndSend(context, offerSel, requestSel)
+                          : null,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.arrow_forward),
+                      label: Text(_sending
+                          ? 'Sende …'
+                          : 'Angebot senden (${_offer.length} ↔ ${_request.length})'),
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: canSend ? _send : null,
-                        icon: _sending
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.send),
-                        label: Text(_sending
-                            ? 'Sende …'
-                            : 'Angebot senden (${_offer.length} ↔ ${_request.length})'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Bestätigungs-Sheet vor dem Absenden: zeigt das finale Angebot beidseitig
+/// und enthält das optionale Nachrichtenfeld.
+class _ConfirmOfferSheet extends StatelessWidget {
+  const _ConfirmOfferSheet({
+    required this.partnerName,
+    required this.offer,
+    required this.request,
+    required this.messageController,
+  });
+
+  final String partnerName;
+  final List<FantasyPlayer> offer;
+  final List<FantasyPlayer> request;
+  final TextEditingController messageController;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Angebot bestätigen',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 14),
+            _side(context, 'Du gibst', offer, scheme.primary),
+            const SizedBox(height: 8),
+            Icon(Icons.swap_vert, color: scheme.onSurfaceVariant),
+            const SizedBox(height: 8),
+            _side(context, '$partnerName gibt', request, scheme.tertiary),
+            const SizedBox(height: 16),
+            TextField(
+              controller: messageController,
+              minLines: 1,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Nachricht (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Abbrechen'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    icon: const Icon(Icons.send),
+                    label: const Text('Senden'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _side(BuildContext context, String title,
+      List<FantasyPlayer> players, Color color) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          const SizedBox(height: 8),
+          if (players.isEmpty)
+            Text('—', style: TextStyle(color: scheme.onSurfaceVariant))
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final p in players)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PositionPill(pos: p.position),
+                        const SizedBox(width: 6),
+                        Text(p.name, style: const TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -347,30 +469,62 @@ class _RosterColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final selCount = players.where((p) => selected.contains(p.id)).length;
+    final onAccent =
+        accent.computeLuminance() > 0.5 ? Colors.black : Colors.white;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.14),
-            border: Border(bottom: BorderSide(color: accent, width: 2)),
-          ),
-          child: Column(
-            children: [
-              Text(title,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  accent.withValues(alpha: 0.24),
+                  accent.withValues(alpha: 0.10),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: accent.withValues(alpha: 0.55)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: accent)),
-              Text(selCount == 0 ? 'nichts gewählt' : '$selCount ausgewählt',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelSmall
-                      ?.copyWith(color: scheme.onSurfaceVariant)),
-            ],
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: accent),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: selCount > 0
+                        ? accent
+                        : accent.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$selCount ausgewählt',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: selCount > 0 ? onAccent : accent,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -393,61 +547,119 @@ class _RosterColumn extends StatelessWidget {
   }
 
   Widget _tile(BuildContext context, FantasyPlayer p, bool sel) {
-    final scheme = Theme.of(context).colorScheme;
+    final base = positionColor(p.position);
+    // Lesbare Textfarbe: auf Gelb (ABW) schwarz, sonst weiß.
+    final fg = p.position == PlayerPosition.def ? Colors.black : Colors.white;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       child: Material(
-        color: sel
-            ? accent.withValues(alpha: 0.18)
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
           onTap: () => onToggle(p.id),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            height: 110,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
+              // Diagonaler Verlauf der Positionsfarbe für „Sticker"-Optik.
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.lerp(base, Colors.white, 0.14)!,
+                  base,
+                  Color.lerp(base, Colors.black, 0.36)!,
+                ],
+              ),
               border: Border.all(
-                color: sel ? accent : Colors.transparent,
-                width: 1.6,
+                color: sel ? Colors.white : Colors.white.withValues(alpha: 0.10),
+                width: sel ? 3 : 1,
               ),
             ),
-            child: Column(
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                Stack(
-                  alignment: Alignment.topRight,
-                  clipBehavior: Clip.none,
-                  children: [
-                    ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 40),
-                    if (sel)
-                      Positioned(
-                        right: -6,
-                        top: -6,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: scheme.surface, width: 1.5),
+                // Wappen groß, ragt zur Hälfte über den rechten Kartenrand.
+                Positioned(
+                  right: -52,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: ClubBadge(
+                        club: p.club, iconUrl: clubIcons[p.club], size: 108),
+                  ),
+                ),
+                // Name (groß) + Position links, linksbündig.
+                Positioned(
+                  left: 10,
+                  right: 60,
+                  top: 0,
+                  bottom: 0,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Lange Namen schrumpfen, statt abgeschnitten zu werden.
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _shortName(p.name),
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            height: 1.05,
+                            color: fg,
+                            shadows: p.position == PlayerPosition.def
+                                ? null
+                                : const [
+                                    Shadow(color: Colors.black38, blurRadius: 3)
+                                  ],
                           ),
-                          padding: const EdgeInsets.all(1),
-                          child: const Icon(Icons.check,
-                              size: 12, color: Colors.white),
                         ),
                       ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        p.position.label,
+                        textAlign: TextAlign.start,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: fg.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  _lastName(p.name),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                PositionPill(pos: p.position),
+                // Nicht gewählte Karten deutlich abdunkeln (inaktiv-Look).
+                if (!sel)
+                  Positioned.fill(
+                    child: const ColoredBox(color: Colors.black54),
+                  ),
+                // Gewählt: klares Häkchen-Badge oben links.
+                if (sel)
+                  Positioned(
+                    left: 8,
+                    top: 8,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 4),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(3),
+                      child: Icon(Icons.check_rounded,
+                          size: 18, color: base, weight: 900),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -456,9 +668,11 @@ class _RosterColumn extends StatelessWidget {
     );
   }
 
-  static String _lastName(String name) {
-    final parts = name.trim().split(' ');
-    return parts.length > 1 ? parts.last : name;
+  /// Vorname auf einen Buchstaben kürzen: „Jonas Urbig" → „J. Urbig".
+  static String _shortName(String full) {
+    final parts = full.trim().split(RegExp(r'\s+'));
+    if (parts.length < 2 || parts.first.isEmpty) return full;
+    return '${parts.first[0]}. ${parts.sublist(1).join(' ')}';
   }
 }
 
