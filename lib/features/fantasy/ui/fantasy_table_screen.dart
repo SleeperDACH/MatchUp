@@ -93,12 +93,13 @@ class FantasyTableBody extends ConsumerWidget {
       children: [
         if (seasonStatsAsync.isLoading)
           const LinearProgressIndicator(minHeight: 2),
-        const _TableHeader(),
+        const SizedBox(height: 6),
         if (nonePlayed)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
             child: Text(
               'Noch keine gewerteten Spieltage — die Bilanz startet bei 0.',
+              textAlign: TextAlign.center,
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -117,8 +118,8 @@ class FantasyTableBody extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: Text(
             'Bilanz aus Head-to-Head je Spieltag (effektive Startelf). '
-            'Sortiert nach Siegen, dann Punktedifferenz. S = Siege, '
-            'U = Unentschieden, N = Niederlagen.',
+            'Sortiert nach Siegen, dann Punktedifferenz. '
+            'S = Siege, N = Niederlagen.',
             textAlign: TextAlign.center,
             style: Theme.of(context)
                 .textTheme
@@ -127,38 +128,6 @@ class FantasyTableBody extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-const _wCol = 30.0;
-const _wDiff = 52.0;
-
-class _TableHeader extends StatelessWidget {
-  const _TableHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    final style = Theme.of(context)
-        .textTheme
-        .labelSmall
-        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
-    Widget cell(String t) =>
-        SizedBox(width: _wCol, child: Text(t, textAlign: TextAlign.center, style: style));
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-      child: Row(
-        children: [
-          SizedBox(width: 28, child: Text('#', style: style)),
-          Expanded(child: Text('Team', style: style)),
-          cell('S'),
-          cell('U'),
-          cell('N'),
-          SizedBox(
-              width: _wDiff,
-              child: Text('Diff', textAlign: TextAlign.right, style: style)),
-        ],
-      ),
     );
   }
 }
@@ -179,48 +148,85 @@ class _RecordRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final diff = record.pointsFor - record.pointsAgainst;
-    Widget num(int v, Color color) => SizedBox(
-          width: _wCol,
-          child: Text('$v',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-        );
+    final (badgeBg, badgeFg) = _rankColors(rank, scheme);
+    final initial = name.isEmpty ? '?' : name.substring(0, 1).toUpperCase();
+
     return Container(
-      color: me ? scheme.primary.withValues(alpha: 0.08) : null,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: me
+            ? scheme.primary.withValues(alpha: 0.14)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: me
+            ? Border.all(color: scheme.primary.withValues(alpha: 0.6), width: 1.5)
+            : null,
+      ),
       child: Row(
         children: [
-          SizedBox(
-            width: 28,
+          // Rang-Badge (Top 3 in Medaillenfarben).
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: badgeBg, shape: BoxShape.circle),
             child: Text('$rank',
                 style: TextStyle(
+                    color: badgeFg,
                     fontWeight: FontWeight.bold,
-                    color: rank == 1 ? scheme.primary : scheme.onSurfaceVariant)),
+                    fontSize: 15)),
           ),
+          const SizedBox(width: 10),
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: scheme.primaryContainer,
+            child: Text(initial,
+                style: TextStyle(
+                    color: scheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: me ? const TextStyle(fontWeight: FontWeight.bold) : null),
-          ),
-          num(record.wins, scheme.primary),
-          num(record.ties, scheme.onSurfaceVariant),
-          num(record.losses, scheme.error),
-          SizedBox(
-            width: _wDiff,
-            child: Text(diff >= 0 ? '+$diff' : '$diff',
-                textAlign: TextAlign.right,
                 style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: diff > 0
-                        ? scheme.primary
-                        : diff < 0
-                            ? scheme.error
-                            : scheme.onSurfaceVariant)),
+                    fontSize: 16,
+                    fontWeight: me ? FontWeight.bold : FontWeight.w600)),
+          ),
+          const SizedBox(width: 10),
+          // Record rechts: Siege (grün) : Niederlagen (rot), ohne Buchstaben.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text('${record.wins}',
+                  style: TextStyle(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24)),
+              Text('  :  ',
+                  style: TextStyle(
+                      color: scheme.onSurfaceVariant, fontSize: 16)),
+              Text('${record.losses}',
+                  style: TextStyle(
+                      color: scheme.error,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24)),
+            ],
           ),
         ],
       ),
     );
   }
+
+  /// Rang-Badge-Farben: Gold/Silber/Bronze für Top 3, sonst neutral.
+  (Color, Color) _rankColors(int rank, ColorScheme scheme) => switch (rank) {
+        1 => (const Color(0xFFFFC83D), Colors.black),
+        2 => (const Color(0xFFC4CBD4), Colors.black),
+        3 => (const Color(0xFFCD8B4E), Colors.white),
+        _ => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
+      };
 }

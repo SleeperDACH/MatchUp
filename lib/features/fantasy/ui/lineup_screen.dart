@@ -9,7 +9,9 @@ import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'free_agency_screen.dart';
 import 'pitch_painter.dart';
+import 'player_profile_sheet.dart';
 
 /// Aufstellung als Fußballfeld: Startelf je Spieltag visuell auf dem Platz
 /// wählen. Oben Chips für gültige Formationen (flexibel, Min/Max je Position
@@ -80,6 +82,20 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       if (mounted && _valid && !_saving) _save(_effRound, _lastIds);
     });
   }
+
+  /// Spielerprofil (Leistungstabelle + Droppen) öffnen.
+  void _openProfile(FantasyPlayer p) => showPlayerProfile(
+        context,
+        league: widget.league,
+        player: p,
+        clubIcon: _clubIcons[p.club],
+        isMine: true,
+      );
+
+  /// Leeren Kaderplatz füllen → Free Agency.
+  void _openFreeAgency() => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => FreeAgencyScreen(league: widget.league),
+      ));
 
   /// Alle aktuell aufgestellten Spieler-IDs (über alle Positionen).
   Set<String> _assignedIds(Map<PlayerPosition, List<String?>> slots) => {
@@ -201,7 +217,18 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               : bestEleven(points, _roster).starterIds;
 
           // Slots auflösen: Nutzer-Auswahl oder Saat (in gültiger Formation).
-          final slots = _slots ?? _seedSlots(seedIds, byPos);
+          // Slots gegen den aktuellen Kader bereinigen: gedroppte Spieler
+          // (nicht mehr im Roster) werden zu leeren „frei"-Plätzen.
+          final rosterIds = {for (final p in myPlayers) p.id};
+          final slots = _slots == null
+              ? _seedSlots(seedIds, byPos)
+              : {
+                  for (final entry in _slots!.entries)
+                    entry.key: [
+                      for (final id in entry.value)
+                        (id != null && rosterIds.contains(id)) ? id : null
+                    ]
+                };
 
           final assigned = _assignedIds(slots);
           final (d, m, f) = _formationOf(slots);
@@ -226,6 +253,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               final cmp = a.position.index.compareTo(b.position.index);
               return cmp != 0 ? cmp : (points[b] ?? 0).compareTo(points[a] ?? 0);
             });
+          // Freie Kaderplätze (durch Drops entstanden).
+          final emptySlots =
+              (league.roster.squadSize - myPlayers.length).clamp(0, 99);
 
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -253,6 +283,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                 playerById: playerById,
                 points: points,
                 clubIcons: clubIcons,
+                onOpenProfile: _openProfile,
                 onTapSlot: locked
                     ? null
                     : (pos, i) =>
@@ -276,6 +307,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                 bench: bench,
                 points: points,
                 clubIcons: clubIcons,
+                emptySlots: emptySlots,
+                onOpenProfile: _openProfile,
+                onOpenFreeAgency: _openFreeAgency,
                 onDropToBench:
                     locked ? null : (data) => _benchDrop(slots, data),
               ),
@@ -480,6 +514,7 @@ class _Pitch extends StatelessWidget {
     required this.playerById,
     required this.points,
     required this.clubIcons,
+    required this.onOpenProfile,
     required this.onTapSlot,
     required this.onDrop,
   });
@@ -488,6 +523,7 @@ class _Pitch extends StatelessWidget {
   final Map<String, FantasyPlayer> playerById;
   final Map<FantasyPlayer, int> points;
   final Map<String, String?> clubIcons;
+  final ValueChanged<FantasyPlayer> onOpenProfile;
   final void Function(PlayerPosition pos, int index)? onTapSlot;
   final void Function(_DragData data, PlayerPosition pos, int index)? onDrop;
 
@@ -534,11 +570,13 @@ class _Pitch extends StatelessWidget {
         final slot = _Slot(
           player: player,
           pos: pos,
-          posLabel: pos.short,
           points: pts,
           iconUrl: player == null ? null : clubIcons[player.club],
           highlight: candidate.isNotEmpty,
-          onTap: onTapSlot == null ? null : () => onTapSlot!(pos, i),
+          // Spieler antippen → Profil; Positions-Pille → Aufstellung bearbeiten.
+          onProfile: player == null ? null : () => onOpenProfile(player),
+          onEditPosition:
+              onTapSlot == null ? null : () => onTapSlot!(pos, i),
         );
         if (player == null || onDrop == null) return slot;
         final data = _DragData(playerId: player.id, pos: pos, from: (pos, i));
@@ -558,19 +596,23 @@ class _Slot extends StatelessWidget {
   const _Slot({
     required this.player,
     required this.pos,
-    required this.posLabel,
     required this.points,
     required this.iconUrl,
-    required this.onTap,
+    required this.onProfile,
+    required this.onEditPosition,
     this.highlight = false,
   });
 
   final FantasyPlayer? player;
   final PlayerPosition pos;
-  final String posLabel;
   final int? points;
   final String? iconUrl;
-  final VoidCallback? onTap;
+
+  /// Tippen auf den Spieler (Avatar/Name) → Profil.
+  final VoidCallback? onProfile;
+
+  /// Tippen auf die Positions-Pille → Aufstellung bearbeiten (Spielerwahl).
+  final VoidCallback? onEditPosition;
 
   /// Hervorhebung, wenn ein passender Spieler über diesen Platz gezogen wird.
   final bool highlight;
@@ -578,94 +620,119 @@ class _Slot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = player;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        width: 70,
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          color: highlight ? Colors.white.withValues(alpha: 0.18) : null,
-          border: Border.all(
-            color: highlight ? Colors.white : Colors.transparent,
-            width: 1.5,
-          ),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      width: 70,
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: highlight ? Colors.white.withValues(alpha: 0.18) : null,
+        border: Border.all(
+          color: highlight ? Colors.white : Colors.transparent,
+          width: 1.5,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (p == null)
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white24,
-                  border: Border.all(
-                      color: positionColor(pos).withValues(alpha: 0.9),
-                      width: 2),
-                ),
-                child: const Icon(Icons.add, color: Colors.white, size: 22),
-              )
-            else
-              Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  ClubBadge(club: p.club, iconUrl: iconUrl, size: 42),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Avatar + Name: Spieler antippen → Profil (leer → Spielerwahl).
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: p != null ? onProfile : onEditPosition,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (p == null)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(8),
+                      shape: BoxShape.circle,
+                      color: Colors.white24,
+                      border: Border.all(
+                          color: positionColor(pos).withValues(alpha: 0.9),
+                          width: 2),
                     ),
-                    child: Text('${points ?? 0}',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold)),
+                    child: const Icon(Icons.add, color: Colors.white, size: 22),
+                  )
+                else
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      ClubBadge(club: p.club, iconUrl: iconUrl, size: 42),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('${points ?? 0}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            const SizedBox(height: 2),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.black38,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                p == null ? 'frei' : _short(p.name),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 11),
-              ),
-            ),
-            const SizedBox(height: 2),
-            // Positions-Kennzeichnung (farbig) unter jedem Spieler.
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: positionColor(pos),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                posLabel,
-                style: TextStyle(
-                  color: pos == PlayerPosition.def
-                      ? Colors.black
-                      : Colors.white,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
+                const SizedBox(height: 2),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    p == null ? 'frei' : _short(p.name),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
                 ),
-              ),
+              ],
             ),
+          ),
+          const SizedBox(height: 3),
+          // Positions-Pille = Bearbeiten-Button (Spieler tauschen).
+          _posPill(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _posPill(BuildContext context) {
+    final color = positionColor(pos);
+    final editable = onEditPosition != null;
+    if (!editable) {
+      // Gesperrt: nur ein kleiner Farbpunkt als Positionshinweis.
+      return Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.black.withValues(alpha: 0.35)),
+        ),
+      );
+    }
+    // Bearbeitbar: Tausch-Symbol in der Positionsfarbe (dunkler Kreis + Ring,
+    // damit es sich vom Rasen abhebt).
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onEditPosition,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          shape: BoxShape.circle,
+          border: Border.all(color: color, width: 1.4),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 2),
           ],
         ),
+        child: Icon(Icons.swap_horiz, size: 15, color: color),
       ),
     );
   }
@@ -715,12 +782,20 @@ class _Bench extends StatelessWidget {
     required this.bench,
     required this.points,
     required this.clubIcons,
+    required this.emptySlots,
+    required this.onOpenProfile,
+    required this.onOpenFreeAgency,
     required this.onDropToBench,
   });
 
   final List<FantasyPlayer> bench;
   final Map<FantasyPlayer, int> points;
   final Map<String, String?> clubIcons;
+
+  /// Freie Kaderplätze (durch Drops entstanden).
+  final int emptySlots;
+  final ValueChanged<FantasyPlayer> onOpenProfile;
+  final VoidCallback onOpenFreeAgency;
 
   /// Aufgestellten Spieler per Drag auf die Bank setzen (`null` = gesperrt).
   final void Function(_DragData data)? onDropToBench;
@@ -756,7 +831,7 @@ class _Bench extends StatelessWidget {
                         .labelLarge
                         ?.copyWith(color: scheme.onSurfaceVariant)),
                 const SizedBox(height: 4),
-                if (bench.isEmpty)
+                if (bench.isEmpty && emptySlots == 0)
                   Text(
                       hot
                           ? 'Hier ablegen, um auf die Bank zu setzen.'
@@ -765,7 +840,7 @@ class _Bench extends StatelessWidget {
                           .textTheme
                           .bodySmall
                           ?.copyWith(color: scheme.onSurfaceVariant))
-                else
+                else ...[
                   // Nach Position gruppiert (TW → ABW → MF → ST), farbig.
                   for (final pos in PlayerPosition.values)
                     if (bench.any((p) => p.position == pos)) ...[
@@ -800,6 +875,28 @@ class _Bench extends StatelessWidget {
                         ],
                       ),
                     ],
+                  // Freie Plätze durch Drops → Spieler holen.
+                  if (emptySlots > 0) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 4),
+                      child: Text('Freie Plätze ($emptySlots)',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelMedium
+                              ?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.bold)),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (var i = 0; i < emptySlots; i++)
+                          _emptySlot(context),
+                      ],
+                    ),
+                  ],
+                ],
               ],
             ),
           );
@@ -815,14 +912,46 @@ class _Bench extends StatelessWidget {
       side: BorderSide(color: color.withValues(alpha: 0.6)),
       label: Text('${_short(p.name)} · ${points[p] ?? 0}'),
     );
-    if (onDropToBench == null) return chip;
+    // Tippen → Profil; langes Drücken → auf/vom Feld ziehen.
+    final tappable = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onOpenProfile(p),
+      child: chip,
+    );
+    if (onDropToBench == null) return tappable;
     final data = _DragData(playerId: p.id, pos: p.position);
     return LongPressDraggable<_DragData>(
       data: data,
       dragAnchorStrategy: pointerDragAnchorStrategy,
       feedback: _DragFeedback(player: p, iconUrl: clubIcons[p.club]),
-      childWhenDragging: Opacity(opacity: 0.3, child: chip),
-      child: chip,
+      childWhenDragging: Opacity(opacity: 0.3, child: tappable),
+      child: tappable,
+    );
+  }
+
+  Widget _emptySlot(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onOpenFreeAgency,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: scheme.outline.withValues(alpha: 0.6), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add, size: 18, color: scheme.primary),
+            const SizedBox(width: 6),
+            Text('Freier Platz — holen',
+                style: TextStyle(color: scheme.primary, fontSize: 13)),
+          ],
+        ),
+      ),
     );
   }
 

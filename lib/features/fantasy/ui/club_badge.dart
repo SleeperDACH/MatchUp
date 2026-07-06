@@ -76,8 +76,9 @@ class PositionPill extends StatelessWidget {
       ),
       child: Text(
         pos.short,
-        style: TextStyle(
-          color: pos == PlayerPosition.def ? Colors.black : Colors.white,
+        style: const TextStyle(
+          // Positions-Kürzel einheitlich schwarz.
+          color: Colors.black,
           fontSize: 9,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.3,

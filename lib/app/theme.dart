@@ -44,6 +44,7 @@ ThemeData buildAppTheme() {
   );
   return ThemeData(
     colorScheme: scheme,
+    fontFamily: 'BarlowCondensed',
     scaffoldBackgroundColor: MatchUpColors.base,
     dividerColor: MatchUpColors._divider,
     appBarTheme: const AppBarTheme(

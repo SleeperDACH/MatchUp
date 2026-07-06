@@ -479,7 +479,7 @@ class LeagueSettingsPage extends ConsumerStatefulWidget {
 
 class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
   static const _minTeams = 2;
-  static const _maxTeamsCap = 20;
+  static const _maxTeamsCap = 18;
 
   late bool _limitTeams;
   late int _maxTeams;
