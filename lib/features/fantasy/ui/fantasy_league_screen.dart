@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widgets/matchup_chevron.dart';
+import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'club_badge.dart';
 import 'draft_room_screen.dart';
 import 'fantasy_chat_screen.dart';
 import 'fantasy_settings_screen.dart';
@@ -161,6 +163,8 @@ class _OverviewTab extends ConsumerWidget {
             ),
           ],
         ),
+        const SizedBox(height: 26),
+        _MatchdayFixtures(league: league),
       ],
     );
   }
@@ -469,6 +473,128 @@ class _MiniAction extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Zeigt die Partien des aktuellen Spieltags (unten in der Übersicht):
+/// Anstoßzeit bzw. Ergebnis je Spiel.
+class _MatchdayFixtures extends ConsumerWidget {
+  const _MatchdayFixtures({required this.league});
+
+  final FantasyLeague league;
+
+  static const _weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final round = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
+    final all = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
+    if (round == null || all == null) return const SizedBox.shrink();
+    final fx = [
+      for (final f in all)
+        if (f.round == round) f
+    ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+    if (fx.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.stadium_outlined, size: 18, color: scheme.primary),
+            const SizedBox(width: 6),
+            Text('Spieltag $round',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            children: [
+              for (final (i, f) in fx.indexed) ...[
+                if (i > 0)
+                  Divider(
+                      height: 1,
+                      color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                _row(context, f),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _row(BuildContext context, Fixture f) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasScore = f.homeScore != null && f.awayScore != null;
+    final live = f.status == FixtureStatus.live;
+
+    Widget mid;
+    if (hasScore) {
+      mid = Text('${f.homeScore} : ${f.awayScore}',
+          style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: live ? scheme.error : scheme.onSurface));
+    } else {
+      final k = f.kickoff.toLocal();
+      final wd = _weekdays[k.weekday - 1];
+      final hh = k.hour.toString().padLeft(2, '0');
+      final mm = k.minute.toString().padLeft(2, '0');
+      mid = Text('$wd $hh:$mm',
+          textAlign: TextAlign.center,
+          style: Theme.of(context)
+              .textTheme
+              .labelSmall
+              ?.copyWith(color: scheme.onSurfaceVariant));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: Text(f.home.shortName,
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ),
+                const SizedBox(width: 6),
+                ClubBadge(
+                    club: f.home.name, iconUrl: f.home.iconUrl, size: 22),
+              ],
+            ),
+          ),
+          SizedBox(width: 66, child: Center(child: mid)),
+          Expanded(
+            child: Row(
+              children: [
+                ClubBadge(
+                    club: f.away.name, iconUrl: f.away.iconUrl, size: 22),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(f.away.shortName,
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

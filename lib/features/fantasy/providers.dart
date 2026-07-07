@@ -180,10 +180,35 @@ final fantasyStatsSourceProvider = Provider<FantasyStatsSource>((ref) {
 });
 
 /// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).
-final fantasyCurrentRoundProvider = FutureProvider<int>((ref) {
+/// Alle Bundesliga-Fixtures der Fantasy-Saison (Anstoßzeiten, Teams,
+/// Ergebnisse) — Basis für die Spieltags-Anzeige und den aktuellen Spieltag.
+final fantasySeasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
-  return OpenLigaDbProvider().getCurrentRound(Leagues.bundesliga, season);
+  return OpenLigaDbProvider().getSeasonFixtures(Leagues.bundesliga, season);
 });
+
+/// Aktueller Fantasy-Spieltag: der erste Spieltag, dessen **letzter Anpfiff**
+/// noch keine 24 h zurückliegt. Ein beendeter Spieltag bleibt also 24 h nach
+/// dem letzten Anpfiff stehen und springt danach auf den nächsten.
+final fantasyCurrentRoundProvider = FutureProvider<int>((ref) async {
+  final fixtures = await ref.watch(fantasySeasonFixturesProvider.future);
+  return currentFantasyRound(fixtures, DateTime.now());
+});
+
+/// Pure Regel für [fantasyCurrentRoundProvider] (24 h nach letztem Anpfiff).
+int currentFantasyRound(List<Fixture> fixtures, DateTime now) {
+  if (fixtures.isEmpty) return 1;
+  final lastKick = <int, DateTime>{};
+  for (final f in fixtures) {
+    final cur = lastKick[f.round];
+    if (cur == null || f.kickoff.isAfter(cur)) lastKick[f.round] = f.kickoff;
+  }
+  final rounds = lastKick.keys.toList()..sort();
+  for (final r in rounds) {
+    if (now.isBefore(lastKick[r]!.add(const Duration(hours: 24)))) return r;
+  }
+  return rounds.last; // Saison vorbei → letzter Spieltag.
+}
 
 /// Roh-Leistungsdaten aller Poolspieler für einen Spieltag.
 final roundStatsProvider =

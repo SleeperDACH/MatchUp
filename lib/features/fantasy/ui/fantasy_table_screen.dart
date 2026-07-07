@@ -6,6 +6,7 @@ import '../logic/fantasy_scoring_engine.dart';
 import '../logic/matchup_schedule.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'manager_profile_screen.dart';
 
 /// Eigenständiger Screen (mit AppBar) — dünne Hülle um [FantasyTableBody].
 class FantasyTableScreen extends StatelessWidget {
@@ -113,6 +114,10 @@ class FantasyTableBody extends ConsumerWidget {
             name: nameOf[r.managerId] ?? '?',
             record: r,
             me: r.managerId == myId,
+            onTap: () => showManagerProfile(context,
+                league: league,
+                managerId: r.managerId,
+                managerName: nameOf[r.managerId] ?? '?'),
           ),
         Padding(
           padding: const EdgeInsets.all(16),
@@ -138,12 +143,14 @@ class _RecordRow extends StatelessWidget {
     required this.name,
     required this.record,
     required this.me,
+    required this.onTap,
   });
 
   final int rank;
   final String name;
   final H2HRecord record;
   final bool me;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +158,9 @@ class _RecordRow extends StatelessWidget {
     final (badgeBg, badgeFg) = _rankColors(rank, scheme);
     final initial = name.isEmpty ? '?' : name.substring(0, 1).toUpperCase();
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -218,6 +227,7 @@ class _RecordRow extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }
