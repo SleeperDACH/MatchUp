@@ -75,6 +75,15 @@ class WaiverClaimsScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, WaiverClaim claim) async {
     try {
       await ref.read(fantasyLeagueRepositoryProvider).cancelWaiverClaim(claim.id);
+      // Realtime liefert UPDATE-Events auf Antrags-Zeilen nicht zuverlässig
+      // (RPC/SECURITY DEFINER + Replica-Identity) — sonst bliebe der stornierte
+      // Antrag sichtbar und wirkte, als ließe er sich nicht löschen. Darum die
+      // Liste hier aktiv neu ziehen.
+      ref.invalidate(myWaiverClaimsProvider(league.id));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Antrag storniert')));
+      }
     } catch (e) {
       // War der Antrag schon storniert/abgearbeitet (z. B. doppelt getippt),
       // ist das kein echter Fehler — Liste einfach frisch ziehen.
