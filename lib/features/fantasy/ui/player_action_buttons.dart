@@ -99,13 +99,79 @@ class PlayerActionButton extends ConsumerWidget {
       ref.invalidate(waiverPlayersProvider(league.id));
       ref.invalidate(leagueLineupsProvider(league.id));
       if (context.mounted) _toast(context, '${player.name} aufgenommen');
+      // Hat dieser Zugang den letzten freien Platz belegt (ohne eigenen Drop),
+      // werden offene Waiver-Anträge ohne Abgang bei der Abarbeitung ungültig.
+      // Nutzer warnen und Storno anbieten, statt sie still verfallen zu lassen.
+      final filledLastSpot = confirm.dropId == null &&
+          myPlayers.length + 1 >= league.roster.squadSize;
+      if (filledLastSpot && context.mounted) {
+        await _warnStaleWaiverClaims(context, ref);
+      }
     } catch (e) {
       if (context.mounted) _toast(context, 'Fehlgeschlagen: $e');
     }
   }
 
+  /// Warnt nach einem Kader-vollmachenden Zugang vor offenen Waiver-Anträgen
+  /// ohne Abgang (die sonst als „Kader voll" ungültig würden) und bietet an,
+  /// sie zu stornieren — damit der Nutzer sie mit Abgang neu stellen kann.
+  Future<void> _warnStaleWaiverClaims(
+      BuildContext context, WidgetRef ref) async {
+    final claims = ref.read(myWaiverClaimsProvider(league.id)).valueOrNull ??
+        const <WaiverClaim>[];
+    final stale = claims
+        .where((c) => c.status.isPending && c.dropPlayerId == null)
+        .toList();
+    if (stale.isEmpty) return;
+
+    final pool =
+        ref.read(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
+    final nameById = {for (final p in pool) p.id: p.name};
+    final names =
+        stale.map((c) => nameById[c.addPlayerId] ?? c.addPlayerId).join(', ');
+
+    final cancel = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kader ist jetzt voll'),
+        content: Text(
+          'Dein offener Waiver-Antrag ohne Abgang ($names) wird bei der '
+          'Abarbeitung ungültig, weil kein Kaderplatz mehr frei ist. Jetzt '
+          'stornieren? Für einen neuen Antrag musst du dann einen Abgang '
+          'festlegen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Behalten'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Stornieren'),
+          ),
+        ],
+      ),
+    );
+    if (cancel != true) return;
+
+    final repo = ref.read(fantasyLeagueRepositoryProvider);
+    for (final c in stale) {
+      try {
+        await repo.cancelWaiverClaim(c.id);
+      } catch (_) {
+        // Antrag war zwischenzeitlich schon weg — kein echter Fehler.
+      }
+    }
+    ref.invalidate(myWaiverClaimsProvider(league.id));
+    if (context.mounted) {
+      _toast(context, 'Waiver-Antrag storniert — mit Abgang neu stellen.');
+    }
+  }
+
   Future<void> _claim(BuildContext context, WidgetRef ref) async {
-    // Gleicher Ablauf wie beim Free-Agent-Aufnehmen (Drop hier optional).
+    // Kader voll? Dann ist ein Abgang Pflicht, sonst wäre der Antrag bei der
+    // Abarbeitung garantiert ungültig. Bei freiem Platz genügt der reine Claim.
+    final full = myPlayers.length >= league.roster.squadSize;
     final confirm = await showModalBottomSheet<_MoveConfirm>(
       context: context,
       isScrollControlled: true,
@@ -113,8 +179,12 @@ class PlayerActionButton extends ConsumerWidget {
       builder: (_) => _RosterMoveSheet(
         incoming: player,
         myPlayers: myPlayers,
-        mode: _DropMode.mayDrop,
+        mode: full ? _DropMode.mustDrop : _DropMode.mayDrop,
         title: 'Waiver-Antrag',
+        note: full
+            ? 'Dein Kader ist voll — ohne Abgang wird der Antrag bei der '
+                'Abarbeitung ungültig. Wähle, wer Platz macht.'
+            : 'Freier Kaderplatz vorhanden — ein Abgang ist nicht nötig.',
       ),
     );
     if (confirm == null || !context.mounted) return;
@@ -253,12 +323,16 @@ class _RosterMoveSheet extends StatefulWidget {
     required this.myPlayers,
     required this.mode,
     required this.title,
+    this.note,
   });
 
   final FantasyPlayer incoming;
   final List<FantasyPlayer> myPlayers;
   final _DropMode mode;
   final String title;
+
+  /// Optionaler Hinweis unter dem Titel (z. B. „freier Platz vorhanden").
+  final String? note;
 
   @override
   State<_RosterMoveSheet> createState() => _RosterMoveSheetState();
@@ -287,6 +361,15 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
             Text(widget.title,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleLarge),
+            if (widget.note != null) ...[
+              const SizedBox(height: 8),
+              Text(widget.note!,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant)),
+            ],
             const SizedBox(height: 14),
             _block(
               context,

@@ -4,6 +4,19 @@ import '../../../core/models/chat_message.dart';
 import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 
+/// Dedupliziert Waiver-Anträge nach `id`. Der Supabase-Realtime-Stream kann
+/// denselben Antrag doppelt liefern (Initial-Snapshot + Insert-Event); ohne
+/// Dedup erschien er doppelt in der Liste und das zweite Stornieren schlug
+/// fehl (Server: „Antrag nicht gefunden oder schon abgearbeitet"). Reihenfolge
+/// bleibt erhalten (Map behält Einfüge-Reihenfolge).
+List<WaiverClaim> dedupWaiverClaimsById(List<WaiverClaim> claims) {
+  final byId = <String, WaiverClaim>{};
+  for (final c in claims) {
+    byId[c.id] = c;
+  }
+  return byId.values.toList();
+}
+
 /// Fantasy-Liga-Verwaltung gegen Supabase. RLS sorgt dafür, dass nur
 /// die eigenen Ligen sichtbar sind.
 class FantasyLeagueRepository {
@@ -316,12 +329,16 @@ class FantasyLeagueRepository {
           });
 
   /// Eigene Waiver-Anträge der Liga in Echtzeit (RLS: nur die eigenen).
+  /// Nach `id` dedupliziert — der Realtime-Stream kann denselben Antrag sonst
+  /// doppelt liefern (Initial-Snapshot + Insert-Event), was zu doppelten
+  /// Kacheln und einem Fehler beim zweiten Stornieren führte.
   Stream<List<WaiverClaim>> myWaiverClaimsStream(String leagueId) => _client
       .from('fantasy_waiver_claims')
       .stream(primaryKey: ['id'])
       .eq('league_id', leagueId)
       .order('created_at')
-      .map((rows) => rows.map(WaiverClaim.fromJson).toList());
+      .map((rows) =>
+          dedupWaiverClaimsById(rows.map(WaiverClaim.fromJson).toList()));
 
   /// Nächste Runde + Waiver-Deadline (2 Tage vor Anstoß). Beide null, wenn
   /// kein Spieltag mehr ansteht.

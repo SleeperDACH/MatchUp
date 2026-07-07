@@ -76,6 +76,12 @@ class WaiverClaimsScreen extends ConsumerWidget {
     try {
       await ref.read(fantasyLeagueRepositoryProvider).cancelWaiverClaim(claim.id);
     } catch (e) {
+      // War der Antrag schon storniert/abgearbeitet (z. B. doppelt getippt),
+      // ist das kein echter Fehler — Liste einfach frisch ziehen.
+      if (e.toString().contains('nicht gefunden')) {
+        ref.invalidate(myWaiverClaimsProvider(league.id));
+        return;
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
