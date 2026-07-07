@@ -44,6 +44,8 @@ class ClubLogoBackground extends StatelessWidget {
             url,
             fit: BoxFit.cover,
             filterQuality: FilterQuality.high,
+            // Web: Cross-Origin-Logos (ohne CORS) per HTML-<img> laden.
+            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
             errorBuilder: (_, _, _) => const SizedBox.expand(),
           );
     if (blurSigma <= 0) return logo;
@@ -117,6 +119,8 @@ class ClubBadge extends StatelessWidget {
           : Image.network(
               url,
               fit: BoxFit.contain,
+              // Web: Cross-Origin-Logos (ohne CORS) per HTML-<img> laden.
+              webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
               errorBuilder: (_, _, _) => _initials(context),
             );
       return SizedBox(
