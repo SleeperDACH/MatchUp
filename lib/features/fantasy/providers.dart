@@ -210,6 +210,22 @@ int currentFantasyRound(List<Fixture> fixtures, DateTime now) {
   return rounds.last; // Saison vorbei → letzter Spieltag.
 }
 
+/// Läuft der Spieltag gerade? „Live" ist das Fenster vom **ersten Anpfiff**
+/// bis zum **letzten Abpfiff**: sobald der früheste Anstoß der Runde vorbei
+/// ist und noch nicht alle Partien beendet sind (inkl. der Pausen zwischen
+/// den Spielen an verschiedenen Tagen). Vor dem ersten Anstoß und nach dem
+/// letzten Abpfiff ist die Runde nicht live.
+bool roundIsLive(List<Fixture> roundFixtures, DateTime now) {
+  if (roundFixtures.isEmpty) return false;
+  final firstKick = roundFixtures
+      .map((f) => f.kickoff)
+      .reduce((a, b) => a.isBefore(b) ? a : b);
+  if (now.isBefore(firstKick)) return false;
+  final allFinished =
+      roundFixtures.every((f) => f.status == FixtureStatus.finished);
+  return !allFinished;
+}
+
 /// Roh-Leistungsdaten aller Poolspieler für einen Spieltag.
 final roundStatsProvider =
     FutureProvider.family<Map<String, PlayerMatchStats>, int>((ref, round) async {

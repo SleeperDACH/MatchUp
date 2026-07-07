@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/widgets/matchup_chevron.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
+import '../logic/fantasy_scoring_engine.dart';
+import '../logic/matchup_schedule.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
@@ -99,6 +101,11 @@ class _OverviewTab extends ConsumerWidget {
     final draftFullyDone = league.draftStatus == DraftStatus.done &&
         (league.mode != FantasyMode.dynasty ||
             league.draftPhase == DraftPhase.u20);
+    // „Saison läuft": Draft fertig und (bei Dynasty) der U20-Draft nicht mehr
+    // ausstehend. In diesem Zustand ersetzt der Live-MatchUp den Status-Kopf.
+    final seasonRunning = league.draftStatus == DraftStatus.done &&
+        !(league.mode == FantasyMode.dynasty &&
+            league.draftPhase == DraftPhase.startup);
     final labelStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.bold,
         color: Theme.of(context).colorScheme.onSurfaceVariant);
@@ -107,7 +114,10 @@ class _OverviewTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _StatusHero(league: league),
+        if (seasonRunning)
+          _MatchupHero(league: league)
+        else
+          _StatusHero(league: league),
         if (action != null) ...[
           const SizedBox(height: 14),
           action,
@@ -303,6 +313,280 @@ class _StatusHero extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Live-MatchUp-Kopf in der Übersicht (ersetzt „Saison läuft"): zeigt die
+/// eigene Head-to-Head-Paarung des aktuellen Spieltags. Hintergrund grün;
+/// solange der Spieltag läuft (erster Anpfiff bis letzter Abpfiff) wird er
+/// rot und zeigt den Live-Stand. Wechselt der Spieltag, wechselt auch die
+/// angezeigte Paarung (folgt [fantasyCurrentRoundProvider]). Tippen springt
+/// in den MatchUp-Tab.
+class _MatchupHero extends ConsumerWidget {
+  const _MatchupHero({required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final round = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
+    final all = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
+    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
+    final pool = ref.watch(playerPoolProvider).valueOrNull;
+    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+        const <RosterEntry>[];
+    final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
+        const <FantasyLineup>[];
+    final myId = ref.watch(currentUserProvider)?.id;
+
+    // Bis die Basisdaten da sind, zeigen wir den klassischen Status-Kopf.
+    if (round == null || managers == null || pool == null || myId == null) {
+      return _StatusHero(league: league);
+    }
+
+    // Stabile Reihenfolge wie im MatchUp-Tab (Draft-Position, dann User-ID).
+    final ids = managers.map((m) => m.userId).toList()
+      ..sort((a, b) {
+        final ma = managers.firstWhere((m) => m.userId == a);
+        final mb = managers.firstWhere((m) => m.userId == b);
+        final pa = ma.draftPosition ?? 1 << 30;
+        final pb = mb.draftPosition ?? 1 << 30;
+        return pa != pb ? pa.compareTo(pb) : a.compareTo(b);
+      });
+    if (ids.length < 2) return _StatusHero(league: league);
+
+    final pairing = roundPairings(ids, round)
+        .where((m) => m.home == myId || m.away == myId)
+        .firstOrNull;
+    if (pairing == null) return _StatusHero(league: league);
+
+    final nameOf = {for (final m in managers) m.userId: m.username};
+    final roundFx = [
+      for (final f in all ?? const <Fixture>[])
+        if (f.round == round) f
+    ];
+    final live = roundIsLive(roundFx, DateTime.now());
+    final allFinished =
+        roundFx.isNotEmpty && roundFx.every((f) => f.status == FixtureStatus.finished);
+    final started = live || allFinished;
+
+    final accent = live ? _cRed : _cGreen;
+
+    // Bye: eigener Spieltag spielfrei.
+    if (pairing.isBye) {
+      return _HeroShell(
+        accent: accent,
+        round: round,
+        status: live ? 'LIVE' : (allFinished ? 'Beendet' : 'Vorschau'),
+        live: live,
+        child: Row(
+          children: [
+            Expanded(
+              child: _HeroTeam(
+                  name: nameOf[myId] ?? 'Du', me: true, align: CrossAxisAlignment.start),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text('spielfrei',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.bold)),
+            ),
+            const Expanded(child: SizedBox()),
+          ],
+        ),
+      );
+    }
+
+    final oppId = pairing.home == myId ? pairing.away! : pairing.home;
+    final totals = effectiveTotalsForRound(
+      stats: ref.watch(roundStatsProvider(round)).valueOrNull ?? const {},
+      round: round,
+      managers: managers,
+      roster: roster,
+      playerById: {for (final p in pool) p.id: p},
+      lineups: lineups,
+      scoring: league.scoring,
+      rosterConfig: league.roster,
+    );
+    final myPts = totals[myId] ?? 0;
+    final oppPts = totals[oppId] ?? 0;
+    final myWin = started && myPts > oppPts;
+    final oppWin = started && oppPts > myPts;
+
+    return _HeroShell(
+      accent: accent,
+      round: round,
+      status: live ? 'LIVE' : (allFinished ? 'Beendet' : 'Vorschau'),
+      live: live,
+      child: Row(
+        children: [
+          Expanded(
+            child: _HeroTeam(
+                name: nameOf[myId] ?? 'Du',
+                me: true,
+                win: myWin,
+                align: CrossAxisAlignment.start),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: started
+                ? Text('$myPts : $oppPts',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w800))
+                : Text('VS',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: _HeroTeam(
+                name: nameOf[oppId] ?? '?',
+                me: false,
+                win: oppWin,
+                align: CrossAxisAlignment.end),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Gemeinsamer Rahmen des MatchUp-Kopfs (Farbverlauf, Kopfzeile mit Spieltag
+/// und Status-Pille, Tap → MatchUp-Tab).
+class _HeroShell extends StatelessWidget {
+  const _HeroShell({
+    required this.accent,
+    required this.round,
+    required this.status,
+    required this.live,
+    required this.child,
+  });
+
+  final Color accent;
+  final int round;
+  final String status;
+  final bool live;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => DefaultTabController.maybeOf(context)?.animateTo(1),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [accent.withValues(alpha: 0.42), _cBase],
+            ),
+            border: Border.all(color: accent.withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.bolt, size: 16, color: accent),
+                  const SizedBox(width: 4),
+                  Text('MatchUp · Spieltag $round',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  _StatusPill(accent: accent, label: status, live: live),
+                ],
+              ),
+              const SizedBox(height: 16),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill(
+      {required this.accent, required this.label, required this.live});
+
+  final Color accent;
+  final String label;
+  final bool live;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: live ? accent : Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (live) ...[
+            Container(
+              width: 7,
+              height: 7,
+              decoration:
+                  const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroTeam extends StatelessWidget {
+  const _HeroTeam({
+    required this.name,
+    required this.me,
+    required this.align,
+    this.win = false,
+  });
+
+  final String name;
+  final bool me;
+  final bool win;
+  final CrossAxisAlignment align;
+
+  @override
+  Widget build(BuildContext context) {
+    final end = align == CrossAxisAlignment.end;
+    return Column(
+      crossAxisAlignment: align,
+      children: [
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: end ? TextAlign.end : TextAlign.start,
+          style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: win || me ? FontWeight.bold : FontWeight.w500),
+        ),
+        const SizedBox(height: 2),
+        Text(me ? 'Du' : (win ? 'Führt' : 'Gegner'),
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7), fontSize: 11)),
+      ],
     );
   }
 }
