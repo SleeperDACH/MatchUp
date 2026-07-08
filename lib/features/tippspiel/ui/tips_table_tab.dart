@@ -505,7 +505,6 @@ class _InviteCodeCard extends StatelessWidget {
         leading: const Icon(Icons.key, size: 18),
         title: Text(round.inviteCode,
             style: const TextStyle(
-                fontFamily: 'monospace',
                 fontSize: 13,
                 letterSpacing: 1.2,
                 fontWeight: FontWeight.w600)),

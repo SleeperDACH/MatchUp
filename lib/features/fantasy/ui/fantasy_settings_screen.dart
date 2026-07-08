@@ -1155,7 +1155,6 @@ class _InviteBanner extends StatelessWidget {
                             color: scheme.onSurfaceVariant)),
                     Text(code,
                         style: const TextStyle(
-                            fontFamily: 'monospace',
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 2)),

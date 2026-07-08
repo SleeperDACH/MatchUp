@@ -6,7 +6,9 @@ import '../logic/fantasy_scoring_engine.dart';
 import '../logic/matchup_schedule.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'manager_profile_screen.dart';
 import 'matchday_stepper.dart';
+import 'matchup_detail_screen.dart';
 
 /// Eigenständiger Screen (mit AppBar) — dünne Hülle um [MatchupsBody].
 class MatchupsScreen extends StatelessWidget {
@@ -135,11 +137,26 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                     _MatchupCard(
                       homeName: nameOf[m.home] ?? '?',
                       awayName: m.isBye ? null : (nameOf[m.away] ?? '?'),
+                      homeId: m.home,
+                      awayId: m.isBye ? null : m.away,
                       homePoints: weekTotals[m.home] ?? 0,
                       awayPoints: m.isBye ? 0 : (weekTotals[m.away] ?? 0),
                       played: played,
                       homeMe: m.home == myId,
                       awayMe: m.away == myId,
+                      onOpen: (id, name) => showManagerProfile(context,
+                          league: widget.league,
+                          managerId: id,
+                          managerName: name),
+                      onOpenMatchup: m.isBye
+                          ? null
+                          : () => showMatchupDetail(context,
+                              league: widget.league,
+                              round: round,
+                              homeId: m.home,
+                              homeName: nameOf[m.home] ?? '?',
+                              awayId: m.away,
+                              awayName: nameOf[m.away] ?? '?'),
                     ),
                   const Divider(height: 24),
                   Padding(
@@ -168,6 +185,10 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                         name: nameOf[r.managerId] ?? '?',
                         record: r,
                         me: r.managerId == myId,
+                        onTap: () => showManagerProfile(context,
+                            league: widget.league,
+                            managerId: r.managerId,
+                            managerName: nameOf[r.managerId] ?? '?'),
                       ),
                   const SizedBox(height: 16),
                 ],
@@ -180,26 +201,35 @@ class _MatchupCard extends StatelessWidget {
   const _MatchupCard({
     required this.homeName,
     required this.awayName,
+    required this.homeId,
+    required this.awayId,
     required this.homePoints,
     required this.awayPoints,
     required this.played,
     required this.homeMe,
     required this.awayMe,
+    required this.onOpen,
+    this.onOpenMatchup,
   });
 
   final String homeName;
   final String? awayName; // null = Bye
+  final String homeId;
+  final String? awayId;
   final int homePoints;
   final int awayPoints;
   final bool played;
   final bool homeMe;
   final bool awayMe;
+  final void Function(String id, String name) onOpen;
+  final VoidCallback? onOpenMatchup;
 
   @override
   Widget build(BuildContext context) {
     if (awayName == null) {
       return Card(
         child: ListTile(
+          onTap: () => onOpen(homeId, homeName),
           title: Text(homeName,
               style: homeMe ? const TextStyle(fontWeight: FontWeight.bold) : null),
           trailing: Text('spielfrei',
@@ -216,19 +246,35 @@ class _MatchupCard extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-                child: _side(context, homeName, homeMe, homeWin,
+                child: _side(context, homeId, homeName, homeMe, homeWin,
                     align: CrossAxisAlignment.start)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                played ? '$homePoints : $awayPoints' : 'vs',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary),
+            InkWell(
+              onTap: onOpenMatchup,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      played ? '$homePoints : $awayPoints' : 'vs',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary),
+                    ),
+                    if (onOpenMatchup != null)
+                      Icon(Icons.unfold_more,
+                          size: 14,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.6)),
+                  ],
+                ),
               ),
             ),
             Expanded(
-                child: _side(context, awayName!, awayMe, awayWin,
+                child: _side(context, awayId!, awayName!, awayMe, awayWin,
                     align: CrossAxisAlignment.end)),
           ],
         ),
@@ -236,26 +282,35 @@ class _MatchupCard extends StatelessWidget {
     );
   }
 
-  Widget _side(BuildContext context, String name, bool me, bool win,
+  Widget _side(BuildContext context, String id, String name, bool me, bool win,
       {required CrossAxisAlignment align}) {
-    return Column(
-      crossAxisAlignment: align,
-      children: [
-        Text(
-          name,
-          textAlign: align == CrossAxisAlignment.start
-              ? TextAlign.start
-              : TextAlign.end,
-          style: TextStyle(
-            fontWeight: me || win ? FontWeight.bold : FontWeight.normal,
-            color: win ? Theme.of(context).colorScheme.primary : null,
+    return InkWell(
+      onTap: () => onOpen(id, name),
+      borderRadius: BorderRadius.circular(8),
+      child: Column(
+        crossAxisAlignment: align,
+        children: [
+          Text(
+            name,
+            textAlign: align == CrossAxisAlignment.start
+                ? TextAlign.start
+                : TextAlign.end,
+            style: TextStyle(
+              fontWeight: me || win ? FontWeight.bold : FontWeight.normal,
+              decoration: TextDecoration.underline,
+              decorationColor:
+                  Theme.of(context).colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.4,
+                      ),
+              color: win ? Theme.of(context).colorScheme.primary : null,
+            ),
           ),
-        ),
-        if (win)
-          Text('Sieg',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary)),
-      ],
+          if (win)
+            Text('Sieg',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary)),
+        ],
+      ),
     );
   }
 }
@@ -266,18 +321,21 @@ class _StandingRow extends StatelessWidget {
     required this.name,
     required this.record,
     required this.me,
+    required this.onTap,
   });
 
   final int rank;
   final String name;
   final H2HRecord record;
   final bool me;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return ListTile(
       dense: true,
+      onTap: onTap,
       leading: CircleAvatar(
         radius: 14,
         backgroundColor: rank == 1
