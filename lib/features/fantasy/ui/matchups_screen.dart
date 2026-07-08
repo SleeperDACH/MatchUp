@@ -8,6 +8,7 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'manager_profile_screen.dart';
 import 'matchday_stepper.dart';
+import 'matchup_detail_screen.dart';
 
 /// Eigenständiger Screen (mit AppBar) — dünne Hülle um [MatchupsBody].
 class MatchupsScreen extends StatelessWidget {
@@ -147,6 +148,15 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                           league: widget.league,
                           managerId: id,
                           managerName: name),
+                      onOpenMatchup: m.isBye
+                          ? null
+                          : () => showMatchupDetail(context,
+                              league: widget.league,
+                              round: round,
+                              homeId: m.home,
+                              homeName: nameOf[m.home] ?? '?',
+                              awayId: m.away,
+                              awayName: nameOf[m.away] ?? '?'),
                     ),
                   const Divider(height: 24),
                   Padding(
@@ -199,6 +209,7 @@ class _MatchupCard extends StatelessWidget {
     required this.homeMe,
     required this.awayMe,
     required this.onOpen,
+    this.onOpenMatchup,
   });
 
   final String homeName;
@@ -211,6 +222,7 @@ class _MatchupCard extends StatelessWidget {
   final bool homeMe;
   final bool awayMe;
   final void Function(String id, String name) onOpen;
+  final VoidCallback? onOpenMatchup;
 
   @override
   Widget build(BuildContext context) {
@@ -236,13 +248,29 @@ class _MatchupCard extends StatelessWidget {
             Expanded(
                 child: _side(context, homeId, homeName, homeMe, homeWin,
                     align: CrossAxisAlignment.start)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                played ? '$homePoints : $awayPoints' : 'vs',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary),
+            InkWell(
+              onTap: onOpenMatchup,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      played ? '$homePoints : $awayPoints' : 'vs',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary),
+                    ),
+                    if (onOpenMatchup != null)
+                      Icon(Icons.unfold_more,
+                          size: 14,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.6)),
+                  ],
+                ),
               ),
             ),
             Expanded(

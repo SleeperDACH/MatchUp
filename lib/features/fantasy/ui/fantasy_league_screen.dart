@@ -15,6 +15,7 @@ import 'fantasy_settings_screen.dart';
 import 'fantasy_table_screen.dart';
 import 'free_agency_screen.dart';
 import 'lineup_screen.dart';
+import 'matchup_detail_screen.dart';
 import 'matchups_screen.dart';
 import 'player_pool_screen.dart';
 import 'trade_screen.dart';
@@ -362,6 +363,16 @@ class _MatchupHero extends ConsumerWidget {
     if (pairing == null) return _StatusHero(league: league);
 
     final nameOf = {for (final m in managers) m.userId: m.username};
+    // Tap auf den Kopf → Detailseite der eigenen Paarung (ich immer „Heim").
+    void openDetail(String? oppId, String? oppName) => showMatchupDetail(
+          context,
+          league: league,
+          round: round,
+          homeId: myId,
+          homeName: nameOf[myId] ?? 'Du',
+          awayId: oppId,
+          awayName: oppName,
+        );
     final roundFx = [
       for (final f in all ?? const <Fixture>[])
         if (f.round == round) f
@@ -380,6 +391,7 @@ class _MatchupHero extends ConsumerWidget {
         round: round,
         status: live ? 'LIVE' : (allFinished ? 'Beendet' : 'Vorschau'),
         live: live,
+        onTap: () => openDetail(null, null),
         child: Row(
           children: [
             Expanded(
@@ -420,6 +432,7 @@ class _MatchupHero extends ConsumerWidget {
       round: round,
       status: live ? 'LIVE' : (allFinished ? 'Beendet' : 'Vorschau'),
       live: live,
+      onTap: () => openDetail(oppId, nameOf[oppId]),
       child: Row(
         children: [
           Expanded(
@@ -461,6 +474,7 @@ class _HeroShell extends StatelessWidget {
     required this.round,
     required this.status,
     required this.live,
+    required this.onTap,
     required this.child,
   });
 
@@ -468,6 +482,7 @@ class _HeroShell extends StatelessWidget {
   final int round;
   final String status;
   final bool live;
+  final VoidCallback onTap;
   final Widget child;
 
   @override
@@ -477,7 +492,7 @@ class _HeroShell extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () => DefaultTabController.maybeOf(context)?.animateTo(1),
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
