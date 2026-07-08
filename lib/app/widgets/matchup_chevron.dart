@@ -6,21 +6,30 @@ import '../theme.dart';
 /// exakt nach den Koordinaten des Marken-SVGs gezeichnet. Wiederverwendbar
 /// als Kopfzeilen-Logo und als Tab-Icon.
 class MatchUpChevron extends StatelessWidget {
-  const MatchUpChevron({super.key, required this.size});
+  const MatchUpChevron({super.key, required this.size, this.color});
 
   /// Höhe in logischen Pixeln (Breite folgt dem Seitenverhältnis).
   final double size;
+
+  /// Wenn gesetzt, wird der gesamte Chevron einfarbig gezeichnet (statt
+  /// grün|rot) — z. B. als dezentes, ausgegrautes Wasserzeichen im Hintergrund.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(size * _ChevronPainter.refW / _ChevronPainter.refH, size),
-      painter: _ChevronPainter(),
+      painter: _ChevronPainter(color),
     );
   }
 }
 
 class _ChevronPainter extends CustomPainter {
+  _ChevronPainter([this.color]);
+
+  /// Einfarbige Zeichnung, falls gesetzt — sonst grün|rot geteilt.
+  final Color? color;
+
   // Referenz-Box um den Chevron (inkl. Platz für die runden Kappen),
   // entnommen aus dem Marken-SVG (viewBox 600×200).
   static const refW = 58.0; // x 164 … 222
@@ -51,6 +60,12 @@ class _ChevronPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
+    // Einfarbige Variante (Wasserzeichen): kein grün|rot-Split.
+    if (color != null) {
+      canvas.drawPath(path, paint..color = color!);
+      return;
+    }
+
     final centerX = (_centerX - _ox) * sx;
     // Linke Hälfte grün.
     canvas.save();
@@ -65,5 +80,6 @@ class _ChevronPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _ChevronPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

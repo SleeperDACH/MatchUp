@@ -277,7 +277,7 @@ class _StatusHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final i = _info();
     return Container(
-      padding: const EdgeInsets.all(18),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
@@ -287,32 +287,66 @@ class _StatusHero extends StatelessWidget {
         ),
         border: Border.all(color: i.color.withValues(alpha: 0.45)),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(color: i.color, shape: BoxShape.circle),
-            child: Icon(i.icon, color: _cBase, size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const _HeroWatermark(),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
               children: [
-                Text(i.title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
-                const SizedBox(height: 2),
-                Text(i.subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.75))),
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration:
+                      BoxDecoration(color: i.color, shape: BoxShape.circle),
+                  child: Icon(i.icon, color: _cBase, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(i.title,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(height: 2),
+                      Text(i.subtitle,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.75))),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Dezentes, ausgegrautes MatchUp-Logo als Wasserzeichen im Hintergrund der
+/// Kopf-Banner. Bricht rechts leicht über den Rand hinaus (wird vom
+/// `Clip.antiAlias` des Banners abgeschnitten) und liegt so hinter dem Inhalt.
+class _HeroWatermark extends StatelessWidget {
+  const _HeroWatermark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: OverflowBox(
+          alignment: Alignment.centerRight,
+          maxWidth: double.infinity,
+          maxHeight: double.infinity,
+          child: Transform.translate(
+            offset: const Offset(34, 4),
+            child: MatchUpChevron(
+              size: 150,
+              color: Colors.white.withValues(alpha: 0.05),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -494,7 +528,7 @@ class _HeroShell extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(18),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             gradient: LinearGradient(
@@ -504,23 +538,34 @@ class _HeroShell extends StatelessWidget {
             ),
             border: Border.all(color: accent.withValues(alpha: 0.5)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
             children: [
-              Row(
-                children: [
-                  Icon(Icons.bolt, size: 16, color: accent),
-                  const SizedBox(width: 4),
-                  Text('MatchUp · Spieltag $round',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  _StatusPill(accent: accent, label: status, live: live),
-                ],
+              const _HeroWatermark(),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.bolt, size: 16, color: accent),
+                        const SizedBox(width: 4),
+                        Text('MatchUp · Spieltag $round',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        _StatusPill(accent: accent, label: status, live: live),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    child,
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              child,
             ],
           ),
         ),
