@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
-import '../logic/matchup_schedule.dart';
+import '../../../core/logic/round_robin.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'manager_profile_screen.dart';

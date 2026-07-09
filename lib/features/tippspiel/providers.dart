@@ -275,6 +275,12 @@ final allRoundTipsProvider =
   return ref.watch(tipRoundRepositoryProvider).allTips(roundId);
 });
 
+/// Abgegebene Bonustipp-Antworten einer Runde (alle Mitglieder).
+final bonusAnswersProvider =
+    FutureProvider.family<List<BonusAnswer>, String>((ref, roundId) {
+  return ref.watch(tipRoundRepositoryProvider).bonusAnswers(roundId);
+});
+
 /// Existenz abgegebener Tipps (`userId|fixtureId`) — für das Schloss-Symbol
 /// vor Anstoß (Gegner hat getippt), ohne den Tipp selbst zu zeigen.
 final tipPresenceProvider =

@@ -21,6 +21,7 @@ class MatchUpChevron extends StatelessWidget {
 }
 
 class _ChevronPainter extends CustomPainter {
+
   // Referenz-Box um den Chevron (inkl. Platz für die runden Kappen),
   // entnommen aus dem Marken-SVG (viewBox 600×200).
   static const refW = 58.0; // x 164 … 222

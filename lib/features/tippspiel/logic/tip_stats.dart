@@ -60,6 +60,9 @@ TipStats computeTipStats({
       final rh = f.homeScore!, ra = f.awayScore!;
       scored++;
       final fo = frozenOdds[tip.fixtureId];
+      // Persönliche Bilanz: Basispunkte + (falls aktiv) Quoten-Bonus. Der
+      // Alleinstellungs-Bonus braucht den ligaweiten Vergleich und steckt
+      // daher nur in der Tabelle (round_table.dart), nicht in dieser Solo-Sicht.
       final p = scoreTip(
             tipHome: tip.homeGoals,
             tipAway: tip.awayGoals,
@@ -67,15 +70,18 @@ TipStats computeTipStats({
             resultAway: ra,
             rules: r.scoring,
           ) +
-          oddsBonus(
-            tipHome: tip.homeGoals,
-            tipAway: tip.awayGoals,
-            resultHome: rh,
-            resultAway: ra,
-            homeWin: fo?.homeWin,
-            draw: fo?.draw,
-            awayWin: fo?.awayWin,
-          );
+          (r.scoring.oddsBonus
+              ? oddsBonus(
+                  tipHome: tip.homeGoals,
+                  tipAway: tip.awayGoals,
+                  resultHome: rh,
+                  resultAway: ra,
+                  homeWin: fo?.homeWin,
+                  draw: fo?.draw,
+                  awayWin: fo?.awayWin,
+                  rules: r.scoring,
+                )
+              : 0);
       points += p;
       if (p > best) best = p;
 

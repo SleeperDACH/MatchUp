@@ -287,25 +287,25 @@ class _RulesSheet extends StatelessWidget {
                       detail: 'Der getippte Ausgang (Heimsieg, Remis oder '
                           'Auswärtssieg) ist nicht eingetreten.',
                     ),
-                    const SizedBox(height: 24),
-                    Text('Quoten-Bonus ★', style: textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    const _Bullet('Gibt es nur, wenn du die richtige Tendenz '
-                        'getippt hast (Sieger bzw. Unentschieden) – das exakte '
-                        'Ergebnis spielt keine Rolle. Der Bonus kommt '
-                        'zusätzlich zur Wertung oben.'),
-                    const _Bullet('Maßgeblich ist die Quote für deine getippte '
-                        'Tendenz (Heimsieg, Remis oder Auswärtssieg), '
-                        'eingefroren zum Anstoß: Je unwahrscheinlicher dein '
-                        'richtiger Tipp war, desto mehr Bonus.'),
-                    const _Bullet('+5 Punkte, wenn diese Quote über 5,0 lag – '
-                        'du also einen klaren Außenseiter richtig getippt '
-                        'hast.'),
-                    const _Bullet('+1 Punkt, wenn diese Quote mindestens 2,0 '
-                        'höher war als die niedrigste der drei Quoten (der '
-                        'Favorit).'),
-                    const _Bullet('Die beiden Stufen addieren sich nicht – pro '
-                        'Spiel zählt der höhere der beiden Boni.'),
+                    if (scoring.oddsBonus) ...[
+                      const SizedBox(height: 24),
+                      Text('Quoten-Bonus ★', style: textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      const _Bullet('Gibt es nur, wenn du die richtige Tendenz '
+                          'getippt hast (Sieger bzw. Unentschieden) – das '
+                          'exakte Ergebnis spielt keine Rolle. Der Bonus kommt '
+                          'zusätzlich zur Wertung oben.'),
+                      const _Bullet('Maßgeblich ist die zum Anstoß '
+                          'eingefrorene Quote deiner getippten Tendenz: Je '
+                          'höher die Quote, desto mehr Bonus.'),
+                      _Bullet('+${scoring.oddsPoints1} Punkte ab einer Quote '
+                          'von ${scoring.oddsOdds1.toStringAsFixed(1).replaceAll('.', ',')}.'),
+                      _Bullet('+${scoring.oddsPoints2} Punkte ab einer Quote '
+                          'von ${scoring.oddsOdds2.toStringAsFixed(1).replaceAll('.', ',')} '
+                          '(krasser Außenseiter).'),
+                      const _Bullet('Die beiden Stufen addieren sich nicht – '
+                          'pro Spiel zählt der höhere der beiden Boni.'),
+                    ],
                     if (league.fixedSeason != null) ...[
                       const SizedBox(height: 24),
                       Text('K.-o.-Runde', style: textTheme.titleMedium),

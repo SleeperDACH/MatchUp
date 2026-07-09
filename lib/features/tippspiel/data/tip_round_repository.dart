@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/data/odds/frozen_odds.dart';
 import '../../../core/models/models.dart';
 import '../models/chat_message.dart';
+import '../models/tip.dart';
 import '../models/tip_round.dart';
 
 /// Tipprunden-Verwaltung gegen Supabase. RLS sorgt dafür, dass nur die
@@ -24,6 +25,7 @@ class TipRoundRepository {
     required String name,
     required LeagueInfo league,
     required int season,
+    ScoringRules rules = ScoringRules.kicktippDefault,
   }) async {
     final userId = _client.auth.currentUser!.id;
     // Der Trigger tip_rounds_add_creator macht den Ersteller automatisch
@@ -35,6 +37,7 @@ class TipRoundRepository {
           'league_id': league.id,
           'season': season,
           'created_by': userId,
+          'scoring': rules.toJson(),
         })
         .select()
         .single();
@@ -123,4 +126,43 @@ class TipRoundRepository {
   /// Tipps und Chat gehen per Cascade mit.
   Future<void> deleteRound(String roundId) =>
       _client.from('tip_rounds').delete().eq('id', roundId);
+
+  /// Alle abgegebenen Bonustipp-Antworten der Runde (RLS: nur Mitglieder).
+  Future<List<BonusAnswer>> bonusAnswers(String roundId) async {
+    final rows = await _client
+        .from('tip_bonus_answers')
+        .select('user_id, question, team_id, team_name')
+        .eq('round_id', roundId);
+    return rows.map(BonusAnswer.fromJson).toList();
+  }
+
+  /// Setzt die eigenen Team-Antworten einer Bonustipp-Frage (ersetzt die
+  /// bisherigen — für „Absteiger" können es zwei Teams sein). Die Deadline
+  /// (vor dem ersten Spieltag) erzwingt die RLS serverseitig.
+  Future<void> setBonusAnswers({
+    required String roundId,
+    required String question,
+    required List<({String id, String name})> teams,
+  }) async {
+    final userId = _client.auth.currentUser!.id;
+    await _client
+        .from('tip_bonus_answers')
+        .delete()
+        .eq('round_id', roundId)
+        .eq('user_id', userId)
+        .eq('question', question);
+    if (teams.isEmpty) return;
+    final now = DateTime.now().toIso8601String();
+    await _client.from('tip_bonus_answers').insert([
+      for (final t in teams)
+        {
+          'round_id': roundId,
+          'user_id': userId,
+          'question': question,
+          'team_id': t.id,
+          'team_name': t.name,
+          'updated_at': now,
+        },
+    ]);
+  }
 }

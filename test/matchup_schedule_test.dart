@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/fantasy/logic/matchup_schedule.dart';
+import 'package:meine_app/core/logic/round_robin.dart';
 
 void main() {
   group('roundPairings (Round-Robin, Kreismethode)', () {

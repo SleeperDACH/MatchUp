@@ -1,11 +1,12 @@
-/// Head-to-Head-Spielplan und -Bilanz.
+/// Head-to-Head-Spielplan und -Bilanz (sport-/feature-agnostisch).
 ///
-/// Pro Spieltag werden die Manager 1-gegen-1 gepaart (Round-Robin nach der
+/// Pro Spieltag werden die Teilnehmer 1-gegen-1 gepaart (Round-Robin nach der
 /// Kreismethode). Der Spielplan ist **deterministisch** aus der stabilen
-/// Manager-Reihenfolge ableitbar — daher keine eigene Tabelle nötig: über
-/// n-1 Spieltage spielt jeder gegen jeden genau einmal, danach wiederholt
-/// sich der Zyklus. Bei ungerader Managerzahl hat pro Spieltag einer
-/// spielfrei (Bye).
+/// Reihenfolge der Teilnehmer-IDs ableitbar — daher keine eigene Tabelle
+/// nötig: über n-1 Spieltage spielt jeder gegen jeden genau einmal, danach
+/// wiederholt sich der Zyklus. Bei ungerader Teilnehmerzahl hat pro Spieltag
+/// einer spielfrei (Bye). Genutzt von Fantasy (Manager) und Tippspiel
+/// (Mitglieder) gleichermaßen.
 library;
 
 /// Eine Paarung eines Spieltags. [away] == null ⇒ spielfrei (Bye).
@@ -42,7 +43,7 @@ List<Matchup> roundPairings(List<String> ids, int round) {
     final a = arranged[i];
     final b = arranged[n - 1 - i];
     if (a == null && b == null) continue;
-    // Der reale Manager ist „home"; fehlt der Gegner, ist es ein Bye.
+    // Der reale Teilnehmer ist „home"; fehlt der Gegner, ist es ein Bye.
     if (a == null) {
       pairs.add(Matchup(b!, null));
     } else {
@@ -52,7 +53,7 @@ List<Matchup> roundPairings(List<String> ids, int round) {
   return pairs;
 }
 
-/// Bilanz eines Managers im Head-to-Head.
+/// Bilanz eines Teilnehmers im Head-to-Head.
 class H2HRecord {
   const H2HRecord({
     required this.managerId,
@@ -91,7 +92,7 @@ class H2HRecord {
 
 /// Bilanztabelle aus den Paarungen und den (effektiven) Punkten je
 /// gespieltem Spieltag. [totalsByRound] enthält nur gespielte Spieltage
-/// (Manager-ID → Punkte). Sortiert nach Siegen, dann Punktedifferenz, dann
+/// (Teilnehmer-ID → Punkte). Sortiert nach Siegen, dann Punktedifferenz, dann
 /// erzielten Punkten.
 List<H2HRecord> h2hStandings(
   List<String> ids,

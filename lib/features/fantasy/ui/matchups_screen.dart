@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
-import '../logic/matchup_schedule.dart';
+import '../../../core/logic/round_robin.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'manager_profile_screen.dart';
 import 'matchday_stepper.dart';
 import 'matchup_detail_screen.dart';
+import 'matchup_hero.dart';
+import 'matchup_lineups.dart';
 
 /// Eigenständiger Screen (mit AppBar) — dünne Hülle um [MatchupsBody].
 class MatchupsScreen extends StatelessWidget {
@@ -115,6 +117,38 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
               final pairings = roundPairings(ids, round);
               final played = current != null && round <= current;
 
+              // Eigene Paarung des Spieltags: sie wird oben groß herausgestellt
+              // (Banner wie in der Übersicht + Aufstellungen), die restlichen
+              // Paarungen bleiben darunter als Karten.
+              final myPairing = myId == null
+                  ? null
+                  : pairings
+                      .where((m) => m.home == myId || m.away == myId)
+                      .firstOrNull;
+              final myOppId = myPairing == null || myPairing.isBye
+                  ? null
+                  : (myPairing.home == myId ? myPairing.away : myPairing.home);
+              final myHome = myPairing == null
+                  ? null
+                  : computeSideData(
+                      league: league,
+                      round: round,
+                      managerId: myId!,
+                      byId: playerById,
+                      roster: roster,
+                      lineups: lineups,
+                      stats: weekStats);
+              final myAway = myOppId == null
+                  ? null
+                  : computeSideData(
+                      league: league,
+                      round: round,
+                      managerId: myOppId,
+                      byId: playerById,
+                      roster: roster,
+                      lineups: lineups,
+                      stats: weekStats);
+
               // Bilanz über alle gespielten Spieltage.
               final totalsByRound = <int, Map<String, int>>{
                 for (final entry in seasonStats.entries)
@@ -133,31 +167,56 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                       onChanged: (r) => setState(() => _round = r)),
                   if (ref.watch(roundStatsProvider(round)).isLoading)
                     const LinearProgressIndicator(minHeight: 2),
-                  for (final m in pairings)
-                    _MatchupCard(
-                      homeName: nameOf[m.home] ?? '?',
-                      awayName: m.isBye ? null : (nameOf[m.away] ?? '?'),
-                      homeId: m.home,
-                      awayId: m.isBye ? null : m.away,
-                      homePoints: weekTotals[m.home] ?? 0,
-                      awayPoints: m.isBye ? 0 : (weekTotals[m.away] ?? 0),
-                      played: played,
-                      homeMe: m.home == myId,
-                      awayMe: m.away == myId,
-                      onOpen: (id, name) => showManagerProfile(context,
-                          league: widget.league,
-                          managerId: id,
-                          managerName: name),
-                      onOpenMatchup: m.isBye
-                          ? null
-                          : () => showMatchupDetail(context,
-                              league: widget.league,
-                              round: round,
-                              homeId: m.home,
-                              homeName: nameOf[m.home] ?? '?',
-                              awayId: m.away,
-                              awayName: nameOf[m.away] ?? '?'),
+                  // Eigene Paarung: Banner (wie Übersicht) + Aufstellungen.
+                  if (myPairing != null && myHome != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                      child: MatchupHero(league: league, round: round),
                     ),
+                    MatchupLineups(
+                      league: league,
+                      home: myHome,
+                      away: myAway,
+                      homeId: myId!,
+                      awayId: myOppId,
+                      homeName: nameOf[myId] ?? 'Du',
+                      awayName:
+                          myOppId == null ? null : (nameOf[myOppId] ?? '?'),
+                    ),
+                    const Divider(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Text('Weitere Paarungen',
+                          style: Theme.of(context).textTheme.titleMedium),
+                    ),
+                  ],
+                  for (final m in pairings)
+                    if (myPairing == null ||
+                        (m.home != myId && m.away != myId))
+                      _MatchupCard(
+                        homeName: nameOf[m.home] ?? '?',
+                        awayName: m.isBye ? null : (nameOf[m.away] ?? '?'),
+                        homeId: m.home,
+                        awayId: m.isBye ? null : m.away,
+                        homePoints: weekTotals[m.home] ?? 0,
+                        awayPoints: m.isBye ? 0 : (weekTotals[m.away] ?? 0),
+                        played: played,
+                        homeMe: m.home == myId,
+                        awayMe: m.away == myId,
+                        onOpen: (id, name) => showManagerProfile(context,
+                            league: widget.league,
+                            managerId: id,
+                            managerName: name),
+                        onOpenMatchup: m.isBye
+                            ? null
+                            : () => showMatchupDetail(context,
+                                league: widget.league,
+                                round: round,
+                                homeId: m.home,
+                                homeName: nameOf[m.home] ?? '?',
+                                awayId: m.away,
+                                awayName: nameOf[m.away] ?? '?'),
+                      ),
                   const Divider(height: 24),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

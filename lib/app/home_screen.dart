@@ -12,6 +12,7 @@ import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
+import '../features/tippspiel/ui/create_tip_round.dart';
 import 'league_screen.dart';
 import 'theme.dart';
 import 'widgets/matchup_chevron.dart';
@@ -30,7 +31,7 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         centerTitle: true,
         // Erstellen-Knopf oben links (mit Label, damit klar ist wofür):
-        // Tippspiel / Redraft / Dynasty zur Auswahl.
+        // zuerst Fantasy oder Tippspiel wählen.
         leadingWidth: 116,
         leading: (configured && user != null)
             ? TextButton.icon(
@@ -458,38 +459,12 @@ class _MatchUpTitle extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------
-// Tippspiel: Tipprunde erstellen / beitreten
+// Erstellen / Beitreten
 // ---------------------------------------------------------------------
 
-Future<void> createRoundFlow(BuildContext context, WidgetRef ref) async {
-  final result = await showDialog<(String, LeagueInfo)>(
-    context: context,
-    builder: (_) => const _CreateRoundDialog(),
-  );
-  if (result == null) return;
-  final (name, league) = result;
-  try {
-    final round = await ref.read(tipRoundRepositoryProvider).createRound(
-          name: name,
-          league: league,
-          season: league.seasonFor(DateTime.now()),
-        );
-    ref.invalidate(myRoundsProvider);
-    activateRound(ref, round);
-    if (!context.mounted) return;
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
-  } catch (e) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tipprunde konnte nicht erstellt werden: $e')));
-  }
-}
-
-/// Gemeinsamer Beitreten-Flow für alle Spielmodi: Ein Einladungscode kann zu
-/// einer Fantasy-Liga oder einer Tipprunde gehören. Wir probieren zuerst
-/// Fantasy, fällt der Code dort als unbekannt durch, dann das Tippspiel.
-/// Auswahl-Sheet für den Erstellen-Knopf: Tippspiel, Redraft oder Dynasty.
+/// Auswahl-Sheet für den Erstellen-Knopf: erst die Kategorie **Fantasy** oder
+/// **Tippspiel** wählen — danach führt jeweils ein eigener Screen durch Name
+/// und Modus (Fantasy: Redraft/Dynasty; Tippspiel: kombinierbare Modi).
 void showCreateChooser(BuildContext context, WidgetRef ref) {
   showModalBottomSheet<void>(
     context: context,
@@ -502,35 +477,27 @@ void showCreateChooser(BuildContext context, WidgetRef ref) {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Neu erstellen',
+              child: Text('Was möchtest du erstellen?',
                   style: Theme.of(ctx).textTheme.titleMedium),
             ),
           ),
           _CreateOption(
+            icon: Icons.shield_outlined,
+            title: 'Fantasy',
+            subtitle: 'Kader draften und Spieltage gewinnen (Redraft / Dynasty)',
+            onTap: () {
+              Navigator.of(ctx).pop();
+              createFantasyLeagueFlow(context, FantasyMode.liga);
+            },
+          ),
+          _CreateOption(
             icon: Icons.emoji_events_outlined,
             title: 'Tippspiel',
-            subtitle: 'Ergebnisse tippen, Punkte sammeln',
+            subtitle: 'Ergebnisse tippen, Punkte sammeln (kombinierbare Modi)',
             onTap: () {
               Navigator.of(ctx).pop();
-              createRoundFlow(context, ref);
-            },
-          ),
-          _CreateOption(
-            icon: Icons.calendar_today,
-            title: 'Redraft',
-            subtitle: 'Fantasy: eine Saison, danach neuer Draft',
-            onTap: () {
-              Navigator.of(ctx).pop();
-              createFantasyQuickFlow(context, ref, FantasyMode.liga);
-            },
-          ),
-          _CreateOption(
-            icon: Icons.auto_awesome,
-            title: 'Dynasty',
-            subtitle: 'Fantasy: Kader über Jahre, U20-Draft',
-            onTap: () {
-              Navigator.of(ctx).pop();
-              createFantasyQuickFlow(context, ref, FantasyMode.dynasty);
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const CreateTipRoundScreen()));
             },
           ),
           const SizedBox(height: 8),
@@ -647,69 +614,5 @@ Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
           ? 'Dieser Code passt zu keiner Fantasy-Liga und keiner Tipprunde.'
           : 'Beitritt fehlgeschlagen: $e'),
     ));
-  }
-}
-
-class _CreateRoundDialog extends StatefulWidget {
-  const _CreateRoundDialog();
-
-  @override
-  State<_CreateRoundDialog> createState() => _CreateRoundDialogState();
-}
-
-class _CreateRoundDialogState extends State<_CreateRoundDialog> {
-  final _name = TextEditingController();
-  LeagueInfo _league = Leagues.all.first;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (_name.text.trim().length < 3) return;
-    Navigator.of(context).pop((_name.text.trim(), _league));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Neue Tipprunde'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _name,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Name der Tipprunde',
-              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-            ),
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<LeagueInfo>(
-            initialValue: _league,
-            decoration: const InputDecoration(
-              labelText: 'Wettbewerb',
-              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-            ),
-            items: [
-              for (final league in Leagues.all)
-                DropdownMenuItem(value: league, child: Text(league.name)),
-            ],
-            onChanged: (league) => setState(() => _league = league ?? _league),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Erstellen')),
-      ],
-    );
   }
 }

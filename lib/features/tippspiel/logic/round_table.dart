@@ -24,6 +24,20 @@ Map<String, int> totalPointsByMember({
       if (f.hasScore) f.id: f,
   };
   final totals = {for (final m in members) m.userId: 0};
+
+  // Alleinstellungs-Bonus: pro Spiel zählen, wie viele Mitglieder das exakte
+  // Ergebnis getippt haben (nur Runden-Mitglieder mit gewertetem Spiel).
+  final exactHitters = <String, int>{};
+  if (rules.solo > 0) {
+    for (final tip in tips) {
+      final fx = results[tip.fixtureId];
+      if (fx == null || !totals.containsKey(tip.userId)) continue;
+      if (tip.homeGoals == fx.homeScore && tip.awayGoals == fx.awayScore) {
+        exactHitters[tip.fixtureId] = (exactHitters[tip.fixtureId] ?? 0) + 1;
+      }
+    }
+  }
+
   for (final tip in tips) {
     final fixture = results[tip.fixtureId];
     if (fixture == null || !totals.containsKey(tip.userId)) continue;
@@ -35,16 +49,27 @@ Map<String, int> totalPointsByMember({
       rules: rules,
     );
     final fo = frozenOdds[tip.fixtureId];
-    final bonus = oddsBonus(
-      tipHome: tip.homeGoals,
-      tipAway: tip.awayGoals,
-      resultHome: fixture.homeScore!,
-      resultAway: fixture.awayScore!,
-      homeWin: fo?.homeWin,
-      draw: fo?.draw,
-      awayWin: fo?.awayWin,
-    );
-    totals[tip.userId] = totals[tip.userId]! + base + bonus;
+    final bonus = rules.oddsBonus
+        ? oddsBonus(
+            tipHome: tip.homeGoals,
+            tipAway: tip.awayGoals,
+            resultHome: fixture.homeScore!,
+            resultAway: fixture.awayScore!,
+            homeWin: fo?.homeWin,
+            draw: fo?.draw,
+            awayWin: fo?.awayWin,
+            rules: rules,
+          )
+        : 0;
+    final solo = rules.solo > 0
+        ? soloBonus(
+            isExact: tip.homeGoals == fixture.homeScore &&
+                tip.awayGoals == fixture.awayScore,
+            exactHittersOnFixture: exactHitters[tip.fixtureId] ?? 0,
+            points: rules.solo,
+          )
+        : 0;
+    totals[tip.userId] = totals[tip.userId]! + base + bonus + solo;
   }
   return totals;
 }

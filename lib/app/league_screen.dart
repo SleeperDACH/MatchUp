@@ -5,6 +5,7 @@ import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/league_hub_screen.dart';
 import '../features/tippspiel/ui/matchday_screen.dart';
+import '../features/tippspiel/ui/tip_duels_tab.dart';
 import '../features/tippspiel/ui/tips_table_tab.dart';
 
 /// Ansicht einer Tipprunde mit Tabs: Tippen, Tabelle und Liga (Chat + Regeln).
@@ -26,10 +27,21 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
     final round = widget.round;
     final league = ref.watch(selectedLeagueProvider);
 
+    // Im Head-to-Head-Modus liegt zwischen Tabelle und Liga ein „Duelle"-Tab.
+    final h2h = round.scoring.headToHead;
+    final tabs = <Widget>[
+      const MatchdayScreen(),
+      TipsTableTab(round: round),
+      if (h2h) TipDuelsTab(round: round),
+      LeagueHubScreen(round: round),
+    ];
+    // Der Liga-Tab (Chat) ist immer der letzte.
+    final ligaIndex = tabs.length - 1;
+
     // Hinweis am Liga-Symbol bei ungelesenen Chat-Nachrichten. Auf dem
-    // Liga-Tab selbst (Index 2) wird alles als gelesen markiert.
+    // Liga-Tab selbst wird alles als gelesen markiert.
     var ligaUnread = false;
-    if (_index == 2) {
+    if (_index == ligaIndex) {
       final msgs = ref.watch(roundMessagesProvider(round.id)).valueOrNull;
       if (msgs != null && msgs.isNotEmpty) {
         final latest =
@@ -41,12 +53,6 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
     } else {
       ligaUnread = ref.watch(unreadChatProvider(round.id));
     }
-
-    final tabs = <Widget>[
-      const MatchdayScreen(),
-      TipsTableTab(round: round),
-      LeagueHubScreen(round: round),
-    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -75,6 +81,12 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
             selectedIcon: Icon(Icons.table_chart),
             label: 'Tabelle',
           ),
+          if (h2h)
+            const NavigationDestination(
+              icon: Icon(Icons.bolt_outlined),
+              selectedIcon: Icon(Icons.bolt),
+              label: 'Duelle',
+            ),
           NavigationDestination(
             icon: Badge(
               isLabelVisible: ligaUnread,

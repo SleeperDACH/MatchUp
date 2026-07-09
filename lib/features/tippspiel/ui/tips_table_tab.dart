@@ -12,6 +12,8 @@ import '../logic/tip_scoring.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
+import 'bonus_tips_screen.dart';
+import 'bonus_tips_table_screen.dart';
 import 'round_selector.dart';
 
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
@@ -191,6 +193,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
+          if (round.scoring.bonusTips.isNotEmpty)
+            _BonusTipsEntry(round: round),
           Card(
             // Zwei fluchtende Tabellen: links der eingefrorene Namens-/Pkt.-
             // Block (scrollt nicht mit), rechts die Ergebnis-Spalten als
@@ -292,13 +296,16 @@ class _TableBodyState extends ConsumerState<_TableBody> {
             padding: const EdgeInsets.all(10),
             child: Text(
               'Punkte: ${rules.exact} Ergebnis · ${rules.goalDiff} Tordifferenz '
-              '· ${rules.tendency} Tendenz · ★ Quoten-Bonus — '
+              '· ${rules.tendency} Tendenz'
+              '${rules.oddsBonus ? ' · ★ Quoten-Bonus' : ''} — '
               'fremde Tipps ab Anstoß sichtbar',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
+          if (round.scoring.bonusTips.isNotEmpty)
+            _BonusTableEntry(round: round),
           _InviteCodeCard(round: round),
         ],
       ),
@@ -461,15 +468,18 @@ class _TipCell extends StatelessWidget {
       resultAway: fixture.awayScore!,
       rules: rules,
     );
-    final bonus = oddsBonus(
-      tipHome: tip!.homeGoals,
-      tipAway: tip!.awayGoals,
-      resultHome: fixture.homeScore!,
-      resultAway: fixture.awayScore!,
-      homeWin: odds?.homeWin,
-      draw: odds?.draw,
-      awayWin: odds?.awayWin,
-    );
+    final bonus = rules.oddsBonus
+        ? oddsBonus(
+            tipHome: tip!.homeGoals,
+            tipAway: tip!.awayGoals,
+            resultHome: fixture.homeScore!,
+            resultAway: fixture.awayScore!,
+            homeWin: odds?.homeWin,
+            draw: odds?.draw,
+            awayWin: odds?.awayWin,
+            rules: rules,
+          )
+        : 0;
     final points = base + bonus;
     final color = live
         ? _liveColor
@@ -517,6 +527,58 @@ class _InviteCodeCard extends StatelessWidget {
                 const SnackBar(content: Text('Einladungscode kopiert')));
           }
         },
+      ),
+    );
+  }
+}
+
+/// Einstiegskarte zu den Bonustipps (nur wenn die Runde welche hat).
+class _BonusTipsEntry extends StatelessWidget {
+  const _BonusTipsEntry({required this.round});
+
+  final TipRound round;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.primary.withValues(alpha: 0.10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: scheme.primary.withValues(alpha: 0.4)),
+      ),
+      child: ListTile(
+        leading: Icon(Icons.emoji_events_outlined, color: scheme.primary),
+        title: const Text('Bonustipps',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle:
+            const Text('Saison-Prognosen abgeben — vor dem ersten Spieltag.'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => BonusTipsScreen(round: round))),
+      ),
+    );
+  }
+}
+
+/// Einstiegskarte zur Bonustipp-Tabelle (2. Tabelle, extra Fenster).
+class _BonusTableEntry extends StatelessWidget {
+  const _BonusTableEntry({required this.round});
+
+  final TipRound round;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      child: ListTile(
+        leading: Icon(Icons.leaderboard_outlined, color: scheme.onSurfaceVariant),
+        title: const Text('Bonustipp-Tabelle',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: const Text('Die Saison-Prognosen aller Mitglieder.'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => BonusTipsTableScreen(round: round))),
       ),
     );
   }

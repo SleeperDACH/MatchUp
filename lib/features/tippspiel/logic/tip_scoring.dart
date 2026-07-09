@@ -36,13 +36,16 @@ int scoreTip({
 /// getippt) — bewusst über den `sign`-Vergleich geprüft, identisch zur
 /// SQL-View `tip_round_standings`. Maßgeblich ist die zum Anstoß
 /// eingefrorene Quote des tatsächlich eingetretenen Ausgangs
-/// (Heimsieg → [homeWin], Unentschieden → [draw], Auswärtssieg → [awayWin]):
-/// - Quote > 5.0 → +5 Punkte (krasser Außenseiter)
-/// - sonst Quote ≥ 2.0 über dem Favoriten (niedrigste der drei Quoten) → +1
+/// (Heimsieg → [homeWin], Unentschieden → [draw], Auswärtssieg → [awayWin]).
+///
+/// Zwei **konfigurierbare** Stufen (aus [rules]):
+/// - ab Quote [ScoringRules.oddsOdds2] → [ScoringRules.oddsPoints2] (höhere
+///   Stufe, krasser Außenseiter)
+/// - sonst ab Quote [ScoringRules.oddsOdds1] → [ScoringRules.oddsPoints1]
 /// - sonst 0
 ///
-/// Die beiden Stufen stapeln nicht — der >5.0-Fall liefert ohnehin den
-/// höheren Bonus. Ohne eingefrorene Quoten (`null`) gibt es keinen Bonus.
+/// Die Stufen stapeln nicht — die höhere gewinnt. Ohne eingefrorene Quoten
+/// (`null`) gibt es keinen Bonus.
 int oddsBonus({
   required int tipHome,
   required int tipAway,
@@ -51,6 +54,7 @@ int oddsBonus({
   required double? homeWin,
   required double? draw,
   required double? awayWin,
+  required ScoringRules rules,
 }) {
   // Tendenz korrekt? (Sieger bzw. Remis richtig getippt)
   if ((tipHome - tipAway).sign != (resultHome - resultAway).sign) return 0;
@@ -61,9 +65,22 @@ int oddsBonus({
       : resultHome < resultAway
           ? awayWin
           : draw;
-  final favorite = [homeWin, draw, awayWin].reduce((a, b) => a < b ? a : b);
 
-  if (outcomeOdds > 5.0) return 5;
-  if (outcomeOdds - favorite >= 2.0) return 1;
+  if (outcomeOdds >= rules.oddsOdds2) return rules.oddsPoints2;
+  if (outcomeOdds >= rules.oddsOdds1) return rules.oddsPoints1;
   return 0;
 }
+
+/// Alleinstellungs-Bonus: kommt **on top** der Basispunkte, wenn ein exaktes
+/// Ergebnis von genau **einem** Mitglied getroffen wurde. [isExact] muss der
+/// exakte Treffer sein, [exactHittersOnFixture] die Anzahl der Mitglieder, die
+/// dieses Spiel exakt getippt haben. Trifft nur eine/r → [points], sonst 0.
+///
+/// Identisch zur SQL-View `tip_round_standings` (Window-Count je Spiel) — bei
+/// Änderungen beide anpassen.
+int soloBonus({
+  required bool isExact,
+  required int exactHittersOnFixture,
+  required int points,
+}) =>
+    (isExact && exactHittersOnFixture == 1) ? points : 0;
