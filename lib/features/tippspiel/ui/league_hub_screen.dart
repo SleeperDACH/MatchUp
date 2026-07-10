@@ -203,6 +203,36 @@ class _RulesSheet extends StatelessWidget {
                       const _Bullet('Die beiden Stufen addieren sich nicht – '
                           'pro Spiel zählt der höhere der beiden Boni.'),
                     ],
+                    if (scoring.solo > 0) ...[
+                      const SizedBox(height: 24),
+                      Text('Alleinstellungs-Bonus ★',
+                          style: textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      _Bullet('+${scoring.solo} Punkte, wenn du als Einzige/r '
+                          'das exakte Ergebnis eines Spiels getippt hast — '
+                          'zusätzlich zur Wertung oben.'),
+                    ],
+                    if (scoring.headToHead) ...[
+                      const SizedBox(height: 24),
+                      Text('Head-to-Head', style: textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      const _Bullet('Jeder Spieltag ist zusätzlich ein Duell '
+                          'gegen ein anderes Mitglied: Wer an dem Spieltag mehr '
+                          'Punkte holt, gewinnt (Sieg/Niederlage/Unentschieden).'),
+                      const _Bullet('Die Paarungen und die Bilanz (S-N-U) '
+                          'stehen im „Duelle"-Tab.'),
+                    ],
+                    if (scoring.bonusTips.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      Text('Bonustipps', style: textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      _Bullet('Saison-Prognosen, die du vor dem ersten Spieltag '
+                          'abgibst: '
+                          '${scoring.bonusTips.map(bonusTipLabel).join(', ')}.'),
+                      _Bullet('Jede richtige Prognose bringt '
+                          '+${scoring.bonusPoints} Punkte. Abgabe über die '
+                          'Tabelle („Bonustipps abgeben").'),
+                    ],
                     if (league.fixedSeason != null) ...[
                       const SizedBox(height: 24),
                       Text('K.-o.-Runde', style: textTheme.titleMedium),
