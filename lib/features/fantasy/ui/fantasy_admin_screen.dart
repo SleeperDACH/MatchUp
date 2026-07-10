@@ -15,6 +15,7 @@ class FantasyAdminScreen extends ConsumerWidget {
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(fantasyManagersProvider(league.id));
     ref.invalidate(vacantTeamsProvider(league.id));
+    ref.invalidate(pendingMembersProvider(league.id));
   }
 
   Future<void> _kick(
@@ -69,12 +70,61 @@ class FantasyAdminScreen extends ConsumerWidget {
     }
   }
 
+  /// Weist ein wartendes (pending) Mitglied einem verwaisten Team zu. Der Admin
+  /// wählt zunächst das freie Team; gibt es keins, ist keine Zuweisung möglich.
+  Future<void> _assignPending(BuildContext context, WidgetRef ref,
+      FantasyManager pending, List<FantasyManager> vacants) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (vacants.isEmpty) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Kein freies Team vorhanden. '
+              'Erst muss ein Team frei werden (Teilnehmer kicken/verlassen).')));
+      return;
+    }
+    final FantasyManager? target = vacants.length == 1
+        ? vacants.first
+        : await showModalBottomSheet<FantasyManager>(
+            context: context,
+            builder: (ctx) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('Freies Team für ${pending.display} wählen',
+                        style: Theme.of(ctx).textTheme.titleMedium),
+                  ),
+                  for (final v in vacants)
+                    ListTile(
+                      leading: const Icon(Icons.person_off_outlined),
+                      title: Text('Team von ${v.display}'),
+                      onTap: () => Navigator.of(ctx).pop(v),
+                    ),
+                ],
+              ),
+            ),
+          );
+    if (target == null) return;
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .assignTeam(league.id, target.userId, pending.userId);
+      await _refresh(ref);
+      messenger.showSnackBar(SnackBar(
+          content: Text('${pending.display} wurde einem Team zugewiesen.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
         const <FantasyManager>[];
     final vacants = ref.watch(vacantTeamsProvider(league.id)).valueOrNull ??
+        const <FantasyManager>[];
+    final pendings = ref.watch(pendingMembersProvider(league.id)).valueOrNull ??
         const <FantasyManager>[];
     final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
@@ -144,6 +194,35 @@ class FantasyAdminScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+          if (pendings.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text('Beitritts-Anfragen',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold, color: scheme.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text(
+                'Nach dem Draft beigetreten — einem freien Team zuweisen. '
+                'Ohne freies Team ist keine Zuweisung möglich (keine neuen Teams).',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant)),
+            const SizedBox(height: 8),
+            for (final p in pendings)
+              Card(
+                child: ListTile(
+                  leading: CircleAvatar(child: Text(_initial(p.display))),
+                  title: Text(p.display),
+                  subtitle: const Text('wartet auf ein Team'),
+                  trailing: FilledButton(
+                    onPressed: vacants.isEmpty
+                        ? null
+                        : () => _assignPending(context, ref, p, vacants),
+                    child: const Text('Team geben'),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );

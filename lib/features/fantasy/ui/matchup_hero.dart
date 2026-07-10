@@ -293,21 +293,24 @@ class MatchupBanner extends StatelessWidget {
             children: [
               Text('$homePoints',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold)),
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800)),
               Text(
-                  live
-                      ? 'Live-Punkte'
-                      : (started ? 'Endpunkte' : 'Punkteanteil'),
+                  (live
+                          ? 'Live-Punkte'
+                          : (started ? 'Endpunkte' : 'Punkteanteil'))
+                      .toUpperCase(),
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 10)),
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5)),
               Text('$awayPoints',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold)),
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800)),
             ],
           ),
         ],
@@ -338,6 +341,7 @@ class HeroShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isGreen = accent == _cGreen;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(18),
@@ -351,9 +355,19 @@ class HeroShell extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [accent.withValues(alpha: 0.42), _cBase],
+              // Der Grün-Banner soll klar nach dem MatchUp-Logo-Grün aussehen;
+              // dafür startet er kräftiger und hält den Grünton länger.
+              stops: isGreen ? const [0.0, 0.55, 1.0] : const [0.0, 1.0],
+              colors: isGreen
+                  ? [
+                      accent.withValues(alpha: 0.78),
+                      accent.withValues(alpha: 0.34),
+                      _cBase,
+                    ]
+                  : [accent.withValues(alpha: 0.42), _cBase],
             ),
-            border: Border.all(color: accent.withValues(alpha: 0.5)),
+            border: Border.all(
+                color: accent.withValues(alpha: isGreen ? 0.62 : 0.5)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
@@ -370,14 +384,25 @@ class HeroShell extends StatelessWidget {
                         children: [
                           Icon(Icons.bolt, size: 16, color: accent),
                           const SizedBox(width: 4),
-                          Text('MatchUp · Spieltag $round',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
+                          Text.rich(
+                            TextSpan(children: [
+                              const TextSpan(
+                                  text: 'MATCHUP',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.5)),
+                              TextSpan(
+                                  text: '  ·  SPIELTAG $round',
+                                  style: TextStyle(
                                       color:
-                                          Colors.white.withValues(alpha: 0.85),
-                                      fontWeight: FontWeight.bold)),
+                                          Colors.white.withValues(alpha: 0.6),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 1)),
+                            ]),
+                          ),
                           const Spacer(),
                           HeroStatusPill(
                               accent: accent, label: status, live: live),
@@ -496,18 +521,21 @@ class HeroTeam extends StatelessWidget {
           children: [
             if (leads) ...[
               Icon(live ? Icons.arrow_drop_up : Icons.emoji_events,
-                  size: live ? 16 : 13, color: accent),
+                  size: live ? 16 : 13, color: _cGreen),
               const SizedBox(width: 1),
-              Text(live ? 'Führt' : 'Sieg',
-                  style: TextStyle(
-                      color: accent,
+              Text(live ? 'FÜHRT' : 'SIEG',
+                  style: const TextStyle(
+                      color: _cGreen,
                       fontSize: 11,
-                      fontWeight: FontWeight.bold)),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2)),
             ] else if (showRole)
-              Text(me ? 'Du' : 'Gegner',
+              Text((me ? 'Du' : 'Gegner').toUpperCase(),
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 11))
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.4))
             else
               const SizedBox(height: 14),
           ],
@@ -560,14 +588,16 @@ class ScoreBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Führender grün, Zurückliegender rot; bei Gleichstand/vor Anpfiff weiß.
     Color numColor(bool win, bool otherWin) => win
-        ? accent
-        : (otherWin ? Colors.white.withValues(alpha: 0.55) : Colors.white);
+        ? _cGreen
+        : (otherWin ? _cRed : Colors.white);
     Widget number(int v, bool win, bool otherWin) => Text('$v',
         style: TextStyle(
             color: numColor(win, otherWin),
-            fontSize: 28,
+            fontSize: 30,
             height: 1,
+            letterSpacing: -0.5,
             fontWeight: FontWeight.w800));
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),

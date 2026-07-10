@@ -216,9 +216,10 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> managers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, profiles(username)')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username)')
         .eq('league_id', leagueId)
         .eq('vacant', false)
+        .eq('pending', false)
         .order('joined_at');
     return rows.map(FantasyManager.fromJson).toList();
   }
@@ -227,9 +228,21 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> vacantTeams(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, profiles(username)')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username)')
         .eq('league_id', leagueId)
         .eq('vacant', true)
+        .order('joined_at');
+    return rows.map(FantasyManager.fromJson).toList();
+  }
+
+  /// Nach Draft-Start beigetretene Mitglieder ohne Team; warten auf eine
+  /// Zuweisung durch den Admin (sofern ein Team frei ist).
+  Future<List<FantasyManager>> pendingMembers(String leagueId) async {
+    final rows = await _client
+        .from('fantasy_league_members')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username)')
+        .eq('league_id', leagueId)
+        .eq('pending', true)
         .order('joined_at');
     return rows.map(FantasyManager.fromJson).toList();
   }

@@ -581,6 +581,14 @@ Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
     if (!context.mounted) return;
     Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => FantasyLeagueScreen(league: league)));
+    // Nach Draft-Start ist man nur „pending" — der Admin muss noch ein freies
+    // Team zuweisen. Kurzer Hinweis, damit klar ist, warum kein Kader da ist.
+    if (league.draftStatus != DraftStatus.setup && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Beigetreten! Der Draft läuft bereits — der Admin weist '
+            'dir ein Team zu, sobald ein Platz frei ist.'),
+      ));
+    }
     return;
   } catch (e) {
     final msg = e.toString();

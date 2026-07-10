@@ -51,6 +51,12 @@ final vacantTeamsProvider =
   return ref.watch(fantasyLeagueRepositoryProvider).vacantTeams(leagueId);
 });
 
+/// Nach Draft-Start beigetretene Mitglieder ohne Team (warten auf Zuweisung).
+final pendingMembersProvider =
+    FutureProvider.family<List<FantasyManager>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).pendingMembers(leagueId);
+});
+
 /// Aktuelle Kader der Liga in Echtzeit (Draft + Free Agency).
 final leagueRosterProvider =
     StreamProvider.family<List<RosterEntry>, String>((ref, leagueId) {
