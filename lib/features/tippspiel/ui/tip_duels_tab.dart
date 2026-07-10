@@ -8,6 +8,7 @@ import '../../auth/providers.dart';
 import '../logic/round_table.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
+import 'tip_member_profile_sheet.dart';
 
 /// Head-to-Head-Modus einer Tipprunde: jeder Spieltag als Duell zwischen zwei
 /// Mitgliedern. Die Punkte je Spieltag kommen aus der normalen Tipp-Wertung
@@ -57,7 +58,8 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
 
     // Stabile, deterministische Reihenfolge für den Spielplan.
     final ids = members.map((m) => m.userId).toList()..sort();
-    final nameOf = {for (final m in members) m.userId: m.username};
+    final nameOf = {for (final m in members) m.userId: m.display};
+    final memberById = {for (final m in members) m.userId: m};
 
     // Fixtures nach Spieltag gruppieren.
     final byRound = <int, List<Fixture>>{};
@@ -127,6 +129,13 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
               name: nameOf[r.managerId] ?? '?',
               record: r,
               me: r.managerId == myId,
+              onTap: () {
+                final mem = memberById[r.managerId];
+                if (mem != null) {
+                  showTipMemberProfile(context,
+                      round: widget.round, member: mem);
+                }
+              },
             ),
         const SizedBox(height: 16),
       ],
@@ -265,18 +274,21 @@ class _StandingRow extends StatelessWidget {
     required this.name,
     required this.record,
     required this.me,
+    this.onTap,
   });
 
   final int rank;
   final String name;
   final H2HRecord record;
   final bool me;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return ListTile(
       dense: true,
+      onTap: onTap,
       leading: CircleAvatar(
         radius: 14,
         backgroundColor: rank == 1

@@ -85,7 +85,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
               final managers = managersAsync.requireValue;
               final pool = poolAsync.requireValue;
               final playerById = {for (final p in pool) p.id: p};
-              final nameOf = {for (final m in managers) m.userId: m.username};
+              final nameOf = {for (final m in managers) m.userId: m.display};
 
               // Stabile Reihenfolge: Draft-Position, dann User-ID.
               final ids = managers.map((m) => m.userId).toList()

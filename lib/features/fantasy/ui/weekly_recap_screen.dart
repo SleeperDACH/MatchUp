@@ -85,7 +85,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
               final managers = managersAsync.requireValue;
               final pool = poolAsync.requireValue;
               final playerById = {for (final p in pool) p.id: p};
-              final nameOf = {for (final m in managers) m.userId: m.username};
+              final nameOf = {for (final m in managers) m.userId: m.display};
               final ids = stableManagerIds(managers);
 
               final roundFx = [for (final f in allFx) if (f.round == round) f];
@@ -474,7 +474,7 @@ class WeeklyRecapCard extends ConsumerWidget {
         const <String, PlayerMatchStats>{};
 
     final playerById = {for (final p in pool) p.id: p};
-    final nameOf = {for (final m in managers) m.userId: m.username};
+    final nameOf = {for (final m in managers) m.userId: m.display};
     final recap = computeWeeklyRecap(
       round: current,
       ids: stableManagerIds(managers),

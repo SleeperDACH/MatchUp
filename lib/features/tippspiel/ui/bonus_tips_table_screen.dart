@@ -89,7 +89,7 @@ class BonusTipsTableScreen extends ConsumerWidget {
                             for (final m in members)
                               DataRow(cells: [
                                 DataCell(Text(
-                                  m.username,
+                                  m.display,
                                   style: m.userId == myId
                                       ? const TextStyle(
                                           fontWeight: FontWeight.bold)

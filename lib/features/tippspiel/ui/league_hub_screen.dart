@@ -130,7 +130,7 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
     // user_id → Anzeigename aus der Mitgliederliste.
     final names = <String, String>{
       for (final m in members.valueOrNull ?? const <RoundMember>[])
-        m.userId: m.username,
+        m.userId: m.display,
     };
 
     return Column(

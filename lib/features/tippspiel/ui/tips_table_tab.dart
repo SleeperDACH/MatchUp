@@ -15,6 +15,7 @@ import '../providers.dart';
 import 'bonus_tips_screen.dart';
 import 'bonus_tips_table_screen.dart';
 import 'round_selector.dart';
+import 'tip_member_profile_sheet.dart';
 
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
 const Color _liveColor = Color(0xFFF23030); // MatchUp Red — Live-Spiele
@@ -152,7 +153,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
       final byPoints = (totals[b.userId] ?? 0) - (totals[a.userId] ?? 0);
       return byPoints != 0
           ? byPoints
-          : a.username.toLowerCase().compareTo(b.username.toLowerCase());
+          : a.display.toLowerCase().compareTo(b.display.toLowerCase());
     });
 
     // Platzierung + Bewegung ggü. dem Stand vor dem gewählten Spieltag.
@@ -227,15 +228,19 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                           color: WidgetStatePropertyAll(
                               rowColor(member.userId)),
                           cells: [
-                            DataCell(_NameCell(
-                              rank: currentRanks[member.userId] ?? 0,
-                              movement: hasPrior
-                                  ? (priorRanks[member.userId] ?? 0) -
-                                      (currentRanks[member.userId] ?? 0)
-                                  : null,
-                              username: member.username,
-                              isMe: member.userId == myUserId,
-                            )),
+                            DataCell(
+                              _NameCell(
+                                rank: currentRanks[member.userId] ?? 0,
+                                movement: hasPrior
+                                    ? (priorRanks[member.userId] ?? 0) -
+                                        (currentRanks[member.userId] ?? 0)
+                                    : null,
+                                username: member.display,
+                                isMe: member.userId == myUserId,
+                              ),
+                              onTap: () => showTipMemberProfile(context,
+                                  round: round, member: member),
+                            ),
                             DataCell(Text(
                               '${totals[member.userId] ?? 0}',
                               style: TextStyle(

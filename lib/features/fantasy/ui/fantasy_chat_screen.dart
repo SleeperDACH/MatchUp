@@ -23,7 +23,7 @@ class FantasyChatScreen extends ConsumerWidget {
             const <FantasyManager>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
-    final names = {for (final m in managers) m.userId: m.username};
+    final names = {for (final m in managers) m.userId: m.display};
 
     return Scaffold(
       appBar: AppBar(

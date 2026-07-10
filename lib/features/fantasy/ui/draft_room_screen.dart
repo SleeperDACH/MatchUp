@@ -120,7 +120,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     final picks = picksAsync.valueOrNull ?? const <DraftPick>[];
 
     final playerById = {for (final p in pool) p.id: p};
-    final nameById = {for (final m in managers) m.userId: m.username};
+    final nameById = {for (final m in managers) m.userId: m.display};
     final pickedIds = {for (final p in picks) p.playerId};
 
     // Eigener Kader (inkl. in Dynasty behaltener Spieler) nach Position — für
@@ -341,7 +341,7 @@ class _StatusBanner extends StatelessWidget {
                       child: Text(
                         myTurn
                             ? 'Du bist dran!'
-                            : 'Am Zug: ${current?.username ?? '—'}',
+                            : 'Am Zug: ${current?.display ?? '—'}',
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
@@ -807,7 +807,7 @@ class _BoardTab extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 6),
                     child: _orderChip(context,
                         pos: i + 1,
-                        name: m.username,
+                        name: m.display,
                         isCurrent: m.userId == currentId,
                         isMine: m.userId == myId),
                   ),

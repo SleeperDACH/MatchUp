@@ -91,7 +91,7 @@ class MatchupHero extends ConsumerWidget {
         .firstOrNull;
     if (pairing == null) return fallback;
 
-    final nameOf = {for (final m in managers) m.userId: m.username};
+    final nameOf = {for (final m in managers) m.userId: m.display};
     // Tap auf den Kopf → Detailseite der eigenen Paarung (ich immer „Heim").
     void openDetail(String? oppId, String? oppName) => showMatchupDetail(
           context,

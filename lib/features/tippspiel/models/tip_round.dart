@@ -45,16 +45,30 @@ class TipRound {
 
 /// Ein Mitglied einer Liga.
 class RoundMember {
-  const RoundMember({required this.userId, required this.username});
+  const RoundMember({
+    required this.userId,
+    required this.username,
+    this.teamName,
+  });
 
   final String userId;
+
+  /// Globaler Nutzername (aus `profiles`).
   final String username;
+
+  /// Ligaspezifischer Anzeigename; null/leer = kein eigener Name.
+  final String? teamName;
+
+  /// In der Liga anzuzeigender Name: Teamname, sonst der Nutzername.
+  String get display =>
+      (teamName?.trim().isNotEmpty ?? false) ? teamName!.trim() : username;
 
   factory RoundMember.fromJson(Map<String, dynamic> json) => RoundMember(
         userId: json['user_id'] as String,
         username:
             (json['profiles'] as Map<String, dynamic>?)?['username'] as String? ??
                 '?',
+        teamName: json['team_name'] as String?,
       );
 }
 

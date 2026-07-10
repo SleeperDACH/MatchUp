@@ -105,8 +105,8 @@ class _PartnerList extends ConsumerWidget {
             for (final m in others)
               Card(
                 child: ListTile(
-                  leading: CircleAvatar(child: Text(_initial(m.username))),
-                  title: Text(m.username),
+                  leading: CircleAvatar(child: Text(_initial(m.display))),
+                  title: Text(m.display),
                   trailing: const Icon(Icons.chevron_right),
                   enabled: !closed,
                   onTap: closed
@@ -207,7 +207,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
     navigator.pushReplacement(MaterialPageRoute(
         builder: (_) => ConversationScreen(
               partnerId: widget.partner.userId,
-              partnerName: widget.partner.username,
+              partnerName: widget.partner.display,
             )));
   }
 
@@ -223,7 +223,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _ConfirmOfferSheet(
-        partnerName: widget.partner.username,
+        partnerName: widget.partner.display,
         offer: offer,
         request: request,
         messageController: _msgCtrl,
@@ -243,7 +243,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
 
     return Scaffold(
-      appBar: AppBar(title: Text('Trade mit ${widget.partner.username}')),
+      appBar: AppBar(title: Text('Trade mit ${widget.partner.display}')),
       body: poolAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Fehler: $e')),
@@ -286,7 +286,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _RosterColumn(
-                        title: '${widget.partner.username} gibt',
+                        title: '${widget.partner.display} gibt',
                         accent: scheme.tertiary,
                         players: theirs,
                         selected: _request,

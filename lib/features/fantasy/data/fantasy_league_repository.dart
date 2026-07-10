@@ -216,7 +216,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> managers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, draft_position, waiver_priority, vacant, profiles(username)')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, profiles(username)')
         .eq('league_id', leagueId)
         .eq('vacant', false)
         .order('joined_at');
@@ -227,12 +227,18 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> vacantTeams(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, draft_position, waiver_priority, vacant, profiles(username)')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, profiles(username)')
         .eq('league_id', leagueId)
         .eq('vacant', true)
         .order('joined_at');
     return rows.map(FantasyManager.fromJson).toList();
   }
+
+  /// Setzt den eigenen ligaspezifischen Teamnamen (leer = löschen). Nur der
+  /// eigene Eintrag wird geändert (RPC, security definer).
+  Future<void> setTeamName(String leagueId, String name) =>
+      _client.rpc('fantasy_set_team_name',
+          params: {'p_league_id': leagueId, 'p_name': name});
 
   Future<void> kickMember(String leagueId, String userId) =>
       _client.rpc('fantasy_kick_member',

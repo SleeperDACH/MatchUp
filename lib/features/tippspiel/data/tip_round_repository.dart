@@ -64,10 +64,15 @@ class TipRoundRepository {
   Future<List<RoundMember>> members(String roundId) async {
     final rows = await _client
         .from('tip_round_members')
-        .select('user_id, profiles(username)')
+        .select('user_id, team_name, profiles(username)')
         .eq('round_id', roundId);
     return rows.map(RoundMember.fromJson).toList();
   }
+
+  /// Setzt den eigenen ligaspezifischen Teamnamen (leer = löschen). Nur der
+  /// eigene Eintrag wird geändert (RPC, security definer).
+  Future<void> setTeamName(String roundId, String name) => _client.rpc(
+      'tip_set_team_name', params: {'p_round_id': roundId, 'p_name': name});
 
   /// Alle für mich sichtbaren Tipps der Liga: eigene immer, fremde
   /// erst nach Anstoß (erzwingt die RLS-Policy serverseitig).

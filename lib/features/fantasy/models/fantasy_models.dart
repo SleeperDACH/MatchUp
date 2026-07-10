@@ -555,13 +555,23 @@ class FantasyManager {
   const FantasyManager({
     required this.userId,
     required this.username,
+    this.teamName,
     this.draftPosition,
     this.waiverPriority,
     this.vacant = false,
   });
 
   final String userId;
+
+  /// Globaler Nutzername (aus `profiles`).
   final String username;
+
+  /// Ligaspezifischer Anzeigename; null/leer = kein eigener Name.
+  final String? teamName;
+
+  /// In der Liga anzuzeigender Name: Teamname, sonst der Nutzername.
+  String get display =>
+      (teamName?.trim().isNotEmpty ?? false) ? teamName!.trim() : username;
 
   /// Position in der Draft-Reihenfolge (1-basiert), null bis ausgelost.
   final int? draftPosition;
@@ -578,6 +588,7 @@ class FantasyManager {
       FantasyManager(
         userId: userId,
         username: username,
+        teamName: teamName,
         draftPosition: draftPosition ?? this.draftPosition,
         waiverPriority: waiverPriority ?? this.waiverPriority,
         vacant: vacant,
@@ -588,6 +599,7 @@ class FantasyManager {
         username:
             (json['profiles'] as Map<String, dynamic>?)?['username'] as String? ??
                 '?',
+        teamName: json['team_name'] as String?,
         draftPosition: json['draft_position'] as int?,
         waiverPriority: json['waiver_priority'] as int?,
         vacant: json['vacant'] as bool? ?? false,

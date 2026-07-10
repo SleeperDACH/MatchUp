@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
 import '../../messaging/ui/conversation_screen.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -71,10 +72,42 @@ class ManagerProfileScreen extends ConsumerWidget {
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
         const <FantasyManager>[];
     final isMe = managerId == myId;
+    final manager =
+        managers.where((m) => m.userId == managerId).firstOrNull;
+    final display = manager?.display ?? managerName;
+    // Zweiter Name (echter Nutzername) nur zeigen, wenn ein Teamname gesetzt ist.
+    final showUsername =
+        manager != null && (manager.teamName?.trim().isNotEmpty ?? false);
+
+    Future<void> editName() async {
+      final name =
+          await showTeamNameDialog(context, current: manager?.teamName);
+      if (name == null) return;
+      await ref.read(fantasyLeagueRepositoryProvider).setTeamName(league.id, name);
+      ref.invalidate(fantasyManagersProvider(league.id));
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(managerName),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(display),
+            if (showUsername)
+              Text('@${manager.username}',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ),
+        actions: [
+          if (isMe)
+            IconButton(
+              icon: const Icon(Icons.badge_outlined),
+              tooltip: 'Teamname',
+              onPressed: editName,
+            ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(22),
           child: Padding(

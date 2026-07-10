@@ -820,7 +820,7 @@ class _DraftOrderPageState extends ConsumerState<DraftOrderPage> {
               final pb = b.draftPosition ?? 1 << 30;
               return pa != pb
                   ? pa.compareTo(pb)
-                  : a.username.toLowerCase().compareTo(b.username.toLowerCase());
+                  : a.display.toLowerCase().compareTo(b.display.toLowerCase());
             });
           final order = _order!;
           return Column(
@@ -853,7 +853,7 @@ class _DraftOrderPageState extends ConsumerState<DraftOrderPage> {
                             child: Text('${i + 1}',
                                 style: TextStyle(color: scheme.primary)),
                           ),
-                          title: Text(m.username),
+                          title: Text(m.display),
                           trailing: const Icon(Icons.drag_handle),
                         ),
                       ),

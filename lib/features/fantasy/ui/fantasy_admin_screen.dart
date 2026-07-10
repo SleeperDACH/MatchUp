@@ -23,7 +23,7 @@ class FantasyAdminScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('${m.username} kicken?'),
+        title: Text('${m.display} kicken?'),
         content: const Text(
             'Der Teilnehmer verlässt die Liga. Sein Team bleibt als verwaister '
             'Slot bestehen und kann neu zugewiesen werden.'),
@@ -45,7 +45,7 @@ class FantasyAdminScreen extends ConsumerWidget {
           .read(fantasyLeagueRepositoryProvider)
           .kickMember(league.id, m.userId);
       await _refresh(ref);
-      messenger.showSnackBar(SnackBar(content: Text('${m.username} gekickt.')));
+      messenger.showSnackBar(SnackBar(content: Text('${m.display} gekickt.')));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
@@ -94,8 +94,8 @@ class FantasyAdminScreen extends ConsumerWidget {
           for (final m in managers)
             Card(
               child: ListTile(
-                leading: CircleAvatar(child: Text(_initial(m.username))),
-                title: Text(m.username),
+                leading: CircleAvatar(child: Text(_initial(m.display))),
+                title: Text(m.display),
                 subtitle: Text(m.userId == league.createdBy
                     ? 'Admin · ${rosterCount(m.userId)} Spieler'
                     : '${rosterCount(m.userId)} Spieler'),
@@ -136,7 +136,7 @@ class FantasyAdminScreen extends ConsumerWidget {
               Card(
                 child: ListTile(
                   leading: Icon(Icons.person_off_outlined, color: scheme.error),
-                  title: Text('Team von ${v.username}'),
+                  title: Text('Team von ${v.display}'),
                   subtitle: Text('verwaist · ${rosterCount(v.userId)} Spieler'),
                   trailing: FilledButton(
                     onPressed: () => _assign(context, ref, v),
@@ -170,7 +170,7 @@ class AdminRosterEditor extends ConsumerWidget {
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
 
     return Scaffold(
-      appBar: AppBar(title: Text('Kader: ${target.username}')),
+      appBar: AppBar(title: Text('Kader: ${target.display}')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context, ref),
         icon: const Icon(Icons.add),
