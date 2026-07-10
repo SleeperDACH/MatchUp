@@ -1,10 +1,12 @@
 # Tippspiel & Fantasy App
 
-**Live-Demo:** https://sleeperdach.github.io/meine_app/
+**Live-Demo:** https://sleeperdach.github.io/MatchUp/
 
-Neu deployen: `flutter build web --base-href "/meine_app/" --dart-define=…`
-(Keys aus `supabase/.env.local`), dann den Inhalt von `build/web`
-auf den Branch `gh-pages` pushen.
+Neu deployen:
+`flutter build web --release --pwa-strategy=none --base-href "/MatchUp/" --dart-define=…`
+(Keys aus `supabase/.env.local`), dann `flutter_service_worker.js` löschen,
+`.nojekyll` setzen und den Inhalt von `build/web` auf den Branch `gh-pages`
+pushen. Details in `CLAUDE.md`.
 
 Fantasy-Sport-App nach dem Vorbild von Sleeper, kombiniert mit einem
 Tippspiel-Modus à la Kicktipp. Start: Bundesliga-Tippspiel (MVP).
@@ -30,6 +32,15 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
 - ✅ Supabase-Anbindung im Client: Registrierung/Login, Tipprunden
   erstellen & per Einladungscode beitreten, Tipps serverseitig
   (Deadline per RLS), Rangliste pro Runde
+- ✅ Erstellen-Flow zweistufig: erst Fantasy oder Tippspiel wählen, dann ein
+  eigener Screen mit Name, Basiswertung und Modi
+- ✅ Kombinierbare Tippspiel-Modi (Engine + SQL-View `tip_round_standings`
+  gespiegelt): **Quoten-Bonus** (zwei konfigurierbare Quoten-Stufen,
+  standardmäßig aus), **Alleinstellungs-Bonus** (einziger exakter Treffer),
+  **Head-to-Head** (Spieltag als Duelle, eigener „Duelle"-Tab) und
+  **Bonustipps** (Saison-Prognosen — Meister, Absteiger [2 Teams], Team des
+  Torschützenkönigs, erste Trainerentlassung; Abgabe mit Vereinslogos vor dem
+  ersten Spieltag, Deadline per RLS, zweite Tabelle auf dem Tabellen-Tab)
 - ✅ Fantasy-Modus (Hauptfokus): Liga/Dynasty-Modi, Liga-Erstellung,
   Manager-Beitritt per Code, Spielerpool (Bundesliga, ~214 Spieler:
   kuratierter Seed + aktuelle Kader aus TheSportsDB, Gratis-Feed) mit
@@ -58,7 +69,10 @@ Geplante Ausbaustufen: Fantasy-Modus, Top-5-Ligen Europas, NFL, NBA.
   **Head-to-Head-Matchups**: pro Spieltag 1-gegen-1-Paarungen (deterministischer
   Round-Robin-Spielplan nach der Kreismethode, Bye bei ungerader Managerzahl),
   Sieg/Niederlage/Unentschieden aus den Punkten der effektiven Aufstellung,
-  plus Saison-Bilanztabelle (S-N-U, Punktedifferenz).
+  plus Saison-Bilanztabelle (S-N-U, Punktedifferenz). Der MatchUp-Tab zeigt die
+  eigene Paarung als Banner (wie in der Übersicht) samt Aufstellungen.
+  **Wochen-Recap**: „Sleeper"-Awards je Spieltag (Team der Woche, MVP,
+  Bank-Held, Nervenkrimi, Klatsche, vergeigte Bank, Griff ins Klo).
   **Flexible Formationen**: Startelf frei innerhalb der Min/Max-Spannen je
   Position (FPL-Stil: ABW 3–5, MF 2–5, ST 1–3); Auto-Elf wählt die punktbeste
   gültige Formation, serverseitig erzwungen.
