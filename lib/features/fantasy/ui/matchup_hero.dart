@@ -175,6 +175,8 @@ class MatchupBanner extends StatelessWidget {
     required this.started,
     required this.onTap,
     this.mine = false,
+    this.homeSub,
+    this.awaySub,
   });
 
   final int round;
@@ -188,6 +190,10 @@ class MatchupBanner extends StatelessWidget {
   final bool started;
   final bool mine;
   final VoidCallback onTap;
+
+  /// Optionale dritte Zeile je Seite (Saison-Kontext, z. B. „Platz 3 · 5-2-1").
+  final String? homeSub;
+  final String? awaySub;
 
   @override
   Widget build(BuildContext context) {
@@ -250,6 +256,7 @@ class MatchupBanner extends StatelessWidget {
                     live: live,
                     accent: accent,
                     showRole: mine,
+                    subline: homeSub,
                     align: CrossAxisAlignment.start),
               ),
               ScoreBadge(
@@ -268,6 +275,7 @@ class MatchupBanner extends StatelessWidget {
                     live: live,
                     accent: accent,
                     showRole: mine,
+                    subline: awaySub,
                     align: CrossAxisAlignment.end),
               ),
               const SizedBox(width: 10),
@@ -275,10 +283,33 @@ class MatchupBanner extends StatelessWidget {
                   name: awayName!, accent: accent, dim: started && !awayWin),
             ],
           ),
-          if (started) ...[
-            const SizedBox(height: 14),
-            _MomentumBar(left: homePoints, right: awayPoints),
-          ],
+          const SizedBox(height: 12),
+          // „Momentum": Punkteanteil beider Seiten (vor Anpfiff 50/50) mit
+          // Label je nach Status — füllt den Banner und gibt Kontext.
+          _MomentumBar(left: homePoints, right: awayPoints),
+          const SizedBox(height: 5),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('$homePoints',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold)),
+              Text(
+                  live
+                      ? 'Live-Punkte'
+                      : (started ? 'Endpunkte' : 'Punkteanteil'),
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 10)),
+              Text('$awayPoints',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
         ],
       ),
     );
@@ -415,6 +446,7 @@ class HeroTeam extends StatelessWidget {
     this.live = false,
     this.accent = Colors.white,
     this.showRole = true,
+    this.subline,
   });
 
   final String name;
@@ -424,6 +456,9 @@ class HeroTeam extends StatelessWidget {
   /// „Du"/„Gegner" unter dem Namen zeigen (nur sinnvoll bei der eigenen
   /// Paarung; bei fremden Paarungen im Karussell ausgeschaltet).
   final bool showRole;
+
+  /// Dritte Zeile (z. B. „Platz 3 · 5-2-1") — Saison-Kontext, optional.
+  final String? subline;
 
   /// Ist der Spieltag schon angepfiffen (dann Sieg-/Führt-Hinweis statt Rolle)?
   final bool started;
@@ -477,6 +512,27 @@ class HeroTeam extends StatelessWidget {
               const SizedBox(height: 14),
           ],
         ),
+        if (subline != null) ...[
+          const SizedBox(height: 3),
+          Row(
+            mainAxisAlignment:
+                end ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              Icon(Icons.leaderboard_outlined,
+                  size: 11, color: Colors.white.withValues(alpha: 0.55)),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(subline!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

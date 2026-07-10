@@ -42,8 +42,12 @@ class MatchupsBody extends ConsumerStatefulWidget {
 }
 
 class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
+  // Hoher Startindex, damit man in beide Richtungen „endlos" wischen kann;
+  // die tatsächliche Paarung ergibt sich per Modulo (zyklisches Karussell).
+  static const _loopBase = 100000;
+
   int? _round;
-  final _pageController = PageController();
+  final _pageController = PageController(initialPage: _loopBase);
   int _bannerPage = 0;
 
   @override
@@ -165,6 +169,11 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                       lineups: lineups)
               };
               final standings = h2hStandings(ids, totalsByRound);
+              // Saison-Kontext je Manager fürs Banner: „Platz X · S-N-U".
+              final subOf = <String, String>{
+                for (final (i, r) in standings.indexed)
+                  r.managerId: 'P${i + 1} · ${r.wins}-${r.losses}-${r.ties}',
+              };
 
               final page =
                   ordered.isEmpty ? 0 : _bannerPage.clamp(0, ordered.length - 1);
@@ -175,7 +184,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                     round: round,
                     onChanged: (r) {
                       if (_pageController.hasClients) {
-                        _pageController.jumpToPage(0);
+                        _pageController.jumpToPage(_loopBase);
                       }
                       setState(() {
                         _round = r;
@@ -187,13 +196,18 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                     const LinearProgressIndicator(minHeight: 2),
                   // Wischbares Banner-Karussell: eigene Paarung auf Platz 1.
                   SizedBox(
-                    height: 205,
+                    height: 224,
                     child: PageView.builder(
                       controller: _pageController,
-                      onPageChanged: (i) => setState(() => _bannerPage = i),
-                      itemCount: ordered.length,
+                      onPageChanged: (i) => setState(() => _bannerPage =
+                          ((i - _loopBase) % ordered.length + ordered.length) %
+                              ordered.length),
+                      // itemCount offen lassen -> zyklisch in beide Richtungen.
                       itemBuilder: (context, i) {
-                        final p = ordered[i];
+                        final logical =
+                            ((i - _loopBase) % ordered.length + ordered.length) %
+                                ordered.length;
+                        final p = ordered[logical];
                         final (hId, aId) = sidesOf(p);
                         return Padding(
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
@@ -208,6 +222,8 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                             live: live,
                             started: started,
                             mine: hId == myId || aId == myId,
+                            homeSub: subOf[hId],
+                            awaySub: aId == null ? null : subOf[aId],
                             onTap: aId == null
                                 ? () {}
                                 : () => showMatchupDetail(context,
