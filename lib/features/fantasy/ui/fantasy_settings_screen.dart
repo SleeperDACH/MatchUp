@@ -120,9 +120,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             child: ListTile(
               leading: Icon(Icons.tune, color: scheme.primary),
               title: const Text('Liga-Einstellungen'),
-              subtitle: Text(l.maxTeams == null
-                  ? 'Teilnehmer: unbegrenzt'
-                  : 'Teilnehmer: max. ${l.maxTeams}'),
+              subtitle: Text('Teilnehmer: max. ${l.maxTeams ?? 18}'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => open(LeagueSettingsPage(league: l)),
             ),
@@ -565,8 +563,9 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
                   editable ? (v) => setState(() => _limitTeams = v) : null,
               secondary: Icon(Icons.groups, color: scheme.primary),
               title: const Text('Teilnehmer begrenzen'),
-              subtitle: Text(
-                  _limitTeams ? 'Höchstens $_maxTeams Teilnehmer' : 'Unbegrenzt'),
+              subtitle: Text(_limitTeams
+                  ? 'Höchstens $_maxTeams Teilnehmer'
+                  : 'Standard: max. 18 Teilnehmer'),
             ),
             if (_limitTeams) ...[
               const Divider(height: 1),

@@ -111,36 +111,20 @@ class MatchupHero extends ConsumerWidget {
         roundFx.every((f) => f.status == FixtureStatus.finished);
     final started = live || allFinished;
 
-    final accent = live ? _cRed : _cGreen;
-
     // Bye: eigener Spieltag spielfrei.
     if (pairing.isBye) {
-      return HeroShell(
-        accent: accent,
+      return MatchupBanner(
         round: round,
-        status: live ? 'LIVE' : (allFinished ? 'Beendet' : 'Vorschau'),
+        homeName: nameOf[myId] ?? 'Du',
+        awayName: null,
+        homePoints: 0,
+        awayPoints: 0,
+        homeMe: true,
+        awayMe: false,
         live: live,
+        started: started,
+        mine: true,
         onTap: () => openDetail(null, null),
-        child: Row(
-          children: [
-            HeroAvatar(name: nameOf[myId] ?? 'Du', accent: accent),
-            const SizedBox(width: 10),
-            Expanded(
-              child: HeroTeam(
-                  name: nameOf[myId] ?? 'Du',
-                  me: true,
-                  align: CrossAxisAlignment.start),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text('spielfrei',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontWeight: FontWeight.bold)),
-            ),
-            const Expanded(child: SizedBox()),
-          ],
-        ),
       );
     }
 
@@ -157,62 +141,143 @@ class MatchupHero extends ConsumerWidget {
     );
     final myPts = totals[myId] ?? 0;
     final oppPts = totals[oppId] ?? 0;
-    final myWin = started && myPts > oppPts;
-    final oppWin = started && oppPts > myPts;
+    return MatchupBanner(
+      round: round,
+      homeName: nameOf[myId] ?? 'Du',
+      awayName: nameOf[oppId] ?? '?',
+      homePoints: myPts,
+      awayPoints: oppPts,
+      homeMe: true,
+      awayMe: false,
+      live: live,
+      started: started,
+      mine: true,
+      onTap: () => openDetail(oppId, nameOf[oppId]),
+    );
+  }
+}
 
+/// Ein MatchUp-Banner für eine **beliebige** Paarung (Heim vs. Gast) — die
+/// Präsentation von [MatchupHero], aber mit explizit übergebenen Daten. Für
+/// das Karussell im MatchUp-Tab. [mine] = eigene Paarung (zeigt „Du"/„Gegner");
+/// [awayName] == null ⇒ spielfrei (Bye).
+class MatchupBanner extends StatelessWidget {
+  const MatchupBanner({
+    super.key,
+    required this.round,
+    required this.homeName,
+    required this.awayName,
+    required this.homePoints,
+    required this.awayPoints,
+    required this.homeMe,
+    required this.awayMe,
+    required this.live,
+    required this.started,
+    required this.onTap,
+    this.mine = false,
+  });
+
+  final int round;
+  final String homeName;
+  final String? awayName;
+  final int homePoints;
+  final int awayPoints;
+  final bool homeMe;
+  final bool awayMe;
+  final bool live;
+  final bool started;
+  final bool mine;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = live ? _cRed : _cGreen;
+    final status = live ? 'LIVE' : (started ? 'Beendet' : 'Vorschau');
+
+    if (awayName == null) {
+      return HeroShell(
+        accent: accent,
+        round: round,
+        status: status,
+        live: live,
+        onTap: onTap,
+        child: Row(
+          children: [
+            HeroAvatar(name: homeName, accent: accent),
+            const SizedBox(width: 10),
+            Expanded(
+              child: HeroTeam(
+                  name: homeName,
+                  me: homeMe,
+                  showRole: mine,
+                  align: CrossAxisAlignment.start),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text('spielfrei',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.bold)),
+            ),
+            const Expanded(child: SizedBox()),
+          ],
+        ),
+      );
+    }
+
+    final homeWin = started && homePoints > awayPoints;
+    final awayWin = started && awayPoints > homePoints;
     return HeroShell(
       accent: accent,
       round: round,
-      status: live ? 'LIVE' : (allFinished ? 'Beendet' : 'Vorschau'),
+      status: status,
       live: live,
-      onTap: () => openDetail(oppId, nameOf[oppId]),
+      onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
               HeroAvatar(
-                  name: nameOf[myId] ?? 'Du',
-                  accent: accent,
-                  dim: started && !myWin),
+                  name: homeName, accent: accent, dim: started && !homeWin),
               const SizedBox(width: 10),
               Expanded(
                 child: HeroTeam(
-                    name: nameOf[myId] ?? 'Du',
-                    me: true,
-                    win: myWin,
+                    name: homeName,
+                    me: homeMe,
+                    win: homeWin,
                     started: started,
                     live: live,
                     accent: accent,
+                    showRole: mine,
                     align: CrossAxisAlignment.start),
               ),
               ScoreBadge(
-                left: myPts,
-                right: oppPts,
-                leftWin: myWin,
-                rightWin: oppWin,
+                left: homePoints,
+                right: awayPoints,
+                leftWin: homeWin,
+                rightWin: awayWin,
                 accent: accent,
               ),
               Expanded(
                 child: HeroTeam(
-                    name: nameOf[oppId] ?? '?',
-                    me: false,
-                    win: oppWin,
+                    name: awayName!,
+                    me: awayMe,
+                    win: awayWin,
                     started: started,
                     live: live,
                     accent: accent,
+                    showRole: mine,
                     align: CrossAxisAlignment.end),
               ),
               const SizedBox(width: 10),
               HeroAvatar(
-                  name: nameOf[oppId] ?? '?',
-                  accent: accent,
-                  dim: started && !oppWin),
+                  name: awayName!, accent: accent, dim: started && !awayWin),
             ],
           ),
           if (started) ...[
             const SizedBox(height: 14),
-            _MomentumBar(left: myPts, right: oppPts),
+            _MomentumBar(left: homePoints, right: awayPoints),
           ],
         ],
       ),
@@ -349,11 +414,16 @@ class HeroTeam extends StatelessWidget {
     this.started = false,
     this.live = false,
     this.accent = Colors.white,
+    this.showRole = true,
   });
 
   final String name;
   final bool me;
   final bool win;
+
+  /// „Du"/„Gegner" unter dem Namen zeigen (nur sinnvoll bei der eigenen
+  /// Paarung; bei fremden Paarungen im Karussell ausgeschaltet).
+  final bool showRole;
 
   /// Ist der Spieltag schon angepfiffen (dann Sieg-/Führt-Hinweis statt Rolle)?
   final bool started;
@@ -398,11 +468,13 @@ class HeroTeam extends StatelessWidget {
                       color: accent,
                       fontSize: 11,
                       fontWeight: FontWeight.bold)),
-            ] else
+            ] else if (showRole)
               Text(me ? 'Du' : 'Gegner',
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 11)),
+                      fontSize: 11))
+            else
+              const SizedBox(height: 14),
           ],
         ),
       ],

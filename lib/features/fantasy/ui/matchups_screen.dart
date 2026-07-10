@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/logic/round_robin.dart';
+import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
-import '../../../core/logic/round_robin.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'manager_profile_screen.dart';
@@ -42,6 +43,14 @@ class MatchupsBody extends ConsumerStatefulWidget {
 
 class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
   int? _round;
+  final _pageController = PageController();
+  int _bannerPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   /// Effektive Punkte aller Manager für einen Spieltag (geteilte Logik).
   Map<String, int> _totals(
@@ -77,6 +86,8 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
         const <FantasyLineup>[];
     final weekStats = ref.watch(roundStatsProvider(round)).valueOrNull ?? const {};
     final seasonStats = ref.watch(seasonStatsProvider).valueOrNull ?? const {};
+    final allFx =
+        ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
     return (managersAsync.isLoading || poolAsync.isLoading)
@@ -115,39 +126,34 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                   playerById: playerById,
                   lineups: lineups);
               final pairings = roundPairings(ids, round);
-              final played = current != null && round <= current;
 
-              // Eigene Paarung des Spieltags: sie wird oben groß herausgestellt
-              // (Banner wie in der Übersicht + Aufstellungen), die restlichen
-              // Paarungen bleiben darunter als Karten.
+              // Live-/Beendet-Status des Spieltags aus den Fixtures.
+              final roundFx = [
+                for (final f in allFx)
+                  if (f.round == round) f
+              ];
+              final live = roundIsLive(roundFx, DateTime.now());
+              final started = live ||
+                  (roundFx.isNotEmpty &&
+                      roundFx.every((f) => f.status == FixtureStatus.finished));
+
+              // Eigene Paarung zuerst (Platz 1), dann die übrigen — wischbar.
               final myPairing = myId == null
                   ? null
                   : pairings
                       .where((m) => m.home == myId || m.away == myId)
                       .firstOrNull;
-              final myOppId = myPairing == null || myPairing.isBye
-                  ? null
-                  : (myPairing.home == myId ? myPairing.away : myPairing.home);
-              final myHome = myPairing == null
-                  ? null
-                  : computeSideData(
-                      league: league,
-                      round: round,
-                      managerId: myId!,
-                      byId: playerById,
-                      roster: roster,
-                      lineups: lineups,
-                      stats: weekStats);
-              final myAway = myOppId == null
-                  ? null
-                  : computeSideData(
-                      league: league,
-                      round: round,
-                      managerId: myOppId,
-                      byId: playerById,
-                      roster: roster,
-                      lineups: lineups,
-                      stats: weekStats);
+              final ordered = <Matchup>[
+                ?myPairing,
+                for (final m in pairings)
+                  if (myPairing == null || !identical(m, myPairing)) m,
+              ];
+              // Anzeige-Reihenfolge: bei der eigenen Paarung stehe ich links.
+              (String, String?) sidesOf(Matchup p) {
+                if (p.isBye) return (p.home, null);
+                if (p.away == myId) return (p.away!, p.home);
+                return (p.home, p.away);
+              }
 
               // Bilanz über alle gespielten Spieltage.
               final totalsByRound = <int, Map<String, int>>{
@@ -160,63 +166,98 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
               };
               final standings = h2hStandings(ids, totalsByRound);
 
+              final page =
+                  ordered.isEmpty ? 0 : _bannerPage.clamp(0, ordered.length - 1);
+
               return ListView(
                 children: [
                   MatchdayStepper(
-                      round: round,
-                      onChanged: (r) => setState(() => _round = r)),
+                    round: round,
+                    onChanged: (r) {
+                      if (_pageController.hasClients) {
+                        _pageController.jumpToPage(0);
+                      }
+                      setState(() {
+                        _round = r;
+                        _bannerPage = 0;
+                      });
+                    },
+                  ),
                   if (ref.watch(roundStatsProvider(round)).isLoading)
                     const LinearProgressIndicator(minHeight: 2),
-                  // Eigene Paarung: Banner (wie Übersicht) + Aufstellungen.
-                  if (myPairing != null && myHome != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                      child: MatchupHero(league: league, round: round),
+                  // Wischbares Banner-Karussell: eigene Paarung auf Platz 1.
+                  SizedBox(
+                    height: 205,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      onPageChanged: (i) => setState(() => _bannerPage = i),
+                      itemCount: ordered.length,
+                      itemBuilder: (context, i) {
+                        final p = ordered[i];
+                        final (hId, aId) = sidesOf(p);
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                          child: MatchupBanner(
+                            round: round,
+                            homeName: nameOf[hId] ?? '?',
+                            awayName: aId == null ? null : (nameOf[aId] ?? '?'),
+                            homePoints: weekTotals[hId] ?? 0,
+                            awayPoints: aId == null ? 0 : (weekTotals[aId] ?? 0),
+                            homeMe: hId == myId,
+                            awayMe: aId == myId,
+                            live: live,
+                            started: started,
+                            mine: hId == myId || aId == myId,
+                            onTap: aId == null
+                                ? () {}
+                                : () => showMatchupDetail(context,
+                                    league: league,
+                                    round: round,
+                                    homeId: hId,
+                                    homeName: nameOf[hId] ?? '?',
+                                    awayId: aId,
+                                    awayName: nameOf[aId] ?? '?'),
+                          ),
+                        );
+                      },
                     ),
-                    MatchupLineups(
-                      league: league,
-                      home: myHome,
-                      away: myAway,
-                      homeId: myId!,
-                      awayId: myOppId,
-                      homeName: nameOf[myId] ?? 'Du',
-                      awayName:
-                          myOppId == null ? null : (nameOf[myOppId] ?? '?'),
-                    ),
-                    const Divider(height: 24),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: Text('Weitere Paarungen',
-                          style: Theme.of(context).textTheme.titleMedium),
-                    ),
-                  ],
-                  for (final m in pairings)
-                    if (myPairing == null ||
-                        (m.home != myId && m.away != myId))
-                      _MatchupCard(
-                        homeName: nameOf[m.home] ?? '?',
-                        awayName: m.isBye ? null : (nameOf[m.away] ?? '?'),
-                        homeId: m.home,
-                        awayId: m.isBye ? null : m.away,
-                        homePoints: weekTotals[m.home] ?? 0,
-                        awayPoints: m.isBye ? 0 : (weekTotals[m.away] ?? 0),
-                        played: played,
-                        homeMe: m.home == myId,
-                        awayMe: m.away == myId,
-                        onOpen: (id, name) => showManagerProfile(context,
-                            league: widget.league,
-                            managerId: id,
-                            managerName: name),
-                        onOpenMatchup: m.isBye
-                            ? null
-                            : () => showMatchupDetail(context,
-                                league: widget.league,
-                                round: round,
-                                homeId: m.home,
-                                homeName: nameOf[m.home] ?? '?',
-                                awayId: m.away,
-                                awayName: nameOf[m.away] ?? '?'),
-                      ),
+                  ),
+                  if (ordered.length > 1)
+                    _Dots(count: ordered.length, active: page),
+                  const SizedBox(height: 8),
+                  // Aufstellungen der aktuell gewischten Paarung.
+                  if (ordered.isNotEmpty)
+                    Builder(builder: (context) {
+                      final p = ordered[page];
+                      final (hId, aId) = sidesOf(p);
+                      final home = computeSideData(
+                          league: league,
+                          round: round,
+                          managerId: hId,
+                          byId: playerById,
+                          roster: roster,
+                          lineups: lineups,
+                          stats: weekStats);
+                      final away = aId == null
+                          ? null
+                          : computeSideData(
+                              league: league,
+                              round: round,
+                              managerId: aId,
+                              byId: playerById,
+                              roster: roster,
+                              lineups: lineups,
+                              stats: weekStats);
+                      return MatchupLineups(
+                        league: league,
+                        home: home,
+                        away: away,
+                        homeId: hId,
+                        awayId: aId,
+                        homeName: nameOf[hId] ?? '?',
+                        awayName: aId == null ? null : (nameOf[aId] ?? '?'),
+                      );
+                    }),
                   const Divider(height: 24),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -253,124 +294,6 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                 ],
               );
             });
-  }
-}
-
-class _MatchupCard extends StatelessWidget {
-  const _MatchupCard({
-    required this.homeName,
-    required this.awayName,
-    required this.homeId,
-    required this.awayId,
-    required this.homePoints,
-    required this.awayPoints,
-    required this.played,
-    required this.homeMe,
-    required this.awayMe,
-    required this.onOpen,
-    this.onOpenMatchup,
-  });
-
-  final String homeName;
-  final String? awayName; // null = Bye
-  final String homeId;
-  final String? awayId;
-  final int homePoints;
-  final int awayPoints;
-  final bool played;
-  final bool homeMe;
-  final bool awayMe;
-  final void Function(String id, String name) onOpen;
-  final VoidCallback? onOpenMatchup;
-
-  @override
-  Widget build(BuildContext context) {
-    if (awayName == null) {
-      return Card(
-        child: ListTile(
-          onTap: () => onOpen(homeId, homeName),
-          title: Text(homeName,
-              style: homeMe ? const TextStyle(fontWeight: FontWeight.bold) : null),
-          trailing: Text('spielfrei',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        ),
-      );
-    }
-    final homeWin = played && homePoints > awayPoints;
-    final awayWin = played && awayPoints > homePoints;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Expanded(
-                child: _side(context, homeId, homeName, homeMe, homeWin,
-                    align: CrossAxisAlignment.start)),
-            InkWell(
-              onTap: onOpenMatchup,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      played ? '$homePoints : $awayPoints' : 'vs',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary),
-                    ),
-                    if (onOpenMatchup != null)
-                      Icon(Icons.unfold_more,
-                          size: 14,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant
-                              .withValues(alpha: 0.6)),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-                child: _side(context, awayId!, awayName!, awayMe, awayWin,
-                    align: CrossAxisAlignment.end)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _side(BuildContext context, String id, String name, bool me, bool win,
-      {required CrossAxisAlignment align}) {
-    return InkWell(
-      onTap: () => onOpen(id, name),
-      borderRadius: BorderRadius.circular(8),
-      child: Column(
-        crossAxisAlignment: align,
-        children: [
-          Text(
-            name,
-            textAlign: align == CrossAxisAlignment.start
-                ? TextAlign.start
-                : TextAlign.end,
-            style: TextStyle(
-              fontWeight: me || win ? FontWeight.bold : FontWeight.normal,
-              decoration: TextDecoration.underline,
-              decorationColor:
-                  Theme.of(context).colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.4,
-                      ),
-              color: win ? Theme.of(context).colorScheme.primary : null,
-            ),
-          ),
-          if (win)
-            Text('Sieg',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary)),
-        ],
-      ),
-    );
   }
 }
 
@@ -412,6 +335,37 @@ class _StandingRow extends StatelessWidget {
             .titleMedium
             ?.copyWith(color: scheme.primary, fontWeight: FontWeight.bold),
       ),
+    );
+  }
+}
+
+/// Seiten-Indikator (Punkte) unter dem Banner-Karussell.
+class _Dots extends StatelessWidget {
+  const _Dots({required this.count, required this.active});
+
+  final int count;
+  final int active;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < count; i++)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            width: i == active ? 20 : 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: i == active
+                  ? scheme.primary
+                  : scheme.onSurfaceVariant.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+      ],
     );
   }
 }
