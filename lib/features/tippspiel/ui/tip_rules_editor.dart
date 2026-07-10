@@ -11,10 +11,16 @@ class TipRulesEditor extends StatefulWidget {
     super.key,
     required this.initial,
     required this.onChanged,
+    this.lockedBonusTips = const {},
   });
 
   final ScoringRules initial;
   final ValueChanged<ScoringRules> onChanged;
+
+  /// Bereits aktive Bonustipps, die nicht mehr entfernt werden dürfen (nur
+  /// hinzufügen). Beim Erstellen leer; in den Liga-Einstellungen die schon
+  /// gewählten Fragen.
+  final Set<String> lockedBonusTips;
 
   @override
   State<TipRulesEditor> createState() => _TipRulesEditorState();
@@ -132,10 +138,15 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
         _ModeSwitch(
           icon: Icons.emoji_events_outlined,
           title: 'Bonustipps',
-          subtitle:
-              'Saison-Prognosen zusätzlich zu den Spieltagen — auswählbar unten.',
+          subtitle: widget.lockedBonusTips.isEmpty
+              ? 'Saison-Prognosen zusätzlich zu den Spieltagen — auswählbar unten.'
+              : 'Aktiv — bestehende Bonustipps bleiben, weitere können ergänzt werden.',
           value: _bonusTips,
-          onChanged: (v) => _set(() => _bonusTips = v),
+          // Wenn schon Bonustipps aktiv sind, lässt sich der Modus nicht
+          // mehr abschalten (nur hinzufügen).
+          onChanged: widget.lockedBonusTips.isEmpty
+              ? (v) => _set(() => _bonusTips = v)
+              : null,
         ),
         if (_bonusTips) _bonusTipsConfig(scheme),
       ],
@@ -210,19 +221,28 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
         child: Column(
           children: [
             for (final (key, label, maxTeams) in bonusTipQuestions)
-              CheckboxListTile(
-                dense: true,
-                value: _bonusTipKeys.contains(key),
-                onChanged: (v) => _set(() {
-                  if (v == true) {
-                    _bonusTipKeys.add(key);
-                  } else {
-                    _bonusTipKeys.remove(key);
-                  }
-                }),
-                title: Text(label),
-                subtitle: maxTeams > 1 ? Text('$maxTeams Teams') : null,
-              ),
+              Builder(builder: (context) {
+                final locked = widget.lockedBonusTips.contains(key);
+                return CheckboxListTile(
+                  dense: true,
+                  value: _bonusTipKeys.contains(key),
+                  // Bereits aktive Bonustipps bleiben gesetzt und lassen sich
+                  // nicht mehr entfernen.
+                  onChanged: locked
+                      ? null
+                      : (v) => _set(() {
+                            if (v == true) {
+                              _bonusTipKeys.add(key);
+                            } else {
+                              _bonusTipKeys.remove(key);
+                            }
+                          }),
+                  title: Text(label),
+                  subtitle: locked
+                      ? const Text('bereits aktiv')
+                      : (maxTeams > 1 ? Text('$maxTeams Teams') : null),
+                );
+              }),
             const Divider(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -331,7 +351,7 @@ class _ModeSwitch extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {

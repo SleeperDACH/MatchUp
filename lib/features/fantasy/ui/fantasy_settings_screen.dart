@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
@@ -24,12 +25,31 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     // Live-Stand, damit die Zusammenfassungen nach dem Speichern stimmen.
     final l = ref.watch(draftLeagueProvider(league.id)).valueOrNull ?? league;
-    final isOwner = ref.watch(currentUserProvider)?.id == l.createdBy;
-    final managers =
-        ref.watch(fantasyManagersProvider(l.id)).valueOrNull?.length;
+    final myId = ref.watch(currentUserProvider)?.id;
+    final isOwner = myId == l.createdBy;
+    final managerList = ref.watch(fantasyManagersProvider(l.id)).valueOrNull;
+    final managers = managerList?.length;
+    final myManager =
+        managerList?.where((m) => m.userId == myId).firstOrNull;
 
     void open(Widget page) => Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => page));
+
+    Future<void> editTeamName() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final name =
+          await showTeamNameDialog(context, current: myManager?.teamName);
+      if (name == null) return;
+      try {
+        await ref.read(fantasyLeagueRepositoryProvider).setTeamName(l.id, name);
+        ref.invalidate(fantasyManagersProvider(l.id));
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Teamname gespeichert.')));
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -72,6 +92,19 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.badge_outlined, color: scheme.primary),
+              title: const Text('Mein Teamname'),
+              subtitle: Text(
+                (myManager?.teamName?.trim().isNotEmpty ?? false)
+                    ? myManager!.teamName!.trim()
+                    : 'In dieser Liga statt deines Nutzernamens',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: editTeamName,
+            ),
+          ),
           Card(
             child: ListTile(
               leading: Icon(Icons.sports, color: scheme.primary),

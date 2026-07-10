@@ -28,9 +28,11 @@ class _TipRulesSettingsScreenState
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref
-          .read(tipRoundRepositoryProvider)
-          .updateScoring(widget.round.id, _rules);
+      final repo = ref.read(tipRoundRepositoryProvider);
+      await repo.updateScoring(widget.round.id, _rules);
+      // Mitteilung an den Liga-Chat, dass die Einstellungen geändert wurden.
+      await repo.sendMessage(
+          widget.round.id, '⚙️ Die Liga-Einstellungen wurden angepasst.');
       // Aktive Runde aktualisieren, damit die Änderung sofort durchschlägt.
       activateRound(ref, widget.round.copyWith(scoring: _rules));
       ref.invalidate(myRoundsProvider);
@@ -73,6 +75,8 @@ class _TipRulesSettingsScreenState
           TipRulesEditor(
             initial: widget.round.scoring,
             onChanged: (r) => _rules = r,
+            // Schon aktive Bonustipps dürfen nicht mehr entfernt werden.
+            lockedBonusTips: widget.round.scoring.bonusTips.toSet(),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(

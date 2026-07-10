@@ -6,6 +6,7 @@ import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/league_hub_screen.dart';
 import '../features/tippspiel/ui/matchday_screen.dart';
 import '../features/tippspiel/ui/tip_duels_tab.dart';
+import '../features/tippspiel/ui/tip_settings_sheet.dart';
 import '../features/tippspiel/ui/tips_table_tab.dart';
 
 /// Ansicht einer Tipprunde mit Tabs: Tippen, Tabelle und Liga (Chat + Regeln).
@@ -70,6 +71,13 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Einstellungen',
+            onPressed: () => showTipSettings(context, round),
+          ),
+        ],
       ),
       body: IndexedStack(index: _index, children: tabs),
       bottomNavigationBar: NavigationBar(

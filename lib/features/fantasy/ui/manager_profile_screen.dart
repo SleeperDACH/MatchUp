@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
 import '../../messaging/ui/conversation_screen.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -79,14 +78,6 @@ class ManagerProfileScreen extends ConsumerWidget {
     final showUsername =
         manager != null && (manager.teamName?.trim().isNotEmpty ?? false);
 
-    Future<void> editName() async {
-      final name =
-          await showTeamNameDialog(context, current: manager?.teamName);
-      if (name == null) return;
-      await ref.read(fantasyLeagueRepositoryProvider).setTeamName(league.id, name);
-      ref.invalidate(fantasyManagersProvider(league.id));
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -100,14 +91,6 @@ class ManagerProfileScreen extends ConsumerWidget {
                       color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
-        actions: [
-          if (isMe)
-            IconButton(
-              icon: const Icon(Icons.badge_outlined),
-              tooltip: 'Teamname',
-              onPressed: editName,
-            ),
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(22),
           child: Padding(

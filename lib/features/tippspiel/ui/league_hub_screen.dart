@@ -7,7 +7,6 @@ import '../../auth/providers.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
-import 'tip_rules_settings_screen.dart';
 
 /// Liga-Tab: ligainterner Chat plus eine Aufführung der Regeln
 /// (Punkteverteilung, Tippabgabe). Ersetzt in Server-Ligen die frühere
@@ -34,93 +33,6 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
     );
   }
 
-  void _openSettings() {
-    final scheme = Theme.of(context).colorScheme;
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Liga-Einstellungen',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.tune, color: scheme.primary),
-              title: const Text('Wertung & Modi bearbeiten',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text(
-                  'Punkte, Quoten-Bonus, Head-to-Head, Bonustipps …'),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) =>
-                        TipRulesSettingsScreen(round: widget.round)));
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: scheme.error),
-              title: Text('Tippspiel löschen',
-                  style: TextStyle(
-                      color: scheme.error, fontWeight: FontWeight.bold)),
-              subtitle: const Text(
-                  'Entfernt die Tipprunde mit allen Tipps und dem Chat — '
-                  'für alle Mitglieder.'),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _confirmDelete();
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete() async {
-    final scheme = Theme.of(context).colorScheme;
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tippspiel löschen?'),
-        content: Text(
-            '„${widget.round.name}" wird mit allen Tipps und dem Chat '
-            'endgültig gelöscht. Das kann nicht rückgängig gemacht werden.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Abbrechen')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: scheme.error),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Löschen'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    try {
-      await ref.read(tipRoundRepositoryProvider).deleteRound(widget.round.id);
-      ref.invalidate(myRoundsProvider);
-      navigator.popUntil((r) => r.isFirst);
-      messenger
-          .showSnackBar(const SnackBar(content: Text('Tippspiel gelöscht.')));
-    } catch (e) {
-      messenger.showSnackBar(
-          SnackBar(content: Text('Löschen fehlgeschlagen: $e')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(roundMessagesProvider(widget.round.id));
@@ -136,8 +48,6 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
     return Column(
       children: [
         _RulesBanner(onTap: _openRules),
-        if (myId == widget.round.createdBy)
-          _SettingsBanner(onTap: _openSettings),
         Expanded(
           child: LeagueChat(
             messages: messages,
@@ -186,34 +96,6 @@ class _RulesBanner extends StatelessWidget {
   }
 }
 
-/// Einstieg zu den Liga-Einstellungen (nur für den Ersteller sichtbar).
-class _SettingsBanner extends StatelessWidget {
-  const _SettingsBanner({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surfaceContainerHighest,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Icon(Icons.settings_outlined, size: 20, color: scheme.primary),
-              const SizedBox(width: 12),
-              const Expanded(child: Text('Liga-Einstellungen')),
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// Die Regeln-Aufführung als Bottom-Sheet: Punkteverteilung + Hinweise zur
 /// Tippabgabe. Die Punktwerte stammen aus dem Schema der Tipprunde.
