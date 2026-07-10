@@ -24,7 +24,11 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final round = widget.round;
+    // Aktive Runde beobachten, damit Einstellungsänderungen (Wertung/Modi)
+    // sofort durchschlagen; sonst die übergebene Runde.
+    final active = ref.watch(activeRoundProvider);
+    final round =
+        (active != null && active.id == widget.round.id) ? active : widget.round;
     final league = ref.watch(selectedLeagueProvider);
 
     // Im Head-to-Head-Modus liegt zwischen Tabelle und Liga ein „Duelle"-Tab.

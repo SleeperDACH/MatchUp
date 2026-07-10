@@ -7,6 +7,7 @@ import '../../auth/providers.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
+import 'tip_rules_settings_screen.dart';
 
 /// Liga-Tab: ligainterner Chat plus eine Aufführung der Regeln
 /// (Punkteverteilung, Tippabgabe). Ersetzt in Server-Ligen die frühere
@@ -50,6 +51,20 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
+            ListTile(
+              leading: Icon(Icons.tune, color: scheme.primary),
+              title: const Text('Wertung & Modi bearbeiten',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text(
+                  'Punkte, Quoten-Bonus, Head-to-Head, Bonustipps …'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) =>
+                        TipRulesSettingsScreen(round: widget.round)));
+              },
+            ),
+            const Divider(height: 1),
             ListTile(
               leading: Icon(Icons.delete_outline, color: scheme.error),
               title: Text('Tippspiel löschen',

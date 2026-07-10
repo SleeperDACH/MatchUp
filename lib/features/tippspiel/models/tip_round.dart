@@ -21,6 +21,16 @@ class TipRound {
   final ScoringRules scoring;
   final String createdBy;
 
+  TipRound copyWith({ScoringRules? scoring}) => TipRound(
+        id: id,
+        name: name,
+        leagueId: leagueId,
+        season: season,
+        inviteCode: inviteCode,
+        scoring: scoring ?? this.scoring,
+        createdBy: createdBy,
+      );
+
   factory TipRound.fromJson(Map<String, dynamic> json) => TipRound(
         id: json['id'] as String,
         name: json['name'] as String,

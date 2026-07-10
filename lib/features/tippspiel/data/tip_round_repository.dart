@@ -44,6 +44,11 @@ class TipRoundRepository {
     return TipRound.fromJson(row);
   }
 
+  /// Aktualisiert Wertung & Modi einer Runde (nur der Ersteller, per RLS).
+  Future<void> updateScoring(String roundId, ScoringRules rules) => _client
+      .from('tip_rounds')
+      .update({'scoring': rules.toJson()}).eq('id', roundId);
+
   Future<TipRound> joinRound(String inviteCode) async {
     final roundId = await _client.rpc<String>(
       'join_tip_round',
