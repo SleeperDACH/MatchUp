@@ -230,7 +230,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> managers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username)')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, auto_pick, profiles(username)')
         .eq('league_id', leagueId)
         .eq('vacant', false)
         .eq('pending', false)

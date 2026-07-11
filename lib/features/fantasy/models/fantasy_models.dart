@@ -560,6 +560,7 @@ class FantasyManager {
     this.waiverPriority,
     this.vacant = false,
     this.pending = false,
+    this.autoPick = false,
   });
 
   final String userId;
@@ -589,6 +590,10 @@ class FantasyManager {
   /// Admin es einem verwaisten Team zuweist. Zählt nicht als Team/Manager.
   final bool pending;
 
+  /// Auto-Pick aktiv: der Manager ist abwesend, der Server draftet für ihn
+  /// (aus der Queue bzw. bestem verfügbaren Spieler).
+  final bool autoPick;
+
   FantasyManager copyWith({int? draftPosition, int? waiverPriority}) =>
       FantasyManager(
         userId: userId,
@@ -598,6 +603,7 @@ class FantasyManager {
         waiverPriority: waiverPriority ?? this.waiverPriority,
         vacant: vacant,
         pending: pending,
+        autoPick: autoPick,
       );
 
   factory FantasyManager.fromJson(Map<String, dynamic> json) => FantasyManager(
@@ -610,6 +616,7 @@ class FantasyManager {
         waiverPriority: json['waiver_priority'] as int?,
         vacant: json['vacant'] as bool? ?? false,
         pending: json['pending'] as bool? ?? false,
+        autoPick: json['auto_pick'] as bool? ?? false,
       );
 }
 

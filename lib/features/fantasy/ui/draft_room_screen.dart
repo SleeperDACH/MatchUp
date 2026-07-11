@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,6 +29,10 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
   Timer? _ticker;
   bool _autopickInFlight = false;
   late final DraftRepository _repo;
+
+  /// Optimistische Queue-Reihenfolge: sofort angezeigt (kein „Zurückspringen"
+  /// beim Sortieren), bis der Realtime-Stream denselben Stand meldet.
+  List<String>? _optimisticQueue;
 
   String get _leagueId => widget.league.id;
 
@@ -152,18 +157,19 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     }
   }
 
-  /// Speichert die eigene Draft-Queue: awaitet den RPC (Fehler werden als
-  /// Snackbar sichtbar). Die Anzeige aktualisiert der Realtime-Stream — kein
-  /// invalidate, da dessen frischer Snapshot mit dem Realtime-Insert
-  /// kollidierte und dieselbe Zeile doppelt zeigte.
-  Future<void> _persistQueue(List<String> ids) async {
+  /// Speichert die eigene Draft-Queue optimistisch: zeigt die neue Reihenfolge
+  /// sofort (setState) und persistiert sie. Bei Fehler wird zurückgesetzt und
+  /// eine Snackbar gezeigt. Der Realtime-Stream übernimmt danach (das
+  /// `ref.listen` in build hebt die optimistische Sicht wieder auf).
+  Future<void> _applyQueue(List<String> ids) async {
+    setState(() => _optimisticQueue = ids);
     try {
       await _repo.setQueue(_leagueId, ids);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Queue konnte nicht gespeichert werden: $e')));
-      }
+      if (!mounted) return;
+      setState(() => _optimisticQueue = null);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Queue konnte nicht gespeichert werden: $e')));
     }
   }
 
@@ -217,8 +223,18 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
         picks.where((p) => p.phase == league.draftPhase).toList();
 
     // Eigene Draft-Queue (Wunschliste, nach Rang).
-    final queueIds =
+    final streamQueue =
         ref.watch(draftQueueProvider(_leagueId)).valueOrNull ?? const <String>[];
+    // Optimistische Reihenfolge fallenlassen, sobald der Stream sie bestätigt.
+    ref.listen(draftQueueProvider(_leagueId), (_, next) {
+      final v = next.valueOrNull;
+      if (v != null &&
+          _optimisticQueue != null &&
+          listEquals(v, _optimisticQueue)) {
+        setState(() => _optimisticQueue = null);
+      }
+    });
+    final queueIds = _optimisticQueue ?? streamQueue;
     final queueSet = queueIds.toSet();
     final queuePlayers = [
       for (final id in queueIds)
@@ -227,7 +243,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     void toggleQueue(String id) {
       final list = [...queueIds];
       list.contains(id) ? list.remove(id) : list.add(id);
-      unawaited(_persistQueue(list));
+      unawaited(_applyQueue(list));
     }
 
     final cur = currentManager(managers, league.picksMade);
@@ -349,7 +365,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
                       canPick: myTurn,
                       onPick: _pick,
                       onRemove: toggleQueue,
-                      onReorder: (ids) => unawaited(_persistQueue(ids)),
+                      onReorder: (ids) => unawaited(_applyQueue(ids)),
                     ),
                     queueCount: queuePlayers.length,
                   ),
@@ -746,11 +762,13 @@ class _MyTeamTab extends StatelessWidget {
   final RosterConfig roster;
   final Map<String, String?> clubIcons;
 
-  int _target(PlayerPosition pos) => switch (pos) {
-        PlayerPosition.gk => roster.gk,
-        PlayerPosition.def => roster.def,
-        PlayerPosition.mid => roster.mid,
-        PlayerPosition.fwd => roster.fwd,
+  /// Feste Startelf-Formation 4-3-3 (TW 1, ABW 4, MF 3, ST 3). Überzählige
+  /// Spieler einer Position landen auf der Bank.
+  int _starters(PlayerPosition pos) => switch (pos) {
+        PlayerPosition.gk => 1,
+        PlayerPosition.def => 4,
+        PlayerPosition.mid => 3,
+        PlayerPosition.fwd => 3,
       };
 
   @override
@@ -788,14 +806,76 @@ class _MyTeamTab extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Startelf 11 + Bank ${roster.bench} · Formation flexibel '
-            '(${roster.defMin}–${roster.defMax} ABW, ${roster.midMin}–${roster.midMax} MF, '
-            '${roster.fwdMin}–${roster.fwdMax} ST)',
+            'Feste Startelf 4-3-3 · überzählige Spieler kommen auf die Bank',
             textAlign: TextAlign.center,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
                 ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          _bench(context),
+        ],
+      ),
+    );
+  }
+
+  /// Bank: alle Spieler, die über die feste 4-3-3-Startelf hinausgehen
+  /// (z. B. der 5. Abwehrspieler).
+  Widget _bench(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final bench = <(PlayerPosition, FantasyPlayer)>[];
+    for (final pos in _pitchOrder) {
+      final players = byPos[pos] ?? const <FantasyPlayer>[];
+      for (final p in players.skip(_starters(pos))) {
+        bench.add((pos, p));
+      }
+    }
+    if (bench.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Bank (${bench.length})',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (pos, p) in bench)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClubBadge(
+                          club: p.club, iconUrl: clubIcons[p.club], size: 22),
+                      const SizedBox(width: 6),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_short(p.name),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(pos.short,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -804,12 +884,14 @@ class _MyTeamTab extends StatelessWidget {
 
   Widget _row(PlayerPosition pos) {
     final players = byPos[pos] ?? const <FantasyPlayer>[];
-    // Leerplätze bis zum Positions-Ziel andeuten (mind. einer, wenn leer).
-    final empties = (_target(pos) - players.length).clamp(0, 99);
+    final target = _starters(pos);
+    // Nur die Startelf-Plätze zeigen; Überzählige stehen auf der Bank.
+    final starters = players.take(target).toList();
+    final empties = (target - starters.length).clamp(0, 99);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        for (final p in players) _chip(pos, p),
+        for (final p in starters) _chip(pos, p),
         for (var i = 0; i < empties; i++) _chip(pos, null),
       ],
     );
@@ -904,10 +986,81 @@ class _PlayersTab extends StatelessWidget {
 /// Eine Board-Spalte: entweder ein echter Teilnehmer oder ein freies
 /// Platzhalter-Team (Team N).
 class _BoardCol {
-  const _BoardCol({required this.label, this.userId, this.mine = false});
+  const _BoardCol(
+      {required this.label, this.userId, this.mine = false, this.autoPick = false});
   final String label;
   final String? userId; // null = Platzhalter
   final bool mine;
+  final bool autoPick;
+}
+
+// Board-Farben: beigetretene Teams grün, das aktuell ziehende Team rot.
+const _cBoardGreen = Color(0xFF4ADE6A);
+const _cBoardRed = Color(0xFFF23030);
+const _cBoardInk = Color(0xFF12141C);
+
+/// Kopfzelle einer Board-Spalte: farbiger Hintergrund (grün beigetreten, rot am
+/// Zug, neutral für Platzhalter) plus optionales „AUTO"-Badge.
+class _BoardHeaderCell extends StatelessWidget {
+  const _BoardHeaderCell({
+    required this.col,
+    required this.isCurrent,
+    required this.width,
+    required this.scheme,
+    required this.child,
+  });
+
+  final _BoardCol col;
+  final bool isCurrent;
+  final double width;
+  final ColorScheme scheme;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = col.userId == null;
+    final Color bg = placeholder
+        ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
+        : (isCurrent ? _cBoardRed : _cBoardGreen);
+    return Container(
+      width: width,
+      margin: const EdgeInsets.all(1.5),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          child,
+          if (col.autoPick) ...[
+            const SizedBox(height: 3),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: _cBoardInk.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.smart_toy_outlined, size: 10, color: _cBoardInk),
+                  SizedBox(width: 3),
+                  Text('AUTO',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: _cBoardInk)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 /// Draft-Board als Raster: Spalten = Teams (Draft-Reihenfolge, inkl. freier
@@ -960,7 +1113,11 @@ class _BoardTab extends StatelessWidget {
     // Spalten = echte Teams + freie Platzhalter-Teams bis zur Teilnehmerzahl.
     final cols = <_BoardCol>[
       for (final m in real)
-        _BoardCol(label: m.display, userId: m.userId, mine: m.userId == myId),
+        _BoardCol(
+            label: m.display,
+            userId: m.userId,
+            mine: m.userId == myId,
+            autoPick: m.autoPick),
     ];
     final target = (maxTeams != null && maxTeams! > cols.length)
         ? maxTeams!
@@ -981,26 +1138,28 @@ class _BoardTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Kopfzeile: Team-Namen je Spalte (Platzhalter ausgegraut).
+            // Kopfzeile: beigetretene Teams grün, das ziehende Team rot,
+            // Platzhalter neutral. Auto-Pick-Teams zeigen ein „AUTO"-Badge.
             Row(
               children: [
                 const SizedBox(width: _labelW),
                 for (final c in cols)
-                  Container(
+                  _BoardHeaderCell(
+                    col: c,
+                    isCurrent: c.userId != null && c.userId == currentManagerId,
                     width: _colW,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 6),
+                    scheme: scheme,
                     child: Text(
                       c.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
                         color: c.userId == null
                             ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
-                            : (c.mine ? scheme.primary : scheme.onSurface),
+                            : _cBoardInk,
                       ),
                     ),
                   ),
