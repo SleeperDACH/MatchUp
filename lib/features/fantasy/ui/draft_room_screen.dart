@@ -102,6 +102,12 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
   /// sichtbar). Setzt die Positionen per Reihenfolge (Modus wird 'manual').
   Future<void> _shuffleOrder(List<FantasyManager> managers) async {
     final messenger = ScaffoldMessenger.of(context);
+    if (managers.length < 2) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Zum Mischen müssen mindestens 2 Teams beigetreten '
+              'sein. Freie Platzhalter-Teams draften nicht mit.')));
+      return;
+    }
     final ids = managers.map((m) => m.userId).toList()..shuffle();
     try {
       await ref
@@ -247,6 +253,29 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
               total: total,
               round: round,
             ),
+            // Setup-Hinweis für alle: Queue kann schon jetzt vorbereitet werden.
+            if (league.draftStatus == DraftStatus.setup)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+                child: Row(
+                  children: [
+                    Icon(Icons.bookmark_add_outlined,
+                        size: 15,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Schon jetzt: Im Tab „Spieler" deine Draft-Queue '
+                        'vorbereiten. Freie Plätze (Team N) füllen sich, sobald '
+                        'Spieler beitreten.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Admin-Steuerung im Setup: Reihenfolge mischen + Draft starten.
             if (league.draftStatus == DraftStatus.setup &&
                 myId == league.createdBy)
@@ -255,12 +284,12 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
                 child: Row(
                   children: [
                     Expanded(
+                      // Immer tippbar (nicht ausgegraut); erklärt, falls noch
+                      // nicht genug Teams beigetreten sind.
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.shuffle, size: 18),
                         label: const Text('Order mischen'),
-                        onPressed: managers.length < 2
-                            ? null
-                            : () => _shuffleOrder(managers),
+                        onPressed: () => _shuffleOrder(managers),
                       ),
                     ),
                     const SizedBox(width: 8),
