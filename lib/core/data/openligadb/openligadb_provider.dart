@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -193,13 +194,39 @@ class OpenLigaDbProvider implements SportsDataProvider {
     );
   }
 
+  /// Robuster GET: OpenLigaDB (kostenlos) antwortet gelegentlich mit 5xx/429
+  /// oder bricht die Verbindung ab. Statt sofort einen dauerhaften Fehler-State
+  /// zu erzeugen (der gecachte FutureProvider zeigt dann bis zum manuellen
+  /// Neuladen „konnte nicht geladen werden"), wird bis zu dreimal mit kurzer
+  /// Backoff-Pause und Timeout wiederholt. Client-Fehler (4xx außer 429)
+  /// werden sofort geworfen — ein Retry hilft dort nicht.
   Future<dynamic> _getJson(String path) async {
-    final response = await _client.get(Uri.parse('$_baseUrl$path'));
-    if (response.statusCode != 200) {
-      throw OpenLigaDbException(
-          'OpenLigaDB-Anfrage fehlgeschlagen ($path): HTTP ${response.statusCode}');
+    final uri = Uri.parse('$_baseUrl$path');
+    Object lastError = OpenLigaDbException('OpenLigaDB nicht erreichbar ($path)');
+    for (var attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(Duration(milliseconds: 300 * attempt));
+      }
+      try {
+        final response =
+            await _client.get(uri).timeout(const Duration(seconds: 10));
+        if (response.statusCode == 200) {
+          return jsonDecode(utf8.decode(response.bodyBytes));
+        }
+        final err = OpenLigaDbException(
+            'OpenLigaDB-Anfrage fehlgeschlagen ($path): HTTP ${response.statusCode}');
+        // 4xx (außer 429) sind dauerhaft -> sofort werfen, kein Retry.
+        if (response.statusCode < 500 && response.statusCode != 429) throw err;
+        lastError = err; // 5xx/429 -> erneut versuchen
+      } on OpenLigaDbException {
+        rethrow;
+      } catch (e) {
+        lastError = e; // Netzwerk/Timeout -> erneut versuchen
+      }
     }
-    return jsonDecode(utf8.decode(response.bodyBytes));
+    throw lastError is OpenLigaDbException
+        ? lastError
+        : OpenLigaDbException('OpenLigaDB nicht erreichbar ($path): $lastError');
   }
 
   List<Fixture> _parseMatches(

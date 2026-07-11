@@ -31,14 +31,11 @@ Widget heroWatermark() => Positioned.fill(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: FittedBox(
               fit: BoxFit.contain,
-              child: Opacity(
-                opacity: 0.45,
-                child: ColorFiltered(
-                  colorFilter: const ColorFilter.mode(
-                      _watermarkGray, BlendMode.srcIn),
-                  child: MatchUpChevron(size: 240),
-                ),
-              ),
+              // Direkt ausgegraut gezeichnet (Alpha in der Farbe) — spart die
+              // teuren saveLayer von Opacity + ColorFiltered.
+              child: MatchUpChevron(
+                  size: 240,
+                  color: _watermarkGray.withValues(alpha: 0.45)),
             ),
           ),
         ),

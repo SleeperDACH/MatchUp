@@ -94,9 +94,35 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
         ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
-    return (managersAsync.isLoading || poolAsync.isLoading)
-        ? const Center(child: CircularProgressIndicator())
-        : Builder(builder: (context) {
+    if (managersAsync.isLoading || poolAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    // Fehler-State abfangen (z. B. abgebrochener Request) statt via requireValue
+    // den ganzen Tab abstürzen zu lassen.
+    final loadError = managersAsync.error ?? poolAsync.error;
+    if (loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Matchups konnten nicht geladen werden.',
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () {
+                  ref.invalidate(fantasyManagersProvider(league.id));
+                  ref.invalidate(playerPoolProvider);
+                },
+                child: const Text('Erneut laden'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return Builder(builder: (context) {
               final managers = managersAsync.requireValue;
               final pool = poolAsync.requireValue;
               final playerById = {for (final p in pool) p.id: p};
