@@ -41,7 +41,18 @@ class DraftRepository {
       .stream(primaryKey: ['league_id', 'manager_id', 'player_id'])
       .eq('league_id', leagueId)
       .order('rank')
-      .map((rows) => [for (final r in rows) r['player_id'] as String]);
+      // Nur die eigene Queue; zusätzlich deduplizieren, da der Supabase-Stream
+      // beim Zusammenspiel von Snapshot und Realtime-Events kurzzeitig
+      // dieselbe Zeile doppelt liefern kann.
+      .map((rows) {
+        final seen = <String>{};
+        final out = <String>[];
+        for (final r in rows) {
+          final id = r['player_id'] as String;
+          if (seen.add(id)) out.add(id);
+        }
+        return out;
+      });
 
   /// Ersetzt die eigene Queue durch die übergebene, geordnete Liste.
   Future<void> setQueue(String leagueId, List<String> playerIds) =>

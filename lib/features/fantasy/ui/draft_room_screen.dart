@@ -152,13 +152,13 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     }
   }
 
-  /// Speichert die eigene Draft-Queue robust: awaitet den RPC (Fehler werden
-  /// sichtbar) und aktualisiert danach den Provider, damit die Anzeige nicht
-  /// allein vom Realtime-Stream abhängt (der im Web nicht zuverlässig nachzieht).
+  /// Speichert die eigene Draft-Queue: awaitet den RPC (Fehler werden als
+  /// Snackbar sichtbar). Die Anzeige aktualisiert der Realtime-Stream — kein
+  /// invalidate, da dessen frischer Snapshot mit dem Realtime-Insert
+  /// kollidierte und dieselbe Zeile doppelt zeigte.
   Future<void> _persistQueue(List<String> ids) async {
     try {
       await _repo.setQueue(_leagueId, ids);
-      if (mounted) ref.invalidate(draftQueueProvider(_leagueId));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
