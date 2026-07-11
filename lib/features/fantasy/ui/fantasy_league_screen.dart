@@ -213,13 +213,9 @@ class _OverviewTab extends ConsumerWidget {
 
     switch (live.draftStatus) {
       case DraftStatus.setup:
-        if (!isAdmin) return null;
-        // Der Draft wird jetzt im Draft-Raum gestartet (inkl. „Order mischen").
-        return FilledButton.icon(
-          icon: const Icon(Icons.sports),
-          label: const Text('Zum Draft-Raum'),
-          onPressed: openRoom,
-        );
+        // Kein eigener Button mehr — der Einstieg läuft über die
+        // „Draft-Raum"-Kachel; dort startet der Admin auch den Draft.
+        return null;
       case DraftStatus.drafting:
         return FilledButton.icon(
           icon: const Icon(Icons.sports),

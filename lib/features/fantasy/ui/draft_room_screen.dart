@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/league_chat.dart';
 import '../../auth/providers.dart';
 import '../data/draft_repository.dart';
 import '../logic/draft_order.dart';
@@ -114,10 +115,19 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
       return;
     }
     final ids = managers.map((m) => m.userId).toList()..shuffle();
+    final nameOf = {for (final m in managers) m.userId: m.display};
     try {
-      await ref
-          .read(fantasyLeagueRepositoryProvider)
-          .setDraftOrder(_leagueId, ids);
+      final repo = ref.read(fantasyLeagueRepositoryProvider);
+      await repo.setDraftOrder(_leagueId, ids);
+      // Neue Reihenfolge im Liga-Chat bekanntgeben (Fehler dabei ignorieren,
+      // die Reihenfolge steht ja schon).
+      final order = [
+        for (final (i, id) in ids.indexed) '${i + 1}. ${nameOf[id] ?? '?'}'
+      ].join('\n');
+      try {
+        await repo.sendMessage(
+            _leagueId, '🔀 Draft-Reihenfolge gemischt:\n$order');
+      } catch (_) {}
       ref.invalidate(fantasyManagersProvider(_leagueId));
       ref.invalidate(draftLeagueProvider(_leagueId));
       messenger.showSnackBar(
@@ -255,11 +265,12 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
         managers.isEmpty ? 1 : league.picksMade ~/ managers.length + 1;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text(league.name),
-          // Board zuerst, dann Spieler (mit Queue als Unter-Tab) und Team.
+          // Board · Spieler (mit Queue) · Team · Chat — alles ohne den Raum
+          // verlassen zu müssen.
           bottom: TabBar(
             labelPadding: EdgeInsets.zero,
             tabs: [
@@ -272,6 +283,8 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
               Tab(
                   icon: const Icon(Icons.shield_outlined, size: 20),
                   text: 'Team ($mySquadSize)'),
+              const Tab(
+                  icon: Icon(Icons.forum_outlined, size: 20), text: 'Chat'),
             ],
           ),
         ),
@@ -373,12 +386,40 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
                       byPos: mySquad,
                       roster: league.roster,
                       clubIcons: clubIcons),
+                  _DraftChatTab(league: league),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Liga-Chat als Tab im Draft-Raum — nutzt dasselbe geteilte [LeagueChat] wie
+/// der eigenständige Chat-Screen, damit man den Raum nicht verlassen muss.
+class _DraftChatTab extends ConsumerWidget {
+  const _DraftChatTab({required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final messages = ref.watch(fantasyMessagesProvider(league.id));
+    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
+        const <FantasyManager>[];
+    final myId = ref.watch(currentUserProvider)?.id;
+    final names = {for (final m in managers) m.userId: m.display};
+    return LeagueChat(
+      messages: messages,
+      names: names,
+      myId: myId,
+      hintText: 'Nachricht an die Liga …',
+      onSend: (text, replyTo) => ref
+          .read(fantasyLeagueRepositoryProvider)
+          .sendMessage(league.id, text, replyTo: replyTo),
+      onRetry: () => ref.invalidate(fantasyMessagesProvider(league.id)),
     );
   }
 }
@@ -1258,9 +1299,11 @@ class _BoardTab extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              // Gedraftete Spieler in ihrer Positionsfarbe (TW blau, ABW gelb,
+              // MF grün, ST rot).
               color: player != null
-                  ? scheme.onSurface
+                  ? positionColor(player.position)
                   : scheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
           ),
