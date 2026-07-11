@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
 import '../models/tip_round.dart';
@@ -44,6 +45,21 @@ class _TipSettingsSheet extends ConsumerWidget {
         navigator.pop();
         messenger
             .showSnackBar(const SnackBar(content: Text('Teamname gespeichert.')));
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+      }
+    }
+
+    Future<void> renameRound() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final newName = await showRenameLeagueDialog(context, current: round.name);
+      if (newName == null || newName == round.name) return;
+      try {
+        await ref.read(tipRoundRepositoryProvider).renameRound(round.id, newName);
+        ref.invalidate(myRoundsProvider);
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Liga-Name geändert.')));
       } catch (e) {
         messenger.showSnackBar(
             SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
@@ -108,6 +124,15 @@ class _TipSettingsSheet extends ConsumerWidget {
             onTap: editTeamName,
           ),
           if (isCreator) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.drive_file_rename_outline,
+                  color: scheme.primary),
+              title: const Text('Liga-Name ändern',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(round.name),
+              onTap: renameRound,
+            ),
             const Divider(height: 1),
             ListTile(
               leading: Icon(Icons.tune, color: scheme.primary),

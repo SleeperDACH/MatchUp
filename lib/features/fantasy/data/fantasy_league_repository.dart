@@ -185,6 +185,12 @@ class FantasyLeagueRepository {
         'p_user_ids': orderedUserIds,
       });
 
+  /// Liga umbenennen (nur der Ersteller, per RLS erzwungen). 3–64 Zeichen.
+  Future<void> renameLeague(String leagueId, String name) => _client
+      .from('fantasy_leagues')
+      .update({'name': name.trim()})
+      .eq('id', leagueId);
+
   /// Liga-Einstellungen (Teilnehmer-Limit) — ebenfalls nur vor dem Draft.
   Future<void> updateLeagueSettings(
     String leagueId, {

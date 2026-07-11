@@ -139,6 +139,10 @@ class TipRoundRepository {
   Future<void> deleteRound(String roundId) =>
       _client.from('tip_rounds').delete().eq('id', roundId);
 
+  /// Benennt eine Tipprunde um (nur der Ersteller, per RLS). 3–64 Zeichen.
+  Future<void> renameRound(String roundId, String name) =>
+      _client.from('tip_rounds').update({'name': name.trim()}).eq('id', roundId);
+
   /// Alle abgegebenen Bonustipp-Antworten der Runde (RLS: nur Mitglieder).
   Future<List<BonusAnswer>> bonusAnswers(String roundId) async {
     final rows = await _client

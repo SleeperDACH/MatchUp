@@ -2,17 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'fantasy_admin_screen.dart';
-
-// Akzentfarben für die Liga-Info-Kacheln.
-const _cGreen = Color(0xFF4ADE6A);
-const _cTeal = Color(0xFF4FC3A1);
-const _cAmber = Color(0xFFFFC83D);
 
 /// Einstellungen einer Fantasy-Liga als Menü: je Bereich eine eigene Seite.
 class FantasyLeagueSettingsScreen extends ConsumerWidget {
@@ -28,7 +24,6 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     final myId = ref.watch(currentUserProvider)?.id;
     final isOwner = myId == l.createdBy;
     final managerList = ref.watch(fantasyManagersProvider(l.id)).valueOrNull;
-    final managers = managerList?.length;
     final myManager =
         managerList?.where((m) => m.userId == myId).firstOrNull;
 
@@ -45,6 +40,22 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         ref.invalidate(fantasyManagersProvider(l.id));
         messenger.showSnackBar(
             const SnackBar(content: Text('Teamname gespeichert.')));
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+      }
+    }
+
+    Future<void> renameLeague() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final newName = await showRenameLeagueDialog(context, current: l.name);
+      if (newName == null || newName == l.name) return;
+      try {
+        await ref.read(fantasyLeagueRepositoryProvider).renameLeague(l.id, newName);
+        ref.invalidate(draftLeagueProvider(l.id));
+        ref.invalidate(myFantasyLeaguesProvider);
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Liga-Name geändert.')));
       } catch (e) {
         messenger.showSnackBar(
             SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
@@ -70,28 +81,17 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         children: [
           _InviteBanner(code: l.inviteCode),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              _StatPill(
-                  icon: Icons.groups,
-                  value: managers?.toString() ?? '–',
-                  label: 'Teilnehmer',
-                  color: _cGreen),
-              const SizedBox(width: 10),
-              _StatPill(
-                  icon: Icons.badge_outlined,
-                  value: '${l.roster.squadSize}',
-                  label: 'Kadergröße',
-                  color: _cTeal),
-              const SizedBox(width: 10),
-              _StatPill(
-                  icon: Icons.sports_soccer,
-                  value: '${l.roster.starters}',
-                  label: 'Startelf',
-                  color: _cAmber),
-            ],
-          ),
-          const SizedBox(height: 20),
+          if (isOwner)
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.drive_file_rename_outline,
+                    color: scheme.primary),
+                title: const Text('Liga-Name ändern'),
+                subtitle: Text(l.name),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: renameLeague,
+              ),
+            ),
           Card(
             child: ListTile(
               leading: Icon(Icons.badge_outlined, color: scheme.primary),
@@ -113,16 +113,6 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                   '${l.pickTime.label} · ${l.rounds} Runden${l.hasPause ? ' · Pause' : ''}'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => open(DraftSettingsPage(league: l)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: Icon(Icons.tune, color: scheme.primary),
-              title: const Text('Liga-Einstellungen'),
-              subtitle: Text('Teilnehmer: max. ${l.maxTeams ?? 18}'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => open(LeagueSettingsPage(league: l)),
             ),
           ),
           const SizedBox(height: 8),
@@ -1110,48 +1100,6 @@ TimeOfDay _fromMinute(int m) => TimeOfDay(hour: m ~/ 60, minute: m % 60);
 int _toMinute(TimeOfDay t) => t.hour * 60 + t.minute;
 
 /// Kompakte Kennzahl-Kachel (Teilnehmer / Kadergröße / Startelf).
-class _StatPill extends StatelessWidget {
-  const _StatPill(
-      {required this.icon,
-      required this.value,
-      required this.label,
-      required this.color});
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.30)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 6),
-            Text(value,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold, color: color)),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Hervorgehobener Einladungscode zum Kopieren.
 class _InviteBanner extends StatelessWidget {
   const _InviteBanner({required this.code});
