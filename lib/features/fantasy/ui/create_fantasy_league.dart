@@ -42,6 +42,34 @@ class _CreateFantasyLeagueScreenState
     super.dispose();
   }
 
+  String get _draftSummary =>
+      '$_rounds Spieler · ${_orderMode == 'manual' ? 'Manuell' : 'Zufällig'} · '
+      '${_pickTime.label}${_pauseOn ? ' · Nachtpause' : ''}';
+
+  /// Öffnet die gebündelten Draft-Einstellungen in einem eigenen Fenster und
+  /// übernimmt die Auswahl.
+  Future<void> _openDraftSettings() async {
+    final result = await Navigator.of(context).push<_DraftConfig>(
+      MaterialPageRoute(
+        builder: (_) => _DraftSettingsScreen(
+          rounds: _rounds,
+          minRounds: _minRounds,
+          maxRounds: _maxRounds,
+          orderMode: _orderMode,
+          pauseOn: _pauseOn,
+          pickTime: _pickTime,
+        ),
+      ),
+    );
+    if (result == null) return;
+    setState(() {
+      _rounds = result.rounds;
+      _orderMode = result.orderMode;
+      _pauseOn = result.pauseOn;
+      _pickTime = result.pickTime;
+    });
+  }
+
   Future<void> _create() async {
     if (_name.text.trim().length < 3) {
       setState(() => _error = 'Bitte einen Namen mit mind. 3 Zeichen wählen.');
@@ -121,79 +149,24 @@ class _CreateFantasyLeagueScreenState
             onChanged: (v) => setState(() => _teams = v),
           ),
           const SizedBox(height: 20),
-          Text('Kadergröße', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            '11 in der Startelf + ${_rounds - 11} auf der Bank '
-            '(= $_rounds Draft-Runden).',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          // Draft-Einstellungen gebündelt in einem eigenen Fenster.
+          Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.sports_esports_outlined),
+              title: const Text('Draft-Einstellungen'),
+              subtitle: Text(_draftSummary),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _openDraftSettings,
+            ),
           ),
           const SizedBox(height: 8),
-          _StepperRow(
-            label: 'Spieler je Kader',
-            value: _rounds,
-            min: _minRounds,
-            max: _maxRounds,
-            onChanged: (v) => setState(() => _rounds = v),
-          ),
-          const SizedBox(height: 20),
-          Text('Draft-Reihenfolge',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'auto', label: Text('Zufällig')),
-              ButtonSegment(value: 'manual', label: Text('Manuell')),
-            ],
-            selected: {_orderMode},
-            onSelectionChanged: (s) => setState(() => _orderMode = s.first),
-          ),
-          const SizedBox(height: 8),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _pauseOn,
-            onChanged: (v) => setState(() => _pauseOn = v),
-            title: const Text('Slow-Draft-Nachtpause'),
-            subtitle: const Text('Draft pausiert nachts von 23 bis 8 Uhr.'),
-          ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: _playoffsOn,
             onChanged: (v) => setState(() => _playoffsOn = v),
             title: const Text('Playoffs'),
             subtitle: const Text('4 Teams · 1-Wochen-Partien (später änderbar).'),
-          ),
-          const SizedBox(height: 20),
-          Text('Pickzeit im Draft',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            'Wie lange jeder Manager pro Pick Zeit hat. Kurze Zeiten = '
-            'Live-Draft, lange Zeiten = Slow-Draft über Tage.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<DraftPickTime>(
-            initialValue: _pickTime,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-            ),
-            items: [
-              for (final t in DraftPickTime.values)
-                DropdownMenuItem(
-                  value: t,
-                  child: Row(
-                    children: [
-                      Text(t.label),
-                      const SizedBox(width: 8),
-                      _Chip(text: t.isLive ? 'Live' : 'Slow'),
-                    ],
-                  ),
-                ),
-            ],
-            onChanged: (t) => setState(() => _pickTime = t ?? _pickTime),
           ),
           if (_error != null) ...[
             const SizedBox(height: 16),
@@ -252,6 +225,142 @@ class _ModeCard extends StatelessWidget {
             ? Icon(Icons.check_circle, color: scheme.primary)
             : const Icon(Icons.circle_outlined),
         onTap: onTap,
+      ),
+    );
+  }
+}
+
+/// Ergebnis der gebündelten Draft-Einstellungen.
+class _DraftConfig {
+  const _DraftConfig({
+    required this.rounds,
+    required this.orderMode,
+    required this.pauseOn,
+    required this.pickTime,
+  });
+
+  final int rounds;
+  final String orderMode;
+  final bool pauseOn;
+  final DraftPickTime pickTime;
+}
+
+/// Eigenes Fenster für die Draft-Einstellungen beim Erstellen einer Liga:
+/// Kadergröße, Reihenfolge, Pickzeit und Slow-Draft-Nachtpause.
+class _DraftSettingsScreen extends StatefulWidget {
+  const _DraftSettingsScreen({
+    required this.rounds,
+    required this.minRounds,
+    required this.maxRounds,
+    required this.orderMode,
+    required this.pauseOn,
+    required this.pickTime,
+  });
+
+  final int rounds;
+  final int minRounds;
+  final int maxRounds;
+  final String orderMode;
+  final bool pauseOn;
+  final DraftPickTime pickTime;
+
+  @override
+  State<_DraftSettingsScreen> createState() => _DraftSettingsScreenState();
+}
+
+class _DraftSettingsScreenState extends State<_DraftSettingsScreen> {
+  late int _rounds = widget.rounds;
+  late String _orderMode = widget.orderMode;
+  late bool _pauseOn = widget.pauseOn;
+  late DraftPickTime _pickTime = widget.pickTime;
+
+  @override
+  Widget build(BuildContext context) {
+    final onVariant = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Draft-Einstellungen')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('Kadergröße', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            '11 in der Startelf + ${_rounds - 11} auf der Bank '
+            '(= $_rounds Draft-Runden).',
+            style:
+                Theme.of(context).textTheme.bodySmall?.copyWith(color: onVariant),
+          ),
+          const SizedBox(height: 8),
+          _StepperRow(
+            label: 'Spieler je Kader',
+            value: _rounds,
+            min: widget.minRounds,
+            max: widget.maxRounds,
+            onChanged: (v) => setState(() => _rounds = v),
+          ),
+          const SizedBox(height: 20),
+          Text('Draft-Reihenfolge',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'auto', label: Text('Zufällig')),
+              ButtonSegment(value: 'manual', label: Text('Manuell')),
+            ],
+            selected: {_orderMode},
+            onSelectionChanged: (s) => setState(() => _orderMode = s.first),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _pauseOn,
+            onChanged: (v) => setState(() => _pauseOn = v),
+            title: const Text('Slow-Draft-Nachtpause'),
+            subtitle: const Text('Draft pausiert nachts von 23 bis 8 Uhr.'),
+          ),
+          const SizedBox(height: 20),
+          Text('Pickzeit im Draft',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            'Wie lange jeder Manager pro Pick Zeit hat. Kurze Zeiten = '
+            'Live-Draft, lange Zeiten = Slow-Draft über Tage.',
+            style:
+                Theme.of(context).textTheme.bodySmall?.copyWith(color: onVariant),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<DraftPickTime>(
+            initialValue: _pickTime,
+            decoration: const InputDecoration(
+              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+            ),
+            items: [
+              for (final t in DraftPickTime.values)
+                DropdownMenuItem(
+                  value: t,
+                  child: Row(
+                    children: [
+                      Text(t.label),
+                      const SizedBox(width: 8),
+                      _Chip(text: t.isLive ? 'Live' : 'Slow'),
+                    ],
+                  ),
+                ),
+            ],
+            onChanged: (t) => setState(() => _pickTime = t ?? _pickTime),
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            icon: const Icon(Icons.check),
+            label: const Text('Übernehmen'),
+            onPressed: () => Navigator.of(context).pop(_DraftConfig(
+              rounds: _rounds,
+              orderMode: _orderMode,
+              pauseOn: _pauseOn,
+              pickTime: _pickTime,
+            )),
+          ),
+        ],
       ),
     );
   }
