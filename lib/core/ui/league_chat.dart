@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../models/chat_message.dart';
 
@@ -19,7 +20,12 @@ class LeagueChat extends StatefulWidget {
     this.hintText = 'Nachricht an die Liga …',
     this.emptyText = 'Noch keine Nachrichten.\nSchreib der Liga als Erster!',
     this.extraBuilder,
+    this.enableReply = true,
   });
+
+  /// Ob auf Nachrichten geantwortet werden kann (setzt eine `reply_to`-Spalte
+  /// voraus). Für Direktnachrichten aus (dort nicht unterstützt).
+  final bool enableReply;
 
   /// Optionale Zusatzkarte unter einer Nachricht (z. B. Trade-Aktionen).
   final Widget? Function(BuildContext, ChatMessage)? extraBuilder;
@@ -31,8 +37,9 @@ class LeagueChat extends StatefulWidget {
   final Map<String, String> names;
   final String? myId;
 
-  /// Sendet den Text; wirft bei Fehlschlag (wird als Snackbar angezeigt).
-  final Future<void> Function(String text) onSend;
+  /// Sendet den Text (optional als Antwort auf [replyTo]); wirft bei Fehlschlag
+  /// (wird als Snackbar angezeigt).
+  final Future<void> Function(String text, String? replyTo) onSend;
   final VoidCallback onRetry;
   final String hintText;
   final String emptyText;
@@ -45,6 +52,9 @@ class _LeagueChatState extends State<LeagueChat> {
   final _textCtrl = TextEditingController();
   bool _sending = false;
 
+  /// Nachricht, auf die gerade geantwortet wird (`null` = normale Nachricht).
+  ChatMessage? _replyTo;
+
   @override
   void dispose() {
     _textCtrl.dispose();
@@ -56,8 +66,9 @@ class _LeagueChatState extends State<LeagueChat> {
     if (text.isEmpty || _sending) return;
     setState(() => _sending = true);
     try {
-      await widget.onSend(text);
+      await widget.onSend(text, _replyTo?.id);
       _textCtrl.clear();
+      if (mounted) setState(() => _replyTo = null);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,9 +100,20 @@ class _LeagueChatState extends State<LeagueChat> {
                     names: widget.names,
                     myId: widget.myId,
                     extraBuilder: widget.extraBuilder,
+                    onReply: widget.enableReply
+                        ? (m) => setState(() => _replyTo = m)
+                        : null,
                   ),
           ),
         ),
+        if (_replyTo != null)
+          _ReplyPreview(
+            author: _replyTo!.userId == widget.myId
+                ? 'Dir'
+                : (widget.names[_replyTo!.userId] ?? '?'),
+            body: _replyTo!.body,
+            onCancel: () => setState(() => _replyTo = null),
+          ),
         _Composer(
           controller: _textCtrl,
           sending: _sending,
@@ -108,6 +130,7 @@ class _MessageList extends StatefulWidget {
     required this.messages,
     required this.names,
     required this.myId,
+    required this.onReply,
     this.extraBuilder,
   });
 
@@ -115,6 +138,9 @@ class _MessageList extends StatefulWidget {
   final Map<String, String> names;
   final String? myId;
   final Widget? Function(BuildContext, ChatMessage)? extraBuilder;
+
+  /// Auf eine Nachricht antworten (Long-Press auf die Blase); `null` = aus.
+  final void Function(ChatMessage)? onReply;
 
   @override
   State<_MessageList> createState() => _MessageListState();
@@ -159,29 +185,88 @@ class _MessageListState extends State<_MessageList> {
 
   @override
   Widget build(BuildContext context) {
+    // Nachrichten mit Datumstrennern (wie WhatsApp) zu Zeilen aufbauen.
+    final byId = {for (final m in widget.messages) m.id: m};
+    final rows = <Widget>[];
+    DateTime? lastDay;
+    for (final msg in widget.messages) {
+      final day = DateUtils.dateOnly(msg.createdAt.toLocal());
+      if (lastDay == null || day != lastDay) {
+        rows.add(_DateSeparator(day: day));
+        lastDay = day;
+      }
+      if (msg.isSystem) {
+        rows.add(_SystemLine(text: msg.body));
+        continue;
+      }
+      final isMine = msg.userId == widget.myId;
+      // Sonderinhalt (z. B. Trade-Karte) ersetzt die Textblase.
+      final extra = widget.extraBuilder?.call(context, msg);
+      if (extra != null) {
+        rows.add(Align(
+          alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+          child: extra,
+        ));
+        continue;
+      }
+      // Zitierte Original-Nachricht auflösen (falls noch vorhanden).
+      final quoted = msg.replyTo == null ? null : byId[msg.replyTo];
+      rows.add(_MessageBubble(
+        message: msg,
+        author: widget.names[msg.userId] ?? '?',
+        isMine: isMine,
+        hasReply: msg.replyTo != null,
+        quotedAuthor: quoted == null
+            ? null
+            : (quoted.userId == widget.myId
+                ? 'Du'
+                : (widget.names[quoted.userId] ?? '?')),
+        quotedBody: quoted?.body,
+        onReply: widget.onReply == null ? null : () => widget.onReply!(msg),
+      ));
+    }
     // Älteste oben, neueste unten — automatisch nach unten gescrollt.
     return ListView.builder(
       controller: _controller,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-      itemCount: widget.messages.length,
-      itemBuilder: (context, i) {
-        final msg = widget.messages[i];
-        if (msg.isSystem) return _SystemLine(text: msg.body);
-        final isMine = msg.userId == widget.myId;
-        // Sonderinhalt (z. B. Trade-Karte) ersetzt die Textblase.
-        final extra = widget.extraBuilder?.call(context, msg);
-        if (extra != null) {
-          return Align(
-            alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-            child: extra,
-          );
-        }
-        return _MessageBubble(
-          message: msg,
-          author: widget.names[msg.userId] ?? '?',
-          isMine: isMine,
-        );
-      },
+      itemCount: rows.length,
+      itemBuilder: (context, i) => rows[i],
+    );
+  }
+}
+
+/// Zentrierter Datumstrenner zwischen Nachrichten verschiedener Tage.
+class _DateSeparator extends StatelessWidget {
+  const _DateSeparator({required this.day});
+
+  final DateTime day;
+
+  String get _label {
+    final today = DateUtils.dateOnly(DateTime.now());
+    if (day == today) return 'Heute';
+    if (day == today.subtract(const Duration(days: 1))) return 'Gestern';
+    return DateFormat('d. MMMM yyyy', 'de_DE').format(day);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          _label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ),
     );
   }
 }
@@ -248,11 +333,44 @@ class _MessageBubble extends StatelessWidget {
     required this.message,
     required this.author,
     required this.isMine,
+    required this.onReply,
+    this.hasReply = false,
+    this.quotedAuthor,
+    this.quotedBody,
   });
 
   final ChatMessage message;
   final String author;
   final bool isMine;
+
+  /// `null` = Antworten deaktiviert (kein Long-Press-Menü).
+  final VoidCallback? onReply;
+
+  /// Diese Nachricht ist eine Antwort (zitiert unten aufgelöst).
+  final bool hasReply;
+  final String? quotedAuthor;
+  final String? quotedBody;
+
+  void _showActions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.reply),
+              title: const Text('Antworten'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                onReply!();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -263,40 +381,148 @@ class _MessageBubble extends StatelessWidget {
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-        ),
-        decoration: BoxDecoration(
-          color: isMine
-              ? scheme.primaryContainer
-              : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!isMine)
+      child: GestureDetector(
+        onLongPress: onReply == null ? null : () => _showActions(context),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.78,
+          ),
+          decoration: BoxDecoration(
+            color: isMine
+                ? scheme.primaryContainer
+                : scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isMine)
+                Text(
+                  author,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              if (hasReply)
+                _QuotedReply(author: quotedAuthor, body: quotedBody),
+              Text(message.body),
+              const SizedBox(height: 2),
               Text(
-                author,
+                timeText,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 10,
                     ),
               ),
-            Text(message.body),
-            const SizedBox(height: 2),
-            Text(
-              timeText,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 10,
-                  ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// Zitat der beantworteten Nachricht innerhalb einer Blase (Balken + Auszug).
+class _QuotedReply extends StatelessWidget {
+  const _QuotedReply({required this.author, required this.body});
+
+  final String? author;
+  final String? body;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(8),
+        border: Border(
+          left: BorderSide(color: scheme.primary, width: 3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            author ?? 'Nachricht',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          Text(
+            body ?? 'Nachricht nicht mehr verfügbar',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Vorschau der zu beantwortenden Nachricht über dem Eingabefeld.
+class _ReplyPreview extends StatelessWidget {
+  const _ReplyPreview({
+    required this.author,
+    required this.body,
+    required this.onCancel,
+  });
+
+  final String author;
+  final String body;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+      color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 34,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Antwort an $author',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w600,
+                        )),
+                Text(body,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        )),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close),
+            iconSize: 20,
+            onPressed: onCancel,
+          ),
+        ],
       ),
     );
   }

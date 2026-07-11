@@ -742,6 +742,23 @@ class TradeCard extends ConsumerWidget {
   Future<void> _cancel(
       BuildContext context, WidgetRef ref, TradeOffer trade) async {
     final messenger = ScaffoldMessenger.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Angebot zurückziehen?'),
+        content: const Text(
+            'Möchtest du dieses Trade-Angebot wirklich zurückziehen?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Abbrechen')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Zurückziehen')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
     try {
       await ref.read(fantasyLeagueRepositoryProvider).cancelTrade(tradeId);
       ref.invalidate(tradeDetailProvider(tradeId));

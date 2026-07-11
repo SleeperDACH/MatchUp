@@ -34,14 +34,19 @@ class ClubLogoBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = clubLogoUrl(club, iconUrl);
     if (url == null) return const SizedBox.expand();
+    // Key an die URL binden: Wird derselbe Slot mit einem anderen Verein neu
+    // belegt (z. B. Aufstellung bearbeiten), erzwingt der geänderte Key ein
+    // frisches Element — sonst behält der Web-<img>-Fallback das alte Logo.
     final Widget logo = url.toLowerCase().endsWith('.svg')
         ? SvgPicture.network(
             url,
+            key: ValueKey(url),
             fit: BoxFit.cover,
             placeholderBuilder: (_) => const SizedBox.expand(),
           )
         : Image.network(
             url,
+            key: ValueKey(url),
             fit: BoxFit.cover,
             filterQuality: FilterQuality.high,
             // Web: Cross-Origin-Logos (ohne CORS) per HTML-<img> laden.
@@ -113,11 +118,13 @@ class ClubBadge extends StatelessWidget {
       final logo = url.toLowerCase().endsWith('.svg')
           ? SvgPicture.network(
               url,
+              key: ValueKey(url),
               fit: BoxFit.contain,
               placeholderBuilder: (_) => _initials(context),
             )
           : Image.network(
               url,
+              key: ValueKey(url),
               fit: BoxFit.contain,
               // Web: Cross-Origin-Logos (ohne CORS) per HTML-<img> laden.
               webHtmlElementStrategy: WebHtmlElementStrategy.fallback,

@@ -310,12 +310,14 @@ class FantasyLeagueRepository {
       .order('created_at', ascending: true)
       .map((rows) => rows.map(ChatMessage.fromJson).toList());
 
-  Future<void> sendMessage(String leagueId, String body) async {
+  Future<void> sendMessage(String leagueId, String body,
+      {String? replyTo}) async {
     final userId = _client.auth.currentUser!.id;
     await _client.from('fantasy_league_messages').insert({
       'league_id': leagueId,
       'user_id': userId,
       'body': body.trim(),
+      'reply_to': ?replyTo,
     });
   }
 

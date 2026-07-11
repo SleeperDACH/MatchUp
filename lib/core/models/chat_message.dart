@@ -9,6 +9,7 @@ class ChatMessage {
     required this.createdAt,
     this.isSystem = false,
     this.tradeId,
+    this.replyTo,
   });
 
   final String id;
@@ -26,6 +27,9 @@ class ChatMessage {
   /// dann eine Aktionskarte zum Annehmen/Ablehnen.
   final String? tradeId;
 
+  /// ID der Nachricht, auf die geantwortet wird (`null` = keine Antwort).
+  final String? replyTo;
+
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
         id: json['id'] as String,
         userId: json['user_id'] as String?,
@@ -33,5 +37,6 @@ class ChatMessage {
         createdAt: DateTime.parse(json['created_at'] as String),
         isSystem: json['is_system'] as bool? ?? false,
         tradeId: json['trade_id'] as String?,
+        replyTo: json['reply_to'] as String?,
       );
 }

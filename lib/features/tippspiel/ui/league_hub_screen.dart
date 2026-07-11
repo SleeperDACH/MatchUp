@@ -53,9 +53,9 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
             messages: messages,
             names: names,
             myId: myId,
-            onSend: (text) => ref
+            onSend: (text, replyTo) => ref
                 .read(tipRoundRepositoryProvider)
-                .sendMessage(widget.round.id, text),
+                .sendMessage(widget.round.id, text, replyTo: replyTo),
             onRetry: () =>
                 ref.invalidate(roundMessagesProvider(widget.round.id)),
           ),

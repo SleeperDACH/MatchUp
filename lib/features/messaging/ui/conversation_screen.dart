@@ -58,7 +58,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         myId: myId,
         hintText: 'Nachricht an $partnerName …',
         emptyText: 'Noch keine Nachrichten.\nSchreib $partnerName als Erster!',
-        onSend: (text) =>
+        enableReply: false,
+        onSend: (text, _) =>
             ref.read(messagingRepositoryProvider).sendMessage(partnerId, text),
         onRetry: () => ref.invalidate(directMessagesProvider),
         extraBuilder: (context, msg) =>

@@ -123,12 +123,14 @@ class TipRoundRepository {
 
   /// Schreibt eine Nachricht in den Liga-Chat (nur als Mitglied erlaubt,
   /// erzwingt die RLS-Policy serverseitig).
-  Future<void> sendMessage(String roundId, String body) async {
+  Future<void> sendMessage(String roundId, String body,
+      {String? replyTo}) async {
     final userId = _client.auth.currentUser!.id;
     await _client.from('tip_round_messages').insert({
       'round_id': roundId,
       'user_id': userId,
       'body': body.trim(),
+      'reply_to': ?replyTo,
     });
   }
 

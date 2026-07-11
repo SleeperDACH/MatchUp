@@ -43,8 +43,9 @@ class FantasyChatScreen extends ConsumerWidget {
         messages: messages,
         names: names,
         myId: myId,
-        onSend: (text) =>
-            ref.read(fantasyLeagueRepositoryProvider).sendMessage(league.id, text),
+        onSend: (text, replyTo) => ref
+            .read(fantasyLeagueRepositoryProvider)
+            .sendMessage(league.id, text, replyTo: replyTo),
         onRetry: () => ref.invalidate(fantasyMessagesProvider(league.id)),
       ),
     );

@@ -70,40 +70,22 @@ class FantasyAdminScreen extends ConsumerWidget {
     }
   }
 
-  /// Weist ein wartendes (pending) Mitglied einem verwaisten Team zu. Der Admin
-  /// wählt zunächst das freie Team; gibt es keins, ist keine Zuweisung möglich.
+  /// „Zuweisen" auf einem wartenden Teilnehmer → Screen mit allen freien
+  /// (verwaisten) Teams; dort wählt der Admin, welches Team der Teilnehmer
+  /// bekommt. Ohne freies Team zeigt der Screen einen entsprechenden Hinweis.
   Future<void> _assignPending(BuildContext context, WidgetRef ref,
-      FantasyManager pending, List<FantasyManager> vacants) async {
+      FantasyManager pending, List<FantasyManager> vacants,
+      Map<String, int> playerCounts) async {
     final messenger = ScaffoldMessenger.of(context);
-    if (vacants.isEmpty) {
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Kein freies Team vorhanden. '
-              'Erst muss ein Team frei werden (Teilnehmer kicken/verlassen).')));
-      return;
-    }
-    final FantasyManager? target = vacants.length == 1
-        ? vacants.first
-        : await showModalBottomSheet<FantasyManager>(
-            context: context,
-            builder: (ctx) => SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text('Freies Team für ${pending.display} wählen',
-                        style: Theme.of(ctx).textTheme.titleMedium),
-                  ),
-                  for (final v in vacants)
-                    ListTile(
-                      leading: const Icon(Icons.person_off_outlined),
-                      title: Text('Team von ${v.display}'),
-                      onTap: () => Navigator.of(ctx).pop(v),
-                    ),
-                ],
-              ),
-            ),
-          );
+    final target = await Navigator.of(context).push<FantasyManager>(
+      MaterialPageRoute(
+        builder: (_) => _FreeTeamPickerScreen(
+          participantName: pending.display,
+          vacants: vacants,
+          playerCounts: playerCounts,
+        ),
+      ),
+    );
     if (target == null) return;
     try {
       await ref
@@ -215,10 +197,9 @@ class FantasyAdminScreen extends ConsumerWidget {
                   title: Text(p.display),
                   subtitle: const Text('wartet auf ein Team'),
                   trailing: FilledButton(
-                    onPressed: vacants.isEmpty
-                        ? null
-                        : () => _assignPending(context, ref, p, vacants),
-                    child: const Text('Team geben'),
+                    onPressed: () => _assignPending(context, ref, p, vacants,
+                        {for (final v in vacants) v.userId: rosterCount(v.userId)}),
+                    child: const Text('Zuweisen'),
                   ),
                 ),
               ),
@@ -230,6 +211,63 @@ class FantasyAdminScreen extends ConsumerWidget {
 
   static String _initial(String n) =>
       n.isEmpty ? '?' : n.substring(0, 1).toUpperCase();
+}
+
+/// Auswahl eines freien (verwaisten) Teams für einen wartenden Teilnehmer.
+/// Tippen auf ein Team gibt es via [Navigator.pop] zurück.
+class _FreeTeamPickerScreen extends StatelessWidget {
+  const _FreeTeamPickerScreen({
+    required this.participantName,
+    required this.vacants,
+    required this.playerCounts,
+  });
+
+  final String participantName;
+  final List<FantasyManager> vacants;
+  final Map<String, int> playerCounts;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Freies Team wählen')),
+      body: vacants.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Kein freies Team vorhanden.\nEs muss erst ein Team frei '
+                  'werden (Teilnehmer kicken/verlassen). Nach dem Draft werden '
+                  'keine neuen Teams erstellt.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+                  child: Text('Welches Team bekommt $participantName?',
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+                for (final v in vacants)
+                  Card(
+                    child: ListTile(
+                      leading:
+                          Icon(Icons.groups_outlined, color: scheme.primary),
+                      title: Text('Team von ${v.display}'),
+                      subtitle:
+                          Text('verwaist · ${playerCounts[v.userId] ?? 0} Spieler'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).pop(v),
+                    ),
+                  ),
+              ],
+            ),
+    );
+  }
 }
 
 /// Kader eines Teams als Admin bearbeiten: Spieler droppen (→ 24h-Waiver) oder
