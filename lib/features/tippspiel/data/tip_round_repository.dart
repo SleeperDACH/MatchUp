@@ -143,6 +143,18 @@ class TipRoundRepository {
   Future<void> renameRound(String roundId, String name) =>
       _client.from('tip_rounds').update({'name': name.trim()}).eq('id', roundId);
 
+  /// Trägt einen Tipp für ein Mitglied nach (nur der Ersteller, auch nach
+  /// Anstoß) — per SECURITY-DEFINER-RPC.
+  Future<void> adminSetTip(String roundId, String userId, String fixtureId,
+          int home, int away) =>
+      _client.rpc('tip_admin_set_tip', params: {
+        'p_round_id': roundId,
+        'p_user': userId,
+        'p_fixture_id': fixtureId,
+        'p_home': home,
+        'p_away': away,
+      });
+
   /// Alle abgegebenen Bonustipp-Antworten der Runde (RLS: nur Mitglieder).
   Future<List<BonusAnswer>> bonusAnswers(String roundId) async {
     final rows = await _client

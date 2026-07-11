@@ -6,6 +6,7 @@ import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
+import 'tip_backfill_screen.dart';
 import 'tip_rules_settings_screen.dart';
 
 /// Einstellungen einer Tipprunde (über das Zahnrad). Für **alle** Mitglieder:
@@ -132,6 +133,19 @@ class _TipSettingsSheet extends ConsumerWidget {
                   style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(round.name),
               onTap: renameRound,
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.edit_note, color: scheme.primary),
+              title: const Text('Tipps nachtragen',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text(
+                  'Für Mitglieder Tipps eintragen — auch nach Anstoß.'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => TipBackfillScreen(round: round)));
+              },
             ),
             const Divider(height: 1),
             ListTile(
