@@ -811,8 +811,17 @@ class _DraftOrderPageState extends ConsumerState<DraftOrderPage> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).setDraftOrder(
+      final repo = ref.read(fantasyLeagueRepositoryProvider);
+      await repo.setDraftOrder(
           widget.league.id, [for (final m in order) m.userId]);
+      // Festgelegte Reihenfolge im Liga-Chat bekanntgeben (wie beim Mischen).
+      final text = [
+        for (final (i, m) in order.indexed) '${i + 1}. ${m.display}'
+      ].join('\n');
+      try {
+        await repo.sendMessage(
+            widget.league.id, '📋 Draft-Reihenfolge festgelegt:\n$text');
+      } catch (_) {}
       ref.invalidate(fantasyManagersProvider(widget.league.id));
       ref.invalidate(draftLeagueProvider(widget.league.id));
       messenger
