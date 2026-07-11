@@ -631,7 +631,16 @@ class _AvailableTabState extends State<_AvailableTab> {
                       leading: ClubBadge(
                           club: p.club, iconUrl: widget.clubIcons[p.club]),
                       title: Text(p.name),
-                      subtitle: Text('${p.position.short} · ${p.club}'),
+                      subtitle: Row(
+                        children: [
+                          PositionPill(pos: p.position),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(p.club,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -749,7 +758,16 @@ class _QueueTab extends StatelessWidget {
                       style: TextStyle(fontSize: 12, color: scheme.primary)),
                 ),
                 title: Text(p.name),
-                subtitle: Text('${p.position.short} · ${p.club}'),
+                subtitle: Row(
+                  children: [
+                    PositionPill(pos: p.position),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(p.club,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
                 onTap: canPick ? () => onPick(p) : null,
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -860,24 +878,27 @@ class _MyTeamTab extends StatelessWidget {
     );
   }
 
-  /// Bank: alle Spieler, die über die feste 4-3-3-Startelf hinausgehen
-  /// (z. B. der 5. Abwehrspieler).
+  /// Bank: überzählige Spieler (über die feste 4-3-3-Startelf hinaus, z. B. der
+  /// 5. Abwehrspieler) plus leere Bankplätze bis zur konfigurierten Bankgröße
+  /// ([RosterConfig.bench]) — auch schon vor dem Draft sichtbar.
   Widget _bench(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final bench = <(PlayerPosition, FantasyPlayer)>[];
+    final overflow = <(PlayerPosition, FantasyPlayer)>[];
     for (final pos in _pitchOrder) {
       final players = byPos[pos] ?? const <FantasyPlayer>[];
       for (final p in players.skip(_starters(pos))) {
-        bench.add((pos, p));
+        overflow.add((pos, p));
       }
     }
-    if (bench.isEmpty) return const SizedBox.shrink();
+    final benchSize = roster.bench;
+    if (benchSize <= 0 && overflow.isEmpty) return const SizedBox.shrink();
+    final empties = (benchSize - overflow.length).clamp(0, 99);
     return Padding(
       padding: const EdgeInsets.only(top: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Bank (${bench.length})',
+          Text('Bank (${overflow.length}/$benchSize)',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: scheme.onSurfaceVariant)),
@@ -886,38 +907,64 @@ class _MyTeamTab extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final (pos, p) in bench)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ClubBadge(
-                          club: p.club, iconUrl: clubIcons[p.club], size: 22),
-                      const SizedBox(width: 6),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_short(p.name),
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
-                          Text(pos.short,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              for (final (pos, p) in overflow) _benchChip(context, pos, p),
+              for (var i = 0; i < empties; i++) _benchEmpty(context),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _benchChip(
+      BuildContext context, PlayerPosition pos, FantasyPlayer p) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 22),
+          const SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_short(p.name),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: positionColor(pos))),
+              const SizedBox(height: 2),
+              PositionPill(pos: pos),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _benchEmpty(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event_seat_outlined,
+              size: 18, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text('Bank frei',
+              style: TextStyle(
+                  fontSize: 12, color: scheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -975,7 +1022,11 @@ class _MyTeamTab extends StatelessWidget {
               p == null ? pos.short : _short(p.name),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 10),
+              // Name/Positionskürzel in der Positionsfarbe.
+              style: TextStyle(
+                  color: positionColor(pos),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700),
             ),
           ),
         ],
