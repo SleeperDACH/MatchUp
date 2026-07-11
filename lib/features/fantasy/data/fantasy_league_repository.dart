@@ -39,6 +39,13 @@ class FantasyLeagueRepository {
     required DraftPickTime pickTime,
     FantasyScoring scoring = FantasyScoring.kickbaseStyle,
     RosterConfig roster = RosterConfig.standard,
+    int? maxTeams,
+    String draftOrderMode = 'auto',
+    int? pauseStart,
+    int? pauseEnd,
+    int? playoffTeams,
+    int? playoffWeeks,
+    int? tradeDeadlineOffset,
   }) async {
     final userId = _client.auth.currentUser!.id;
     final row = await _client
@@ -51,6 +58,13 @@ class FantasyLeagueRepository {
           'scoring': scoring.toJson(),
           'roster': roster.toJson(),
           'created_by': userId,
+          'max_teams': maxTeams,
+          'draft_order_mode': draftOrderMode,
+          'draft_pause_start': pauseStart,
+          'draft_pause_end': pauseEnd,
+          'playoff_teams': playoffTeams,
+          'playoff_weeks': playoffWeeks,
+          'trade_deadline_offset': tradeDeadlineOffset,
         })
         .select()
         .single();

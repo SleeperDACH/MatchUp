@@ -21,6 +21,18 @@ class _CreateFantasyLeagueScreenState
   final _name = TextEditingController();
   late FantasyMode _mode = widget.mode;
   DraftPickTime _pickTime = DraftPickTime.m1;
+
+  // Liga-Einstellungen (in die Erstell-Maske gezogen).
+  static const _minTeams = 2;
+  static const _maxTeams = 18;
+  static const _minRounds = 14;
+  static const _maxRounds = 30;
+  int _teams = 10; // Standard-Teilnehmerzahl
+  int _rounds = RosterConfig.standard.squadSize; // Kadergröße = Draft-Runden
+  String _orderMode = 'auto'; // 'auto' = zufällig, 'manual' = per Reihenfolge
+  bool _pauseOn = false; // Slow-Draft-Nachtpause
+  bool _playoffsOn = false;
+
   bool _busy = false;
   String? _error;
 
@@ -46,6 +58,15 @@ class _CreateFantasyLeagueScreenState
                 mode: _mode,
                 season: ref.read(fantasySeasonProvider),
                 pickTime: _pickTime,
+                roster: RosterConfig.standard.withRounds(_rounds),
+                maxTeams: _teams,
+                draftOrderMode: _orderMode,
+                // Nachtpause 23–8 Uhr, wenn aktiviert (Minuten seit Mitternacht).
+                pauseStart: _pauseOn ? 23 * 60 : null,
+                pauseEnd: _pauseOn ? 8 * 60 : null,
+                // Playoffs: Standard 4 Teams · 1-Wochen-Partien.
+                playoffTeams: _playoffsOn ? 4 : null,
+                playoffWeeks: _playoffsOn ? 1 : null,
               );
       ref.invalidate(myFantasyLeaguesProvider);
       if (!mounted) return;
@@ -80,6 +101,68 @@ class _CreateFantasyLeagueScreenState
               labelText: 'Name der Liga',
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             ),
+          ),
+          const SizedBox(height: 20),
+          Text('Teilnehmerzahl',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            'Wie viele Teams die Liga hat. Team 1 bist du; die übrigen Teams '
+            'werden angelegt und mit beitretenden Spielern aufgefüllt.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          _StepperRow(
+            label: 'Teams',
+            value: _teams,
+            min: _minTeams,
+            max: _maxTeams,
+            onChanged: (v) => setState(() => _teams = v),
+          ),
+          const SizedBox(height: 20),
+          Text('Kadergröße', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            '11 in der Startelf + ${_rounds - 11} auf der Bank '
+            '(= $_rounds Draft-Runden).',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          _StepperRow(
+            label: 'Spieler je Kader',
+            value: _rounds,
+            min: _minRounds,
+            max: _maxRounds,
+            onChanged: (v) => setState(() => _rounds = v),
+          ),
+          const SizedBox(height: 20),
+          Text('Draft-Reihenfolge',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'auto', label: Text('Zufällig')),
+              ButtonSegment(value: 'manual', label: Text('Manuell')),
+            ],
+            selected: {_orderMode},
+            onSelectionChanged: (s) => setState(() => _orderMode = s.first),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _pauseOn,
+            onChanged: (v) => setState(() => _pauseOn = v),
+            title: const Text('Slow-Draft-Nachtpause'),
+            subtitle: const Text('Draft pausiert nachts von 23 bis 8 Uhr.'),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _playoffsOn,
+            onChanged: (v) => setState(() => _playoffsOn = v),
+            title: const Text('Playoffs'),
+            subtitle: const Text('4 Teams · 1-Wochen-Partien (später änderbar).'),
           ),
           const SizedBox(height: 20),
           Text('Pickzeit im Draft',
@@ -169,6 +252,55 @@ class _ModeCard extends StatelessWidget {
             ? Icon(Icons.check_circle, color: scheme.primary)
             : const Icon(Icons.circle_outlined),
         onTap: onTap,
+      ),
+    );
+  }
+}
+
+/// Kompakte +/–-Zeile für Zahlenwerte (Teilnehmer, Kadergröße).
+class _StepperRow extends StatelessWidget {
+  const _StepperRow({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int value;
+  final int min;
+  final int max;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          IconButton(
+            icon: const Icon(Icons.remove_circle_outline),
+            onPressed: value > min ? () => onChanged(value - 1) : null,
+          ),
+          SizedBox(
+            width: 28,
+            child: Text('$value',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16)),
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: value < max ? () => onChanged(value + 1) : null,
+          ),
+        ],
       ),
     );
   }

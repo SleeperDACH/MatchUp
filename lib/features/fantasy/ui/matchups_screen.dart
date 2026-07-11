@@ -139,14 +139,47 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                 });
 
               if (ids.length < 2) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'Head-to-Head braucht mindestens zwei Manager.',
-                      textAlign: TextAlign.center,
+                // Noch keine Paarungen möglich — aber die Teamliste (du + freie
+                // Plätze bis zur Teilnehmerzahl) schon anzeigen.
+                return ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      child: Text(
+                        'Head-to-Head startet, sobald ein zweiter Spieler '
+                        'beitritt. Teile dazu den Einladungscode – neue Spieler '
+                        'füllen automatisch die freien Teams auf.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
                     ),
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                      child: Text('Teams',
+                          style: Theme.of(context).textTheme.titleMedium),
+                    ),
+                    for (final id in ids)
+                      ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 14,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary.withValues(
+                                    alpha: 0.25,
+                                  ),
+                          child: const Text('1',
+                              style: TextStyle(fontSize: 12)),
+                        ),
+                        title: Text(nameOf[id] ?? '?',
+                            style: id == myId
+                                ? const TextStyle(fontWeight: FontWeight.bold)
+                                : null),
+                      ),
+                    if (league.maxTeams != null)
+                      for (var k = ids.length; k < league.maxTeams!; k++)
+                        _EmptyTeamRow(teamNo: k + 1),
+                  ],
                 );
               }
 
@@ -319,19 +352,23 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                                 .colorScheme
                                 .onSurfaceVariant),
                       ),
-                    )
-                  else
-                    for (final (i, r) in standings.indexed)
-                      _StandingRow(
-                        rank: i + 1,
-                        name: nameOf[r.managerId] ?? '?',
-                        record: r,
-                        me: r.managerId == myId,
-                        onTap: () => showManagerProfile(context,
-                            league: widget.league,
-                            managerId: r.managerId,
-                            managerName: nameOf[r.managerId] ?? '?'),
-                      ),
+                    ),
+                  for (final (i, r) in standings.indexed)
+                    _StandingRow(
+                      rank: i + 1,
+                      name: nameOf[r.managerId] ?? '?',
+                      record: r,
+                      me: r.managerId == myId,
+                      onTap: () => showManagerProfile(context,
+                          league: widget.league,
+                          managerId: r.managerId,
+                          managerName: nameOf[r.managerId] ?? '?'),
+                    ),
+                  // Freie Plätze bis zur Teilnehmerzahl: „Team N" wartet auf
+                  // beitretende Spieler (füllt beim Beitritt automatisch auf).
+                  if (league.maxTeams != null)
+                    for (var k = ids.length; k < league.maxTeams!; k++)
+                      _EmptyTeamRow(teamNo: k + 1),
                   const SizedBox(height: 16),
                 ],
               );
@@ -377,6 +414,35 @@ class _StandingRow extends StatelessWidget {
             .titleMedium
             ?.copyWith(color: scheme.primary, fontWeight: FontWeight.bold),
       ),
+    );
+  }
+}
+
+/// Freier Team-Platz (Platzhalter) in der Bilanz-Liste — wird beim Beitritt
+/// eines Spielers automatisch belegt.
+class _EmptyTeamRow extends StatelessWidget {
+  const _EmptyTeamRow({required this.teamNo});
+
+  final int teamNo;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      dense: true,
+      leading: CircleAvatar(
+        radius: 14,
+        backgroundColor: scheme.surfaceContainerHighest,
+        child: Icon(Icons.person_add_alt_1,
+            size: 15, color: scheme.onSurfaceVariant),
+      ),
+      title: Text('Team $teamNo',
+          style: TextStyle(color: scheme.onSurfaceVariant)),
+      trailing: Text('frei',
+          style: Theme.of(context)
+              .textTheme
+              .labelSmall
+              ?.copyWith(color: scheme.onSurfaceVariant)),
     );
   }
 }
