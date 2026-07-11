@@ -268,9 +268,12 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     });
     final queueIds = _optimisticQueue ?? streamQueue;
     final queueSet = queueIds.toSet();
+    // Bereits gedraftete Spieler aus der Queue-Anzeige entfernen — der Server
+    // löscht sie aus allen Queues, aber die Picks kommen zuverlässiger per
+    // Stream nach als die Queue-Deletes.
     final queuePlayers = [
       for (final id in queueIds)
-        if (playerById[id] != null) playerById[id]!
+        if (playerById[id] != null && !pickedIds.contains(id)) playerById[id]!
     ];
     void toggleQueue(String id) {
       final list = [...queueIds];
@@ -374,6 +377,10 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
                         : null,
                     currentRound: round,
                     myId: myId,
+                    // Platzhalter nur im Setup; ab Draft-Start zählen nur die
+                    // echten Teams (Pick-Nummern folgen der echten Draftorder).
+                    showPlaceholders:
+                        league.draftStatus == DraftStatus.setup,
                   ),
                   // Spieler-Tab mit Unter-Tabs: Verfügbar + Queue.
                   _PlayersTab(
@@ -1203,6 +1210,7 @@ class _BoardTab extends StatelessWidget {
     required this.currentManagerId,
     required this.currentRound,
     required this.myId,
+    required this.showPlaceholders,
   });
 
   final List<DraftPick> picks;
@@ -1213,6 +1221,11 @@ class _BoardTab extends StatelessWidget {
   final String? currentManagerId;
   final int currentRound;
   final String? myId;
+
+  /// Freie Platzhalter-Teams (Team N) nur im Setup anzeigen. Sobald der Draft
+  /// läuft, zählen nur die tatsächlich teilnehmenden Teams — die Pick-Nummern
+  /// (1.01 …) richten sich dann nach der echten Teamzahl/Draftorder.
+  final bool showPlaceholders;
 
   static const _colW = 92.0;
   static const _rowH = 52.0;
@@ -1245,7 +1258,7 @@ class _BoardTab extends StatelessWidget {
             mine: m.userId == myId,
             autoPick: m.autoPick),
     ];
-    final target = (maxTeams != null && maxTeams! > cols.length)
+    final target = (showPlaceholders && maxTeams != null && maxTeams! > cols.length)
         ? maxTeams!
         : cols.length;
     for (var i = cols.length; i < target; i++) {
