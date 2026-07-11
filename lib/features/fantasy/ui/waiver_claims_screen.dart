@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'club_badge.dart';
 
 /// „Meine Waiver-Anträge": offene Anträge (mit Rang & Stornierung) und die
 /// bereits abgearbeiteten samt Ergebnis. Zeigt oben die eigene rollende
@@ -56,6 +57,7 @@ class WaiverClaimsScreen extends ConsumerWidget {
             _ClaimTile(
               claim: c,
               addName: nameOf(c.addPlayerId)!,
+              addPos: playerById[c.addPlayerId]?.position,
               dropName: nameOf(c.dropPlayerId),
               onCancel: () => _cancel(context, ref, c),
             ),
@@ -64,6 +66,7 @@ class WaiverClaimsScreen extends ConsumerWidget {
             _ClaimTile(
               claim: c,
               addName: nameOf(c.addPlayerId)!,
+              addPos: playerById[c.addPlayerId]?.position,
               dropName: nameOf(c.dropPlayerId),
             ),
         ],
@@ -155,12 +158,14 @@ class _ClaimTile extends StatelessWidget {
   const _ClaimTile({
     required this.claim,
     required this.addName,
+    this.addPos,
     this.dropName,
     this.onCancel,
   });
 
   final WaiverClaim claim;
   final String addName;
+  final PlayerPosition? addPos;
   final String? dropName;
   final VoidCallback? onCancel;
 
@@ -172,7 +177,18 @@ class _ClaimTile extends StatelessWidget {
 
     return ListTile(
       leading: _StatusBadge(status: claim.status),
-      title: Text('Holen: $addName'),
+      title: Row(
+        children: [
+          if (addPos != null) ...[
+            PositionPill(pos: addPos!),
+            const SizedBox(width: 6),
+          ],
+          Expanded(
+            child: Text('Holen: $addName',
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      ),
       subtitle: Text(sub.toString()),
       trailing: onCancel == null
           ? null

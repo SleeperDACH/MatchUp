@@ -125,9 +125,17 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                     return ListTile(
                       leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                       title: Text(p.name),
-                      subtitle: Text(waiver
-                          ? '${p.position.short} · ${p.club} · Waiver-Wire'
-                          : '${p.position.short} · ${p.club}'),
+                      subtitle: Row(
+                        children: [
+                          PositionPill(pos: p.position),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                                waiver ? '${p.club} · Waiver-Wire' : p.club,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
+                      ),
                       trailing: PlayerActionButton(
                         league: league,
                         player: p,

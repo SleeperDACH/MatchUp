@@ -106,7 +106,6 @@ class _PlayerPoolScreenState extends ConsumerState<PlayerPoolScreen> {
                     final p = list[i];
                     final age = p.ageOn(cutoff);
                     final detail = <String>[
-                      p.position.label,
                       p.club,
                       '$age J.',
                       if (p.isU20On(cutoff)) 'U20',
@@ -116,7 +115,16 @@ class _PlayerPoolScreenState extends ConsumerState<PlayerPoolScreen> {
                       leading:
                           ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                       title: Text(p.name),
-                      subtitle: Text(detail),
+                      subtitle: Row(
+                        children: [
+                          PositionPill(pos: p.position),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(detail,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
+                      ),
                       trailing: PlayerActionButton(
                         league: league,
                         player: p,
