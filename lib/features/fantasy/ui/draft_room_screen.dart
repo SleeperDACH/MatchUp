@@ -234,13 +234,18 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
 
-    if (managersAsync.isLoading || poolAsync.isLoading) {
+    // Nur beim allerersten Laden einen Spinner zeigen. Beim periodischen
+    // Nachladen (Live-Auto-Pick invalidiert die Manager alle 2 s) bleibt der
+    // vorige Wert erhalten (valueOrNull) → kein Flackern/„jede Sekunde neu".
+    final managersV = managersAsync.valueOrNull;
+    final poolV = poolAsync.valueOrNull;
+    if (managersV == null || poolV == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final managers = [...managersAsync.requireValue]
+    final managers = [...managersV]
       ..sort((a, b) => (a.draftPosition ?? 99).compareTo(b.draftPosition ?? 99));
-    final pool = poolAsync.requireValue;
+    final pool = poolV;
     final picks = picksAsync.valueOrNull ?? const <DraftPick>[];
 
     final playerById = {for (final p in pool) p.id: p};
