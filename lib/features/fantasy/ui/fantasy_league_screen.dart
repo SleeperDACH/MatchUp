@@ -113,6 +113,7 @@ class _OverviewTab extends ConsumerWidget {
         color: Theme.of(context).colorScheme.onSurfaceVariant);
     final action = _draftAction(context, ref, league, isAdmin);
     final currentRound = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
+    final openTrades = ref.watch(incomingTradeOffersProvider(league.id));
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -161,6 +162,7 @@ class _OverviewTab extends ConsumerWidget {
                 icon: Icons.swap_horiz,
                 label: 'Trade',
                 color: _cRed,
+                badge: openTrades,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => TradeScreen(league: league))),
               ),
@@ -343,12 +345,16 @@ class _ActionTile extends StatelessWidget {
       {required this.icon,
       required this.label,
       required this.color,
-      required this.onTap});
+      required this.onTap,
+      this.badge = 0});
 
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
+
+  /// Zahl für einen auffälligen Hinweis oben rechts (0 = kein Hinweis).
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
@@ -371,12 +377,54 @@ class _ActionTile extends StatelessWidget {
                 child: Icon(icon, color: _cBase, size: 22),
               ),
               const Spacer(),
-              Text(label,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15)),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
+                  if (badge > 0) ...[
+                    const SizedBox(width: 6),
+                    _NotifyBadge(count: badge),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Auffälliger roter Zähler-Hinweis (z. B. offene Trade-Angebote).
+class _NotifyBadge extends StatelessWidget {
+  const _NotifyBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20),
+      height: 20,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        color: _cRed,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        '$count',
+        style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            height: 1,
+            fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -417,6 +465,7 @@ class _RostersTab extends ConsumerWidget {
         const <RosterEntry>[];
     final myCount =
         myId == null ? 0 : rosterCountOf(myId, roster);
+    final openTrades = ref.watch(incomingTradeOffersProvider(league.id));
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
@@ -440,6 +489,7 @@ class _RostersTab extends ConsumerWidget {
                   label: 'Trade',
                   icon: Icons.swap_horiz,
                   color: _cRed,
+                  badge: openTrades,
                   onTap: () => open(TradeScreen(league: league)),
                 ),
               ),
@@ -469,12 +519,16 @@ class _MiniAction extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onTap,
+    this.badge = 0,
   });
 
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+
+  /// Zahl für einen auffälligen Hinweis oben rechts (0 = kein Hinweis).
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
@@ -488,16 +542,32 @@ class _MiniAction extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withValues(alpha: 0.40)),
+            border: Border.all(
+                color: badge > 0
+                    ? _cRed
+                    : color.withValues(alpha: 0.40),
+                width: badge > 0 ? 1.5 : 1),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Icon(icon, color: _cBase, size: 20),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
+                    child: Icon(icon, color: _cBase, size: 20),
+                  ),
+                  if (badge > 0)
+                    Positioned(
+                      top: -6,
+                      right: -8,
+                      child: _NotifyBadge(count: badge),
+                    ),
+                ],
               ),
               const SizedBox(height: 6),
               Text(label,

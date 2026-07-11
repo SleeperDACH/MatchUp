@@ -88,6 +88,19 @@ final leagueTradesProvider =
   return ref.watch(fantasyLeagueRepositoryProvider).tradesStream(leagueId);
 });
 
+/// Anzahl offener Trade-Angebote, die an mich gerichtet sind (eingehend,
+/// noch nicht beantwortet) — für den auffälligen Hinweis am Trade-Button.
+final incomingTradeOffersProvider =
+    Provider.family<int, String>((ref, leagueId) {
+  final myId = ref.watch(currentUserProvider)?.id;
+  if (myId == null) return 0;
+  final trades =
+      ref.watch(leagueTradesProvider(leagueId)).valueOrNull ?? const [];
+  return trades
+      .where((t) => t.toManager == myId && t.status.isPending)
+      .length;
+});
+
 /// Einzelnes Trade-Angebot samt Positionen (für die Chat-Karte).
 final tradeDetailProvider = FutureProvider.family<
     ({TradeOffer trade, List<TradeItem> items})?, String>((ref, tradeId) {
