@@ -120,7 +120,6 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     final picks = picksAsync.valueOrNull ?? const <DraftPick>[];
 
     final playerById = {for (final p in pool) p.id: p};
-    final nameById = {for (final m in managers) m.userId: m.display};
     final pickedIds = {for (final p in picks) p.playerId};
 
     // Eigener Kader (inkl. in Dynasty behaltener Spieler) nach Position — für
@@ -171,26 +170,23 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
         managers.isEmpty ? 1 : league.picksMade ~/ managers.length + 1;
 
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(league.name),
-          // Feste Vier-Tab-Leiste: alle auf einen Blick, kein Scrollen.
+          // Board zuerst, dann Spieler (mit Queue als Unter-Tab) und Team.
           bottom: TabBar(
             labelPadding: EdgeInsets.zero,
             tabs: [
               const Tab(
+                  icon: Icon(Icons.grid_view_outlined, size: 20),
+                  text: 'Board'),
+              const Tab(
                   icon: Icon(Icons.groups_2_outlined, size: 20),
                   text: 'Spieler'),
               Tab(
-                  icon: const Icon(Icons.bookmark_outline, size: 20),
-                  text: 'Queue (${queuePlayers.length})'),
-              Tab(
                   icon: const Icon(Icons.shield_outlined, size: 20),
                   text: 'Team ($mySquadSize)'),
-              const Tab(
-                  icon: Icon(Icons.grid_view_outlined, size: 20),
-                  text: 'Board'),
             ],
           ),
         ),
@@ -206,33 +202,38 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
             Expanded(
               child: TabBarView(
                 children: [
-                  _AvailableTab(
-                    players: available,
-                    canPick: myTurn,
-                    onPick: _pick,
-                    queued: queueSet,
-                    onToggleQueue: toggleQueue,
-                    clubIcons: clubIcons,
+                  _BoardTab(
+                    picks: phasePicks,
+                    playerById: playerById,
+                    managers: managers,
+                    rounds: league.roundsThisPhase,
+                    picksMade: league.picksMade,
+                    myId: myId,
                   ),
-                  _QueueTab(
-                    players: queuePlayers,
-                    canPick: myTurn,
-                    onPick: _pick,
-                    onRemove: toggleQueue,
-                    onReorder: (ids) => unawaited(_repo.setQueue(_leagueId, ids)),
+                  // Spieler-Tab mit Unter-Tabs: Verfügbar + Queue.
+                  _PlayersTab(
+                    available: _AvailableTab(
+                      players: available,
+                      canPick: myTurn,
+                      onPick: _pick,
+                      queued: queueSet,
+                      onToggleQueue: toggleQueue,
+                      clubIcons: clubIcons,
+                    ),
+                    queue: _QueueTab(
+                      players: queuePlayers,
+                      canPick: myTurn,
+                      onPick: _pick,
+                      onRemove: toggleQueue,
+                      onReorder: (ids) =>
+                          unawaited(_repo.setQueue(_leagueId, ids)),
+                    ),
+                    queueCount: queuePlayers.length,
                   ),
                   _MyTeamTab(
                       byPos: mySquad,
                       roster: league.roster,
                       clubIcons: clubIcons),
-                  _BoardTab(
-                    picks: phasePicks,
-                    playerById: playerById,
-                    nameById: nameById,
-                    managers: managers,
-                    currentId: cur?.userId,
-                    myId: myId,
-                  ),
                 ],
               ),
             ),
@@ -742,153 +743,218 @@ class _MyTeamTab extends StatelessWidget {
   }
 }
 
+/// Spieler-Tab mit Unter-Tabs: „Verfügbar" (Spielerliste) und „Queue".
+class _PlayersTab extends StatelessWidget {
+  const _PlayersTab({
+    required this.available,
+    required this.queue,
+    required this.queueCount,
+  });
+
+  final Widget available;
+  final Widget queue;
+  final int queueCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          TabBar(
+            labelColor: scheme.primary,
+            tabs: [
+              const Tab(text: 'Verfügbar'),
+              Tab(text: 'Queue ($queueCount)'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(children: [available, queue]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Draft-Board als Raster: Spalten = Teilnehmer (Draft-Reihenfolge), Zeilen =
+/// Runden. Jede Zelle zeigt den Pick-Code (1.01, 1.02 …) und – falls schon
+/// gepickt – den Spieler. Der aktuelle Pick ist hervorgehoben.
 class _BoardTab extends StatelessWidget {
   const _BoardTab({
     required this.picks,
     required this.playerById,
-    required this.nameById,
     required this.managers,
-    required this.currentId,
+    required this.rounds,
+    required this.picksMade,
     required this.myId,
   });
 
   final List<DraftPick> picks;
   final Map<String, FantasyPlayer> playerById;
-  final Map<String, String> nameById;
   final List<FantasyManager> managers;
-  final String? currentId;
+  final int rounds;
+  final int picksMade;
   final String? myId;
+
+  static const _colW = 92.0;
+  static const _rowH = 52.0;
+  static const _labelW = 34.0;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _order(context),
-        const Divider(height: 1),
-        Expanded(
-          child: picks.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                        'Noch keine Picks — sobald der Draft läuft, erscheinen '
-                        'sie hier.',
-                        textAlign: TextAlign.center),
-                  ),
-                )
-              : _pickList(context),
+    final scheme = Theme.of(context).colorScheme;
+    if (managers.isEmpty || rounds <= 0) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('Sobald der Draft startet, erscheint hier das Board.',
+              textAlign: TextAlign.center),
         ),
-      ],
+      );
+    }
+    // Spalten nach Draft-Position (Slot 1..n); ohne Position stabil ans Ende.
+    final cols = [...managers]..sort((a, b) {
+        final pa = a.draftPosition ?? 1 << 30;
+        final pb = b.draftPosition ?? 1 << 30;
+        return pa.compareTo(pb);
+      });
+    final n = cols.length;
+    // Pick je (Runde, Manager) für schnellen Zugriff.
+    final pickByCell = <String, DraftPick>{
+      for (final p in picks) '${p.round}:${p.managerId}': p,
+    };
+    // Aktueller Pick: Runde + Spalte (Snake-korrekt) zur Hervorhebung.
+    final curRound0 = picksMade ~/ n;
+    final curColIndex = snakeSlot(picksMade, n) - 1; // Spaltenindex (Slot-1)
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Kopfzeile: Teilnehmer-Namen je Spalte.
+            Row(
+              children: [
+                const SizedBox(width: _labelW),
+                for (final m in cols)
+                  Container(
+                    width: _colW,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 6),
+                    child: Text(
+                      m.display,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: m.userId == myId
+                            ? scheme.primary
+                            : scheme.onSurface,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const Divider(height: 1),
+            for (var r = 1; r <= rounds; r++)
+              Row(
+                children: [
+                  SizedBox(
+                    width: _labelW,
+                    height: _rowH,
+                    child: Center(
+                      child: Text('R$r',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(color: scheme.onSurfaceVariant)),
+                    ),
+                  ),
+                  for (var s = 0; s < n; s++)
+                    _cell(context, round: r, slot: s, n: n,
+                        manager: cols[s],
+                        pick: pickByCell['$r:${cols[s].userId}'],
+                        isCurrent: (r - 1) == curRound0 && s == curColIndex),
+                ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 
-  /// Draftreihenfolge (Snake-Position 1..n), der aktuelle Manager markiert.
-  Widget _order(BuildContext context) {
+  Widget _cell(BuildContext context,
+      {required int round,
+      required int slot,
+      required int n,
+      required FantasyManager manager,
+      required DraftPick? pick,
+      required bool isCurrent}) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+    // Snake: gerade Runden vorwärts, ungerade rückwärts (0-basiert: round-1).
+    final round0 = round - 1;
+    final pickInRound = round0.isEven ? slot + 1 : n - slot;
+    final code = '$round.${pickInRound.toString().padLeft(2, '0')}';
+    final player = pick == null ? null : playerById[pick.playerId];
+    final mine = manager.userId == myId;
+
+    return Container(
+      width: _colW,
+      height: _rowH,
+      margin: const EdgeInsets.all(1),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: player != null
+            ? (mine
+                ? scheme.primary.withValues(alpha: 0.18)
+                : scheme.surfaceContainerHighest)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: isCurrent
+            ? Border.all(color: scheme.primary, width: 1.6)
+            : null,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('Reihenfolge',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelMedium
-                  ?.copyWith(color: scheme.onSurfaceVariant)),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 30,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final (i, m) in managers.indexed)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: _orderChip(context,
-                        pos: i + 1,
-                        name: m.display,
-                        isCurrent: m.userId == currentId,
-                        isMine: m.userId == myId),
-                  ),
+          Row(
+            children: [
+              Text(code,
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurfaceVariant)),
+              if (pick?.isAuto ?? false) ...[
+                const SizedBox(width: 3),
+                Text('A',
+                    style: TextStyle(
+                        fontSize: 9,
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.7))),
               ],
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            player?.name ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: player != null
+                  ? scheme.onSurface
+                  : scheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _orderChip(BuildContext context,
-      {required int pos,
-      required String name,
-      required bool isCurrent,
-      required bool isMine}) {
-    final scheme = Theme.of(context).colorScheme;
-    final bg = isCurrent
-        ? scheme.primary
-        : scheme.surfaceContainerHighest;
-    final fg = isCurrent ? scheme.onPrimary : scheme.onSurface;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: isMine
-            ? Border.all(color: scheme.primary, width: 1.4)
-            : null,
-      ),
-      child: Row(
-        children: [
-          Text('$pos.',
-              style: TextStyle(
-                  color: fg.withValues(alpha: 0.7),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(width: 4),
-          Text(name,
-              style: TextStyle(
-                  color: fg,
-                  fontSize: 12,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-
-  Widget _pickList(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // Neueste zuerst.
-    final ordered = picks.reversed.toList();
-    return ListView.builder(
-      itemCount: ordered.length,
-      itemBuilder: (context, i) {
-        final pick = ordered[i];
-        final player = playerById[pick.playerId];
-        final mine = pick.managerId == myId;
-        return ListTile(
-          dense: true,
-          leading: CircleAvatar(
-            radius: 14,
-            backgroundColor: scheme.surfaceContainerHighest,
-            child: Text('${pick.pickNumber}',
-                style: const TextStyle(fontSize: 11)),
-          ),
-          title: Text(player?.name ?? pick.playerId),
-          subtitle: Text(
-            '${nameById[pick.managerId] ?? '—'}'
-            '${pick.isAuto ? ' · Auto' : ''}',
-            style: mine
-                ? TextStyle(
-                    color: scheme.primary, fontWeight: FontWeight.bold)
-                : null,
-          ),
-          trailing: player == null
-              ? null
-              : Text('${player.position.short} · R${pick.round}',
-                  style: Theme.of(context).textTheme.labelSmall),
-        );
-      },
     );
   }
 }
