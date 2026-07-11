@@ -152,6 +152,21 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     }
   }
 
+  /// Speichert die eigene Draft-Queue robust: awaitet den RPC (Fehler werden
+  /// sichtbar) und aktualisiert danach den Provider, damit die Anzeige nicht
+  /// allein vom Realtime-Stream abhängt (der im Web nicht zuverlässig nachzieht).
+  Future<void> _persistQueue(List<String> ids) async {
+    try {
+      await _repo.setQueue(_leagueId, ids);
+      if (mounted) ref.invalidate(draftQueueProvider(_leagueId));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Queue konnte nicht gespeichert werden: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final leagueAsync = ref.watch(draftLeagueProvider(_leagueId));
@@ -212,7 +227,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     void toggleQueue(String id) {
       final list = [...queueIds];
       list.contains(id) ? list.remove(id) : list.add(id);
-      unawaited(_repo.setQueue(_leagueId, list));
+      unawaited(_persistQueue(list));
     }
 
     final cur = currentManager(managers, league.picksMade);
@@ -334,8 +349,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
                       canPick: myTurn,
                       onPick: _pick,
                       onRemove: toggleQueue,
-                      onReorder: (ids) =>
-                          unawaited(_repo.setQueue(_leagueId, ids)),
+                      onReorder: (ids) => unawaited(_persistQueue(ids)),
                     ),
                     queueCount: queuePlayers.length,
                   ),
