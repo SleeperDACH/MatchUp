@@ -40,14 +40,16 @@ Future<void> main() async {
   runApp(const ProviderScope(child: FantasyApp()));
 }
 
-class FantasyApp extends StatelessWidget {
+class FantasyApp extends ConsumerWidget {
   const FantasyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Tippspiel',
-      theme: buildAppTheme(),
+      theme: buildAppTheme(brightness: Brightness.light),
+      darkTheme: buildAppTheme(brightness: Brightness.dark),
+      themeMode: ref.watch(themeModeProvider),
       home: const _RootGate(),
     );
   }

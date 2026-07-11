@@ -8,6 +8,7 @@ import '../features/favorites/ui/favorites_settings_screen.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/tippspiel/logic/tip_stats.dart';
 import '../features/tippspiel/providers.dart';
+import 'theme.dart';
 
 /// Profil-Tab: Konto-Übersicht und -Aktionen (Abmelden, App-Info).
 class ProfileScreen extends ConsumerWidget {
@@ -92,6 +93,48 @@ class _Profile extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _SectionLabel('Einstellungen'),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.brightness_6_outlined, color: scheme.primary),
+                    const SizedBox(width: 12),
+                    const Text('Erscheinungsbild',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                          value: ThemeMode.system,
+                          icon: Icon(Icons.brightness_auto, size: 18),
+                          label: Text('System')),
+                      ButtonSegment(
+                          value: ThemeMode.light,
+                          icon: Icon(Icons.light_mode, size: 18),
+                          label: Text('Hell')),
+                      ButtonSegment(
+                          value: ThemeMode.dark,
+                          icon: Icon(Icons.dark_mode, size: 18),
+                          label: Text('Dunkel')),
+                    ],
+                    selected: {ref.watch(themeModeProvider)},
+                    onSelectionChanged: (s) =>
+                        ref.read(themeModeProvider.notifier).set(s.first),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         Card(
           child: ListTile(
             leading: Icon(Icons.star_outline, color: scheme.primary),
