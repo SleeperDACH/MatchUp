@@ -515,24 +515,36 @@ class _AutoPickBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     if (on) {
       return Container(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
         decoration: BoxDecoration(
-          color: _cBoardRed.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _cBoardRed.withValues(alpha: 0.5)),
+          color: _cBoardRed.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _cBoardRed.withValues(alpha: 0.45)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.smart_toy, color: _cBoardRed, size: 20),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text('Auto-Pick ist aktiv — der Server pickt für dich.',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+            const Icon(Icons.auto_mode, color: _cBoardRed, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Auto-Pick aktiv',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 1),
+                  Text('Der Server pickt für dich.',
+                      style: TextStyle(
+                          fontSize: 12, color: scheme.onSurfaceVariant)),
+                ],
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             FilledButton(
               onPressed: () => onChanged(false),
               child: const Text('Selbst picken'),
@@ -542,11 +554,11 @@ class _AutoPickBar extends StatelessWidget {
       );
     }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
       child: Align(
         alignment: Alignment.centerRight,
         child: TextButton.icon(
-          icon: const Icon(Icons.smart_toy_outlined, size: 16),
+          icon: const Icon(Icons.auto_mode, size: 16),
           label: const Text('Auto-Pick aktivieren'),
           onPressed: () => onChanged(true),
         ),
@@ -1264,7 +1276,7 @@ class _BoardHeaderCell extends StatelessWidget {
           if (col.autoPick) ...[
             Tooltip(
               message: 'Auto-Pick (abwesend)',
-              child: Icon(Icons.smart_toy,
+              child: Icon(Icons.auto_mode,
                   size: 13,
                   color: placeholder ? scheme.onSurfaceVariant : _cBoardInk),
             ),
