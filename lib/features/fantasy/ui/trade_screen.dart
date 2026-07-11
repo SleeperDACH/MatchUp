@@ -681,20 +681,22 @@ class _OffersTab extends ConsumerWidget {
 
   final FantasyLeague league;
 
+  /// Offene zuerst, dann nach Datum absteigend.
+  static List<TradeOffer> _sorted(Iterable<TradeOffer> trades) =>
+      [...trades]..sort((a, b) {
+          if (a.status.isPending != b.status.isPending) {
+            return a.status.isPending ? -1 : 1;
+          }
+          return b.createdAt.compareTo(a.createdAt);
+        });
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final myId = ref.watch(currentUserProvider)?.id;
     final trades = ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
         const <TradeOffer>[];
 
-    // Offene zuerst, dann nach Datum absteigend.
-    final sorted = [...trades]..sort((a, b) {
-        if (a.status.isPending != b.status.isPending) {
-          return a.status.isPending ? -1 : 1;
-        }
-        return b.createdAt.compareTo(a.createdAt);
-      });
-
-    if (sorted.isEmpty) {
+    if (trades.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -703,11 +705,99 @@ class _OffersTab extends ConsumerWidget {
       );
     }
 
+    final received =
+        _sorted(trades.where((t) => t.toManager == myId));
+    final sent = _sorted(trades.where((t) => t.fromManager == myId));
+
+    int openOf(List<TradeOffer> l) =>
+        l.where((t) => t.status.isPending).length;
+
     // Dieselbe Karte wie im Chat (holt Angebot + Positionen selbst).
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.only(top: 8, bottom: 12),
       children: [
-        for (final t in sorted) TradeCard(tradeId: t.id, inList: true),
+        _OffersSection(
+          title: 'Empfangen',
+          icon: Icons.call_received,
+          openCount: openOf(received),
+          trades: received,
+          emptyHint: 'Keine empfangenen Angebote.',
+        ),
+        _OffersSection(
+          title: 'Gesendet',
+          icon: Icons.call_made,
+          openCount: openOf(sent),
+          trades: sent,
+          emptyHint: 'Keine gesendeten Angebote.',
+        ),
+      ],
+    );
+  }
+}
+
+/// Ein Abschnitt der Angebote-Liste („Empfangen" bzw. „Gesendet") mit
+/// Überschrift, Zähler offener Angebote und den Trade-Karten.
+class _OffersSection extends StatelessWidget {
+  const _OffersSection({
+    required this.title,
+    required this.icon,
+    required this.openCount,
+    required this.trades,
+    required this.emptyHint,
+  });
+
+  final String title;
+  final IconData icon;
+  final int openCount;
+  final List<TradeOffer> trades;
+  final String emptyHint;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Text(title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurfaceVariant)),
+              if (openCount > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF23030),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('$openCount offen',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (trades.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+            child: Text(emptyHint,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant)),
+          )
+        else
+          for (final t in trades) TradeCard(tradeId: t.id, inList: true),
       ],
     );
   }
