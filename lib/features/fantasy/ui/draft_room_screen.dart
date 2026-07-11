@@ -98,6 +98,54 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     }
   }
 
+  /// Admin: Draft-Reihenfolge zufällig mischen (persistiert, sofort im Board
+  /// sichtbar). Setzt die Positionen per Reihenfolge (Modus wird 'manual').
+  Future<void> _shuffleOrder(List<FantasyManager> managers) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ids = managers.map((m) => m.userId).toList()..shuffle();
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .setDraftOrder(_leagueId, ids);
+      ref.invalidate(fantasyManagersProvider(_leagueId));
+      ref.invalidate(draftLeagueProvider(_leagueId));
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Draft-Reihenfolge gemischt.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+    }
+  }
+
+  /// Admin: Draft starten (nach Bestätigung).
+  Future<void> _startDraft(FantasyLeague league) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Draft starten?'),
+        content: Text(
+            'Der Draft startet mit der aktuellen Reihenfolge und kann nicht '
+            'mehr geändert werden. ${league.draftOrderMode == 'manual' ? '' : 'Die Reihenfolge wird beim Start zufällig ausgelost.'}'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Abbrechen')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Starten')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _repo.startDraft(_leagueId);
+      ref.invalidate(draftLeagueProvider(_leagueId));
+      ref.invalidate(fantasyManagersProvider(_leagueId));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final leagueAsync = ref.watch(draftLeagueProvider(_leagueId));
@@ -199,6 +247,34 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
               total: total,
               round: round,
             ),
+            // Admin-Steuerung im Setup: Reihenfolge mischen + Draft starten.
+            if (league.draftStatus == DraftStatus.setup &&
+                myId == league.createdBy)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.shuffle, size: 18),
+                        label: const Text('Order mischen'),
+                        onPressed: managers.length < 2
+                            ? null
+                            : () => _shuffleOrder(managers),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.sports, size: 18),
+                        label: const Text('Draft starten'),
+                        onPressed:
+                            managers.isEmpty ? null : () => _startDraft(league),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Expanded(
               child: TabBarView(
                 children: [
@@ -206,8 +282,12 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
                     picks: phasePicks,
                     playerById: playerById,
                     managers: managers,
+                    maxTeams: league.maxTeams,
                     rounds: league.roundsThisPhase,
-                    picksMade: league.picksMade,
+                    currentManagerId: league.draftStatus == DraftStatus.drafting
+                        ? cur?.userId
+                        : null,
+                    currentRound: round,
                     myId: myId,
                   ),
                   // Spieler-Tab mit Unter-Tabs: Verfügbar + Queue.
@@ -778,24 +858,38 @@ class _PlayersTab extends StatelessWidget {
   }
 }
 
-/// Draft-Board als Raster: Spalten = Teilnehmer (Draft-Reihenfolge), Zeilen =
-/// Runden. Jede Zelle zeigt den Pick-Code (1.01, 1.02 …) und – falls schon
-/// gepickt – den Spieler. Der aktuelle Pick ist hervorgehoben.
+/// Eine Board-Spalte: entweder ein echter Teilnehmer oder ein freies
+/// Platzhalter-Team (Team N).
+class _BoardCol {
+  const _BoardCol({required this.label, this.userId, this.mine = false});
+  final String label;
+  final String? userId; // null = Platzhalter
+  final bool mine;
+}
+
+/// Draft-Board als Raster: Spalten = Teams (Draft-Reihenfolge, inkl. freier
+/// Platzhalter-Teams bis zur Teilnehmerzahl), Zeilen = Runden. Jede Zelle zeigt
+/// den Pick-Code (1.01, 1.02 …) und – falls schon gepickt – den Spieler. Der
+/// aktuelle Pick ist hervorgehoben.
 class _BoardTab extends StatelessWidget {
   const _BoardTab({
     required this.picks,
     required this.playerById,
     required this.managers,
+    required this.maxTeams,
     required this.rounds,
-    required this.picksMade,
+    required this.currentManagerId,
+    required this.currentRound,
     required this.myId,
   });
 
   final List<DraftPick> picks;
   final Map<String, FantasyPlayer> playerById;
   final List<FantasyManager> managers;
+  final int? maxTeams;
   final int rounds;
-  final int picksMade;
+  final String? currentManagerId;
+  final int currentRound;
   final String? myId;
 
   static const _colW = 92.0;
@@ -814,20 +908,28 @@ class _BoardTab extends StatelessWidget {
         ),
       );
     }
-    // Spalten nach Draft-Position (Slot 1..n); ohne Position stabil ans Ende.
-    final cols = [...managers]..sort((a, b) {
+    // Echte Teams nach Draft-Position (Slot 1..); ohne Position stabil ans Ende.
+    final real = [...managers]..sort((a, b) {
         final pa = a.draftPosition ?? 1 << 30;
         final pb = b.draftPosition ?? 1 << 30;
         return pa.compareTo(pb);
       });
+    // Spalten = echte Teams + freie Platzhalter-Teams bis zur Teilnehmerzahl.
+    final cols = <_BoardCol>[
+      for (final m in real)
+        _BoardCol(label: m.display, userId: m.userId, mine: m.userId == myId),
+    ];
+    final target = (maxTeams != null && maxTeams! > cols.length)
+        ? maxTeams!
+        : cols.length;
+    for (var i = cols.length; i < target; i++) {
+      cols.add(_BoardCol(label: 'Team ${i + 1}'));
+    }
     final n = cols.length;
     // Pick je (Runde, Manager) für schnellen Zugriff.
     final pickByCell = <String, DraftPick>{
       for (final p in picks) '${p.round}:${p.managerId}': p,
     };
-    // Aktueller Pick: Runde + Spalte (Snake-korrekt) zur Hervorhebung.
-    final curRound0 = picksMade ~/ n;
-    final curColIndex = snakeSlot(picksMade, n) - 1; // Spaltenindex (Slot-1)
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
@@ -836,26 +938,26 @@ class _BoardTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Kopfzeile: Teilnehmer-Namen je Spalte.
+            // Kopfzeile: Team-Namen je Spalte (Platzhalter ausgegraut).
             Row(
               children: [
                 const SizedBox(width: _labelW),
-                for (final m in cols)
+                for (final c in cols)
                   Container(
                     width: _colW,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 4, vertical: 6),
                     child: Text(
-                      m.display,
+                      c.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: m.userId == myId
-                            ? scheme.primary
-                            : scheme.onSurface,
+                        color: c.userId == null
+                            ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
+                            : (c.mine ? scheme.primary : scheme.onSurface),
                       ),
                     ),
                   ),
@@ -878,9 +980,13 @@ class _BoardTab extends StatelessWidget {
                   ),
                   for (var s = 0; s < n; s++)
                     _cell(context, round: r, slot: s, n: n,
-                        manager: cols[s],
-                        pick: pickByCell['$r:${cols[s].userId}'],
-                        isCurrent: (r - 1) == curRound0 && s == curColIndex),
+                        col: cols[s],
+                        pick: cols[s].userId == null
+                            ? null
+                            : pickByCell['$r:${cols[s].userId}'],
+                        isCurrent: cols[s].userId != null &&
+                            cols[s].userId == currentManagerId &&
+                            r == currentRound),
                 ],
               ),
           ],
@@ -893,16 +999,17 @@ class _BoardTab extends StatelessWidget {
       {required int round,
       required int slot,
       required int n,
-      required FantasyManager manager,
+      required _BoardCol col,
       required DraftPick? pick,
       required bool isCurrent}) {
     final scheme = Theme.of(context).colorScheme;
-    // Snake: gerade Runden vorwärts, ungerade rückwärts (0-basiert: round-1).
+    // Snake: ungerade Runden vorwärts, gerade rückwärts (0-basiert: round-1).
     final round0 = round - 1;
     final pickInRound = round0.isEven ? slot + 1 : n - slot;
     final code = '$round.${pickInRound.toString().padLeft(2, '0')}';
     final player = pick == null ? null : playerById[pick.playerId];
-    final mine = manager.userId == myId;
+    final mine = col.mine;
+    final placeholder = col.userId == null;
 
     return Container(
       width: _colW,
@@ -914,7 +1021,8 @@ class _BoardTab extends StatelessWidget {
             ? (mine
                 ? scheme.primary.withValues(alpha: 0.18)
                 : scheme.surfaceContainerHighest)
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            : scheme.surfaceContainerHighest
+                .withValues(alpha: placeholder ? 0.15 : 0.3),
         borderRadius: BorderRadius.circular(8),
         border: isCurrent
             ? Border.all(color: scheme.primary, width: 1.6)
@@ -930,7 +1038,8 @@ class _BoardTab extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: scheme.onSurfaceVariant)),
+                      color: scheme.onSurfaceVariant
+                          .withValues(alpha: placeholder ? 0.5 : 1.0))),
               if (pick?.isAuto ?? false) ...[
                 const SizedBox(width: 3),
                 Text('A',
