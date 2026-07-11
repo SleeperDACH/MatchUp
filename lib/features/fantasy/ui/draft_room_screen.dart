@@ -159,6 +159,23 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     }
   }
 
+  /// Auto-Pick für den eigenen Kader an/aus. Wichtig, wenn man einmal die Uhr
+  /// hat auslaufen lassen: der Server setzt einen dann auf Auto-Pick — mit „aus"
+  /// pickt man wieder selbst.
+  Future<void> _setAutoPick(bool on) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _repo.setAutoPick(_leagueId, on);
+      ref.invalidate(fantasyManagersProvider(_leagueId));
+      messenger.showSnackBar(SnackBar(
+          content: Text(on
+              ? 'Auto-Pick aktiviert — der Server pickt für dich.'
+              : 'Auto-Pick deaktiviert — du pickst wieder selbst.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+    }
+  }
+
   /// Admin: Draft starten (nach Bestätigung).
   Future<void> _startDraft(FantasyLeague league) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -282,6 +299,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     }
 
     final cur = currentManager(managers, league.picksMade);
+    final myManager = managers.where((m) => m.userId == myId).firstOrNull;
     final myTurn = league.draftStatus == DraftStatus.drafting &&
         cur != null &&
         cur.userId == myId;
@@ -334,6 +352,13 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
               total: total,
               round: round,
             ),
+            // Auto-Pick-Umschalter während des Drafts: wer die Uhr hat auslaufen
+            // lassen, wird serverseitig auf Auto gesetzt — hier wieder abstellen.
+            if (league.draftStatus == DraftStatus.drafting && myManager != null)
+              _AutoPickBar(
+                on: myManager.autoPick,
+                onChanged: _setAutoPick,
+              ),
             // Admin-Steuerung im Setup: Reihenfolge mischen + Draft starten.
             if (league.draftStatus == DraftStatus.setup &&
                 myId == league.createdBy)
@@ -470,6 +495,57 @@ class _DraftChatTab extends ConsumerWidget {
           .read(fantasyLeagueRepositoryProvider)
           .sendMessage(league.id, text, replyTo: replyTo),
       onRetry: () => ref.invalidate(fantasyMessagesProvider(league.id)),
+    );
+  }
+}
+
+/// Auto-Pick-Umschalter für den eigenen Kader während des Drafts. Ist Auto an
+/// (z. B. weil man die Uhr hat auslaufen lassen), zeigt eine deutliche Leiste
+/// mit „Selbst picken"; ist es aus, ein dezenter Button zum Aktivieren.
+class _AutoPickBar extends StatelessWidget {
+  const _AutoPickBar({required this.on, required this.onChanged});
+
+  final bool on;
+  final Future<void> Function(bool) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (on) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: _cBoardRed.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _cBoardRed.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.smart_toy, color: _cBoardRed, size: 20),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text('Auto-Pick ist aktiv — der Server pickt für dich.',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: () => onChanged(false),
+              child: const Text('Selbst picken'),
+            ),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          icon: const Icon(Icons.smart_toy_outlined, size: 16),
+          label: const Text('Auto-Pick aktivieren'),
+          onPressed: () => onChanged(true),
+        ),
+      ),
     );
   }
 }
