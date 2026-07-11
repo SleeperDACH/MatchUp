@@ -213,4 +213,56 @@ void main() {
       expect(stats.containsKey('seed:x'), isFalse); // kein Spiel/keine Daten
     });
   });
+
+  group('Kaderlimit', () {
+    // Kleiner Kader: 1-1-1-1 ohne Bank -> Limit 4 Spieler.
+    const roster = RosterConfig(gk: 1, def: 1, mid: 1, fwd: 1, bench: 0);
+    final players = {
+      's:gk': _p('s:gk', 'TW', PlayerPosition.gk, 'A'),
+      's:df': _p('s:df', 'ABW', PlayerPosition.def, 'A'),
+      's:mf': _p('s:mf', 'MF', PlayerPosition.mid, 'A'),
+      's:fw': _p('s:fw', 'ST', PlayerPosition.fwd, 'A'),
+      's:x': _p('s:x', 'Extra', PlayerPosition.mid, 'A'),
+    };
+    final stats = {
+      for (final id in players.keys)
+        id: const PlayerMatchStats(goals: 1, played: true),
+    };
+    List<RosterEntry> rosterOf(List<String> ids) => [
+          for (final id in ids)
+            RosterEntry(managerId: 'u1', playerId: id, acquiredVia: 'draft'),
+        ];
+
+    test('über dem Limit -> 0 Punkte', () {
+      final over = rosterOf(['s:gk', 's:df', 's:mf', 's:fw', 's:x']); // 5 > 4
+      expect(isRosterOverLimit('u1', over, roster), isTrue);
+      final totals = effectiveTotalsForRound(
+        stats: stats,
+        round: 1,
+        managers: const [FantasyManager(userId: 'u1', username: 'U1')],
+        roster: over,
+        playerById: players,
+        lineups: const [],
+        scoring: FantasyScoring.kickbaseStyle,
+        rosterConfig: roster,
+      );
+      expect(totals['u1'], 0);
+    });
+
+    test('im Limit -> normale Punkte', () {
+      final ok = rosterOf(['s:gk', 's:df', 's:mf', 's:fw']); // 4 == 4
+      expect(isRosterOverLimit('u1', ok, roster), isFalse);
+      final totals = effectiveTotalsForRound(
+        stats: stats,
+        round: 1,
+        managers: const [FantasyManager(userId: 'u1', username: 'U1')],
+        roster: ok,
+        playerById: players,
+        lineups: const [],
+        scoring: FantasyScoring.kickbaseStyle,
+        rosterConfig: roster,
+      );
+      expect(totals['u1'], greaterThan(0));
+    });
+  });
 }

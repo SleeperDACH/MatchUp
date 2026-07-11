@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/widgets/matchup_chevron.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
+import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'roster_limit_banner.dart';
 import 'draft_room_screen.dart';
 import 'fantasy_chat_screen.dart';
 import 'fantasy_settings_screen.dart';
@@ -410,9 +412,16 @@ class _RostersTab extends ConsumerWidget {
     void open(Widget page) => Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => page));
 
+    final myId = ref.watch(currentUserProvider)?.id;
+    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+        const <RosterEntry>[];
+    final myCount =
+        myId == null ? 0 : rosterCountOf(myId, roster);
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [
+        RosterLimitBanner(count: myCount, limit: league.roster.squadSize),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 2),
           child: Row(

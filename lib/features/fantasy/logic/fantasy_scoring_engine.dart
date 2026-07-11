@@ -200,6 +200,12 @@ Map<String, int> effectiveTotalsForRound({
 }) {
   final out = <String, int>{};
   for (final m in managers) {
+    // Kaderlimit überschritten → keine Punkte, bis genug Spieler abgegeben
+    // werden (verhindert, dass man sich per Trade unerlaubt viele Spieler holt).
+    if (isRosterOverLimit(m.userId, roster, rosterConfig)) {
+      out[m.userId] = 0;
+      continue;
+    }
     final players = [
       for (final r in roster)
         if (r.managerId == m.userId && playerById[r.playerId] != null)
@@ -221,3 +227,14 @@ Map<String, int> effectiveTotalsForRound({
   }
   return out;
 }
+
+/// Anzahl Spieler im Kader von [managerId].
+int rosterCountOf(String managerId, List<RosterEntry> roster) =>
+    roster.where((r) => r.managerId == managerId).length;
+
+/// Ob [managerId] mehr Spieler im Kader hat als erlaubt
+/// ([RosterConfig.squadSize]). Über dem Limit gibt es keine Punkte, bis genug
+/// Spieler abgegeben wurden.
+bool isRosterOverLimit(
+        String managerId, List<RosterEntry> roster, RosterConfig config) =>
+    rosterCountOf(managerId, roster) > config.squadSize;

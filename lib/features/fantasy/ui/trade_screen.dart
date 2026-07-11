@@ -727,9 +727,15 @@ class TradeCard extends ConsumerWidget {
       BuildContext context, WidgetRef ref, TradeOffer trade, bool accept) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
+      // Trade-Positionen vor dem Invalidate lesen (für die Chat-Nachricht).
+      final detail = ref.read(tradeDetailProvider(tradeId)).valueOrNull;
       await ref
           .read(fantasyLeagueRepositoryProvider)
           .respondTrade(tradeId, accept);
+      // Angenommene Trades im Liga-Chat bekanntgeben, damit alle Bescheid wissen.
+      if (accept && detail != null) {
+        await _postTradeToChat(ref, trade, detail.items);
+      }
       ref.invalidate(tradeDetailProvider(tradeId));
       ref.invalidate(leagueTradesProvider(trade.leagueId));
       messenger.showSnackBar(SnackBar(
@@ -737,6 +743,34 @@ class TradeCard extends ConsumerWidget {
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
+  }
+
+  /// Postet einen angenommenen Trade in den Liga-Chat (Fehler dabei ignorieren).
+  Future<void> _postTradeToChat(
+      WidgetRef ref, TradeOffer trade, List<TradeItem> items) async {
+    final managers =
+        ref.read(fantasyManagersProvider(trade.leagueId)).valueOrNull ??
+            const <FantasyManager>[];
+    final nameOf = {for (final m in managers) m.userId: m.display};
+    final pool =
+        ref.read(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
+    final playerName = {for (final p in pool) p.id: p.name};
+    final fromName = nameOf[trade.fromManager] ?? 'Team A';
+    final toName = nameOf[trade.toManager] ?? 'Team B';
+    List<String> givenBy(String uid) => [
+          for (final it in items)
+            if (it.giver == uid) playerName[it.playerId] ?? it.playerId
+        ];
+    final fromGives = givenBy(trade.fromManager);
+    final toGives = givenBy(trade.toManager);
+    final msg = '🔄 Trade angenommen: $fromName ⇄ $toName\n'
+        '$fromName gibt ab: ${fromGives.isEmpty ? '–' : fromGives.join(', ')}\n'
+        '$toName gibt ab: ${toGives.isEmpty ? '–' : toGives.join(', ')}';
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .sendMessage(trade.leagueId, msg);
+    } catch (_) {}
   }
 
   Future<void> _cancel(

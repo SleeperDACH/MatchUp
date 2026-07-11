@@ -12,6 +12,7 @@ import 'matchday_stepper.dart';
 import 'matchup_detail_screen.dart';
 import 'matchup_hero.dart';
 import 'matchup_lineups.dart';
+import 'roster_limit_banner.dart';
 
 /// Eigenständiger Screen (mit AppBar) — dünne Hülle um [MatchupsBody].
 class MatchupsScreen extends StatelessWidget {
@@ -239,6 +240,10 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
 
               return ListView(
                 children: [
+                  if (myId != null)
+                    RosterLimitBanner(
+                        count: rosterCountOf(myId, roster),
+                        limit: league.roster.squadSize),
                   MatchdayStepper(
                     round: round,
                     onChanged: (r) {
