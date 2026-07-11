@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/league_chat.dart';
 import '../../auth/providers.dart';
+import '../../tippspiel/providers.dart' show chatLastReadProvider;
 import '../data/draft_repository.dart';
 import '../logic/draft_order.dart';
 import '../models/fantasy_models.dart';
@@ -26,10 +27,16 @@ class DraftRoomScreen extends ConsumerStatefulWidget {
   ConsumerState<DraftRoomScreen> createState() => _DraftRoomScreenState();
 }
 
-class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
+class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
+    with SingleTickerProviderStateMixin {
   Timer? _ticker;
   bool _autopickInFlight = false;
   late final DraftRepository _repo;
+
+  /// Chat ist der 4. Tab (Index 3).
+  static const _chatTabIndex = 3;
+  late final TabController _tabs =
+      TabController(length: 4, vsync: this)..addListener(_onTabChanged);
 
   /// Optimistische Queue-Reihenfolge: sofort angezeigt (kein „Zurückspringen"
   /// beim Sortieren), bis der Realtime-Stream denselben Stand meldet.
@@ -46,9 +53,16 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
+  void _onTabChanged() {
+    // Nur beim „Einrasten" reagieren (nicht pro Animationsschritt): aktualisiert
+    // den Ungelesen-Punkt und löst das Als-gelesen-Markieren aus.
+    if (!_tabs.indexIsChanging && mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _ticker?.cancel();
+    _tabs.dispose();
     // Raum verlassen → Auto-Modus, bis der Manager wieder beitritt.
     unawaited(_repo.setAutoPick(_leagueId, true));
     super.dispose();
@@ -264,14 +278,26 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
     final round =
         managers.isEmpty ? 1 : league.picksMade ~/ managers.length + 1;
 
-    return DefaultTabController(
-      length: 4,
-      child: Scaffold(
+    // Ungelesene Chat-Nachrichten → Punkt am Chat-Tab. Ist der Chat gerade
+    // offen, als gelesen markieren (Punkt verschwindet).
+    final chatUnread = ref.watch(fantasyUnreadChatProvider(_leagueId));
+    if (_tabs.index == _chatTabIndex && chatUnread) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref
+              .read(chatLastReadProvider(_leagueId).notifier)
+              .markRead(DateTime.now());
+        }
+      });
+    }
+
+    return Scaffold(
         appBar: AppBar(
           title: Text(league.name),
           // Board · Spieler (mit Queue) · Team · Chat — alles ohne den Raum
           // verlassen zu müssen.
           bottom: TabBar(
+            controller: _tabs,
             labelPadding: EdgeInsets.zero,
             tabs: [
               const Tab(
@@ -283,8 +309,8 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
               Tab(
                   icon: const Icon(Icons.shield_outlined, size: 20),
                   text: 'Team ($mySquadSize)'),
-              const Tab(
-                  icon: Icon(Icons.forum_outlined, size: 20), text: 'Chat'),
+              Tab(
+                  icon: _ChatTabIcon(unread: chatUnread), text: 'Chat'),
             ],
           ),
         ),
@@ -297,29 +323,6 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
               total: total,
               round: round,
             ),
-            // Setup-Hinweis für alle: Queue kann schon jetzt vorbereitet werden.
-            if (league.draftStatus == DraftStatus.setup)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
-                child: Row(
-                  children: [
-                    Icon(Icons.bookmark_add_outlined,
-                        size: 15,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Schon jetzt: Im Tab „Spieler" deine Draft-Queue '
-                        'vorbereiten. Freie Plätze (Team N) füllen sich, sobald '
-                        'Spieler beitreten.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             // Admin-Steuerung im Setup: Reihenfolge mischen + Draft starten.
             if (league.draftStatus == DraftStatus.setup &&
                 myId == league.createdBy)
@@ -350,6 +353,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
               ),
             Expanded(
               child: TabBarView(
+                controller: _tabs,
                 children: [
                   _BoardTab(
                     picks: phasePicks,
@@ -392,7 +396,38 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen> {
             ),
           ],
         ),
-      ),
+    );
+  }
+}
+
+/// Chat-Tab-Icon mit rotem Punkt bei ungelesenen Nachrichten.
+class _ChatTabIcon extends StatelessWidget {
+  const _ChatTabIcon({required this.unread});
+
+  final bool unread;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const Icon(Icons.forum_outlined, size: 20),
+        if (unread)
+          Positioned(
+            right: -3,
+            top: -2,
+            child: Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(
+                color: _cBoardRed,
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: Theme.of(context).colorScheme.surface, width: 1.5),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

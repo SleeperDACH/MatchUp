@@ -6,6 +6,7 @@ import '../../core/data/openligadb/openligadb_provider.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/models/models.dart';
 import '../auth/providers.dart';
+import '../tippspiel/providers.dart' show chatLastReadProvider;
 import 'data/db_fantasy_data_provider.dart';
 import 'data/draft_repository.dart';
 import 'data/fantasy_data_provider.dart';
@@ -67,6 +68,18 @@ final leagueRosterProvider =
 final fantasyMessagesProvider =
     StreamProvider.family<List<ChatMessage>, String>((ref, leagueId) {
   return ref.watch(fantasyLeagueRepositoryProvider).messageStream(leagueId);
+});
+
+/// Ungelesene Nachrichten im Liga-Chat? Lokale „gelesen bis"-Marke pro Gerät
+/// (teilt sich den generischen Marker mit dem Tippspiel-Chat; Schlüssel =
+/// league_id, kollidiert nicht mit den Runden-IDs).
+final fantasyUnreadChatProvider = Provider.family<bool, String>((ref, leagueId) {
+  final myId = ref.watch(currentUserProvider)?.id;
+  final lastRead = ref.watch(chatLastReadProvider(leagueId));
+  final messages =
+      ref.watch(fantasyMessagesProvider(leagueId)).valueOrNull ?? const [];
+  return messages.any((m) =>
+      m.userId != myId && (lastRead == null || m.createdAt.isAfter(lastRead)));
 });
 
 /// Trade-Angebote einer Liga (RLS: nur eigene Beteiligung) in Echtzeit.
