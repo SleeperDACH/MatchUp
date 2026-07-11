@@ -68,17 +68,25 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     super.dispose();
   }
 
+  int _tick = 0;
+
   void _onTick() {
     final league = ref.read(draftLeagueProvider(_leagueId)).valueOrNull;
     // Jede Sekunde prüfen: der Server pickt automatisch, wenn der Timer
     // abgelaufen ist ODER der Manager am Zug abwesend (Auto-Modus) ist.
-    if (league != null &&
-        league.draftStatus == DraftStatus.drafting &&
-        !_autopickInFlight) {
-      _autopickInFlight = true;
-      _repo
-          .autopickIfExpired(_leagueId)
-          .whenComplete(() => _autopickInFlight = false);
+    if (league != null && league.draftStatus == DraftStatus.drafting) {
+      if (!_autopickInFlight) {
+        _autopickInFlight = true;
+        _repo
+            .autopickIfExpired(_leagueId)
+            .whenComplete(() => _autopickInFlight = false);
+      }
+      // Auto-Pick-Status live halten: Mitglieder (auto_pick) kommen nicht per
+      // Realtime, daher während des Drafts alle 2 s neu laden. Riverpod behält
+      // den alten Wert beim Nachladen → kein Flackern.
+      if (++_tick % 2 == 0) {
+        ref.invalidate(fantasyManagersProvider(_leagueId));
+      }
     }
     if (mounted) setState(() {}); // Countdown aktualisieren
   }
@@ -1149,41 +1157,32 @@ class _BoardHeaderCell extends StatelessWidget {
     final Color bg = placeholder
         ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
         : (isCurrent ? _cBoardRed : _cBoardGreen);
+    // Einzeilig, damit alle Kopf-Karten gleich groß bleiben — Auto-Pick zeigt
+    // ein kleines Roboter-Symbol inline (live, sobald ein Team abwesend ist).
     return Container(
       width: width,
+      height: 40,
       margin: const EdgeInsets.all(1.5),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
+      alignment: Alignment.center,
+      child: Row(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          child,
           if (col.autoPick) ...[
-            const SizedBox(height: 3),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: _cBoardInk.withValues(alpha: 0.28),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.smart_toy_outlined, size: 10, color: _cBoardInk),
-                  SizedBox(width: 3),
-                  Text('AUTO',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                          color: _cBoardInk)),
-                ],
-              ),
+            Tooltip(
+              message: 'Auto-Pick (abwesend)',
+              child: Icon(Icons.smart_toy,
+                  size: 13,
+                  color: placeholder ? scheme.onSurfaceVariant : _cBoardInk),
             ),
+            const SizedBox(width: 3),
           ],
+          Flexible(child: child),
         ],
       ),
     );
@@ -1339,6 +1338,9 @@ class _BoardTab extends StatelessWidget {
     final player = pick == null ? null : playerById[pick.playerId];
     final mine = col.mine;
     final placeholder = col.userId == null;
+    // Gedraftete Karte in ihrer Positionsfarbe (TW blau, ABW gelb, MF grün,
+    // ST rot); Text dann dunkel für Kontrast.
+    final onCard = player != null ? _cBoardInk : scheme.onSurfaceVariant;
 
     return Container(
       width: _colW,
@@ -1347,15 +1349,15 @@ class _BoardTab extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
         color: player != null
-            ? (mine
-                ? scheme.primary.withValues(alpha: 0.18)
-                : scheme.surfaceContainerHighest)
+            ? positionColor(player.position)
             : scheme.surfaceContainerHighest
                 .withValues(alpha: placeholder ? 0.15 : 0.3),
         borderRadius: BorderRadius.circular(8),
         border: isCurrent
             ? Border.all(color: scheme.primary, width: 1.6)
-            : null,
+            : (mine && player != null
+                ? Border.all(color: _cBoardInk.withValues(alpha: 0.35), width: 1)
+                : null),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1367,14 +1369,18 @@ class _BoardTab extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: scheme.onSurfaceVariant
-                          .withValues(alpha: placeholder ? 0.5 : 1.0))),
+                      color: onCard.withValues(
+                          alpha: player != null
+                              ? 0.7
+                              : (placeholder ? 0.5 : 1.0)))),
               if (pick?.isAuto ?? false) ...[
                 const SizedBox(width: 3),
-                Text('A',
+                Text('AUTO',
                     style: TextStyle(
-                        fontSize: 9,
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.7))),
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                        color: onCard.withValues(alpha: 0.7))),
               ],
             ],
           ),
@@ -1386,10 +1392,8 @@ class _BoardTab extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              // Gedraftete Spieler in ihrer Positionsfarbe (TW blau, ABW gelb,
-              // MF grün, ST rot).
               color: player != null
-                  ? positionColor(player.position)
+                  ? _cBoardInk
                   : scheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
           ),
