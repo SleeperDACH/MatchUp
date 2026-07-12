@@ -23,24 +23,38 @@ class TradeScreen extends ConsumerWidget {
     final myId = ref.watch(currentUserProvider)?.id;
     final trades = ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
         const <TradeOffer>[];
-    final openCount = trades
-        .where((t) => t.status == TradeStatus.pending && t.toManager == myId)
+    final openReceived = trades
+        .where((t) => t.status.isPending && t.toManager == myId)
+        .length;
+    final openSent = trades
+        .where((t) => t.status.isPending && t.fromManager == myId)
         .length;
 
     return DefaultTabController(
-      length: 2,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Trade'),
-          bottom: TabBar(tabs: [
-            const Tab(text: 'Neuer Trade'),
-            Tab(text: openCount > 0 ? 'Angebote ($openCount)' : 'Angebote'),
-          ]),
+          bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.center,
+            tabs: [
+              const Tab(text: 'Neuer Trade'),
+              Tab(
+                  text: openReceived > 0
+                      ? 'Empfangen ($openReceived)'
+                      : 'Empfangen'),
+              Tab(text: openSent > 0 ? 'Gesendet ($openSent)' : 'Gesendet'),
+              const Tab(text: 'Historie'),
+            ],
+          ),
         ),
         body: TabBarView(
           children: [
             _PartnerList(league: league),
-            _OffersTab(league: league),
+            _ActiveOffers(league: league, incoming: true),
+            _ActiveOffers(league: league, incoming: false),
+            _TradeHistory(league: league),
           ],
         ),
       ),
@@ -676,129 +690,96 @@ class _RosterColumn extends StatelessWidget {
   }
 }
 
-class _OffersTab extends ConsumerWidget {
-  const _OffersTab({required this.league});
+/// Offene Angebote einer Richtung: [incoming] true = an mich gerichtet
+/// („Empfangen"), false = von mir gestellt („Gesendet"). Zeigt nur noch
+/// laufende (pending) Angebote — abgeschlossene stehen in der Historie.
+class _ActiveOffers extends ConsumerWidget {
+  const _ActiveOffers({required this.league, required this.incoming});
 
   final FantasyLeague league;
-
-  /// Offene zuerst, dann nach Datum absteigend.
-  static List<TradeOffer> _sorted(Iterable<TradeOffer> trades) =>
-      [...trades]..sort((a, b) {
-          if (a.status.isPending != b.status.isPending) {
-            return a.status.isPending ? -1 : 1;
-          }
-          return b.createdAt.compareTo(a.createdAt);
-        });
+  final bool incoming;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myId = ref.watch(currentUserProvider)?.id;
     final trades = ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
         const <TradeOffer>[];
+    final list = trades
+        .where((t) =>
+            t.status.isPending &&
+            (incoming ? t.toManager == myId : t.fromManager == myId))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    if (trades.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('Noch keine Trade-Angebote.', textAlign: TextAlign.center),
-        ),
+    if (list.isEmpty) {
+      return _EmptyState(
+        icon: incoming ? Icons.call_received : Icons.call_made,
+        text: incoming
+            ? 'Keine offenen empfangenen Angebote.'
+            : 'Keine offenen gesendeten Angebote.',
       );
     }
 
-    final received =
-        _sorted(trades.where((t) => t.toManager == myId));
-    final sent = _sorted(trades.where((t) => t.fromManager == myId));
-
-    int openOf(List<TradeOffer> l) =>
-        l.where((t) => t.status.isPending).length;
-
     // Dieselbe Karte wie im Chat (holt Angebot + Positionen selbst).
     return ListView(
-      padding: const EdgeInsets.only(top: 8, bottom: 12),
-      children: [
-        _OffersSection(
-          title: 'Empfangen',
-          icon: Icons.call_received,
-          openCount: openOf(received),
-          trades: received,
-          emptyHint: 'Keine empfangenen Angebote.',
-        ),
-        _OffersSection(
-          title: 'Gesendet',
-          icon: Icons.call_made,
-          openCount: openOf(sent),
-          trades: sent,
-          emptyHint: 'Keine gesendeten Angebote.',
-        ),
-      ],
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [for (final t in list) TradeCard(tradeId: t.id, inList: true)],
     );
   }
 }
 
-/// Ein Abschnitt der Angebote-Liste („Empfangen" bzw. „Gesendet") mit
-/// Überschrift, Zähler offener Angebote und den Trade-Karten.
-class _OffersSection extends StatelessWidget {
-  const _OffersSection({
-    required this.title,
-    required this.icon,
-    required this.openCount,
-    required this.trades,
-    required this.emptyHint,
-  });
+/// Trade-Historie: alle abgeschlossenen Angebote (angenommen, abgelehnt,
+/// zurückgezogen, gekontert) beider Richtungen, neueste zuerst.
+class _TradeHistory extends ConsumerWidget {
+  const _TradeHistory({required this.league});
 
-  final String title;
+  final FantasyLeague league;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final trades = ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
+        const <TradeOffer>[];
+    final list = trades.where((t) => !t.status.isPending).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    if (list.isEmpty) {
+      return const _EmptyState(
+        icon: Icons.history,
+        text: 'Noch keine abgeschlossenen Trades.',
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [for (final t in list) TradeCard(tradeId: t.id, inList: true)],
+    );
+  }
+}
+
+/// Leerer Zustand eines Angebote-Tabs (Icon + Hinweis, mittig).
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.icon, required this.text});
+
   final IconData icon;
-  final int openCount;
-  final List<TradeOffer> trades;
-  final String emptyHint;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 8),
-              Text(title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: scheme.onSurfaceVariant)),
-              if (openCount > 0) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF23030),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text('$openCount offen',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ],
-          ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 48, color: scheme.onSurfaceVariant),
+            const SizedBox(height: 12),
+            Text(text,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: scheme.onSurfaceVariant)),
+          ],
         ),
-        if (trades.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-            child: Text(emptyHint,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant)),
-          )
-        else
-          for (final t in trades) TradeCard(tradeId: t.id, inList: true),
-      ],
+      ),
     );
   }
 }
