@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -73,13 +75,25 @@ class HomeScreen extends ConsumerWidget {
                 'App über ./run_dev.sh (siehe README).',
               )
             else ...[
-              const _WelcomeHeader(),
-              const SizedBox(height: 16),
-              ..._fantasySection(context, ref),
+              const _Appear(child: _WelcomeHeader()),
               const SizedBox(height: 18),
-              ..._tippspielSection(context, ref),
+              _Appear(
+                delayMs: 80,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _fantasySection(context, ref),
+                ),
+              ),
+              const SizedBox(height: 18),
+              _Appear(
+                delayMs: 150,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _tippspielSection(context, ref),
+                ),
+              ),
               const SizedBox(height: 22),
-              const _NewsSection(),
+              const _Appear(delayMs: 220, child: _NewsSection()),
             ],
           ],
         ),
@@ -93,7 +107,8 @@ class HomeScreen extends ConsumerWidget {
   List<Widget> _fantasySection(BuildContext context, WidgetRef ref) {
     final leagues = ref.watch(myFantasyLeaguesProvider);
     return [
-      _sectionHeader(context, 'Fantasy', Icons.shield_outlined),
+      _sectionHeader(context, 'Fantasy', Icons.shield_outlined,
+          accent: MatchUpColors.green, count: leagues.valueOrNull?.length),
       leagues.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(20),
@@ -123,7 +138,8 @@ class HomeScreen extends ConsumerWidget {
   List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
     final rounds = ref.watch(myRoundsProvider);
     return [
-      _sectionHeader(context, 'Tippspiel', Icons.emoji_events_outlined),
+      _sectionHeader(context, 'Tippspiel', Icons.emoji_events_outlined,
+          accent: const Color(0xFFFFC83D), count: rounds.valueOrNull?.length),
       rounds.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(20),
@@ -146,17 +162,44 @@ class HomeScreen extends ConsumerWidget {
     ];
   }
 
-  Widget _sectionHeader(BuildContext context, String title, IconData icon) =>
-      Padding(
-        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+  Widget _sectionHeader(BuildContext context, String title, IconData icon,
+      {Color? accent, int? count}) {
+    final c = accent ?? Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 0, 4, 10),
+      child: Row(
+        children: [
+          // Farbige Akzentleiste als Abschnitts-Marker.
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+                color: c, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 10),
+          Icon(icon, size: 18, color: c),
+          const SizedBox(width: 8),
+          Text(title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold)),
+          if (count != null && count > 0) ...[
             const SizedBox(width: 8),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+              decoration: BoxDecoration(
+                  color: c.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(9)),
+              child: Text('$count',
+                  style: TextStyle(
+                      color: c, fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
           ],
-        ),
-      );
+        ],
+      ),
+    );
+  }
 }
 
 /// Bundesliga-News: Transferticker (Live-News) + Einstieg zu „Verletzungen &
@@ -208,9 +251,10 @@ class _NewsSection extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
                   child: Row(
                     children: [
-                      Icon(Icons.swap_horiz, size: 15, color: const Color(0xFFFFC83D)),
+                      Icon(Icons.newspaper,
+                          size: 15, color: const Color(0xFF5B9DF9)),
                       const SizedBox(width: 6),
-                      Text('Transfers',
+                      Text('News',
                           style: Theme.of(context)
                               .textTheme
                               .labelLarge
@@ -233,14 +277,14 @@ class _NewsSection extends ConsumerWidget {
                         MaterialPageRoute(
                             builder: (_) => const NewsListScreen(
                                   topic: 'transfers',
-                                  title: 'Transfers',
+                                  title: 'News',
                                   intro:
-                                      'Aktuelle Transfer-Schlagzeilen der '
-                                      'Bundesliga, neueste zuerst. Tippen '
-                                      'öffnet den Artikel.',
+                                      'Aktuelle Bundesliga-Schlagzeilen, '
+                                      'neueste zuerst. Tippen öffnet den '
+                                      'Artikel.',
                                 ))),
                     icon: const Icon(Icons.unfold_more, size: 18),
-                    label: const Text('Ältere Transfers anzeigen'),
+                    label: const Text('Ältere News anzeigen'),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -369,10 +413,23 @@ class _WelcomeHeader extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name == null ? 'Willkommen 👋' : 'Hallo, $name 👋',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold, color: Colors.white),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name == null ? 'Willkommen ' : 'Hallo, $name ',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
+                      ),
+                    ),
+                    const _WavingHand(size: 24),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -521,58 +578,60 @@ class _LeagueTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Bewusst keine Card/Box: schlichte, randlose Listenzeile.
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-          child: Row(
-            children: [
-              AppAvatar(
-                imageUrl: logoUrl,
-                emoji: logoEmoji,
-                colorHex: logoColor,
-                fallbackIcon: icon,
-                size: 40,
-                cornerRadius: 10,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold)),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant)),
-                  ],
+    // Bewusst keine Card/Box: schlichte, randlose, dünne Listenzeile.
+    return _PressScale(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+            child: Row(
+              children: [
+                AppAvatar(
+                  imageUrl: logoUrl,
+                  emoji: logoEmoji,
+                  colorHex: logoColor,
+                  fallbackIcon: icon,
+                  size: 34,
+                  cornerRadius: 9,
                 ),
-              ),
-              if (trailing != null) ...[
-                const SizedBox(width: 8),
-                trailing!,
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  trailing!,
+                ],
+                const SizedBox(width: 10),
+                // Nach rechts gedrehter MatchUp-Doppelchevron in Weiß.
+                const RotatedBox(
+                  quarterTurns: 1,
+                  child: MatchUpChevron(size: 14, color: Colors.white),
+                ),
               ],
-              const SizedBox(width: 12),
-              // Nach rechts gedrehter MatchUp-Doppelchevron in Weiß.
-              const RotatedBox(
-                quarterTurns: 1,
-                child: MatchUpChevron(size: 16, color: Colors.white),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -590,8 +649,124 @@ class _RowDivider extends StatelessWidget {
     return Divider(
       height: 1,
       thickness: 1,
-      indent: 56,
+      indent: 49,
       color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+    );
+  }
+}
+
+/// Einmalige Einblend-Animation (Fade + leichtes Hochgleiten) beim Erscheinen;
+/// mit [delayMs] gestaffelt für einen lebendigen Aufbau des Screens.
+class _Appear extends StatefulWidget {
+  const _Appear({required this.child, this.delayMs = 0});
+
+  final Widget child;
+  final int delayMs;
+
+  @override
+  State<_Appear> createState() => _AppearState();
+}
+
+class _AppearState extends State<_Appear>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 420));
+  late final Animation<double> _t =
+      CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (context, child) => Opacity(
+        opacity: _t.value,
+        child: Transform.translate(
+            offset: Offset(0, (1 - _t.value) * 14), child: child),
+      ),
+      child: widget.child,
+    );
+  }
+}
+
+/// Drückt sein Kind beim Antippen leicht zusammen (taktiles Feedback).
+class _PressScale extends StatefulWidget {
+  const _PressScale({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<_PressScale> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Listener beobachtet nur (verbraucht die Geste nicht) → InkWell-Ripple
+    // und onTap des Kindes bleiben erhalten.
+    return Listener(
+      onPointerDown: (_) => setState(() => _down = true),
+      onPointerUp: (_) => setState(() => _down = false),
+      onPointerCancel: (_) => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Kleine, periodisch winkende Hand (👋) — Begrüßung im Kopfbereich.
+class _WavingHand extends StatefulWidget {
+  const _WavingHand({this.size = 24});
+
+  final double size;
+
+  @override
+  State<_WavingHand> createState() => _WavingHandState();
+}
+
+class _WavingHandState extends State<_WavingHand>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 2600))
+    ..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, child) {
+        // In der ersten Phase winken (Sinus), danach ruhen.
+        final t = _c.value;
+        final angle = t < 0.45 ? math.sin(t / 0.45 * math.pi * 3) * 0.35 : 0.0;
+        return Transform.rotate(
+            angle: angle, alignment: Alignment.bottomCenter, child: child);
+      },
+      child: Text('👋', style: TextStyle(fontSize: widget.size)),
     );
   }
 }
