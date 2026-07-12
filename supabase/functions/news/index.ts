@@ -13,6 +13,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const QUERIES: Record<string, string> = {
   transfers: "Bundesliga (Transfer OR Wechsel OR Verpflichtung) when:14d",
   injuries: "Bundesliga (Verletzung OR verletzt OR Sperre OR gesperrt OR Ausfall) when:14d",
+  // Nur finalisierte Wechsel (Done Deals): Abschluss-Signalwörter.
+  done_deals: "Bundesliga (Transfer OR Wechsel OR Verpflichtung) " +
+    "(perfekt OR offiziell OR fix OR unterschreibt OR verpflichtet OR bestätigt) when:21d",
 };
 
 // Stichwort-Filter, um aus einem allgemeinen Feed (kicker) themenpassende
@@ -20,6 +23,8 @@ const QUERIES: Record<string, string> = {
 const KEYWORDS: Record<string, RegExp> = {
   transfers: /transfer|wechsel|verpflicht|leih|abgang|zugang|unterschreib/i,
   injuries: /verletz|verletzt|sperre|gesperrt|ausfall|muskel|kreuzband|rote karte|op\b/i,
+  done_deals:
+    /perfekt|offiziell|fix\b|unterschreib|verpflicht|wechselt (zu|zum|nach)|festgemacht|gebucht|best[äa]tigt/i,
 };
 
 // Quellen je Thema: Google News (zielgenau) mit kicker-Fallback (allgemeiner

@@ -248,6 +248,55 @@ class _NewsSection extends ConsumerWidget {
             );
           },
         ),
+        // Done Deals (nur finalisierte Transfers).
+        Material(
+          color: MatchUpColors.green.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const NewsListScreen(
+                      topic: 'done_deals',
+                      title: 'Done Deals',
+                      intro: 'Finalisierte Bundesliga-Transfers (bestätigte '
+                          'Abschlüsse), neueste zuerst.',
+                      dealStyle: true,
+                    ))),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                        color: MatchUpColors.green, shape: BoxShape.circle),
+                    child: const Icon(Icons.handshake,
+                        color: MatchUpColors.base, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Done Deals',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15)),
+                        Text('Alle finalen Transfers — kompakt',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
         // Verletzungen & Sperren.
         Material(
           color: MatchUpColors.red.withValues(alpha: 0.10),

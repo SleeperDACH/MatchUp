@@ -12,11 +12,15 @@ class NewsListScreen extends ConsumerWidget {
     required this.topic,
     required this.title,
     required this.intro,
+    this.dealStyle = false,
   });
 
   final String topic;
   final String title;
   final String intro;
+
+  /// „Done Deals"-Darstellung (grüner Haken statt Artikel-Icon).
+  final bool dealStyle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -64,7 +68,7 @@ class NewsListScreen extends ConsumerWidget {
                             color: scheme.onSurfaceVariant)),
                   );
                 }
-                return NewsTile(item: items[i - 1]);
+                return NewsTile(item: items[i - 1], dealStyle: dealStyle);
               },
             );
           },

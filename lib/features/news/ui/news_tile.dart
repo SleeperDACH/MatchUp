@@ -14,11 +14,15 @@ Future<void> openNews(BuildContext context, String url) async {
   }
 }
 
-/// Kompakte, antippbare News-Zeile (Titel + Quelle · Zeit).
+/// Kompakte, antippbare News-Zeile (Titel + Quelle · Zeit). Mit [dealStyle]
+/// als „Done Deal"-Eintrag: grüner Haken statt Artikel-Icon.
 class NewsTile extends StatelessWidget {
-  const NewsTile({super.key, required this.item});
+  const NewsTile({super.key, required this.item, this.dealStyle = false});
 
   final NewsItem item;
+  final bool dealStyle;
+
+  static const _green = Color(0xFF4ADE6A);
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +42,10 @@ class NewsTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (dealStyle) ...[
+                const Icon(Icons.check_circle, size: 18, color: _green),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,7 +67,8 @@ class NewsTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.open_in_new, size: 16, color: scheme.onSurfaceVariant),
+              Icon(dealStyle ? Icons.north_east : Icons.open_in_new,
+                  size: 16, color: scheme.onSurfaceVariant),
             ],
           ),
         ),
