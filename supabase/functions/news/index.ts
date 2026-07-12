@@ -31,7 +31,10 @@ function sources(topic: string): Source[] {
       url: `https://news.google.com/rss/search?q=${encodeURIComponent(QUERIES[topic])}` +
         `&hl=de&gl=DE&ceid=DE:de`,
     },
-    { url: "https://newsfeed.kicker.de/news/aktuell", filter: KEYWORDS[topic] },
+    {
+      url: "https://newsfeed.kicker.de/news/bundesliga",
+      filter: KEYWORDS[topic],
+    },
   ];
 }
 
@@ -145,10 +148,13 @@ Deno.serve(async (req) => {
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
     "Accept": "application/rss+xml, application/xml, text/xml, */*",
   };
+  const feeds = sources(topic);
   let items: Array<Record<string, string>> = [];
+  let fromPrimary = false;
   let lastErr = "keine Quelle";
   outer:
-  for (const src of sources(topic)) {
+  for (let i = 0; i < feeds.length; i++) {
+    const src = feeds[i];
     // Pro Quelle bis zu zwei Versuche (Google 503 → kurzer Backoff).
     for (const wait of [0, 700]) {
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -161,6 +167,7 @@ Deno.serve(async (req) => {
         const parsed = parseRss(await res.text(), src.filter);
         if (parsed.length > 0) {
           items = parsed;
+          fromPrimary = i === 0;
           break outer;
         }
         lastErr = "leerer Feed";
@@ -177,10 +184,15 @@ Deno.serve(async (req) => {
     return json({ error: `News-Abruf fehlgeschlagen: ${lastErr}` }, 502);
   }
 
-  await supabase.from("news_cache").upsert({
-    topic,
-    fetched_at: new Date().toISOString(),
-    payload: items,
-  });
+  // Nur die Primärquelle (Google, zielgenau) cachen — der Fallback (kicker,
+  // dünner) wird geliefert, aber nicht persistiert, damit der nächste Aufruf
+  // wieder Google versucht und die Noise nicht 30 Min hängen bleibt.
+  if (fromPrimary) {
+    await supabase.from("news_cache").upsert({
+      topic,
+      fetched_at: new Date().toISOString(),
+      payload: items,
+    });
+  }
   return json(items);
 });
