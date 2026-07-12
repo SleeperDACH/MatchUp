@@ -134,53 +134,60 @@ class _OverviewTab extends ConsumerWidget {
         // Wochen-Recap (versteckt sich, bis es gewertete Punkte gibt).
         if (seasonRunning) WeeklyRecapCard(league: league),
         Text('Schnellzugriff', style: labelStyle),
-        const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.5,
+        const SizedBox(height: 14),
+        // Randlose Icon-Aktionen (farbige Kreise statt gefüllter Kästen),
+        // gleichmäßig in einer Reihe verteilt.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (drafted) ...[
-              _ActionTile(
-                icon: Icons.sports_soccer,
-                label: 'Aufstellung',
-                color: _cTeal,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => LineupScreen(league: league))),
+              Expanded(
+                child: _QuickAction(
+                  icon: Icons.sports_soccer,
+                  label: 'Aufstellung',
+                  color: _cTeal,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => LineupScreen(league: league))),
+                ),
               ),
-              _ActionTile(
-                icon: Icons.person_add_alt,
-                label: 'Free Agency',
-                color: _cAmber,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => FreeAgencyScreen(league: league))),
+              Expanded(
+                child: _QuickAction(
+                  icon: Icons.person_add_alt,
+                  label: 'Free Agency',
+                  color: _cAmber,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => FreeAgencyScreen(league: league))),
+                ),
               ),
-              _ActionTile(
-                icon: Icons.swap_horiz,
-                label: 'Trade',
-                color: _cRed,
-                badge: openTrades,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => TradeScreen(league: league))),
+              Expanded(
+                child: _QuickAction(
+                  icon: Icons.swap_horiz,
+                  label: 'Trade',
+                  color: _cRed,
+                  badge: openTrades,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => TradeScreen(league: league))),
+                ),
               ),
             ],
             if (!draftFullyDone)
-              _ActionTile(
-                icon: Icons.meeting_room_outlined,
-                label: 'Draft-Raum',
-                color: _cBlue,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => DraftRoomScreen(league: league))),
+              Expanded(
+                child: _QuickAction(
+                  icon: Icons.meeting_room_outlined,
+                  label: 'Draft-Raum',
+                  color: _cBlue,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => DraftRoomScreen(league: league))),
+                ),
               ),
-            _ActionTile(
-              icon: Icons.forum_outlined,
-              label: 'Liga-Chat',
-              color: _cGreen,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => FantasyChatScreen(league: league))),
+            Expanded(
+              child: _QuickAction(
+                icon: Icons.forum_outlined,
+                label: 'Liga-Chat',
+                color: _cGreen,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => FantasyChatScreen(league: league))),
+              ),
             ),
           ],
         ),
@@ -340,8 +347,10 @@ class _StatusHero extends StatelessWidget {
 
 /// Farbige Kennzahl-Pille (Teilnehmer / Kadergröße / Startelf).
 /// Farbige Aktions-Kachel im Schnellzugriff-Raster.
-class _ActionTile extends StatelessWidget {
-  const _ActionTile(
+/// Randlose Schnellzugriff-Aktion: farbiger Icon-Kreis + Label darunter,
+/// ohne getönte Box. Optionaler Zähler-Hinweis (z. B. offene Trades).
+class _QuickAction extends StatelessWidget {
+  const _QuickAction(
       {required this.icon,
       required this.label,
       required this.color,
@@ -358,42 +367,40 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color.withValues(alpha: 0.12),
+    return InkWell(
+      onTap: onTap,
       borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration:
-                    BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Icon(icon, color: _cBase, size: 22),
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle),
+                  child: Icon(icon, color: _cBase, size: 26),
+                ),
+                if (badge > 0)
+                  Positioned(
+                    top: -5,
+                    right: -7,
+                    child: _NotifyBadge(count: badge),
                   ),
-                  if (badge > 0) ...[
-                    const SizedBox(width: 6),
-                    _NotifyBadge(count: badge),
-                  ],
-                ],
-              ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 11.5, height: 1.15)),
+          ],
         ),
       ),
     );
