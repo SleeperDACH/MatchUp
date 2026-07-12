@@ -260,6 +260,7 @@ class _FantasyLeagueCard extends StatelessWidget {
           ? Icons.auto_awesome
           : Icons.calendar_today,
       title: league.name,
+      subtitle: league.mode.label,
       statusLabel: statusLabel,
       statusColor: statusColor,
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -284,6 +285,7 @@ class _TipRoundCard extends ConsumerWidget {
     return _LeagueTile(
       icon: icon,
       title: round.name,
+      subtitle: league.name,
       statusLabel: league.name,
       statusColor: Theme.of(context).colorScheme.primary,
       onTap: () {
@@ -302,6 +304,7 @@ class _LeagueTile extends StatelessWidget {
   const _LeagueTile({
     required this.icon,
     required this.title,
+    required this.subtitle,
     required this.statusLabel,
     required this.statusColor,
     required this.onTap,
@@ -309,6 +312,9 @@ class _LeagueTile extends StatelessWidget {
 
   final IconData icon;
   final String title;
+
+  /// Kleine graue Zeile: Modus (Redraft/Dynasty) bzw. Wettbewerb.
+  final String subtitle;
 
   /// Nur für Tooltip/Barrierefreiheit — sichtbar ist nur der Farbpunkt.
   final String statusLabel;
@@ -325,7 +331,7 @@ class _LeagueTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
           child: Row(
             children: [
               Container(
@@ -339,13 +345,26 @@ class _LeagueTile extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                ),
               ),
               const SizedBox(width: 10),
               Tooltip(
