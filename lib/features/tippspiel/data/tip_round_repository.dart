@@ -64,7 +64,7 @@ class TipRoundRepository {
   Future<List<RoundMember>> members(String roundId) async {
     final rows = await _client
         .from('tip_round_members')
-        .select('user_id, team_name, profiles(username)')
+        .select('user_id, team_name, profiles(username, avatar_url, avatar_emoji, avatar_color)')
         .eq('round_id', roundId);
     return rows.map(RoundMember.fromJson).toList();
   }

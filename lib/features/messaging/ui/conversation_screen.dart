@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/chat_message.dart';
+import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/league_chat.dart';
 import '../../auth/providers.dart';
 import '../../fantasy/ui/trade_screen.dart';
@@ -50,11 +51,31 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               ),
         ]);
 
+    final partnerAvatars =
+        ref.watch(conversationAvatarsProvider).valueOrNull ?? const {};
+    final partnerAvatar = partnerAvatars[partnerId];
+
     return Scaffold(
-      appBar: AppBar(title: Text(partnerName)),
+      appBar: AppBar(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppAvatar(
+              imageUrl: partnerAvatar?.url,
+              emoji: partnerAvatar?.emoji,
+              colorHex: partnerAvatar?.color,
+              fallbackText: partnerName,
+              size: 30,
+            ),
+            const SizedBox(width: 10),
+            Flexible(child: Text(partnerName, overflow: TextOverflow.ellipsis)),
+          ],
+        ),
+      ),
       body: LeagueChat(
         messages: messages,
         names: {partnerId: partnerName},
+        avatars: {partnerId: ?partnerAvatar},
         myId: myId,
         hintText: 'Nachricht an $partnerName …',
         emptyText: 'Noch keine Nachrichten.\nSchreib $partnerName als Erster!',

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/data/odds/frozen_odds.dart';
 import '../../../core/models/models.dart';
+import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/round_table.dart';
 import '../logic/tip_scoring.dart';
@@ -237,6 +238,11 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                                     : null,
                                 username: member.display,
                                 isMe: member.userId == myUserId,
+                                avatar: (
+                                  url: member.avatarUrl,
+                                  emoji: member.avatarEmoji,
+                                  color: member.avatarColor
+                                ),
                               ),
                               onTap: () => showTipMemberProfile(context,
                                   round: round, member: member),
@@ -334,6 +340,7 @@ class _NameCell extends StatelessWidget {
     required this.movement,
     required this.username,
     required this.isMe,
+    this.avatar,
   });
 
   final int rank;
@@ -342,6 +349,7 @@ class _NameCell extends StatelessWidget {
   final int? movement;
   final String username;
   final bool isMe;
+  final AvatarInfo? avatar;
 
   static const _up = Color(0xFF2ECC71);
   static const _down = Color(0xFFF23030);
@@ -351,7 +359,7 @@ class _NameCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      width: 104,
+      width: 128,
       child: Row(
         children: [
           SizedBox(
@@ -367,6 +375,14 @@ class _NameCell extends StatelessWidget {
             ),
           ),
           SizedBox(width: 14, child: _arrow()),
+          AppAvatar(
+            imageUrl: avatar?.url,
+            emoji: avatar?.emoji,
+            colorHex: avatar?.color,
+            fallbackText: username,
+            size: 22,
+          ),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               username,

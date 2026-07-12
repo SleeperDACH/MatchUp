@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logic/round_robin.dart';
 import '../../../core/models/models.dart';
+import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
@@ -128,6 +129,14 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
               final pool = poolAsync.requireValue;
               final playerById = {for (final p in pool) p.id: p};
               final nameOf = {for (final m in managers) m.userId: m.display};
+              final avatarOf = {
+                for (final m in managers)
+                  m.userId: (
+                    url: m.avatarUrl,
+                    emoji: m.avatarEmoji,
+                    color: m.avatarColor
+                  )
+              };
 
               // Stabile Reihenfolge: Draft-Position, dann User-ID.
               final ids = managers.map((m) => m.userId).toList()
@@ -163,14 +172,12 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                     for (final id in ids)
                       ListTile(
                         dense: true,
-                        leading: CircleAvatar(
-                          radius: 14,
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary.withValues(
-                                    alpha: 0.25,
-                                  ),
-                          child: const Text('1',
-                              style: TextStyle(fontSize: 12)),
+                        leading: AppAvatar(
+                          imageUrl: avatarOf[id]?.url,
+                          emoji: avatarOf[id]?.emoji,
+                          colorHex: avatarOf[id]?.color,
+                          fallbackText: nameOf[id],
+                          size: 32,
                         ),
                         title: Text(nameOf[id] ?? '?',
                             style: id == myId
@@ -362,6 +369,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                     _StandingRow(
                       rank: i + 1,
                       name: nameOf[r.managerId] ?? '?',
+                      avatar: avatarOf[r.managerId],
                       record: r,
                       me: r.managerId == myId,
                       onTap: () => showManagerProfile(context,
@@ -388,10 +396,12 @@ class _StandingRow extends StatelessWidget {
     required this.record,
     required this.me,
     required this.onTap,
+    this.avatar,
   });
 
   final int rank;
   final String name;
+  final AvatarInfo? avatar;
   final H2HRecord record;
   final bool me;
   final VoidCallback onTap;
@@ -409,8 +419,24 @@ class _StandingRow extends StatelessWidget {
             : scheme.surfaceContainerHighest,
         child: Text('$rank', style: const TextStyle(fontSize: 12)),
       ),
-      title: Text(name,
-          style: me ? const TextStyle(fontWeight: FontWeight.bold) : null),
+      title: Row(
+        children: [
+          AppAvatar(
+            imageUrl: avatar?.url,
+            emoji: avatar?.emoji,
+            colorHex: avatar?.color,
+            fallbackText: name,
+            size: 22,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(name,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    me ? const TextStyle(fontWeight: FontWeight.bold) : null),
+          ),
+        ],
+      ),
       subtitle: Text('${record.pointsFor}:${record.pointsAgainst} Pkt.'),
       trailing: Text(
         '${record.wins}-${record.losses}-${record.ties}',

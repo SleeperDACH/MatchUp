@@ -94,6 +94,10 @@ class AppAvatar extends StatelessWidget {
   }
 }
 
+/// Kompakte Avatar-Info (Bild-URL oder Emoji + Farbe) zum Durchreichen in
+/// Maps (z. B. userId → AvatarInfo für Chat/Tabellen).
+typedef AvatarInfo = ({String? url, String? emoji, String? color});
+
 /// Die zu speichernden Avatar-Felder (alle `null` = entfernen/zurücksetzen).
 class AvatarValue {
   const AvatarValue({this.url, this.emoji, this.color});

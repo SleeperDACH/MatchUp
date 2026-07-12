@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/data/odds/frozen_odds.dart';
 import '../../../core/logic/round_robin.dart';
 import '../../../core/models/models.dart';
+import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/round_table.dart';
 import '../models/tip_round.dart';
@@ -127,6 +128,12 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
             _StandingRow(
               rank: i + 1,
               name: nameOf[r.managerId] ?? '?',
+              avatar: () {
+                final m = memberById[r.managerId];
+                return m == null
+                    ? null
+                    : (url: m.avatarUrl, emoji: m.avatarEmoji, color: m.avatarColor);
+              }(),
               record: r,
               me: r.managerId == myId,
               onTap: () {
@@ -274,11 +281,13 @@ class _StandingRow extends StatelessWidget {
     required this.name,
     required this.record,
     required this.me,
+    this.avatar,
     this.onTap,
   });
 
   final int rank;
   final String name;
+  final AvatarInfo? avatar;
   final H2HRecord record;
   final bool me;
   final VoidCallback? onTap;
@@ -296,8 +305,24 @@ class _StandingRow extends StatelessWidget {
             : scheme.surfaceContainerHighest,
         child: Text('$rank', style: const TextStyle(fontSize: 12)),
       ),
-      title: Text(name,
-          style: me ? const TextStyle(fontWeight: FontWeight.bold) : null),
+      title: Row(
+        children: [
+          AppAvatar(
+            imageUrl: avatar?.url,
+            emoji: avatar?.emoji,
+            colorHex: avatar?.color,
+            fallbackText: name,
+            size: 22,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(name,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    me ? const TextStyle(fontWeight: FontWeight.bold) : null),
+          ),
+        ],
+      ),
       subtitle: Text('${record.pointsFor}:${record.pointsAgainst} Pkt.'),
       trailing: Text(
         '${record.wins}-${record.losses}-${record.ties}',

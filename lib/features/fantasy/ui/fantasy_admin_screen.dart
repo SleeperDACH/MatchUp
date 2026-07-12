@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
@@ -126,7 +127,13 @@ class FantasyAdminScreen extends ConsumerWidget {
           for (final m in managers)
             Card(
               child: ListTile(
-                leading: CircleAvatar(child: Text(_initial(m.display))),
+                leading: AppAvatar(
+                  imageUrl: m.avatarUrl,
+                  emoji: m.avatarEmoji,
+                  colorHex: m.avatarColor,
+                  fallbackText: m.display,
+                  size: 40,
+                ),
                 title: Text(m.display),
                 subtitle: Text(m.userId == league.createdBy
                     ? 'Admin · ${rosterCount(m.userId)} Spieler'
@@ -193,7 +200,13 @@ class FantasyAdminScreen extends ConsumerWidget {
             for (final p in pendings)
               Card(
                 child: ListTile(
-                  leading: CircleAvatar(child: Text(_initial(p.display))),
+                  leading: AppAvatar(
+                    imageUrl: p.avatarUrl,
+                    emoji: p.avatarEmoji,
+                    colorHex: p.avatarColor,
+                    fallbackText: p.display,
+                    size: 40,
+                  ),
                   title: Text(p.display),
                   subtitle: const Text('wartet auf ein Team'),
                   trailing: FilledButton(
@@ -208,9 +221,6 @@ class FantasyAdminScreen extends ConsumerWidget {
       ),
     );
   }
-
-  static String _initial(String n) =>
-      n.isEmpty ? '?' : n.substring(0, 1).toUpperCase();
 }
 
 /// Auswahl eines freien (verwaisten) Teams für einen wartenden Teilnehmer.

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../models/tip_round.dart';
 
 /// Kleines Mitglieds-Profil einer Tipprunde: zeigt den ligaspezifischen
@@ -31,12 +32,12 @@ class _TipMemberProfileSheet extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: Row(
           children: [
-            CircleAvatar(
-              backgroundColor: scheme.primary.withValues(alpha: 0.15),
-              child: Text(
-                  (member.display.isEmpty ? '?' : member.display[0])
-                      .toUpperCase(),
-                  style: TextStyle(color: scheme.primary)),
+            AppAvatar(
+              imageUrl: member.avatarUrl,
+              emoji: member.avatarEmoji,
+              colorHex: member.avatarColor,
+              fallbackText: member.display,
+              size: 52,
             ),
             const SizedBox(width: 12),
             Expanded(

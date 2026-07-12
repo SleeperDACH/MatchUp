@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
+import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
@@ -88,12 +89,25 @@ class BonusTipsTableScreen extends ConsumerWidget {
                           rows: [
                             for (final m in members)
                               DataRow(cells: [
-                                DataCell(Text(
-                                  m.display,
-                                  style: m.userId == myId
-                                      ? const TextStyle(
-                                          fontWeight: FontWeight.bold)
-                                      : null,
+                                DataCell(Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AppAvatar(
+                                      imageUrl: m.avatarUrl,
+                                      emoji: m.avatarEmoji,
+                                      colorHex: m.avatarColor,
+                                      fallbackText: m.display,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      m.display,
+                                      style: m.userId == myId
+                                          ? const TextStyle(
+                                              fontWeight: FontWeight.bold)
+                                          : null,
+                                    ),
+                                  ],
                                 )),
                                 for (final q in questions)
                                   DataCell(_cell(

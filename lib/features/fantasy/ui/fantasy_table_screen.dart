@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../../../core/logic/round_robin.dart';
@@ -51,6 +52,10 @@ class FantasyTableBody extends ConsumerWidget {
     final pool = poolAsync.requireValue;
     final playerById = {for (final p in pool) p.id: p};
     final nameOf = {for (final m in managers) m.userId: m.display};
+    final avatarOf = {
+      for (final m in managers)
+        m.userId: (url: m.avatarUrl, emoji: m.avatarEmoji, color: m.avatarColor)
+    };
     final seasonStats = seasonStatsAsync.valueOrNull ??
         const <int, Map<String, PlayerMatchStats>>{};
 
@@ -112,6 +117,7 @@ class FantasyTableBody extends ConsumerWidget {
           _RecordRow(
             rank: i + 1,
             name: nameOf[r.managerId] ?? '?',
+            avatar: avatarOf[r.managerId],
             record: r,
             me: r.managerId == myId,
             onTap: () => showManagerProfile(context,
@@ -144,10 +150,12 @@ class _RecordRow extends StatelessWidget {
     required this.record,
     required this.me,
     required this.onTap,
+    this.avatar,
   });
 
   final int rank;
   final String name;
+  final AvatarInfo? avatar;
   final H2HRecord record;
   final bool me;
   final VoidCallback onTap;
@@ -156,7 +164,6 @@ class _RecordRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (badgeBg, badgeFg) = _rankColors(rank, scheme);
-    final initial = name.isEmpty ? '?' : name.substring(0, 1).toUpperCase();
 
     return GestureDetector(
       onTap: onTap,
@@ -187,13 +194,12 @@ class _RecordRow extends StatelessWidget {
                     fontSize: 15)),
           ),
           const SizedBox(width: 10),
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: scheme.primaryContainer,
-            child: Text(initial,
-                style: TextStyle(
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold)),
+          AppAvatar(
+            imageUrl: avatar?.url,
+            emoji: avatar?.emoji,
+            colorHex: avatar?.color,
+            fallbackText: name,
+            size: 32,
           ),
           const SizedBox(width: 10),
           Expanded(

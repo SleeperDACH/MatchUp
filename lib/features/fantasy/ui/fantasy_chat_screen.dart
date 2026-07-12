@@ -24,6 +24,10 @@ class FantasyChatScreen extends ConsumerWidget {
     final myId = ref.watch(currentUserProvider)?.id;
 
     final names = {for (final m in managers) m.userId: m.display};
+    final avatars = {
+      for (final m in managers)
+        m.userId: (url: m.avatarUrl, emoji: m.avatarEmoji, color: m.avatarColor)
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -42,6 +46,7 @@ class FantasyChatScreen extends ConsumerWidget {
       body: LeagueChat(
         messages: messages,
         names: names,
+        avatars: avatars,
         myId: myId,
         onSend: (text, replyTo) => ref
             .read(fantasyLeagueRepositoryProvider)

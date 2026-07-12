@@ -40,9 +40,13 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
     final myId = ref.watch(currentUserProvider)?.id;
 
     // user_id → Anzeigename aus der Mitgliederliste.
+    final memberList = members.valueOrNull ?? const <RoundMember>[];
     final names = <String, String>{
-      for (final m in members.valueOrNull ?? const <RoundMember>[])
-        m.userId: m.display,
+      for (final m in memberList) m.userId: m.display,
+    };
+    final avatars = {
+      for (final m in memberList)
+        m.userId: (url: m.avatarUrl, emoji: m.avatarEmoji, color: m.avatarColor)
     };
 
     return Column(
@@ -52,6 +56,7 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
           child: LeagueChat(
             messages: messages,
             names: names,
+            avatars: avatars,
             myId: myId,
             onSend: (text, replyTo) => ref
                 .read(tipRoundRepositoryProvider)

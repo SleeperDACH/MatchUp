@@ -246,7 +246,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> managers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, auto_pick, profiles(username)')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, auto_pick, profiles(username, avatar_url, avatar_emoji, avatar_color)')
         .eq('league_id', leagueId)
         .eq('vacant', false)
         .eq('pending', false)
@@ -258,7 +258,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> vacantTeams(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username)')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username, avatar_url, avatar_emoji, avatar_color)')
         .eq('league_id', leagueId)
         .eq('vacant', true)
         .order('joined_at');
@@ -270,7 +270,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> pendingMembers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username)')
+        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username, avatar_url, avatar_emoji, avatar_color)')
         .eq('league_id', leagueId)
         .eq('pending', true)
         .order('joined_at');

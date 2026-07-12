@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/ui/app_avatar.dart';
 import 'data/messaging_repository.dart';
 import 'models/direct_message.dart';
 
@@ -47,6 +48,14 @@ final conversationNamesProvider = FutureProvider<Map<String, String>>((ref) {
   final convos = ref.watch(conversationsProvider);
   final ids = {for (final c in convos) c.partnerId};
   return ref.watch(messagingRepositoryProvider).usernamesFor(ids);
+});
+
+/// Profilbilder aller Konversationspartner (für die Liste & den Chatkopf).
+final conversationAvatarsProvider =
+    FutureProvider<Map<String, AvatarInfo>>((ref) {
+  final convos = ref.watch(conversationsProvider);
+  final ids = {for (final c in convos) c.partnerId};
+  return ref.watch(messagingRepositoryProvider).avatarsFor(ids);
 });
 
 /// „Gelesen bis"-Marke je Gesprächspartner (lokal pro Gerät).

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../../messaging/providers.dart';
 import '../../messaging/ui/conversation_screen.dart';
@@ -119,7 +120,13 @@ class _PartnerList extends ConsumerWidget {
             for (final m in others)
               Card(
                 child: ListTile(
-                  leading: CircleAvatar(child: Text(_initial(m.display))),
+                  leading: AppAvatar(
+                    imageUrl: m.avatarUrl,
+                    emoji: m.avatarEmoji,
+                    colorHex: m.avatarColor,
+                    fallbackText: m.display,
+                    size: 40,
+                  ),
                   title: Text(m.display),
                   trailing: const Icon(Icons.chevron_right),
                   enabled: !closed,
@@ -135,9 +142,6 @@ class _PartnerList extends ConsumerWidget {
       },
     );
   }
-
-  static String _initial(String name) =>
-      name.isEmpty ? '?' : name.substring(0, 1).toUpperCase();
 }
 
 /// Angebot erstellen: eigener Kader links, Partner-Kader rechts. Auf beiden

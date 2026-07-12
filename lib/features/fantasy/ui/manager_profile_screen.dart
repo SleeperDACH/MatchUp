@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../../messaging/ui/conversation_screen.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -80,15 +81,31 @@ class ManagerProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(display),
-            if (showUsername)
-              Text('@${manager.username}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            AppAvatar(
+              imageUrl: manager?.avatarUrl,
+              emoji: manager?.avatarEmoji,
+              colorHex: manager?.avatarColor,
+              fallbackText: display,
+              size: 32,
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(display, overflow: TextOverflow.ellipsis),
+                  if (showUsername)
+                    Text('@${manager.username}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
           ],
         ),
         bottom: PreferredSize(

@@ -572,6 +572,9 @@ class FantasyManager {
     this.vacant = false,
     this.pending = false,
     this.autoPick = false,
+    this.avatarUrl,
+    this.avatarEmoji,
+    this.avatarColor,
   });
 
   final String userId;
@@ -581,6 +584,11 @@ class FantasyManager {
 
   /// Ligaspezifischer Anzeigename; null/leer = kein eigener Name.
   final String? teamName;
+
+  /// Profilbild (aus `profiles`): Bild-URL oder Emoji + Farbe.
+  final String? avatarUrl;
+  final String? avatarEmoji;
+  final String? avatarColor;
 
   /// In der Liga anzuzeigender Name: Teamname, sonst der Nutzername.
   String get display =>
@@ -615,20 +623,27 @@ class FantasyManager {
         vacant: vacant,
         pending: pending,
         autoPick: autoPick,
+        avatarUrl: avatarUrl,
+        avatarEmoji: avatarEmoji,
+        avatarColor: avatarColor,
       );
 
-  factory FantasyManager.fromJson(Map<String, dynamic> json) => FantasyManager(
-        userId: json['user_id'] as String,
-        username:
-            (json['profiles'] as Map<String, dynamic>?)?['username'] as String? ??
-                '?',
-        teamName: json['team_name'] as String?,
-        draftPosition: json['draft_position'] as int?,
-        waiverPriority: json['waiver_priority'] as int?,
-        vacant: json['vacant'] as bool? ?? false,
-        pending: json['pending'] as bool? ?? false,
-        autoPick: json['auto_pick'] as bool? ?? false,
-      );
+  factory FantasyManager.fromJson(Map<String, dynamic> json) {
+    final p = json['profiles'] as Map<String, dynamic>?;
+    return FantasyManager(
+      userId: json['user_id'] as String,
+      username: p?['username'] as String? ?? '?',
+      teamName: json['team_name'] as String?,
+      draftPosition: json['draft_position'] as int?,
+      waiverPriority: json['waiver_priority'] as int?,
+      vacant: json['vacant'] as bool? ?? false,
+      pending: json['pending'] as bool? ?? false,
+      autoPick: json['auto_pick'] as bool? ?? false,
+      avatarUrl: p?['avatar_url'] as String?,
+      avatarEmoji: p?['avatar_emoji'] as String?,
+      avatarColor: p?['avatar_color'] as String?,
+    );
+  }
 }
 
 /// Status eines Waiver-Antrags (entspricht der Server-Enum).

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../models/direct_message.dart';
 import '../providers.dart';
 import 'conversation_screen.dart';
@@ -24,6 +25,8 @@ class ConversationsScreen extends ConsumerWidget {
     final dmAsync = ref.watch(directMessagesProvider);
     final convos = ref.watch(conversationsProvider);
     final names = ref.watch(conversationNamesProvider).valueOrNull ?? const {};
+    final avatars =
+        ref.watch(conversationAvatarsProvider).valueOrNull ?? const {};
 
     return Scaffold(
       appBar: AppBar(
@@ -66,9 +69,15 @@ class ConversationsScreen extends ConsumerWidget {
             itemBuilder: (context, i) {
               final c = convos[i];
               final name = names[c.partnerId] ?? '…';
+              final av = avatars[c.partnerId];
               return ListTile(
-                leading: CircleAvatar(
-                    child: Text(name.isEmpty ? '?' : name.substring(0, 1).toUpperCase())),
+                leading: AppAvatar(
+                  imageUrl: av?.url,
+                  emoji: av?.emoji,
+                  colorHex: av?.color,
+                  fallbackText: name,
+                  size: 44,
+                ),
                 title: Text(name),
                 subtitle: Text(c.lastMessage.body,
                     maxLines: 1, overflow: TextOverflow.ellipsis),

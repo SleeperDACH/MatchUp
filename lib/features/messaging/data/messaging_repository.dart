@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../models/direct_message.dart';
 
 /// Ligaübergreifende Direktnachrichten gegen Supabase. RLS beschränkt Lesen
@@ -56,6 +57,23 @@ class MessagingRepository {
         .inFilter('id', ids.toList());
     return {
       for (final r in rows) r['id'] as String: r['username'] as String,
+    };
+  }
+
+  /// Profilbild-Infos (Bild oder Emoji+Farbe) für eine Menge von Nutzer-IDs.
+  Future<Map<String, AvatarInfo>> avatarsFor(Set<String> ids) async {
+    if (ids.isEmpty) return const {};
+    final rows = await _client
+        .from('profiles')
+        .select('id, avatar_url, avatar_emoji, avatar_color')
+        .inFilter('id', ids.toList());
+    return {
+      for (final r in rows)
+        r['id'] as String: (
+          url: r['avatar_url'] as String?,
+          emoji: r['avatar_emoji'] as String?,
+          color: r['avatar_color'] as String?
+        ),
     };
   }
 }

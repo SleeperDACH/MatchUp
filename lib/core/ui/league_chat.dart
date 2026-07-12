@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../models/chat_message.dart';
+import 'app_avatar.dart';
 
 /// Wiederverwendbarer ligainterner Chat (Tippspiel wie Fantasy): scrollende
 /// Nachrichtenliste (älteste oben, automatisch nach unten) plus Eingabezeile.
@@ -17,11 +18,16 @@ class LeagueChat extends StatefulWidget {
     required this.myId,
     required this.onSend,
     required this.onRetry,
+    this.avatars = const {},
     this.hintText = 'Nachricht an die Liga …',
     this.emptyText = 'Noch keine Nachrichten.\nSchreib der Liga als Erster!',
     this.extraBuilder,
     this.enableReply = true,
   });
+
+  /// user_id → Avatar-Info (Bild oder Emoji+Farbe); fehlt ein Eintrag, greift
+  /// die Initiale des Namens.
+  final Map<String, AvatarInfo> avatars;
 
   /// Ob auf Nachrichten geantwortet werden kann (setzt eine `reply_to`-Spalte
   /// voraus). Für Direktnachrichten aus (dort nicht unterstützt).
@@ -98,6 +104,7 @@ class _LeagueChatState extends State<LeagueChat> {
                 : _MessageList(
                     messages: list,
                     names: widget.names,
+                    avatars: widget.avatars,
                     myId: widget.myId,
                     extraBuilder: widget.extraBuilder,
                     onReply: widget.enableReply
@@ -129,6 +136,7 @@ class _MessageList extends StatefulWidget {
   const _MessageList({
     required this.messages,
     required this.names,
+    required this.avatars,
     required this.myId,
     required this.onReply,
     this.extraBuilder,
@@ -136,6 +144,7 @@ class _MessageList extends StatefulWidget {
 
   final List<ChatMessage> messages;
   final Map<String, String> names;
+  final Map<String, AvatarInfo> avatars;
   final String? myId;
   final Widget? Function(BuildContext, ChatMessage)? extraBuilder;
 
@@ -214,6 +223,7 @@ class _MessageListState extends State<_MessageList> {
       rows.add(_MessageBubble(
         message: msg,
         author: widget.names[msg.userId] ?? '?',
+        avatar: widget.avatars[msg.userId],
         isMine: isMine,
         hasReply: msg.replyTo != null,
         quotedAuthor: quoted == null
@@ -334,6 +344,7 @@ class _MessageBubble extends StatelessWidget {
     required this.author,
     required this.isMine,
     required this.onReply,
+    this.avatar,
     this.hasReply = false,
     this.quotedAuthor,
     this.quotedBody,
@@ -341,6 +352,7 @@ class _MessageBubble extends StatelessWidget {
 
   final ChatMessage message;
   final String author;
+  final AvatarInfo? avatar;
   final bool isMine;
 
   /// `null` = Antworten deaktiviert (kein Long-Press-Menü).
@@ -379,15 +391,13 @@ class _MessageBubble extends StatelessWidget {
     final timeText =
         '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
+    final bubble = GestureDetector(
         onLongPress: onReply == null ? null : () => _showActions(context),
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 3),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.78,
+            maxWidth: MediaQuery.of(context).size.width * 0.72,
           ),
           decoration: BoxDecoration(
             color: isMine
@@ -420,6 +430,30 @@ class _MessageBubble extends StatelessWidget {
             ],
           ),
         ),
+    );
+
+    // Eigene Nachrichten rechts ohne Avatar; fremde links mit kleinem Avatar.
+    if (isMine) {
+      return Align(alignment: Alignment.centerRight, child: bubble);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(right: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: AppAvatar(
+              imageUrl: avatar?.url,
+              emoji: avatar?.emoji,
+              colorHex: avatar?.color,
+              fallbackText: author,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Flexible(child: bubble),
+        ],
       ),
     );
   }
