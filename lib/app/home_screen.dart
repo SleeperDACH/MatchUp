@@ -17,7 +17,6 @@ import '../features/messaging/ui/conversations_screen.dart';
 import '../features/news/providers.dart';
 import '../features/news/ui/news_list_screen.dart';
 import '../features/news/ui/news_tile.dart';
-import '../features/news/ui/player_outages_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
@@ -327,48 +326,6 @@ class _NewsSection extends ConsumerWidget {
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 15)),
                         Text('Alle finalen Transfers — kompakt',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant)),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        // Verletzungen & Sperren.
-        Material(
-          color: MatchUpColors.red.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const PlayerOutagesScreen())),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                        color: MatchUpColors.red, shape: BoxShape.circle),
-                    child: const Icon(Icons.healing, color: MatchUpColors.base, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Verletzungen & Sperren',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
-                        Text('Wer fällt aus? — aktuelle Ausfall-News',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
