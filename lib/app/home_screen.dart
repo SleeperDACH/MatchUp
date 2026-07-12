@@ -9,11 +9,13 @@ import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
+import '../features/fantasy/ui/fantasy_rank_chip.dart';
 import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
+import '../features/tippspiel/ui/tip_rank_chip.dart';
 import 'league_screen.dart';
 import 'theme.dart';
 import 'widgets/matchup_chevron.dart';
@@ -69,6 +71,7 @@ class HomeScreen extends ConsumerWidget {
             else ...[
               const _WelcomeHeader(),
               const SizedBox(height: 16),
+              const _LiveMatchesStrip(),
               ..._fantasySection(context, ref),
               const SizedBox(height: 18),
               ..._tippspielSection(context, ref),
@@ -149,6 +152,156 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       );
+}
+
+/// Horizontaler „Live & heute"-Streifen: Spiele der Wettbewerbe, in denen der
+/// Nutzer aktiv ist (Tipprunden-Ligen + Bundesliga bei Fantasy). Zeigt laufende
+/// Partien zuerst; blendet sich aus, wenn heute nichts läuft.
+class _LiveMatchesStrip extends ConsumerWidget {
+  const _LiveMatchesStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rounds = ref.watch(myRoundsProvider).valueOrNull ?? const [];
+    final fantasy = ref.watch(myFantasyLeaguesProvider).valueOrNull ?? const [];
+    final leagueIds = <String>{
+      for (final r in rounds) r.leagueId,
+      if (fantasy.isNotEmpty) 'bundesliga',
+    };
+    if (leagueIds.isEmpty) return const SizedBox.shrink();
+
+    final today = DateUtils.dateOnly(DateTime.now());
+    final seen = <String>{};
+    final items = <Fixture>[];
+    for (final id in leagueIds) {
+      final fx = ref.watch(leagueSeasonFixturesProvider(id)).valueOrNull;
+      if (fx == null) continue;
+      for (final f in fx) {
+        final isLive = f.status == FixtureStatus.live;
+        final isToday = DateUtils.dateOnly(f.kickoff.toLocal()) == today;
+        if ((isLive || isToday) && seen.add(f.id)) items.add(f);
+      }
+    }
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    items.sort((a, b) {
+      final la = a.status == FixtureStatus.live ? 0 : 1;
+      final lb = b.status == FixtureStatus.live ? 0 : 1;
+      return la != lb ? la - lb : a.kickoff.compareTo(b.kickoff);
+    });
+    final anyLive = items.any((f) => f.status == FixtureStatus.live);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Row(
+            children: [
+              Icon(anyLive ? Icons.circle : Icons.sports_soccer,
+                  size: anyLive ? 10 : 16,
+                  color: anyLive
+                      ? MatchUpColors.red
+                      : Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(anyLive ? 'Live' : 'Heute',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 92,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, i) => _LiveMatchCard(fixture: items[i]),
+          ),
+        ),
+        const SizedBox(height: 22),
+      ],
+    );
+  }
+}
+
+/// Kompakte Ergebnis-/Anstoß-Kachel im Live-Streifen.
+class _LiveMatchCard extends StatelessWidget {
+  const _LiveMatchCard({required this.fixture});
+
+  final Fixture fixture;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final live = fixture.status == FixtureStatus.live;
+    final finished = fixture.status == FixtureStatus.finished;
+    final k = fixture.kickoff.toLocal();
+    final timeText =
+        '${k.hour.toString().padLeft(2, '0')}:${k.minute.toString().padLeft(2, '0')}';
+    final hasScore = fixture.hasScore;
+
+    Widget teamRow(String name, int? score) => Row(
+          children: [
+            Expanded(
+              child: Text(name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(width: 6),
+            Text(hasScore ? '${score ?? 0}' : '',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: live ? MatchUpColors.red : scheme.onSurface)),
+          ],
+        );
+
+    return Container(
+      width: 156,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: live
+                ? MatchUpColors.red.withValues(alpha: 0.5)
+                : scheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (live) ...[
+                Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                        color: MatchUpColors.red, shape: BoxShape.circle)),
+                const SizedBox(width: 5),
+                const Text('LIVE',
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: MatchUpColors.red)),
+              ] else
+                Text(finished ? 'Endstand' : timeText,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          teamRow(fixture.home.shortName, fixture.homeScore),
+          const SizedBox(height: 2),
+          teamRow(fixture.away.shortName, fixture.awayScore),
+        ],
+      ),
+    );
+  }
 }
 
 /// Persönliche Begrüßung oben auf dem Home-Tab.
@@ -259,6 +412,7 @@ class _FantasyLeagueCard extends StatelessWidget {
       logoUrl: league.logoUrl,
       logoEmoji: league.logoEmoji,
       logoColor: league.logoColor,
+      trailing: FantasyRankChip(league: league),
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => FantasyLeagueScreen(league: league))),
     );
@@ -285,6 +439,7 @@ class _TipRoundCard extends ConsumerWidget {
       logoUrl: round.logoUrl,
       logoEmoji: round.logoEmoji,
       logoColor: round.logoColor,
+      trailing: TipRankChip(round: round),
       onTap: () {
         activateRound(ref, round);
         Navigator.of(context).push(
@@ -306,6 +461,7 @@ class _LeagueTile extends StatelessWidget {
     this.logoUrl,
     this.logoEmoji,
     this.logoColor,
+    this.trailing,
   });
 
   final IconData icon;
@@ -318,6 +474,9 @@ class _LeagueTile extends StatelessWidget {
 
   /// Kleine graue Zeile: Modus (Redraft/Dynasty) bzw. Wettbewerb.
   final String subtitle;
+
+  /// Optionaler Zusatz vor dem Chevron (z. B. Platzierungs-Chip).
+  final Widget? trailing;
   final VoidCallback onTap;
 
   @override
@@ -364,6 +523,10 @@ class _LeagueTile extends StatelessWidget {
                   ],
                 ),
               ),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                trailing!,
+              ],
               const SizedBox(width: 12),
               // Nach rechts gedrehter MatchUp-Doppelchevron in Weiß.
               const RotatedBox(
