@@ -24,7 +24,7 @@ const KEYWORDS: Record<string, RegExp> = {
 
 // Quellen je Thema: Google News (zielgenau) mit kicker-Fallback (allgemeiner
 // Feed, per Stichwort gefiltert) — Google drosselt Cloud-IPs gelegentlich.
-type Source = { url: string; filter?: RegExp };
+type Source = { url: string; filter?: RegExp; source?: string };
 function sources(topic: string): Source[] {
   return [
     {
@@ -34,6 +34,8 @@ function sources(topic: string): Source[] {
     {
       url: "https://newsfeed.kicker.de/news/bundesliga",
       filter: KEYWORDS[topic],
+      // kicker-Feed hat kein <source>-Element je Item → Default-Quelle.
+      source: "kicker",
     },
   ];
 }
@@ -78,15 +80,16 @@ function tag(block: string, name: string): string | null {
 // Parst RSS-<item>-Blöcke zu {title, url, source, publishedAt}. Google News
 // hängt die Quelle als „ - Quelle" an den Titel; das trennen wir sauber ab.
 // Mit [filter] werden nur Items behalten, deren Titel/Beschreibung passt.
-function parseRss(xml: string, filter?: RegExp) {
+function parseRss(xml: string, filter?: RegExp, defaultSource?: string) {
   const items: Array<Record<string, string>> = [];
   const blocks = xml.match(/<item>([\s\S]*?)<\/item>/gi) ?? [];
   for (const block of blocks) {
     const rawTitle = decode(tag(block, "title") ?? "");
     const link = decode(tag(block, "link") ?? "");
-    // Google News: <source>, Bing: <News:Source>.
+    // Google News: <source>, Bing: <News:Source>; sonst Default (z. B. kicker).
     const source =
-      decode(tag(block, "source") ?? tag(block, "News:Source") ?? "");
+      decode(tag(block, "source") ?? tag(block, "News:Source") ?? "") ||
+      (defaultSource ?? "");
     const desc = decode(tag(block, "description") ?? "");
     const pubDate = (tag(block, "pubDate") ?? "").trim();
     if (!rawTitle || !link) continue;
@@ -164,7 +167,7 @@ Deno.serve(async (req) => {
           lastErr = `RSS ${res.status}`;
           continue;
         }
-        const parsed = parseRss(await res.text(), src.filter);
+        const parsed = parseRss(await res.text(), src.filter, src.source);
         if (parsed.length > 0) {
           items = parsed;
           fromPrimary = i === 0;
