@@ -6,6 +6,8 @@ class TransferDeal {
     required this.toTeam,
     required this.fromBundesliga,
     required this.toBundesliga,
+    this.fromLogo,
+    this.toLogo,
     this.date,
     this.amount,
     this.type,
@@ -16,6 +18,8 @@ class TransferDeal {
   final String toTeam;
   final bool fromBundesliga;
   final bool toBundesliga;
+  final String? fromLogo;
+  final String? toLogo;
   final DateTime? date;
 
   /// Ablöse in Euro (null = unbekannt/ablösefrei).
@@ -43,6 +47,8 @@ class TransferDeal {
         toTeam: (json['to_team'] as String? ?? '—').trim(),
         fromBundesliga: json['from_bundesliga'] as bool? ?? false,
         toBundesliga: json['to_bundesliga'] as bool? ?? false,
+        fromLogo: json['from_logo'] as String?,
+        toLogo: json['to_logo'] as String?,
         date: (json['date'] as String?) != null
             ? DateTime.tryParse(json['date'] as String)
             : null,

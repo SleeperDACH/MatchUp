@@ -15,7 +15,7 @@ import '../features/fantasy/ui/fantasy_rank_chip.dart';
 import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/news/providers.dart';
-import '../features/news/ui/done_deals_screen.dart';
+import '../features/news/ui/transfers_screen.dart';
 import '../features/news/ui/news_list_screen.dart';
 import '../features/news/ui/news_tile.dart';
 import '../features/tippspiel/models/tip_round.dart';
@@ -299,7 +299,7 @@ class _NewsSection extends ConsumerWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const DoneDealsScreen())),
+                builder: (_) => const TransfersScreen())),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -317,10 +317,10 @@ class _NewsSection extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Done Deals',
+                        const Text('Transfers',
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 15)),
-                        Text('Alle finalen Transfers — kompakt',
+                        Text('Zu- & Abgänge mit Wappen — filterbar',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall

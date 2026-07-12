@@ -107,6 +107,8 @@ Deno.serve(async (req) => {
           player: player.display_name ?? player.name ?? "?",
           from_team: from.name ?? "—",
           to_team: to.name ?? "—",
+          from_logo: from.image_path ?? null,
+          to_logo: to.image_path ?? null,
           from_bundesliga: fromBl,
           to_bundesliga: toBl,
           date: t.date ?? null,
