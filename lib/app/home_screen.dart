@@ -69,7 +69,7 @@ class HomeScreen extends ConsumerWidget {
               const _WelcomeHeader(),
               const SizedBox(height: 16),
               ..._fantasySection(context, ref),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
               ..._tippspielSection(context, ref),
             ],
           ],
@@ -256,8 +256,8 @@ class _FantasyLeagueCard extends StatelessWidget {
       title: league.name,
       subtitle:
           '${league.mode.label} · Saison ${league.season}/${(league.season + 1) % 100}',
-      chipLabel: statusLabel,
-      chipColor: statusColor,
+      statusLabel: statusLabel,
+      statusColor: statusColor,
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => FantasyLeagueScreen(league: league))),
     );
@@ -281,10 +281,10 @@ class _TipRoundCard extends ConsumerWidget {
       icon: icon,
       title: round.name,
       subtitle: league.fixedSeason != null
-          ? 'Tippspiel'
-          : 'Saison ${round.season}/${(round.season + 1) % 100}',
-      chipLabel: league.name,
-      chipColor: Theme.of(context).colorScheme.primary,
+          ? '${league.name} · Tippspiel'
+          : '${league.name} · Saison ${round.season}/${(round.season + 1) % 100}',
+      statusLabel: league.name,
+      statusColor: Theme.of(context).colorScheme.primary,
       onTap: () {
         activateRound(ref, round);
         Navigator.of(context).push(
@@ -294,111 +294,96 @@ class _TipRoundCard extends ConsumerWidget {
   }
 }
 
-/// Einheitliche, ruhig getönte Liga-Karte für den Homescreen (Fantasy &
-/// Tippspiel): Icon-Kachel, Name, Status-Chip und Kontextzeile.
+/// Kompakte Liga-Zeile für den Homescreen (Fantasy & Tippspiel): kleine
+/// Icon-Kachel, Name, Kontextzeile und rechts ein farbiger Status-Punkt
+/// (statt eines Text-Chips) — dicht gereiht, aber als Karte erkennbar.
 class _LeagueTile extends StatelessWidget {
   const _LeagueTile({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.chipLabel,
-    required this.chipColor,
+    required this.statusLabel,
+    required this.statusColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final String chipLabel;
-  final Color chipColor;
+
+  /// Nur für Tooltip/Barrierefreiheit — sichtbar ist nur der Farbpunkt.
+  final String statusLabel;
+  final Color statusColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
+      margin: const EdgeInsets.only(bottom: 8),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: scheme.primary),
+                child: Icon(icon, color: scheme.primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context)
                             .textTheme
-                            .titleMedium
+                            .titleSmall
                             ?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        _StatusChip(label: chipLabel, color: chipColor),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant)),
-                        ),
-                      ],
-                    ),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Tooltip(
+                message: statusLabel,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                          color: statusColor.withValues(alpha: 0.5),
+                          blurRadius: 4),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right,
+                  size: 20, color: scheme.onSurfaceVariant),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(
-                  color: color, fontSize: 11, fontWeight: FontWeight.bold)),
-        ],
       ),
     );
   }
