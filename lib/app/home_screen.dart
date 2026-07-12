@@ -13,6 +13,7 @@ import '../features/fantasy/ui/fantasy_rank_chip.dart';
 import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/news/providers.dart';
+import '../features/news/ui/news_list_screen.dart';
 import '../features/news/ui/news_tile.dart';
 import '../features/news/ui/player_outages_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
@@ -223,7 +224,26 @@ class _NewsSection extends ConsumerWidget {
                   if (i > 0) const Divider(height: 1),
                   NewsTile(item: shown[i]),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: 2),
+                // Erweitern: vollständige, scrollbare Transfer-Liste.
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const NewsListScreen(
+                                  topic: 'transfers',
+                                  title: 'Transfers',
+                                  intro:
+                                      'Aktuelle Transfer-Schlagzeilen der '
+                                      'Bundesliga, neueste zuerst. Tippen '
+                                      'öffnet den Artikel.',
+                                ))),
+                    icon: const Icon(Icons.unfold_more, size: 18),
+                    label: const Text('Ältere Transfers anzeigen'),
+                  ),
+                ),
+                const SizedBox(height: 10),
               ],
             );
           },
