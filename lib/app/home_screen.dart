@@ -260,8 +260,6 @@ class _FantasyLeagueCard extends StatelessWidget {
           ? Icons.auto_awesome
           : Icons.calendar_today,
       title: league.name,
-      subtitle:
-          '${league.mode.label} · Saison ${league.season}/${(league.season + 1) % 100}',
       statusLabel: statusLabel,
       statusColor: statusColor,
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -286,9 +284,6 @@ class _TipRoundCard extends ConsumerWidget {
     return _LeagueTile(
       icon: icon,
       title: round.name,
-      subtitle: league.fixedSeason != null
-          ? '${league.name} · Tippspiel'
-          : '${league.name} · Saison ${round.season}/${(round.season + 1) % 100}',
       statusLabel: league.name,
       statusColor: Theme.of(context).colorScheme.primary,
       onTap: () {
@@ -307,7 +302,6 @@ class _LeagueTile extends StatelessWidget {
   const _LeagueTile({
     required this.icon,
     required this.title,
-    required this.subtitle,
     required this.statusLabel,
     required this.statusColor,
     required this.onTap,
@@ -315,7 +309,6 @@ class _LeagueTile extends StatelessWidget {
 
   final IconData icon;
   final String title;
-  final String subtitle;
 
   /// Nur für Tooltip/Barrierefreiheit — sichtbar ist nur der Farbpunkt.
   final String statusLabel;
@@ -332,41 +325,27 @@ class _LeagueTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
           child: Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: scheme.primary, size: 20),
+                child: Icon(icon, color: scheme.primary, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant)),
-                  ],
-                ),
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 10),
               Tooltip(
@@ -406,7 +385,7 @@ class _RowDivider extends StatelessWidget {
     return Divider(
       height: 1,
       thickness: 1,
-      indent: 54,
+      indent: 56,
       color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
     );
   }
