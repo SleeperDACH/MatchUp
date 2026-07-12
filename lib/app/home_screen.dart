@@ -12,6 +12,9 @@ import '../features/fantasy/ui/fantasy_league_screen.dart';
 import '../features/fantasy/ui/fantasy_rank_chip.dart';
 import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
+import '../features/news/providers.dart';
+import '../features/news/ui/news_tile.dart';
+import '../features/news/ui/player_outages_screen.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
@@ -74,6 +77,8 @@ class HomeScreen extends ConsumerWidget {
               ..._fantasySection(context, ref),
               const SizedBox(height: 18),
               ..._tippspielSection(context, ref),
+              const SizedBox(height: 22),
+              const _NewsSection(),
             ],
           ],
         ),
@@ -151,6 +156,122 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       );
+}
+
+/// Bundesliga-News: Transferticker (Live-News) + Einstieg zu „Verletzungen &
+/// Sperren". Der Transfer-Teil blendet sich aus, wenn (noch) keine News da
+/// sind; der Ausfälle-Button ist immer erreichbar.
+class _NewsSection extends ConsumerWidget {
+  const _NewsSection();
+
+  static const _maxTransfers = 5;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final transfers = ref.watch(newsProvider('transfers'));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Row(
+            children: [
+              Icon(Icons.rss_feed, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text('Bundesliga aktuell',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+        ),
+        // Transferticker.
+        transfers.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+          ),
+          error: (_, _) => const SizedBox.shrink(),
+          data: (items) {
+            if (items.isEmpty) return const SizedBox.shrink();
+            final shown = items.take(_maxTransfers).toList();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+                  child: Row(
+                    children: [
+                      Icon(Icons.swap_horiz, size: 15, color: const Color(0xFFFFC83D)),
+                      const SizedBox(width: 6),
+                      Text('Transfers',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                for (var i = 0; i < shown.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  NewsTile(item: shown[i]),
+                ],
+                const SizedBox(height: 12),
+              ],
+            );
+          },
+        ),
+        // Verletzungen & Sperren.
+        Material(
+          color: MatchUpColors.red.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const PlayerOutagesScreen())),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                        color: MatchUpColors.red, shape: BoxShape.circle),
+                    child: const Icon(Icons.healing, color: MatchUpColors.base, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Verletzungen & Sperren',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15)),
+                        Text('Wer fällt aus? — aktuelle Ausfall-News',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Persönliche Begrüßung oben auf dem Home-Tab.

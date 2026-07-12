@@ -46,6 +46,8 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   # Bildauswahl für Profil-/Liga-Bilder (iOS/Android/Web).
   image_picker: ^1.1.2
+  # Öffnet News-Artikel (Transferticker/Ausfälle) extern (iOS/Android/Web).
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
