@@ -15,6 +15,7 @@ import '../features/fantasy/ui/fantasy_rank_chip.dart';
 import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/news/providers.dart';
+import '../features/news/ui/done_deals_screen.dart';
 import '../features/news/ui/news_list_screen.dart';
 import '../features/news/ui/news_tile.dart';
 import '../features/tippspiel/models/tip_round.dart';
@@ -298,13 +299,7 @@ class _NewsSection extends ConsumerWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const NewsListScreen(
-                      topic: 'done_deals',
-                      title: 'Done Deals',
-                      intro: 'Finalisierte Bundesliga-Transfers (bestätigte '
-                          'Abschlüsse), neueste zuerst.',
-                      dealStyle: true,
-                    ))),
+                builder: (_) => const DoneDealsScreen())),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
