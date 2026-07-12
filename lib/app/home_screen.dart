@@ -98,7 +98,10 @@ class HomeScreen extends ConsumerWidget {
                 'oder Dynasty-Liga erstellen.')
             : Column(
                 children: [
-                  for (final league in list) _FantasyLeagueCard(league: league),
+                  for (var i = 0; i < list.length; i++) ...[
+                    if (i > 0) const _RowDivider(),
+                    _FantasyLeagueCard(league: list[i]),
+                  ],
                 ],
               ),
       ),
@@ -124,7 +127,10 @@ class HomeScreen extends ConsumerWidget {
                 'erstellen.')
             : Column(
                 children: [
-                  for (final round in list) _TipRoundCard(round: round),
+                  for (var i = 0; i < list.length; i++) ...[
+                    if (i > 0) const _RowDivider(),
+                    _TipRoundCard(round: list[i]),
+                  ],
                 ],
               ),
       ),
@@ -319,13 +325,14 @@ class _LeagueTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      clipBehavior: Clip.antiAlias,
+    // Bewusst keine Card/Box: schlichte, randlose Listenzeile.
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
           child: Row(
             children: [
               Container(
@@ -385,6 +392,22 @@ class _LeagueTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Dünner, eingerückter Trenner zwischen zwei Liga-Zeilen (ersetzt die
+/// frühere Kasten-Optik der Cards).
+class _RowDivider extends StatelessWidget {
+  const _RowDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      indent: 54,
+      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
     );
   }
 }
