@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/app_config.dart';
+import '../core/ui/app_avatar.dart';
 import '../features/auth/providers.dart';
+import '../features/auth/user_profile.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/favorites/ui/favorites_settings_screen.dart';
 import '../features/messaging/ui/conversations_screen.dart';
@@ -36,13 +38,36 @@ class _Profile extends ConsumerWidget {
   final String? username;
   final String? email;
 
+  Future<void> _editAvatar(
+      BuildContext context, WidgetRef ref, UserProfile? profile) async {
+    final uid = ref.read(currentUserProvider)?.id;
+    if (uid == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final value = await showAvatarEditor(
+      context,
+      storagePath: 'profiles/$uid.jpg',
+      title: 'Profilbild',
+      circle: true,
+      currentUrl: profile?.avatarUrl,
+      currentEmoji: profile?.avatarEmoji,
+      currentColor: profile?.avatarColor,
+    );
+    if (value == null) return;
+    try {
+      await ref.read(authRepositoryProvider).setAvatar(
+          url: value.url, emoji: value.emoji, color: value.color);
+      ref.invalidate(currentProfileProvider);
+    } catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final name = username ?? '—';
-    final initial = (username == null || username!.isEmpty)
-        ? '?'
-        : username!.characters.first.toUpperCase();
+    final profile = ref.watch(currentProfileProvider).valueOrNull;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
@@ -51,16 +76,34 @@ class _Profile extends ConsumerWidget {
         Center(
           child: Column(
             children: [
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: scheme.primary.withValues(alpha: 0.18),
-                child: Text(
-                  initial,
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.bold,
-                    color: scheme.primary,
-                  ),
+              GestureDetector(
+                onTap: () => _editAvatar(context, ref, profile),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AppAvatar(
+                      imageUrl: profile?.avatarUrl,
+                      emoji: profile?.avatarEmoji,
+                      colorHex: profile?.avatarColor,
+                      fallbackText: username,
+                      size: 88,
+                    ),
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: scheme.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: scheme.surface, width: 2),
+                        ),
+                        child: Icon(Icons.photo_camera,
+                            size: 16, color: scheme.onPrimary),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 14),

@@ -143,6 +143,16 @@ class TipRoundRepository {
   Future<void> renameRound(String roundId, String name) =>
       _client.from('tip_rounds').update({'name': name.trim()}).eq('id', roundId);
 
+  /// Setzt das Runden-Logo (Bild-URL oder Emoji+Farbe; alles `null` =
+  /// entfernen). Nur der Ersteller darf ändern (RLS).
+  Future<void> setLogo(String roundId,
+          {String? url, String? emoji, String? color}) =>
+      _client.from('tip_rounds').update({
+        'logo_url': url,
+        'logo_emoji': emoji,
+        'logo_color': color,
+      }).eq('id', roundId);
+
   /// Trägt einen Tipp für ein Mitglied nach (nur der Ersteller, auch nach
   /// Anstoß) — per SECURITY-DEFINER-RPC.
   Future<void> adminSetTip(String roundId, String userId, String fixtureId,

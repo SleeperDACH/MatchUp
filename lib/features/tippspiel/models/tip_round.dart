@@ -11,6 +11,9 @@ class TipRound {
     required this.inviteCode,
     required this.scoring,
     required this.createdBy,
+    this.logoUrl,
+    this.logoEmoji,
+    this.logoColor,
   });
 
   final String id;
@@ -21,6 +24,11 @@ class TipRound {
   final ScoringRules scoring;
   final String createdBy;
 
+  /// Runden-Logo ("Beides kombiniert"): Bild-URL oder Emoji + Farbe.
+  final String? logoUrl;
+  final String? logoEmoji;
+  final String? logoColor;
+
   TipRound copyWith({ScoringRules? scoring}) => TipRound(
         id: id,
         name: name,
@@ -29,6 +37,9 @@ class TipRound {
         inviteCode: inviteCode,
         scoring: scoring ?? this.scoring,
         createdBy: createdBy,
+        logoUrl: logoUrl,
+        logoEmoji: logoEmoji,
+        logoColor: logoColor,
       );
 
   factory TipRound.fromJson(Map<String, dynamic> json) => TipRound(
@@ -40,6 +51,9 @@ class TipRound {
         scoring: ScoringRules.fromJson(
             (json['scoring'] as Map<String, dynamic>?) ?? const {}),
         createdBy: json['created_by'] as String,
+        logoUrl: json['logo_url'] as String?,
+        logoEmoji: json['logo_emoji'] as String?,
+        logoColor: json['logo_color'] as String?,
       );
 }
 

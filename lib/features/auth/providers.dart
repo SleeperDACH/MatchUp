@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/app_config.dart';
 import 'auth_repository.dart';
 import 'biometric_login.dart';
+import 'user_profile.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(Supabase.instance.client);
@@ -33,4 +34,11 @@ final currentUsernameProvider = FutureProvider<String?>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
   return ref.watch(authRepositoryProvider).fetchUsername();
+});
+
+/// Eigenes Profil inkl. Avatar (Bild oder Emoji+Farbe).
+final currentProfileProvider = FutureProvider<UserProfile?>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+  return ref.watch(authRepositoryProvider).fetchProfile();
 });

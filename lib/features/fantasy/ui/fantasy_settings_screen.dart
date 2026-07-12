@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
@@ -62,6 +63,31 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       }
     }
 
+    Future<void> editLogo() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final value = await showAvatarEditor(
+        context,
+        storagePath: 'fantasy/${l.id}.jpg',
+        title: 'Liga-Logo',
+        circle: false,
+        currentUrl: l.logoUrl,
+        currentEmoji: l.logoEmoji,
+        currentColor: l.logoColor,
+      );
+      if (value == null) return;
+      try {
+        await ref.read(fantasyLeagueRepositoryProvider).setLogo(l.id,
+            url: value.url, emoji: value.emoji, color: value.color);
+        ref.invalidate(draftLeagueProvider(l.id));
+        ref.invalidate(myFantasyLeaguesProvider);
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Liga-Logo gespeichert.')));
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -81,7 +107,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         children: [
           _InviteBanner(code: l.inviteCode),
           const SizedBox(height: 12),
-          if (isOwner)
+          if (isOwner) ...[
             Card(
               child: ListTile(
                 leading: Icon(Icons.drive_file_rename_outline,
@@ -92,6 +118,23 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 onTap: renameLeague,
               ),
             ),
+            Card(
+              child: ListTile(
+                leading: AppAvatar(
+                  imageUrl: l.logoUrl,
+                  emoji: l.logoEmoji,
+                  colorHex: l.logoColor,
+                  fallbackIcon: Icons.image_outlined,
+                  size: 40,
+                  cornerRadius: 10,
+                ),
+                title: const Text('Liga-Logo ändern'),
+                subtitle: const Text('Bild hochladen oder Emoji + Farbe wählen'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: editLogo,
+              ),
+            ),
+          ],
           Card(
             child: ListTile(
               leading: Icon(Icons.badge_outlined, color: scheme.primary),

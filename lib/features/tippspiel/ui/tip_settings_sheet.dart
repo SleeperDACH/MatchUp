@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
@@ -61,6 +62,30 @@ class _TipSettingsSheet extends ConsumerWidget {
         ref.invalidate(myRoundsProvider);
         messenger.showSnackBar(
             const SnackBar(content: Text('Liga-Name geändert.')));
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+      }
+    }
+
+    Future<void> editLogo() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final value = await showAvatarEditor(
+        context,
+        storagePath: 'tip/${round.id}.jpg',
+        title: 'Runden-Logo',
+        circle: false,
+        currentUrl: round.logoUrl,
+        currentEmoji: round.logoEmoji,
+        currentColor: round.logoColor,
+      );
+      if (value == null) return;
+      try {
+        await ref.read(tipRoundRepositoryProvider).setLogo(round.id,
+            url: value.url, emoji: value.emoji, color: value.color);
+        ref.invalidate(myRoundsProvider);
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Runden-Logo gespeichert.')));
       } catch (e) {
         messenger.showSnackBar(
             SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
@@ -133,6 +158,21 @@ class _TipSettingsSheet extends ConsumerWidget {
                   style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(round.name),
               onTap: renameRound,
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: AppAvatar(
+                imageUrl: round.logoUrl,
+                emoji: round.logoEmoji,
+                colorHex: round.logoColor,
+                fallbackIcon: Icons.image_outlined,
+                size: 40,
+                cornerRadius: 10,
+              ),
+              title: const Text('Runden-Logo ändern',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Bild hochladen oder Emoji + Farbe wählen'),
+              onTap: editLogo,
             ),
             const Divider(height: 1),
             ListTile(

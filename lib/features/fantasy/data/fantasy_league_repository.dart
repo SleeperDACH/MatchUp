@@ -76,6 +76,16 @@ class FantasyLeagueRepository {
   Future<void> deleteLeague(String leagueId) =>
       _client.from('fantasy_leagues').delete().eq('id', leagueId);
 
+  /// Setzt das Liga-Logo (Bild-URL oder Emoji+Farbe; alles `null` = entfernen).
+  /// Nur der Ersteller darf ändern (RLS).
+  Future<void> setLogo(String leagueId,
+          {String? url, String? emoji, String? color}) =>
+      _client.from('fantasy_leagues').update({
+        'logo_url': url,
+        'logo_emoji': emoji,
+        'logo_color': color,
+      }).eq('id', leagueId);
+
   /// Ein Teilnehmer (nicht der Ersteller) verlässt die Liga; seine
   /// ligagebundenen Daten werden serverseitig entfernt.
   Future<void> leaveLeague(String leagueId) =>

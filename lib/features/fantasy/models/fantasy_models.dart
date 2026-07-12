@@ -387,11 +387,19 @@ class FantasyLeague {
     this.playoffWeeks,
     this.tradeDeadlineOffset,
     this.draftOrderMode = 'auto',
+    this.logoUrl,
+    this.logoEmoji,
+    this.logoColor,
   });
 
   final String id;
   final String name;
   final FantasyMode mode;
+
+  /// Liga-Logo ("Beides kombiniert"): Bild-URL oder Emoji + Farbe.
+  final String? logoUrl;
+  final String? logoEmoji;
+  final String? logoColor;
 
   /// Startjahr der Saison (z. B. 2025 für 2025/26).
   final int season;
@@ -467,6 +475,9 @@ class FantasyLeague {
         playoffWeeks: json['playoff_weeks'] as int?,
         tradeDeadlineOffset: json['trade_deadline_offset'] as int?,
         draftOrderMode: json['draft_order_mode'] as String? ?? 'auto',
+        logoUrl: json['logo_url'] as String?,
+        logoEmoji: json['logo_emoji'] as String?,
+        logoColor: json['logo_color'] as String?,
       );
 
   /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden). Im

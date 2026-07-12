@@ -6,6 +6,8 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Zum schnellen Anmelden bei MatchUp per Face ID.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Zum Auswählen eines Profil- oder Liga-Bildes aus deinen Fotos.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

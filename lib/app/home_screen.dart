@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
+import '../core/ui/app_avatar.dart';
 import '../features/auth/providers.dart';
 import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
@@ -263,6 +264,9 @@ class _FantasyLeagueCard extends StatelessWidget {
       subtitle: league.mode.label,
       statusLabel: statusLabel,
       statusColor: statusColor,
+      logoUrl: league.logoUrl,
+      logoEmoji: league.logoEmoji,
+      logoColor: league.logoColor,
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => FantasyLeagueScreen(league: league))),
     );
@@ -288,6 +292,9 @@ class _TipRoundCard extends ConsumerWidget {
       subtitle: league.name,
       statusLabel: league.name,
       statusColor: Theme.of(context).colorScheme.primary,
+      logoUrl: round.logoUrl,
+      logoEmoji: round.logoEmoji,
+      logoColor: round.logoColor,
       onTap: () {
         activateRound(ref, round);
         Navigator.of(context).push(
@@ -308,10 +315,18 @@ class _LeagueTile extends StatelessWidget {
     required this.statusLabel,
     required this.statusColor,
     required this.onTap,
+    this.logoUrl,
+    this.logoEmoji,
+    this.logoColor,
   });
 
   final IconData icon;
   final String title;
+
+  /// Liga-Logo (Bild oder Emoji+Farbe); ohne beides greift das [icon].
+  final String? logoUrl;
+  final String? logoEmoji;
+  final String? logoColor;
 
   /// Kleine graue Zeile: Modus (Redraft/Dynasty) bzw. Wettbewerb.
   final String subtitle;
@@ -334,14 +349,13 @@ class _LeagueTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: scheme.primary, size: 22),
+              AppAvatar(
+                imageUrl: logoUrl,
+                emoji: logoEmoji,
+                colorHex: logoColor,
+                fallbackIcon: icon,
+                size: 40,
+                cornerRadius: 10,
               ),
               const SizedBox(width: 12),
               Expanded(

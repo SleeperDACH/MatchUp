@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
+import 'user_profile.dart';
 
 /// Login, Registrierung und Profil. Wirft [AuthFailure] mit
 /// deutschsprachigen Meldungen für die UI.
@@ -114,6 +115,30 @@ class AuthRepository {
         .eq('id', user.id)
         .maybeSingle();
     return row?['username'] as String?;
+  }
+
+  /// Vollständiges eigenes Profil inkl. Avatar-Felder.
+  Future<UserProfile?> fetchProfile() async {
+    final user = currentUser;
+    if (user == null) return null;
+    final row = await _client
+        .from('profiles')
+        .select('username, avatar_url, avatar_emoji, avatar_color')
+        .eq('id', user.id)
+        .maybeSingle();
+    return row == null ? null : UserProfile.fromJson(row);
+  }
+
+  /// Setzt das eigene Profilbild (Bild-URL oder Emoji+Farbe; alles `null` =
+  /// entfernen). Nur die eigene Zeile ist per RLS änderbar.
+  Future<void> setAvatar({String? url, String? emoji, String? color}) async {
+    final user = currentUser;
+    if (user == null) return;
+    await _client.from('profiles').update({
+      'avatar_url': url,
+      'avatar_emoji': emoji,
+      'avatar_color': color,
+    }).eq('id', user.id);
   }
 
   Future<void> signOut() => _client.auth.signOut();
