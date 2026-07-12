@@ -250,20 +250,12 @@ class _FantasyLeagueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (statusLabel, statusColor) = switch (league.draftStatus) {
-      DraftStatus.setup => ('Setup', scheme.onSurfaceVariant),
-      DraftStatus.drafting => ('Draft läuft', scheme.primary),
-      DraftStatus.done => ('Saison läuft', scheme.primary),
-    };
     return _LeagueTile(
       icon: league.mode == FantasyMode.dynasty
           ? Icons.auto_awesome
           : Icons.calendar_today,
       title: league.name,
       subtitle: league.mode.label,
-      statusLabel: statusLabel,
-      statusColor: statusColor,
       logoUrl: league.logoUrl,
       logoEmoji: league.logoEmoji,
       logoColor: league.logoColor,
@@ -290,8 +282,6 @@ class _TipRoundCard extends ConsumerWidget {
       icon: icon,
       title: round.name,
       subtitle: league.name,
-      statusLabel: league.name,
-      statusColor: Theme.of(context).colorScheme.primary,
       logoUrl: round.logoUrl,
       logoEmoji: round.logoEmoji,
       logoColor: round.logoColor,
@@ -312,8 +302,6 @@ class _LeagueTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.statusLabel,
-    required this.statusColor,
     required this.onTap,
     this.logoUrl,
     this.logoEmoji,
@@ -330,10 +318,6 @@ class _LeagueTile extends StatelessWidget {
 
   /// Kleine graue Zeile: Modus (Redraft/Dynasty) bzw. Wettbewerb.
   final String subtitle;
-
-  /// Nur für Tooltip/Barrierefreiheit — sichtbar ist nur der Farbpunkt.
-  final String statusLabel;
-  final Color statusColor;
   final VoidCallback onTap;
 
   @override
@@ -380,26 +364,12 @@ class _LeagueTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Tooltip(
-                message: statusLabel,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                          color: statusColor.withValues(alpha: 0.5),
-                          blurRadius: 4),
-                    ],
-                  ),
-                ),
+              const SizedBox(width: 12),
+              // Nach rechts gedrehter MatchUp-Doppelchevron in Weiß.
+              const RotatedBox(
+                quarterTurns: 1,
+                child: MatchUpChevron(size: 16, color: Colors.white),
               ),
-              const SizedBox(width: 8),
-              Icon(Icons.chevron_right,
-                  size: 20, color: scheme.onSurfaceVariant),
             ],
           ),
         ),
