@@ -25,7 +25,7 @@
   },
   "goalConceded": {
     "label": "Gegentor",
-    "points": { "GK": -3, "DEF": -0.5, "MID": 0, "FWD": 0 }
+    "points": { "GK": -1, "DEF": -0.5, "MID": 0, "FWD": 0 }
   },
 
   "goalkeeper": {

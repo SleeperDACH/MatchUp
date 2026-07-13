@@ -1,10 +1,10 @@
-// Simulation: lädt N Bundesliga-Spieltage (Sportmonks), berechnet die Punkte
-// je Spieler und gibt die Verteilung je Position aus (Mittelwert, Median, P90,
-// P97, Min/Max) + Warnung, wenn der Mittelwert-Spread zwischen den Positionen
-// > 5 % ist.
+// Simulation: lädt eine komplette Bundesliga-Saison (Sportmonks) und berechnet
+// die Punkte NUR der Startelf-Spieler (type_id 11). Gibt die Verteilung je
+// Position aus (Mittelwert, Median, P90, P97, Min/Max) + Warnung, wenn der
+// Mittelwert-Spread zwischen den Positionen > 5 % ist.
 //
-// Aufruf:  npm run simulate -- [anzahlSpieltage] [startDatum] [endDatum]
-//   z. B.  npm run simulate -- 4 2026-04-01 2026-05-20
+// Aufruf:  npm run simulate -- [startDatum] [endDatum]
+//   Default: komplette Saison 2025/26 (2025-08-01 … 2026-05-31)
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -48,32 +48,43 @@ function median(a: number[]): number {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
-async function main() {
-  const matchdays = Number(process.argv[2] ?? 3);
-  const from = process.argv[3] ?? '2026-04-01';
-  const to = process.argv[4] ?? '2026-05-20';
+const STARTER_TYPE_ID = 11; // Sportmonks: 11 = Startelf, 12 = Bank
 
-  // Fixtures im Zeitfenster (Bundesliga) inkl. Spieler-Statistiken laden.
-  let page = 1;
-  const fixtures: any[] = [];
-  for (;;) {
-    const d = await sm(
-      `/fixtures/between/${from}/${to}?filters=fixtureLeagues:82` +
-      `&include=lineups.details.type&per_page=50&page=${page}`,
-    );
-    fixtures.push(...(d.data ?? []));
-    if (!d.pagination?.has_more) break;
-    page++;
+async function main() {
+  const from = process.argv[2] ?? '2025-08-01';
+  const to = process.argv[3] ?? '2026-05-31';
+
+  // Der between-Endpoint begrenzt den Zeitraum → in ~80-Tage-Fenster zerlegen.
+  const windows: [string, string][] = [];
+  for (let s = new Date(from); s < new Date(to);) {
+    const e = new Date(s);
+    e.setDate(e.getDate() + 80);
+    const end = e > new Date(to) ? new Date(to) : e;
+    windows.push([s.toISOString().slice(0, 10), end.toISOString().slice(0, 10)]);
+    s = new Date(end);
+    s.setDate(s.getDate() + 1);
   }
-  // Nur beendete, nach Spieltag (round_id) sortiert; letzte N Spieltage nehmen.
-  const played = fixtures.filter((f) => (f.lineups ?? []).some((l: any) => (l.details ?? []).length));
-  const rounds = [...new Set(played.map((f) => f.round_id))].sort((a, b) => a - b);
-  const keep = new Set(rounds.slice(-matchdays));
-  const use = played.filter((f) => keep.has(f.round_id));
+
+  const fixtures: any[] = [];
+  for (const [ws, we] of windows) {
+    let page = 1;
+    for (;;) {
+      const d = await sm(
+        `/fixtures/between/${ws}/${we}?filters=fixtureLeagues:82` +
+        `&include=lineups.details.type&per_page=50&page=${page}`,
+      );
+      fixtures.push(...(d.data ?? []));
+      if (!d.pagination?.has_more) break;
+      page++;
+    }
+  }
+  const use = fixtures.filter((f) => (f.lineups ?? []).some((l: any) => (l.details ?? []).length));
+  const rounds = new Set(use.map((f) => f.round_id));
 
   const totals: Record<Position, number[]> = { GK: [], DEF: [], MID: [], FWD: [] };
   for (const f of use) {
     for (const lu of f.lineups ?? []) {
+      if (lu.type_id !== STARTER_TYPE_ID) continue; // nur Startelf
       const pos = POS[lu.position_id];
       if (!pos) continue;
       const stats: SportmonksStat[] = (lu.details ?? [])
@@ -83,13 +94,12 @@ async function main() {
         }))
         .filter((s: SportmonksStat) => s.code);
       const events = mapSportmonksStats(stats);
-      if (events.minutes <= 0) continue; // nur Einsatzspieler
       const { total } = calculateScore({ id: String(lu.player_id) }, events, pos, false);
       totals[pos].push(total);
     }
   }
 
-  console.log(`\nSimulation: ${use.length} Spiele, ${keep.size} Spieltag(e) [${from} … ${to}]\n`);
+  console.log(`\nSimulation (nur Startelf): ${use.length} Spiele, ${rounds.size} Spieltag(e) [${from} … ${to}]\n`);
   console.log('Pos   n     Mittel  Median   P90    P97    Min    Max');
   const means: number[] = [];
   for (const pos of ['GK', 'DEF', 'MID', 'FWD'] as Position[]) {
