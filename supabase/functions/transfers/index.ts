@@ -7,9 +7,8 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// Sportmonks-Team-IDs der 18 Bundesliga-Vereine (Herren).
+// Sportmonks-Team-IDs der 18 Bundesliga-Vereine (Saison 2026/27).
 const BL_TEAMS: Record<number, string> = {
-  2831: "1. FC Heidenheim 1846",
   3320: "1. FC Köln",
   1079: "1. FC Union Berlin",
   794: "1. FSV Mainz 05",
@@ -19,14 +18,15 @@ const BL_TEAMS: Record<number, string> = {
   366: "Eintracht Frankfurt",
   90: "FC Augsburg",
   503: "FC Bayern München",
-  353: "FC St. Pauli",
+  67: "FC Schalke 04",
   2708: "Hamburger SV",
   277: "RB Leipzig",
   3543: "SC Freiburg",
+  2642: "SC Paderborn 07",
+  3588: "SV 07 Elversberg",
   82: "SV Werder Bremen",
   2726: "TSG Hoffenheim",
   3319: "VfB Stuttgart",
-  510: "VfL Wolfsburg",
 };
 
 const ttlMin = Number(Deno.env.get("TRANSFERS_CACHE_TTL_MIN") ?? "720"); // 12h

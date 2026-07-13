@@ -21,14 +21,14 @@ import time
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_SQL = os.path.join(ROOT, "supabase/migrations/0048_sportmonks_pool.sql")
+OUT_SQL = os.path.join(ROOT, "supabase/migrations/0051_sportmonks_pool_2026.sql")
 ENV = os.path.join(ROOT, "supabase/.env.local")
 
 BASE = "https://api.sportmonks.com/v3/football"
 
-# Kanonischer OpenLigaDB-Vereinsname -> Sportmonks-Team-ID (Herren-1.-Mannschaft).
+# Kanonischer OpenLigaDB-Vereinsname -> Sportmonks-Team-ID (Saison 2026/27,
+# Namen aus getavailableteams/bl1/2026).
 TEAM_IDS = {
-    "1. FC Heidenheim 1846": 2831,
     "1. FC Köln": 3320,
     "1. FC Union Berlin": 1079,
     "1. FSV Mainz 05": 794,
@@ -38,15 +38,24 @@ TEAM_IDS = {
     "Eintracht Frankfurt": 366,
     "FC Augsburg": 90,
     "FC Bayern München": 503,
-    "FC St. Pauli": 353,
+    "FC Schalke 04": 67,
     "Hamburger SV": 2708,
     "RB Leipzig": 277,
     "SC Freiburg": 3543,
+    "SC Paderborn 07": 2642,
+    "SV 07 Elversberg": 3588,
     "SV Werder Bremen": 82,
     "TSG Hoffenheim": 2726,
     "VfB Stuttgart": 3319,
-    "VfL Wolfsburg": 510,
 }
+
+# Absteiger 2025/26 -> 2026/27: komplett aus dem Pool entfernen (samt
+# abhängiger Daten, FK-Reihenfolge).
+RELEGATED = [
+    "1. FC Heidenheim 1846",
+    "FC St. Pauli",
+    "VfL Wolfsburg",
+]
 
 # Sportmonks position.developer_name -> App-Position.
 POS = {
@@ -132,12 +141,19 @@ def main():
         print(f"  {club:30s} team={team_id:>6}  Kader={len(entries):>3}  übernommen={kept}")
         time.sleep(0.15)
 
-    clubs_sql = ", ".join(sql_str(c) for c in sorted(TEAM_IDS))
-    # NOT IN über alle FK-Spalten (Nulls ausschließen!).
-    ref_union = "\n    union ".join(
-        f"select {col} from public.{tbl} where {col} is not null"
-        for tbl, col in FK_REFS
-    )
+    current_sql = ", ".join(sql_str(c) for c in sorted(TEAM_IDS))
+    relegated_sql = ", ".join(sql_str(c) for c in sorted(RELEGATED))
+    # Abhängige Zeilen (FK-Reihenfolge) für die zu entfernenden Spieler.
+    dep_deletes = "\n".join([
+        "delete from public.draft_picks where player_id in (select id from _purge);",
+        "delete from public.fantasy_draft_queue where player_id in (select id from _purge);",
+        "delete from public.fantasy_rosters where player_id in (select id from _purge);",
+        "delete from public.fantasy_trade_items where player_id in (select id from _purge);",
+        "delete from public.fantasy_waiver_players where player_id in (select id from _purge);",
+        "delete from public.fantasy_waiver_claims where add_player_id in "
+        "(select id from _purge) or drop_player_id in (select id from _purge);",
+        "delete from public.player_match_stats where player_id in (select id from _purge);",
+    ])
 
     rows = sorted(players.values(), key=lambda r: (r[3], r[1]))
     values = ",\n".join(
@@ -146,19 +162,22 @@ def main():
         for r in rows
     )
 
-    sql = f"""-- Vollständiger Bundesliga-Spielerpool aus Sportmonks (aktuelle Kader).
+    sql = f"""-- Bundesliga-Spielerpool Saison 2026/27 aus Sportmonks.
 -- Generiert von tools/import_sportmonks_pool.py. club = kanonischer
--- OpenLigaDB-Name (fürs Stats-Matching). Ersetzt die alten Bundesliga-
--- Einträge, soweit sie nicht in bestehenden Ligen referenziert sind.
+-- OpenLigaDB-Name (fürs Stats-Matching). Tauscht Absteiger gegen Aufsteiger
+-- und frischt die verbliebenen Kader auf.
 
--- 1) Alte, NICHT referenzierte Bundesliga-Spieler entfernen (FK-sicher).
-delete from public.players p
-where p.club in ({clubs_sql})
-  and p.id not in (
-    {ref_union}
-  );
+-- 1) Zu entfernen: Absteiger komplett + evtl. Alt-Reste (nicht-sportmonks) der
+--    aktuellen 18. FK-sicher inkl. abhängiger Daten.
+create temporary table _purge on commit drop as
+  select id from public.players
+  where club in ({relegated_sql})
+     or (club in ({current_sql}) and id not like 'sportmonks:%');
 
--- 2) Aktuelle Sportmonks-Kader einspielen ({len(rows)} Spieler, Upsert).
+{dep_deletes}
+delete from public.players where id in (select id from _purge);
+
+-- 2) Aktuelle Kader (Saison 2026/27) einspielen ({len(rows)} Spieler, Upsert).
 insert into public.players
   (id, name, position, club, birth_date, nationality, is_foreign_newcomer)
 values
