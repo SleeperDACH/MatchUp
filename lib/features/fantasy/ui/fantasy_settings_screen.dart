@@ -10,6 +10,7 @@ import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'fantasy_admin_screen.dart';
+import 'scoring_info_screen.dart';
 
 /// Einstellungen einer Fantasy-Liga als Menü: je Bereich eine eigene Seite.
 class FantasyLeagueSettingsScreen extends ConsumerWidget {
@@ -146,6 +147,16 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: editTeamName,
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.calculate_outlined, color: scheme.primary),
+              title: const Text('Punktevergabe'),
+              subtitle: const Text('Wie Fantasy-Punkte vergeben werden'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const ScoringInfoScreen())),
             ),
           ),
           Card(
