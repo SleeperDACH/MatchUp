@@ -21,11 +21,11 @@
   "cleanSheet": {
     "minMinutes": 60,
     "label": "Zu Null",
-    "points": { "GK": 7, "DEF": 6, "MID": 0, "FWD": 0 }
+    "points": { "GK": 6, "DEF": 6, "MID": 0, "FWD": 0 }
   },
   "goalConceded": {
     "label": "Gegentor",
-    "points": { "GK": -0.5, "DEF": -0.5, "MID": 0, "FWD": 0 }
+    "points": { "GK": -3, "DEF": -0.5, "MID": 0, "FWD": 0 }
   },
 
   "goalkeeper": {
@@ -83,5 +83,5 @@
     ]
   },
 
-  "captain": { "multiplier": 2, "label": "Kapitän ×2" }
+  "captain": { "enabled": false, "multiplier": 1, "label": "Kapitän" }
 }

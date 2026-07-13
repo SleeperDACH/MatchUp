@@ -113,8 +113,8 @@ export function calculateScore(
 
   let total = round(lines.reduce((s, l) => s + l.subtotal, 0));
 
-  // Kapitän: Endsumme (inkl. Minuspunkte) verdoppeln.
-  if (isCaptain) {
+  // Kapitän-Multiplikator (aktuell deaktiviert; config-gesteuert).
+  if (isCaptain && cfg.captain.enabled && cfg.captain.multiplier !== 1) {
     lines.push({ label: cfg.captain.label, count: 1, pointsEach: total, subtotal: round(total * (cfg.captain.multiplier - 1)) });
     total = round(total * cfg.captain.multiplier);
   }

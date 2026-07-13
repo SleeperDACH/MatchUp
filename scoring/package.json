@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "simulate": "tsx src/simulate.ts"
+    "simulate": "tsx src/simulate.ts",
+    "score-fixture": "tsx src/score-fixture.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

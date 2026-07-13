@@ -38,12 +38,13 @@ describe('Exakte Referenz-Fälle', () => {
   it('MID: 90 Min + 1 Tor = 13', () => {
     expect(score({ minutes: 90, goals: 1 }, 'MID').total).toBe(13);
   });
-  it('GK-Durchschnitt: 90 Min, 3 Paraden, 1 GT, Rating 6.8 = 9', () => {
-    expect(score({ minutes: 90, saves: 3, goalsConceded: 1, rating: 6.8 }, 'GK').total).toBe(9);
+  it('GK-Durchschnitt: 90 Min, 3 Paraden, 1 GT (−3), Rating 6.8 = 6.5', () => {
+    // 5 (Einsatz) + 3×1.5 (Paraden) − 3 (Gegentor) + 0 (Rating) = 6.5
+    expect(score({ minutes: 90, saves: 3, goalsConceded: 1, rating: 6.8 }, 'GK').total).toBe(6.5);
   });
-  it('FWD: 60 Min + 1 Tor = 11; als Kapitän = 22', () => {
+  it('FWD: 60 Min + 1 Tor = 11; Kapitän hat keinen Effekt', () => {
     expect(score({ minutes: 60, goals: 1, rating: 6.5 }, 'FWD').total).toBe(11);
-    expect(score({ minutes: 60, goals: 1, rating: 6.5 }, 'FWD', true).total).toBe(22);
+    expect(score({ minutes: 60, goals: 1, rating: 6.5 }, 'FWD', true).total).toBe(11);
   });
   it('Elfmeter-Tor zählt 6, normales Tor 8', () => {
     const r = score({ minutes: 90, goals: 2, penaltyGoals: 1 }, 'FWD');
@@ -61,7 +62,7 @@ describe('GK', () => {
       clearances: 3, rating: 9.2,
     }, 'GK');
     expect(label(r, 'Paraden-Meilenstein')).toBeTruthy();
-    expect(label(r, 'Zu Null')?.subtotal).toBe(7);
+    expect(label(r, 'Zu Null')?.subtotal).toBe(6);
     expect(label(r, 'Gehaltener Elfmeter')?.subtotal).toBe(6);
     expect(label(r, 'Rating-Bonus')?.subtotal).toBe(5);
     expect(r.total).toBeGreaterThan(35);
@@ -154,9 +155,9 @@ describe('FWD', () => {
     }, 'FWD');
     expect(r.total).toBeLessThan(0);
   });
-  it('Kapitän verdoppelt auch Minuspunkte', () => {
+  it('Kapitän hat keinen Effekt (Verdopplung entfernt)', () => {
     const base = score({ minutes: 90, redCards: 1, rating: 4.0 }, 'FWD');
     const cap = score({ minutes: 90, redCards: 1, rating: 4.0 }, 'FWD', true);
-    expect(cap.total).toBe(base.total * 2);
+    expect(cap.total).toBe(base.total);
   });
 });

@@ -30,8 +30,8 @@ class ScoringInfoScreen extends StatelessWidget {
             _Row('Erfolgreiches Dribbling', '+0,5'),
           ]),
           _Section('Defensive', const [
-            _Row('Zu Null (≥60 Min, 0 GT)', 'TW +7 · ABW +6'),
-            _Row('Gegentor (je, auf dem Platz)', 'TW/ABW −0,5'),
+            _Row('Zu Null (≥60 Min, 0 GT)', 'TW +6 · ABW +6'),
+            _Row('Gegentor (je, auf dem Platz)', 'TW −3 · ABW −0,5'),
             _Row('Parade (nur TW)', '+1,5'),
             _Row('Gehaltener Elfmeter (nur TW)', '+6'),
             _Row('Tackling gewonnen', '+0,5'),
@@ -65,9 +65,6 @@ class ScoringInfoScreen extends StatelessWidget {
             _Row('6,0 – 6,99', '0'),
             _Row('5,0 – 5,99', '−1,5'),
             _Row('< 5,0', '−3'),
-          ]),
-          _Section('Kapitän', const [
-            _Row('Endsumme (inkl. Minuspunkte)', '× 2'),
           ]),
         ],
       ),
