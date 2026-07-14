@@ -31,7 +31,7 @@ class ScoringInfoScreen extends StatelessWidget {
           ]),
           _Section('Defensive', const [
             _Row('Zu Null (≥60 Min, 0 GT)', 'TW +12 · ABW +12'),
-            _Row('Gegentor (je, auf dem Platz)', 'TW −2 · ABW −1'),
+            _Row('Gegentor (je, auf dem Platz)', 'TW −4 · ABW −4'),
             _Row('Parade (nur TW)', '+3'),
             _Row('Gehaltener Elfmeter (nur TW)', '+12'),
             _Row('Tackling gewonnen', '+1'),

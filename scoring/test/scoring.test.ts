@@ -38,9 +38,9 @@ describe('Exakte Referenz-Fälle (×2)', () => {
   it('MID: 90 Min + 1 Tor = 26', () => {
     expect(score({ minutes: 90, goals: 1 }, 'MID').total).toBe(26);
   });
-  it('GK-Durchschnitt: 90 Min, 3 Paraden (×3), 1 GT (−2), Rating 6.8 = 17', () => {
-    // 10 (Einsatz) + 3×3 (Paraden) − 2 (Gegentor) + 0 (Rating) = 17
-    expect(score({ minutes: 90, saves: 3, goalsConceded: 1, rating: 6.8 }, 'GK').total).toBe(17);
+  it('GK-Durchschnitt: 90 Min, 3 Paraden (×3), 1 GT (−4), Rating 6.8 = 15', () => {
+    // 10 (Einsatz) + 3×3 (Paraden) − 4 (Gegentor) + 0 (Rating) = 15
+    expect(score({ minutes: 90, saves: 3, goalsConceded: 1, rating: 6.8 }, 'GK').total).toBe(15);
   });
   it('FWD: 60 Min + 1 Tor = 22; Kapitän hat keinen Effekt', () => {
     expect(score({ minutes: 60, goals: 1, rating: 6.5 }, 'FWD').total).toBe(22);
