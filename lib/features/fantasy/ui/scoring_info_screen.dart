@@ -37,7 +37,7 @@ class ScoringInfoScreen extends StatelessWidget {
             _Row('Tackling gewonnen', '+0,5'),
             _Row('Balleroberung', '+0,5'),
             _Row('Klärung', '+0,2'),
-            _Row('Geblockter Schuss', '+0,75'),
+            _Row('Geblockter Schuss', '+0,5'),
           ]),
           _Section('Meilenstein-Boni (kumulativ, pro Spiel)', const [
             _Row('Paraden (TW): ≥5', '+4'),

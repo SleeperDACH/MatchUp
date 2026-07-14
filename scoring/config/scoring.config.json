@@ -37,7 +37,7 @@
     "tackleWon":   { "label": "Tackling gewonnen",  "points": { "GK": 0.5,  "DEF": 0.5,  "MID": 0.5,  "FWD": 0.5 } },
     "interception":{ "label": "Balleroberung",      "points": { "GK": 0.5,  "DEF": 0.5,  "MID": 0.5,  "FWD": 0.5 } },
     "clearance":   { "label": "Klärung",            "points": { "GK": 0.2,  "DEF": 0.2,  "MID": 0.2,  "FWD": 0.2 } },
-    "blockedShot": { "label": "Geblockter Schuss",  "points": { "GK": 0.75, "DEF": 0.75, "MID": 0.75, "FWD": 0.75 } }
+    "blockedShot": { "label": "Geblockter Schuss",  "points": { "GK": 0.5, "DEF": 0.5, "MID": 0.5, "FWD": 0.5 } }
   },
 
   "milestones": {
