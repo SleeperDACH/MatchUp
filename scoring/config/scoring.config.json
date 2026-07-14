@@ -2,84 +2,84 @@
   "positions": ["GK", "DEF", "MID", "FWD"],
 
   "appearance": [
-    { "atLeastMinutes": 90, "points": 5, "label": "Einsatz (90 Min)" },
-    { "atLeastMinutes": 60, "points": 3, "label": "Einsatz (60–89 Min)" },
-    { "atLeastMinutes": 30, "points": 2, "label": "Einsatz (30–59 Min)" },
-    { "atLeastMinutes": 1,  "points": 1, "label": "Einsatz (1–29 Min)" }
+    { "atLeastMinutes": 90, "points": 10, "label": "Einsatz (90 Min)" },
+    { "atLeastMinutes": 60, "points": 6,  "label": "Einsatz (60–89 Min)" },
+    { "atLeastMinutes": 30, "points": 4,  "label": "Einsatz (30–59 Min)" },
+    { "atLeastMinutes": 1,  "points": 2,  "label": "Einsatz (1–29 Min)" }
   ],
 
   "offense": {
-    "goal":              { "points": 8,    "label": "Tor" },
-    "penaltyGoal":       { "points": 6,    "label": "Tor (Elfmeter)" },
-    "assist":            { "points": 6,    "label": "Vorlage" },
-    "bigChanceCreated":  { "points": 3,    "label": "Großchance kreiert" },
-    "keyPass":           { "points": 0.75, "label": "Key Pass" },
-    "shotOnTarget":      { "points": 1,    "label": "Schuss aufs Tor" },
-    "successfulDribble": { "points": 0.5,  "label": "Erfolgreiches Dribbling" }
+    "goal":              { "points": 16,  "label": "Tor" },
+    "penaltyGoal":       { "points": 12,  "label": "Tor (Elfmeter)" },
+    "assist":            { "points": 12,  "label": "Vorlage" },
+    "bigChanceCreated":  { "points": 6,   "label": "Großchance kreiert" },
+    "keyPass":           { "points": 1.5, "label": "Key Pass" },
+    "shotOnTarget":      { "points": 2,   "label": "Schuss aufs Tor" },
+    "successfulDribble": { "points": 1,   "label": "Erfolgreiches Dribbling" }
   },
 
   "cleanSheet": {
     "minMinutes": 60,
     "label": "Zu Null",
-    "points": { "GK": 6, "DEF": 6, "MID": 0, "FWD": 0 }
+    "points": { "GK": 12, "DEF": 12, "MID": 0, "FWD": 0 }
   },
   "goalConceded": {
     "label": "Gegentor",
-    "points": { "GK": -1, "DEF": -0.5, "MID": 0, "FWD": 0 }
+    "points": { "GK": -2, "DEF": -1, "MID": 0, "FWD": 0 }
   },
 
   "goalkeeper": {
-    "save":         { "points": 1.5, "label": "Parade" },
-    "penaltySaved": { "points": 6,   "label": "Gehaltener Elfmeter" }
+    "save":         { "points": 3,  "label": "Parade" },
+    "penaltySaved": { "points": 12, "label": "Gehaltener Elfmeter" }
   },
 
   "defensiveActions": {
-    "tackleWon":   { "label": "Tackling gewonnen",  "points": { "GK": 0.5,  "DEF": 0.5,  "MID": 0.5,  "FWD": 0.5 } },
-    "interception":{ "label": "Balleroberung",      "points": { "GK": 0.5,  "DEF": 0.5,  "MID": 0.5,  "FWD": 0.5 } },
-    "clearance":   { "label": "Klärung",            "points": { "GK": 0.2,  "DEF": 0.2,  "MID": 0.2,  "FWD": 0.2 } },
-    "blockedShot": { "label": "Geblockter Schuss",  "points": { "GK": 0.5, "DEF": 0.5, "MID": 0.5, "FWD": 0.5 } }
+    "tackleWon":   { "label": "Tackling gewonnen",  "points": { "GK": 1,   "DEF": 1,   "MID": 1,   "FWD": 1 } },
+    "interception":{ "label": "Balleroberung",      "points": { "GK": 1,   "DEF": 1,   "MID": 1,   "FWD": 1 } },
+    "clearance":   { "label": "Klärung",            "points": { "GK": 0.4, "DEF": 0.4, "MID": 0.4, "FWD": 0.4 } },
+    "blockedShot": { "label": "Geblockter Schuss",  "points": { "GK": 1,   "DEF": 1,   "MID": 1,   "FWD": 1 } }
   },
 
   "milestones": {
     "saves": {
       "label": "Paraden-Meilenstein",
       "positions": ["GK"],
-      "thresholds": [ { "atLeast": 5, "bonus": 4 }, { "atLeast": 8, "bonus": 6 } ]
+      "thresholds": [ { "atLeast": 5, "bonus": 8 }, { "atLeast": 8, "bonus": 12 } ]
     },
     "defensiveActions": {
       "label": "Defensiv-Meilenstein",
       "components": ["tacklesWon", "interceptions", "clearances", "blockedShots"],
       "byPosition": {
-        "GK":  [ { "atLeast": 9,  "bonus": 3 }, { "atLeast": 14, "bonus": 3 }, { "atLeast": 19, "bonus": 3 } ],
-        "DEF": [ { "atLeast": 9,  "bonus": 3 }, { "atLeast": 14, "bonus": 3 }, { "atLeast": 19, "bonus": 3 } ],
-        "MID": [ { "atLeast": 10, "bonus": 3 }, { "atLeast": 14, "bonus": 3 } ],
-        "FWD": [ { "atLeast": 8,  "bonus": 3 }, { "atLeast": 12, "bonus": 3 } ]
+        "GK":  [ { "atLeast": 9,  "bonus": 6 }, { "atLeast": 14, "bonus": 6 }, { "atLeast": 19, "bonus": 6 } ],
+        "DEF": [ { "atLeast": 9,  "bonus": 6 }, { "atLeast": 14, "bonus": 6 }, { "atLeast": 19, "bonus": 6 } ],
+        "MID": [ { "atLeast": 10, "bonus": 6 }, { "atLeast": 14, "bonus": 6 } ],
+        "FWD": [ { "atLeast": 8,  "bonus": 6 }, { "atLeast": 12, "bonus": 6 } ]
       }
     }
   },
 
   "negative": {
-    "yellowCard":      { "points": -2,   "label": "Gelbe Karte" },
-    "secondYellow":    { "points": -3,   "label": "Gelb-Rot (zusätzlich)" },
-    "redCard":         { "points": -5,   "label": "Rote Karte" },
-    "ownGoal":         { "points": -6,   "label": "Eigentor" },
-    "penaltyMissed":   { "points": -4,   "label": "Verschossener Elfmeter" },
-    "errorLeadToGoal": { "points": -3,   "label": "Fehler vor Gegentor" },
-    "bigChanceMissed": { "points": -2,   "label": "Großchance vergeben" },
-    "offside":         { "points": -0.5, "label": "Abseits" },
-    "foul":            { "points": -0.2, "label": "Foul" },
-    "possessionLost":  { "points": -0.2, "label": "Ballverlust" }
+    "yellowCard":      { "points": -4,  "label": "Gelbe Karte" },
+    "secondYellow":    { "points": -6,  "label": "Gelb-Rot (zusätzlich)" },
+    "redCard":         { "points": -10, "label": "Rote Karte" },
+    "ownGoal":         { "points": -12, "label": "Eigentor" },
+    "penaltyMissed":   { "points": -8,  "label": "Verschossener Elfmeter" },
+    "errorLeadToGoal": { "points": -6,  "label": "Fehler vor Gegentor" },
+    "bigChanceMissed": { "points": -4,  "label": "Großchance vergeben" },
+    "offside":         { "points": -1,  "label": "Abseits" },
+    "foul":            { "points": -0.4, "label": "Foul" },
+    "possessionLost":  { "points": -0.4, "label": "Ballverlust" }
   },
 
   "ratingBonus": {
     "label": "Rating-Bonus",
     "tiers": [
-      { "atLeast": 9.0, "points": 5 },
-      { "atLeast": 8.0, "points": 3 },
-      { "atLeast": 7.0, "points": 1.5 },
+      { "atLeast": 9.0, "points": 10 },
+      { "atLeast": 8.0, "points": 6 },
+      { "atLeast": 7.0, "points": 3 },
       { "atLeast": 6.0, "points": 0 },
-      { "atLeast": 5.0, "points": -1.5 },
-      { "atLeast": 0.0, "points": -3 }
+      { "atLeast": 5.0, "points": -3 },
+      { "atLeast": 0.0, "points": -6 }
     ]
   },
 
