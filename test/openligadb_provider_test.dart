@@ -171,7 +171,7 @@ void main() {
         ];
 
       final fixture =
-          OpenLigaDbProvider.parseMatch(koMatch, Leagues.wm2026, 2026);
+          OpenLigaDbProvider.parseMatch(koMatch, Leagues.dfbPokal, 2026);
 
       expect(fixture.status, FixtureStatus.finished);
       expect(fixture.homeScore, 2);
@@ -191,7 +191,7 @@ void main() {
         ];
 
       final fixture =
-          OpenLigaDbProvider.parseMatch(penaltyMatch, Leagues.wm2026, 2026);
+          OpenLigaDbProvider.parseMatch(penaltyMatch, Leagues.dfbPokal, 2026);
 
       expect(fixture.status, FixtureStatus.finished);
       expect(fixture.homeScore, 0);

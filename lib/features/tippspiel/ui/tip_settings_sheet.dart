@@ -5,6 +5,8 @@ import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
+import '../../leagues/providers.dart';
+import '../../leagues/ui/visibility_settings_page.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
 import 'tip_backfill_screen.dart';
@@ -16,6 +18,9 @@ void showTipSettings(BuildContext context, TipRound round) {
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    // Scrollbar & höher erlaubt, damit der Inhalt (inkl. Sichtbarkeit &
+    // Beitritt) nicht die feste Standardhöhe überläuft.
+    isScrollControlled: true,
     builder: (_) => _TipSettingsSheet(round: round),
   );
 }
@@ -126,8 +131,176 @@ class _TipSettingsSheet extends ConsumerWidget {
       }
     }
 
+    Future<void> confirmLeave() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Tippspiel verlassen?'),
+          content: Text('Du verlässt „${round.name}". Deine Tipps in dieser '
+              'Liga werden entfernt. Über einen Einladungslink kannst du '
+              'später wieder beitreten.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Abbrechen')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: scheme.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Verlassen'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      try {
+        await ref.read(tipRoundRepositoryProvider).leaveRound(round.id);
+        ref.invalidate(myRoundsProvider);
+        navigator.popUntil((r) => r.isFirst);
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Tippspiel verlassen.')));
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
+      }
+    }
+
+    // Wählt ein anderes Mitglied als neuen Admin (null = keins da/abgebrochen).
+    Future<RoundMember?> pickNewAdmin() async {
+      final others = (ref.read(roundMembersProvider(round.id)).valueOrNull ??
+              const <RoundMember>[])
+          .where((m) => m.userId != myId)
+          .toList();
+      if (others.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Kein anderes Mitglied vorhanden, dem du die '
+                'Adminrechte übergeben kannst. Du kannst die Runde '
+                'stattdessen löschen.')));
+        return null;
+      }
+      return showDialog<RoundMember>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('Adminrechte übergeben an …'),
+          children: [
+            for (final m in others)
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(ctx).pop(m),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      AppAvatar(
+                        imageUrl: m.avatarUrl,
+                        emoji: m.avatarEmoji,
+                        colorHex: m.avatarColor,
+                        fallbackText: m.username,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(m.display,
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    // Nur Adminrechte übergeben (der bisherige Admin bleibt Mitglied).
+    Future<void> confirmTransferOwnership() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+      final newOwner = await pickNewAdmin();
+      if (newOwner == null || !context.mounted) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Adminrechte übergeben?'),
+          content: Text('„${newOwner.display}" wird neuer Admin von '
+              '„${round.name}". Du bleibst Mitglied, verlierst aber die '
+              'Admin-Rechte.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Abbrechen')),
+            FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Übergeben')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      try {
+        final repo = ref.read(tipRoundRepositoryProvider);
+        await repo.transferOwnership(round.id, newOwner.userId);
+        // Aktive Runde aktualisieren, damit Admin-Optionen verschwinden.
+        ref.read(activeRoundProvider.notifier).state =
+            await repo.fetchRound(round.id);
+        ref.invalidate(myRoundsProvider);
+        navigator.pop(); // Einstellungen schließen
+        messenger.showSnackBar(SnackBar(
+            content: Text('„${newOwner.display}" ist jetzt Admin.')));
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Übergabe fehlgeschlagen: $e')));
+      }
+    }
+
+    // Admin verlässt die Runde: erst die Adminrechte an ein anderes Mitglied
+    // übergeben, dann austreten (atomar serverseitig).
+    Future<void> confirmLeaveAsAdmin() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+      final newOwner = await pickNewAdmin();
+      if (newOwner == null || !context.mounted) return;
+      // Übergabe + Austritt bestätigen.
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Übergeben und verlassen?'),
+          content: Text('„${newOwner.display}" wird neuer Admin von '
+              '„${round.name}". Du verlässt die Runde und deine Tipps werden '
+              'entfernt.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Abbrechen')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: scheme.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Übergeben & verlassen'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      try {
+        await ref
+            .read(tipRoundRepositoryProvider)
+            .transferAndLeaveRound(round.id, newOwner.userId);
+        ref.invalidate(myRoundsProvider);
+        navigator.popUntil((r) => r.isFirst);
+        messenger.showSnackBar(const SnackBar(
+            content:
+                Text('Adminrechte übergeben und Tippspiel verlassen.')));
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
+      }
+    }
+
     return SafeArea(
-      child: Column(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.9),
+        child: SingleChildScrollView(
+          child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Padding(
@@ -176,6 +349,35 @@ class _TipSettingsSheet extends ConsumerWidget {
             ),
             const Divider(height: 1),
             ListTile(
+              leading: Icon(
+                  round.isPublic ? Icons.public : Icons.lock_outline,
+                  color: scheme.primary),
+              title: const Text('Sichtbarkeit & Beitritt',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle:
+                  Text(visibilityLabel(round.visibility, round.joinPolicy)),
+              trailing: RequestsBadgeChevron(
+                  pending: (round.isPublic && round.isInviteOnly)
+                      ? ref
+                              .watch(tipJoinRequestsProvider(round.id))
+                              .valueOrNull
+                              ?.length ??
+                          0
+                      : 0),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => VisibilitySettingsPage(
+                          kind: 'tip',
+                          id: round.id,
+                          name: round.name,
+                          visibility: round.visibility,
+                          joinPolicy: round.joinPolicy,
+                        )));
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: Icon(Icons.edit_note, color: scheme.primary),
               title: const Text('Tipps nachtragen',
                   style: TextStyle(fontWeight: FontWeight.bold)),
@@ -202,6 +404,26 @@ class _TipSettingsSheet extends ConsumerWidget {
             ),
             const Divider(height: 1),
             ListTile(
+              leading: Icon(Icons.admin_panel_settings_outlined,
+                  color: scheme.primary),
+              title: const Text('Adminrechte übergeben',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text(
+                  'Ein Mitglied zum neuen Admin machen; du bleibst dabei.'),
+              onTap: confirmTransferOwnership,
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.logout, color: scheme.error),
+              title: Text('Tippspiel verlassen',
+                  style: TextStyle(
+                      color: scheme.error, fontWeight: FontWeight.bold)),
+              subtitle: const Text(
+                  'Adminrechte an ein Mitglied übergeben und austreten.'),
+              onTap: confirmLeaveAsAdmin,
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: Icon(Icons.delete_outline, color: scheme.error),
               title: Text('Tippspiel löschen',
                   style: TextStyle(
@@ -211,8 +433,23 @@ class _TipSettingsSheet extends ConsumerWidget {
               onTap: confirmDelete,
             ),
           ],
+          // Mitglieder (nicht der Ersteller) können die Runde verlassen.
+          if (!isCreator) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.logout, color: scheme.error),
+              title: Text('Tippspiel verlassen',
+                  style: TextStyle(
+                      color: scheme.error, fontWeight: FontWeight.bold)),
+              subtitle: const Text(
+                  'Entfernt dich aus der Liga; deine Tipps werden gelöscht.'),
+              onTap: confirmLeave,
+            ),
+          ],
           const SizedBox(height: 8),
         ],
+          ),
+        ),
       ),
     );
   }

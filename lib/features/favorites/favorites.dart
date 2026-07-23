@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/config/app_config.dart';
+import '../../core/data/sportmonks/sportmonks_provider.dart';
 import '../../core/models/models.dart';
+import '../../core/models/team_fixture.dart';
 import '../auth/providers.dart';
 import '../tippspiel/providers.dart';
 
@@ -17,6 +20,7 @@ class Favorite {
     this.leagueId,
     this.shortName,
     this.iconUrl,
+    this.sortOrder,
   });
 
   final FavoriteType type;
@@ -27,6 +31,19 @@ class Favorite {
   final String? leagueId;
   final String? shortName;
   final String? iconUrl;
+
+  /// Manuelle Sortierposition (null = noch nie manuell sortiert).
+  final int? sortOrder;
+
+  Favorite copyWith({int? sortOrder}) => Favorite(
+        type: type,
+        key: key,
+        label: label,
+        leagueId: leagueId,
+        shortName: shortName,
+        iconUrl: iconUrl,
+        sortOrder: sortOrder ?? this.sortOrder,
+      );
 
   factory Favorite.team(TeamRef team, String leagueId) => Favorite(
         type: FavoriteType.team,
@@ -50,6 +67,7 @@ class Favorite {
         leagueId: r['league_id'] as String?,
         shortName: r['short_name'] as String?,
         iconUrl: r['icon_url'] as String?,
+        sortOrder: (r['sort_order'] as num?)?.toInt(),
       );
 
   Map<String, dynamic> toRow(String userId) => {
@@ -60,6 +78,7 @@ class Favorite {
         'league_id': leagueId,
         'short_name': shortName,
         'icon_url': iconUrl,
+        'sort_order': sortOrder,
       };
 }
 
@@ -74,6 +93,7 @@ class FavoritesRepository {
         .from('user_favorites')
         .select()
         .eq('user_id', _uid)
+        .order('sort_order', nullsFirst: false)
         .order('created_at');
     return [for (final r in rows) Favorite.fromRow(r)];
   }
@@ -85,6 +105,15 @@ class FavoritesRepository {
       .from('user_favorites')
       .delete()
       .match({'user_id': _uid, 'fav_type': type.name, 'key': key});
+
+  /// Neue manuelle Reihenfolge speichern (sort_order = Position).
+  Future<void> reorder(List<Favorite> ordered) async {
+    final rows = [
+      for (var i = 0; i < ordered.length; i++)
+        ordered[i].copyWith(sortOrder: i).toRow(_uid)
+    ];
+    await _client.from('user_favorites').upsert(rows);
+  }
 }
 
 final favoritesRepositoryProvider = Provider<FavoritesRepository>(
@@ -134,6 +163,19 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
       state = previous; // bei Fehler zurückrollen
     }
   }
+
+  /// Neue manuelle Reihenfolge übernehmen (optimistisch, mit Persistenz).
+  Future<void> setManualOrder(List<Favorite> ordered) async {
+    final previous = state;
+    state = [
+      for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i)
+    ];
+    try {
+      await _repo.reorder(ordered);
+    } catch (_) {
+      state = previous;
+    }
+  }
 }
 
 /// Teams einer Liga (für die Favoriten-Auswahl), abgeleitet aus dem
@@ -150,6 +192,14 @@ final leagueTeamsProvider =
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return teams;
   });
+});
+
+/// Spielplan eines favorisierten Teams (wettbewerbsübergreifend). Family-Key
+/// ist die reine Sportmonks-Team-ID. Braucht die Server-Verbindung.
+final teamFixturesProvider =
+    FutureProvider.family<List<TeamFixture>, String>((ref, teamId) {
+  if (!AppConfig.isSupabaseConfigured) return Future.value(const []);
+  return SupabaseSportmonksProvider().getTeamFixtures(teamId);
 });
 
 /// Platzhalter-„Teams" der K.-o.-Runde sind keine echten Mannschaften und

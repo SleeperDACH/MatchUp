@@ -3,14 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/league_screen.dart';
 import '../../../core/models/models.dart';
+import '../../leagues/ui/visibility_picker.dart';
 import '../models/tip.dart';
 import '../providers.dart';
 import 'tip_rules_editor.dart';
 
 /// Erstellen einer Tipprunde: Name, Wettbewerb und (über [TipRulesEditor])
 /// Basiswertung samt der frei kombinierbaren Modi.
+///
+/// Ist [fantasyLeagueId] gesetzt, wird die Runde als **ligainternes Tippspiel**
+/// an die Fantasy-Liga gekoppelt: Sichtbarkeit entfällt (Mitglieder = aktive
+/// Fantasy-Mitglieder), der Name ist vorbelegt.
 class CreateTipRoundScreen extends ConsumerStatefulWidget {
-  const CreateTipRoundScreen({super.key});
+  const CreateTipRoundScreen({
+    super.key,
+    this.fantasyLeagueId,
+    this.initialName,
+  });
+
+  /// Wenn gesetzt: Tipprunde an diese Fantasy-Liga koppeln.
+  final String? fantasyLeagueId;
+
+  /// Vorbelegter Name (z. B. der Fantasy-Liga-Name).
+  final String? initialName;
 
   @override
   ConsumerState<CreateTipRoundScreen> createState() =>
@@ -19,13 +34,28 @@ class CreateTipRoundScreen extends ConsumerStatefulWidget {
 
 class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
   final _name = TextEditingController();
-  LeagueInfo _league = Leagues.all.first;
+  // Ausgewählte Wettbewerbe (mind. einer). Mehrere lassen sich kombinieren.
+  final Set<String> _leagueIds = {Leagues.tippspiel.first.id};
+
+  List<LeagueInfo> get _selectedLeagues =>
+      [for (final l in Leagues.tippspiel) if (_leagueIds.contains(l.id)) l];
 
   // Wertung + Modi — alle Standardwerte (Modi aus), vom Editor gepflegt.
   ScoringRules _rules = const ScoringRules();
 
+  String _visibility = 'private';
+  String _joinPolicy = 'open';
+
   bool _busy = false;
   String? _error;
+
+  bool get _linked => widget.fantasyLeagueId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialName != null) _name.text = widget.initialName!;
+  }
 
   @override
   void dispose() {
@@ -38,17 +68,31 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
       setState(() => _error = 'Bitte einen Namen mit mind. 3 Zeichen wählen.');
       return;
     }
+    final leagues = _selectedLeagues;
+    if (leagues.isEmpty) {
+      setState(() => _error = 'Bitte mindestens einen Wettbewerb wählen.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final round = await ref.read(tipRoundRepositoryProvider).createRound(
+      final repo = ref.read(tipRoundRepositoryProvider);
+      // Gekoppelte Runden sind immer privat (Mitglieder = Fantasy-Mitglieder).
+      final round = await repo.createRound(
             name: _name.text,
-            league: _league,
-            season: _league.seasonFor(DateTime.now()),
+            leagues: leagues,
+            season: leagues.first.seasonFor(DateTime.now()),
             rules: _rules,
+            visibility: _linked ? 'private' : _visibility,
+            joinPolicy: _linked ? 'open' : _joinPolicy,
           );
+      // An die Fantasy-Liga koppeln und deren Mitglieder übernehmen.
+      if (_linked) {
+        await repo.linkFantasyTipRound(round.id, widget.fantasyLeagueId!);
+        ref.invalidate(fantasyTipRoundProvider(widget.fantasyLeagueId!));
+      }
       ref.invalidate(myRoundsProvider);
       activateRound(ref, round);
       if (!mounted) return;
@@ -65,7 +109,10 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Tippspiel erstellen')),
+      appBar: AppBar(
+          title: Text(_linked
+              ? 'Ligainternes Tippspiel'
+              : 'Tippspiel erstellen')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -77,47 +124,69 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Wettbewerb', style: Theme.of(context).textTheme.titleMedium),
+          Text('Wettbewerbe', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            'Wähle einen oder mehrere Wettbewerbe — die Spiele zählen '
+            'gemeinsam in einer Tabelle.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant),
+          ),
           const SizedBox(height: 8),
-          DropdownButtonFormField<LeagueInfo>(
-            initialValue: _league,
-            // Menü farblich vom dunklen Hintergrund abheben.
-            dropdownColor: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              filled: true,
-              fillColor: scheme.primary.withValues(alpha: 0.10),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    BorderSide(color: scheme.primary.withValues(alpha: 0.5)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: scheme.primary, width: 1.5),
-              ),
-            ),
-            items: [
-              for (final league in Leagues.all)
-                DropdownMenuItem(
-                  value: league,
-                  child: Row(
-                    children: [
-                      Icon(Icons.emoji_events, size: 18, color: scheme.primary),
-                      const SizedBox(width: 8),
-                      Text(league.name),
-                    ],
-                  ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final league in Leagues.tippspiel)
+                FilterChip(
+                  label: Text(league.name),
+                  selected: _leagueIds.contains(league.id),
+                  onSelected: (sel) => setState(() {
+                    if (sel) {
+                      _leagueIds.add(league.id);
+                    } else if (_leagueIds.length > 1) {
+                      _leagueIds.remove(league.id);
+                    }
+                  }),
                 ),
             ],
-            onChanged: (l) => setState(() => _league = l ?? _league),
           ),
           const SizedBox(height: 24),
           TipRulesEditor(
             initial: _rules,
+            // Quoten-Modi nur, wenn ein Wettbewerb mit Quoten dabei ist
+            // (Bundesliga/2. Bundesliga); DFB-Pokal hat keine Quoten.
+            oddsAvailable:
+                _selectedLeagues.any((l) => l.oddsSportKey != null),
             onChanged: (r) => _rules = r,
           ),
+          if (_linked) ...[
+            const SizedBox(height: 24),
+            Text('Mitglieder',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              'Es spielen automatisch alle Mitglieder deiner Fantasy-Liga mit '
+              '— kein eigener Beitritt nötig.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ] else ...[
+            const SizedBox(height: 24),
+            Text('Sichtbarkeit',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            VisibilityPicker(
+              visibility: _visibility,
+              joinPolicy: _joinPolicy,
+              onChanged: (v, p) => setState(() {
+                _visibility = v;
+                _joinPolicy = p;
+              }),
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: 16),
             Text(_error!, style: TextStyle(color: scheme.error)),
@@ -130,7 +199,7 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.check),
-            label: const Text('Tipprunde erstellen'),
+            label: Text(_linked ? 'Tippspiel aktivieren' : 'Tipprunde erstellen'),
             onPressed: _busy ? null : _create,
           ),
         ],

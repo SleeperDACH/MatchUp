@@ -6,11 +6,9 @@ import '../core/ui/app_avatar.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/user_profile.dart';
 import '../features/auth/ui/login_screen.dart';
-import '../features/favorites/ui/favorites_settings_screen.dart';
-import '../features/messaging/ui/conversations_screen.dart';
+import '../features/favorites/ui/favorites_manage_screen.dart';
 import '../features/tippspiel/logic/tip_stats.dart';
 import '../features/tippspiel/providers.dart';
-import 'theme.dart';
 
 /// Profil-Tab: Konto-Übersicht und -Aktionen (Abmelden, App-Info).
 class ProfileScreen extends ConsumerWidget {
@@ -63,16 +61,67 @@ class _Profile extends ConsumerWidget {
     }
   }
 
+  /// Ändert den Nutzernamen (Kurz-Dialog).
+  Future<void> _editName(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final value = await _showTextDialog(context,
+        title: 'Name ändern', label: 'Nutzername', initial: username);
+    if (value == null || value.isEmpty) return;
+    try {
+      await ref.read(authRepositoryProvider).updateUsername(value);
+      ref.invalidate(currentUsernameProvider);
+      ref.invalidate(currentProfileProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Name geändert.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  /// Passwort ändern: altes Passwort, neues Passwort und Bestätigung.
+  Future<void> _editPassword(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await showDialog<({String current, String next})>(
+      context: context,
+      builder: (_) => const _ChangePasswordDialog(),
+    );
+    if (result == null) return;
+    try {
+      await ref.read(authRepositoryProvider).changePassword(
+          currentPassword: result.current, newPassword: result.next);
+      messenger
+          .showSnackBar(const SnackBar(content: Text('Passwort geändert.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  /// Ändert die E-Mail-Adresse (Bestätigung per Link an die neue Adresse).
+  Future<void> _editEmail(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final value = await _showTextDialog(context,
+        title: 'E-Mail ändern',
+        label: 'Neue E-Mail',
+        initial: email,
+        keyboardType: TextInputType.emailAddress);
+    if (value == null || value.isEmpty) return;
+    try {
+      await ref.read(authRepositoryProvider).updateEmail(value);
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Bestätigungslink an die neue Adresse gesendet.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final name = username ?? '—';
     final profile = ref.watch(currentProfileProvider).valueOrNull;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 96),
       children: [
-        // Kopf: Avatar + Name + E-Mail.
+        // Kopf: Avatar + E-Mail.
         Center(
           child: Column(
             children: [
@@ -106,14 +155,8 @@ class _Profile extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              Text(name,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold)),
               if (email != null) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: 12),
                 Text(email!,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: scheme.onSurfaceVariant)),
@@ -121,89 +164,63 @@ class _Profile extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 28),
-        const _StatsSection(),
-        _SectionLabel('Nachrichten'),
+        const SizedBox(height: 24),
+        // Kompakte Einstellungsliste (eine Karte, dünne Trenner).
         Card(
-          child: ListTile(
-            leading: Icon(Icons.forum_outlined, color: scheme.primary),
-            title: const Text('Direktnachrichten'),
-            subtitle: const Text('Chatte mit anderen Nutzern — ligaübergreifend'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const ConversationsScreen())),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SectionLabel('Einstellungen'),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.brightness_6_outlined, color: scheme.primary),
-                    const SizedBox(width: 12),
-                    const Text('Erscheinungsbild',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<ThemeMode>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                          value: ThemeMode.system,
-                          icon: Icon(Icons.brightness_auto, size: 18),
-                          label: Text('System')),
-                      ButtonSegment(
-                          value: ThemeMode.light,
-                          icon: Icon(Icons.light_mode, size: 18),
-                          label: Text('Hell')),
-                      ButtonSegment(
-                          value: ThemeMode.dark,
-                          icon: Icon(Icons.dark_mode, size: 18),
-                          label: Text('Dunkel')),
-                    ],
-                    selected: {ref.watch(themeModeProvider)},
-                    onSelectionChanged: (s) =>
-                        ref.read(themeModeProvider.notifier).set(s.first),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        Card(
-          child: ListTile(
-            leading: Icon(Icons.star_outline, color: scheme.primary),
-            title: const Text('Favoriten'),
-            subtitle: const Text('Teams & Ligen für den Live-Tab'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const FavoritesSettingsScreen())),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SectionLabel('Konto'),
-        Card(
-          child: ListTile(
-            leading: Icon(Icons.logout, color: scheme.error),
-            title: Text('Abmelden', style: TextStyle(color: scheme.error)),
-            onTap: () => ref.read(authRepositoryProvider).signOut(),
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SectionLabel('App'),
-        const Card(
-          child: ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('MatchUp'),
-            subtitle: Text('Tippspiel & Fantasy mit Freunden'),
+          clipBehavior: Clip.antiAlias,
+          margin: EdgeInsets.zero,
+          child: Column(
+            children: [
+              _SettingTile(
+                icon: Icons.badge_outlined,
+                label: 'Name ändern',
+                subtitle: username,
+                onTap: () => _editName(context, ref),
+              ),
+              const Divider(height: 1),
+              _SettingTile(
+                icon: Icons.lock_outline,
+                label: 'Passwort ändern',
+                onTap: () => _editPassword(context, ref),
+              ),
+              const Divider(height: 1),
+              _SettingTile(
+                icon: Icons.alternate_email,
+                label: 'E-Mail ändern',
+                subtitle: email,
+                onTap: () => _editEmail(context, ref),
+              ),
+              const Divider(height: 1),
+              _SettingTile(
+                icon: Icons.star_outline,
+                label: 'Favoriten',
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const FavoritesManageScreen())),
+              ),
+              const Divider(height: 1),
+              _SettingTile(
+                icon: Icons.leaderboard_outlined,
+                label: 'Tippbilanz',
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const TipStatsScreen())),
+              ),
+              const Divider(height: 1),
+              _SettingTile(
+                icon: Icons.logout,
+                label: 'Abmelden',
+                color: scheme.error,
+                showChevron: false,
+                onTap: () => ref.read(authRepositoryProvider).signOut(),
+              ),
+              const Divider(height: 1),
+              _SettingTile(
+                icon: Icons.delete_forever,
+                label: 'Konto löschen',
+                color: scheme.error,
+                showChevron: false,
+                onTap: () => _confirmDeleteAccount(context, ref),
+              ),
+            ],
           ),
         ),
       ],
@@ -211,9 +228,245 @@ class _Profile extends ConsumerWidget {
   }
 }
 
+/// Kompakte Einstellungszeile: kleines Icon, Titel, optional Untertitel.
+class _SettingTile extends StatelessWidget {
+  const _SettingTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.subtitle,
+    this.color,
+    this.showChevron = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final String? subtitle;
+  final Color? color;
+  final bool showChevron;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasSub = subtitle != null && subtitle!.trim().isNotEmpty;
+    return ListTile(
+      dense: true,
+      visualDensity: const VisualDensity(vertical: -1),
+      minLeadingWidth: 0,
+      leading: Icon(icon, color: color ?? scheme.primary, size: 22),
+      title: Text(label,
+          style: TextStyle(
+              color: color, fontWeight: FontWeight.w600, fontSize: 14.5)),
+      subtitle: hasSub
+          ? Text(subtitle!.trim(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 12, color: scheme.onSurfaceVariant))
+          : null,
+      trailing: showChevron
+          ? Icon(Icons.chevron_right,
+              size: 20, color: scheme.onSurfaceVariant)
+          : null,
+      onTap: onTap,
+    );
+  }
+}
+
+/// Kurzer Text-Eingabe-Dialog (Name / E-Mail / Passwort).
+Future<String?> _showTextDialog(
+  BuildContext context, {
+  required String title,
+  required String label,
+  String? initial,
+  bool obscure = false,
+  TextInputType? keyboardType,
+}) {
+  final controller = TextEditingController(text: initial ?? '');
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        obscureText: obscure,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(labelText: label),
+        onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Abbrechen')),
+        FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Speichern')),
+      ],
+    ),
+  );
+}
+
+/// Dialog zum Ändern des Passworts: aktuelles Passwort, neues Passwort und
+/// Bestätigung. Gibt bei Erfolg `(current, next)` zurück, sonst `null`.
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+  final _confirm = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final cur = _current.text;
+    final next = _next.text;
+    final conf = _confirm.text;
+    if (cur.isEmpty || next.isEmpty || conf.isEmpty) {
+      setState(() => _error = 'Bitte alle Felder ausfüllen.');
+      return;
+    }
+    if (next.length < 6) {
+      setState(() =>
+          _error = 'Das neue Passwort muss mindestens 6 Zeichen haben.');
+      return;
+    }
+    if (next != conf) {
+      setState(() => _error = 'Die neuen Passwörter stimmen nicht überein.');
+      return;
+    }
+    Navigator.of(context).pop((current: cur, next: next));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Passwort ändern'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _current,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Aktuelles Passwort'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _next,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Neues Passwort'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _confirm,
+            obscureText: true,
+            decoration:
+                const InputDecoration(labelText: 'Neues Passwort bestätigen'),
+            onSubmitted: (_) => _submit(),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(_error!,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12.5)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Abbrechen')),
+        FilledButton(onPressed: _submit, child: const Text('Speichern')),
+      ],
+    );
+  }
+}
+
+/// Eigener Screen für die Tipp-Bilanz (aus dem Profil verlinkt).
+class TipStatsScreen extends StatelessWidget {
+  const TipStatsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(centerTitle: true, title: const Text('Tippbilanz')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+        children: const [_StatsSection(standalone: true)],
+      ),
+    );
+  }
+}
+
+/// Konto endgültig löschen (mit starker Bestätigung). Nach Erfolg meldet
+/// [AuthRepository.deleteAccount] ab → das Gate zeigt wieder den Login.
+Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
+  final scheme = Theme.of(context).colorScheme;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Konto löschen?'),
+      content: const Text(
+          'Dein Konto und alle zugehörigen Daten werden endgültig gelöscht — '
+          'von dir erstellte Ligen und Tipprunden (für alle Mitglieder), deine '
+          'Kader, Tipps, Favoriten, Freundschaften und Nachrichten. Das kann '
+          'nicht rückgängig gemacht werden.'),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: scheme.error),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Endgültig löschen'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  final messenger = ScaffoldMessenger.of(context);
+  final navigator = Navigator.of(context);
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const PopScope(
+      canPop: false,
+      child: Center(child: CircularProgressIndicator()),
+    ),
+  );
+  try {
+    await ref.read(authRepositoryProvider).deleteAccount();
+    navigator.pop(); // Fortschritts-Dialog schließen
+    navigator.popUntil((r) => r.isFirst);
+    messenger.showSnackBar(const SnackBar(content: Text('Konto gelöscht.')));
+  } catch (e) {
+    navigator.pop();
+    messenger.showSnackBar(SnackBar(content: Text('Löschen fehlgeschlagen: $e')));
+  }
+}
+
 /// Profil-Dashboard: aggregierte Tipp-Bilanz über alle Tipprunden.
 class _StatsSection extends ConsumerWidget {
-  const _StatsSection();
+  const _StatsSection({this.standalone = false});
+
+  /// Auf einem eigenen Screen (kein eingebetteter Abschnitt): dann ohne
+  /// Abschnitts-Titel und mit Hinweistext, falls noch keine Bilanz vorliegt.
+  final bool standalone;
 
   static const _exactColor = Color(0xFF2ECC71);
   static const _diffColor = Color(0xFF4FC3A1);
@@ -223,16 +476,31 @@ class _StatsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(myTipStatsProvider);
     final stats = statsAsync.valueOrNull;
-    // Nichts anzeigen, solange keine Mitgliedschaft/Bilanz vorliegt.
-    if (stats == null || stats.rounds == 0) return const SizedBox.shrink();
-
     final scheme = Theme.of(context).colorScheme;
+    // Keine Mitgliedschaft/Bilanz: eingebettet nichts, auf dem eigenen
+    // Screen ein Hinweis.
+    if (stats == null || stats.rounds == 0) {
+      if (!standalone) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 12),
+        child: Text(
+          'Noch keine gewerteten Tipps — tritt einer Tipprunde bei und '
+          'tippe los.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      );
+    }
+
     String quote(int n) =>
         stats.scored == 0 ? '–' : '${(n * 100 / stats.scored).round()}%';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionLabel('Deine Tipp-Bilanz'),
+        if (!standalone) _SectionLabel('Deine Tipp-Bilanz'),
         Row(
           children: [
             _StatTile(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/models.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
@@ -77,6 +78,9 @@ class _TipRulesSettingsScreenState
             onChanged: (r) => _rules = r,
             // Schon aktive Bonustipps dürfen nicht mehr entfernt werden.
             lockedBonusTips: widget.round.scoring.bonusTips.toSet(),
+            // Quoten-Modi nur, wenn ein Wettbewerb der Runde Quoten hat.
+            oddsAvailable: widget.round.competitions
+                .any((id) => Leagues.byId(id).oddsSportKey != null),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(

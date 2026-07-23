@@ -12,10 +12,15 @@ class TipRulesEditor extends StatefulWidget {
     required this.initial,
     required this.onChanged,
     this.lockedBonusTips = const {},
+    this.oddsAvailable = true,
   });
 
   final ScoringRules initial;
   final ValueChanged<ScoringRules> onChanged;
+
+  /// Ob für die gewählten Wettbewerbe überhaupt Quoten existieren. Beim
+  /// DFB-Pokal (keine Quoten) wird der Quoten-Bonus ausgeblendet.
+  final bool oddsAvailable;
 
   /// Bereits aktive Bonustipps, die nicht mehr entfernt werden dürfen (nur
   /// hinzufügen). Beim Erstellen leer; in den Liga-Einstellungen die schon
@@ -110,15 +115,19 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
         Text('Frei kombinierbar — beliebig viele gleichzeitig aktivieren.',
             style: subtle),
         const SizedBox(height: 8),
-        _ModeSwitch(
-          icon: Icons.trending_up,
-          title: 'Quoten-Bonus',
-          subtitle:
-              'Extrapunkte für richtig getippte Außenseiter — je höher die Quote, desto mehr.',
-          value: _oddsBonus,
-          onChanged: (v) => _set(() => _oddsBonus = v),
-        ),
-        if (_oddsBonus) _oddsConfig(scheme),
+        // Quoten-Bonus nur, wenn die gewählten Wettbewerbe Quoten haben
+        // (DFB-Pokal: keine Quoten → Modus ausgeblendet).
+        if (widget.oddsAvailable) ...[
+          _ModeSwitch(
+            icon: Icons.trending_up,
+            title: 'Quoten-Bonus',
+            subtitle:
+                'Extrapunkte für richtig getippte Außenseiter — je höher die Quote, desto mehr.',
+            value: _oddsBonus,
+            onChanged: (v) => _set(() => _oddsBonus = v),
+          ),
+          if (_oddsBonus) _oddsConfig(scheme),
+        ],
         _ModeSwitch(
           icon: Icons.workspace_premium_outlined,
           title: 'Alleinstellungs-Bonus',

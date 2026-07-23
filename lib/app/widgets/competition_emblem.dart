@@ -15,7 +15,12 @@ class CompetitionEmblem extends StatelessWidget {
 
   _Glyph get _glyph => switch (leagueId) {
         'wm2026' => _Glyph.globe,
-        'bundesliga' => _Glyph.football,
+        'bundesliga' ||
+        'bundesliga2' ||
+        'liga3' ||
+        'dfb_pokal' ||
+        'frauen_bundesliga' =>
+          _Glyph.football,
         _ => _Glyph.chevron,
       };
 

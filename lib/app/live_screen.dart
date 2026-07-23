@@ -5,13 +5,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../core/models/models.dart';
-import '../features/favorites/favorites.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'league_overview_screen.dart';
 import 'match_detail_screen.dart';
 import 'theme.dart';
+import 'widgets/league_logo.dart';
 import 'widgets/pulsing_dot.dart';
+
+/// Kurzkürzel eines Wettbewerbs für die kompakte Kennzeichnung im Live-Feed.
+String leagueShortCode(String leagueId) => switch (leagueId) {
+      'bundesliga' => 'BL',
+      'bundesliga2' => '2BL',
+      'liga3' => '3L',
+      'dfb_pokal' => 'DFB',
+      'frauen_bundesliga' => 'FBL',
+      'wm2026' => 'WM',
+      _ => leagueId.length >= 2 ? leagueId.substring(0, 2).toUpperCase() : '?',
+    };
+
+/// Signaturfarbe je Wettbewerb (für die Liga-Buttons über dem Datum).
+Color leagueColor(String leagueId) => switch (leagueId) {
+      'bundesliga' => const Color(0xFFD20515), // Bundesliga-Rot
+      'bundesliga2' => const Color(0xFF2E6BE6), // Blau
+      'liga3' => const Color(0xFFEF7D00), // Orange
+      'dfb_pokal' => const Color(0xFFFFC83D), // Pokal-Gold
+      'frauen_bundesliga' => const Color(0xFFE0218A), // Magenta
+      _ => const Color(0xFF4ADE6A),
+    };
 
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -23,16 +44,9 @@ class _LiveItem {
   final Fixture fixture;
 }
 
-/// Aktiver Filter der Favoriten-Leiste: ein Team oder eine Liga (oder nichts).
-class _Filter {
-  const _Filter(this.type, this.key);
-  final FavoriteType type;
-  final String key;
-}
-
-/// Live-Tab im Stil von Toralarm: oben eine Tagesleiste (letzte/nächste 7
-/// Tage) zur Tagesauswahl, darunter eine Leiste mit favorisierten Ligen und
-/// Teams (Antippen filtert). Gezeigt werden die Spiele des gewählten Tages.
+/// Live-Tab: oben farbige Liga-Buttons (öffnen die Liga-Übersicht), darunter
+/// eine Tagesleiste; gezeigt werden die Spiele des gewählten Tages, nach
+/// Wettbewerb gruppiert.
 class LiveScreen extends ConsumerStatefulWidget {
   const LiveScreen({super.key});
 
@@ -41,7 +55,6 @@ class LiveScreen extends ConsumerStatefulWidget {
 }
 
 class _LiveScreenState extends ConsumerState<LiveScreen> {
-  _Filter? _filter;
   late DateTime _selectedDay;
   ScrollController? _dayController;
   Timer? _refreshTimer;
@@ -89,16 +102,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final favorites = ref.watch(favoritesProvider);
-    final favLeagues =
-        favorites.where((f) => f.type == FavoriteType.league).toList();
-    final favTeams =
-        favorites.where((f) => f.type == FavoriteType.team).toList();
-
-    // Welche Ligen zeigen wir? Die favorisierten — sonst alle verfügbaren.
-    final leagueIds = favLeagues.isNotEmpty
-        ? favLeagues.map((f) => f.key).toList()
-        : [for (final l in Leagues.all) l.id];
+    // Der Live-Tab zeigt immer alle Wettbewerbe (in Registry-Reihenfolge) —
+    // kein Filtern/Sortieren nach Favoriten mehr.
+    final leagueIds = [for (final l in Leagues.all) l.id];
 
     // Fixtures der relevanten Ligen einsammeln (best effort).
     final items = <_LiveItem>[];
@@ -126,9 +132,15 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         initialScrollOffset: (7 * _dayItemExtent - 120).clamp(0, 1e9));
 
     return Scaffold(
-      appBar: AppBar(centerTitle: true, title: const Text('Live')),
+      appBar: AppBar(
+        centerTitle: true,
+        title: const Text('Live'),
+      ),
       body: Column(
         children: [
+          // Oben die Tagesleiste (scrollbar), darunter die Spiele des
+          // gewählten Tages. Ein feiner Strich trennt die Datumsauswahl von
+          // der Spielliste. Die Liga-Buttons stehen fest ganz unten.
           _DateStrip(
             days: days,
             today: today,
@@ -136,22 +148,26 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             controller: _dayController,
             onSelect: (d) => setState(() => _selectedDay = d),
           ),
-          _FavoritesBar(
-            leagueIds: leagueIds,
-            favTeams: favTeams,
-            filter: _filter,
-            onSelect: (f) => setState(() => _filter = f),
-            onLeagueTap: (id) => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => LeagueOverviewScreen(league: Leagues.byId(id)))),
-          ),
+          const Divider(height: 1),
           Expanded(child: _buildDay(context, items, anyLoading, error)),
+          // Feiner Strich, der die Liga-Buttons von der Spielliste abtrennt.
+          const Divider(height: 1),
+          // Farbige Liga-Buttons — Antippen öffnet die Liga-Übersicht
+          // (Spieltage, Tabelle, Torjäger, News).
+          _LeagueButtons(
+            onOpen: (id) => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) =>
+                    LeagueOverviewScreen(league: Leagues.byId(id)))),
+          ),
+          // Abstand, damit die Ligen über der schwebenden Navi-Leiste liegen.
+          SizedBox(height: MediaQuery.viewPaddingOf(context).bottom + 96),
         ],
       ),
     );
   }
 
-  Widget _buildDay(BuildContext context, List<_LiveItem> items, bool anyLoading,
-      Object? error) {
+  Widget _buildDay(
+      BuildContext context, List<_LiveItem> items, bool anyLoading, Object? error) {
     if (items.isEmpty && anyLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -162,52 +178,23 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       );
     }
 
-    // Favoriten-Filter anwenden …
-    final filter = _filter;
-    var list = filter == null
-        ? items
-        : [
-            for (final it in items)
-              if (filter.type == FavoriteType.league
-                  ? it.league.id == filter.key
-                  : (it.fixture.home.id == filter.key ||
-                      it.fixture.away.id == filter.key))
-                it
-          ];
-    // … und den gewählten Tag.
-    list = [
-      for (final it in list)
+    // Spiele des gewählten Tages, rein nach Anstoßzeit sortiert (früh → spät).
+    // Ligen sind gemischt, daher zeigt jede Kachel ihr Liga-Kürzel.
+    final list = [
+      for (final it in items)
         if (_sameDay(it.fixture.kickoff.toLocal(), _selectedDay)) it
     ]..sort((a, b) => a.fixture.kickoff.compareTo(b.fixture.kickoff));
-
-    final liveItems = [
-      for (final it in list)
-        if (it.fixture.status == FixtureStatus.live) it
-    ];
-    final others = [
-      for (final it in list)
-        if (it.fixture.status != FixtureStatus.live) it
-    ];
 
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
       child: list.isEmpty
           ? const _Empty('Keine Spiele an diesem Tag.')
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
               physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                if (liveItems.isNotEmpty) const _LiveHeader(),
-                for (final it in liveItems) _MatchTile(item: it),
-                if (liveItems.isNotEmpty && others.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
-                    child: Text('Weitere Spiele',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  ),
-                for (final it in others) _MatchTile(item: it),
-              ],
+              itemCount: list.length,
+              itemBuilder: (context, i) =>
+                  _MatchTile(item: list[i], showLeague: true),
             ),
     );
   }
@@ -216,6 +203,128 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     for (final l in Leagues.all) {
       ref.invalidate(leagueSeasonFixturesProvider(l.id));
     }
+  }
+}
+
+/// Farbige Liga-Buttons über dem Datum. 1. + 2. Bundesliga stehen groß in der
+/// oberen Reihe, die übrigen drei kleiner darunter — alle fünf ohne Wischen
+/// sichtbar. Antippen öffnet die Liga-Übersicht (kein Filter).
+class _LeagueButtons extends StatelessWidget {
+  const _LeagueButtons({required this.onOpen});
+
+  final ValueChanged<String> onOpen;
+
+  static const _big = ['bundesliga', 'bundesliga2'];
+  static const _small = ['liga3', 'dfb_pokal', 'frauen_bundesliga'];
+  static const _shortLabel = {
+    'liga3': '3. Liga',
+    'dfb_pokal': 'DFB-Pokal',
+    'frauen_bundesliga': 'Frauen',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              for (final id in _big) ...[
+                Expanded(
+                  child: _LeagueButton(
+                    leagueId: id,
+                    label: Leagues.byId(id).name,
+                    color: leagueColor(id),
+                    big: true,
+                    onTap: () => onOpen(id),
+                  ),
+                ),
+                if (id != _big.last) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final id in _small) ...[
+                Expanded(
+                  child: _LeagueButton(
+                    leagueId: id,
+                    label: _shortLabel[id]!,
+                    color: leagueColor(id),
+                    big: false,
+                    onTap: () => onOpen(id),
+                  ),
+                ),
+                if (id != _small.last) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Schlichter, flacher Liga-Button: Liga-Logo + Name in der Liga-Farbe, ohne
+/// Box/Rahmen. Antippen öffnet die Liga-Übersicht.
+class _LeagueButton extends StatelessWidget {
+  const _LeagueButton({
+    required this.leagueId,
+    required this.label,
+    required this.color,
+    required this.big,
+    required this.onTap,
+  });
+
+  final String leagueId;
+  final String label;
+  final Color color;
+  final bool big;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final logo = leagueLogoUrl(leagueId);
+    final logoSize = big ? 26.0 : 18.0;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: big ? 10 : 8, horizontal: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (logo != null) ...[
+              LeagueLogo(
+                leagueId: leagueId,
+                size: logoSize,
+                fallback:
+                    Icon(Icons.emoji_events, size: logoSize, color: color),
+              ),
+              SizedBox(width: big ? 8 : 5),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: big ? 15 : 12,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right,
+                size: big ? 18 : 14, color: color.withValues(alpha: 0.7)),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -238,11 +347,9 @@ class _DateStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
-      ),
-      child: SizedBox(
+    // Die Trennlinie zur Spielliste liefert der Divider darunter (im
+    // Live-Tab), daher hier kein eigener unterer Rand mehr.
+    return SizedBox(
         height: 62,
         child: ListView.builder(
           controller: controller,
@@ -293,141 +400,17 @@ class _DateStrip extends StatelessWidget {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-/// Obere Leiste: „Alle", favorisierte Ligen und favorisierte Teams als Chips.
-class _FavoritesBar extends StatelessWidget {
-  const _FavoritesBar({
-    required this.leagueIds,
-    required this.favTeams,
-    required this.filter,
-    required this.onSelect,
-    required this.onLeagueTap,
-  });
-
-  final List<String> leagueIds;
-  final List<Favorite> favTeams;
-  final _Filter? filter;
-  final ValueChanged<_Filter?> onSelect;
-  final ValueChanged<String> onLeagueTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
-      ),
-      child: SizedBox(
-        height: 56,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          children: [
-            _BarChip(
-              label: 'Alle',
-              selected: filter == null,
-              onTap: () => onSelect(null),
-            ),
-            // Liga-Chips öffnen die Liga-Übersicht (Tabelle + Spieltage),
-            // sie filtern nicht — der Live-Feed zeigt immer alle Favoriten-Ligen.
-            for (final id in leagueIds)
-              _BarChip(
-                label: Leagues.byId(id).name,
-                icon: Icons.emoji_events_outlined,
-                selected: false,
-                trailingChevron: true,
-                onTap: () => onLeagueTap(id),
-              ),
-            for (final t in favTeams)
-              _BarChip(
-                label: t.shortName ?? t.label,
-                team: TeamRef(
-                  id: t.key,
-                  name: t.label,
-                  shortName: t.shortName ?? t.label,
-                  iconUrl: t.iconUrl,
-                ),
-                selected:
-                    filter?.type == FavoriteType.team && filter?.key == t.key,
-                onTap: () => onSelect(_Filter(FavoriteType.team, t.key)),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BarChip extends StatelessWidget {
-  const _BarChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.icon,
-    this.team,
-    this.trailingChevron = false,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final IconData? icon;
-  final TeamRef? team;
-  final bool trailingChevron;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final Widget leading = team != null
-        ? TeamBadge(team: team!)
-        : Icon(icon ?? Icons.tune,
-            size: 18,
-            color: selected ? scheme.onPrimary : scheme.onSurfaceVariant);
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Center(
-        child: Material(
-          color: selected ? scheme.primary : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  leading,
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: selected ? scheme.onPrimary : scheme.onSurface,
-                    ),
-                  ),
-                  if (trailingChevron) ...[
-                    const SizedBox(width: 2),
-                    Icon(Icons.chevron_right,
-                        size: 16, color: scheme.onSurfaceVariant),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
 
 class _MatchTile extends StatelessWidget {
-  const _MatchTile({required this.item});
+  const _MatchTile({required this.item, this.showLeague = false});
   final _LiveItem item;
+
+  /// Kleines Liga-Kürzel im Tile (nur nötig, wo Ligen gemischt sind — z. B.
+  /// in der Live-Sektion; in gruppierten Abschnitten trägt der Header die Liga).
+  final bool showLeague;
 
   @override
   Widget build(BuildContext context) {
@@ -499,8 +482,10 @@ class _MatchTile extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                   child: Row(
                     children: [
-                      _LeagueTag(leagueId: item.league.id),
-                      const SizedBox(width: 6),
+                      if (showLeague) ...[
+                        _LeagueTag(leagueId: item.league.id),
+                        const SizedBox(width: 6),
+                      ],
                       Expanded(child: _TeamSide(team: f.home)),
                       scoreOrTime,
                       Expanded(child: _TeamSide(team: f.away, alignEnd: true)),
@@ -523,11 +508,7 @@ class _LeagueTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final short = switch (leagueId) {
-      'wm2026' => 'WM',
-      'bundesliga' => 'BL',
-      _ => leagueId.length >= 2 ? leagueId.substring(0, 2).toUpperCase() : '?',
-    };
+    final short = leagueShortCode(leagueId);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
@@ -550,7 +531,7 @@ class _TeamSide extends StatelessWidget {
   Widget build(BuildContext context) {
     final badge = TeamBadge(team: team);
     final label = Flexible(
-      child: Text(team.shortName,
+      child: Text(team.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: alignEnd ? TextAlign.end : TextAlign.start,
@@ -562,27 +543,6 @@ class _TeamSide extends StatelessWidget {
       children: alignEnd
           ? [label, const SizedBox(width: 8), badge]
           : [badge, const SizedBox(width: 8), label],
-    );
-  }
-}
-
-/// Abschnittskopf „Jetzt live" über den laufenden Spielen.
-class _LiveHeader extends StatelessWidget {
-  const _LiveHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
-      child: Row(
-        children: [
-          const PulsingDot(),
-          const SizedBox(width: 6),
-          Text('Jetzt live',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold, color: MatchUpColors.red)),
-        ],
-      ),
     );
   }
 }

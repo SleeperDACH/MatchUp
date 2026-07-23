@@ -13,6 +13,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const ALLOWED_SPORTS = new Set([
   "soccer_fifa_world_cup",
   "soccer_germany_bundesliga",
+  "soccer_germany_bundesliga2",
 ]);
 
 // Quoten ändern sich, aber für die reine Anzeige reicht ein großzügiger

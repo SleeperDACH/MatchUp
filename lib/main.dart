@@ -47,9 +47,9 @@ class FantasyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Tippspiel',
-      theme: buildAppTheme(brightness: Brightness.light),
-      darkTheme: buildAppTheme(brightness: Brightness.dark),
-      themeMode: ref.watch(themeModeProvider),
+      // MatchUp ist dark-only — kein Hell-Modus.
+      theme: buildAppTheme(brightness: Brightness.dark),
+      themeMode: ThemeMode.dark,
       home: const _RootGate(),
     );
   }

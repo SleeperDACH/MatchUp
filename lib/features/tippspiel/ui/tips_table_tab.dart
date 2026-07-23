@@ -97,18 +97,27 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     final membersAsync = ref.watch(roundMembersProvider(round.id));
     final tipsAsync = ref.watch(allRoundTipsProvider(round.id));
     final fixturesAsync = ref.watch(roundFixturesProvider(matchday));
-    final seasonAsync = ref.watch(seasonFixturesProvider);
+    // Saison-Fixtures ALLER Wettbewerbe der Runde → gemeinsame Wertung über
+    // mehrere Wettbewerbe (Tipps sind fixture-basiert und liga-übergreifend).
+    final seasonAsyncs = [
+      for (final id in round.competitions)
+        ref.watch(leagueSeasonFixturesProvider(id))
+    ];
+    final seasonLoading = seasonAsyncs.any((a) => a.isLoading);
+    final seasonError = seasonAsyncs
+        .map((a) => a.error)
+        .firstWhere((e) => e != null, orElse: () => null);
 
     if (membersAsync.isLoading ||
         tipsAsync.isLoading ||
         fixturesAsync.isLoading ||
-        seasonAsync.isLoading) {
+        seasonLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final error = membersAsync.error ??
         tipsAsync.error ??
         fixturesAsync.error ??
-        seasonAsync.error;
+        seasonError;
     if (error != null) {
       return Center(
         child: Padding(
@@ -132,7 +141,9 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     final members = [...membersAsync.requireValue];
     final tips = tipsAsync.requireValue;
     final fixtures = fixturesAsync.requireValue;
-    final seasonFixtures = seasonAsync.requireValue;
+    final seasonFixtures = [
+      for (final a in seasonAsyncs) ...(a.valueOrNull ?? const <Fixture>[])
+    ];
     final rules = round.scoring;
     final myUserId = ref.watch(currentUserProvider)?.id;
     // Eingefrorene Quoten für den Bonus; blockiert die Tabelle nicht,
@@ -328,7 +339,9 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     ref.invalidate(allRoundTipsProvider(widget.round.id));
     ref.invalidate(tipPresenceProvider(widget.round.id));
     ref.invalidate(roundFixturesProvider(widget.matchday));
-    ref.invalidate(seasonFixturesProvider);
+    for (final id in widget.round.competitions) {
+      ref.invalidate(leagueSeasonFixturesProvider(id));
+    }
   }
 }
 

@@ -12,6 +12,10 @@ import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
 import '../features/fantasy/ui/fantasy_rank_chip.dart';
+import '../features/friends/providers.dart';
+import '../features/friends/ui/friends_screen.dart';
+import '../features/leagues/providers.dart';
+import '../features/leagues/ui/league_search_screen.dart';
 import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/news/providers.dart';
@@ -23,6 +27,7 @@ import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
 import '../features/tippspiel/ui/tip_rank_chip.dart';
 import 'league_screen.dart';
+import 'profile_screen.dart';
 import 'theme.dart';
 import 'widgets/matchup_chevron.dart';
 
@@ -37,26 +42,36 @@ class HomeScreen extends ConsumerWidget {
     final configured = AppConfig.isSupabaseConfigured;
 
     return Scaffold(
+      // Seitenmenü (Profil · Freunde · Chats) über das Hamburger-Symbol.
+      drawer: (configured && user != null) ? const _HomeMenuDrawer() : null,
       appBar: AppBar(
         centerTitle: true,
-        // Erstellen-Knopf oben links (mit Label, damit klar ist wofür):
-        // zuerst Fantasy oder Tippspiel wählen.
-        leadingWidth: 116,
+        // Hamburger oben links öffnet das schmale Seitenmenü.
         leading: (configured && user != null)
-            ? TextButton.icon(
-                icon: const Icon(Icons.add, size: 20),
-                label: const Text('Erstellen'),
-                onPressed: () => showCreateChooser(context, ref),
+            ? Builder(
+                builder: (context) => IconButton(
+                  tooltip: 'Menü',
+                  icon: const Icon(Icons.menu),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
               )
             : null,
         title: const _MatchUpTitle(),
         actions: [
-          // Gemeinsamer Beitreten-Knopf für alle Spielmodi (Fantasy + Tippspiel).
+          // Öffentliche Ligasuche direkt neben dem Erstellen/Beitreten-Knopf.
           if (configured && user != null)
-            TextButton.icon(
-              icon: const Icon(Icons.group_add_outlined),
-              label: const Text('Beitreten'),
-              onPressed: () => joinAnyFlow(context, ref),
+            IconButton(
+              tooltip: 'Ligen entdecken',
+              icon: const Icon(Icons.search, size: 25),
+              onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LeagueSearchScreen())),
+            ),
+          // Erstellen & Beitreten zusammengefasst in einem Knopf oben rechts.
+          if (configured && user != null)
+            IconButton(
+              tooltip: 'Erstellen oder beitreten',
+              icon: const Icon(Icons.add_circle_outline, size: 27),
+              onPressed: () => showCreateOrJoin(context, ref),
             ),
         ],
       ),
@@ -66,7 +81,9 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(myRoundsProvider);
         },
         child: ListView(
-          padding: const EdgeInsets.all(12),
+          // Unten extra Platz, damit der letzte Inhalt nicht unter der
+          // schwebenden Glas-Navigationsleiste liegt.
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             if (!configured)
@@ -77,21 +94,29 @@ class HomeScreen extends ConsumerWidget {
             else ...[
               const _Appear(child: _WelcomeHeader()),
               const SizedBox(height: 18),
-              _Appear(
-                delayMs: 80,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: _fantasySection(context, ref),
+              // Noch gar keine Liga (Fantasy + Tippspiel beide leer geladen):
+              // statt zweier leerer Abschnitte ein großer Einstieg.
+              if ((ref.watch(myFantasyLeaguesProvider).valueOrNull?.isEmpty ??
+                      false) &&
+                  (ref.watch(myRoundsProvider).valueOrNull?.isEmpty ?? false))
+                const _Appear(delayMs: 80, child: _NoLeaguesHero())
+              else ...[
+                _Appear(
+                  delayMs: 80,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _fantasySection(context, ref),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              _Appear(
-                delayMs: 150,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: _tippspielSection(context, ref),
+                const SizedBox(height: 18),
+                _Appear(
+                  delayMs: 150,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _tippspielSection(context, ref),
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 22),
               const _Appear(delayMs: 220, child: _NewsSection()),
             ],
@@ -118,7 +143,7 @@ class HomeScreen extends ConsumerWidget {
             _InfoCard('Fantasy-Ligen konnten nicht geladen werden: $e'),
         data: (list) => list.isEmpty
             ? const _EmptyHint(
-                'Noch keine Fantasy-Liga — oben links mit + eine Redraft- '
+                'Noch keine Fantasy-Liga — oben rechts mit + eine Redraft- '
                 'oder Dynasty-Liga erstellen.')
             : Column(
                 children: [
@@ -148,7 +173,7 @@ class HomeScreen extends ConsumerWidget {
         error: (e, _) => _InfoCard('Tipprunden konnten nicht geladen werden: $e'),
         data: (list) => list.isEmpty
             ? const _EmptyHint(
-                'Noch keine Tipprunde — oben links mit + ein Tippspiel '
+                'Noch keine Tipprunde — oben rechts mit + ein Tippspiel '
                 'erstellen.')
             : Column(
                 children: [
@@ -197,6 +222,92 @@ class HomeScreen extends ConsumerWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Schmales Seitenmenü über das Hamburger-Symbol oben links (füllt den
+/// Bildschirm nicht): Kopf mit Avatar + Name, darunter Profil, Freunde und
+/// Chats als schnelle Direktzugänge.
+class _HomeMenuDrawer extends ConsumerWidget {
+  const _HomeMenuDrawer();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final username = ref.watch(currentUsernameProvider).valueOrNull;
+    final requests = ref.watch(incomingRequestsCountProvider);
+    final unreadDms = ref.watch(hasUnreadDmsProvider);
+
+    // Drawer schließen und dann das Ziel öffnen.
+    void open(Widget screen) {
+      Navigator.of(context).pop();
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => screen));
+    }
+
+    return Drawer(
+      width: 264,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Kopf: Avatar + Nutzername.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Row(
+                children: [
+                  AppAvatar(
+                    imageUrl: profile?.avatarUrl,
+                    emoji: profile?.avatarEmoji,
+                    colorHex: profile?.avatarColor,
+                    fallbackText: username,
+                    size: 40,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      username ?? 'Profil',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.person_outline, color: scheme.primary),
+              title: const Text('Profil'),
+              onTap: () => open(const ProfileScreen()),
+            ),
+            ListTile(
+              leading: Icon(Icons.group_outlined, color: scheme.primary),
+              title: const Text('Freunde'),
+              trailing: requests > 0
+                  ? Badge.count(count: requests)
+                  : null,
+              onTap: () => open(const FriendsScreen()),
+            ),
+            ListTile(
+              leading: Icon(Icons.forum_outlined, color: scheme.primary),
+              title: const Text('Chats'),
+              trailing: unreadDms
+                  ? Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                          color: MatchUpColors.red, shape: BoxShape.circle),
+                    )
+                  : null,
+              onTap: () => open(const ConversationsScreen()),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -292,46 +403,36 @@ class _NewsSection extends ConsumerWidget {
             );
           },
         ),
-        // Done Deals (nur finalisierte Transfers).
-        Material(
-          color: MatchUpColors.green.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const TransfersScreen())),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                        color: MatchUpColors.green, shape: BoxShape.circle),
-                    child: const Icon(Icons.handshake,
-                        color: MatchUpColors.base, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Transfers',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
-                        Text('Zu- & Abgänge mit Wappen — filterbar',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant)),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-                ],
-              ),
-            ),
+      ],
+    );
+  }
+}
+
+/// Einstieg, wenn noch gar keine Liga existiert: schlicht zwei Buttons
+/// „Liga erstellen" und „Liga suchen" (ohne Überschrift/Beschreibung).
+class _NoLeaguesHero extends ConsumerWidget {
+  const _NoLeaguesHero();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('Liga erstellen'),
+            onPressed: () => showCreateOrJoin(context, ref),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.search),
+            label: const Text('Liga suchen'),
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LeagueSearchScreen())),
           ),
         ),
       ],
@@ -346,7 +447,7 @@ class _WelcomeHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final name = ref.watch(currentUsernameProvider).valueOrNull;
-    final unread = ref.watch(hasUnreadDmsProvider);
+    final unreadCount = ref.watch(unreadDmCountProvider);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
@@ -383,14 +484,16 @@ class _WelcomeHeader extends ConsumerWidget {
                     const _WavingHand(size: 24),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Deine Ligen & Tipprunden auf einen Blick.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.72)),
-                ),
               ],
             ),
+          ),
+          // Schneller Zugang zu den Transfers (gelbes Transfer-Symbol).
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const TransfersScreen())),
+            icon: const Icon(Icons.swap_horiz,
+                size: 30, color: Color(0xFFFFC83D)),
           ),
           Stack(
             clipBehavior: Clip.none,
@@ -402,17 +505,29 @@ class _WelcomeHeader extends ConsumerWidget {
                 icon: const Icon(Icons.forum_outlined,
                     size: 30, color: MatchUpColors.green),
               ),
-              if (unread)
+              if (unreadCount > 0)
                 Positioned(
-                  right: 6,
-                  top: 6,
+                  right: 0,
+                  top: 0,
                   child: Container(
-                    width: 11,
-                    height: 11,
+                    constraints:
+                        const BoxConstraints(minWidth: 18, minHeight: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       color: MatchUpColors.red,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(9),
                       border: Border.all(color: MatchUpColors.base, width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        unreadCount > 99 ? '99+' : '$unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          height: 1.0,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -444,13 +559,22 @@ class _EmptyHint extends StatelessWidget {
   }
 }
 
-class _FantasyLeagueCard extends StatelessWidget {
+class _FantasyLeagueCard extends ConsumerWidget {
   const _FantasyLeagueCard({required this.league});
 
   final FantasyLeague league;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final myId = ref.watch(currentUserProvider)?.id;
+    // Offene Beitrittsanfragen nur für den Admin einer öffentlich–auf-Einladung-
+    // Liga anzeigen (Live über Realtime).
+    final showBadge =
+        league.isPublic && league.isInviteOnly && myId == league.createdBy;
+    final pending = showBadge
+        ? (ref.watch(fantasyJoinRequestsProvider(league.id)).valueOrNull?.length ??
+            0)
+        : 0;
     return _LeagueTile(
       icon: league.mode == FantasyMode.dynasty
           ? Icons.auto_awesome
@@ -460,6 +584,7 @@ class _FantasyLeagueCard extends StatelessWidget {
       logoUrl: league.logoUrl,
       logoEmoji: league.logoEmoji,
       logoColor: league.logoColor,
+      badge: pending,
       trailing: FantasyRankChip(league: league),
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => FantasyLeagueScreen(league: league))),
@@ -480,19 +605,55 @@ class _TipRoundCard extends ConsumerWidget {
       'bundesliga' => Icons.sports_soccer,
       _ => Icons.emoji_events_outlined,
     };
+    // Mehrere Wettbewerbe → „Bundesliga +2".
+    final extra = round.competitions.length - 1;
+    final subtitle = extra > 0 ? '${league.name} +$extra' : league.name;
+    final myId = ref.watch(currentUserProvider)?.id;
+    final showBadge =
+        round.isPublic && round.isInviteOnly && myId == round.createdBy;
+    final pending = showBadge
+        ? (ref.watch(tipJoinRequestsProvider(round.id)).valueOrNull?.length ?? 0)
+        : 0;
     return _LeagueTile(
       icon: icon,
       title: round.name,
-      subtitle: league.name,
+      subtitle: subtitle,
       logoUrl: round.logoUrl,
       logoEmoji: round.logoEmoji,
       logoColor: round.logoColor,
+      badge: pending,
       trailing: TipRankChip(round: round),
       onTap: () {
         activateRound(ref, round);
         Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
       },
+    );
+  }
+}
+
+/// Kleiner roter Zähler für offene Beitrittsanfragen (Home-Liga-Karte).
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: scheme.error,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Text('$count',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              color: scheme.onError,
+              fontWeight: FontWeight.bold,
+              fontSize: 12)),
     );
   }
 }
@@ -510,6 +671,7 @@ class _LeagueTile extends StatelessWidget {
     this.logoEmoji,
     this.logoColor,
     this.trailing,
+    this.badge = 0,
   });
 
   final IconData icon;
@@ -525,6 +687,9 @@ class _LeagueTile extends StatelessWidget {
 
   /// Optionaler Zusatz vor dem Chevron (z. B. Platzierungs-Chip).
   final Widget? trailing;
+
+  /// Anzahl offener Beitrittsanfragen (nur Admin; 0 = kein Badge).
+  final int badge;
   final VoidCallback onTap;
 
   @override
@@ -572,6 +737,10 @@ class _LeagueTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (badge > 0) ...[
+                  const SizedBox(width: 8),
+                  _CountBadge(count: badge),
+                ],
                 if (trailing != null) ...[
                   const SizedBox(width: 8),
                   trailing!,
@@ -739,6 +908,7 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
+
 // ---------------------------------------------------------------------
 // MatchUp-Wortmarke für die Kopfzeile: zweifarbiger Doppel-Chevron
 // (links Green, rechts Red) + „Match"/„Up". Nativ nachgebaut nach dem
@@ -781,75 +951,182 @@ class _MatchUpTitle extends StatelessWidget {
 // Erstellen / Beitreten
 // ---------------------------------------------------------------------
 
-/// Auswahl-Sheet für den Erstellen-Knopf: erst die Kategorie **Fantasy** oder
-/// **Tippspiel** wählen — danach führt jeweils ein eigener Screen durch Name
-/// und Modus (Fantasy: Redraft/Dynasty; Tippspiel: kombinierbare Modi).
-void showCreateChooser(BuildContext context, WidgetRef ref) {
-  showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (ctx) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Was möchtest du erstellen?',
-                  style: Theme.of(ctx).textTheme.titleMedium),
-            ),
-          ),
-          _CreateOption(
-            icon: Icons.shield_outlined,
-            title: 'Fantasy',
-            subtitle: 'Kader draften und Spieltage gewinnen (Redraft / Dynasty)',
-            onTap: () {
-              Navigator.of(ctx).pop();
-              createFantasyLeagueFlow(context, FantasyMode.liga);
-            },
-          ),
-          _CreateOption(
-            icon: Icons.emoji_events_outlined,
-            title: 'Tippspiel',
-            subtitle: 'Ergebnisse tippen, Punkte sammeln (kombinierbare Modi)',
-            onTap: () {
-              Navigator.of(ctx).pop();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const CreateTipRoundScreen()));
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    ),
-  );
+/// Fullscreen-Auswahl für den Erstellen-Knopf: zwei große farbige Felder
+/// **Fantasy** und **Tippspiel**, darunter klein **Beitreten**. Der Screen gibt
+/// nur die Wahl zurück; den jeweiligen Flow startet danach der Aufrufer.
+void showCreateOrJoin(BuildContext context, WidgetRef ref) async {
+  final choice = await Navigator.of(context).push<String>(MaterialPageRoute(
+    fullscreenDialog: true,
+    builder: (_) => const _CreateOrJoinScreen(),
+  ));
+  if (choice == null || !context.mounted) return;
+  switch (choice) {
+    case 'fantasy':
+      createFantasyLeagueFlow(context, FantasyMode.liga);
+    case 'tip':
+      Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const CreateTipRoundScreen()));
+    case 'join':
+      joinAnyFlow(context, ref);
+  }
 }
 
-class _CreateOption extends StatelessWidget {
-  const _CreateOption({
-    required this.icon,
+class _CreateOrJoinScreen extends StatelessWidget {
+  const _CreateOrJoinScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(centerTitle: true, title: const Text('Liga erstellen')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Zwei große farbige Felder.
+              Expanded(
+                child: _CreateBigTile(
+                  color: MatchUpColors.green,
+                  image: 'assets/images/fantasy_bg.png',
+                  title: 'Fantasy',
+                  onTap: () => Navigator.of(context).pop('fantasy'),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: _CreateBigTile(
+                  color: const Color(0xFFFFC83D),
+                  image: 'assets/images/tippspiel_bg.png',
+                  title: 'Tippspiel',
+                  onTap: () => Navigator.of(context).pop('tip'),
+                ),
+              ),
+              const SizedBox(height: 18),
+              // Beitreten – klein darunter.
+              _CreateJoinTile(onTap: () => Navigator.of(context).pop('join')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Großes Auswahlfeld (Fantasy / Tippspiel) mit Bild-Hintergrund; ein dunkler
+/// Verlauf unten hält den Titel gut lesbar.
+class _CreateBigTile extends StatelessWidget {
+  const _CreateBigTile({
+    required this.color,
+    required this.image,
     required this.title,
-    required this.subtitle,
     required this.onTap,
   });
 
-  final IconData icon;
+  final Color color;
+  final String image;
   final String title;
-  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border:
+                  Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
+              borderRadius: BorderRadius.circular(20),
+              // Hochformatiges Motiv: oberen, spannenderen Bereich zeigen.
+              image: DecorationImage(
+                image: AssetImage(image),
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -0.55),
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Dunkler Verlauf unten für die Titel-Lesbarkeit.
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.center,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          MatchUpColors.base.withValues(alpha: 0.85),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(26, 22, 26, 22),
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Kleineres „Beitreten"-Feld unter den großen Erstellen-Feldern.
+class _CreateJoinTile extends StatelessWidget {
+  const _CreateJoinTile({required this.onTap});
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: scheme.primary.withValues(alpha: 0.15),
-        child: Icon(icon, color: scheme.primary),
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(Icons.group_add_outlined, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Text('Beitreten',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              Text('Mit Einladungscode',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant)),
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle),
-      onTap: onTap,
     );
   }
 }

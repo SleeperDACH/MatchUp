@@ -53,6 +53,42 @@ class FantasyAdminScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _transferOwnership(
+      BuildContext context, WidgetRef ref, FantasyManager m) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Adminrechte übergeben?'),
+        content: Text(
+            '${m.display} wird neuer Admin dieser Liga. Du bleibst Mitglied, '
+            'verlierst aber die Admin-Rechte.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Abbrechen')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Übergeben')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .transferOwnership(league.id, m.userId);
+      ref.invalidate(myFantasyLeaguesProvider);
+      ref.invalidate(fantasyManagersProvider(league.id));
+      navigator.pop(); // Admin-Screen verlassen (keine Rechte mehr)
+      messenger
+          .showSnackBar(SnackBar(content: Text('${m.display} ist jetzt Admin.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+    }
+  }
+
   Future<void> _assign(
       BuildContext context, WidgetRef ref, FantasyManager vacant) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -144,12 +180,18 @@ class FantasyAdminScreen extends ConsumerWidget {
                       Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) =>
                               AdminRosterEditor(league: league, target: m)));
+                    } else if (v == 'transfer') {
+                      _transferOwnership(context, ref, m);
                     } else if (v == 'kick') {
                       _kick(context, ref, m);
                     }
                   },
                   itemBuilder: (context) => [
                     const PopupMenuItem(value: 'edit', child: Text('Kader bearbeiten')),
+                    if (m.userId != league.createdBy)
+                      const PopupMenuItem(
+                          value: 'transfer',
+                          child: Text('Adminrechte übergeben')),
                     if (m.userId != league.createdBy)
                       PopupMenuItem(
                           value: 'kick',

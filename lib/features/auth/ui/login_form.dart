@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widgets/liquid_glass.dart';
+import '../../../app/widgets/matchup_logo.dart';
 import '../auth_repository.dart';
 import '../providers.dart';
 
@@ -179,33 +181,57 @@ class _LoginFormState extends ConsumerState<LoginForm> {
 
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 380),
+          constraints: const BoxConstraints(maxWidth: 400),
           child: AutofillGroup(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.groups,
-                    size: 56, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(height: 12),
+                // Großes Marken-Logo als Hero.
+                const Center(child: MatchUpLogo(chevronSize: 88, vertical: true)),
+                const SizedBox(height: 18),
                 Text(
-                  _registerMode ? 'Konto erstellen' : 'Anmelden',
+                  _registerMode ? 'Konto erstellen' : 'Willkommen zurück',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
-                  'Tipprunden mit Freunden: erstellen, beitreten, gegeneinander tippen.',
+                  'Fantasy-Ligen & Tippspiele mit Freunden — draften, tippen, '
+                  'gegeneinander gewinnen.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.66)),
                 ),
-                const SizedBox(height: 24),
-                if (_registerMode) ...[
-                  TextField(
-                    controller: _username,
+                const SizedBox(height: 26),
+                // Formular in einer Glaskarte (neuer Liquid-Glass-Look).
+                LiquidGlass(
+                  borderRadius: 22,
+                  blur: 18,
+                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+                  child: _buildFormBody(context, showBioButton, showBioSetup),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Eingabefelder, Aktions- und Wechsel-Buttons (innerhalb der Glaskarte).
+  Widget _buildFormBody(
+      BuildContext context, bool showBioButton, bool showBioSetup) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_registerMode) ...[
+          TextField(
+            controller: _username,
                     autofillHints: const [AutofillHints.newUsername],
                     decoration: const InputDecoration(
                       labelText: 'Nutzername',
@@ -298,11 +324,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                       ? 'Du hast schon ein Konto? Anmelden'
                       : 'Du hast noch kein Konto? Registrieren'),
                 ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      ],
     );
   }
 }

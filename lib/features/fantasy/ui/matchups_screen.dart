@@ -8,7 +8,6 @@ import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
-import 'manager_profile_screen.dart';
 import 'matchday_stepper.dart';
 import 'matchup_detail_screen.dart';
 import 'matchup_hero.dart';
@@ -345,107 +344,10 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                         awayName: aId == null ? null : (nameOf[aId] ?? '?'),
                       );
                     }),
-                  const Divider(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Text('Bilanz (S-N-U)',
-                        style: Theme.of(context).textTheme.titleMedium),
-                  ),
-                  if (standings.every((r) => r.played == 0))
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        seasonStats.isEmpty
-                            ? 'Noch keine gewerteten Spieltage (Stats werden '
-                                'serverseitig gespiegelt).'
-                            : 'Noch keine entschiedenen Matchups.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant),
-                      ),
-                    ),
-                  for (final (i, r) in standings.indexed)
-                    _StandingRow(
-                      rank: i + 1,
-                      name: nameOf[r.managerId] ?? '?',
-                      avatar: avatarOf[r.managerId],
-                      record: r,
-                      me: r.managerId == myId,
-                      onTap: () => showManagerProfile(context,
-                          league: widget.league,
-                          managerId: r.managerId,
-                          managerName: nameOf[r.managerId] ?? '?'),
-                    ),
-                  // Freie Plätze bis zur Teilnehmerzahl: „Team N" wartet auf
-                  // beitretende Spieler (füllt beim Beitritt automatisch auf).
-                  if (league.maxTeams != null)
-                    for (var k = ids.length; k < league.maxTeams!; k++)
-                      _EmptyTeamRow(teamNo: k + 1),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                 ],
               );
             });
-  }
-}
-
-class _StandingRow extends StatelessWidget {
-  const _StandingRow({
-    required this.rank,
-    required this.name,
-    required this.record,
-    required this.me,
-    required this.onTap,
-    this.avatar,
-  });
-
-  final int rank;
-  final String name;
-  final AvatarInfo? avatar;
-  final H2HRecord record;
-  final bool me;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      dense: true,
-      onTap: onTap,
-      leading: CircleAvatar(
-        radius: 14,
-        backgroundColor: rank == 1
-            ? scheme.primary.withValues(alpha: 0.25)
-            : scheme.surfaceContainerHighest,
-        child: Text('$rank', style: const TextStyle(fontSize: 12)),
-      ),
-      title: Row(
-        children: [
-          AppAvatar(
-            imageUrl: avatar?.url,
-            emoji: avatar?.emoji,
-            colorHex: avatar?.color,
-            fallbackText: name,
-            size: 22,
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(name,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    me ? const TextStyle(fontWeight: FontWeight.bold) : null),
-          ),
-        ],
-      ),
-      subtitle: Text('${record.pointsFor}:${record.pointsAgainst} Pkt.'),
-      trailing: Text(
-        '${record.wins}-${record.losses}-${record.ties}',
-        style: Theme.of(context)
-            .textTheme
-            .titleMedium
-            ?.copyWith(color: scheme.primary, fontWeight: FontWeight.bold),
-      ),
-    );
   }
 }
 

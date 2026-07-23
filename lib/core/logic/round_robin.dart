@@ -73,6 +73,9 @@ class H2HRecord {
 
   int get played => wins + losses + ties;
 
+  /// Tabellenpunkte: 3 für Sieg, 1 für Unentschieden, 0 für Niederlage.
+  int get points => wins * 3 + ties;
+
   H2HRecord _add({
     int win = 0,
     int loss = 0,
@@ -92,8 +95,8 @@ class H2HRecord {
 
 /// Bilanztabelle aus den Paarungen und den (effektiven) Punkten je
 /// gespieltem Spieltag. [totalsByRound] enthält nur gespielte Spieltage
-/// (Teilnehmer-ID → Punkte). Sortiert nach Siegen, dann Punktedifferenz, dann
-/// erzielten Punkten.
+/// (Teilnehmer-ID → Punkte). Sortiert nach Tabellenpunkten (3/1/0), bei
+/// Gleichstand nach den insgesamt erzielten Spielerpunkten (dann Differenz).
 List<H2HRecord> h2hStandings(
   List<String> ids,
   Map<int, Map<String, int>> totalsByRound,
@@ -121,11 +124,12 @@ List<H2HRecord> h2hStandings(
 
   final list = records.values.toList();
   list.sort((a, b) {
-    if (a.wins != b.wins) return b.wins.compareTo(a.wins);
+    if (a.points != b.points) return b.points.compareTo(a.points);
+    // Bei Punktgleichstand: mehr insgesamt erzielte Spielerpunkte zuerst.
+    if (a.pointsFor != b.pointsFor) return b.pointsFor.compareTo(a.pointsFor);
     final da = a.pointsFor - a.pointsAgainst;
     final db = b.pointsFor - b.pointsAgainst;
-    if (da != db) return db.compareTo(da);
-    return b.pointsFor.compareTo(a.pointsFor);
+    return db.compareTo(da);
   });
   return list;
 }

@@ -82,10 +82,17 @@ class _PartnerList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
     final myId = ref.watch(currentUserProvider)?.id;
     final managersAsync = ref.watch(fantasyManagersProvider(league.id));
     final currentRound = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final closed = _tradesClosed(league, currentRound);
+    final pool = ref.watch(playerPoolProvider).valueOrNull ??
+        const <FantasyPlayer>[];
+    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+        const <RosterEntry>[];
+    final clubIcons =
+        ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
 
     return managersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -101,46 +108,198 @@ class _PartnerList extends ConsumerWidget {
             ),
           );
         }
-        return ListView(
-          padding: const EdgeInsets.all(12),
+        final byId = {for (final p in pool) p.id: p};
+        List<FantasyPlayer> playersOf(String uid) => [
+              for (final r in roster)
+                if (r.managerId == uid && byId[r.playerId] != null)
+                  byId[r.playerId]!
+            ]..sort((a, b) => a.position.index != b.position.index
+                ? a.position.index.compareTo(b.position.index)
+                : a.name.compareTo(b.name));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (closed)
               Card(
-                color: Theme.of(context).colorScheme.errorContainer,
+                color: scheme.errorContainer,
                 child: const Padding(
                   padding: EdgeInsets.all(14),
                   child: Text('Die Trade-Deadline ist überschritten — '
                       'neue Angebote sind nicht mehr möglich.'),
                 ),
               ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(4, 8, 4, 8),
-              child: Text('Mit wem möchtest du traden?'),
-            ),
-            for (final m in others)
-              Card(
-                child: ListTile(
-                  leading: AppAvatar(
-                    imageUrl: m.avatarUrl,
-                    emoji: m.avatarEmoji,
-                    colorHex: m.avatarColor,
-                    fallbackText: m.display,
-                    size: 40,
-                  ),
-                  title: Text(m.display),
-                  trailing: const Icon(Icons.chevron_right),
-                  enabled: !closed,
-                  onTap: closed
-                      ? null
-                      : () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) =>
-                              TradeComposeScreen(league: league, partner: m))),
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              child: Text(
+                'Mit wem möchtest du traden? Tippe auf einen Kader.',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               ),
+            ),
+            // Alle Teilnehmer-Kader nebeneinander (horizontal scrollbar).
+            Expanded(
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(6, 2, 6, 10),
+                itemCount: others.length,
+                itemBuilder: (context, i) {
+                  final m = others[i];
+                  return _ParticipantColumn(
+                    manager: m,
+                    players: playersOf(m.userId),
+                    clubIcons: clubIcons,
+                    enabled: !closed,
+                    onOpen: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) =>
+                            TradeComposeScreen(league: league, partner: m))),
+                  );
+                },
+              ),
+            ),
           ],
         );
       },
     );
+  }
+}
+
+/// Eine kompakte Kader-Spalte eines Teilnehmers auf dem Auswahl-Screen.
+/// Kopf und „Traden"-Button öffnen den Trade mit dieser Person.
+class _ParticipantColumn extends StatelessWidget {
+  const _ParticipantColumn({
+    required this.manager,
+    required this.players,
+    required this.clubIcons,
+    required this.enabled,
+    required this.onOpen,
+  });
+
+  final FantasyManager manager;
+  final List<FantasyPlayer> players;
+  final Map<String, String?> clubIcons;
+  final bool enabled;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 188,
+      margin: const EdgeInsets.symmetric(horizontal: 5),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // Kopf: Avatar + Name (tippbar → Trade).
+          InkWell(
+            onTap: enabled ? onOpen : null,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+              child: Column(
+                children: [
+                  AppAvatar(
+                    imageUrl: manager.avatarUrl,
+                    emoji: manager.avatarEmoji,
+                    colorHex: manager.avatarColor,
+                    fallbackText: manager.display,
+                    size: 44,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(manager.display,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text('${players.length} Spieler',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: players.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text('Kein Kader', textAlign: TextAlign.center),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemCount: players.length,
+                    itemBuilder: (context, i) => _miniTile(context, players[i]),
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: enabled ? onOpen : null,
+                child: const Text('Traden'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniTile(BuildContext context, FantasyPlayer p) {
+    final base = positionColor(p.position);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 26,
+            decoration: BoxDecoration(
+                color: base, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 6),
+          ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 20),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(_shortName(p.name),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+                Text(p.position.label,
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                        color: base)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _shortName(String full) {
+    final parts = full.trim().split(RegExp(r'\s+'));
+    if (parts.length < 2 || parts.first.isEmpty) return full;
+    return '${parts.first[0]}. ${parts.sublist(1).join(' ')}';
   }
 }
 
@@ -566,8 +725,30 @@ class _RosterColumn extends StatelessWidget {
 
   Widget _tile(BuildContext context, FantasyPlayer p, bool sel) {
     final base = positionColor(p.position);
-    // Lesbare Textfarbe: auf Gelb (ABW) schwarz, sonst weiß.
-    final fg = p.position == PlayerPosition.def ? Colors.black : Colors.white;
+    // Gewählt: kräftige Positionsfarbe (Sticker-Optik), Text lesbar (auf Gelb
+    // schwarz). Nicht gewählt: direkt dunkel gezeichnet — kein aufgesetztes
+    // Overlay, damit die Ränder nicht mehr „durchleuchten".
+    final fg = sel
+        ? (p.position == PlayerPosition.def ? Colors.black : Colors.white)
+        : Colors.white.withValues(alpha: 0.82);
+    final gradient = sel
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(base, Colors.white, 0.14)!,
+              base,
+              Color.lerp(base, Colors.black, 0.36)!,
+            ],
+          )
+        : LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(base, const Color(0xFF12141C), 0.70)!,
+              Color.lerp(base, const Color(0xFF12141C), 0.85)!,
+            ],
+          );
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       child: Material(
@@ -580,32 +761,29 @@ class _RosterColumn extends StatelessWidget {
             height: 110,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              // Diagonaler Verlauf der Positionsfarbe für „Sticker"-Optik.
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.lerp(base, Colors.white, 0.14)!,
-                  base,
-                  Color.lerp(base, Colors.black, 0.36)!,
-                ],
-              ),
+              gradient: gradient,
               border: Border.all(
-                color: sel ? Colors.white : Colors.white.withValues(alpha: 0.10),
+                color: sel
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.05),
                 width: sel ? 3 : 1,
               ),
             ),
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Wappen groß, ragt zur Hälfte über den rechten Kartenrand.
+                // Wappen groß, ragt zur Hälfte über den rechten Kartenrand;
+                // bei nicht gewählten Karten dezent gedimmt.
                 Positioned(
                   right: -52,
                   top: 0,
                   bottom: 0,
                   child: Center(
-                    child: ClubBadge(
-                        club: p.club, iconUrl: clubIcons[p.club], size: 108),
+                    child: Opacity(
+                      opacity: sel ? 1 : 0.6,
+                      child: ClubBadge(
+                          club: p.club, iconUrl: clubIcons[p.club], size: 108),
+                    ),
                   ),
                 ),
                 // Name (groß) + Position links, linksbündig.
@@ -631,7 +809,7 @@ class _RosterColumn extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             height: 1.05,
                             color: fg,
-                            shadows: p.position == PlayerPosition.def
+                            shadows: sel && p.position == PlayerPosition.def
                                 ? null
                                 : const [
                                     Shadow(color: Colors.black38, blurRadius: 3)
@@ -653,11 +831,6 @@ class _RosterColumn extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Nicht gewählte Karten deutlich abdunkeln (inaktiv-Look).
-                if (!sel)
-                  Positioned.fill(
-                    child: const ColoredBox(color: Colors.black54),
-                  ),
                 // Gewählt: klares Häkchen-Badge oben links.
                 if (sel)
                   Positioned(

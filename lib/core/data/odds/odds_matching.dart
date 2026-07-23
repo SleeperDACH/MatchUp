@@ -14,8 +14,11 @@ Map<String, MatchOdds> matchOdds(
   // Quoten nach Code-Paar indizieren (beide Orientierungen).
   final result = <String, MatchOdds>{};
   for (final fixture in fixtures) {
-    final homeCode = fixture.home.shortName;
-    final awayCode = fixture.away.shortName;
+    final homeCode =
+        OddsTeamResolver.fixtureCodeFor(sportKey, fixture.home.id, fixture.home.shortName);
+    final awayCode =
+        OddsTeamResolver.fixtureCodeFor(sportKey, fixture.away.id, fixture.away.shortName);
+    if (homeCode == null || awayCode == null) continue;
     for (final o in odds) {
       final oHome = OddsTeamResolver.codeFor(sportKey, o.homeTeam);
       final oAway = OddsTeamResolver.codeFor(sportKey, o.awayTeam);

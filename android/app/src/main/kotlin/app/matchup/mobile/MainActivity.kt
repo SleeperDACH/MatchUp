@@ -1,4 +1,4 @@
-package com.example.meine_app
+package app.matchup.mobile
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

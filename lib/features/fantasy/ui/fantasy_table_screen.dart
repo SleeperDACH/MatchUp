@@ -8,6 +8,7 @@ import '../../../core/logic/round_robin.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'manager_profile_screen.dart';
+import 'playoff_bracket_screen.dart';
 
 /// Eigenständiger Screen (mit AppBar) — dünne Hülle um [FantasyTableBody].
 class FantasyTableScreen extends StatelessWidget {
@@ -100,6 +101,7 @@ class FantasyTableBody extends ConsumerWidget {
         if (seasonStatsAsync.isLoading)
           const LinearProgressIndicator(minHeight: 2),
         const SizedBox(height: 6),
+        if (league.hasPlayoffs) _BracketButton(league: league),
         if (nonePlayed)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
@@ -128,9 +130,10 @@ class FantasyTableBody extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'Bilanz aus Head-to-Head je Spieltag (effektive Startelf). '
-            'Sortiert nach Siegen, dann Punktedifferenz. '
-            'S = Siege, N = Niederlagen.',
+            'Head-to-Head je Spieltag (effektive Startelf): 3 Punkte für '
+            'Sieg, 1 für Unentschieden, 0 für Niederlage. Bei Punktgleichstand '
+            'zählen die insgesamt erzielten Spielerpunkte ("erzielt"). '
+            'S = Siege, U = Unentschieden, N = Niederlagen.',
             textAlign: TextAlign.center,
             style: Theme.of(context)
                 .textTheme
@@ -139,6 +142,55 @@ class FantasyTableBody extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Einstieg zum Playoff-Bracket (Winner- + Loser-Bracket, Endplatzierung).
+class _BracketButton extends StatelessWidget {
+  const _BracketButton({required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFFFC83D);
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+      child: Material(
+        color: gold.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => PlayoffBracketScreen(league: league))),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.account_tree, color: gold),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Playoff-Bracket',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        'Winner- & Loser-Bracket — alle Abschlussplätze',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -203,33 +255,48 @@ class _RecordRow extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: me ? FontWeight.bold : FontWeight.w600)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: me ? FontWeight.bold : FontWeight.w600)),
+                const SizedBox(height: 2),
+                // Kleine Bilanz als Kontext: Siege · Unentschieden · Niederlagen.
+                Text(
+                    '${record.wins}S · ${record.ties}U · ${record.losses}N',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant)),
+              ],
+            ),
           ),
           const SizedBox(width: 10),
-          // Record rechts: Siege (grün) : Niederlagen (rot), ohne Buchstaben.
-          Row(
+          // Rechts: Tabellenpunkte (3/1/0) groß, darunter die insgesamt
+          // erzielten Spielerpunkte (Tiebreak bei Punktgleichstand).
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('${record.wins}',
-                  style: TextStyle(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 24)),
-              Text('  :  ',
-                  style: TextStyle(
-                      color: scheme.onSurfaceVariant, fontSize: 16)),
-              Text('${record.losses}',
-                  style: TextStyle(
-                      color: scheme.error,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 24)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text('${record.points}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 24)),
+                  const SizedBox(width: 3),
+                  Text('Pkt',
+                      style: TextStyle(
+                          color: scheme.onSurfaceVariant, fontSize: 12)),
+                ],
+              ),
+              Text('${record.pointsFor} erzielt',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant)),
             ],
           ),
         ],

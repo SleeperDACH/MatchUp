@@ -57,8 +57,16 @@ PlayoffPlan computePlayoffPlan({
   required int weeksPerRound,
   required int tradeDeadlineOffset,
   int totalMatchdays = kRegularSeasonMatchdays,
+  int? totalTeams,
 }) {
-  final rounds = playoffRounds(teams);
+  // Winner- und Loser-/Trost-Bracket laufen parallel über dieselben Spieltage.
+  // Ist die Trost-Gruppe größer, braucht sie mehr Runden — das Fenster richtet
+  // sich nach dem längeren der beiden Brackets, damit beide reinpassen.
+  final winnerRounds = playoffRounds(teams);
+  final consoRounds = (totalTeams != null && totalTeams > teams)
+      ? playoffRounds(totalTeams - teams)
+      : 0;
+  final rounds = winnerRounds > consoRounds ? winnerRounds : consoRounds;
   final startRound = totalMatchdays - rounds * weeksPerRound + 1;
   return PlayoffPlan(
     teams: teams,

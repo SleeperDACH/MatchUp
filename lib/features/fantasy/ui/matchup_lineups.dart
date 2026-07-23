@@ -265,55 +265,102 @@ class _PlayerRow extends StatelessWidget {
       required bool start}) {
     final scheme = Theme.of(context).colorScheme;
     if (player == null) {
-      return const SizedBox(height: 40);
+      return const SizedBox(height: 60);
     }
+    final pos = positionColor(player.position);
     final ptsBox = Container(
-      constraints: const BoxConstraints(minWidth: 28),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      constraints: const BoxConstraints(minWidth: 36),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: highlight
-            ? scheme.primary.withValues(alpha: 0.18)
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
+            ? scheme.primary.withValues(alpha: 0.22)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Text('${pts ?? 0}',
           textAlign: TextAlign.center,
           style: TextStyle(
-              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
               color: highlight ? scheme.primary : scheme.onSurface)),
     );
     final badge =
-        ClubBadge(club: player.club, iconUrl: clubIcons[player.club], size: 26);
-    final name = Text(shortPlayerName(player.name),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: start ? TextAlign.start : TextAlign.end,
-        style: TextStyle(
-            fontSize: 13,
-            fontWeight: mine ? FontWeight.bold : FontWeight.w500));
+        ClubBadge(club: player.club, iconUrl: clubIcons[player.club], size: 34);
+    final info = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment:
+          start ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      children: [
+        Text(shortPlayerName(player.name),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: start ? TextAlign.start : TextAlign.end,
+            style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: mine ? FontWeight.w800 : FontWeight.w600)),
+        const SizedBox(height: 2),
+        Text(player.position.label,
+            style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.3,
+                color: pos)),
+      ],
+    );
 
     final children = start
         ? [
             badge,
-            const SizedBox(width: 8),
-            Expanded(child: name),
+            const SizedBox(width: 9),
+            Expanded(child: info),
             const SizedBox(width: 8),
             ptsBox,
           ]
         : [
             ptsBox,
             const SizedBox(width: 8),
-            Expanded(child: name),
-            const SizedBox(width: 8),
+            Expanded(child: info),
+            const SizedBox(width: 9),
             badge,
           ];
 
-    return InkWell(
-      onTap: () => onTap(player, mine),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(children: children),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => onTap(player, mine),
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            // Karten-Look: dezenter Verlauf mit Positions-Ton.
+            gradient: LinearGradient(
+              begin: start ? Alignment.centerLeft : Alignment.centerRight,
+              end: start ? Alignment.centerRight : Alignment.centerLeft,
+              colors: [
+                pos.withValues(alpha: highlight ? 0.22 : 0.13),
+                scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              ],
+            ),
+            border: Border.all(
+              color: highlight
+                  ? scheme.primary.withValues(alpha: 0.7)
+                  : scheme.outlineVariant.withValues(alpha: 0.5),
+              width: highlight ? 1.5 : 1,
+            ),
+            boxShadow: highlight
+                ? [
+                    BoxShadow(
+                        color: scheme.primary.withValues(alpha: 0.18),
+                        blurRadius: 8,
+                        spreadRadius: -2),
+                  ]
+                : null,
+          ),
+          child: Row(children: children),
+        ),
       ),
     );
   }

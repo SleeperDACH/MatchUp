@@ -96,6 +96,75 @@ class AuthRepository {
     }
   }
 
+  /// Ändert den eigenen Nutzernamen (3–24 Zeichen, eindeutig). Nur die eigene
+  /// Profilzeile ist per RLS änderbar.
+  Future<void> updateUsername(String newName) async {
+    final user = currentUser;
+    if (user == null) return;
+    final trimmed = newName.trim();
+    if (trimmed.length < 3 || trimmed.length > 24) {
+      throw const AuthFailure('Der Nutzername muss 3–24 Zeichen lang sein.');
+    }
+    try {
+      await _client
+          .from('profiles')
+          .update({'username': trimmed}).eq('id', user.id);
+    } on PostgrestException catch (e) {
+      throw AuthFailure(e.code == '23505'
+          ? 'Der Nutzername „$trimmed" ist bereits vergeben.'
+          : 'Nutzername konnte nicht geändert werden: ${e.message}');
+    }
+  }
+
+  /// Ändert die eigene E-Mail-Adresse. Supabase verschickt einen
+  /// Bestätigungslink an die neue Adresse; erst danach ist sie aktiv.
+  Future<void> updateEmail(String newEmail) async {
+    final trimmed = newEmail.trim();
+    if (trimmed.isEmpty || !trimmed.contains('@')) {
+      throw const AuthFailure('Bitte gib eine gültige E-Mail-Adresse ein.');
+    }
+    try {
+      await _client.auth.updateUser(UserAttributes(email: trimmed));
+    } on AuthException catch (e) {
+      throw AuthFailure(switch (e.code) {
+        'email_exists' => 'Diese E-Mail wird bereits verwendet.',
+        _ => 'E-Mail konnte nicht geändert werden: ${e.message}',
+      });
+    }
+  }
+
+  /// Ändert das Passwort aus dem Profil heraus: prüft zuerst das aktuelle
+  /// Passwort (erneuter Login mit der bestehenden Sitzung) und setzt dann das
+  /// neue. So kann niemand über eine offene Sitzung unbemerkt das Passwort
+  /// austauschen.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final email = currentUser?.email;
+    if (email == null) throw const AuthFailure('Nicht angemeldet.');
+    if (newPassword.length < 6) {
+      throw const AuthFailure(
+          'Das neue Passwort muss mindestens 6 Zeichen haben.');
+    }
+    try {
+      await _client.auth
+          .signInWithPassword(email: email, password: currentPassword);
+    } on AuthException {
+      throw const AuthFailure('Das aktuelle Passwort ist falsch.');
+    }
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (e) {
+      throw AuthFailure(switch (e.code) {
+        'same_password' =>
+          'Das neue Passwort darf nicht dem alten entsprechen.',
+        'weak_password' => 'Das Passwort ist zu schwach (min. 6 Zeichen).',
+        _ => 'Passwort konnte nicht geändert werden: ${e.message}',
+      });
+    }
+  }
+
   /// Legt das Profil nachträglich an, falls es bei der Registrierung
   /// fehlschlug (z. B. Nutzername vergeben).
   Future<void> ensureProfile(String username) async {
@@ -142,6 +211,17 @@ class AuthRepository {
   }
 
   Future<void> signOut() => _client.auth.signOut();
+
+  /// Löscht das eigene Konto endgültig (Edge Function `delete-account` mit
+  /// Service-Role) und meldet danach lokal ab.
+  Future<void> deleteAccount() async {
+    final res = await _client.functions.invoke('delete-account');
+    final data = res.data;
+    if (data is Map && data['error'] != null) {
+      throw AuthFailure(data['error'].toString());
+    }
+    await _client.auth.signOut();
+  }
 }
 
 class AuthFailure implements Exception {

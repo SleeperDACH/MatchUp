@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// MatchUp-Markenfarben.
 class MatchUpColors {
@@ -40,6 +38,11 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
   final dark = brightness == Brightness.dark;
   final bg = dark ? MatchUpColors.base : MatchUpColors._lightBg;
   final cardColor = dark ? MatchUpColors._surfaceCard : MatchUpColors._lightCard;
+  // Glasige Karten-Tönung: die Flächenfarbe leicht durchscheinend, damit der
+  // Grund durchschimmert und ein feiner Licht-Rand die Kante fasst.
+  final glassCard = (dark ? MatchUpColors._surfaceCard : MatchUpColors._lightCard)
+      .withValues(alpha: dark ? 0.72 : 0.80);
+  final glassBorder = Colors.white.withValues(alpha: dark ? 0.10 : 0.55);
 
   final scheme = ColorScheme.fromSeed(
     seedColor: MatchUpColors.green,
@@ -64,13 +67,29 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
     scaffoldBackgroundColor: bg,
     dividerColor: scheme.outlineVariant,
     appBarTheme: AppBarTheme(
-      backgroundColor: bg,
+      backgroundColor: bg.withValues(alpha: 0.0),
+      surfaceTintColor: Colors.transparent,
+      scrolledUnderElevation: 0,
+      elevation: 0,
       centerTitle: true,
+      // Auffälliger, „dicker" Titel in condensed Schrift — überall einheitlich
+      // (wie die überarbeitete Liga-Kopfzeile, siehe VibrantLeagueTitle).
+      titleTextStyle: TextStyle(
+        fontFamily: 'BarlowCondensed',
+        fontWeight: FontWeight.w800,
+        fontSize: 24,
+        letterSpacing: -0.4,
+        color: scheme.onSurface,
+      ),
     ),
     cardTheme: CardThemeData(
-      color: cardColor,
+      color: glassCard,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      // Feiner heller Rand gibt der Karte die Glaskante.
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: glassBorder, width: 0.8),
+      ),
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
     ),
     navigationBarTheme: NavigationBarThemeData(
@@ -87,34 +106,4 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       ),
     ),
   );
-}
-
-/// Gewählter Theme-Modus (Hell/Dunkel/System) — lokal je Gerät gespeichert.
-/// Standard: Dunkel (die App ist dark-first gestaltet).
-final themeModeProvider =
-    StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
-  return ThemeModeNotifier();
-});
-
-class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier() : super(ThemeMode.dark) {
-    _load();
-  }
-
-  static const _key = 'theme_mode';
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final s = prefs.getString(_key);
-    if (s != null) {
-      state = ThemeMode.values.firstWhere((m) => m.name == s,
-          orElse: () => ThemeMode.dark);
-    }
-  }
-
-  Future<void> set(ThemeMode mode) async {
-    state = mode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, mode.name);
-  }
 }

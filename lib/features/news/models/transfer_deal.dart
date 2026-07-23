@@ -6,6 +6,8 @@ class TransferDeal {
     required this.toTeam,
     required this.fromBundesliga,
     required this.toBundesliga,
+    this.fromDivision,
+    this.toDivision,
     this.fromLogo,
     this.toLogo,
     this.date,
@@ -18,6 +20,12 @@ class TransferDeal {
   final String toTeam;
   final bool fromBundesliga;
   final bool toBundesliga;
+
+  /// Liga der jeweiligen (Bundesliga-)Seite: 1 = Bundesliga, 2 = 2. Bundesliga,
+  /// null = kein abgedeckter Verein.
+  final int? fromDivision;
+  final int? toDivision;
+
   final String? fromLogo;
   final String? toLogo;
   final DateTime? date;
@@ -47,6 +55,8 @@ class TransferDeal {
         toTeam: (json['to_team'] as String? ?? '—').trim(),
         fromBundesliga: json['from_bundesliga'] as bool? ?? false,
         toBundesliga: json['to_bundesliga'] as bool? ?? false,
+        fromDivision: (json['from_division'] as num?)?.toInt(),
+        toDivision: (json['to_division'] as num?)?.toInt(),
         fromLogo: json['from_logo'] as String?,
         toLogo: json['to_logo'] as String?,
         date: (json['date'] as String?) != null

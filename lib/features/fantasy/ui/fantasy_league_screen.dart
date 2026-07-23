@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/league_screen.dart';
 import '../../../app/widgets/matchup_chevron.dart';
+import '../../../app/widgets/vibrant_league_title.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
+import '../../leagues/providers.dart';
+import '../../tippspiel/providers.dart';
+import '../../tippspiel/ui/create_tip_round.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
@@ -14,6 +19,7 @@ import 'fantasy_chat_screen.dart';
 import 'fantasy_settings_screen.dart';
 import 'fantasy_table_screen.dart';
 import 'free_agency_screen.dart';
+import 'invite_players_screen.dart';
 import 'lineup_screen.dart';
 import 'matchup_hero.dart';
 import 'matchups_screen.dart';
@@ -39,7 +45,14 @@ class FantasyLeagueScreen extends ConsumerWidget {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(live.name),
+          titleSpacing: 12,
+          title: VibrantLeagueTitle(
+            name: live.name,
+            subtitle: live.mode.label,
+            logoUrl: live.logoUrl,
+            logoEmoji: live.logoEmoji,
+            logoColor: live.logoColor,
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.settings_outlined),
@@ -133,6 +146,20 @@ class _OverviewTab extends ConsumerWidget {
         const SizedBox(height: 24),
         // Wochen-Recap (versteckt sich, bis es gewertete Punkte gibt).
         if (seasonRunning) WeeklyRecapCard(league: league),
+        // Spieler einladen: über die eigenen Chats/Freunde eine Beitreten-
+        // Einladung verschicken — nur solange der Draft noch nicht durch ist.
+        if (!draftFullyDone) ...[
+          _InvitePlayersButton(league: league),
+          const SizedBox(height: 12),
+        ],
+        // Ligainternes Tippspiel (über dem Schnellzugriff) — nur wenn die Liga
+        // ein Tippspiel anbietet bzw. schon eines aktiviert ist.
+        if (league.tipEnabled ||
+            ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull !=
+                null) ...[
+          _LeagueTipspielButton(league: league, isAdmin: isAdmin),
+          const SizedBox(height: 20),
+        ],
         Text('Schnellzugriff', style: labelStyle),
         const SizedBox(height: 14),
         // Randlose Icon-Aktionen (farbige Kreise statt gefüllter Kästen),
@@ -349,6 +376,172 @@ class _StatusHero extends StatelessWidget {
 /// Farbige Aktions-Kachel im Schnellzugriff-Raster.
 /// Randlose Schnellzugriff-Aktion: farbiger Icon-Kreis + Label darunter,
 /// ohne getönte Box. Optionaler Zähler-Hinweis (z. B. offene Trades).
+/// Auffälliger „Spieler einladen"-Button auf der Übersicht: öffnet die
+/// Chat-/Freunde-Auswahl und verschickt eine Beitreten-Einladung. Liegen
+/// Beitrittsanfragen vor (öffentlich–auf Einladung), zeigt der Button einen
+/// Badge und führt zu deren Bearbeitung.
+/// Ligainternes Tippspiel: aktiviert (alle öffnen), noch nicht aktiviert
+/// (Admin aktiviert; Mitglieder sehen einen ausgegrauten Hinweis).
+class _LeagueTipspielButton extends ConsumerWidget {
+  const _LeagueTipspielButton({required this.league, required this.isAdmin});
+
+  final FantasyLeague league;
+  final bool isAdmin;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final round = ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull;
+
+    if (round != null) {
+      return _TipTile(
+        title: 'Tippspiel öffnen',
+        subtitle: 'Ligainternes Tippspiel — tippen, Tabelle, Chat',
+        onTap: () {
+          activateRound(ref, round);
+          Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
+        },
+      );
+    }
+    if (isAdmin) {
+      return _TipTile(
+        title: 'Ligainternes Tippspiel aktivieren',
+        subtitle: 'Fantasy + Tippspiel mit denselben Mitgliedern',
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => CreateTipRoundScreen(
+                  fantasyLeagueId: league.id,
+                  initialName: league.name,
+                ))),
+      );
+    }
+    // Mitglied, aber noch nicht aktiviert.
+    return const _TipTile(
+      title: 'Ligainternes Tippspiel',
+      subtitle: 'Noch nicht aktiviert',
+      onTap: null,
+    );
+  }
+}
+
+/// Kachel für den Ligainternen-Tippspiel-Button (gelber Akzent; deaktiviert =
+/// ausgegraut).
+class _TipTile extends StatelessWidget {
+  const _TipTile({required this.title, required this.subtitle, this.onTap});
+
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final enabled = onTap != null;
+    final tile = Material(
+      color: _cAmber.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              Icon(Icons.emoji_events_outlined, color: _cAmber),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(subtitle,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              if (enabled)
+                Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+    return enabled ? tile : Opacity(opacity: 0.55, child: tile);
+  }
+}
+
+class _InvitePlayersButton extends ConsumerWidget {
+  const _InvitePlayersButton({required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final myId = ref.watch(currentUserProvider)?.id;
+    final pending = (league.isPublic &&
+            league.isInviteOnly &&
+            myId == league.createdBy)
+        ? (ref.watch(fantasyJoinRequestsProvider(league.id)).valueOrNull?.length ??
+            0)
+        : 0;
+    final subtitle = pending > 0
+        ? '$pending offene Anfrage${pending == 1 ? '' : 'n'} · Chats & Freunde einladen'
+        : 'Über deine Chats & Freunde zur Liga einladen';
+
+    return Material(
+      color: scheme.primary.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => InvitePlayersScreen(league: league))),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              Icon(Icons.person_add_alt_1, color: scheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Spieler einladen',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(subtitle,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              if (pending > 0) ...[
+                Container(
+                  constraints: const BoxConstraints(minWidth: 22),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: scheme.error,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Text('$pending',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: scheme.onError,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12)),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _QuickAction extends StatelessWidget {
   const _QuickAction(
       {required this.icon,
@@ -367,40 +560,70 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
+    // Getönte Karte in der Aktionsfarbe — füllt die Reihe und wirkt lebendiger
+    // als ein freistehendes Icon.
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: 0.22),
+            color.withValues(alpha: 0.07),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.38)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration:
-                      BoxDecoration(color: color, shape: BoxShape.circle),
-                  child: Icon(icon, color: _cBase, size: 26),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: color.withValues(alpha: 0.45),
+                              blurRadius: 10,
+                              spreadRadius: -2),
+                        ],
+                      ),
+                      child: Icon(icon, color: _cBase, size: 24),
+                    ),
+                    if (badge > 0)
+                      Positioned(
+                        top: -5,
+                        right: -7,
+                        child: _NotifyBadge(count: badge),
+                      ),
+                  ],
                 ),
-                if (badge > 0)
-                  Positioned(
-                    top: -5,
-                    right: -7,
-                    child: _NotifyBadge(count: badge),
-                  ),
+                const SizedBox(height: 8),
+                Text(label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                        height: 1.15)),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 11.5, height: 1.15)),
-          ],
+          ),
         ),
       ),
     );
@@ -452,15 +675,29 @@ class _RostersTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final drafted = league.draftStatus != DraftStatus.setup;
     if (!drafted) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Die Kader entstehen im Draft — sobald er läuft, stellst du hier '
-            'deine Elf auf, holst Free Agents und tradest.',
-            textAlign: TextAlign.center,
+      return Stack(
+        children: [
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Die Kader entstehen im Draft — sobald er läuft, stellst du '
+                'hier deine Elf auf, holst Free Agents und tradest.',
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
-        ),
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton.extended(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => DraftRoomScreen(league: league))),
+              icon: const Icon(Icons.sports_esports),
+              label: const Text('Zum Draft'),
+            ),
+          ),
+        ],
       );
     }
 
@@ -663,14 +900,17 @@ class _MatchdayFixtures extends ConsumerWidget {
     } else {
       final k = f.kickoff.toLocal();
       final wd = _weekdays[k.weekday - 1];
+      final dd = k.day.toString().padLeft(2, '0');
+      final mo = k.month.toString().padLeft(2, '0');
       final hh = k.hour.toString().padLeft(2, '0');
       final mm = k.minute.toString().padLeft(2, '0');
-      mid = Text('$wd $hh:$mm',
+      // Wochentag + Datum oben, Uhrzeit darunter.
+      mid = Text('$wd $dd.$mo.\n$hh:$mm',
           textAlign: TextAlign.center,
           style: Theme.of(context)
               .textTheme
               .labelSmall
-              ?.copyWith(color: scheme.onSurfaceVariant));
+              ?.copyWith(color: scheme.onSurfaceVariant, height: 1.25));
     }
 
     return Padding(

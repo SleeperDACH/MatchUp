@@ -87,6 +87,21 @@ class DmReadNotifier extends StateNotifier<DateTime?> {
   }
 }
 
+/// Anzahl ungelesener Direktnachrichten (empfangen, neuer als die jeweilige
+/// Lesemarke des Partners). Grundlage für die Zahl am Nachrichten-Symbol.
+final unreadDmCountProvider = Provider<int>((ref) {
+  final me = Supabase.instance.client.auth.currentUser?.id;
+  final msgs = ref.watch(directMessagesProvider).valueOrNull ?? const [];
+  if (me == null) return 0;
+  var count = 0;
+  for (final m in msgs) {
+    if (m.senderId == me) continue;
+    final lastRead = ref.watch(dmLastReadProvider(m.senderId));
+    if (lastRead == null || m.createdAt.isAfter(lastRead)) count++;
+  }
+  return count;
+});
+
 /// Gibt es ungelesene Direktnachrichten (empfangen, neuer als die Lesemarke)?
 /// Grundlage für den roten Punkt am Nachrichten-Symbol.
 final hasUnreadDmsProvider = Provider<bool>((ref) {

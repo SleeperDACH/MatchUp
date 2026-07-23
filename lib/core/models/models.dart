@@ -16,6 +16,7 @@ class LeagueInfo {
     required this.roundLabel,
     required this.providerId,
     required this.providerLeagueKey,
+    this.sportmonksKey,
     this.fixedSeason,
     this.oddsSportKey,
   });
@@ -31,8 +32,15 @@ class LeagueInfo {
   /// Welcher Daten-Adapter diese Liga bedient (z. B. `openligadb`).
   final String providerId;
 
-  /// Schlüssel der Liga beim Provider (z. B. `bl1` bei OpenLigaDB).
+  /// Schlüssel der Liga beim primären Provider (z. B. `bl1` bei OpenLigaDB).
+  /// Bleibt bei Sportmonks-Ligen der OpenLigaDB-Kürzel — Fantasy, Tippspiel
+  /// und der `sync-fixtures`-Job nutzen ihn weiter.
   final String providerLeagueKey;
+
+  /// Sportmonks-League-ID (falls diese Liga über Sportmonks läuft). Getrennt
+  /// von [providerLeagueKey], damit Fantasy/Tipp parallel auf OpenLigaDB
+  /// bleiben können.
+  final String? sportmonksKey;
 
   /// Für Turniere (WM, EM): festes Jahr statt rollierender Saison.
   final int? fixedSeason;
@@ -141,29 +149,84 @@ class StandingRow {
 /// Vorkonfigurierte Wettbewerbe. Hier kommen später Premier League,
 /// NFL & Co. dazu.
 abstract final class Leagues {
+  // Die fünf deutschen Ligen laufen über Sportmonks (providerId `sportmonks`,
+  // [sportmonksKey] = Sportmonks-League-ID). [providerLeagueKey] bleibt der
+  // OpenLigaDB-Kürzel, damit Fantasy, Tippspiel und `sync-fixtures` weiter
+  // gegen OpenLigaDB arbeiten (getrennte Pipeline).
   static const bundesliga = LeagueInfo(
     id: 'bundesliga',
     sport: Sport.football,
     name: 'Bundesliga',
     roundLabel: 'Spieltag',
-    providerId: 'openligadb',
+    providerId: 'sportmonks',
     providerLeagueKey: 'bl1',
+    sportmonksKey: '82',
     oddsSportKey: 'soccer_germany_bundesliga',
   );
 
-  static const wm2026 = LeagueInfo(
-    id: 'wm2026',
+  static const bundesliga2 = LeagueInfo(
+    id: 'bundesliga2',
     sport: Sport.football,
-    name: 'WM 2026',
-    roundLabel: 'Runde',
-    providerId: 'openligadb',
-    providerLeagueKey: 'wm26',
-    fixedSeason: 2026,
-    oddsSportKey: 'soccer_fifa_world_cup',
+    name: '2. Bundesliga',
+    roundLabel: 'Spieltag',
+    providerId: 'sportmonks',
+    providerLeagueKey: 'bl2',
+    sportmonksKey: '85',
+    oddsSportKey: 'soccer_germany_bundesliga2',
   );
 
-  static const all = [wm2026, bundesliga];
+  static const liga3 = LeagueInfo(
+    id: 'liga3',
+    sport: Sport.football,
+    name: '3. Liga',
+    roundLabel: 'Spieltag',
+    providerId: 'sportmonks',
+    providerLeagueKey: 'bl3',
+    sportmonksKey: '88',
+  );
+
+  static const dfbPokal = LeagueInfo(
+    id: 'dfb_pokal',
+    sport: Sport.football,
+    name: 'DFB-Pokal',
+    roundLabel: 'Runde',
+    providerId: 'sportmonks',
+    providerLeagueKey: 'dfb',
+    sportmonksKey: '109',
+  );
+
+  static const frauenBundesliga = LeagueInfo(
+    id: 'frauen_bundesliga',
+    sport: Sport.football,
+    name: 'Frauen-Bundesliga',
+    roundLabel: 'Spieltag',
+    providerId: 'sportmonks',
+    providerLeagueKey: 'fbl1',
+    sportmonksKey: '1740',
+  );
+
+  static const all = [
+    bundesliga,
+    bundesliga2,
+    liga3,
+    dfbPokal,
+    frauenBundesliga,
+  ];
+
+  /// Wettbewerbe, die für **Tippspiele** wählbar sind (1./2. Bundesliga +
+  /// DFB-Pokal). Mehrere davon lassen sich in einer Tipprunde kombinieren.
+  /// Fantasy bleibt bewusst auf die 1. Bundesliga beschränkt.
+  static const tippspiel = [bundesliga, bundesliga2, dfbPokal];
 
   static LeagueInfo byId(String id) =>
       all.firstWhere((l) => l.id == id, orElse: () => bundesliga);
+
+  /// Liga zur Sportmonks-League-ID (z. B. „82" → Bundesliga); null wenn unbekannt.
+  static LeagueInfo? bySportmonksKey(String? key) {
+    if (key == null) return null;
+    for (final l in all) {
+      if (l.sportmonksKey == key) return l;
+    }
+    return null;
+  }
 }

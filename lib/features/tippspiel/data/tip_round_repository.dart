@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/data/odds/frozen_odds.dart';
 import '../../../core/models/models.dart';
+import '../../leagues/models/join_request.dart';
 import '../models/chat_message.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
@@ -23,21 +24,26 @@ class TipRoundRepository {
 
   Future<TipRound> createRound({
     required String name,
-    required LeagueInfo league,
+    required List<LeagueInfo> leagues,
     required int season,
     ScoringRules rules = ScoringRules.kicktippDefault,
+    String visibility = 'private',
+    String joinPolicy = 'open',
   }) async {
     final userId = _client.auth.currentUser!.id;
     // Der Trigger tip_rounds_add_creator macht den Ersteller automatisch
-    // zum Mitglied.
+    // zum Mitglied. Primär-Liga = erste; league_ids = alle Wettbewerbe.
     final row = await _client
         .from('tip_rounds')
         .insert({
           'name': name.trim(),
-          'league_id': league.id,
+          'league_id': leagues.first.id,
+          'league_ids': [for (final l in leagues) l.id],
           'season': season,
           'created_by': userId,
           'scoring': rules.toJson(),
+          'visibility': visibility,
+          'join_policy': joinPolicy,
         })
         .select()
         .single();
@@ -49,6 +55,17 @@ class TipRoundRepository {
       .from('tip_rounds')
       .update({'scoring': rules.toJson()}).eq('id', roundId);
 
+  /// Sichtbarkeit / Beitrittsmodus setzen (nur Ersteller, RLS).
+  Future<void> updateVisibility(
+    String roundId, {
+    required String visibility,
+    required String joinPolicy,
+  }) =>
+      _client.from('tip_rounds').update({
+        'visibility': visibility,
+        'join_policy': visibility == 'public' ? joinPolicy : 'open',
+      }).eq('id', roundId);
+
   Future<TipRound> joinRound(String inviteCode) async {
     final roundId = await _client.rpc<String>(
       'join_tip_round',
@@ -58,6 +75,62 @@ class TipRoundRepository {
         await _client.from('tip_rounds').select().eq('id', roundId).single();
     return TipRound.fromJson(row);
   }
+
+  /// Einzelne Runde laden (für Mitglieder per RLS lesbar).
+  Future<TipRound> fetchRound(String roundId) async {
+    final row =
+        await _client.from('tip_rounds').select().eq('id', roundId).single();
+    return TipRound.fromJson(row);
+  }
+
+  /// Die mit einer Fantasy-Liga gekoppelte Tipprunde (oder null). Sichtbar für
+  /// Mitglieder (RLS). Grundlage für den „Tippspiel öffnen"-Button.
+  Future<TipRound?> fantasyTipRound(String fantasyLeagueId) async {
+    final row = await _client
+        .from('tip_rounds')
+        .select()
+        .eq('fantasy_league_id', fantasyLeagueId)
+        .maybeSingle();
+    return row == null ? null : TipRound.fromJson(row);
+  }
+
+  /// Koppelt eine frisch erstellte Tipprunde an eine Fantasy-Liga und übernimmt
+  /// deren aktive Mitglieder (nur der Fantasy-Admin, per SECURITY-DEFINER-RPC).
+  Future<void> linkFantasyTipRound(String roundId, String fantasyLeagueId) =>
+      _client.rpc('link_fantasy_tip_round',
+          params: {'p_round_id': roundId, 'p_league_id': fantasyLeagueId});
+
+  /// Freier Beitritt zu einer öffentlichen Runde (join_policy `open`).
+  Future<TipRound> joinPublic(String roundId) async {
+    final id = await _client
+        .rpc<String>('join_public_tip_round', params: {'p_id': roundId});
+    final row =
+        await _client.from('tip_rounds').select().eq('id', id).single();
+    return TipRound.fromJson(row);
+  }
+
+  /// Beitrittsanfrage an eine öffentliche Runde (join_policy `invite`).
+  Future<void> requestJoin(String roundId) =>
+      _client.rpc<void>('request_join_tip_round', params: {'p_id': roundId});
+
+  /// Offene Beitrittsanfragen einer Runde (nur für den Admin sichtbar, live).
+  Stream<List<JoinRequest>> pendingRequests(String roundId) => _client
+      .from('tip_join_requests')
+      .stream(primaryKey: ['round_id', 'user_id'])
+      .eq('round_id', roundId)
+      .map((rows) => rows.map(JoinRequest.fromJson).toList());
+
+  /// Anfrage annehmen (`accept: true`) oder ablehnen — nur Admin.
+  Future<void> respondRequest(
+    String roundId,
+    String userId, {
+    required bool accept,
+  }) =>
+      _client.rpc<void>('respond_tip_join_request', params: {
+        'p_round': roundId,
+        'p_user': userId,
+        'p_accept': accept,
+      });
 
   /// Alle Mitglieder der Liga — auch die, die noch keinen Tipp abgegeben
   /// haben (wichtig: neue Mitglieder sollen sofort sichtbar sein).
@@ -138,6 +211,24 @@ class TipRoundRepository {
   /// Tipps und Chat gehen per Cascade mit.
   Future<void> deleteRound(String roundId) =>
       _client.from('tip_rounds').delete().eq('id', roundId);
+
+  /// Verlässt eine Tipprunde (nur Mitglieder, nicht der Ersteller) — per
+  /// SECURITY-DEFINER-RPC. Entfernt die eigene Mitgliedschaft samt eigener
+  /// Tipps und Bonustipp-Antworten.
+  Future<void> leaveRound(String roundId) =>
+      _client.rpc('leave_tip_round', params: {'p_round_id': roundId});
+
+  /// Übergibt die Adminrechte an ein anderes Mitglied und verlässt danach
+  /// die Runde (atomar, per SECURITY-DEFINER-RPC). Nur der Ersteller.
+  Future<void> transferAndLeaveRound(String roundId, String newOwnerId) =>
+      _client.rpc('transfer_and_leave_tip_round',
+          params: {'p_round_id': roundId, 'p_new_owner': newOwnerId});
+
+  /// Übergibt nur die Adminrechte an ein anderes Mitglied (ohne selbst
+  /// auszutreten). Nur der Ersteller, per SECURITY-DEFINER-RPC.
+  Future<void> transferOwnership(String roundId, String newOwnerId) =>
+      _client.rpc('transfer_tip_round_ownership',
+          params: {'p_round_id': roundId, 'p_new_owner': newOwnerId});
 
   /// Benennt eine Tipprunde um (nur der Ersteller, per RLS). 3–64 Zeichen.
   Future<void> renameRound(String roundId, String name) =>

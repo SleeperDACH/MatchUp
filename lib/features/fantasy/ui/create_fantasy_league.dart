@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../leagues/ui/visibility_picker.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'fantasy_league_screen.dart';
 
-/// Erstellen einer Fantasy-Liga: Modus (Liga/Dynasty), Name und Pickzeit.
+/// Erstellen einer Fantasy-Liga: nur das Nötigste — Modus, Name und
+/// Teilnehmerzahl. Draft- und Playoff-Details bekommen sinnvolle Standards
+/// und sind nachträglich in den Liga-Einstellungen anpassbar.
 class CreateFantasyLeagueScreen extends ConsumerStatefulWidget {
   const CreateFantasyLeagueScreen({super.key, required this.mode});
 
@@ -20,18 +23,14 @@ class _CreateFantasyLeagueScreenState
     extends ConsumerState<CreateFantasyLeagueScreen> {
   final _name = TextEditingController();
   late FantasyMode _mode = widget.mode;
-  DraftPickTime _pickTime = DraftPickTime.m1;
 
-  // Liga-Einstellungen (in die Erstell-Maske gezogen).
   static const _minTeams = 2;
   static const _maxTeams = 18;
-  static const _minRounds = 14;
-  static const _maxRounds = 30;
   int _teams = 10; // Standard-Teilnehmerzahl
-  int _rounds = RosterConfig.standard.squadSize; // Kadergröße = Draft-Runden
-  String _orderMode = 'auto'; // 'auto' = zufällig, 'manual' = per Reihenfolge
-  bool _pauseOn = false; // Slow-Draft-Nachtpause
-  bool _playoffsOn = false;
+
+  String _visibility = 'private';
+  String _joinPolicy = 'open';
+  bool _tipEnabled = false;
 
   bool _busy = false;
   String? _error;
@@ -40,34 +39,6 @@ class _CreateFantasyLeagueScreenState
   void dispose() {
     _name.dispose();
     super.dispose();
-  }
-
-  String get _draftSummary =>
-      '$_rounds Spieler · ${_orderMode == 'manual' ? 'Manuell' : 'Zufällig'} · '
-      '${_pickTime.label}${_pauseOn ? ' · Nachtpause' : ''}';
-
-  /// Öffnet die gebündelten Draft-Einstellungen in einem eigenen Fenster und
-  /// übernimmt die Auswahl.
-  Future<void> _openDraftSettings() async {
-    final result = await Navigator.of(context).push<_DraftConfig>(
-      MaterialPageRoute(
-        builder: (_) => _DraftSettingsScreen(
-          rounds: _rounds,
-          minRounds: _minRounds,
-          maxRounds: _maxRounds,
-          orderMode: _orderMode,
-          pauseOn: _pauseOn,
-          pickTime: _pickTime,
-        ),
-      ),
-    );
-    if (result == null) return;
-    setState(() {
-      _rounds = result.rounds;
-      _orderMode = result.orderMode;
-      _pauseOn = result.pauseOn;
-      _pickTime = result.pickTime;
-    });
   }
 
   Future<void> _create() async {
@@ -85,16 +56,18 @@ class _CreateFantasyLeagueScreenState
                 name: _name.text,
                 mode: _mode,
                 season: ref.read(fantasySeasonProvider),
-                pickTime: _pickTime,
-                roster: RosterConfig.standard.withRounds(_rounds),
+                // Draft-Standards (später in den Einstellungen änderbar).
+                pickTime: DraftPickTime.m1,
+                roster: RosterConfig.standard,
                 maxTeams: _teams,
-                draftOrderMode: _orderMode,
-                // Nachtpause 23–8 Uhr, wenn aktiviert (Minuten seit Mitternacht).
-                pauseStart: _pauseOn ? 23 * 60 : null,
-                pauseEnd: _pauseOn ? 8 * 60 : null,
-                // Playoffs: Standard 4 Teams · 1-Wochen-Partien.
-                playoffTeams: _playoffsOn ? 4 : null,
-                playoffWeeks: _playoffsOn ? 1 : null,
+                draftOrderMode: 'auto',
+                // Fantasy geht immer in die Playoffs: Standard 4 Teams ·
+                // 1-Wochen-Partien. Feinjustierung später in den Einstellungen.
+                playoffTeams: 4,
+                playoffWeeks: 1,
+                visibility: _visibility,
+                joinPolicy: _joinPolicy,
+                tipEnabled: _tipEnabled,
               );
       ref.invalidate(myFantasyLeaguesProvider);
       if (!mounted) return;
@@ -114,15 +87,8 @@ class _CreateFantasyLeagueScreenState
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Modus', style: Theme.of(context).textTheme.titleMedium),
+          Text('Name der Liga', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          for (final mode in FantasyMode.values)
-            _ModeCard(
-              mode: mode,
-              selected: _mode == mode,
-              onTap: () => setState(() => _mode = mode),
-            ),
-          const SizedBox(height: 20),
           TextField(
             controller: _name,
             decoration: const InputDecoration(
@@ -133,13 +99,6 @@ class _CreateFantasyLeagueScreenState
           const SizedBox(height: 20),
           Text('Teilnehmerzahl',
               style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            'Wie viele Teams die Liga hat. Team 1 bist du; die übrigen Teams '
-            'werden angelegt und mit beitretenden Spielern aufgefüllt.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
           const SizedBox(height: 8),
           _StepperRow(
             label: 'Teams',
@@ -149,24 +108,44 @@ class _CreateFantasyLeagueScreenState
             onChanged: (v) => setState(() => _teams = v),
           ),
           const SizedBox(height: 20),
-          // Draft-Einstellungen gebündelt in einem eigenen Fenster.
-          Card(
-            margin: EdgeInsets.zero,
-            child: ListTile(
-              leading: const Icon(Icons.sports_esports_outlined),
-              title: const Text('Draft-Einstellungen'),
-              subtitle: Text(_draftSummary),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _openDraftSettings,
+          Text('Modus', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          for (final mode in FantasyMode.values)
+            _ModeCard(
+              mode: mode,
+              selected: _mode == mode,
+              onTap: () => setState(() => _mode = mode),
             ),
+          const SizedBox(height: 20),
+          Text('Sichtbarkeit', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          VisibilityPicker(
+            visibility: _visibility,
+            joinPolicy: _joinPolicy,
+            onChanged: (v, p) => setState(() {
+              _visibility = v;
+              _joinPolicy = p;
+            }),
           ),
+          const SizedBox(height: 20),
+          Text('Tippspiel', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            value: _playoffsOn,
-            onChanged: (v) => setState(() => _playoffsOn = v),
-            title: const Text('Playoffs'),
-            subtitle: const Text('4 Teams · 1-Wochen-Partien (später änderbar).'),
+            value: _tipEnabled,
+            onChanged: (v) => setState(() => _tipEnabled = v),
+            title: const Text('Ligainternes Tippspiel'),
+            subtitle: const Text(
+                'Zusätzlich zum Fantasy ein Tippspiel mit denselben '
+                'Mitgliedern — später auf der Übersicht einrichtbar. Du kannst '
+                'es auch nachträglich in den Einstellungen einschalten.'),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Draft- und Playoff-Einstellungen sind später in den '
+            'Liga-Einstellungen anpassbar.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           if (_error != null) ...[
             const SizedBox(height: 16),
@@ -230,143 +209,7 @@ class _ModeCard extends StatelessWidget {
   }
 }
 
-/// Ergebnis der gebündelten Draft-Einstellungen.
-class _DraftConfig {
-  const _DraftConfig({
-    required this.rounds,
-    required this.orderMode,
-    required this.pauseOn,
-    required this.pickTime,
-  });
-
-  final int rounds;
-  final String orderMode;
-  final bool pauseOn;
-  final DraftPickTime pickTime;
-}
-
-/// Eigenes Fenster für die Draft-Einstellungen beim Erstellen einer Liga:
-/// Kadergröße, Reihenfolge, Pickzeit und Slow-Draft-Nachtpause.
-class _DraftSettingsScreen extends StatefulWidget {
-  const _DraftSettingsScreen({
-    required this.rounds,
-    required this.minRounds,
-    required this.maxRounds,
-    required this.orderMode,
-    required this.pauseOn,
-    required this.pickTime,
-  });
-
-  final int rounds;
-  final int minRounds;
-  final int maxRounds;
-  final String orderMode;
-  final bool pauseOn;
-  final DraftPickTime pickTime;
-
-  @override
-  State<_DraftSettingsScreen> createState() => _DraftSettingsScreenState();
-}
-
-class _DraftSettingsScreenState extends State<_DraftSettingsScreen> {
-  late int _rounds = widget.rounds;
-  late String _orderMode = widget.orderMode;
-  late bool _pauseOn = widget.pauseOn;
-  late DraftPickTime _pickTime = widget.pickTime;
-
-  @override
-  Widget build(BuildContext context) {
-    final onVariant = Theme.of(context).colorScheme.onSurfaceVariant;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Draft-Einstellungen')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('Kadergröße', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            '11 in der Startelf + ${_rounds - 11} auf der Bank '
-            '(= $_rounds Draft-Runden).',
-            style:
-                Theme.of(context).textTheme.bodySmall?.copyWith(color: onVariant),
-          ),
-          const SizedBox(height: 8),
-          _StepperRow(
-            label: 'Spieler je Kader',
-            value: _rounds,
-            min: widget.minRounds,
-            max: widget.maxRounds,
-            onChanged: (v) => setState(() => _rounds = v),
-          ),
-          const SizedBox(height: 20),
-          Text('Draft-Reihenfolge',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'auto', label: Text('Zufällig')),
-              ButtonSegment(value: 'manual', label: Text('Manuell')),
-            ],
-            selected: {_orderMode},
-            onSelectionChanged: (s) => setState(() => _orderMode = s.first),
-          ),
-          const SizedBox(height: 8),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _pauseOn,
-            onChanged: (v) => setState(() => _pauseOn = v),
-            title: const Text('Slow-Draft-Nachtpause'),
-            subtitle: const Text('Draft pausiert nachts von 23 bis 8 Uhr.'),
-          ),
-          const SizedBox(height: 20),
-          Text('Pickzeit im Draft',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            'Wie lange jeder Manager pro Pick Zeit hat. Kurze Zeiten = '
-            'Live-Draft, lange Zeiten = Slow-Draft über Tage.',
-            style:
-                Theme.of(context).textTheme.bodySmall?.copyWith(color: onVariant),
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<DraftPickTime>(
-            initialValue: _pickTime,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-            ),
-            items: [
-              for (final t in DraftPickTime.values)
-                DropdownMenuItem(
-                  value: t,
-                  child: Row(
-                    children: [
-                      Text(t.label),
-                      const SizedBox(width: 8),
-                      _Chip(text: t.isLive ? 'Live' : 'Slow'),
-                    ],
-                  ),
-                ),
-            ],
-            onChanged: (t) => setState(() => _pickTime = t ?? _pickTime),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            icon: const Icon(Icons.check),
-            label: const Text('Übernehmen'),
-            onPressed: () => Navigator.of(context).pop(_DraftConfig(
-              rounds: _rounds,
-              orderMode: _orderMode,
-              pauseOn: _pauseOn,
-              pickTime: _pickTime,
-            )),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Kompakte +/–-Zeile für Zahlenwerte (Teilnehmer, Kadergröße).
+/// Kompakte +/–-Zeile für Zahlenwerte (Teilnehmerzahl).
 class _StepperRow extends StatelessWidget {
   const _StepperRow({
     required this.label,
@@ -411,26 +254,6 @@ class _StepperRow extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(text,
-          style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
     );
   }
 }

@@ -9,6 +9,7 @@ import '../../auth/providers.dart';
 import '../../tippspiel/providers.dart' show chatLastReadProvider;
 import '../data/draft_repository.dart';
 import '../logic/draft_order.dart';
+import '../logic/draft_ranking.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
@@ -270,9 +271,28 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
       return league.draftPhase == DraftPhase.u20 ? rookie : !rookie;
     }
 
+    // Hochgerechnete Vorsaison-Punkte (mit dem Liga-Scoring) als Draft-Reihung
+    // „bester zuerst"; Spieler ohne Vorsaison-BL-Werte landen am Ende.
+    final seasonTotals =
+        ref.watch(lastSeasonTotalsProvider).valueOrNull ?? const {};
+    final seasonPoints = <String, int>{
+      for (final p in pool)
+        if (seasonTotals[p.id] != null)
+          p.id: projectedSeasonPoints(
+              seasonTotals[p.id]!, p.position, league.scoring),
+    };
+
     final available = pool
         .where((p) => !pickedIds.contains(p.id) && inPhasePool(p))
-        .toList();
+        .toList()
+      ..sort((a, b) {
+        final pa = seasonPoints[a.id];
+        final pb = seasonPoints[b.id];
+        if (pa == null && pb == null) return a.name.compareTo(b.name);
+        if (pa == null) return 1;
+        if (pb == null) return -1;
+        return pa != pb ? pb.compareTo(pa) : a.name.compareTo(b.name);
+      });
     final phasePicks =
         picks.where((p) => p.phase == league.draftPhase).toList();
 
@@ -771,8 +791,23 @@ class _AvailableTabState extends State<_AvailableTab> {
                     final inQueue = widget.queued.contains(p.id);
                     final scheme = Theme.of(context).colorScheme;
                     return ListTile(
-                      leading: ClubBadge(
-                          club: p.club, iconUrl: widget.clubIcons[p.club]),
+                      leading: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            child: Text('${i + 1}',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
+                                    ?.copyWith(color: scheme.onSurfaceVariant)),
+                          ),
+                          const SizedBox(width: 4),
+                          ClubBadge(
+                              club: p.club, iconUrl: widget.clubIcons[p.club]),
+                        ],
+                      ),
                       title: Text(p.name),
                       subtitle: Row(
                         children: [

@@ -33,6 +33,26 @@
   <link rel="manifest" href="manifest.json">
 
   <!--
+    Dunkler Startbildschirm mit Logo statt weißem Flackern, bis Flutter das
+    erste Frame gerendert hat. Nur Logo, kein Text.
+  -->
+  <style>
+    html, body { margin: 0; background-color: #12141C; }
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #12141C;
+      z-index: 2147483647;
+      transition: opacity 0.35s ease;
+    }
+    #splash img { width: 128px; height: 128px; }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+  </style>
+
+  <!--
     Die Demo soll beim Neuladen immer den aktuellen Stand zeigen. Wir
     bauen ohne Service Worker (--pwa-strategy=none); dieses Skript meldet
     zusätzlich einen evtl. früher registrierten Service Worker ab und
@@ -52,6 +72,7 @@
   </script>
 </head>
 <body>
+  <div id="splash"><img src="icons/Icon-512.png" alt=""></div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -61,5 +82,34 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <!--
+    Splash ausblenden, sobald Flutter sein erstes Frame gerendert hat
+    (bzw. sein Ansicht-Element eingefügt wurde). Fallback-Timeout, falls das
+    Signal ausbleibt.
+  -->
+  <script>
+    (function () {
+      var removed = false;
+      function hideSplash() {
+        if (removed) return;
+        removed = true;
+        var s = document.getElementById('splash');
+        if (!s) return;
+        s.classList.add('hidden');
+        setTimeout(function () { if (s && s.parentNode) s.parentNode.removeChild(s); }, 400);
+      }
+      window.addEventListener('flutter-first-frame', hideSplash);
+      // Zusätzlich beobachten, wann Flutter seine Ansicht in den DOM hängt.
+      var obs = new MutationObserver(function () {
+        if (document.querySelector('flutter-view, flt-glass-pane')) {
+          obs.disconnect();
+          hideSplash();
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+      // Sicherheits-Fallback.
+      setTimeout(hideSplash, 8000);
+    })();
+  </script>
 </body>
 </html>

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_avatar.dart';
+import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'trade_screen.dart';
 
 /// Öffnet das Spielerprofil (Kopf + Leistungstabelle je Spieltag; für eigene
 /// Spieler zusätzlich „Droppen"). [isMine] steuert den Drop-Button.
@@ -107,29 +110,139 @@ class _PlayerProfileSheet extends ConsumerWidget {
               data: (season) => _table(context, season),
             ),
           ),
-          if (isMine)
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: scheme.error,
-                      side: BorderSide(
-                          color: scheme.error.withValues(alpha: 0.5)),
-                    ),
-                    onPressed: () => _drop(context, ref),
-                    icon: const Icon(Icons.person_remove_outlined),
-                    label: const Text('Aus Kader droppen'),
+          _actions(context, ref),
+        ],
+      ),
+    );
+  }
+
+  /// Aktionsleiste: eigener Spieler → Traden + Droppen; fremder (gehört einem
+  /// anderen Manager) → Traden (mit dem Besitzer). Freie Spieler: keine Aktion.
+  Widget _actions(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final myId = ref.watch(currentUserProvider)?.id;
+    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+        const <RosterEntry>[];
+    final managers =
+        ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
+            const <FantasyManager>[];
+    final ownerId = roster
+        .where((r) => r.playerId == player.id)
+        .map((r) => r.managerId)
+        .firstOrNull;
+    final ownerMgr = ownerId == null
+        ? null
+        : managers.where((m) => m.userId == ownerId).firstOrNull;
+
+    final List<Widget> children;
+    if (isMine) {
+      children = [
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: () => _tradeMine(context, ref, managers, myId),
+            icon: const Icon(Icons.swap_horiz),
+            label: const Text('Traden'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: scheme.error,
+              side: BorderSide(color: scheme.error.withValues(alpha: 0.5)),
+            ),
+            onPressed: () => _drop(context, ref),
+            icon: const Icon(Icons.person_remove_outlined),
+            label: const Text('Droppen'),
+          ),
+        ),
+      ];
+    } else if (ownerMgr != null && ownerId != myId) {
+      children = [
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: () => _tradeRequest(context, ownerMgr),
+            icon: const Icon(Icons.swap_horiz),
+            label: Text('Mit ${ownerMgr.display} traden'),
+          ),
+        ),
+      ];
+    } else {
+      // Freier Spieler (kein Besitzer) — hier keine Trade-/Drop-Aktion.
+      return const SizedBox.shrink();
+    }
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: Row(children: children),
+      ),
+    );
+  }
+
+  /// Trade um diesen (fremden) Spieler: Compose mit dem Besitzer, Spieler ist
+  /// bereits als Anforderung vorausgewählt.
+  void _tradeRequest(BuildContext context, FantasyManager owner) {
+    final nav = Navigator.of(context);
+    nav.pop();
+    nav.push(MaterialPageRoute(
+      builder: (_) => TradeComposeScreen(
+        league: league,
+        partner: owner,
+        initialRequest: {player.id},
+      ),
+    ));
+  }
+
+  /// Eigenen Spieler traden: Partner wählen, dann Compose mit dem Spieler
+  /// bereits im Angebot.
+  Future<void> _tradeMine(BuildContext context, WidgetRef ref,
+      List<FantasyManager> managers, String? myId) async {
+    final others = managers.where((m) => m.userId != myId).toList();
+    if (others.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Keine anderen Manager in der Liga.')));
+      return;
+    }
+    final partner = await showDialog<FantasyManager>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Mit wem traden?'),
+        children: [
+          for (final m in others)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(ctx).pop(m),
+              child: Row(
+                children: [
+                  AppAvatar(
+                    imageUrl: m.avatarUrl,
+                    emoji: m.avatarEmoji,
+                    colorHex: m.avatarColor,
+                    fallbackText: m.display,
+                    size: 32,
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(m.display,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
               ),
             ),
         ],
       ),
     );
+    if (partner == null || !context.mounted) return;
+    final nav = Navigator.of(context);
+    nav.pop();
+    nav.push(MaterialPageRoute(
+      builder: (_) => TradeComposeScreen(
+        league: league,
+        partner: partner,
+        initialOffer: {player.id},
+      ),
+    ));
   }
 
   Widget _table(

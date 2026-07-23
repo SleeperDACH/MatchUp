@@ -19,10 +19,27 @@ class MatchdayScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final league = ref.watch(selectedLeagueProvider);
+    final competitions = ref.watch(activeRoundProvider)?.competitions ??
+        const <String>[];
     final currentRound = ref.watch(currentRoundProvider);
 
+    final switcher = competitions.length > 1
+        ? _CompetitionSwitcher(
+            competitions: competitions,
+            selectedId: league.id,
+            onSelect: (id) => ref
+                .read(selectedLeagueProvider.notifier)
+                .state = Leagues.byId(id),
+          )
+        : const SizedBox.shrink();
+
     return currentRound.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => Column(
+        children: [
+          switcher,
+          const Expanded(child: Center(child: CircularProgressIndicator())),
+        ],
+      ),
       error: (e, _) => _ErrorView(
         message: 'Spieltag konnte nicht geladen werden.\n$e',
         onRetry: () => ref.invalidate(currentRoundProvider),
@@ -31,11 +48,54 @@ class MatchdayScreen extends ConsumerWidget {
         final round = ref.watch(selectedRoundProvider) ?? current;
         return Column(
           children: [
+            switcher,
             RoundSelector(league: league, round: round),
             Expanded(child: _FixtureList(round: round)),
           ],
         );
       },
+    );
+  }
+}
+
+/// Umschalter zwischen den Wettbewerben einer Multi-Wettbewerb-Tipprunde.
+/// Wechselt den aktiven Wettbewerb; die Spieltag-Auswahl darunter richtet sich
+/// danach. Getippt wird je Wettbewerb, gewertet wird gemeinsam.
+class _CompetitionSwitcher extends StatelessWidget {
+  const _CompetitionSwitcher({
+    required this.competitions,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  final List<String> competitions;
+  final String selectedId;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            for (final id in competitions)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(Leagues.byId(id).name),
+                  selected: id == selectedId,
+                  onSelected: (_) => onSelect(id),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

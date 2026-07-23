@@ -17,6 +17,9 @@ class _TransfersScreenState extends ConsumerState<TransfersScreen> {
   /// Gewählter Filter-Verein (null = alle).
   String? _club;
 
+  /// Gewählte Liga: 1 = Bundesliga, 2 = 2. Bundesliga.
+  int _division = 1;
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(doneDealsProvider);
@@ -36,25 +39,40 @@ class _TransfersScreenState extends ConsumerState<TransfersScreen> {
           error: (e, _) => _centered('Transfers konnten nicht geladen '
               'werden.\n$e'),
           data: (deals) {
-            // Filter-Vereine (Bundesliga-Seite jedes Deals) inkl. Wappen.
+            // Filter-Vereine der gewählten Liga (Bundesliga-Seite) inkl. Wappen.
             final clubs = <String, String?>{};
             for (final d in deals) {
-              if (d.toBundesliga) clubs[d.toTeam] = d.toLogo;
-              if (d.fromBundesliga) clubs[d.fromTeam] = d.fromLogo;
+              if (d.toBundesliga && d.toDivision == _division) {
+                clubs[d.toTeam] = d.toLogo;
+              }
+              if (d.fromBundesliga && d.fromDivision == _division) {
+                clubs[d.fromTeam] = d.fromLogo;
+              }
             }
             final clubList = clubs.keys.toList()..sort();
 
             final zugaenge = deals
                 .where((d) =>
-                    d.toBundesliga && (_club == null || d.toTeam == _club))
+                    d.toBundesliga &&
+                    d.toDivision == _division &&
+                    (_club == null || d.toTeam == _club))
                 .toList();
             final abgaenge = deals
                 .where((d) =>
-                    d.fromBundesliga && (_club == null || d.fromTeam == _club))
+                    d.fromBundesliga &&
+                    d.fromDivision == _division &&
+                    (_club == null || d.fromTeam == _club))
                 .toList();
 
             return Column(
               children: [
+                _DivisionSelector(
+                  division: _division,
+                  onSelect: (d) => setState(() {
+                    _division = d;
+                    _club = null; // Vereinsliste wechselt mit der Liga
+                  }),
+                ),
                 _ClubFilterBar(
                   clubs: clubList,
                   logos: clubs,
@@ -95,6 +113,30 @@ class _TransfersScreenState extends ConsumerState<TransfersScreen> {
       );
 }
 
+/// Umschalter zwischen 1. und 2. Bundesliga.
+class _DivisionSelector extends StatelessWidget {
+  const _DivisionSelector({required this.division, required this.onSelect});
+
+  final int division;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
+      child: SegmentedButton<int>(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: 1, label: Text('1. Bundesliga')),
+          ButtonSegment(value: 2, label: Text('2. Bundesliga')),
+        ],
+        selected: {division},
+        onSelectionChanged: (s) => onSelect(s.first),
+      ),
+    );
+  }
+}
+
 /// Vereinswappen (Sportmonks-Logo) mit Fallback-Icon.
 class ClubCrest extends StatelessWidget {
   const ClubCrest({super.key, required this.url, this.size = 34});
@@ -133,6 +175,7 @@ class _ClubFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       height: 52,
       child: ListView(
@@ -145,14 +188,32 @@ class _ClubFilterBar extends StatelessWidget {
             onSelected: (_) => onSelect(null),
           ),
           const SizedBox(width: 8),
+          // Vereine nur als Wappen; die Auswahl wird durch einen Ring markiert.
           for (final c in clubs) ...[
-            ChoiceChip(
-              avatar: ClubCrest(url: logos[c], size: 22),
-              label: Text(c),
-              selected: selected == c,
-              onSelected: (_) => onSelect(selected == c ? null : c),
+            GestureDetector(
+              onTap: () => onSelect(selected == c ? null : c),
+              child: Tooltip(
+                message: c,
+                child: Container(
+                  width: 40,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selected == c
+                        ? scheme.primary.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: selected == c
+                          ? scheme.primary
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: ClubCrest(url: logos[c], size: 28),
+                ),
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
           ],
         ],
       ),

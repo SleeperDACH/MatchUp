@@ -13,17 +13,110 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// Später erweiterbar: weitere Ligen hier registrieren (analog zur
-// Leagues-Registry in der App). Turniere haben ein festes Jahr
-// (fixedSeason), Vereinsligen eine rollierende Saison.
-const LEAGUES: { leagueId: string; providerKey: string; fixedSeason?: number }[] = [
-  { leagueId: "bundesliga", providerKey: "bl1" },
+// Die fünf deutschen Ligen werden aus **Sportmonks** gespiegelt (Fixture-IDs
+// `sportmonks:<id>`, konsistent zum Client SupabaseSportmonksProvider).
+// Turniere/WM bleiben auf OpenLigaDB (World Cup nicht im Sportmonks-Plan).
+const SM_LEAGUES: { leagueId: string; key: string }[] = [
+  { leagueId: "bundesliga", key: "82" },
+  { leagueId: "bundesliga2", key: "85" },
+  { leagueId: "liga3", key: "88" },
+  { leagueId: "dfb_pokal", key: "109" },
+  { leagueId: "frauen_bundesliga", key: "1740" },
+];
+
+const OL_LEAGUES: { leagueId: string; providerKey: string; fixedSeason?: number }[] = [
   { leagueId: "wm2026", providerKey: "wm26", fixedSeason: 2026 },
 ];
 
 function currentSeason(now: Date): number {
   // Saison = Startjahr: ab Juli zählt das laufende Jahr (2025/26 → 2025).
   return now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+}
+
+// ---------------------------------------------------------------------
+// Sportmonks-Spiegelung (Key serverseitig; WAF braucht Browser-User-Agent).
+// Mapping (Status/Score/ID) identisch zum Client SupabaseSportmonksProvider.
+// ---------------------------------------------------------------------
+const SM_BASE = "https://api.sportmonks.com/v3/football";
+const SM_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/120 Safari/537.36";
+const SM_KEY = Deno.env.get("SPORTMONKS_API_KEY");
+
+// deno-lint-ignore no-explicit-any
+async function smGet(path: string): Promise<any> {
+  const sep = path.includes("?") ? "&" : "?";
+  const res = await fetch(`${SM_BASE}${path}${sep}api_token=${SM_KEY}`, {
+    headers: { "User-Agent": SM_UA, Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`Sportmonks HTTP ${res.status} für ${path}`);
+  return await res.json();
+}
+
+async function smSeasonId(leagueKey: string): Promise<number> {
+  const r = await smGet(`/leagues/${leagueKey}?include=currentSeason`);
+  const cs = r?.data?.currentseason ?? r?.data?.current_season;
+  if (!cs?.id) throw new Error(`Keine aktuelle Saison für Liga ${leagueKey}`);
+  return cs.id;
+}
+
+function smStatus(state: string): string {
+  const s = (state || "NS").toUpperCase();
+  if (["FT", "AET", "FT_PEN", "AWARDED", "WALKOVER"].includes(s)) {
+    return "finished";
+  }
+  if (
+    s.startsWith("INPLAY") ||
+    ["HT", "BREAK", "ET", "EXTRA_TIME", "PENALTIES"].includes(s) ||
+    (s.includes("PEN") && s !== "FT_PEN")
+  ) return "live";
+  return "scheduled";
+}
+
+// deno-lint-ignore no-explicit-any
+function smScore(scores: any[], loc: string): number | null {
+  const e = (scores ?? []).find(
+    (x) => x.description === "CURRENT" && x?.score?.participant === loc,
+  );
+  return e ? (e.score?.goals ?? null) : null;
+}
+
+// deno-lint-ignore no-explicit-any
+function smFixtureRow(f: any, leagueId: string, season: number) {
+  const parts = f.participants ?? [];
+  // deno-lint-ignore no-explicit-any
+  const home = parts.find((p: any) => p?.meta?.location === "home") ?? parts[0];
+  // deno-lint-ignore no-explicit-any
+  const away = parts.find((p: any) => p?.meta?.location === "away") ?? parts[1];
+  return {
+    id: `sportmonks:${f.id}`,
+    league_id: leagueId,
+    season,
+    round: Number(f.round?.name) || 0,
+    kickoff: String(f.starting_at ?? "").replace(" ", "T") + "Z",
+    home_name: home?.name ?? "?",
+    away_name: away?.name ?? "?",
+    home_score: home ? smScore(f.scores, "home") : null,
+    away_score: away ? smScore(f.scores, "away") : null,
+    status: smStatus(f.state?.state),
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+async function smSeasonFixtures(leagueKey: string): Promise<any[]> {
+  const season = await smSeasonId(leagueKey);
+  // deno-lint-ignore no-explicit-any
+  const all: any[] = [];
+  for (let page = 1; page <= 12; page++) {
+    const r = await smGet(
+      `/fixtures?filters=fixtureSeasons:${season}` +
+        `&include=participants;scores;state;round&per_page=50&page=${page}`,
+    );
+    for (const f of (r?.data ?? [])) all.push(f);
+    const pg = r?.pagination ?? r?.meta?.pagination;
+    if (!pg?.has_more) break;
+  }
+  return all;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -90,6 +183,8 @@ function toFixtureRow(m: any, leagueId: string, season: number, now: Date) {
 
 const ODDS_SPORT: Record<string, string> = {
   wm2026: "soccer_fifa_world_cup",
+  bundesliga: "soccer_germany_bundesliga",
+  bundesliga2: "soccer_germany_bundesliga2",
 };
 
 // Einfrier-Fenster ums Kickoff: ab 30 Min vor bis 3 h nach Anstoß. Die
@@ -131,9 +226,63 @@ function normalizeName(s: string): string {
 }
 
 function codeFor(sportKey: string, oddsTeamName: string): string | null {
-  if (sportKey !== "soccer_fifa_world_cup") return null;
-  return WORLD_CUP[normalizeName(oddsTeamName)] ?? null;
+  const n = normalizeName(oddsTeamName);
+  switch (sportKey) {
+    case "soccer_fifa_world_cup":
+      return WORLD_CUP[n] ?? null;
+    case "soccer_germany_bundesliga":
+      return BUNDESLIGA[n] ?? null;
+    case "soccer_germany_bundesliga2":
+      return BUNDESLIGA2[n] ?? null;
+    default:
+      return null;
+  }
 }
+
+// the-odds-api-Name (normalisiert) → Sportmonks-Team-ID. Muss zum Client
+// (lib/core/data/odds/odds_team_resolver.dart) passen.
+const BUNDESLIGA: Record<string, string> = {
+  "bayern munich": "503", "bayern munchen": "503", "fc bayern munchen": "503",
+  "borussia dortmund": "68", "dortmund": "68",
+  "rb leipzig": "277", "leipzig": "277",
+  "bayer leverkusen": "3321", "bayer 04 leverkusen": "3321", "leverkusen": "3321",
+  "eintracht frankfurt": "366", "frankfurt": "366",
+  "vfb stuttgart": "3319", "stuttgart": "3319",
+  "sc freiburg": "3543", "freiburg": "3543",
+  "werder bremen": "82", "bremen": "82",
+  "augsburg": "90", "fc augsburg": "90",
+  "union berlin": "1079", "1 fc union berlin": "1079", "fc union berlin": "1079",
+  "tsg hoffenheim": "2726", "hoffenheim": "2726", "1899 hoffenheim": "2726",
+  "1 fc koln": "3320", "fc koln": "3320", "koln": "3320", "fc cologne": "3320",
+  "cologne": "3320",
+  "fsv mainz 05": "794", "mainz": "794", "mainz 05": "794", "1 fsv mainz 05": "794",
+  "borussia monchengladbach": "683", "monchengladbach": "683", "gladbach": "683",
+  "hamburger sv": "2708", "hamburg": "2708",
+  "sc paderborn": "2642", "paderborn": "2642", "sc paderborn 07": "2642",
+  "fc schalke 04": "67", "schalke 04": "67", "schalke": "67",
+  "elversberg": "3588", "sv elversberg": "3588",
+};
+
+const BUNDESLIGA2: Record<string, string> = {
+  "1 fc heidenheim": "2831", "heidenheim": "2831",
+  "1 fc kaiserslautern": "1638", "kaiserslautern": "1638",
+  "1 fc magdeburg": "3527", "magdeburg": "3527",
+  "1 fc nurnberg": "956", "nurnberg": "956", "nuremberg": "956",
+  "arminia bielefeld": "2927", "bielefeld": "2927", "dsc arminia bielefeld": "2927",
+  "dynamo dresden": "1077", "dresden": "1077", "sg dynamo dresden": "1077",
+  "eintracht braunschweig": "3565", "braunschweig": "3565",
+  "fc energie cottbus": "3322", "energie cottbus": "3322", "cottbus": "3322",
+  "fc st pauli": "353", "st pauli": "353",
+  "greuther furth": "3431", "furth": "3431", "spvgg greuther furth": "3431",
+  "hannover 96": "2554", "hannover": "2554", "hanover 96": "2554",
+  "hertha berlin": "3317", "hertha bsc": "3317", "hertha": "3317",
+  "holstein kiel": "3611", "kiel": "3611",
+  "karlsruher sc": "3114", "karlsruhe": "3114",
+  "sv darmstadt 98": "482", "darmstadt": "482", "darmstadt 98": "482",
+  "vfl bochum": "999", "bochum": "999", "vfl bochum 1848": "999",
+  "vfl osnabruck": "2872", "osnabruck": "2872",
+  "vfl wolfsburg": "510", "wolfsburg": "510",
+};
 
 type OddsEvent = {
   homeTeam: string;
@@ -178,6 +327,38 @@ function parseOddsEvents(data: any): OddsEvent[] {
 
 type Candidate = { id: string; kickoff: number; homeShort: string; awayShort: string };
 
+// Odds-Kandidaten aus OpenLigaDB-Matches (homeShort = OpenLigaDB-shortName).
+// deno-lint-ignore no-explicit-any
+function olCandidates(matches: any[]): Candidate[] {
+  // deno-lint-ignore no-explicit-any
+  return matches.map((m: any) => ({
+    id: `openligadb:${m.matchID}`,
+    kickoff: Date.parse(m.matchDateTimeUTC),
+    homeShort: m.team1?.shortName ?? m.team1?.teamName ?? "",
+    awayShort: m.team2?.shortName ?? m.team2?.teamName ?? "",
+  }));
+}
+
+// Odds-Kandidaten aus Sportmonks-Fixtures (homeShort = Sportmonks-Team-ID,
+// passend zu codeFor → BUNDESLIGA/BUNDESLIGA2).
+// deno-lint-ignore no-explicit-any
+function smCandidates(fixtures: any[]): Candidate[] {
+  // deno-lint-ignore no-explicit-any
+  return fixtures.map((f: any) => {
+    const parts = f.participants ?? [];
+    // deno-lint-ignore no-explicit-any
+    const home = parts.find((p: any) => p?.meta?.location === "home") ?? parts[0];
+    // deno-lint-ignore no-explicit-any
+    const away = parts.find((p: any) => p?.meta?.location === "away") ?? parts[1];
+    return {
+      id: `sportmonks:${f.id}`,
+      kickoff: Date.parse(String(f.starting_at ?? "").replace(" ", "T") + "Z"),
+      homeShort: home ? String(home.id) : "",
+      awayShort: away ? String(away.id) : "",
+    };
+  });
+}
+
 // Sucht zur Begegnung die passende Quote (Code-Paar + Zeitfenster); dreht
 // Heim/Auswärts, falls der Buchmacher die Teams anders herum führt.
 function matchEvent(sportKey: string, c: Candidate, events: OddsEvent[]) {
@@ -197,21 +378,20 @@ function matchEvent(sportKey: string, c: Candidate, events: OddsEvent[]) {
 }
 
 // deno-lint-ignore no-explicit-any
-async function freezeOdds(supabase: any, sportKey: string, matches: any[], now: Date): Promise<number> {
+async function freezeOdds(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  sportKey: string,
+  allCandidates: Candidate[],
+  now: Date,
+): Promise<number> {
   const nowMs = now.getTime();
-  const candidates: Candidate[] = matches
-    // deno-lint-ignore no-explicit-any
-    .map((m: any) => ({
-      id: `openligadb:${m.matchID}`,
-      kickoff: Date.parse(m.matchDateTimeUTC),
-      homeShort: m.team1?.shortName ?? m.team1?.teamName ?? "",
-      awayShort: m.team2?.shortName ?? m.team2?.teamName ?? "",
-    }))
-    .filter((c: Candidate) =>
-      c.kickoff >= nowMs - FREEZE_AFTER_MS &&
-      c.kickoff <= nowMs + FREEZE_BEFORE_MS &&
-      c.homeShort && c.awayShort
-    );
+  // Nur Spiele im Einfrier-Fenster ums Kickoff.
+  const candidates = allCandidates.filter((c) =>
+    c.kickoff >= nowMs - FREEZE_AFTER_MS &&
+    c.kickoff <= nowMs + FREEZE_BEFORE_MS &&
+    c.homeShort && c.awayShort
+  );
   if (candidates.length === 0) return 0;
 
   // Schon eingefrorene Spiele überspringen (nie überschreiben).
@@ -292,37 +472,61 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const summary: Record<string, number> = {};
-  for (const { leagueId, providerKey, fixedSeason } of LEAGUES) {
-    const season =
-      fixedSeason ?? Number(seasonOverride ?? currentSeason(now));
+  const summary: Record<string, number | string> = {};
+
+  // 1) Sportmonks-Ligen — je Liga fehlertolerant, damit ein Ausfall (Rate-Limit
+  //    o. Ä.) die übrigen nicht blockiert.
+  for (const { leagueId, key } of SM_LEAGUES) {
+    const season = Number(seasonOverride ?? currentSeason(now));
+    try {
+      const fixtures = await smSeasonFixtures(key);
+      const rows = fixtures.map((f) => smFixtureRow(f, leagueId, season));
+      if (rows.length > 0) {
+        const { error } = await supabase.from("fixtures").upsert(rows);
+        if (error) throw new Error(error.message);
+      }
+      summary[leagueId] = rows.length;
+
+      // Quoten zum Anstoß einfrieren (best effort — blockiert den Sync nicht).
+      const sportKey = ODDS_SPORT[leagueId];
+      if (sportKey) {
+        try {
+          summary[`${leagueId}_odds_frozen`] =
+            await freezeOdds(supabase, sportKey, smCandidates(fixtures), now);
+        } catch (_) {
+          summary[`${leagueId}_odds_frozen`] = -1;
+        }
+      }
+    } catch (e) {
+      summary[leagueId] = `error: ${e}`;
+    }
+  }
+
+  // 2) OpenLigaDB-Ligen (WM) — inkl. Quoten-Freeze.
+  for (const { leagueId, providerKey, fixedSeason } of OL_LEAGUES) {
+    const season = fixedSeason ?? Number(seasonOverride ?? currentSeason(now));
     const res = await fetch(
       `https://api.openligadb.de/getmatchdata/${providerKey}/${season}`,
     );
     if (!res.ok) {
-      return new Response(
-        `OpenLigaDB-Fehler für ${leagueId}: HTTP ${res.status}`,
-        { status: 502 },
-      );
+      summary[leagueId] = `error: OpenLigaDB HTTP ${res.status}`;
+      continue;
     }
     const matches = await res.json();
     // deno-lint-ignore no-explicit-any
     const rows = matches.map((m: any) => toFixtureRow(m, leagueId, season, now));
-
     const { error } = await supabase.from("fixtures").upsert(rows);
     if (error) {
-      return new Response(`Upsert-Fehler für ${leagueId}: ${error.message}`, {
-        status: 500,
-      });
+      summary[leagueId] = `error: ${error.message}`;
+      continue;
     }
     summary[leagueId] = rows.length;
 
-    // Quoten zum Anstoß einfrieren (best effort — blockiert den Sync nicht).
     const sportKey = ODDS_SPORT[leagueId];
     if (sportKey) {
       try {
         summary[`${leagueId}_odds_frozen`] =
-          await freezeOdds(supabase, sportKey, matches, now);
+          await freezeOdds(supabase, sportKey, olCandidates(matches), now);
       } catch (_) {
         summary[`${leagueId}_odds_frozen`] = -1;
       }

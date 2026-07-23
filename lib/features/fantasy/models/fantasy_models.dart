@@ -390,6 +390,9 @@ class FantasyLeague {
     this.logoUrl,
     this.logoEmoji,
     this.logoColor,
+    this.visibility = 'private',
+    this.joinPolicy = 'open',
+    this.tipEnabled = false,
   });
 
   final String id;
@@ -442,12 +445,25 @@ class FantasyLeague {
   /// Draft-Reihenfolge: `auto` (Zufall beim Start) oder `manual` (vorab gesetzt).
   final String draftOrderMode;
 
+  /// Sichtbarkeit: `private` (nur per Code) oder `public` (in der Suche findbar).
+  final String visibility;
+
+  /// Beitrittsmodus bei öffentlichen Ligen: `open` (freier Eintritt) oder
+  /// `invite` (Beitritt nur nach Admin-Bestätigung einer Anfrage).
+  final String joinPolicy;
+
+  /// Ob die Liga ein ligainternes Tippspiel anbietet (steuert die Anzeige der
+  /// Tippspiel-Option auf der Übersicht).
+  final bool tipEnabled;
+
   /// Anzahl Draft-Runden insgesamt (= Kadergröße = Startelf + Bank).
   int get rounds => roster.squadSize;
 
   bool get hasPause => pauseStart != null && pauseEnd != null;
   bool get hasPlayoffs => playoffTeams != null;
   bool get manualDraftOrder => draftOrderMode == 'manual';
+  bool get isPublic => visibility == 'public';
+  bool get isInviteOnly => joinPolicy == 'invite';
 
   factory FantasyLeague.fromJson(Map<String, dynamic> json) => FantasyLeague(
         id: json['id'] as String,
@@ -478,6 +494,9 @@ class FantasyLeague {
         logoUrl: json['logo_url'] as String?,
         logoEmoji: json['logo_emoji'] as String?,
         logoColor: json['logo_color'] as String?,
+        visibility: json['visibility'] as String? ?? 'private',
+        joinPolicy: json['join_policy'] as String? ?? 'open',
+        tipEnabled: json['tip_enabled'] as bool? ?? false,
       );
 
   /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden). Im

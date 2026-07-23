@@ -14,6 +14,7 @@ import 'data/fantasy_league_repository.dart';
 import 'data/fantasy_stats_source.dart';
 import 'data/round_scoring_service.dart';
 import 'data/seed_player_pool.dart';
+import 'logic/draft_ranking.dart';
 import 'logic/fantasy_scoring_engine.dart';
 import 'models/fantasy_models.dart';
 import 'models/trade.dart';
@@ -209,6 +210,22 @@ final fantasyStatsSourceProvider = Provider<FantasyStatsSource>((ref) {
   return AppConfig.isSupabaseConfigured
       ? DbStatsSource(Supabase.instance.client, live)
       : live;
+});
+
+/// Roh-Aggregate der letzten Saison je Spieler (aus player_season_totals) —
+/// Basis für die Draft-Reihung „bester zuerst". Leer im lokalen Modus.
+final lastSeasonTotalsProvider =
+    FutureProvider<Map<String, SeasonTotals>>((ref) async {
+  if (!AppConfig.isSupabaseConfigured) return const {};
+  final lastSeason = ref.watch(fantasySeasonProvider) - 1;
+  final rows = await Supabase.instance.client
+      .from('player_season_totals')
+      .select()
+      .eq('season', lastSeason);
+  return {
+    for (final r in rows)
+      r['player_id'] as String: SeasonTotals.fromJson(r),
+  };
 });
 
 /// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).

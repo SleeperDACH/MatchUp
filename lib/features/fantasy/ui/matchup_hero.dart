@@ -276,14 +276,16 @@ class MatchupBanner extends StatelessWidget {
                     align: CrossAxisAlignment.end),
               ),
               const SizedBox(width: 10),
+              // Gegner in Rot → „vs"-Kontrast.
               HeroAvatar(
-                  name: awayName!, accent: accent, dim: started && !awayWin),
+                  name: awayName!, accent: _cRed, dim: started && !awayWin),
             ],
           ),
           const SizedBox(height: 12),
           // „Momentum": Punkteanteil beider Seiten (vor Anpfiff 50/50) mit
           // Label je nach Status — füllt den Banner und gibt Kontext.
-          _MomentumBar(left: homePoints, right: awayPoints),
+          _MomentumBar(
+              left: homePoints, right: awayPoints, leftColor: accent),
           const SizedBox(height: 5),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -592,17 +594,30 @@ class ScoreBadge extends StatelessWidget {
     Widget number(int v, bool win, bool otherWin) => Text('$v',
         style: TextStyle(
             color: numColor(win, otherWin),
-            fontSize: 30,
+            fontSize: 32,
             height: 1,
             letterSpacing: -0.5,
-            fontWeight: FontWeight.w800));
+            fontWeight: FontWeight.w900));
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.38),
+            Colors.black.withValues(alpha: 0.22),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -638,21 +653,36 @@ class HeroAvatar extends StatelessWidget {
     final trimmed = name.trim();
     final initial = trimmed.isEmpty ? '?' : trimmed[0].toUpperCase();
     return Container(
-      width: 38,
-      height: 38,
+      width: 46,
+      height: 46,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: dim ? 0.06 : 0.16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: dim ? 0.10 : 0.26),
+            Colors.white.withValues(alpha: dim ? 0.04 : 0.10),
+          ],
+        ),
         border: Border.all(
             color: dim ? Colors.white.withValues(alpha: 0.28) : accent,
-            width: 2),
+            width: 2.5),
+        boxShadow: dim
+            ? null
+            : [
+                BoxShadow(
+                    color: accent.withValues(alpha: 0.45),
+                    blurRadius: 12,
+                    spreadRadius: -3),
+              ],
       ),
       child: Text(initial,
           style: TextStyle(
               color: Colors.white.withValues(alpha: dim ? 0.7 : 1),
-              fontWeight: FontWeight.w800,
-              fontSize: 16)),
+              fontWeight: FontWeight.w900,
+              fontSize: 19)),
     );
   }
 }
@@ -660,10 +690,14 @@ class HeroAvatar extends StatelessWidget {
 /// „Momentum"-Balken: zeigt den Punkteanteil beider Seiten als Tauziehen —
 /// meine Seite hell, der Gegner gedimmt. Rein visuell (kein Tap).
 class _MomentumBar extends StatelessWidget {
-  const _MomentumBar({required this.left, required this.right});
+  const _MomentumBar(
+      {required this.left, required this.right, this.leftColor = _cGreen});
 
   final int left;
   final int right;
+
+  /// Farbe der Heim-Seite (Banner-Akzent: grün, bzw. rot solange live).
+  final Color leftColor;
 
   @override
   Widget build(BuildContext context) {
@@ -675,9 +709,12 @@ class _MomentumBar extends StatelessWidget {
         Expanded(
           flex: l,
           child: Container(
-            height: 7,
+            height: 8,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
+              gradient: LinearGradient(colors: [
+                leftColor.withValues(alpha: 0.95),
+                leftColor.withValues(alpha: 0.7),
+              ]),
               borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(4), right: Radius.circular(1)),
             ),
@@ -687,9 +724,12 @@ class _MomentumBar extends StatelessWidget {
         Expanded(
           flex: r,
           child: Container(
-            height: 7,
+            height: 8,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.26),
+              gradient: LinearGradient(colors: [
+                _cRed.withValues(alpha: 0.55),
+                _cRed.withValues(alpha: 0.85),
+              ]),
               borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(1), right: Radius.circular(4)),
             ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
+import '../../friends/ui/friend_action_button.dart';
 import '../../messaging/ui/conversation_screen.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
@@ -205,30 +206,40 @@ class ManagerProfileScreen extends ConsumerWidget {
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: m == null
-                  ? null
-                  : () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) =>
-                          TradeComposeScreen(league: league, partner: m!))),
-              icon: const Icon(Icons.swap_horiz),
-              label: const Text('Trade'),
-            ),
+          // Freund hinzufügen (liga-unabhängig, aber hier direkt erreichbar).
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FriendActionButton(userId: managerId),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ConversationScreen(
-                        partnerId: managerId,
-                        partnerName: managerName,
-                      ))),
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: const Text('Nachricht'),
-            ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: m == null
+                      ? null
+                      : () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) =>
+                              TradeComposeScreen(league: league, partner: m!))),
+                  icon: const Icon(Icons.swap_horiz),
+                  label: const Text('Trade'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ConversationScreen(
+                            partnerId: managerId,
+                            partnerName: managerName,
+                          ))),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Nachricht'),
+                ),
+              ),
+            ],
           ),
         ],
       ),

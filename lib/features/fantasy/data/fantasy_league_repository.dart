@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/models/chat_message.dart';
+import '../../leagues/models/join_request.dart';
 import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 
@@ -46,6 +47,9 @@ class FantasyLeagueRepository {
     int? playoffTeams,
     int? playoffWeeks,
     int? tradeDeadlineOffset,
+    String visibility = 'private',
+    String joinPolicy = 'open',
+    bool tipEnabled = false,
   }) async {
     final userId = _client.auth.currentUser!.id;
     final row = await _client
@@ -65,11 +69,21 @@ class FantasyLeagueRepository {
           'playoff_teams': playoffTeams,
           'playoff_weeks': playoffWeeks,
           'trade_deadline_offset': tradeDeadlineOffset,
+          'visibility': visibility,
+          'join_policy': joinPolicy,
+          'tip_enabled': tipEnabled,
         })
         .select()
         .single();
     return FantasyLeague.fromJson(row);
   }
+
+  /// Schaltet das ligainterne Tippspiel für die Liga ein/aus (nur Ersteller,
+  /// RLS). Steuert die Anzeige der Tippspiel-Option auf der Übersicht.
+  Future<void> setTipEnabled(String leagueId, bool enabled) =>
+      _client.from('fantasy_leagues').update({
+        'tip_enabled': enabled,
+      }).eq('id', leagueId);
 
   /// Löscht eine Fantasy-Liga endgültig (nur Ersteller, per RLS). Abhängige
   /// Daten (Mitglieder, Kader, Lineups, Waiver, Draft) gehen per Cascade mit.
@@ -212,6 +226,60 @@ class FantasyLeagueRepository {
           .eq('id', leagueId)
           .eq('draft_status', 'setup');
 
+  /// Sichtbarkeit / Beitrittsmodus setzen (nur Ersteller, RLS). `private`
+  /// ignoriert `joinPolicy`; wird der Konsistenz halber auf `open` gesetzt.
+  Future<void> updateVisibility(
+    String leagueId, {
+    required String visibility,
+    required String joinPolicy,
+  }) =>
+      _client.from('fantasy_leagues').update({
+        'visibility': visibility,
+        'join_policy': visibility == 'public' ? joinPolicy : 'open',
+      }).eq('id', leagueId);
+
+  /// Einzelne Liga laden (für Mitglieder per RLS lesbar).
+  Future<FantasyLeague> fetchLeague(String leagueId) async {
+    final row = await _client
+        .from('fantasy_leagues')
+        .select()
+        .eq('id', leagueId)
+        .single();
+    return FantasyLeague.fromJson(row);
+  }
+
+  /// Freier Beitritt zu einer öffentlichen Liga (join_policy `open`).
+  Future<FantasyLeague> joinPublic(String leagueId) async {
+    final id = await _client
+        .rpc<String>('join_public_fantasy_league', params: {'p_id': leagueId});
+    final row =
+        await _client.from('fantasy_leagues').select().eq('id', id).single();
+    return FantasyLeague.fromJson(row);
+  }
+
+  /// Beitrittsanfrage an eine öffentliche Liga (join_policy `invite`).
+  Future<void> requestJoin(String leagueId) => _client
+      .rpc<void>('request_join_fantasy_league', params: {'p_id': leagueId});
+
+  /// Offene Beitrittsanfragen einer Liga (nur für den Admin sichtbar, live).
+  Stream<List<JoinRequest>> pendingRequests(String leagueId) => _client
+      .from('fantasy_join_requests')
+      .stream(primaryKey: ['league_id', 'user_id'])
+      .eq('league_id', leagueId)
+      .map((rows) => rows.map(JoinRequest.fromJson).toList());
+
+  /// Anfrage annehmen (`accept: true`) oder ablehnen — nur Admin.
+  Future<void> respondRequest(
+    String leagueId,
+    String userId, {
+    required bool accept,
+  }) =>
+      _client.rpc<void>('respond_fantasy_join_request', params: {
+        'p_league': leagueId,
+        'p_user': userId,
+        'p_accept': accept,
+      });
+
   /// Playoff-Einstellungen (Teams, Wochen je Runde, Trade-Deadline-Offset) —
   /// nur vor dem Draft.
   Future<void> updatePlayoffSettings(
@@ -286,6 +354,17 @@ class FantasyLeagueRepository {
   Future<void> kickMember(String leagueId, String userId) =>
       _client.rpc('fantasy_kick_member',
           params: {'p_league_id': leagueId, 'p_user': userId});
+
+  /// Übergibt die Adminrechte an ein aktives Mitglied (nur der Admin).
+  Future<void> transferOwnership(String leagueId, String newOwnerId) =>
+      _client.rpc('fantasy_transfer_ownership',
+          params: {'p_league_id': leagueId, 'p_new_owner': newOwnerId});
+
+  /// Übergibt die Adminrechte an ein Mitglied und verlässt danach die Liga
+  /// (atomar, nur der Admin).
+  Future<void> transferAndLeaveLeague(String leagueId, String newOwnerId) =>
+      _client.rpc('fantasy_transfer_and_leave',
+          params: {'p_league_id': leagueId, 'p_new_owner': newOwnerId});
 
   Future<void> assignTeam(
           String leagueId, String vacantUser, String newUser) =>

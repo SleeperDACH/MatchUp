@@ -9,8 +9,10 @@ import '../../core/data/odds/odds_matching.dart';
 import '../../core/data/odds/odds_provider.dart';
 import '../../core/data/openligadb/openligadb_provider.dart';
 import '../../core/data/sports_data_provider.dart';
+import '../../core/data/sportmonks/sportmonks_provider.dart';
 import '../../core/models/match_detail.dart';
 import '../../core/models/models.dart';
+import '../../core/models/top_scorer.dart';
 import '../auth/providers.dart';
 import 'data/tip_round_repository.dart';
 import 'data/tip_store.dart';
@@ -20,9 +22,8 @@ import 'models/tip.dart';
 import 'models/tip_round.dart';
 
 /// Aktiver Wettbewerb; umschaltbar über den Titel der App-Bar.
-/// Standard ist die WM 2026, solange sie läuft.
 final selectedLeagueProvider =
-    StateProvider<LeagueInfo>((ref) => Leagues.wm2026);
+    StateProvider<LeagueInfo>((ref) => Leagues.bundesliga);
 
 /// Saison-Startjahr des aktiven Wettbewerbs (Turniere: festes Jahr,
 /// Vereinsligen: Saisonwechsel im Juli).
@@ -32,13 +33,11 @@ final seasonProvider = Provider<int>((ref) {
 
 final sportsDataProvider = Provider<SportsDataProvider>((ref) {
   final league = ref.watch(selectedLeagueProvider);
-  // Pro Liga der passende Adapter; aktuell gibt es nur OpenLigaDB.
-  switch (league.providerId) {
-    case 'openligadb':
-      return OpenLigaDbProvider();
-    default:
-      throw StateError('Unbekannter Datenprovider: ${league.providerId}');
-  }
+  // Tipp-Flow läuft jetzt über denselben Adapter wie Live/Übersicht: die 5
+  // deutschen Ligen über Sportmonks (`sportmonks:`-IDs), WM über OpenLigaDB.
+  // `sync-fixtures` spiegelt dieselben IDs serverseitig, damit die
+  // Deadline-RLS beim Tipp-Speichern die Fixture findet.
+  return sportsProviderFor(league);
 });
 
 final currentRoundProvider = FutureProvider<int>((ref) {
@@ -82,23 +81,37 @@ final seasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
 /// (z. B. `openligadb:80140`).
 final matchDetailProvider =
     FutureProvider.family<MatchDetail, String>((ref, fixtureId) {
-  final raw = fixtureId.split(':').last;
-  final id = int.tryParse(raw);
+  // Provider aus dem ID-Präfix ableiten (`sportmonks:…` / `openligadb:…`).
+  if (fixtureId.startsWith('sportmonks:')) {
+    if (!AppConfig.isSupabaseConfigured) {
+      throw StateError('Sportmonks-Daten brauchen die Server-Verbindung.');
+    }
+    return SupabaseSportmonksProvider().getMatchDetail(fixtureId);
+  }
+  final id = int.tryParse(fixtureId.split(':').last);
   if (id == null) {
     throw ArgumentError('Ungültige Fixture-ID: $fixtureId');
   }
   return OpenLigaDbProvider().getMatchDetail(id);
 });
 
+/// Baut den passenden Daten-Adapter für eine Liga. Sportmonks läuft über die
+/// Edge Function (Key serverseitig) und braucht daher die Server-Verbindung.
+SportsDataProvider sportsProviderFor(LeagueInfo league) =>
+    switch (league.providerId) {
+      'openligadb' => OpenLigaDbProvider(),
+      'sportmonks' => AppConfig.isSupabaseConfigured
+          ? SupabaseSportmonksProvider()
+          : throw StateError(
+              'Sportmonks-Daten brauchen die Server-Verbindung.'),
+      _ => throw StateError('Unbekannter Datenprovider: ${league.providerId}'),
+    };
+
 final leagueSeasonFixturesProvider =
     FutureProvider.family<List<Fixture>, String>((ref, leagueId) {
   final league = Leagues.byId(leagueId);
   final season = league.seasonFor(DateTime.now());
-  final provider = switch (league.providerId) {
-    'openligadb' => OpenLigaDbProvider(),
-    _ => throw StateError('Unbekannter Datenprovider: ${league.providerId}'),
-  };
-  return provider.getSeasonFixtures(league, season);
+  return sportsProviderFor(league).getSeasonFixtures(league, season);
 });
 
 /// Tabelle einer beliebigen Liga (per ID) — für die Liga-Übersicht.
@@ -106,11 +119,17 @@ final leagueTableProvider =
     FutureProvider.family<List<StandingRow>, String>((ref, leagueId) {
   final league = Leagues.byId(leagueId);
   final season = league.seasonFor(DateTime.now());
-  final provider = switch (league.providerId) {
-    'openligadb' => OpenLigaDbProvider(),
-    _ => throw StateError('Unbekannter Datenprovider: ${league.providerId}'),
-  };
-  return provider.getTable(league, season);
+  return sportsProviderFor(league).getTable(league, season);
+});
+
+/// Torjägerliste einer Liga (nur Sportmonks-Ligen; braucht Server-Verbindung).
+final leagueTopScorersProvider =
+    FutureProvider.family<TopScorersResult, String>((ref, leagueId) {
+  final league = Leagues.byId(leagueId);
+  if (league.sportmonksKey == null || !AppConfig.isSupabaseConfigured) {
+    return const TopScorersResult(current: true, scorers: []);
+  }
+  return SupabaseSportmonksProvider().getTopScorers(league);
 });
 
 // ---------------------------------------------------------------------
@@ -211,8 +230,10 @@ final activeRoundProvider = StateProvider<TipRound?>((ref) {
 /// Aktiviert eine Tipprunde und schaltet den Wettbewerb passend um —
 /// immer zusammen verwenden, damit Tippen-Tab und Runde zusammenpassen.
 void activateRound(WidgetRef ref, TipRound round) {
+  // Primärer Wettbewerb der Runde (bei Multi-Wettbewerb der erste); im
+  // Tippen-Tab kann zwischen den Wettbewerben der Runde gewechselt werden.
   ref.read(selectedLeagueProvider.notifier).state =
-      Leagues.byId(round.leagueId);
+      Leagues.byId(round.competitions.first);
   ref.read(activeRoundProvider.notifier).state = round;
 }
 
@@ -220,6 +241,13 @@ void activateRound(WidgetRef ref, TipRound round) {
 final roundMembersProvider =
     FutureProvider.family<List<RoundMember>, String>((ref, roundId) {
   return ref.watch(tipRoundRepositoryProvider).members(roundId);
+});
+
+/// Die mit einer Fantasy-Liga gekoppelte Tipprunde (oder null) — Grundlage für
+/// den „Ligainternes Tippspiel"-Button auf der Fantasy-Übersicht.
+final fantasyTipRoundProvider =
+    FutureProvider.family<TipRound?, String>((ref, fantasyLeagueId) {
+  return ref.watch(tipRoundRepositoryProvider).fantasyTipRound(fantasyLeagueId);
 });
 
 /// Live-Stream der Chat-Nachrichten einer Liga (älteste zuerst).

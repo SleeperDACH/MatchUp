@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
+import 'widgets/vibrant_league_title.dart';
 import '../features/tippspiel/ui/league_hub_screen.dart';
 import '../features/tippspiel/ui/matchday_screen.dart';
 import '../features/tippspiel/ui/tip_duels_tab.dart';
@@ -61,15 +62,13 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          children: [
-            Text(round.name),
-            Text(
-              league.name,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary),
-            ),
-          ],
+        titleSpacing: 12,
+        title: VibrantLeagueTitle(
+          name: round.name,
+          subtitle: league.name,
+          logoUrl: round.logoUrl,
+          logoEmoji: round.logoEmoji,
+          logoColor: round.logoColor,
         ),
         actions: [
           IconButton(

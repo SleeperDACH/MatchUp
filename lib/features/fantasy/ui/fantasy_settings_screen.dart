@@ -6,6 +6,9 @@ import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
 import '../../auth/providers.dart';
+import '../../leagues/providers.dart';
+import '../../leagues/ui/visibility_settings_page.dart';
+import '../../tippspiel/providers.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
@@ -104,13 +107,13 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
         children: [
-          _InviteBanner(code: l.inviteCode),
-          const SizedBox(height: 12),
+          // Liga-Identität (nur Ersteller).
           if (isOwner) ...[
-            Card(
-              child: ListTile(
+            _Section('Liga'),
+            _settingsGroup(context, [
+              ListTile(
                 leading: Icon(Icons.drive_file_rename_outline,
                     color: scheme.primary),
                 title: const Text('Liga-Name ändern'),
@@ -118,26 +121,42 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: renameLeague,
               ),
-            ),
-            Card(
-              child: ListTile(
-                leading: AppAvatar(
-                  imageUrl: l.logoUrl,
-                  emoji: l.logoEmoji,
-                  colorHex: l.logoColor,
-                  fallbackIcon: Icons.image_outlined,
-                  size: 40,
-                  cornerRadius: 10,
-                ),
+              ListTile(
+                leading: Icon(Icons.image_outlined, color: scheme.primary),
                 title: const Text('Liga-Logo ändern'),
                 subtitle: const Text('Bild hochladen oder Emoji + Farbe wählen'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: editLogo,
               ),
-            ),
+              ListTile(
+                leading: Icon(
+                    l.isPublic ? Icons.public : Icons.lock_outline,
+                    color: scheme.primary),
+                title: const Text('Sichtbarkeit & Beitritt'),
+                subtitle: Text(visibilityLabel(l.visibility, l.joinPolicy)),
+                trailing: RequestsBadgeChevron(
+                    pending: (l.isPublic && l.isInviteOnly)
+                        ? ref
+                                .watch(fantasyJoinRequestsProvider(l.id))
+                                .valueOrNull
+                                ?.length ??
+                            0
+                        : 0),
+                onTap: () => open(VisibilitySettingsPage(
+                      kind: 'fantasy',
+                      id: l.id,
+                      name: l.name,
+                      visibility: l.visibility,
+                      joinPolicy: l.joinPolicy,
+                    )),
+              ),
+            ]),
           ],
-          Card(
-            child: ListTile(
+
+          // Persönliches.
+          _Section('Mein Team'),
+          _settingsGroup(context, [
+            ListTile(
               leading: Icon(Icons.badge_outlined, color: scheme.primary),
               title: const Text('Mein Teamname'),
               subtitle: Text(
@@ -148,9 +167,12 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: editTeamName,
             ),
-          ),
-          Card(
-            child: ListTile(
+          ]),
+
+          // Spielregeln & Format.
+          _Section('Regeln & Format'),
+          _settingsGroup(context, [
+            ListTile(
               leading: Icon(Icons.calculate_outlined, color: scheme.primary),
               title: const Text('Punktevergabe'),
               subtitle: const Text('Wie Fantasy-Punkte vergeben werden'),
@@ -158,9 +180,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const ScoringInfoScreen())),
             ),
-          ),
-          Card(
-            child: ListTile(
+            ListTile(
               leading: Icon(Icons.sports, color: scheme.primary),
               title: const Text('Draft-Einstellungen'),
               subtitle: Text(
@@ -168,10 +188,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => open(DraftSettingsPage(league: l)),
             ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
+            ListTile(
               leading: Icon(Icons.emoji_events_outlined, color: scheme.primary),
               title: const Text('Playoff-Einstellungen'),
               subtitle: Text(l.hasPlayoffs
@@ -180,15 +197,15 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => open(PlayoffSettingsPage(league: l)),
             ),
-          ),
+          ]),
+
           if (l.mode == FantasyMode.dynasty &&
               isOwner &&
               l.draftStatus == DraftStatus.done &&
               l.draftPhase == DraftPhase.u20) ...[
-            const SizedBox(height: 24),
             _Section('Neue Saison'),
-            Card(
-              child: ListTile(
+            _settingsGroup(context, [
+              ListTile(
                 leading: Icon(Icons.calendar_month, color: scheme.primary),
                 title: const Text('Saison-Rollover'),
                 subtitle: Text(
@@ -197,13 +214,13 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _confirmRollover(context, ref, l),
               ),
-            ),
+            ]),
           ],
+
           if (isOwner) ...[
-            const SizedBox(height: 24),
             _Section('Admin'),
-            Card(
-              child: ListTile(
+            _settingsGroup(context, [
+              ListTile(
                 leading: Icon(Icons.admin_panel_settings_outlined,
                     color: scheme.primary),
                 title: const Text('Mitglieder & Kader verwalten'),
@@ -212,13 +229,43 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => open(FantasyAdminScreen(league: l)),
               ),
-            ),
+            ]),
           ],
-          const SizedBox(height: 24),
+
+          // Ligainternes Tippspiel nachträglich einschalten (nur wenn es beim
+          // Erstellen nicht gewählt wurde und noch keines aktiviert ist).
+          if (isOwner &&
+              !l.tipEnabled &&
+              ref.watch(fantasyTipRoundProvider(l.id)).valueOrNull == null) ...[
+            _Section('Tippspiel'),
+            _settingsGroup(context, [
+              ListTile(
+                leading:
+                    Icon(Icons.emoji_events_outlined, color: scheme.primary),
+                title: const Text('Ligainternes Tippspiel einschalten'),
+                subtitle: const Text(
+                    'Blendet die Tippspiel-Option auf der Übersicht ein.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _enableTip(context, ref, l),
+              ),
+            ]),
+          ],
+
           _Section('Gefahrenzone'),
-          if (isOwner)
-            Card(
-              child: ListTile(
+          _settingsGroup(context, [
+            if (isOwner) ...[
+              // Admin kann verlassen, muss dabei die Adminrechte übergeben.
+              ListTile(
+                leading: Icon(Icons.logout, color: scheme.error),
+                title: Text('Liga verlassen',
+                    style: TextStyle(
+                        color: scheme.error, fontWeight: FontWeight.bold)),
+                subtitle: const Text(
+                    'Adminrechte an ein Mitglied übergeben und aussteigen — '
+                    'dein Team bleibt als verwaister Slot bestehen.'),
+                onTap: () => _confirmLeaveAsOwner(context, ref, l),
+              ),
+              ListTile(
                 leading: Icon(Icons.delete_outline, color: scheme.error),
                 title: Text('Liga löschen',
                     style: TextStyle(
@@ -228,10 +275,8 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                     'Daten, für alle Mitglieder.'),
                 onTap: () => _confirmDelete(context, ref, l),
               ),
-            )
-          else
-            Card(
-              child: ListTile(
+            ] else
+              ListTile(
                 leading: Icon(Icons.logout, color: scheme.error),
                 title: Text('Liga verlassen',
                     style: TextStyle(
@@ -241,7 +286,11 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                     'bestehen und kann neu zugewiesen werden.'),
                 onTap: () => _confirmLeave(context, ref, l),
               ),
-            ),
+          ]),
+
+          // Mitspieler einladen — ganz unten.
+          _Section('Einladen'),
+          _InviteBanner(code: l.inviteCode),
         ],
       ),
     );
@@ -279,6 +328,93 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       ref.invalidate(myFantasyLeaguesProvider);
       navigator.popUntil((r) => r.isFirst);
       messenger.showSnackBar(const SnackBar(content: Text('Liga verlassen.')));
+    } catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
+    }
+  }
+
+  /// Admin verlässt die Liga: fragt zuerst, wer die Adminrechte bekommt, und
+  /// übergibt + steigt dann atomar aus.
+  Future<void> _confirmLeaveAsOwner(
+      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+    final scheme = Theme.of(context).colorScheme;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final myId = ref.read(currentUserProvider)?.id;
+    final others =
+        (ref.read(fantasyManagersProvider(l.id)).valueOrNull ??
+                const <FantasyManager>[])
+            .where((m) => m.userId != myId)
+            .toList();
+    if (others.isEmpty) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Kein anderes Mitglied vorhanden, dem du die '
+              'Adminrechte übergeben kannst. Du kannst die Liga stattdessen '
+              'löschen.')));
+      return;
+    }
+    // Neuen Admin auswählen.
+    final newOwner = await showDialog<FantasyManager>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Adminrechte übergeben an …'),
+        children: [
+          for (final m in others)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(ctx).pop(m),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    AppAvatar(
+                      imageUrl: m.avatarUrl,
+                      emoji: m.avatarEmoji,
+                      colorHex: m.avatarColor,
+                      fallbackText: m.display,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(m.display,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (newOwner == null || !context.mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Übergeben und verlassen?'),
+        content: Text('„${newOwner.display}" wird neuer Admin von „${l.name}". '
+            'Du verlässt die Liga; dein Team bleibt als verwaister Slot '
+            'bestehen.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Abbrechen')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: scheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Übergeben & verlassen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .transferAndLeaveLeague(l.id, newOwner.userId);
+      ref.invalidate(myFantasyLeaguesProvider);
+      navigator.popUntil((r) => r.isFirst);
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Adminrechte übergeben und Liga verlassen.')));
     } catch (e) {
       messenger.showSnackBar(
           SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
@@ -326,37 +462,105 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     }
   }
 
+  /// Schaltet das ligainterne Tippspiel ein (die eigentliche Einrichtung läuft
+  /// dann über den Button auf der Übersicht).
+  Future<void> _enableTip(
+      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(fantasyLeagueRepositoryProvider).setTipEnabled(l.id, true);
+      ref.invalidate(draftLeagueProvider(l.id));
+      ref.invalidate(myFantasyLeaguesProvider);
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Tippspiel eingeschaltet — auf der Übersicht kannst '
+              'du es einrichten.')));
+    } catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('Fehlgeschlagen: $e')));
+    }
+  }
+
   Future<void> _confirmDelete(
       BuildContext context, WidgetRef ref, FantasyLeague l) async {
     final scheme = Theme.of(context).colorScheme;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Liga löschen?'),
-        content: Text(
-            '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
-            'gelöscht. Das kann nicht rückgängig gemacht werden.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: scheme.error),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Löschen'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+    // Gekoppeltes ligainternes Tippspiel (falls aktiviert).
+    final tipRound = ref.read(fantasyTipRoundProvider(l.id)).valueOrNull;
+
+    final bool alsoDeleteTip;
+    if (tipRound == null) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Liga löschen?'),
+          content: Text(
+              '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
+              'gelöscht. Das kann nicht rückgängig gemacht werden.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Abbrechen'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: scheme.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Löschen'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      alsoDeleteTip = false;
+    } else {
+      // Mit gekoppeltem Tippspiel: Wahl, ob es mitgelöscht wird oder bestehen
+      // bleibt (dann als eigenständige Tipprunde).
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Liga löschen?'),
+          content: Text(
+              '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
+              'gelöscht.\n\nZur Liga gehört das Tippspiel „${tipRound.name}". '
+              'Behältst du es, bleibt es als eigenständige Tipprunde bestehen.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('cancel'),
+              child: const Text('Abbrechen'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop('keep'),
+              child: const Text('Tippspiel behalten'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: scheme.error),
+              onPressed: () => Navigator.of(ctx).pop('both'),
+              child: const Text('Beides löschen'),
+            ),
+          ],
+        ),
+      );
+      if (choice == null || choice == 'cancel') return;
+      alsoDeleteTip = choice == 'both';
+    }
+
     try {
+      // Tippspiel zuerst löschen (falls gewünscht), dann die Liga. Beim
+      // Behalten entkoppelt der FK (ON DELETE SET NULL) die Runde automatisch.
+      if (alsoDeleteTip && tipRound != null) {
+        await ref.read(tipRoundRepositoryProvider).deleteRound(tipRound.id);
+      }
       await ref.read(fantasyLeagueRepositoryProvider).deleteLeague(l.id);
       ref.invalidate(myFantasyLeaguesProvider);
+      if (tipRound != null) {
+        ref.invalidate(fantasyTipRoundProvider(l.id));
+        ref.invalidate(myRoundsProvider);
+      }
       navigator.popUntil((r) => r.isFirst);
-      messenger.showSnackBar(const SnackBar(content: Text('Liga gelöscht.')));
+      messenger.showSnackBar(SnackBar(
+          content: Text(alsoDeleteTip
+              ? 'Liga und Tippspiel gelöscht.'
+              : 'Liga gelöscht.')));
     } catch (e) {
       messenger.showSnackBar(
           SnackBar(content: Text('Löschen fehlgeschlagen: $e')));
@@ -1015,13 +1219,37 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-      child: Text(text,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+      padding: const EdgeInsets.fromLTRB(4, 14, 4, 2),
+      child: Text(text.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
               color: Theme.of(context).colorScheme.onSurfaceVariant)),
     );
   }
+}
+
+/// Fasst mehrere Einstellungs-Zeilen zu einer Gruppe zusammen — flach (ohne
+/// Karten-/Box-Design), nur dünne Trenner, kompakte Zeilen.
+Widget _settingsGroup(BuildContext context, List<Widget> tiles) {
+  final scheme = Theme.of(context).colorScheme;
+  return ListTileTheme(
+    data: const ListTileThemeData(
+      dense: true,
+      contentPadding: EdgeInsets.symmetric(horizontal: 4),
+      minVerticalPadding: 6,
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < tiles.length; i++) ...[
+          if (i > 0)
+            Divider(height: 1, indent: 44, color: scheme.outlineVariant),
+          tiles[i],
+        ],
+      ],
+    ),
+  );
 }
 
 class _CardColumn extends StatelessWidget {

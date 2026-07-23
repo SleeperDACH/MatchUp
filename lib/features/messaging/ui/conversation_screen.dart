@@ -5,7 +5,10 @@ import '../../../core/models/chat_message.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/league_chat.dart';
 import '../../auth/providers.dart';
+import '../../fantasy/providers.dart';
 import '../../fantasy/ui/trade_screen.dart';
+import '../../friends/ui/user_profile_screen.dart';
+import '../models/direct_message.dart';
 import '../providers.dart';
 
 /// 1:1-Direktnachrichten mit einem Nutzer. Nutzt das geteilte
@@ -39,6 +42,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         ref.read(dmLastReadProvider(partnerId).notifier).markRead(DateTime.now());
       }
     });
+    // Liga-Einladungen dieses Gesprächs (Nachricht-ID → Einladung) für die
+    // Beitreten-Karte.
+    final invites = <String, DirectMessage>{
+      for (final m in ref.watch(directMessagesProvider).valueOrNull ?? const [])
+        if ((m.senderId == partnerId || m.recipientId == partnerId) &&
+            m.isLeagueInvite)
+          m.id: m
+    };
     final messages = ref.watch(directMessagesProvider).whenData((all) => [
           for (final m in all)
             if (m.senderId == partnerId || m.recipientId == partnerId)
@@ -57,19 +68,30 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppAvatar(
-              imageUrl: partnerAvatar?.url,
-              emoji: partnerAvatar?.emoji,
-              colorHex: partnerAvatar?.color,
-              fallbackText: partnerName,
-              size: 30,
-            ),
-            const SizedBox(width: 10),
-            Flexible(child: Text(partnerName, overflow: TextOverflow.ellipsis)),
-          ],
+        // Kopf antippen → Profil des Partners (mit „Freund hinzufügen").
+        title: InkWell(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => UserProfileScreen(
+                    userId: partnerId,
+                    name: partnerName,
+                    avatar: partnerAvatar,
+                    showMessageButton: false,
+                  ))),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppAvatar(
+                imageUrl: partnerAvatar?.url,
+                emoji: partnerAvatar?.emoji,
+                colorHex: partnerAvatar?.color,
+                fallbackText: partnerName,
+                size: 30,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                  child: Text(partnerName, overflow: TextOverflow.ellipsis)),
+            ],
+          ),
         ),
       ),
       body: LeagueChat(
@@ -83,8 +105,94 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         onSend: (text, _) =>
             ref.read(messagingRepositoryProvider).sendMessage(partnerId, text),
         onRetry: () => ref.invalidate(directMessagesProvider),
-        extraBuilder: (context, msg) =>
-            msg.tradeId == null ? null : TradeCard(tradeId: msg.tradeId!),
+        extraBuilder: (context, msg) {
+          if (msg.tradeId != null) return TradeCard(tradeId: msg.tradeId!);
+          final inv = invites[msg.id];
+          if (inv != null) {
+            return _LeagueInviteCard(invite: inv, mine: inv.senderId == myId);
+          }
+          return null;
+        },
+      ),
+    );
+  }
+}
+
+/// Tippbare Beitreten-Karte für eine Liga-Einladung im Chat.
+class _LeagueInviteCard extends ConsumerStatefulWidget {
+  const _LeagueInviteCard({required this.invite, required this.mine});
+
+  final DirectMessage invite;
+  final bool mine;
+
+  @override
+  ConsumerState<_LeagueInviteCard> createState() => _LeagueInviteCardState();
+}
+
+class _LeagueInviteCardState extends ConsumerState<_LeagueInviteCard> {
+  bool _joining = false;
+  bool _joined = false;
+
+  Future<void> _join() async {
+    setState(() => _joining = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .joinLeague(widget.invite.inviteCode!);
+      if (!mounted) return;
+      setState(() {
+        _joining = false;
+        _joined = true;
+      });
+      messenger
+          .showSnackBar(const SnackBar(content: Text('Liga beigetreten 🎉')));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _joining = false);
+      messenger.showSnackBar(
+          SnackBar(content: Text('Beitreten fehlgeschlagen: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final Widget action;
+    if (widget.mine) {
+      action = const Chip(label: Text('Gesendet'));
+    } else if (_joined) {
+      action = const Chip(label: Text('Beigetreten'));
+    } else {
+      action = FilledButton(
+        onPressed: _joining ? null : _join,
+        child: _joining
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2))
+            : const Text('Beitreten'),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.sports_esports, color: scheme.primary),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text('Fantasy-Liga-Einladung',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 8),
+          action,
+        ],
       ),
     );
   }
