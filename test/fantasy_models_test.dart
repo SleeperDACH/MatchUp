@@ -208,7 +208,7 @@ void main() {
     });
   });
 
-  group('roundsThisPhase (Kadergröße wird nie überschritten)', () {
+  group('roundsThisPhase (Aufbau-Draft = voller Kader, U20 separat)', () {
     FantasyLeague league(FantasyMode mode, DraftPhase phase) => FantasyLeague(
           id: 'l',
           name: 'L',
@@ -228,9 +228,11 @@ void main() {
       expect(league(FantasyMode.liga, DraftPhase.startup).roundsThisPhase, 16);
     });
 
-    test('Dynasty: Haupt-Draft lässt Platz für U20-Runden', () {
+    test('Dynasty: Aufbau-Draft füllt den ganzen Kader, U20 separat', () {
+      // Aufbau-Draft draftet den kompletten Kader (U20 inkl.) …
       expect(league(FantasyMode.dynasty, DraftPhase.startup).roundsThisPhase,
-          16 - 3);
+          16);
+      // … der spätere U20-Draft läuft über die u20Rounds.
       expect(league(FantasyMode.dynasty, DraftPhase.u20).roundsThisPhase, 3);
     });
   });

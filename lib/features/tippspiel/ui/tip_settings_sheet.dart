@@ -9,24 +9,22 @@ import '../../leagues/providers.dart';
 import '../../leagues/ui/visibility_settings_page.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
+import 'league_hub_screen.dart';
 import 'tip_backfill_screen.dart';
+import 'tip_invite_screen.dart';
 import 'tip_rules_settings_screen.dart';
 
 /// Einstellungen einer Tipprunde (über das Zahnrad). Für **alle** Mitglieder:
 /// der eigene Teamname. Nur für den Ersteller: Wertung & Modi sowie Löschen.
+/// Öffnet ein eigenes Vollbild-Fenster (wie die Fantasy-Einstellungen).
 void showTipSettings(BuildContext context, TipRound round) {
-  showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    // Scrollbar & höher erlaubt, damit der Inhalt (inkl. Sichtbarkeit &
-    // Beitritt) nicht die feste Standardhöhe überläuft.
-    isScrollControlled: true,
-    builder: (_) => _TipSettingsSheet(round: round),
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => _TipSettingsScreen(round: round)),
   );
 }
 
-class _TipSettingsSheet extends ConsumerWidget {
-  const _TipSettingsSheet({required this.round});
+class _TipSettingsScreen extends ConsumerWidget {
+  const _TipSettingsScreen({required this.round});
 
   final TipRound round;
 
@@ -295,22 +293,10 @@ class _TipSettingsSheet extends ConsumerWidget {
       }
     }
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.9),
-        child: SingleChildScrollView(
-          child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Scaffold(
+      appBar: AppBar(centerTitle: true, title: const Text('Einstellungen')),
+      body: ListView(
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Einstellungen',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ),
           ListTile(
             leading: Icon(Icons.badge_outlined, color: scheme.primary),
             title: const Text('Mein Teamname',
@@ -322,6 +308,38 @@ class _TipSettingsSheet extends ConsumerWidget {
             ),
             onTap: editTeamName,
           ),
+          // Eigenständige Tipprunde: über Freunde/Chats einladen. Gekoppelte
+          // Tippspiele bekommen ihre Mitglieder von der Fantasy-Liga.
+          if (!round.isFantasyLinked) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading:
+                  Icon(Icons.person_add_alt_1, color: scheme.primary),
+              title: const Text('Mitglieder einladen',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Über deine Chats & Freunde einladen'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => TipInvitePlayersScreen(round: round)));
+              },
+            ),
+          ],
+          // Gekoppelte Tippspiele haben keinen eigenen Liga-Tab — die Regeln
+          // sind daher hier erreichbar.
+          if (round.isFantasyLinked) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.gavel_outlined, color: scheme.primary),
+              title: const Text('Regeln & Punkteverteilung',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.of(context).pop();
+                showTipRoundRules(context, round.scoring,
+                    ref.read(selectedLeagueProvider));
+              },
+            ),
+          ],
           if (isCreator) ...[
             const Divider(height: 1),
             ListTile(
@@ -446,10 +464,8 @@ class _TipSettingsSheet extends ConsumerWidget {
               onTap: confirmLeave,
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 24),
         ],
-          ),
-        ),
       ),
     );
   }

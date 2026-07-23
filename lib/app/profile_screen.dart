@@ -210,7 +210,7 @@ class _Profile extends ConsumerWidget {
                 label: 'Abmelden',
                 color: scheme.error,
                 showChevron: false,
-                onTap: () => ref.read(authRepositoryProvider).signOut(),
+                onTap: () => _confirmSignOut(context, ref),
               ),
               const Divider(height: 1),
               _SettingTile(
@@ -411,6 +411,32 @@ class TipStatsScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Abmelden mit Sicherheitsabfrage.
+Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+  final scheme = Theme.of(context).colorScheme;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Abmelden?'),
+      content: const Text(
+          'Du wirst von deinem Konto abgemeldet. Zum Weiterspielen musst du '
+          'dich erneut anmelden.'),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: scheme.error),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Abmelden'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  await ref.read(authRepositoryProvider).signOut();
 }
 
 /// Konto endgültig löschen (mit starker Bestätigung). Nach Erfolg meldet

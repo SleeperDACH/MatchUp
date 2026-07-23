@@ -393,6 +393,7 @@ class FantasyLeague {
     this.visibility = 'private',
     this.joinPolicy = 'open',
     this.tipEnabled = false,
+    this.u20DraftPending = false,
   });
 
   final String id;
@@ -456,6 +457,10 @@ class FantasyLeague {
   /// Tippspiel-Option auf der Übersicht).
   final bool tipEnabled;
 
+  /// Dynasty: Nach dem Saison-Rollover steht der U20-Draft an (der Aufbau-Draft
+  /// löst KEINEN U20-Draft aus). Steuert die „U20-Draft starten"-Aktion.
+  final bool u20DraftPending;
+
   /// Anzahl Draft-Runden insgesamt (= Kadergröße = Startelf + Bank).
   int get rounds => roster.squadSize;
 
@@ -497,16 +502,15 @@ class FantasyLeague {
         visibility: json['visibility'] as String? ?? 'private',
         joinPolicy: json['join_policy'] as String? ?? 'open',
         tipEnabled: json['tip_enabled'] as bool? ?? false,
+        u20DraftPending: json['u20_draft_pending'] as bool? ?? false,
       );
 
-  /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden). Im
-  /// Dynasty-Haupt-Draft bleibt Platz für den U20-Draft, damit die
-  /// Kadergröße nicht überschritten wird.
+  /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden). Der
+  /// Aufbau-Draft draftet den kompletten Kader (auch im Dynasty-Modus); nur
+  /// der spätere U20-Draft läuft über [u20Rounds].
   int get roundsThisPhase {
     if (draftPhase == DraftPhase.u20) return u20Rounds;
-    return mode == FantasyMode.dynasty
-        ? roster.squadSize - u20Rounds
-        : roster.squadSize;
+    return roster.squadSize;
   }
 }
 

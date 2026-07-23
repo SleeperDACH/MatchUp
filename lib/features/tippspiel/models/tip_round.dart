@@ -17,6 +17,7 @@ class TipRound {
     this.logoColor,
     this.visibility = 'private',
     this.joinPolicy = 'open',
+    this.fantasyLeagueId,
   }) : leagueIds = leagueIds ?? const [];
 
   final String id;
@@ -51,8 +52,13 @@ class TipRound {
   /// `invite` (Beitritt nur nach Admin-Bestätigung einer Anfrage).
   final String joinPolicy;
 
+  /// An eine Fantasy-Liga gekoppelt (ligainternes Tippspiel) — dann teilt es
+  /// sich Mitglieder und Chat mit der Liga. `null` = eigenständige Tipprunde.
+  final String? fantasyLeagueId;
+
   bool get isPublic => visibility == 'public';
   bool get isInviteOnly => joinPolicy == 'invite';
+  bool get isFantasyLinked => fantasyLeagueId != null;
 
   TipRound copyWith({ScoringRules? scoring}) => TipRound(
         id: id,
@@ -68,6 +74,7 @@ class TipRound {
         logoColor: logoColor,
         visibility: visibility,
         joinPolicy: joinPolicy,
+        fantasyLeagueId: fantasyLeagueId,
       );
 
   factory TipRound.fromJson(Map<String, dynamic> json) => TipRound(
@@ -86,6 +93,7 @@ class TipRound {
         logoColor: json['logo_color'] as String?,
         visibility: json['visibility'] as String? ?? 'private',
         joinPolicy: json['join_policy'] as String? ?? 'open',
+        fantasyLeagueId: json['fantasy_league_id'] as String?,
       );
 }
 

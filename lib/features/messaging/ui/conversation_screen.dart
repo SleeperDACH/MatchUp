@@ -8,6 +8,7 @@ import '../../auth/providers.dart';
 import '../../fantasy/providers.dart';
 import '../../fantasy/ui/trade_screen.dart';
 import '../../friends/ui/user_profile_screen.dart';
+import '../../tippspiel/providers.dart';
 import '../models/direct_message.dart';
 import '../providers.dart';
 
@@ -136,10 +137,17 @@ class _LeagueInviteCardState extends ConsumerState<_LeagueInviteCard> {
   Future<void> _join() async {
     setState(() => _joining = true);
     final messenger = ScaffoldMessenger.of(context);
+    final code = widget.invite.inviteCode!;
+    // Einladung kann zu einer Fantasy-Liga ODER einer Tipprunde gehören —
+    // erst Fantasy versuchen, sonst als Tipprunde beitreten.
     try {
-      await ref
-          .read(fantasyLeagueRepositoryProvider)
-          .joinLeague(widget.invite.inviteCode!);
+      try {
+        await ref.read(fantasyLeagueRepositoryProvider).joinLeague(code);
+      } catch (e) {
+        if (!e.toString().contains('Ungültiger Einladungscode')) rethrow;
+        await ref.read(tipRoundRepositoryProvider).joinRound(code);
+        ref.invalidate(myRoundsProvider);
+      }
       if (!mounted) return;
       setState(() {
         _joining = false;
@@ -187,7 +195,7 @@ class _LeagueInviteCardState extends ConsumerState<_LeagueInviteCard> {
           Icon(Icons.sports_esports, color: scheme.primary),
           const SizedBox(width: 10),
           const Expanded(
-            child: Text('Fantasy-Liga-Einladung',
+            child: Text('Liga-Einladung',
                 style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 8),

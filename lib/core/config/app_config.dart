@@ -15,11 +15,15 @@ abstract final class AppConfig {
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
-  /// Ziel-URL, auf der der Passwort-Reset-Link landet (z. B. die Web-Demo
-  /// oder ein App-Deep-Link). Muss in Supabase unter den erlaubten
-  /// Redirect-URLs eingetragen sein. Leer = Supabase nimmt die Site-URL.
-  static const passwordResetRedirect =
-      String.fromEnvironment('PASSWORD_RESET_REDIRECT');
+  /// Ziel-URL, auf der der Passwort-Reset-Link landet. Standard: die Web-Demo
+  /// (dort läuft die Flutter-Web-App und setzt den Recovery-Screen). Per
+  /// `--dart-define=PASSWORD_RESET_REDIRECT=…` überschreibbar. Muss in Supabase
+  /// unter den erlaubten Redirect-URLs eingetragen sein. Die App (Handy) hat
+  /// keinen Deep-Link, daher zeigt der Link bewusst auf die Web-Demo.
+  static const passwordResetRedirect = String.fromEnvironment(
+    'PASSWORD_RESET_REDIRECT',
+    defaultValue: 'https://sleeperdach.github.io/MatchUp/',
+  );
 
   static bool get isSupabaseConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;

@@ -162,24 +162,28 @@ class HomeScreen extends ConsumerWidget {
   // ------------------------------------------------------------------
   List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
     final rounds = ref.watch(myRoundsProvider);
+    // Nur eigenständig erstellte Tipprunden. Ligainterne Tippspiele (an eine
+    // Fantasy-Liga gekoppelt) erreicht man ausschließlich über die Liga.
+    final standalone =
+        rounds.valueOrNull?.where((r) => !r.isFantasyLinked).toList();
     return [
       _sectionHeader(context, 'Tippspiel', Icons.emoji_events_outlined,
-          accent: const Color(0xFFFFC83D), count: rounds.valueOrNull?.length),
+          accent: const Color(0xFFFFC83D), count: standalone?.length),
       rounds.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(20),
           child: Center(child: CircularProgressIndicator()),
         ),
         error: (e, _) => _InfoCard('Tipprunden konnten nicht geladen werden: $e'),
-        data: (list) => list.isEmpty
+        data: (_) => (standalone == null || standalone.isEmpty)
             ? const _EmptyHint(
                 'Noch keine Tipprunde — oben rechts mit + ein Tippspiel '
                 'erstellen.')
             : Column(
                 children: [
-                  for (var i = 0; i < list.length; i++) ...[
+                  for (var i = 0; i < standalone.length; i++) ...[
                     if (i > 0) const _RowDivider(),
-                    _TipRoundCard(round: list[i]),
+                    _TipRoundCard(round: standalone[i]),
                   ],
                 ],
               ),
@@ -419,18 +423,22 @@ class _NoLeaguesHero extends ConsumerWidget {
       children: [
         SizedBox(
           width: double.infinity,
+          height: 64,
           child: FilledButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text('Liga erstellen'),
+            icon: const Icon(Icons.add, size: 26),
+            label: const Text('Liga erstellen',
+                style:
+                    TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             onPressed: () => showCreateOrJoin(context, ref),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
+          height: 52,
           child: OutlinedButton.icon(
             icon: const Icon(Icons.search),
-            label: const Text('Liga suchen'),
+            label: const Text('Liga suchen', style: TextStyle(fontSize: 16)),
             onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const LeagueSearchScreen())),
           ),
@@ -584,6 +592,10 @@ class _FantasyLeagueCard extends ConsumerWidget {
       logoUrl: league.logoUrl,
       logoEmoji: league.logoEmoji,
       logoColor: league.logoColor,
+      // MatchUp-Marke je Typ: Dynasty rot, Redraft grün.
+      brandColor: league.mode == FantasyMode.dynasty
+          ? MatchUpColors.red
+          : MatchUpColors.green,
       badge: pending,
       trailing: FantasyRankChip(league: league),
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -621,6 +633,8 @@ class _TipRoundCard extends ConsumerWidget {
       logoUrl: round.logoUrl,
       logoEmoji: round.logoEmoji,
       logoColor: round.logoColor,
+      // MatchUp-Marke in Gold für Tippspiele.
+      brandColor: const Color(0xFFFFC83D),
       badge: pending,
       trailing: TipRankChip(round: round),
       onTap: () {
@@ -670,6 +684,7 @@ class _LeagueTile extends StatelessWidget {
     this.logoUrl,
     this.logoEmoji,
     this.logoColor,
+    this.brandColor,
     this.trailing,
     this.badge = 0,
   });
@@ -677,10 +692,14 @@ class _LeagueTile extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  /// Liga-Logo (Bild oder Emoji+Farbe); ohne beides greift das [icon].
+  /// Liga-Logo (Bild oder Emoji+Farbe); ohne beides greift die MatchUp-Marke
+  /// in [brandColor] (klar unterscheidbar je Liga-Typ), sonst das [icon].
   final String? logoUrl;
   final String? logoEmoji;
   final String? logoColor;
+
+  /// Typ-Farbe der MatchUp-Marke als Fallback (Tippspiel/Redraft/Dynasty).
+  final Color? brandColor;
 
   /// Kleine graue Zeile: Modus (Redraft/Dynasty) bzw. Wettbewerb.
   final String subtitle;
@@ -691,6 +710,33 @@ class _LeagueTile extends StatelessWidget {
   /// Anzahl offener Beitrittsanfragen (nur Admin; 0 = kein Badge).
   final int badge;
   final VoidCallback onTap;
+
+  /// Leading-Symbol: eigenes Liga-Logo, sonst die MatchUp-Marke in der
+  /// Typ-Farbe (Tippspiel/Redraft/Dynasty), sonst Icon.
+  Widget _leading(ColorScheme scheme) {
+    final hasCustom = (logoUrl != null && logoUrl!.isNotEmpty) ||
+        (logoEmoji != null && logoEmoji!.isNotEmpty);
+    if (!hasCustom && brandColor != null) {
+      return Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: brandColor,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        alignment: Alignment.center,
+        child: MatchUpChevron(size: 17, color: MatchUpColors.base),
+      );
+    }
+    return AppAvatar(
+      imageUrl: logoUrl,
+      emoji: logoEmoji,
+      colorHex: logoColor,
+      fallbackIcon: icon,
+      size: 34,
+      cornerRadius: 9,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -706,14 +752,7 @@ class _LeagueTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
             child: Row(
               children: [
-                AppAvatar(
-                  imageUrl: logoUrl,
-                  emoji: logoEmoji,
-                  colorHex: logoColor,
-                  fallbackIcon: icon,
-                  size: 34,
-                  cornerRadius: 9,
-                ),
+                _leading(scheme),
                 const SizedBox(width: 11),
                 Expanded(
                   child: Column(
@@ -987,7 +1026,7 @@ class _CreateOrJoinScreen extends StatelessWidget {
               Expanded(
                 child: _CreateBigTile(
                   color: MatchUpColors.green,
-                  image: 'assets/images/fantasy_bg.png',
+                  image: 'assets/images/fantasy_bg.jpg',
                   title: 'Fantasy',
                   onTap: () => Navigator.of(context).pop('fantasy'),
                 ),
@@ -996,7 +1035,7 @@ class _CreateOrJoinScreen extends StatelessWidget {
               Expanded(
                 child: _CreateBigTile(
                   color: const Color(0xFFFFC83D),
-                  image: 'assets/images/tippspiel_bg.png',
+                  image: 'assets/images/tippspiel_bg.jpg',
                   title: 'Tippspiel',
                   onTap: () => Navigator.of(context).pop('tip'),
                 ),
@@ -1029,41 +1068,36 @@ class _CreateBigTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border:
-                  Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
-              borderRadius: BorderRadius.circular(20),
-              // Hochformatiges Motiv: oberen, spannenderen Bereich zeigen.
-              image: DecorationImage(
-                image: AssetImage(image),
-                fit: BoxFit.cover,
-                alignment: const Alignment(0, -0.55),
-              ),
-            ),
+    const radius = BorderRadius.all(Radius.circular(20));
+    return Container(
+      width: double.infinity,
+      // Rahmen als Vordergrund → liegt sauber (ohne Naht) über Bild & Ripple.
+      foregroundDecoration: BoxDecoration(
+        borderRadius: radius,
+        border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: radius,
+        child: Ink.image(
+          image: AssetImage(image),
+          fit: BoxFit.cover,
+          child: InkWell(
+            onTap: onTap,
             child: Stack(
+              fit: StackFit.expand,
               children: [
                 // Dunkler Verlauf unten für die Titel-Lesbarkeit.
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.center,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          MatchUpColors.base.withValues(alpha: 0.85),
-                        ],
-                      ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.center,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        MatchUpColors.base.withValues(alpha: 0.85),
+                      ],
                     ),
                   ),
                 ),

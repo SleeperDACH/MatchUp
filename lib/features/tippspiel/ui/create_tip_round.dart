@@ -80,7 +80,7 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
     try {
       final repo = ref.read(tipRoundRepositoryProvider);
       // Gekoppelte Runden sind immer privat (Mitglieder = Fantasy-Mitglieder).
-      final round = await repo.createRound(
+      var round = await repo.createRound(
             name: _name.text,
             leagues: leagues,
             season: leagues.first.seasonFor(DateTime.now()),
@@ -88,10 +88,13 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
             visibility: _linked ? 'private' : _visibility,
             joinPolicy: _linked ? 'open' : _joinPolicy,
           );
-      // An die Fantasy-Liga koppeln und deren Mitglieder übernehmen.
+      // An die Fantasy-Liga koppeln und deren Mitglieder übernehmen. Danach
+      // die Runde neu laden, damit fantasy_league_id gesetzt ist (kein
+      // Chat-Tab bei gekoppelten Runden).
       if (_linked) {
         await repo.linkFantasyTipRound(round.id, widget.fantasyLeagueId!);
         ref.invalidate(fantasyTipRoundProvider(widget.fantasyLeagueId!));
+        round = await repo.fetchRound(round.id);
       }
       ref.invalidate(myRoundsProvider);
       activateRound(ref, round);
@@ -116,14 +119,19 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(
-              labelText: 'Name der Tipprunde',
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          // Ligainternes Tippspiel übernimmt den Liga-Namen — kein eigenes
+          // Namensfeld nötig.
+          if (!_linked) ...[
+            TextField(
+              controller: _name,
+              decoration: const InputDecoration(
+                labelText: 'Name der Tipprunde',
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
+          ],
           Text('Wettbewerbe', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(

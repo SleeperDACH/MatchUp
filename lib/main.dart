@@ -24,6 +24,13 @@ Future<void> main() async {
     await Supabase.initialize(
       url: AppConfig.supabaseUrl,
       publishableKey: AppConfig.supabaseAnonKey,
+      // Implicit-Flow: der Passwort-Reset-Link trägt die Tokens selbst im
+      // URL-Fragment. So funktioniert der Reset auch geräteübergreifend
+      // (in der App angefordert, im Browser geöffnet) — im Gegensatz zu PKCE,
+      // das den Verifier auf dem anfordernden Gerät bräuchte.
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.implicit,
+      ),
     );
 
     // Recovery-Link: Supabase löst den `?code=` schon beim Start ein und

@@ -199,10 +199,12 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             ),
           ]),
 
+          // Rollover in die nächste Saison: sobald die laufende Saison steht
+          // (Draft fertig) und kein U20-Draft mehr aussteht.
           if (l.mode == FantasyMode.dynasty &&
               isOwner &&
               l.draftStatus == DraftStatus.done &&
-              l.draftPhase == DraftPhase.u20) ...[
+              !l.u20DraftPending) ...[
             _Section('Neue Saison'),
             _settingsGroup(context, [
               ListTile(

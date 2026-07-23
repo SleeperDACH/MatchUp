@@ -8,6 +8,18 @@ import '../models/tip.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
 
+/// Öffnet die Regeln-/Punkteverteilungs-Ansicht als Bottom-Sheet. Für
+/// gekoppelte Tippspiele (ohne eigenen Liga-Tab) über die Einstellungen
+/// erreichbar.
+void showTipRoundRules(BuildContext context, ScoringRules scoring,
+        LeagueInfo league) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _RulesSheet(scoring: scoring, league: league),
+    );
+
 /// Liga-Tab: ligainterner Chat plus eine Aufführung der Regeln
 /// (Punkteverteilung, Tippabgabe). Ersetzt in Server-Ligen die frühere
 /// „Meine Punkte"-Ansicht.
@@ -21,17 +33,8 @@ class LeagueHubScreen extends ConsumerStatefulWidget {
 }
 
 class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
-  void _openRules() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => _RulesSheet(
-        scoring: widget.round.scoring,
-        league: ref.read(selectedLeagueProvider),
-      ),
-    );
-  }
+  void _openRules() => showTipRoundRules(
+      context, widget.round.scoring, ref.read(selectedLeagueProvider));
 
   @override
   Widget build(BuildContext context) {

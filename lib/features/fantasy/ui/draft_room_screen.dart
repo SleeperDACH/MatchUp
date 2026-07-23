@@ -263,12 +263,12 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     }
     final mySquadSize = mySquad.values.fold<int>(0, (a, l) => a + l.length);
 
-    // Dynasty: Haupt-Draft = etablierte Spieler, U20-Draft = U20 +
-    // Auslands-Neuzugänge. Liga-Modus: ganzer Pool.
+    // Aufbau-Draft = ganzer Pool (alle Spieler, U20 inkl.). Nur der U20-Draft
+    // ist auf Rookies (U20 + Auslands-Neuzugänge) beschränkt.
     bool inPhasePool(FantasyPlayer p) {
       if (league.mode != FantasyMode.dynasty) return true;
-      final rookie = p.isRookieFor(league.season);
-      return league.draftPhase == DraftPhase.u20 ? rookie : !rookie;
+      if (league.draftPhase == DraftPhase.u20) return p.isRookieFor(league.season);
+      return true;
     }
 
     // Hochgerechnete Vorsaison-Punkte (mit dem Liga-Scoring) als Draft-Reihung

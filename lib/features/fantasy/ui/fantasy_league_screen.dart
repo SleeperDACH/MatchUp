@@ -110,17 +110,14 @@ class _OverviewTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final drafted = league.draftStatus != DraftStatus.setup;
-    // Draft komplett durch: Redraft fertig oder Dynasty nach dem U20-Draft.
-    // Dann wird der Draft-Raum nicht mehr gebraucht (bei Dynasty steht nach
-    // dem Haupt-Draft noch der U20-Draft aus → Raum bleibt sichtbar).
-    final draftFullyDone = league.draftStatus == DraftStatus.done &&
-        (league.mode != FantasyMode.dynasty ||
-            league.draftPhase == DraftPhase.u20);
-    // „Saison läuft": Draft fertig und (bei Dynasty) der U20-Draft nicht mehr
-    // ausstehend. In diesem Zustand ersetzt der Live-MatchUp den Status-Kopf.
-    final seasonRunning = league.draftStatus == DraftStatus.done &&
-        !(league.mode == FantasyMode.dynasty &&
-            league.draftPhase == DraftPhase.startup);
+    // Draft komplett durch = kein laufender/anstehender Draft mehr. Der
+    // Aufbau-Draft draftet den ganzen Kader → danach direkt Saison. Nur wenn
+    // per Rollover der U20-Draft ansteht, ist noch etwas offen.
+    final draftFullyDone =
+        league.draftStatus == DraftStatus.done && !league.u20DraftPending;
+    // „Saison läuft": Draft fertig und kein U20-Draft anstehend. In diesem
+    // Zustand ersetzt der Live-MatchUp den Status-Kopf.
+    final seasonRunning = draftFullyDone;
     final labelStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.bold,
         color: Theme.of(context).colorScheme.onSurfaceVariant);
@@ -261,7 +258,9 @@ class _OverviewTab extends ConsumerWidget {
           onPressed: openRoom,
         );
       case DraftStatus.done:
-        if (dynasty && live.draftPhase == DraftPhase.startup && isAdmin) {
+        // U20-Draft nur, wenn er nach dem Saison-Rollover ansteht — nicht
+        // direkt nach dem Aufbau-Draft.
+        if (dynasty && live.u20DraftPending && isAdmin) {
           return FilledButton.icon(
             icon: const Icon(Icons.auto_awesome),
             label: const Text('U20-Draft starten'),
@@ -296,12 +295,12 @@ class _StatusHero extends StatelessWidget {
           subtitle: 'Der Draft ist gerade im Gange.'
         );
       case DraftStatus.done:
-        if (league.mode == FantasyMode.dynasty &&
-            league.draftPhase == DraftPhase.startup) {
+        // Nach dem Saison-Rollover steht der U20-Draft an.
+        if (league.mode == FantasyMode.dynasty && league.u20DraftPending) {
           return (
             color: _cTeal,
             icon: Icons.auto_awesome,
-            title: 'Haupt-Draft beendet',
+            title: 'Neue Saison',
             subtitle: 'Als Nächstes steht der U20-Draft an.'
           );
         }
@@ -395,7 +394,6 @@ class _LeagueTipspielButton extends ConsumerWidget {
     if (round != null) {
       return _TipTile(
         title: 'Tippspiel öffnen',
-        subtitle: 'Ligainternes Tippspiel — tippen, Tabelle, Chat',
         onTap: () {
           activateRound(ref, round);
           Navigator.of(context).push(
@@ -406,7 +404,6 @@ class _LeagueTipspielButton extends ConsumerWidget {
     if (isAdmin) {
       return _TipTile(
         title: 'Ligainternes Tippspiel aktivieren',
-        subtitle: 'Fantasy + Tippspiel mit denselben Mitgliedern',
         onTap: () => Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => CreateTipRoundScreen(
                   fantasyLeagueId: league.id,
@@ -416,54 +413,40 @@ class _LeagueTipspielButton extends ConsumerWidget {
     }
     // Mitglied, aber noch nicht aktiviert.
     return const _TipTile(
-      title: 'Ligainternes Tippspiel',
-      subtitle: 'Noch nicht aktiviert',
-      onTap: null,
+      title: 'Ligainternes Tippspiel — noch nicht aktiviert',
     );
   }
 }
 
-/// Kachel für den Ligainternen-Tippspiel-Button (gelber Akzent; deaktiviert =
-/// ausgegraut).
+/// Flache Zeile für den Ligainternen-Tippspiel-Button (gelber Akzent, ohne
+/// Box, ohne Untertitel; deaktiviert = ausgegraut).
 class _TipTile extends StatelessWidget {
-  const _TipTile({required this.title, required this.subtitle, this.onTap});
+  const _TipTile({required this.title, this.onTap});
 
   final String title;
-  final String subtitle;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final enabled = onTap != null;
-    final tile = Material(
-      color: _cAmber.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          child: Row(
-            children: [
-              Icon(Icons.emoji_events_outlined, color: _cAmber),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              if (enabled)
-                Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
-          ),
+    final tile = InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        child: Row(
+          children: [
+            Icon(Icons.emoji_events_outlined, color: _cAmber),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 15)),
+            ),
+            if (enabled)
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+          ],
         ),
       ),
     );

@@ -33,21 +33,26 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
         (active != null && active.id == widget.round.id) ? active : widget.round;
     final league = ref.watch(selectedLeagueProvider);
 
+    // Ligainternes Tippspiel (an eine Fantasy-Liga gekoppelt) nutzt den Chat
+    // der Liga — daher hier kein eigener Liga-/Chat-Tab. Die Regeln stehen
+    // stattdessen in den Einstellungen (Zahnrad).
+    final linked = round.isFantasyLinked;
+
     // Im Head-to-Head-Modus liegt zwischen Tabelle und Liga ein „Duelle"-Tab.
     final h2h = round.scoring.headToHead;
     final tabs = <Widget>[
       const MatchdayScreen(),
       TipsTableTab(round: round),
       if (h2h) TipDuelsTab(round: round),
-      LeagueHubScreen(round: round),
+      if (!linked) LeagueHubScreen(round: round),
     ];
-    // Der Liga-Tab (Chat) ist immer der letzte.
+    // Der Liga-Tab (Chat) ist – falls vorhanden – immer der letzte.
     final ligaIndex = tabs.length - 1;
 
     // Hinweis am Liga-Symbol bei ungelesenen Chat-Nachrichten. Auf dem
     // Liga-Tab selbst wird alles als gelesen markiert.
     var ligaUnread = false;
-    if (_index == ligaIndex) {
+    if (!linked && _index == ligaIndex) {
       final msgs = ref.watch(roundMessagesProvider(round.id)).valueOrNull;
       if (msgs != null && msgs.isNotEmpty) {
         final latest =
@@ -56,7 +61,7 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
           ref.read(chatLastReadProvider(round.id).notifier).markRead(latest);
         });
       }
-    } else {
+    } else if (!linked) {
       ligaUnread = ref.watch(unreadChatProvider(round.id));
     }
 
@@ -78,9 +83,10 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
           ),
         ],
       ),
-      body: IndexedStack(index: _index, children: tabs),
+      body: IndexedStack(
+          index: _index.clamp(0, tabs.length - 1), children: tabs),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
+        selectedIndex: _index.clamp(0, tabs.length - 1),
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: [
           const NavigationDestination(
@@ -98,14 +104,15 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
               selectedIcon: Icon(Icons.bolt),
               label: 'Duelle',
             ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: ligaUnread,
-              child: const Icon(Icons.forum_outlined),
+          if (!linked)
+            NavigationDestination(
+              icon: Badge(
+                isLabelVisible: ligaUnread,
+                child: const Icon(Icons.forum_outlined),
+              ),
+              selectedIcon: const Icon(Icons.forum),
+              label: 'Liga',
             ),
-            selectedIcon: const Icon(Icons.forum),
-            label: 'Liga',
-          ),
         ],
       ),
     );
