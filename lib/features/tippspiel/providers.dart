@@ -17,6 +17,7 @@ import '../auth/providers.dart';
 import 'data/tip_round_repository.dart';
 import 'data/tip_store.dart';
 import 'logic/tip_stats.dart';
+import 'logic/tip_weeks.dart';
 import 'models/chat_message.dart';
 import 'models/tip.dart';
 import 'models/tip_round.dart';
@@ -165,6 +166,72 @@ final roundOddsProvider =
   final fixtures = ref.watch(roundFixturesProvider(round)).valueOrNull;
   if (odds == null || odds.isEmpty || fixtures == null) return const {};
   return matchOdds(sportKey, fixtures, odds);
+});
+
+/// Quoten einer beliebigen Liga (per ID) — wie [leagueOddsProvider], aber nicht
+/// an den aktuell gewählten Wettbewerb gebunden. Für den Wochen-Feed, der
+/// Spiele mehrerer Wettbewerbe gemischt zeigt.
+final leagueOddsByIdProvider =
+    FutureProvider.family<List<MatchOdds>, String>((ref, leagueId) async {
+  final sportKey = Leagues.byId(leagueId).oddsSportKey;
+  final available = AppConfig.isSupabaseConfigured || AppConfig.hasOdds;
+  if (sportKey == null || !available) return const [];
+  return ref.watch(oddsProviderProvider).fetchOdds(sportKey);
+});
+
+// ---------------------------------------------------------------------
+// Spielwochen (Do–Mi) für Multi-Wettbewerb-Tipprunden
+// ---------------------------------------------------------------------
+
+/// Spielwochen der aktiven Multi-Wettbewerb-Runde: Union der Saison-Fixtures
+/// aller Wettbewerbe, in Do–Mi-Wochen gebündelt. Leere Liste bei Einzel-Liga-
+/// Runden oder ohne aktive Runde (dort greift der Spieltag-Pfad).
+final roundWeeksProvider = FutureProvider<List<TipWeek>>((ref) async {
+  final round = ref.watch(activeRoundProvider);
+  if (round == null || round.competitions.length < 2) return const <TipWeek>[];
+  final all = <Fixture>[];
+  for (final id in round.competitions) {
+    all.addAll(await ref.watch(leagueSeasonFixturesProvider(id).future));
+  }
+  return buildWeeks(all);
+});
+
+/// Vom Nutzer gewählte Spielwoche (1-basiert); `null` = aktuelle Woche.
+/// Setzt sich beim Wechsel der aktiven Runde zurück.
+final selectedWeekProvider = StateProvider<int?>((ref) {
+  ref.watch(activeRoundProvider);
+  return null;
+});
+
+/// Auf Fixture-IDs gematchte Quoten aller Spiele einer Spielwoche (über die
+/// Wettbewerbe hinweg). Leer, solange etwas lädt oder nichts passt — die
+/// Quotenzeile ist optional und blockiert den Feed nicht.
+final weekOddsProvider =
+    Provider.family<Map<String, MatchOdds>, int>((ref, weekIndex) {
+  final round = ref.watch(activeRoundProvider);
+  if (round == null) return const {};
+  final weeks = ref.watch(roundWeeksProvider).valueOrNull;
+  if (weeks == null) return const {};
+  TipWeek? week;
+  for (final w in weeks) {
+    if (w.index == weekIndex) {
+      week = w;
+      break;
+    }
+  }
+  if (week == null) return const {};
+
+  final result = <String, MatchOdds>{};
+  for (final id in round.competitions) {
+    final sportKey = Leagues.byId(id).oddsSportKey;
+    if (sportKey == null) continue;
+    final odds = ref.watch(leagueOddsByIdProvider(id)).valueOrNull;
+    if (odds == null || odds.isEmpty) continue;
+    final fixtures = week.fixtures.where((f) => f.leagueId == id).toList();
+    if (fixtures.isEmpty) continue;
+    result.addAll(matchOdds(sportKey, fixtures, odds));
+  }
+  return result;
 });
 
 // ---------------------------------------------------------------------

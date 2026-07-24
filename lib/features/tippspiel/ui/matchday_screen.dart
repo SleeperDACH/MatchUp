@@ -7,39 +7,37 @@ import '../../../core/data/odds/match_odds.dart';
 import '../../../core/models/models.dart';
 import '../data/tip_store.dart';
 import '../logic/tip_scoring.dart';
+import '../logic/tip_weeks.dart';
 import '../models/tip.dart';
 import '../providers.dart';
 import 'round_selector.dart';
-import 'team_badge.dart';
 
-/// Spieltag-Ansicht: alle Spiele einer Runde mit Tipp-Eingabe.
+/// Tippen-Tab: In Runden mit mehreren Wettbewerben ein gemeinsamer
+/// Wochen-Feed (alle Ligen zusammen, Woche für Woche); sonst die klassische
+/// Spieltag-Ansicht des einzelnen Wettbewerbs.
 class MatchdayScreen extends ConsumerWidget {
   const MatchdayScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final round = ref.watch(activeRoundProvider);
+    final multi = (round?.competitions.length ?? 0) > 1;
+    return multi ? const _WeekTipView() : const _MatchdayTipView();
+  }
+}
+
+/// Klassische Spieltag-Ansicht eines einzelnen Wettbewerbs (Einzel-Liga-Runden
+/// und lokaler Modus).
+class _MatchdayTipView extends ConsumerWidget {
+  const _MatchdayTipView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final league = ref.watch(selectedLeagueProvider);
-    final competitions = ref.watch(activeRoundProvider)?.competitions ??
-        const <String>[];
     final currentRound = ref.watch(currentRoundProvider);
 
-    final switcher = competitions.length > 1
-        ? _CompetitionSwitcher(
-            competitions: competitions,
-            selectedId: league.id,
-            onSelect: (id) => ref
-                .read(selectedLeagueProvider.notifier)
-                .state = Leagues.byId(id),
-          )
-        : const SizedBox.shrink();
-
     return currentRound.when(
-      loading: () => Column(
-        children: [
-          switcher,
-          const Expanded(child: Center(child: CircularProgressIndicator())),
-        ],
-      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => _ErrorView(
         message: 'Spieltag konnte nicht geladen werden.\n$e',
         onRetry: () => ref.invalidate(currentRoundProvider),
@@ -48,7 +46,6 @@ class MatchdayScreen extends ConsumerWidget {
         final round = ref.watch(selectedRoundProvider) ?? current;
         return Column(
           children: [
-            switcher,
             RoundSelector(league: league, round: round),
             Expanded(child: _FixtureList(round: round)),
           ],
@@ -58,44 +55,59 @@ class MatchdayScreen extends ConsumerWidget {
   }
 }
 
-/// Umschalter zwischen den Wettbewerben einer Multi-Wettbewerb-Tipprunde.
-/// Wechselt den aktiven Wettbewerb; die Spieltag-Auswahl darunter richtet sich
-/// danach. Getippt wird je Wettbewerb, gewertet wird gemeinsam.
-class _CompetitionSwitcher extends StatelessWidget {
-  const _CompetitionSwitcher({
-    required this.competitions,
-    required this.selectedId,
-    required this.onSelect,
-  });
-
-  final List<String> competitions;
-  final String selectedId;
-  final ValueChanged<String> onSelect;
+/// Wochen-Feed für Multi-Wettbewerb-Runden: alle Spiele der gewählten Woche
+/// (Do–Mi) über die Wettbewerbe hinweg, nach Anstoß gemischt.
+class _WeekTipView extends ConsumerWidget {
+  const _WeekTipView();
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weeksAsync = ref.watch(roundWeeksProvider);
+    return weeksAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => _ErrorView(
+        message: 'Spiele konnten nicht geladen werden.\n$e',
+        onRetry: () => ref.invalidate(roundWeeksProvider),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
+      data: (weeks) {
+        if (weeks.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('Keine Spiele gefunden.', textAlign: TextAlign.center),
+            ),
+          );
+        }
+        final selected = ref.watch(selectedWeekProvider);
+        final index = selected ?? currentWeekIndex(weeks, DateTime.now());
+        TipWeek week = weeks.last;
+        for (final w in weeks) {
+          if (w.index == index) {
+            week = w;
+            break;
+          }
+        }
+        final odds = ref.watch(weekOddsProvider(week.index));
+        final competitions =
+            ref.watch(activeRoundProvider)?.competitions ?? const <String>[];
+        return Column(
           children: [
-            for (final id in competitions)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(Leagues.byId(id).name),
-                  selected: id == selectedId,
-                  onSelected: (_) => onSelect(id),
-                ),
+            WeekSelector(weeks: weeks, index: week.index),
+            Expanded(
+              child: _FixtureListBody(
+                list: week.fixtures,
+                odds: odds,
+                onRefresh: () async {
+                  ref.invalidate(roundWeeksProvider);
+                  for (final id in competitions) {
+                    ref.invalidate(leagueSeasonFixturesProvider(id));
+                  }
+                },
               ),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -114,69 +126,95 @@ class _FixtureList extends ConsumerWidget {
         message: 'Spiele konnten nicht geladen werden.\n$e',
         onRetry: () => ref.invalidate(roundFixturesProvider(round)),
       ),
-      data: (list) {
-        if (list.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Die Paarungen dieser Runde stehen noch nicht fest.',
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
-        }
-        final dayFormat = DateFormat('EEEE, d. MMMM', 'de_DE');
-        // Tipps lassen sich nur abgeben, solange mindestens ein Spiel
-        // der Runde noch nicht angepfiffen ist.
-        final hasOpen = list.any((f) => !f.hasStarted);
-        final children = <Widget>[];
-        String? lastDay;
-        for (final fixture in list) {
-          final day = dayFormat.format(fixture.kickoff.toLocal());
-          if (day != lastDay) {
-            lastDay = day;
-            children.add(Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-              child: Text(
-                day,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ),
-            ));
-          }
-          // Rundenwechsel (lokal ↔ Tipprunde) baut die Karten neu auf,
-          // damit die Eingabefelder die Tipps der neuen Quelle zeigen.
-          final activeRoundId = ref.watch(activeRoundProvider)?.id ?? 'lokal';
-          children.add(FixtureCard(
-              key: ValueKey('${fixture.id}:$activeRoundId'),
-              fixture: fixture));
-        }
-        final listView = RefreshIndicator(
-          onRefresh: () async => ref.invalidate(roundFixturesProvider(round)),
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            physics: const AlwaysScrollableScrollPhysics(),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: children,
+      data: (list) => _FixtureListBody(
+        list: list,
+        odds: ref.watch(roundOddsProvider(round)),
+        onRefresh: () async => ref.invalidate(roundFixturesProvider(round)),
+      ),
+    );
+  }
+}
+
+/// Rendert eine aufgelöste Spieleliste (Tages-Gruppierung, Tipp-Karten,
+/// Sammel-Speichern) — gemeinsam von Spieltag- und Wochen-Pfad genutzt.
+class _FixtureListBody extends ConsumerWidget {
+  const _FixtureListBody({
+    required this.list,
+    required this.odds,
+    required this.onRefresh,
+  });
+
+  final List<Fixture> list;
+  final Map<String, MatchOdds> odds;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (list.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Die Paarungen dieser Runde stehen noch nicht fest.',
+            textAlign: TextAlign.center,
           ),
-        );
-        if (!hasOpen) return listView;
-        return Column(
-          children: [
-            _SaveTipsBar(fixtures: list),
-            Expanded(child: listView),
-          ],
-        );
-      },
+        ),
+      );
+    }
+    final dayFormat = DateFormat('EEEE, d. MMMM', 'de_DE');
+    // Tipps lassen sich nur abgeben, solange mindestens ein Spiel noch
+    // nicht angepfiffen ist.
+    final hasOpen = list.any((f) => !f.hasStarted);
+    final children = <Widget>[];
+    String? lastDay;
+    for (final fixture in list) {
+      final day = dayFormat.format(fixture.kickoff.toLocal());
+      // Datum steht jetzt in der Kopfzeile der Karte (links), die Uhrzeit
+      // rechts daneben — außerhalb der Box. Nur beim ersten Spiel eines Tages
+      // zeigen wir das Datum, sonst bleibt die Kopfzeile datumslos.
+      final isNewDay = day != lastDay;
+      if (isNewDay) lastDay = day;
+      // Rundenwechsel (lokal ↔ Tipprunde) baut die Karten neu auf,
+      // damit die Eingabefelder die Tipps der neuen Quelle zeigen.
+      final activeRoundId = ref.watch(activeRoundProvider)?.id ?? 'lokal';
+      children.add(FixtureCard(
+          key: ValueKey('${fixture.id}:$activeRoundId'),
+          fixture: fixture,
+          odds: odds[fixture.id],
+          dayLabel: isNewDay ? day : null));
+    }
+    final listView = RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 24),
+        physics: const AlwaysScrollableScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        children: children,
+      ),
+    );
+    if (!hasOpen) return listView;
+    return Column(
+      children: [
+        _SaveTipsBar(fixtures: list),
+        Expanded(child: listView),
+      ],
     );
   }
 }
 
 class FixtureCard extends ConsumerStatefulWidget {
-  const FixtureCard({super.key, required this.fixture});
+  const FixtureCard(
+      {super.key, required this.fixture, this.odds, this.dayLabel});
 
   final Fixture fixture;
+
+  /// Bereits auf dieses Spiel gematchte Quoten (oder null) — von der Liste
+  /// gereicht, damit die Quelle (Spieltag vs. Woche) hier egal ist.
+  final MatchOdds? odds;
+
+  /// Datum für die Kopfzeile über der Box — nur beim ersten Spiel eines Tages
+  /// gesetzt, sonst null (dann steht dort nur die Uhrzeit rechts).
+  final String? dayLabel;
 
   @override
   ConsumerState<FixtureCard> createState() => _FixtureCardState();
@@ -217,7 +255,7 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
     final tip = ref.watch(tipsProvider)[fixture.id];
     final locked = fixture.hasStarted;
     final hasDraft = ref.watch(tipDraftProvider).containsKey(fixture.id);
-    final odds = ref.watch(roundOddsProvider(fixture.round))[fixture.id];
+    final odds = widget.odds;
 
     // Geladene/aktualisierte Tipps zuverlässig in die Felder spiegeln —
     // auch wenn sie erst nach dem ersten Build ankommen (z. B. beim
@@ -233,34 +271,158 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
       if (_awayController.text != a) _awayController.text = a;
     });
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Column(
-          children: [
-            Row(
+    // Vor Anstoß: Tippfelder oben-mittig (wo früher die Uhrzeit stand); nach
+    // Anstoß der Spielstand. Quoten (falls vorhanden, nur vor Anstoß) darunter:
+    // 1 unter Heim, X in der Mitte, 2 unter Auswärts.
+    final Widget center = locked
+        ? _CenterInfo(fixture: fixture)
+        : _TipInputRow(
+            homeController: _homeController,
+            awayController: _awayController,
+            onChanged: _onChanged,
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _FixtureHeaderRow(dayLabel: widget.dayLabel, fixture: fixture),
+        Card(
+          margin: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Column(
               children: [
-                Expanded(child: _TeamLabel(team: fixture.home)),
-                _CenterInfo(fixture: fixture),
-                Expanded(
-                  child: _TeamLabel(team: fixture.away, alignEnd: true),
+                Row(
+                  children: [
+                    Expanded(child: _TeamLabel(team: fixture.home)),
+                    center,
+                    Expanded(
+                      child: _TeamLabel(team: fixture.away, alignEnd: true),
+                    ),
+                  ],
                 ),
+                if (odds != null && !locked) ...[
+                  const SizedBox(height: 6),
+                  _UnderOddsRow(odds: odds),
+                ],
+                if (locked)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: _LockedTipRow(fixture: fixture, tip: tip),
+                  )
+                else
+                  _SavedHint(saved: tip != null, dirty: hasDraft),
               ],
             ),
-            if (odds != null) _OddsRow(odds: odds),
-            const SizedBox(height: 10),
-            if (locked)
-              _LockedTipRow(fixture: fixture, tip: tip)
-            else ...[
-              _TipInputRow(
-                homeController: _homeController,
-                awayController: _awayController,
-                onChanged: _onChanged,
-              ),
-              _SavedHint(saved: tip != null, dirty: hasDraft),
-            ],
-          ],
+          ),
         ),
+      ],
+    );
+  }
+}
+
+/// Kopfzeile über der Spielbox: links das Datum (nur beim ersten Spiel eines
+/// Tages), rechts die Uhrzeit — bei laufenden Spielen stattdessen „LIVE".
+class _FixtureHeaderRow extends StatelessWidget {
+  const _FixtureHeaderRow({required this.dayLabel, required this.fixture});
+
+  final String? dayLabel;
+  final Fixture fixture;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final live = fixture.status == FixtureStatus.live;
+    final Widget right = live
+        ? Text('LIVE',
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: scheme.primary))
+        : Text(
+            DateFormat('HH:mm', 'de_DE').format(fixture.kickoff.toLocal()),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+          );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, dayLabel != null ? 14 : 6, 16, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: dayLabel == null
+                ? const SizedBox.shrink()
+                : Text(
+                    dayLabel!,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: scheme.onSurfaceVariant),
+                  ),
+          ),
+          right,
+        ],
+      ),
+    );
+  }
+}
+
+/// Quotenzeile unter den Teams: 1 (unter Heim) · X (Mitte) · 2 (unter Auswärts).
+class _UnderOddsRow extends StatelessWidget {
+  const _UnderOddsRow({required this.odds});
+
+  final MatchOdds odds;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _OddChip(label: '1', value: odds.homeWin),
+          ),
+        ),
+        _OddChip(label: 'X', value: odds.draw),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: _OddChip(label: '2', value: odds.awayWin),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Einzelne Quote (Label + Wert), dezent — ohne Auswirkung auf die Wertung.
+class _OddChip extends StatelessWidget {
+  const _OddChip({required this.label, required this.value});
+
+  final String label;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label ',
+            style: TextStyle(
+                fontSize: 9,
+                height: 1.1,
+                fontWeight: FontWeight.w500,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+          ),
+          TextSpan(
+            text: value.toStringAsFixed(2),
+            style: TextStyle(
+                fontSize: 12.5,
+                height: 1.1,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface),
+          ),
+        ],
       ),
     );
   }
@@ -419,75 +581,14 @@ class _TeamLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatar = TeamBadge(team: team);
-    final name = Flexible(
-      child: Text(
-        team.shortName,
-        overflow: TextOverflow.ellipsis,
-        textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
-    );
-    return Row(
-      mainAxisAlignment:
-          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
-      children: alignEnd
-          ? [name, const SizedBox(width: 8), avatar]
-          : [avatar, const SizedBox(width: 8), name],
-    );
-  }
-}
-
-/// Dezente 1X2-Quotenzeile unter den Teams (Dezimalquoten) — eine schlichte,
-/// gedämpfte Zeile als Info für die Tippentscheidung, ohne Auswirkung auf
-/// die Wertung.
-class _OddsRow extends StatelessWidget {
-  const _OddsRow({required this.odds});
-
-  final MatchOdds odds;
-
-  @override
-  Widget build(BuildContext context) {
-    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
-    final base = TextStyle(fontSize: 11, color: muted, height: 1.1);
-    // Label (1/X/2) klein und gedämpft, die Quote kräftig.
-    final labelStyle = TextStyle(
-        fontSize: 9,
-        height: 1.1,
-        fontWeight: FontWeight.w500,
-        color: muted.withValues(alpha: 0.7));
-    final valueStyle = TextStyle(
-        fontSize: 12.5,
-        height: 1.1,
-        fontWeight: FontWeight.w600,
-        color: Theme.of(context).colorScheme.onSurface);
-
-    Widget part(String label, double value) => Text.rich(
-          TextSpan(
-            style: base,
-            children: [
-              TextSpan(text: '$label ', style: labelStyle),
-              TextSpan(
-                  text: value.toStringAsFixed(2),
-                  style: valueStyle),
-            ],
-          ),
-        );
-
-    Widget dot() => Text('  ·  ', style: base);
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          part('1', odds.homeWin),
-          dot(),
-          part('X', odds.draw),
-          dot(),
-          part('2', odds.awayWin),
-        ],
-      ),
+    // Ohne Vereinslogo — nur der ausgeschriebene Name. Bis zu zwei Zeilen,
+    // damit auch längere Namen möglichst vollständig lesbar bleiben.
+    return Text(
+      team.name,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+      style: Theme.of(context).textTheme.bodyMedium,
     );
   }
 }

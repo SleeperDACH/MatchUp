@@ -110,13 +110,12 @@ class _OverviewTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final drafted = league.draftStatus != DraftStatus.setup;
-    // Draft komplett durch = kein laufender/anstehender Draft mehr. Der
-    // Aufbau-Draft draftet den ganzen Kader → danach direkt Saison. Nur wenn
-    // per Rollover der U20-Draft ansteht, ist noch etwas offen.
-    final draftFullyDone =
-        league.draftStatus == DraftStatus.done && !league.u20DraftPending;
-    // „Saison läuft": Draft fertig und kein U20-Draft anstehend. In diesem
-    // Zustand ersetzt der Live-MatchUp den Status-Kopf.
+    // Draft komplett durch = Draft fertig. Der Aufbau-Draft draftet den ganzen
+    // Kader → danach direkt Saison. Ein U20-Draft (nach Rollover) steht als
+    // eigener Setup-Zustand (Phase u20) an — dann nicht „fertig".
+    final draftFullyDone = league.draftStatus == DraftStatus.done;
+    // „Saison läuft": Draft fertig. In diesem Zustand ersetzt der Live-MatchUp
+    // den Status-Kopf.
     final seasonRunning = draftFullyDone;
     final labelStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.bold,
@@ -229,22 +228,7 @@ class _OverviewTab extends ConsumerWidget {
     void openRoom() => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => DraftRoomScreen(league: live)));
 
-    Future<void> run(Future<void> Function() action) async {
-      final messenger = ScaffoldMessenger.of(context);
-      final navigator = Navigator.of(context);
-      try {
-        await action();
-        ref.invalidate(fantasyManagersProvider(live.id));
-        ref.invalidate(draftLeagueProvider(live.id));
-        navigator.push(
-            MaterialPageRoute(builder: (_) => DraftRoomScreen(league: live)));
-      } catch (e) {
-        messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
-      }
-    }
-
     final dynasty = live.mode == FantasyMode.dynasty;
-    final repo = ref.read(draftRepositoryProvider);
 
     switch (live.draftStatus) {
       case DraftStatus.setup:
@@ -258,15 +242,8 @@ class _OverviewTab extends ConsumerWidget {
           onPressed: openRoom,
         );
       case DraftStatus.done:
-        // U20-Draft nur, wenn er nach dem Saison-Rollover ansteht — nicht
-        // direkt nach dem Aufbau-Draft.
-        if (dynasty && live.u20DraftPending && isAdmin) {
-          return FilledButton.icon(
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('U20-Draft starten'),
-            onPressed: () => run(() => repo.startU20Draft(live.id)),
-          );
-        }
+        // Nach dem Aufbau-Draft läuft direkt die Saison; der U20-Draft (nach
+        // Rollover) hat einen eigenen Setup-Zustand mit Draft-Raum.
         return null;
     }
   }
@@ -281,6 +258,16 @@ class _StatusHero extends StatelessWidget {
   ({Color color, IconData icon, String title, String subtitle}) _info() {
     switch (league.draftStatus) {
       case DraftStatus.setup:
+        // Nach dem Saison-Rollover: U20-Draft im Setup (im Draft-Raum starten).
+        if (league.mode == FantasyMode.dynasty &&
+            league.draftPhase == DraftPhase.u20) {
+          return (
+            color: _cTeal,
+            icon: Icons.auto_awesome,
+            title: 'Neue Saison',
+            subtitle: 'Geh in den Draft-Raum und starte den U20-Draft.'
+          );
+        }
         return (
           color: _cAmber,
           icon: Icons.hourglass_top,
@@ -295,15 +282,6 @@ class _StatusHero extends StatelessWidget {
           subtitle: 'Der Draft ist gerade im Gange.'
         );
       case DraftStatus.done:
-        // Nach dem Saison-Rollover steht der U20-Draft an.
-        if (league.mode == FantasyMode.dynasty && league.u20DraftPending) {
-          return (
-            color: _cTeal,
-            icon: Icons.auto_awesome,
-            title: 'Neue Saison',
-            subtitle: 'Als Nächstes steht der U20-Draft an.'
-          );
-        }
         return (
           color: _cGreen,
           icon: Icons.emoji_events,

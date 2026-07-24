@@ -26,6 +26,7 @@ import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
 import '../features/tippspiel/ui/tip_rank_chip.dart';
+import 'impressum_screen.dart';
 import 'league_screen.dart';
 import 'profile_screen.dart';
 import 'theme.dart';
@@ -309,6 +310,22 @@ class _HomeMenuDrawer extends ConsumerWidget {
                     )
                   : null,
               onTap: () => open(const ConversationsScreen()),
+            ),
+            const Spacer(),
+            // Bewusst sehr dezent, kaum sichtbar – nur der Vollständigkeit halber.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => open(const ImpressumScreen()),
+                style: TextButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor:
+                      scheme.onSurfaceVariant.withValues(alpha: 0.45),
+                ),
+                child: const Text('Impressum', style: TextStyle(fontSize: 10)),
+              ),
             ),
           ],
         ),

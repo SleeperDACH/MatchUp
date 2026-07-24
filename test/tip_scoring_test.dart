@@ -27,10 +27,23 @@ void main() {
       expect(score(0, 1, 1, 3), 2);
     });
 
-    test('falsche Tendenz gibt 0 Punkte', () {
+    test('falsche Tendenz gibt 0 Punkte (Standard)', () {
       expect(score(2, 1, 1, 2), 0);
       expect(score(1, 1, 2, 0), 0);
       expect(score(0, 2, 0, 0), 0);
+    });
+
+    test('Strafpunkte für falschen Tipp (wrongTip)', () {
+      const rules = ScoringRules(wrongTip: -3);
+      int s(int th, int ta, int rh, int ra) => scoreTip(
+          tipHome: th, tipAway: ta, resultHome: rh, resultAway: ra,
+          rules: rules);
+      // Komplett falsch → Strafe.
+      expect(s(2, 1, 1, 2), -3);
+      expect(s(1, 1, 2, 0), -3);
+      // Treffer/Tendenz bleiben unverändert positiv.
+      expect(s(1, 0, 1, 0), 4); // exakt
+      expect(s(2, 0, 1, 0), 2); // Tendenz
     });
 
     test('eigene Regeln werden angewendet', () {

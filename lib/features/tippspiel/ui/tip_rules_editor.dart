@@ -35,6 +35,7 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
   late int _exact = widget.initial.exact;
   late int _goalDiff = widget.initial.goalDiff;
   late int _tendency = widget.initial.tendency;
+  late int _wrongTip = widget.initial.wrongTip;
 
   late bool _oddsBonus = widget.initial.oddsBonus;
   late double _odds1 = widget.initial.oddsOdds1;
@@ -58,6 +59,7 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
         exact: _exact,
         goalDiff: _goalDiff,
         tendency: _tendency,
+        wrongTip: _wrongTip,
         oddsBonus: _oddsBonus,
         oddsOdds1: _odds1,
         oddsPoints1: _points1,
@@ -109,6 +111,15 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
             label: 'Tendenz',
             value: _tendency,
             onChanged: (v) => _set(() => _tendency = v)),
+        _PointsStepper(
+            label: 'Falscher Tipp',
+            value: _wrongTip,
+            min: -5,
+            max: 0,
+            onChanged: (v) => _set(() => _wrongTip = v)),
+        const SizedBox(height: 2),
+        Text('Strafpunkte für einen komplett falschen Tipp — Standard 0, '
+            'bis −5 einstellbar.', style: subtle),
         const SizedBox(height: 24),
         Text('Modi', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
@@ -268,17 +279,22 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
   }
 }
 
-/// Kleiner +/- Stepper für einen Punktewert (0–20).
+/// Kleiner +/- Stepper für einen Punktewert (Standardbereich 0–20; für die
+/// Straf-Punkte auch negativ, z. B. −5–0).
 class _PointsStepper extends StatelessWidget {
   const _PointsStepper({
     required this.label,
     required this.value,
     required this.onChanged,
+    this.min = 0,
+    this.max = 20,
   });
 
   final String label;
   final int value;
   final ValueChanged<int> onChanged;
+  final int min;
+  final int max;
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +305,7 @@ class _PointsStepper extends StatelessWidget {
           Expanded(child: Text(label)),
           IconButton(
             icon: const Icon(Icons.remove_circle_outline),
-            onPressed: value > 0 ? () => onChanged(value - 1) : null,
+            onPressed: value > min ? () => onChanged(value - 1) : null,
           ),
           SizedBox(
             width: 28,
@@ -299,7 +315,7 @@ class _PointsStepper extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
-            onPressed: value < 20 ? () => onChanged(value + 1) : null,
+            onPressed: value < max ? () => onChanged(value + 1) : null,
           ),
         ],
       ),

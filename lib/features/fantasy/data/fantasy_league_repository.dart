@@ -188,6 +188,7 @@ class FantasyLeagueRepository {
     required int? pauseStart,
     required int? pauseEnd,
     required String orderMode,
+    int? u20Rounds,
   }) =>
       _client
           .from('fantasy_leagues')
@@ -197,6 +198,7 @@ class FantasyLeagueRepository {
             'draft_pause_start': pauseStart,
             'draft_pause_end': pauseEnd,
             'draft_order_mode': orderMode,
+            'u20_rounds': ?u20Rounds,
           })
           .eq('id', leagueId)
           .eq('draft_status', 'setup');

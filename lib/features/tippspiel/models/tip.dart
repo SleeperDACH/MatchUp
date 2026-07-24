@@ -92,6 +92,7 @@ class ScoringRules {
     this.exact = 4,
     this.goalDiff = 3,
     this.tendency = 2,
+    this.wrongTip = 0,
     this.oddsBonus = false,
     this.oddsOdds1 = 3.0,
     this.oddsPoints1 = 1,
@@ -106,6 +107,10 @@ class ScoringRules {
   final int exact;
   final int goalDiff;
   final int tendency;
+
+  /// Punkte für einen komplett falschen Tipp (falsche Tendenz). Standard 0,
+  /// als Strafe bis −5 einstellbar.
+  final int wrongTip;
 
   /// Quoten-/Außenseiter-Bonus aktiv.
   final bool oddsBonus;
@@ -137,6 +142,7 @@ class ScoringRules {
         exact: json['exact'] as int? ?? 4,
         goalDiff: json['goalDiff'] as int? ?? 3,
         tendency: json['tendency'] as int? ?? 2,
+        wrongTip: json['wrongTip'] as int? ?? 0,
         oddsBonus: json['oddsBonus'] as bool? ?? false,
         oddsOdds1: (json['oddsOdds1'] as num?)?.toDouble() ?? 3.0,
         oddsPoints1: json['oddsPoints1'] as int? ?? 1,
@@ -154,6 +160,7 @@ class ScoringRules {
         'exact': exact,
         'goalDiff': goalDiff,
         'tendency': tendency,
+        'wrongTip': wrongTip,
         'oddsBonus': oddsBonus,
         'oddsOdds1': oddsOdds1,
         'oddsPoints1': oddsPoints1,

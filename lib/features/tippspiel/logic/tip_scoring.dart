@@ -9,7 +9,8 @@ import '../models/tip.dart';
 /// - richtige Tordifferenz (bei Unentschieden: Unentschieden getippt,
 ///   aber falsches Ergebnis) → [ScoringRules.goalDiff]
 /// - nur richtige Tendenz (Sieger korrekt) → [ScoringRules.tendency]
-/// - sonst 0 Punkte
+/// - sonst (komplett falsch) → [ScoringRules.wrongTip] (Standard 0, als Strafe
+///   bis −5 einstellbar)
 int scoreTip({
   required int tipHome,
   required int tipAway,
@@ -26,7 +27,7 @@ int scoreTip({
   if ((tipHome - tipAway).sign == (resultHome - resultAway).sign) {
     return rules.tendency;
   }
-  return 0;
+  return rules.wrongTip;
 }
 
 /// Quoten-Bonus für mutige, richtige Tipps — kommt **on top** der

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'default_avatar.dart';
+
 /// Gemeinsame Darstellung eines Profil-/Liga-Bildes ("Beides kombiniert"):
 /// bevorzugt ein hochgeladenes Bild ([imageUrl]); sonst Emoji + Farbe
 /// ([emoji]/[colorHex]); sonst der klassische Fallback (Initiale bzw. Icon).
@@ -15,6 +17,7 @@ class AppAvatar extends StatelessWidget {
     this.colorHex,
     this.fallbackText,
     this.fallbackIcon,
+    this.seed,
     this.size = 44,
     this.cornerRadius,
   });
@@ -26,6 +29,10 @@ class AppAvatar extends StatelessWidget {
   /// Fallback, wenn weder Bild noch Emoji gesetzt sind.
   final String? fallbackText;
   final IconData? fallbackIcon;
+
+  /// Stabiler Schlüssel für das generierte Standard-Avatar (User-ID
+  /// bevorzugt). Ohne Angabe dient [fallbackText] als Schlüssel.
+  final String? seed;
 
   final double size;
 
@@ -62,6 +69,17 @@ class AppAvatar extends StatelessWidget {
   }
 
   Widget _fallbackBox(BuildContext context, ColorScheme scheme) {
+    // Profile ohne Bild/Emoji (Kreis) bekommen das generierte MatchUp-Gesicht
+    // als Standard-Avatar — pro Nutzer in einer eigenen Farbe. Ligen
+    // (abgerundetes Quadrat) behalten Buchstabe/Icon.
+    final faceSeed = (seed ?? fallbackText)?.trim();
+    if (!_hasEmoji &&
+        cornerRadius == null &&
+        faceSeed != null &&
+        faceSeed.isNotEmpty) {
+      return DefaultAvatar(seed: faceSeed, size: size, cornerRadius: cornerRadius);
+    }
+
     final bg = parseColor(colorHex) ??
         (_hasEmoji ? scheme.surfaceContainerHighest : scheme.primary.withValues(alpha: 0.12));
     final Widget child;

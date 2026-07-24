@@ -200,11 +200,10 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
           ]),
 
           // Rollover in die nächste Saison: sobald die laufende Saison steht
-          // (Draft fertig) und kein U20-Draft mehr aussteht.
+          // (Draft fertig). Danach steht der U20-Draft im Setup an.
           if (l.mode == FantasyMode.dynasty &&
               isOwner &&
-              l.draftStatus == DraftStatus.done &&
-              !l.u20DraftPending) ...[
+              l.draftStatus == DraftStatus.done) ...[
             _Section('Neue Saison'),
             _settingsGroup(context, [
               ListTile(
@@ -586,14 +585,19 @@ class DraftSettingsPage extends ConsumerStatefulWidget {
 class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
   static const _minRounds = 14;
   static const _maxRounds = 30;
+  static const _minU20Rounds = 1;
+  static const _maxU20Rounds = 10;
 
   late DraftPickTime _pickTime;
   late int _rounds;
+  late int _u20Rounds;
   late String _orderMode;
   late bool _pauseOn;
   late TimeOfDay _pauseStart;
   late TimeOfDay _pauseEnd;
   bool _saving = false;
+
+  bool get _isDynasty => widget.league.mode == FantasyMode.dynasty;
 
   @override
   void initState() {
@@ -601,6 +605,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
     final l = widget.league;
     _pickTime = l.pickTime;
     _rounds = l.rounds.clamp(_minRounds, _maxRounds);
+    _u20Rounds = l.u20Rounds.clamp(_minU20Rounds, _maxU20Rounds);
     _orderMode = l.draftOrderMode;
     _pauseOn = l.hasPause;
     _pauseStart = _fromMinute(l.pauseStart ?? 23 * 60);
@@ -619,6 +624,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
             pauseStart: _pauseOn ? _toMinute(_pauseStart) : null,
             pauseEnd: _pauseOn ? _toMinute(_pauseEnd) : null,
             orderMode: _orderMode,
+            u20Rounds: _isDynasty ? _u20Rounds : null,
           );
       ref.invalidate(draftLeagueProvider(widget.league.id));
       ref.invalidate(myFantasyLeaguesProvider);
@@ -677,6 +683,25 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                   : _ReadValue('$_rounds'),
             ),
           ]),
+          // U20-Draft nur im Dynasty-Modus: Anzahl der Rookie-Runden pro Saison.
+          if (_isDynasty) ...[
+            const SizedBox(height: 8),
+            _CardColumn([
+              _SettingRow(
+                icon: Icons.auto_awesome,
+                label: 'U20-Draft-Runden',
+                subtitle:
+                    'Rookies je Manager pro Saison (nach dem Saison-Rollover)',
+                child: editable
+                    ? _Stepper(
+                        value: _u20Rounds,
+                        min: _minU20Rounds,
+                        max: _maxU20Rounds,
+                        onChanged: (v) => setState(() => _u20Rounds = v))
+                    : _ReadValue('$_u20Rounds'),
+              ),
+            ]),
+          ],
           const SizedBox(height: 8),
           _CardColumn([
             _SettingRow(

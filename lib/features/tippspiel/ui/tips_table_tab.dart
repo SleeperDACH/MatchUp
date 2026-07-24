@@ -10,6 +10,7 @@ import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/round_table.dart';
 import '../logic/tip_scoring.dart';
+import '../logic/tip_weeks.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
@@ -39,6 +40,10 @@ class TipsTableTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Multi-Wettbewerb-Runden navigieren über Spielwochen (Do–Mi) statt über
+    // den Spieltag eines einzelnen Wettbewerbs.
+    if (round.competitions.length > 1) return _WeekTable(round: round);
+
     final league = ref.watch(selectedLeagueProvider);
     final currentRound = ref.watch(currentRoundProvider);
 
@@ -58,11 +63,75 @@ class TipsTableTab extends ConsumerWidget {
   }
 }
 
-class _TableBody extends ConsumerStatefulWidget {
-  const _TableBody({required this.round, required this.matchday});
+/// Tabellen-Rahmen für Multi-Wettbewerb-Runden: Wochen-Selektor + die Spiele
+/// der gewählten Woche als Spalten. Die Punkte-Summen bleiben
+/// wettbewerbsübergreifend (unverändert in [_TableBody]).
+class _WeekTable extends ConsumerWidget {
+  const _WeekTable({required this.round});
 
   final TipRound round;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weeksAsync = ref.watch(roundWeeksProvider);
+    return weeksAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Fehler: $e')),
+      data: (weeks) {
+        if (weeks.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('Keine Spiele gefunden.', textAlign: TextAlign.center),
+            ),
+          );
+        }
+        final selected = ref.watch(selectedWeekProvider);
+        final index = selected ?? currentWeekIndex(weeks, DateTime.now());
+        TipWeek week = weeks.last;
+        for (final w in weeks) {
+          if (w.index == index) {
+            week = w;
+            break;
+          }
+        }
+        return Column(
+          children: [
+            WeekSelector(weeks: weeks, index: week.index),
+            Expanded(
+              child: _TableBody(
+                round: round,
+                matchday: 0,
+                weekFixtures: week.fixtures,
+                weekStart: week.start,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TableBody extends ConsumerStatefulWidget {
+  const _TableBody({
+    required this.round,
+    required this.matchday,
+    this.weekFixtures,
+    this.weekStart,
+  });
+
+  final TipRound round;
+
+  /// Spieltag (Einzel-Liga-Pfad). Im Wochen-Pfad ungenutzt.
   final int matchday;
+
+  /// Gesetzt im Wochen-Pfad: die Spiele der gewählten Woche als Spalten.
+  /// `null` ⇒ Spieltag-Pfad (Spalten aus [roundFixturesProvider]).
+  final List<Fixture>? weekFixtures;
+
+  /// Wochenbeginn (Do 00:00) — Schnitt für die Bewegungspfeile im Wochen-Pfad.
+  final DateTime? weekStart;
 
   @override
   ConsumerState<_TableBody> createState() => _TableBodyState();
@@ -93,10 +162,13 @@ class _TableBodyState extends ConsumerState<_TableBody> {
   @override
   Widget build(BuildContext context) {
     final round = widget.round;
-    final matchday = widget.matchday;
+    final weekMode = widget.weekFixtures != null;
     final membersAsync = ref.watch(roundMembersProvider(round.id));
     final tipsAsync = ref.watch(allRoundTipsProvider(round.id));
-    final fixturesAsync = ref.watch(roundFixturesProvider(matchday));
+    // Spalten-Spiele: im Wochen-Pfad die übergebenen Fixtures, sonst der
+    // Spieltag des einzelnen Wettbewerbs.
+    final fixturesAsync =
+        weekMode ? null : ref.watch(roundFixturesProvider(widget.matchday));
     // Saison-Fixtures ALLER Wettbewerbe der Runde → gemeinsame Wertung über
     // mehrere Wettbewerbe (Tipps sind fixture-basiert und liga-übergreifend).
     final seasonAsyncs = [
@@ -110,13 +182,13 @@ class _TableBodyState extends ConsumerState<_TableBody> {
 
     if (membersAsync.isLoading ||
         tipsAsync.isLoading ||
-        fixturesAsync.isLoading ||
+        (fixturesAsync?.isLoading ?? false) ||
         seasonLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final error = membersAsync.error ??
         tipsAsync.error ??
-        fixturesAsync.error ??
+        fixturesAsync?.error ??
         seasonError;
     if (error != null) {
       return Center(
@@ -140,7 +212,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
 
     final members = [...membersAsync.requireValue];
     final tips = tipsAsync.requireValue;
-    final fixtures = fixturesAsync.requireValue;
+    final fixtures = weekMode ? widget.weekFixtures! : fixturesAsync!.requireValue;
     final seasonFixtures = [
       for (final a in seasonAsyncs) ...(a.valueOrNull ?? const <Fixture>[])
     ];
@@ -170,9 +242,14 @@ class _TableBodyState extends ConsumerState<_TableBody> {
 
     // Platzierung + Bewegung ggü. dem Stand vor dem gewählten Spieltag.
     final currentRanks = ranksByPoints(members, totals);
+    // Bewegungspfeile: Stand vor der aktuellen Ansicht. Im Wochen-Pfad alle
+    // Spiele vor Wochenbeginn, sonst alle Spiele früherer Spieltage.
     final priorFixtures = [
       for (final f in seasonFixtures)
-        if (f.round < matchday) f
+        if (weekMode
+            ? f.kickoff.isBefore(widget.weekStart!)
+            : f.round < widget.matchday)
+          f
     ];
     final hasPrior = priorFixtures.any((f) => f.hasScore);
     final priorRanks = hasPrior
@@ -203,7 +280,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 24),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           if (round.scoring.bonusTips.isNotEmpty)
@@ -223,8 +300,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                     ),
                   ),
                   child: DataTable(
-                    columnSpacing: 8,
-                    horizontalMargin: 8,
+                    columnSpacing: 4,
+                    horizontalMargin: 6,
                     headingRowHeight: _headingHeight,
                     headingRowColor: WidgetStatePropertyAll(
                         Theme.of(context).colorScheme.surfaceContainerHighest),
@@ -276,8 +353,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: DataTable(
-                        columnSpacing: 14,
-                        horizontalMargin: 8,
+                        columnSpacing: 10,
+                        horizontalMargin: 6,
                         headingRowHeight: _headingHeight,
                         headingRowColor: WidgetStatePropertyAll(
                             Theme.of(context)
@@ -338,7 +415,11 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     ref.invalidate(roundMembersProvider(widget.round.id));
     ref.invalidate(allRoundTipsProvider(widget.round.id));
     ref.invalidate(tipPresenceProvider(widget.round.id));
-    ref.invalidate(roundFixturesProvider(widget.matchday));
+    if (widget.weekFixtures != null) {
+      ref.invalidate(roundWeeksProvider);
+    } else {
+      ref.invalidate(roundFixturesProvider(widget.matchday));
+    }
     for (final id in widget.round.competitions) {
       ref.invalidate(leagueSeasonFixturesProvider(id));
     }
@@ -372,30 +453,30 @@ class _NameCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      width: 128,
+      width: 100,
       child: Row(
         children: [
           SizedBox(
-            width: 18,
+            width: 14,
             child: Text(
               '$rank',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 12,
                 color: rank == 1 ? _gold : scheme.onSurfaceVariant,
               ),
             ),
           ),
-          SizedBox(width: 14, child: _arrow()),
+          SizedBox(width: 12, child: _arrow()),
           AppAvatar(
             imageUrl: avatar?.url,
             emoji: avatar?.emoji,
             colorHex: avatar?.color,
             fallbackText: username,
-            size: 22,
+            size: 20,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           Expanded(
             child: Text(
               username,

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/favorites/ui/favorites_tab.dart';
-import '../features/friends/providers.dart';
-import '../features/friends/ui/friends_screen.dart';
 import 'home_screen.dart';
 import 'live_screen.dart';
 import 'widgets/liquid_glass.dart';
@@ -26,7 +23,6 @@ class _MainShellState extends State<MainShell> {
     HomeScreen(),
     LiveScreen(),
     FavoritesTab(),
-    FriendsScreen(),
   ];
 
   @override
@@ -46,15 +42,14 @@ class _MainShellState extends State<MainShell> {
 
 /// Schwebende „Liquid Glass"-Navigationsleiste: eine abgerundete Glaskapsel
 /// mit Abstand zu den Rändern, echtem Hintergrund-Blur und dezentem Glanz.
-class _GlassNavBar extends ConsumerWidget {
+class _GlassNavBar extends StatelessWidget {
   const _GlassNavBar({required this.index, required this.onSelected});
 
   final int index;
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final requests = ref.watch(incomingRequestsCountProvider);
+  Widget build(BuildContext context) {
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
       child: LiquidGlass(
@@ -65,7 +60,7 @@ class _GlassNavBar extends ConsumerWidget {
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
-            // Symbole mit weißer Beschriftung (Home · Live · Favoriten · Freunde).
+            // Symbole mit weißer Beschriftung (Home · Live · Favoriten).
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             iconTheme: WidgetStatePropertyAll(IconThemeData(size: 24)),
             labelTextStyle: WidgetStatePropertyAll(TextStyle(
@@ -95,19 +90,6 @@ class _GlassNavBar extends ConsumerWidget {
                 icon: Icon(Icons.star_border),
                 selectedIcon: Icon(Icons.star),
                 label: 'Favoriten',
-              ),
-              NavigationDestination(
-                icon: Badge.count(
-                  count: requests,
-                  isLabelVisible: requests > 0,
-                  child: const Icon(Icons.group_outlined),
-                ),
-                selectedIcon: Badge.count(
-                  count: requests,
-                  isLabelVisible: requests > 0,
-                  child: const Icon(Icons.group),
-                ),
-                label: 'Freunde',
               ),
             ],
           ),
