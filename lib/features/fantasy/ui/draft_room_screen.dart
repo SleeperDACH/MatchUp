@@ -290,17 +290,29 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
               seasonTotals[p.id]!, p.position, league.scoring),
     };
 
+    // Draft-Reihung „bester zuerst": nach projizierten Punkten, Spieler ohne
+    // Vorsaisonwerte ans Ende, dann alphabetisch.
+    int byRank(FantasyPlayer a, FantasyPlayer b) {
+      final pa = seasonPoints[a.id];
+      final pb = seasonPoints[b.id];
+      if (pa == null && pb == null) return a.name.compareTo(b.name);
+      if (pa == null) return 1;
+      if (pb == null) return -1;
+      return pa != pb ? pb.compareTo(pa) : a.name.compareTo(b.name);
+    }
+
+    // Feste Board-Nummer je Spieler = Rang in der VOLLEN phasengültigen
+    // Rangliste (inkl. bereits gedrafteter). Damit klebt die Nummer am Spieler:
+    // Wird Nr. 1 gedraftet, bleibt Nr. 2 die Nr. 2 (mit Lücke), statt nachzurücken.
+    final fullRanked = pool.where(inPhasePool).toList()..sort(byRank);
+    final rankOf = <String, int>{
+      for (final (i, p) in fullRanked.indexed) p.id: i + 1,
+    };
+
     final available = pool
         .where((p) => !pickedIds.contains(p.id) && inPhasePool(p))
         .toList()
-      ..sort((a, b) {
-        final pa = seasonPoints[a.id];
-        final pb = seasonPoints[b.id];
-        if (pa == null && pb == null) return a.name.compareTo(b.name);
-        if (pa == null) return 1;
-        if (pb == null) return -1;
-        return pa != pb ? pb.compareTo(pa) : a.name.compareTo(b.name);
-      });
+      ..sort(byRank);
     final phasePicks =
         picks.where((p) => p.phase == league.draftPhase).toList();
 
@@ -446,6 +458,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
                   _PlayersTab(
                     available: _AvailableTab(
                       players: available,
+                      rankOf: rankOf,
                       canPick: myTurn,
                       onPick: _pick,
                       queued: queueSet,
@@ -733,6 +746,7 @@ class _StatusBanner extends StatelessWidget {
 class _AvailableTab extends StatefulWidget {
   const _AvailableTab({
     required this.players,
+    required this.rankOf,
     required this.canPick,
     required this.onPick,
     required this.queued,
@@ -741,6 +755,10 @@ class _AvailableTab extends StatefulWidget {
   });
 
   final List<FantasyPlayer> players;
+
+  /// Feste Board-Nummer je Spieler-ID (Rang aus der Anfangs-Rangliste), damit
+  /// die Nummer beim Draften nicht nachrückt.
+  final Map<String, int> rankOf;
   final bool canPick;
   final Future<void> Function(FantasyPlayer) onPick;
   final Set<String> queued;
@@ -805,8 +823,8 @@ class _AvailableTabState extends State<_AvailableTab> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
-                            width: 24,
-                            child: Text('${i + 1}',
+                            width: 30,
+                            child: Text('${widget.rankOf[p.id] ?? i + 1}',
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context)
                                     .textTheme
