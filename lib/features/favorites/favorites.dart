@@ -121,23 +121,33 @@ final favoritesRepositoryProvider = Provider<FavoritesRepository>(
 
 /// Favoriten des angemeldeten Nutzers (leere Liste, solange niemand
 /// angemeldet ist). Optimistisches Umschalten mit Persistenz.
+///
+/// Das Repository wird **nur** angelegt, wenn der Server auch erreichbar ist:
+/// `FavoritesRepository(Supabase.instance.client)` wirft sonst eine Assertion,
+/// und zwar mitten im Aufbau des Favoriten-Tabs. Vorher lief `ref.read` immer
+/// — im Release-Build war der Tab dadurch eine graue Fläche, sobald die App
+/// ohne Server-Verbindung lief (genau der erste TestFlight-Build).
+/// `enabled` prüft deshalb beides: Server da *und* jemand angemeldet.
 final favoritesProvider =
     StateNotifierProvider<FavoritesNotifier, List<Favorite>>((ref) {
-  final user = ref.watch(currentUserProvider);
+  final enabled =
+      AppConfig.isSupabaseConfigured && ref.watch(currentUserProvider) != null;
   return FavoritesNotifier(
-      ref.read(favoritesRepositoryProvider), enabled: user != null);
+      enabled ? ref.read(favoritesRepositoryProvider) : null);
 });
 
 class FavoritesNotifier extends StateNotifier<List<Favorite>> {
-  FavoritesNotifier(this._repo, {required bool enabled}) : super(const []) {
-    if (enabled) _load();
+  FavoritesNotifier(this._repo) : super(const []) {
+    if (_repo != null) _load();
   }
 
-  final FavoritesRepository _repo;
+  /// `null` = kein Server oder niemand angemeldet; die Favoritenliste bleibt
+  /// dann leer und Änderungen sind wirkungslos statt fehlerhaft.
+  final FavoritesRepository? _repo;
 
   Future<void> _load() async {
     try {
-      state = await _repo.load();
+      state = await _repo!.load();
     } catch (_) {/* offline o.ä. — bleibt leer */}
   }
 
@@ -145,6 +155,8 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
       state.any((f) => f.type == type && f.key == key);
 
   Future<void> toggle(Favorite fav) async {
+    final repo = _repo;
+    if (repo == null) return;
     final exists = isFavorite(fav.type, fav.key);
     final previous = state;
     state = exists
@@ -155,9 +167,9 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
         : [...state, fav];
     try {
       if (exists) {
-        await _repo.remove(fav.type, fav.key);
+        await repo.remove(fav.type, fav.key);
       } else {
-        await _repo.add(fav);
+        await repo.add(fav);
       }
     } catch (_) {
       state = previous; // bei Fehler zurückrollen
@@ -166,12 +178,14 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
 
   /// Neue manuelle Reihenfolge übernehmen (optimistisch, mit Persistenz).
   Future<void> setManualOrder(List<Favorite> ordered) async {
+    final repo = _repo;
+    if (repo == null) return;
     final previous = state;
     state = [
       for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i)
     ];
     try {
-      await _repo.reorder(ordered);
+      await repo.reorder(ordered);
     } catch (_) {
       state = previous;
     }

@@ -4,6 +4,25 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Rücksprung aus der Passwort-Reset-Mail in die App. Der Link in der
+	     Mail geht an Supabase, das auf app.matchup.mobile://login-callback/
+	     weiterleitet; supabase_flutter fängt das ab und meldet den Nutzer für
+	     die Passwortänderung an. Ohne diesen Eintrag kennt iOS das Schema
+	     nicht und der Link läuft ins Leere. Schema = Bundle-ID, damit es
+	     keine andere App beanspruchen kann. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>app.matchup.mobile</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app.matchup.mobile</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Zum schnellen Anmelden bei MatchUp per Face ID.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

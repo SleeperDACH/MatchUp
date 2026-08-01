@@ -88,9 +88,14 @@ class HomeScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             if (!configured)
+              // Sollte im ausgelieferten Build nie erscheinen — die
+              // Server-Adresse steckt seit dem TestFlight-Fehlschlag fest in
+              // AppConfig. Bleibt als Auffangnetz für Builds, die sie per
+              // --dart-define bewusst leeren. Deshalb kein Entwickler-Hinweis
+              // mehr im Text: Beta-Tester können damit nichts anfangen.
               const _InfoCard(
-                'Fantasy & Ligen brauchen eine Server-Verbindung. Starte die '
-                'App über ./run_dev.sh (siehe README).',
+                'Fantasy & Ligen brauchen eine Server-Verbindung. Diese '
+                'App-Version wurde ohne Server ausgeliefert.',
               )
             else ...[
               const _Appear(child: _WelcomeHeader()),

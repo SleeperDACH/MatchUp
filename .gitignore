@@ -46,3 +46,6 @@ app.*.map.json
 
 # Claude Code lokale Daten (Settings, Worktrees) – nicht versionieren
 .claude/
+
+# Golden-Test-Artefakte (Vergleichsbilder fehlgeschlagener Tests)
+test/failures/
