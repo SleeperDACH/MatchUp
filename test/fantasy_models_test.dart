@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 
 void main() {
   group('DraftPickTime', () {

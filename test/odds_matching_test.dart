@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/core/data/odds/match_odds.dart';
-import 'package:meine_app/core/data/odds/odds_matching.dart';
-import 'package:meine_app/core/data/odds/odds_team_resolver.dart';
-import 'package:meine_app/core/models/models.dart';
+import 'package:matchup/core/data/odds/match_odds.dart';
+import 'package:matchup/core/data/odds/odds_matching.dart';
+import 'package:matchup/core/data/odds/odds_team_resolver.dart';
+import 'package:matchup/core/models/models.dart';
 
 const _wm = 'soccer_fifa_world_cup';
 

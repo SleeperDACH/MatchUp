@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/core/ui/default_avatar.dart';
+import 'package:matchup/core/ui/default_avatar.dart';
 
 // Erzeugt das Vorschaubild des Standard-Avatars (kein Regressionstest):
 //   flutter test --update-goldens test/default_avatar_preview_test.dart

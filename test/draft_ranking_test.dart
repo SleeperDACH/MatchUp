@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/fantasy/logic/draft_ranking.dart';
-import 'package:meine_app/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/logic/draft_ranking.dart';
+import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 
 void main() {
   // Standard-Scoring: Einsatz 2, Tor GK/DEF 6 / MID 5 / FWD 4, Assist 3,

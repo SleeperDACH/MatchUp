@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/core/models/models.dart';
-import 'package:meine_app/features/tippspiel/logic/tip_weeks.dart';
+import 'package:matchup/core/models/models.dart';
+import 'package:matchup/features/tippspiel/logic/tip_weeks.dart';
 
 // Kickoffs bewusst als LOKALE DateTime (nicht .utc), damit `toLocal()` in der
 // Wochen-Logik ein No-op ist und die Tests unabhängig von der Zeitzone der

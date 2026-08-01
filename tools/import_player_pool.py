@@ -81,7 +81,7 @@ NAT = {
 
 
 def get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "meine_app/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "matchup/1.0"})
     return json.load(urllib.request.urlopen(req, timeout=25))
 
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/leagues/models/public_league_result.dart';
+import 'package:matchup/features/leagues/models/public_league_result.dart';
 
 void main() {
   Map<String, dynamic> row({

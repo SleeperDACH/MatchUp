@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/tippspiel/logic/tip_scoring.dart';
-import 'package:meine_app/features/tippspiel/models/tip.dart';
+import 'package:matchup/features/tippspiel/logic/tip_scoring.dart';
+import 'package:matchup/features/tippspiel/models/tip.dart';
 
 void main() {
   group('scoreTip (Kicktipp-Standard: exakt 4, Differenz 3, Tendenz 2)', () {

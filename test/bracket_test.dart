@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/fantasy/logic/bracket.dart';
+import 'package:matchup/features/fantasy/logic/bracket.dart';
 
 /// Hilfsfunktion: Endplatzierung als Liste von managerIds (null = offen).
 List<String?> _order(PlayoffBracket b) =>

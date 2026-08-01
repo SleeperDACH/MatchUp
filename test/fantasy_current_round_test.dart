@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/core/models/models.dart';
-import 'package:meine_app/features/fantasy/providers.dart';
+import 'package:matchup/core/models/models.dart';
+import 'package:matchup/features/fantasy/providers.dart';
 
 Fixture _fx(int round, DateTime kickoff) => Fixture(
       id: 'openligadb:$round-${kickoff.millisecondsSinceEpoch}',

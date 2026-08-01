@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/core/models/models.dart';
+import 'package:matchup/core/models/models.dart';
 
 void main() {
   group('LeagueInfo.seasonFor', () {

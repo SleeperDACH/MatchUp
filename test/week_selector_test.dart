@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:meine_app/core/models/models.dart';
-import 'package:meine_app/features/tippspiel/logic/tip_weeks.dart';
-import 'package:meine_app/features/tippspiel/providers.dart';
-import 'package:meine_app/features/tippspiel/ui/round_selector.dart';
+import 'package:matchup/core/models/models.dart';
+import 'package:matchup/features/tippspiel/logic/tip_weeks.dart';
+import 'package:matchup/features/tippspiel/providers.dart';
+import 'package:matchup/features/tippspiel/ui/round_selector.dart';
 
 Fixture _fx(String id, DateTime kickoff) => Fixture(
       id: id,

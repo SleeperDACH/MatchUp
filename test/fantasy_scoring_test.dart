@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/fantasy/data/round_scoring_service.dart';
-import 'package:meine_app/features/fantasy/logic/fantasy_scoring_engine.dart';
-import 'package:meine_app/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/data/round_scoring_service.dart';
+import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
+import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 
 FantasyPlayer _p(String id, String name, PlayerPosition pos, String club) =>
     FantasyPlayer(

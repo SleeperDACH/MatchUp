@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/fantasy/logic/fantasy_scoring_engine.dart';
-import 'package:meine_app/features/fantasy/logic/weekly_recap.dart';
-import 'package:meine_app/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
+import 'package:matchup/features/fantasy/logic/weekly_recap.dart';
+import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 
 /// Kleiner Kader-Generator: pro Manager 1 TW, 4 ABW, 4 MF, 2 ST + 5 Bank
 /// (Standard-RosterConfig), damit `bestEleven` immer eine gültige 11 findet.

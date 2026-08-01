@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/fantasy/data/fantasy_league_repository.dart';
-import 'package:meine_app/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/data/fantasy_league_repository.dart';
+import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 
 WaiverClaim _claim(String id, {String status = 'pending'}) => WaiverClaim.fromJson({
       'id': id,

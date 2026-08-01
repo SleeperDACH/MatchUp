@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/features/fantasy/logic/playoff.dart';
+import 'package:matchup/features/fantasy/logic/playoff.dart';
 
 void main() {
   group('playoffRounds', () {

@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/core/data/odds/frozen_odds.dart';
-import 'package:meine_app/core/models/models.dart';
-import 'package:meine_app/features/tippspiel/logic/round_table.dart';
-import 'package:meine_app/features/tippspiel/models/tip.dart';
-import 'package:meine_app/features/tippspiel/models/tip_round.dart';
+import 'package:matchup/core/data/odds/frozen_odds.dart';
+import 'package:matchup/core/models/models.dart';
+import 'package:matchup/features/tippspiel/logic/round_table.dart';
+import 'package:matchup/features/tippspiel/models/tip.dart';
+import 'package:matchup/features/tippspiel/models/tip_round.dart';
 
 Fixture _fixture(String id, {int? home, int? away}) => Fixture(
       id: id,

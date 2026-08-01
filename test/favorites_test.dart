@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/core/models/models.dart';
-import 'package:meine_app/features/favorites/favorites.dart';
+import 'package:matchup/core/models/models.dart';
+import 'package:matchup/features/favorites/favorites.dart';
 
 TeamRef _t(String name, [String? short]) =>
     TeamRef(id: 'x', name: name, shortName: short ?? name);

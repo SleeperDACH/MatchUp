@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meine_app/core/models/models.dart';
-import 'package:meine_app/features/tippspiel/logic/tip_stats.dart';
-import 'package:meine_app/features/tippspiel/models/tip.dart';
-import 'package:meine_app/features/tippspiel/models/tip_round.dart';
+import 'package:matchup/core/models/models.dart';
+import 'package:matchup/features/tippspiel/logic/tip_stats.dart';
+import 'package:matchup/features/tippspiel/models/tip.dart';
+import 'package:matchup/features/tippspiel/models/tip_round.dart';
 
 Fixture _fx(String id, {int? home, int? away}) => Fixture(
       id: id,

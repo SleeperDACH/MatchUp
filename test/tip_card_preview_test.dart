@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:meine_app/core/data/odds/match_odds.dart';
-import 'package:meine_app/core/models/models.dart';
-import 'package:meine_app/features/tippspiel/ui/matchday_screen.dart';
+import 'package:matchup/core/data/odds/match_odds.dart';
+import 'package:matchup/core/models/models.dart';
+import 'package:matchup/features/tippspiel/ui/matchday_screen.dart';
 
 // Vorschau der neuen Spielkarte (kein Regressionstest):
 //   flutter test --update-goldens test/tip_card_preview_test.dart
