@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/transfer_deal.dart';
 import '../providers.dart';
+import '../../../app/widgets/segmented_tab_bar.dart';
+import '../../../app/widgets/pill_selector.dart';
 
 /// „Transfers": strukturierte, finalisierte Bundesliga-Transfers aus Sportmonks
 /// — getrennt nach Zugängen/Abgängen, mit Vereinswappen und Filter nach Verein.
@@ -29,7 +31,7 @@ class _TransfersScreenState extends ConsumerState<TransfersScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Transfers'),
-          bottom: const TabBar(tabs: [
+          bottom: const SegmentedTabBar(tabs: [
             Tab(text: 'Zugänge'),
             Tab(text: 'Abgänge'),
           ]),
@@ -124,14 +126,10 @@ class _DivisionSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
-      child: SegmentedButton<int>(
-        showSelectedIcon: false,
-        segments: const [
-          ButtonSegment(value: 1, label: Text('1. Bundesliga')),
-          ButtonSegment(value: 2, label: Text('2. Bundesliga')),
-        ],
-        selected: {division},
-        onSelectionChanged: (s) => onSelect(s.first),
+      child: PillSelector<int>(
+        options: const {1: '1. Bundesliga', 2: '2. Bundesliga'},
+        value: division,
+        onSelect: onSelect,
       ),
     );
   }
@@ -182,10 +180,10 @@ class _ClubFilterBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         children: [
-          ChoiceChip(
-            label: const Text('Alle'),
+          PillChip(
+            label: 'Alle',
             selected: selected == null,
-            onSelected: (_) => onSelect(null),
+            onTap: () => onSelect(null),
           ),
           const SizedBox(width: 8),
           // Vereine nur als Wappen; die Auswahl wird durch einen Ring markiert.

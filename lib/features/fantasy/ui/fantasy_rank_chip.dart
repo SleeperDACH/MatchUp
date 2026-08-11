@@ -46,7 +46,7 @@ class FantasyRankChip extends ConsumerWidget {
         return pa != pb ? pa.compareTo(pb) : a.compareTo(b);
       });
 
-    final totalsByRound = <int, Map<String, int>>{
+    final totalsByRound = <int, Map<String, double>>{
       for (final entry in seasonStats.entries)
         entry.key: effectiveTotalsForRound(
           stats: entry.value,

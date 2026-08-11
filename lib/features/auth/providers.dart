@@ -24,9 +24,23 @@ final authStateProvider = StreamProvider<AuthState>((ref) {
 
 final currentUserProvider = Provider<User?>((ref) {
   if (!AppConfig.isSupabaseConfigured) return null;
-  // Rebuild bei Login/Logout.
-  ref.watch(authStateProvider);
-  return Supabase.instance.client.auth.currentUser;
+  final state = ref.watch(authStateProvider);
+  // Den Nutzer **aus dem Ereignis** lesen, nicht bloß aus dem globalen
+  // Client. Vorher lieferte der Auslöser (`ref.watch`) und der Wert
+  // (`auth.currentUser`) aus zwei verschiedenen Quellen: Riverpod entschied
+  // anhand des Stream-Ereignisses, *wann* neu gerechnet wird, der Wert kam
+  // aber aus einem veränderlichen globalen Zustand. Takten die beiden nicht
+  // exakt gleich, bleibt das Gate auf dem alten Wert stehen — der Login
+  // gelingt, die Oberfläche zeigt weiter den Anmeldescreen, und erst der
+  // nächste Kaltstart liest die persistierte Sitzung. Genau dieses Bild
+  // haben die TestFlight-Tester gemeldet.
+  //
+  // `currentUser` bleibt als Rückfall stehen: Bei `signedOut` ist die Session
+  // im Ereignis null und `currentUser` ebenfalls null (richtig), und solange
+  // der Stream nach einem `invalidate` noch lädt, liefert der Client bereits
+  // den gültigen Nutzer.
+  return state.valueOrNull?.session?.user ??
+      Supabase.instance.client.auth.currentUser;
 });
 
 /// Nutzername des angemeldeten Profils (für Begrüßung/Profil-Tab).

@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/match_detail.dart';
 import '../../models/models.dart';
+import '../../models/squad_member.dart';
 import '../../models/team_fixture.dart';
 import '../../models/top_scorer.dart';
 import '../sports_data_provider.dart';
@@ -113,6 +114,14 @@ class SupabaseSportmonksProvider implements SportsDataProvider {
         (data['fixtures'] as List? ?? const []).cast<Map<String, dynamic>>();
     return [for (final f in list) _teamFixtureFromJson(f)]
       ..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+  }
+
+  /// Kader eines Vereins — [teamId] ist die reine Sportmonks-Team-ID.
+  Future<List<SquadMember>> getSquad(String teamId) async {
+    final data = await _call('squad', teamId: teamId);
+    final list =
+        (data['squad'] as List? ?? const []).cast<Map<String, dynamic>>();
+    return [for (final m in list) SquadMember.fromJson(m)];
   }
 
   static TeamFixture _teamFixtureFromJson(Map<String, dynamic> j) {
@@ -288,6 +297,7 @@ class SupabaseSportmonksProvider implements SportsDataProvider {
           player: e['player'] as String?,
           playerId: (e['player_id'] as num?)?.toInt(),
           related: e['related'] as String?,
+          relatedPlayerId: (e['related_player_id'] as num?)?.toInt(),
           result: e['result'] as String?,
         )
     ];

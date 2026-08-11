@@ -1,4 +1,5 @@
 import '../models/fantasy_models.dart';
+import 'fantasy_scoring_rules.dart';
 
 /// Rohe Saison-Aggregate eines Spielers (aus `player_season_totals`).
 class SeasonTotals {
@@ -32,23 +33,29 @@ class SeasonTotals {
 }
 
 /// Hochgerechnete Fantasy-Punkte einer kompletten Saison für [position] unter
-/// [scoring] — gleiche Formel wie [scorePlayer], nur über die Saison-Summen.
-/// Dient als Draft-Reihung „bester zuerst".
-int projectedSeasonPoints(
-    SeasonTotals t, PlayerPosition position, FantasyScoring scoring) {
-  final goalPts = switch (position) {
-    PlayerPosition.gk => scoring.goalGk,
-    PlayerPosition.def => scoring.goalDef,
-    PlayerPosition.mid => scoring.goalMid,
-    PlayerPosition.fwd => scoring.goalFwd,
-  };
-  var pts = t.appearances * scoring.appearance;
-  pts += t.goals * goalPts;
-  pts += t.assists * scoring.assist;
-  if (position == PlayerPosition.gk || position == PlayerPosition.def) {
-    pts += t.cleanSheets * scoring.cleanSheetGkDef;
-  }
-  pts += t.yellow * scoring.yellowCard;
-  pts += t.red * scoring.redCard;
+/// [rules]. Dient als Draft-Reihung „bester zuerst".
+///
+/// **Bewusst nur eine Näherung**, keine zweite Wertung: `player_season_totals`
+/// kennt nur Einsätze, Tore, Vorlagen, Zu-Null und Karten — die feinen
+/// Kategorien der Punktevergabe (Paraden, Zweikämpfe, Rating, Meilensteine)
+/// stehen dort nicht. Für eine *Reihenfolge* reicht das; als Punktzahl wäre es
+/// falsch, deshalb liegt die echte Wertung ausschließlich in [scorePlayer].
+///
+/// Die Einsatzpunkte werden mit der höchsten Stufe angesetzt, weil die
+/// Saison-Summen keine Minuten je Spiel führen — das trifft Stammspieler
+/// richtig und überschätzt Ergänzungsspieler leicht.
+double projectedSeasonPoints(
+  SeasonTotals t,
+  PlayerPosition position, [
+  FantasyScoringRules rules = FantasyScoringRules.standard,
+]) {
+  final perAppearance =
+      rules.appearance.isEmpty ? 0.0 : rules.appearance.first.points;
+  var pts = t.appearances * perAppearance;
+  pts += t.goals * rules.goal;
+  pts += t.assists * rules.assist;
+  pts += t.cleanSheets * rules.cleanSheet.of(position);
+  pts += t.yellow * rules.yellowCard;
+  pts += t.red * rules.redCard;
   return pts;
 }

@@ -4,6 +4,7 @@ import '../../../core/models/chat_message.dart';
 import '../../leagues/models/join_request.dart';
 import '../models/fantasy_models.dart';
 import '../models/trade.dart';
+import '../logic/fantasy_scoring_rules.dart';
 
 /// Dedupliziert Waiver-Anträge nach `id`. Der Supabase-Realtime-Stream kann
 /// denselben Antrag doppelt liefern (Initial-Snapshot + Insert-Event); ohne
@@ -38,7 +39,7 @@ class FantasyLeagueRepository {
     required FantasyMode mode,
     required int season,
     required DraftPickTime pickTime,
-    FantasyScoring scoring = FantasyScoring.kickbaseStyle,
+    FantasyScoringRules scoring = FantasyScoringRules.standard,
     RosterConfig roster = RosterConfig.standard,
     int? maxTeams,
     String draftOrderMode = 'auto',

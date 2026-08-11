@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
-import '../../../app/match_detail_screen.dart';
-import '../../../app/theme.dart';
-import '../../../app/widgets/league_logo.dart';
+import '../../../app/widgets/team_fixture_list.dart';
 import '../../../core/models/models.dart';
 import '../../../core/models/team_fixture.dart';
 import '../../news/models/news_item.dart';
@@ -13,6 +10,7 @@ import '../../news/ui/news_tile.dart';
 import '../../tippspiel/ui/team_badge.dart';
 import '../favorites.dart';
 import 'favorites_manage_screen.dart';
+import '../../../app/widgets/segmented_tab_bar.dart';
 
 /// Reine Sportmonks-Team-ID aus dem Favoriten-Key (`sportmonks:503` → `503`).
 String _teamId(String key) => key.split(':').last;
@@ -356,7 +354,7 @@ class _Body extends StatelessWidget {
               children: [
                 Material(
                   color: Theme.of(context).appBarTheme.backgroundColor,
-                  child: const TabBar(
+                  child: const SegmentedTabBar(
                     tabs: [Tab(text: 'Spielplan'), Tab(text: 'News')],
                   ),
                 ),
@@ -432,199 +430,14 @@ class _FixturesTab extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           if (upcoming.isNotEmpty) ...[
-            const _SectionLabel('Nächste Spiele'),
-            ..._withDateHeaders(upcoming),
+            const FixtureSectionLabel('Nächste Spiele'),
+            ...fixturesWithDateHeaders(upcoming),
           ],
           if (results.isNotEmpty) ...[
-            const _SectionLabel('Ergebnisse'),
-            ..._withDateHeaders(results),
+            const FixtureSectionLabel('Ergebnisse'),
+            ...fixturesWithDateHeaders(results),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// Fügt vor jedem neuen Kalendertag eine Datums-Überschrift ein (Datum steht
-/// damit außerhalb der Spiel-Box, wie im Live-Tab).
-List<Widget> _withDateHeaders(List<TeamFixture> list) {
-  final out = <Widget>[];
-  DateTime? lastDay;
-  for (final f in list) {
-    final lt = f.kickoff.toLocal();
-    final day = DateTime(lt.year, lt.month, lt.day);
-    if (lastDay == null || lastDay != day) {
-      out.add(_DateHeader(date: day));
-      lastDay = day;
-    }
-    out.add(_FixtureCard(fixture: f));
-  }
-  return out;
-}
-
-/// Datums-Überschrift zwischen den Spiel-Boxen (z. B. „Samstag, 23.08.").
-class _DateHeader extends StatelessWidget {
-  const _DateHeader({required this.date});
-  final DateTime date;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final label = DateFormat('EEEE, dd.MM.', 'de_DE').format(date);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 14, 6, 4),
-      child: Text(
-        label[0].toUpperCase() + label.substring(1),
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.bold, color: scheme.onSurfaceVariant),
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
-      child: Text(text,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurfaceVariant)),
-    );
-  }
-}
-
-/// Spieltag- bzw. Pokalrunden-Bezeichnung eines Team-Spiels (null = unbekannt).
-String? _matchdayLabel(TeamFixture f) {
-  if (f.round <= 0) return null;
-  final isCup = f.leagueName.toLowerCase().contains('pokal');
-  if (isCup) {
-    return switch (f.round) {
-      1 => '1. Runde',
-      2 => '2. Runde',
-      3 => 'Achtelfinale',
-      4 => 'Viertelfinale',
-      5 => 'Halbfinale',
-      6 => 'Finale',
-      _ => 'Runde ${f.round}',
-    };
-  }
-  return '${f.round}. Spieltag';
-}
-
-class _FixtureCard extends StatelessWidget {
-  const _FixtureCard({required this.fixture});
-  final TeamFixture fixture;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final f = fixture;
-    final live = f.status == FixtureStatus.live;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => MatchDetailScreen(fixtureId: f.id))),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-            // Wettbewerbslogo (DFB-Pokal freigestellt) und – auf gleicher Höhe –
-            // der Spieltag bzw. die Pokalrunde.
-            Row(
-              children: [
-                LeagueLogo(
-                  logoUrl: f.leagueLogo,
-                  name: f.leagueName,
-                  size: 26,
-                  fallback: Text(f.leagueName,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.bold)),
-                ),
-                const Spacer(),
-                if (_matchdayLabel(f) != null)
-                  Text(_matchdayLabel(f)!,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 44,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    // Name außen, Logo innen (zur Mitte) → Wappen fluchten.
-                    child: Row(children: [
-                      Expanded(
-                        child: Text(f.home.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 15)),
-                      ),
-                      const SizedBox(width: 8),
-                      TeamBadge(team: f.home, size: 22),
-                    ]),
-                  ),
-                  // Mitte: Uhrzeit (bzw. Ergebnis) mittig — das Datum steht als
-                  // Überschrift außerhalb der Box.
-                  SizedBox(
-                    width: 62,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (f.hasScore)
-                          Text('${f.homeScore}:${f.awayScore}',
-                              style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: live
-                                      ? MatchUpColors.red
-                                      : scheme.onSurface))
-                        else
-                          Text(
-                              DateFormat('HH:mm').format(f.kickoff.toLocal()),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.bold)),
-                        if (live)
-                          const Text('● LIVE',
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: MatchUpColors.red)),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    // Logo innen (zur Mitte), Name außen → Wappen fluchten.
-                    child: Row(children: [
-                      TeamBadge(team: f.away, size: 22),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(f.away.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.end,
-                            style: const TextStyle(fontSize: 15)),
-                      ),
-                    ]),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          ),
-        ),
       ),
     );
   }

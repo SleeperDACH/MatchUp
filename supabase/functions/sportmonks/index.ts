@@ -5,6 +5,7 @@
 // Aufruf (Client, via supabase.functions.invoke mit Anon/User-JWT):
 //   POST /functions/v1/sportmonks
 //   Body: { "kind": "seasonFixtures", "leagueKey": "82" }
+//         { "kind": "squad",          "teamId": "503" }
 //         { "kind": "standings",      "leagueKey": "82" }
 //         { "kind": "fixture",        "fixtureId": "19734892" }
 //
@@ -29,6 +30,8 @@ const TTL = {
   season: 21600,
   topscorers: 3600,
   teamFixtures: 120,
+  // Kader ändert sich nur bei Transfers — ein Tag reicht völlig.
+  squad: 86400,
 };
 
 const corsHeaders = {
@@ -187,6 +190,38 @@ async function seasonFixtures(
     if (!pg?.has_more) break;
   }
   return { season, fixtures: all };
+}
+
+/// Kader eines Vereins. Läuft bei Sportmonks über die Entity `PlayerTeam` und
+/// zehrt damit **nicht** am Fixture-Kontingent (eigenes Stundenlimit).
+async function squad(teamId: string) {
+  const r = await smGet(
+    `/squads/teams/${teamId}?include=player.position;player.nationality`,
+  );
+  // deno-lint-ignore no-explicit-any
+  const rows = ((r?.data ?? []) as any[]).map((s) => {
+    const p = s.player ?? {};
+    return {
+      player_id: s.player_id,
+      name: p.display_name ?? p.common_name ?? p.name ?? "?",
+      // „Goalkeeper" / „Defender" / „Midfielder" / „Attacker" — die Zuordnung
+      // auf die App-Positionen macht der Client, damit hier keine
+      // Fantasy-Logik landet.
+      position: p.position?.name ?? null,
+      jersey_number: s.jersey_number ?? null,
+      nationality: p.nationality?.name ?? null,
+      date_of_birth: p.date_of_birth ?? null,
+      image: p.image_path ?? null,
+      captain: s.captain === true,
+    };
+  });
+  // Trikotnummer aufsteigend, Spieler ohne Nummer ans Ende.
+  rows.sort((a, b) => {
+    const an = a.jersey_number ?? 9999;
+    const bn = b.jersey_number ?? 9999;
+    return an !== bn ? an - bn : String(a.name).localeCompare(String(b.name));
+  });
+  return { squad: rows };
 }
 
 async function standings(
@@ -353,6 +388,10 @@ async function fixtureDetail(fixtureId: string) {
       player: e.player_name ?? null,
       player_id: e.player_id ?? null,
       related: e.related_player_name ?? null,
+      // Beim Wechsel ist `player` der Eingewechselte und `related` der
+      // Ausgewechselte. Die ID dazu, damit der Client die beiden ohne
+      // Namensabgleich in der Aufstellung findet.
+      related_player_id: e.related_player_id ?? null,
       for_home: e.participant_id === homeId,
       result: e.result ?? null,
     }))
@@ -495,6 +534,17 @@ Deno.serve(async (req) => {
       const cached = await rc(ck, TTL.topscorers);
       if (cached) return json(cached);
       const payload = await topScorers(leagueKey);
+      await writeCache(supabase, ck, payload);
+      return json(payload);
+    }
+    if (kind === "squad") {
+      if (!teamId || !/^\d+$/.test(teamId)) {
+        return json({ error: "Ungültige teamId." }, 400);
+      }
+      const ck = `squad:${teamId}`;
+      const cached = await rc(ck, TTL.squad);
+      if (cached) return json(cached);
+      const payload = await squad(teamId);
       await writeCache(supabase, ck, payload);
       return json(payload);
     }

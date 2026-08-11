@@ -10,6 +10,10 @@ import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'theme.dart';
 import 'widgets/pulsing_dot.dart';
+import 'club_screen.dart';
+import '../core/util/club_colors.dart';
+import 'widgets/jersey_icon.dart';
+import 'widgets/segmented_tab_bar.dart';
 
 /// Spiel-Detailansicht mit Tabs: Übersicht (Ergebnis, Spielverlauf,
 /// Torschützen), Aufstellung, Statistik und (Live-)Tabelle. Quelle: Sportmonks.
@@ -91,10 +95,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen> {
             child: Column(
               children: [
                 _Header(detail: d),
-                Material(
-                  color: Theme.of(context).appBarTheme.backgroundColor,
-                  child: TabBar(isScrollable: tabs.length > 3, tabs: tabs),
-                ),
+                SegmentedTabBar(tabs: tabs),
                 Expanded(child: TabBarView(children: views)),
               ],
             ),
@@ -188,7 +189,8 @@ class _TeamColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        TeamBadge(team: team, size: 46),
+        // Wappen öffnet die Vereinsseite.
+        ClubLink(team: team, child: TeamBadge(team: team, size: 46)),
         const SizedBox(height: 8),
         Text(team.name,
             textAlign: TextAlign.center,
@@ -436,6 +438,46 @@ class _SubArrows extends StatelessWidget {
 // ---------------------------------------------------------------------
 // Aufstellung
 // ---------------------------------------------------------------------
+/// Wer wurde gewechselt? Aus den Ereignissen abgeleitet.
+///
+/// Sportmonks führt beim Wechsel den **Eingewechselten** als `player` und den
+/// **Ausgewechselten** als `related`. Die ID des Ausgewechselten liefert die
+/// Edge Function erst seit der Ergänzung um `related_player_id`; solange eine
+/// ältere Version ausgeliefert ist, fehlt sie. Deshalb wird zusätzlich über
+/// den Namen aufgelöst — sonst bliebe das Symbol bei den Ausgewechselten aus.
+class Substitutions {
+  const Substitutions({required this.offIds, required this.onFor});
+
+  /// Spieler-IDs, die vom Feld gingen.
+  final Set<int> offIds;
+
+  /// Eingewechselter (Spieler-ID) → Name dessen, für den er kam.
+  final Map<int, String> onFor;
+
+  static Substitutions from(
+      List<MatchEvent> events, List<LineupPlayer> lineups) {
+    final offIds = <int>{};
+    final onFor = <int, String>{};
+    // Namensindex nur als Rückfall, wenn die Ereignis-ID fehlt.
+    final idByName = <String, int>{
+      for (final p in lineups)
+        if (p.playerId != null) p.name.toLowerCase().trim(): p.playerId!
+    };
+    for (final e in events) {
+      if (e.type.toLowerCase() != 'substitution') continue;
+      final inId = e.playerId;
+      final outName = e.related;
+      if (inId != null && outName != null && outName.isNotEmpty) {
+        onFor[inId] = outName;
+      }
+      final outId =
+          e.relatedPlayerId ?? idByName[(outName ?? '').toLowerCase().trim()];
+      if (outId != null) offIds.add(outId);
+    }
+    return Substitutions(offIds: offIds, onFor: onFor);
+  }
+}
+
 class _LineupTab extends StatelessWidget {
   const _LineupTab({required this.detail});
   final MatchDetail detail;
@@ -459,6 +501,7 @@ class _LineupTab extends StatelessWidget {
       if (t == 'yellowcard') yellow.add(id);
       if (t == 'redcard' || t == 'yellowredcard') red.add(id);
     }
+    final subs = Substitutions.from(d.events, d.lineups);
     // Feld nur zeigen, wenn Rasterpositionen vorhanden sind.
     final hasGrid = startHome.any((p) => p.row != null) &&
         startAway.any((p) => p.row != null);
@@ -466,69 +509,74 @@ class _LineupTab extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 32),
       children: [
         if (hasGrid) ...[
-          _FormationLabels(detail: d),
-          const SizedBox(height: 8),
-          _PitchLineup(
+          PitchLineup(
             home: startHome,
             away: startAway,
+            homeTeam: d.home,
+            awayTeam: d.away,
             yellow: yellow,
             red: red,
+            homeFormation: d.homeFormation,
+            awayFormation: d.awayFormation,
+            subs: subs,
           ),
         ] else
-          _LineupBlock(title: 'Startelf', home: startHome, away: startAway),
+          LineupBlock(
+              title: 'Startelf',
+              home: startHome,
+              away: startAway,
+              homeTeam: d.home,
+              awayTeam: d.away,
+              subs: subs),
         const SizedBox(height: 20),
-        _LineupBlock(
+        LineupBlock(
           title: 'Bank',
           home: pick(true, false),
           away: pick(false, false),
+          homeTeam: d.home,
+          awayTeam: d.away,
+          subs: subs,
         ),
       ],
     );
   }
 }
 
-/// Formationsangaben (z. B. „4-2-3-1" · Heim / Auswärts „4-3-3").
-class _FormationLabels extends StatelessWidget {
-  const _FormationLabels({required this.detail});
-  final MatchDetail detail;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    if (detail.homeFormation == null && detail.awayFormation == null) {
-      return const SizedBox.shrink();
-    }
-    final style = Theme.of(context)
-        .textTheme
-        .labelMedium
-        ?.copyWith(fontWeight: FontWeight.bold, color: scheme.onSurfaceVariant);
-    return Row(
-      children: [
-        Expanded(child: Text(detail.homeFormation ?? '', style: style)),
-        Text('Startelf', style: style),
-        Expanded(
-          child: Text(detail.awayFormation ?? '',
-              textAlign: TextAlign.end, style: style),
-        ),
-      ],
-    );
-  }
-}
-
-/// Startelf beider Teams auf einem Fußballfeld (Heim unten, Auswärts oben),
+/// Startelf beider Teams auf einem Fußballfeld (Heim oben, Auswärts unten),
 /// positioniert nach dem Formationsraster; gelbe/rote Karten am Spieler.
-class _PitchLineup extends StatelessWidget {
-  const _PitchLineup({
+class PitchLineup extends StatelessWidget {
+  const PitchLineup({
+    super.key,
     required this.home,
     required this.away,
+    required this.homeTeam,
+    required this.awayTeam,
     required this.yellow,
     required this.red,
+    this.homeFormation,
+    this.awayFormation,
+    this.subs,
   });
 
   final List<LineupPlayer> home;
   final List<LineupPlayer> away;
+  final TeamRef homeTeam;
+  final TeamRef awayTeam;
   final Set<int> yellow;
   final Set<int> red;
+  final String? homeFormation;
+  final String? awayFormation;
+  final Substitutions? subs;
+
+  /// Ausweichfarben, wenn der Verein nicht in der Farbliste steht: das bisherige
+  /// Grün für Heim, Blau für Auswärts — so bleiben die Seiten unterscheidbar.
+  static const _fallbackHome = ClubColors(MatchUpColors.green, Color(0xFF0E2C1A));
+  static const _fallbackAway = ClubColors(Color(0xFF5B9DF9), Color(0xFF12294A));
+
+  ClubColors get _homeColors =>
+      clubColors(homeTeam.name, fallback: _fallbackHome);
+  ClubColors get _awayColors =>
+      clubColors(awayTeam.name, fallback: _fallbackAway);
 
   List<Widget> _place(List<LineupPlayer> players, bool isHome) {
     final rows = <int, List<LineupPlayer>>{};
@@ -541,11 +589,13 @@ class _PitchLineup extends StatelessWidget {
     for (final r in keys) {
       final line = rows[r]!..sort((a, b) => (a.col ?? 0).compareTo(b.col ?? 0));
       final n = line.length;
+      // Heim spielt **oben**, Auswärts unten. Reihe 1 ist jeweils der Torwart
+      // und steht am eigenen Tor: bei Heim ganz oben, bei Auswärts ganz unten.
       final double yf = maxRow <= 1
-          ? (isHome ? 0.9 : 0.1)
+          ? (isHome ? 0.1 : 0.9)
           : (isHome
-              ? 0.94 - (r - 1) / (maxRow - 1) * (0.94 - 0.56)
-              : 0.06 + (r - 1) / (maxRow - 1) * (0.44 - 0.06));
+              ? 0.06 + (r - 1) / (maxRow - 1) * (0.44 - 0.06)
+              : 0.94 - (r - 1) / (maxRow - 1) * (0.94 - 0.56));
       for (var i = 0; i < n; i++) {
         final p = line[i];
         final xf = (i + 1) / (n + 1);
@@ -556,7 +606,14 @@ class _PitchLineup extends StatelessWidget {
                 : null);
         out.add(Align(
           alignment: Alignment(xf * 2 - 1, yf * 2 - 1),
-          child: _PlayerMarker(player: p, isHome: isHome, card: card),
+          child: _PlayerMarker(
+            player: p,
+            colors: isHome ? _homeColors : _awayColors,
+            card: card,
+            // Ausgewechselt: Pfeil nach unten am Trikot.
+            subbedOff: p.playerId != null &&
+                (subs?.offIds.contains(p.playerId) ?? false),
+          ),
         ));
       }
     }
@@ -580,6 +637,29 @@ class _PitchLineup extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fill(child: CustomPaint(painter: _PitchPainter())),
+              // Wer spielt wo: Heim oben, Auswärts unten — ohne die
+              // Beschriftung muss man die Trikotfarben raten. Die Formation
+              // steht gleich mit dabei, statt über dem Feld zu schweben.
+              Positioned(
+                top: 6,
+                left: 8,
+                right: 8,
+                child: _SideLabel(
+                    team: homeTeam,
+                    colors: _homeColors,
+                    formation: homeFormation,
+                    alignEnd: false),
+              ),
+              Positioned(
+                bottom: 6,
+                left: 8,
+                right: 8,
+                child: _SideLabel(
+                    team: awayTeam,
+                    colors: _awayColors,
+                    formation: awayFormation,
+                    alignEnd: true),
+              ),
               ..._place(home, true),
               ..._place(away, false),
             ],
@@ -596,16 +676,121 @@ String _shortName(String name) {
   return parts.isEmpty ? name : parts.last;
 }
 
-class _PlayerMarker extends StatelessWidget {
-  const _PlayerMarker(
-      {required this.player, required this.isHome, this.card});
-  final LineupPlayer player;
-  final bool isHome;
-  final Color? card;
+/// Beschriftung einer Spielfeldhälfte: Wappen und Vereinsname in Trikotfarbe.
+class _SideLabel extends StatelessWidget {
+  const _SideLabel({
+    required this.team,
+    required this.colors,
+    required this.alignEnd,
+    this.formation,
+  });
+  final TeamRef team;
+  final ClubColors colors;
+  final bool alignEnd;
+  final String? formation;
 
   @override
   Widget build(BuildContext context) {
-    final ring = isHome ? MatchUpColors.green : const Color(0xFF5B9DF9);
+    return Row(
+      mainAxisAlignment:
+          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            // Dunkler Grund statt der Trikotfarbe: Auf dem grünen Rasen wäre
+            // ein weißes oder gelbes Feld zu laut, und helle Vereinsfarben
+            // (Gladbach, Dresden) trügen keinen lesbaren Text.
+            color: Colors.black.withValues(alpha: 0.42),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: colors.secondary, width: 1.5),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                team.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (formation != null && formation!.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Text(
+                  formation!,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+/// Wechsel-Marke: grüner Pfeil nach oben = eingewechselt, roter nach unten =
+/// ausgewechselt. Dieselbe Farbsprache wie im Spielverlauf ([_SubArrows]),
+/// nur als einzelner Pfeil, weil hier je Spieler nur eine Richtung gilt.
+class _SubBadge extends StatelessWidget {
+  const _SubBadge({required this.incoming, this.size = 14});
+  final bool incoming;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFF12141C),
+        shape: BoxShape.circle,
+        border: Border.all(
+            color: incoming ? MatchUpColors.green : MatchUpColors.red,
+            width: 1.2),
+      ),
+      child: Icon(
+        incoming ? Icons.arrow_upward : Icons.arrow_downward,
+        size: size * 0.72,
+        color: incoming ? MatchUpColors.green : MatchUpColors.red,
+      ),
+    );
+  }
+}
+
+class _PlayerMarker extends StatelessWidget {
+  const _PlayerMarker({
+    required this.player,
+    required this.colors,
+    this.card,
+    this.subbedOff = false,
+  });
+  final LineupPlayer player;
+  final ClubColors colors;
+  final Color? card;
+
+  /// Spieler wurde ausgewechselt — roter Pfeil nach unten am Trikot.
+  final bool subbedOff;
+
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
       width: 62,
       child: Column(
@@ -614,25 +799,17 @@ class _PlayerMarker extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              Container(
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF12141C),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: ring, width: 2),
+              JerseyIcon(colors: colors, number: player.number, size: 32),
+              if (subbedOff)
+                const Positioned(
+                  left: -4,
+                  bottom: -2,
+                  child: _SubBadge(incoming: false),
                 ),
-                child: Text('${player.number ?? ''}',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13)),
-              ),
               if (card != null)
                 Positioned(
-                  right: -3,
-                  top: -3,
+                  right: -1,
+                  top: -1,
                   child: Container(
                     width: 9,
                     height: 12,
@@ -695,17 +872,38 @@ class _PitchPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _LineupBlock extends StatelessWidget {
-  const _LineupBlock(
-      {required this.title, required this.home, required this.away});
+/// Zwei Mannschaftslisten nebeneinander (Bank, bzw. Startelf ohne Raster).
+///
+/// Links Heim, rechts Auswärts — mit Kopfzeile je Spalte, damit erkennbar
+/// bleibt, welche Seite zu wem gehört. Vorher standen dort nur zwei
+/// Namenslisten ohne jeden Hinweis auf die Mannschaft.
+class LineupBlock extends StatelessWidget {
+  const LineupBlock({
+    super.key,
+    required this.title,
+    required this.home,
+    required this.away,
+    required this.homeTeam,
+    required this.awayTeam,
+    this.subs,
+  });
   final String title;
   final List<LineupPlayer> home;
   final List<LineupPlayer> away;
+  final TeamRef homeTeam;
+  final TeamRef awayTeam;
+  final Substitutions? subs;
+
+  static const _fallbackHome =
+      ClubColors(MatchUpColors.green, Color(0xFF0E2C1A));
+  static const _fallbackAway = ClubColors(Color(0xFF5B9DF9), Color(0xFF12294A));
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     if (home.isEmpty && away.isEmpty) return const SizedBox.shrink();
+    final heimFarben = clubColors(homeTeam.name, fallback: _fallbackHome);
+    final auswFarben = clubColors(awayTeam.name, fallback: _fallbackAway);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -714,13 +912,37 @@ class _LineupBlock extends StatelessWidget {
                 .textTheme
                 .titleSmall
                 ?.copyWith(fontWeight: FontWeight.bold, color: scheme.primary)),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _TeamColumnHeader(
+                  team: homeTeam, colors: heimFarben, alignEnd: false),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _TeamColumnHeader(
+                  team: awayTeam, colors: auswFarben, alignEnd: true),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _PlayerList(players: home, alignEnd: false)),
+            Expanded(
+                child: _PlayerList(
+                    players: home,
+                    colors: heimFarben,
+                    alignEnd: false,
+                    subs: subs)),
             const SizedBox(width: 12),
-            Expanded(child: _PlayerList(players: away, alignEnd: true)),
+            Expanded(
+                child: _PlayerList(
+                    players: away,
+                    colors: auswFarben,
+                    alignEnd: true,
+                    subs: subs)),
           ],
         ),
       ],
@@ -728,49 +950,117 @@ class _LineupBlock extends StatelessWidget {
   }
 }
 
-class _PlayerList extends StatelessWidget {
-  const _PlayerList({required this.players, required this.alignEnd});
-  final List<LineupPlayer> players;
+/// Spaltenkopf einer Mannschaftsliste: Wappen, Name und ein Strich in der
+/// Trikotfarbe, der die Spalte optisch der Mannschaft zuordnet.
+class _TeamColumnHeader extends StatelessWidget {
+  const _TeamColumnHeader(
+      {required this.team, required this.colors, required this.alignEnd});
+  final TeamRef team;
+  final ClubColors colors;
   final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    Widget number(int? n) => SizedBox(
-          width: 22,
-          child: Text(n?.toString() ?? '',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: scheme.onSurfaceVariant)),
-        );
+    final inhalt = [
+      TeamBadge(team: team, size: 18),
+      const SizedBox(width: 6),
+      Flexible(
+        child: Text(
+          team.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+          style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: scheme.onSurface),
+        ),
+      ),
+    ];
     return Column(
       crossAxisAlignment:
           alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
-        for (final p in players)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: alignEnd
-                  ? [
-                      Expanded(
-                          child: Text(p.name,
-                              textAlign: TextAlign.end,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis)),
-                      const SizedBox(width: 6),
-                      number(p.number),
-                    ]
-                  : [
-                      number(p.number),
-                      const SizedBox(width: 6),
-                      Expanded(
-                          child: Text(p.name,
-                              maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    ],
-            ),
-          ),
+        Row(
+          mainAxisAlignment:
+              alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: alignEnd ? inhalt.reversed.toList() : inhalt,
+        ),
+        const SizedBox(height: 4),
+        Container(height: 3, color: colors.primary),
       ],
+    );
+  }
+}
+
+class _PlayerList extends StatelessWidget {
+  const _PlayerList({
+    required this.players,
+    required this.colors,
+    required this.alignEnd,
+    this.subs,
+  });
+  final List<LineupPlayer> players;
+  final ClubColors colors;
+  final bool alignEnd;
+  final Substitutions? subs;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Die Nummer sitzt auf einem kleinen Trikot in Vereinsfarbe — dieselbe
+    // Sprache wie auf dem Spielfeld, damit die Bank dazu passt.
+    Widget nummer(int? n) => JerseyIcon(colors: colors, number: n, size: 26);
+
+    Widget zeile(LineupPlayer p) {
+      // Eingewechselte bleiben in der Bank-Liste stehen; darunter steht, für
+      // wen sie kamen. So bleibt die Bank vollständig lesbar, statt Spieler
+      // beim Wechsel verschwinden zu lassen.
+      final fuer = p.playerId == null ? null : subs?.onFor[p.playerId];
+      final eingewechselt = fuer != null;
+      final name = Column(
+        crossAxisAlignment:
+            alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(p.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: alignEnd ? TextAlign.end : TextAlign.start),
+          if (eingewechselt)
+            Text('für $fuer',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant)),
+        ],
+      );
+      final marke = eingewechselt
+          ? const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: _SubBadge(incoming: true, size: 13),
+            )
+          : const SizedBox(width: 21);
+      final inhalt = <Widget>[
+        nummer(p.number),
+        const SizedBox(width: 6),
+        Expanded(child: name),
+        marke,
+      ];
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: alignEnd ? inhalt.reversed.toList() : inhalt,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [for (final p in players) zeile(p)],
     );
   }
 }
@@ -863,7 +1153,7 @@ class _TableTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(leagueTableProvider(leagueId));
+    final async = ref.watch(liveLeagueTableProvider(leagueId));
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => Center(
@@ -885,7 +1175,8 @@ class _TableTab extends ConsumerWidget {
             final row = rows[i - 1];
             final highlight =
                 row.team.id == detail.home.id || row.team.id == detail.away.id;
-            return _TableRow(row: row, highlight: highlight);
+            return _TableRow(
+                row: row, highlight: highlight, leagueId: leagueId);
           },
         );
       },
@@ -924,9 +1215,13 @@ class _TableHeader extends StatelessWidget {
 }
 
 class _TableRow extends StatelessWidget {
-  const _TableRow({required this.row, required this.highlight});
+  const _TableRow(
+      {required this.row, required this.highlight, this.leagueId});
   final StandingRow row;
   final bool highlight;
+
+  /// Für den Sprung auf die Vereinsseite (Tabellen-Tab dort).
+  final String? leagueId;
 
   @override
   Widget build(BuildContext context) {
@@ -950,7 +1245,10 @@ class _TableRow extends StatelessWidget {
                         highlight ? FontWeight.bold : FontWeight.w600)),
           ),
           const SizedBox(width: 8),
-          TeamBadge(team: row.team),
+          ClubLink(
+              team: row.team,
+              leagueId: leagueId,
+              child: TeamBadge(team: row.team)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(row.team.name,

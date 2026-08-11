@@ -8,9 +8,11 @@ import '../features/news/providers.dart';
 import '../features/news/ui/news_tile.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
+import 'club_screen.dart';
 import 'match_detail_screen.dart';
 import 'theme.dart';
 import 'widgets/league_logo.dart';
+import 'widgets/segmented_tab_bar.dart';
 
 /// Liga-Übersicht mit Tabs: Spieltage, Tabelle, Torjäger und liga-spezifische
 /// News. Aufgerufen über die Liga-Buttons im Live-Tab.
@@ -50,7 +52,7 @@ class LeagueOverviewScreen extends StatelessWidget {
               ),
             ],
           ),
-          bottom: TabBar(tabs: tabs),
+          bottom: SegmentedTabBar(tabs: tabs),
         ),
         body: TabBarView(children: views),
       ),
@@ -91,26 +93,28 @@ class _TableTab extends ConsumerWidget {
       return _GroupTables(leagueId: leagueId);
     }
 
-    final tableAsync = ref.watch(leagueTableProvider(leagueId));
+    // Bewusst die live überlagerte Tabelle: Die reine API-Tabelle zeigt
+    // gerade beendete und laufende Spiele noch nicht.
+    final tableAsync = ref.watch(liveLeagueTableProvider(leagueId));
     return tableAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => _Retry(
         message: 'Tabelle konnte nicht geladen werden.',
-        onRetry: () => ref.invalidate(leagueTableProvider(leagueId)),
+        onRetry: () => _tabelleNeuLaden(ref, leagueId),
       ),
       data: (rows) {
         if (rows.isEmpty) {
           return const Center(child: Text('Noch keine Tabelle verfügbar.'));
         }
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(leagueTableProvider(leagueId)),
+          onRefresh: () async => _tabelleNeuLaden(ref, leagueId),
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
             itemCount: rows.length + 1,
             itemBuilder: (context, i) {
               if (i == 0) return const _TableHeader();
-              return _TableRowTile(row: rows[i - 1]);
+              return _TableRowTile(row: rows[i - 1], leagueId: leagueId);
             },
           ),
         );
@@ -322,8 +326,12 @@ class _TableHeader extends StatelessWidget {
 }
 
 class _TableRowTile extends StatelessWidget {
-  const _TableRowTile({required this.row});
+  const _TableRowTile({required this.row, this.leagueId});
   final StandingRow row;
+
+  /// Für den Sprung auf die Vereinsseite. Bei Gruppentabellen (Turniere) nicht
+  /// gesetzt — dort führt der Verein keine Ligatabelle.
+  final String? leagueId;
 
   @override
   Widget build(BuildContext context) {
@@ -339,11 +347,20 @@ class _TableRowTile extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 8),
-          TeamBadge(team: row.team),
+          // Wappen + Name öffnen die Vereinsseite.
+          ClubLink(
+            team: row.team,
+            leagueId: leagueId,
+            child: TeamBadge(team: row.team),
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(row.team.name,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
+            child: ClubLink(
+              team: row.team,
+              leagueId: leagueId,
+              child: Text(row.team.name,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
           ),
           SizedBox(
             width: 30,
@@ -906,4 +923,12 @@ class _Retry extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Aktualisiert die Tabelle. Beide Quellen müssen neu geladen werden: die
+/// API-Standings **und** der Spielplan, aus dem die laufenden Spiele in die
+/// Tabelle überlagert werden.
+void _tabelleNeuLaden(WidgetRef ref, String leagueId) {
+  ref.invalidate(leagueTableProvider(leagueId));
+  ref.invalidate(leagueSeasonFixturesProvider(leagueId));
 }

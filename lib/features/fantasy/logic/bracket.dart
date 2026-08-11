@@ -55,8 +55,8 @@ class BracketMatch {
 
   final BracketSlot home;
   final BracketSlot away;
-  final int homePoints;
-  final int awayPoints;
+  final double homePoints;
+  final double awayPoints;
 
   /// Alle Spieltage der Partie sind beendet → Ergebnis steht.
   final bool decided;
@@ -131,16 +131,16 @@ PlayoffBracket buildPlayoffBracket({
   required int playoffTeams,
   required int startRound,
   required int weeksPerRound,
-  required Map<int, Map<String, int>> roundTotals,
+  required Map<int, Map<String, double>> roundTotals,
   required Set<int> finishedMatchdays,
 }) {
   final n = seeding.length;
   final pt = playoffTeams.clamp(0, n);
 
   // Punkte eines Teams in Playoff-Runde [r] (Summe über die Runden-Spieltage).
-  int roundPoints(String id, int r) {
+  double roundPoints(String id, int r) {
     final md0 = startRound + r * weeksPerRound;
-    var sum = 0;
+    var sum = 0.0;
     for (var w = 0; w < weeksPerRound; w++) {
       sum += roundTotals[md0 + w]?[id] ?? 0;
     }

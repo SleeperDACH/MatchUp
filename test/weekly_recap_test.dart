@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/weekly_recap.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 
 /// Kleiner Kader-Generator: pro Manager 1 TW, 4 ABW, 4 MF, 2 ST + 5 Bank
 /// (Standard-RosterConfig), damit `bestEleven` immer eine gültige 11 findet.
@@ -28,7 +29,7 @@ List<FantasyPlayer> _squad(String prefix) {
 }
 
 void main() {
-  const scoring = FantasyScoring.kickbaseStyle;
+  const scoring = FantasyScoringRules.standard;
   const roster = RosterConfig.standard;
 
   // Zwei Manager mit vollständigem Kader.
@@ -43,9 +44,12 @@ void main() {
   ];
 
   /// Alle Spieler „aufgelaufen" (Grundpunkte) + gezielte Tore.
+  // 90 Minuten für alle, damit die Einsatzpunkte (höchste Stufe, 10) greifen —
+  // die Wertung hängt an Minuten, nicht mehr an einem `played`-Flag.
   Map<String, PlayerMatchStats> statsWithGoals(Map<String, int> goals) => {
         for (final p in playerById.values)
-          p.id: PlayerMatchStats(played: true, goals: goals[p.id] ?? 0),
+          p.id: PlayerMatchStats(
+              played: true, minutes: 90, goals: goals[p.id] ?? 0),
       };
 
   group('computeWeeklyRecap – Grundfälle', () {
@@ -90,9 +94,9 @@ void main() {
   group('MVP & Bank-Held', () {
     test('MVP ist der punktbeste Starter, Bank-Held der beste Nicht-Starter',
         () {
-      // b hat vier treffende Stürmer: fwd0..2 je 3 Tore (14 Pkt, Startelf),
-      // fwd3 mit 2 Toren (12 Pkt). Da max. 3 Stürmer starten, fällt fwd3 in
-      // der besten Elf auf die Bank -> Bank-Held. MVP ist mit 14 Pkt bei
+      // b hat vier treffende Stürmer: fwd0..2 je 3 Tore (58 Pkt, Startelf),
+      // fwd3 mit 2 Toren (42 Pkt). Da max. 3 Stürmer starten, fällt fwd3 in
+      // der besten Elf auf die Bank -> Bank-Held. MVP ist mit 58 Pkt bei
       // Gleichstand der kleinste Spieler-ID: a-fwd0.
       final recap = computeWeeklyRecap(
         round: 1,
@@ -107,13 +111,13 @@ void main() {
       );
       expect(recap.mvp!.playerId, 'a-fwd0');
       expect(recap.mvp!.managerId, 'a');
-      // 2 (Einsatz) + 3*4 (ST-Tore) = 14
-      expect(recap.mvp!.points, 14);
+      // 10 (Einsatz 90 Min) + 3*16 (Tore) = 58
+      expect(recap.mvp!.points, 58);
 
-      // fwd3: 2 (Einsatz) + 2*4 = 10 -> bester Bankspieler der Liga.
+      // fwd3: 10 (Einsatz) + 2*16 = 42 -> bester Bankspieler der Liga.
       expect(recap.benchHero!.playerId, 'b-fwd3');
       expect(recap.benchHero!.managerId, 'b');
-      expect(recap.benchHero!.points, 10);
+      expect(recap.benchHero!.points, 42);
     });
   });
 
@@ -177,8 +181,12 @@ void main() {
       );
       expect(recap.benchBlunder, isNotNull);
       expect(recap.benchBlunder!.managerId, 'a');
-      // Entgangen: 3 Tore * 4 (ST) = 12 mehr als der Ersatz ohne Tore.
-      expect(recap.benchBlunder!.pointsLeft, 12);
+      // Beste Elf 230, gewählte Elf 170 -> 60 liegen gelassen.
+      // Es sind nicht bloß die 48 Punkte des Torschützen: Da alle Spieler
+      // 90 Minuten ohne Gegentor haben, holen Torwart und Abwehr je 12
+      // Zu-Null-Punkte. Die beste Elf stellt deshalb fünf Verteidiger auf
+      // (22 statt 10 pro Kopf), die manuelle Aufstellung nur vier.
+      expect(recap.benchBlunder!.pointsLeft, 60);
     });
 
     test('optimale Aufstellung -> kein Bank-Blunder', () {

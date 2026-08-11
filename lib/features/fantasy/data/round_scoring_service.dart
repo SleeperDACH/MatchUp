@@ -5,11 +5,20 @@ import 'package:http/http.dart' as http;
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 
-/// Leitet echte Spieler-Leistungsdaten aus den kostenlosen OpenLigaDB-
-/// Spieltagsdaten ab: Tore (per Torschützen-Nachname) und Zu-Null
-/// (per Verein des Spielers). Assists/Karten/Minuten liefert der freie
-/// Feed nicht — diese bleiben 0, bis ein vollständiger Stats-Feed
-/// angebunden wird.
+/// **Notfallpfad.** Die reguläre Quelle für Spieler-Stats ist Sportmonks über
+/// die Edge Function `sync-stats` (voller Satz, Zuordnung über
+/// `sportmonks:<id>`); der Client liest sie aus `player_match_stats`.
+///
+/// Diese Klasse springt nur ein, wenn dort für einen Spieltag nichts steht —
+/// etwa weil der Sync klemmt oder das Sportmonks-Limit erreicht ist. Sie
+/// leitet aus den kostenlosen OpenLigaDB-Spieltagsdaten ab, was ohne Bezahlfeed
+/// geht: Tore (per Torschützen-Nachname) und Zu-Null (per Verein). Minuten,
+/// Assists, Karten, Paraden und Zweikämpfe kennt der freie Feed nicht; die
+/// Zeilen tragen deshalb `fullStats: false`.
+///
+/// Daraus folgt: Die Punkte aus diesem Pfad sind **nicht** mit denen aus dem
+/// Sportmonks-Satz vergleichbar — ohne Minuten gibt es keine Einsatzpunkte.
+/// Er hält den Spieltag am Laufen, er ersetzt den Feed nicht.
 ///
 /// Bewusste Näherungen (klar kommuniziert): Tore werden über den
 /// Nachnamen zugeordnet; Zu-Null wird Torwart/Abwehr eines Vereins
@@ -83,6 +92,11 @@ class RoundScoringService {
         goals: goals,
         played: goals > 0, // bestätigter Einsatz nur bei Torschütze
         cleanSheet: cs,
+        // Notfallquelle: OpenLigaDB kennt weder Minuten noch Zweikämpfe,
+        // Paraden oder Karten. `fullStats: false` hält fest, dass die
+        // übrigen Zähler mangels Daten auf 0 stehen — nicht, weil der
+        // Spieler nichts getan hätte.
+        fullStats: false,
       );
     }
     return result;

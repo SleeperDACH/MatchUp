@@ -1,8 +1,10 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../app/club_screen.dart';
 import '../../../core/util/club_logos.dart';
 import '../models/fantasy_models.dart';
 
@@ -99,7 +101,11 @@ class PositionPill extends StatelessWidget {
 /// [iconUrl] ist die vom Feed gelieferte Team-Icon-URL (aus der Tabelle
 /// aufgelöst, siehe `clubIconsProvider`); ohne Treffer greifen die Overrides
 /// aus [clubLogoUrl], sonst die Vereinsinitialen.
-class ClubBadge extends StatelessWidget {
+/// Antippen öffnet die Vereinsseite (Spielplan, Tabelle, Kader, News). Die
+/// Fantasy-Seite kennt nur den Vereinsnamen, die Vereinsseite braucht eine
+/// Sportmonks-Team-ID — die Zuordnung macht [clubTeamRefProvider]. Lässt sie
+/// sich nicht eindeutig auflösen, bleibt das Wappen einfach nicht antippbar.
+class ClubBadge extends ConsumerWidget {
   const ClubBadge({
     super.key,
     required this.club,
@@ -112,7 +118,14 @@ class ClubBadge extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final team = ref.watch(clubTeamRefProvider(club));
+    final badge = _badge(context);
+    if (team == null) return badge;
+    return ClubLink(team: team, leagueId: 'bundesliga', child: badge);
+  }
+
+  Widget _badge(BuildContext context) {
     final url = clubLogoUrl(club, iconUrl);
     if (url != null) {
       final logo = url.toLowerCase().endsWith('.svg')

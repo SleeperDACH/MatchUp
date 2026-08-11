@@ -58,7 +58,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
   }
 
   /// Effektive Punkte aller Manager für einen Spieltag (geteilte Logik).
-  Map<String, int> _totals(
+  Map<String, double> _totals(
     Map<String, PlayerMatchStats> stats,
     int round, {
     required List<FantasyManager> managers,
@@ -226,7 +226,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
               }
 
               // Bilanz über alle gespielten Spieltage.
-              final totalsByRound = <int, Map<String, int>>{
+              final totalsByRound = <int, Map<String, double>>{
                 for (final entry in seasonStats.entries)
                   entry.key: _totals(entry.value, entry.key,
                       managers: managers,
@@ -285,8 +285,9 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                             round: round,
                             homeName: nameOf[hId] ?? '?',
                             awayName: aId == null ? null : (nameOf[aId] ?? '?'),
-                            homePoints: weekTotals[hId] ?? 0,
-                            awayPoints: aId == null ? 0 : (weekTotals[aId] ?? 0),
+                            homePoints: weekTotals[hId] ?? 0.0,
+                            awayPoints:
+                                aId == null ? 0.0 : (weekTotals[aId] ?? 0.0),
                             homeMe: hId == myId,
                             awayMe: aId == myId,
                             live: live,

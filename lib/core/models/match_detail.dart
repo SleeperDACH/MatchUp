@@ -72,6 +72,7 @@ class MatchEvent {
     this.player,
     this.playerId,
     this.related,
+    this.relatedPlayerId,
     this.result,
   });
 
@@ -84,6 +85,11 @@ class MatchEvent {
   final String? player;
   final int? playerId;
   final String? related;
+
+  /// Beim Wechsel: der Ausgewechselte ([player] ist der Eingewechselte).
+  /// Fehlt, solange die Edge Function ohne dieses Feld ausgeliefert ist —
+  /// die Aufstellung fällt dann auf den Namen zurück.
+  final int? relatedPlayerId;
   final String? result;
 }
 

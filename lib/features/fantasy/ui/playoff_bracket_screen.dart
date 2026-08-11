@@ -76,7 +76,7 @@ class PlayoffBracketScreen extends ConsumerWidget {
     };
 
     // Effektive H2H-Punkte je gewertetem Spieltag.
-    final totalsByRound = <int, Map<String, int>>{
+    final totalsByRound = <int, Map<String, double>>{
       for (final entry in seasonStats.entries)
         entry.key: effectiveTotalsForRound(
           stats: entry.value,
@@ -366,7 +366,7 @@ class _SideRow extends StatelessWidget {
   });
 
   final BracketSlot slot;
-  final int points;
+  final double points;
   final bool winner;
   final Map<String, String> nameOf;
   final Map<String, ({String? url, String? emoji, String? color})> avatarOf;

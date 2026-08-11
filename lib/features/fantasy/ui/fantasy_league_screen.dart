@@ -26,6 +26,7 @@ import 'matchups_screen.dart';
 import 'player_pool_screen.dart';
 import 'trade_screen.dart';
 import 'weekly_recap_screen.dart';
+import '../../../app/widgets/segmented_tab_bar.dart';
 
 /// Vollwertiger Fantasy-Liga-Screen mit Tabs. Zeigt schon vor dem Draft
 /// Tabelle, Teilnehmer und (leeren) Kader an; die Übersicht führt durch
@@ -62,8 +63,7 @@ class FantasyLeagueScreen extends ConsumerWidget {
             ),
           ],
           // Feste Vier-Tab-Leiste (Icon + Label), alle auf einen Blick.
-          bottom: const TabBar(
-            labelPadding: EdgeInsets.zero,
+          bottom: const SegmentedTabBar(
             tabs: [
               Tab(
                   icon: Icon(Icons.dashboard_outlined, size: 20),

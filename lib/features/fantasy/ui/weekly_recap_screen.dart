@@ -170,7 +170,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
       required IconData icon,
       required String title,
       required String managerId,
-      required int points,
+      required double points,
       String? suffix,
     }) {
       cards.add(_AwardCard(

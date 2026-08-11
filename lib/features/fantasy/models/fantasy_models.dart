@@ -6,6 +6,8 @@
 /// Pickzeit.
 library;
 
+import '../logic/fantasy_scoring_rules.dart';
+
 /// Spielmodus einer Fantasy-Liga.
 enum FantasyMode {
   /// Redraft: Kader gilt nur für eine Saison, danach neuer Draft.
@@ -408,7 +410,7 @@ class FantasyLeague {
   /// Startjahr der Saison (z. B. 2025 für 2025/26).
   final int season;
   final DraftPickTime pickTime;
-  final FantasyScoring scoring;
+  final FantasyScoringRules scoring;
   final RosterConfig roster;
   final String inviteCode;
   final DraftStatus draftStatus;
@@ -476,7 +478,7 @@ class FantasyLeague {
         mode: FantasyMode.fromId(json['mode'] as String),
         season: json['season'] as int,
         pickTime: DraftPickTime.fromSeconds(json['draft_pick_seconds'] as int),
-        scoring: FantasyScoring.fromJson(
+        scoring: FantasyScoringRules.fromJson(
             (json['scoring'] as Map<String, dynamic>?) ?? const {}),
         roster: RosterConfig.fromJson(
             (json['roster'] as Map<String, dynamic>?) ?? const {}),

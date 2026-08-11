@@ -85,8 +85,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       }
       // Erfolg: zuletzt genutzte E-Mail merken, dem System die Anmeldedaten
       // zum Speichern anbieten und – falls gewünscht – die Biometrie-
-      // Anmeldung einrichten. Danach rebuildet currentUserProvider und der
-      // Runden-Tab zeigt automatisch die Rundenliste.
+      // Anmeldung einrichten. Danach rebuildet currentUserProvider und das
+      // Gate in `main.dart` wechselt auf die App-Shell.
       await bio.rememberEmail(email);
       TextInput.finishAutofillContext();
       if (_enableBio) {
@@ -96,6 +96,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
         // wären veraltet.
         await bio.clearCredentials();
       }
+      _erzwingeGateNeubewertung();
     } on AuthFailure catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
@@ -103,6 +104,22 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Sicherheitsnetz gegen „Anmelden gedrückt, es passiert nichts".
+  ///
+  /// Sind wir hier noch eingehängt, hat das Gate den Wechsel auf die App-Shell
+  /// nicht vollzogen — obwohl die Anmeldung durch ist. Dann war das
+  /// Stream-Ereignis für den `authStateProvider` verloren (kein Puffer: der
+  /// Auth-Stream ist ein Broadcast-Stream). Ein `invalidate` lässt den Provider
+  /// neu auswerten; `currentUserProvider` greift dabei auf die inzwischen
+  /// gültige Sitzung des Clients zurück und das Gate schaltet um.
+  ///
+  /// Im Normalfall ist das ein No-Op, weil dieses Widget zu diesem Zeitpunkt
+  /// längst ausgehängt ist.
+  void _erzwingeGateNeubewertung() {
+    if (!mounted) return;
+    ref.invalidate(authStateProvider);
   }
 
   /// Meldet per Biometrie mit den hinterlegten Zugangsdaten an.
@@ -115,13 +132,21 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     try {
       final creds = await bio.authenticateAndRead();
       if (creds == null) {
-        if (mounted) setState(() => _busy = false);
-        return; // abgebrochen / fehlgeschlagen
+        // Abgebrochen oder fehlgeschlagen. Früher endete der Weg hier
+        // wortlos — für den Tester sah es aus, als tue der Knopf nichts.
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _error = '$_bioLabel hat nicht geklappt. Bitte mit E-Mail und '
+                'Passwort anmelden.';
+          });
+        }
+        return;
       }
       await ref
           .read(authRepositoryProvider)
           .signIn(email: creds.email, password: creds.password);
-      // Erfolg -> rebuild über currentUserProvider.
+      _erzwingeGateNeubewertung();
     } on AuthFailure catch (e) {
       // Passwort wurde vermutlich geändert -> hinterlegte Daten verwerfen,
       // damit der Button nicht ins Leere führt.

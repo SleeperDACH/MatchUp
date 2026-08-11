@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 
 void main() {
@@ -215,7 +216,7 @@ void main() {
           mode: mode,
           season: 2025,
           pickTime: DraftPickTime.m1,
-          scoring: FantasyScoring.kickbaseStyle,
+          scoring: FantasyScoringRules.standard,
           roster: const RosterConfig(), // squad 16
           inviteCode: 'x',
           draftStatus: DraftStatus.drafting,

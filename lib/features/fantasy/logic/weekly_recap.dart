@@ -9,6 +9,7 @@ library;
 
 import '../models/fantasy_models.dart';
 import 'fantasy_scoring_engine.dart';
+import 'fantasy_scoring_rules.dart';
 import '../../../core/logic/round_robin.dart';
 
 /// Punkte eines Managers an einem Spieltag (effektive Startelf).
@@ -16,7 +17,7 @@ class ManagerScore {
   const ManagerScore(this.managerId, this.points);
 
   final String managerId;
-  final int points;
+  final double points;
 }
 
 /// Ein entschiedenes Head-to-Head (kein Unentschieden, kein Bye).
@@ -30,10 +31,10 @@ class RecapMatchup {
 
   final String winnerId;
   final String loserId;
-  final int winnerPoints;
-  final int loserPoints;
+  final double winnerPoints;
+  final double loserPoints;
 
-  int get margin => winnerPoints - loserPoints;
+  double get margin => winnerPoints - loserPoints;
 }
 
 /// Ein einzelner Spieler als Award-Träger (MVP bzw. Bank-Held).
@@ -48,7 +49,7 @@ class PlayerAward {
 
   /// Besitzer des Spielers (für „… aus dem Kader von X").
   final String managerId;
-  final int points;
+  final double points;
 }
 
 /// Auf der Bank liegengelassene Punkte: die punktbeste gültige Elf hätte
@@ -57,7 +58,7 @@ class BenchBlunder {
   const BenchBlunder({required this.managerId, required this.pointsLeft});
 
   final String managerId;
-  final int pointsLeft;
+  final double pointsLeft;
 }
 
 /// Gebündeltes Recap eines Spieltags. Einzelne Awards sind `null`, wenn es
@@ -109,7 +110,7 @@ WeeklyRecap computeWeeklyRecap({
   required Map<String, FantasyPlayer> playerById,
   required List<FantasyLineup> lineups,
   required Map<String, PlayerMatchStats> stats,
-  required FantasyScoring scoring,
+  FantasyScoringRules scoring = FantasyScoringRules.standard,
   required RosterConfig rosterConfig,
 }) {
   // Kader je Manager (nur Spieler, die im Pool bekannt sind).

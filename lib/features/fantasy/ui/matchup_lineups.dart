@@ -22,8 +22,8 @@ class MatchupSideData {
 
   final List<FantasyPlayer> starters;
   final List<FantasyPlayer> bench;
-  final Map<String, int> points;
-  final int total;
+  final Map<String, double> points;
+  final double total;
 
   List<FantasyPlayer> startersAt(PlayerPosition pos) =>
       [for (final p in starters) if (p.position == pos) p]
@@ -69,8 +69,8 @@ MatchupSideData computeSideData({
       : (pointsByPlayer[b] ?? 0).compareTo(pointsByPlayer[a] ?? 0));
 
   final points = {for (final e in pointsByPlayer.entries) e.key.id: e.value};
-  final total = [for (final p in starters) points[p.id] ?? 0]
-      .fold<int>(0, (a, b) => a + b);
+  final total = [for (final p in starters) points[p.id] ?? 0.0]
+      .fold<double>(0, (a, b) => a + b);
   return MatchupSideData(starters, bench, points, total);
 }
 
@@ -163,8 +163,8 @@ class MatchupLineups extends ConsumerWidget {
     for (var i = 0; i < n; i++) {
       final h = i < hs.length ? hs[i] : null;
       final a = i < as.length ? as[i] : null;
-      final hp = h == null ? null : (home.points[h.id] ?? 0);
-      final ap = a == null ? null : (away?.points[a.id] ?? 0);
+      final hp = h == null ? null : (home.points[h.id] ?? 0.0);
+      final ap = a == null ? null : (away?.points[a.id] ?? 0.0);
       rows.add(_PlayerRow(
         home: h,
         away: a,
@@ -215,8 +215,8 @@ class _PlayerRow extends StatelessWidget {
 
   final FantasyPlayer? home;
   final FantasyPlayer? away;
-  final int? homePts;
-  final int? awayPts;
+  final double? homePts;
+  final double? awayPts;
   final bool homeMine;
   final bool awayMine;
   final Map<String, String?> clubIcons;
@@ -259,7 +259,7 @@ class _PlayerRow extends StatelessWidget {
 
   Widget _cell(BuildContext context,
       {required FantasyPlayer? player,
-      required int? pts,
+      required double? pts,
       required bool mine,
       required bool highlight,
       required bool start}) {
@@ -425,7 +425,7 @@ class _BenchSection extends StatelessWidget {
   }
 
   Widget _column(BuildContext context, String title, List<FantasyPlayer> bench,
-      Map<String, int> points, bool mine) {
+      Map<String, double> points, bool mine) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),

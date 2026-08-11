@@ -15,6 +15,7 @@ class LiquidGlass extends StatelessWidget {
     this.blur = 24,
     this.padding,
     this.tintOpacity,
+    this.borderOpacity,
   });
 
   final Widget child;
@@ -24,6 +25,10 @@ class LiquidGlass extends StatelessWidget {
 
   /// Deckkraft der Grundtönung; ohne Angabe je nach Helligkeit gewählt.
   final double? tintOpacity;
+
+  /// Deckkraft des Licht-Rands; ohne Angabe je nach Helligkeit gewählt.
+  /// Kleiner setzen, wenn die Fläche zurücktreten soll (Navi-Leiste).
+  final double? borderOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +57,8 @@ class LiquidGlass extends StatelessWidget {
               ],
             ),
             border: Border.all(
-              color: Colors.white.withValues(alpha: dark ? 0.18 : 0.55),
+              color: Colors.white
+                  .withValues(alpha: borderOpacity ?? (dark ? 0.18 : 0.55)),
               width: 0.8,
             ),
             boxShadow: [

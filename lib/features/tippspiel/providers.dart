@@ -21,6 +21,7 @@ import 'logic/tip_weeks.dart';
 import 'models/chat_message.dart';
 import 'models/tip.dart';
 import 'models/tip_round.dart';
+import 'logic/live_table.dart';
 
 /// Aktiver Wettbewerb; umschaltbar über den Titel der App-Bar.
 final selectedLeagueProvider =
@@ -477,3 +478,19 @@ class TipsNotifier extends StateNotifier<Map<String, Tip>> {
     }
   }
 }
+
+/// Ligatabelle inklusive laufender und frisch beendeter Spiele.
+///
+/// Die reine API-Tabelle (`leagueTableProvider`) hinkt hinterher — Sportmonks
+/// schreibt Standings verzögert fort. `mergeLiveResults` trägt nach, was im
+/// Spielplan schon steht, und behält dabei die Grundlage der API (wegen
+/// Punktabzügen). Fällt der Spielplan aus, bleibt die API-Tabelle stehen.
+final liveLeagueTableProvider =
+    Provider.family<AsyncValue<List<StandingRow>>, String>((ref, leagueId) {
+  final table = ref.watch(leagueTableProvider(leagueId));
+  final fixtures = ref.watch(leagueSeasonFixturesProvider(leagueId));
+  return table.whenData((rows) => mergeLiveResults(
+        rows,
+        fixtures.valueOrNull ?? const [],
+      ));
+});

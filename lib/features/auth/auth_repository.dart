@@ -84,6 +84,16 @@ class AuthRepository {
     if (newPassword.length < 6) {
       throw const AuthFailure('Das Passwort muss mindestens 6 Zeichen haben.');
     }
+    // Der Screen erscheint schon, wenn die App den Recovery-Link *erkennt* —
+    // unabhängig davon, ob Supabase die Tokens einlösen konnte. Fehlt die
+    // Sitzung, liegt es fast immer an einem abgelaufenen oder bereits
+    // benutzten Link; das ist eine brauchbare Auskunft, „Nicht angemeldet"
+    // wäre keine.
+    if (currentUser == null) {
+      throw const AuthFailure(
+          'Der Link ist abgelaufen oder wurde schon benutzt. Bitte fordere '
+          'einen neuen Reset-Link an.');
+    }
     try {
       await _client.auth.updateUser(UserAttributes(password: newPassword));
     } on AuthException catch (e) {

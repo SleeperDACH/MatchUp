@@ -77,12 +77,39 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   der Function): `SupabaseTipStore.save` stößt ihn an, wenn ein Tipp scheitert,
   weil das Spiel in der App schon sichtbar, aber noch nicht gespiegelt ist.
 - Stats-Sync: Edge Function `supabase/functions/sync-stats/` (gleiche
-  Schutz-/Deploy-Konvention) füllt `player_match_stats` (Tore/Zu-Null aus
-  OpenLigaDB). Die Matching-Logik ist 1:1 zu
-  `RoundScoringService.computeStats` — bei Änderungen beide anpassen. Der
-  Client liest die Tabelle über `FantasyStatsSource` und fällt für nicht
-  gespiegelte Spieltage auf die Live-Berechnung zurück. Roh-Stats, keine
-  Punkte (die hängen an `FantasyScoring`).
+  Schutz-/Deploy-Konvention) füllt `player_match_stats` mit dem **vollen
+  Roh-Stat-Satz aus Sportmonks** (Migration 0074: ~25 Zähler plus Rating).
+  Zwei Eigenschaften sind wichtig:
+  * Die Fixture-IDs kommen aus `public.fixtures` (von `sync-fixtures`
+    gespiegelt), **nicht** von Sportmonks — das kostet keinen API-Request.
+  * `/fixtures/multi/{ids}` liefert bis zu 25 Spiele samt Lineups und
+    Ereignissen für **einen** Request (gemessen: `remaining` sinkt um 1).
+    Ein voller Bundesliga-Spieltag ist damit 1 Request; Live-Scoring im
+    30-Sekunden-Takt kostet ~120 Requests/h von 2.000.
+  Zuordnung über `sportmonks:<player_id>` = `players.id` — kein Raten über
+  Nachnamen mehr. Karten kommen aus den **Ereignissen** (nur die trennen
+  glatt Rot von Gelb-Rot), alles andere aus `lineups.details`; wer das mischt,
+  zählt doppelt. `STAT_CODE_MAP` in der Function muss zu
+  `scoring/src/mapping.ts` passen.
+  **Sportmonks kennt keinen „gehaltener Elfmeter"-Typ.** Nach
+  Produktentscheidung bekommt der gegnerische Torwart die Punkte bei jedem
+  `missed_penalty` — bewusst großzügig und in Teilen sachlich falsch.
+  `RoundScoringService.computeStats` ist nur noch **Notfallpfad** (OpenLigaDB,
+  Tore/Zu-Null); solche Zeilen tragen `source='openligadb'` bzw.
+  `fullStats: false` und sind nicht mit dem vollen Satz vergleichbar.
+  Roh-Stats, keine Punkte.
+- **Fantasy-Punktevergabe steht an zwei Stellen** und muss gleich bleiben
+  (wie `tip_scoring.dart` ↔ SQL-View): `scoring/config/scoring.config.json`
+  (TypeScript-Modul, Referenz für Balance-Simulationen) und
+  `lib/features/fantasy/logic/fantasy_scoring_rules.dart` (dieselbe Wertung
+  für die App). Gerechnet wird in `fantasy_scoring_engine.dart`
+  (`scorePlayerDetailed` liefert Summe + Aufschlüsselung).
+  **Punkte sind `double`**, nicht `int` — die Wertung kennt 1,5 je Key Pass
+  und −0,4 je Foul. Für die Anzeige `formatPoints()` benutzen.
+  Ligen, die vor der Umstellung angelegt wurden, tragen in
+  `fantasy_leagues.scoring` noch das alte 6-Kategorien-Objekt ohne `version`;
+  `FantasyScoringRules.fromJson` gibt für die bewusst die Standardwertung
+  zurück, statt alte Zahlen in die neue Wertung zu übernehmen.
 - Wettquoten (`lib/core/data/odds/`, Quelle the-odds-api.com, Gratis-Tier):
   Der **Key bleibt serverseitig** — die Edge Function `odds` (Proxy + Cache
   `odds_cache`) liefert sie; im Client holt `SupabaseOddsProvider` nur die
@@ -160,10 +187,21 @@ flutter build web --release --pwa-strategy=none --base-href "/MatchUp/" \
 Simulator **und** Web-Demo nach jeder Änderung auf den neuesten Stand bringen,
 nicht erst auf Nachfrage:
 
-- **Simulator (auf dem MacBook):** läuft i. d. R. schon (`flutter run`,
-  iPhone-Simulator). Nach `.dart`-Änderungen Hot-Reload `kill -USR1 <pid>`,
-  bei Provider-/Strukturänderungen Hot-Restart `kill -USR2 <pid>` an den
-  `flutter run`-Prozess. Den Stand per `xcrun simctl io <udid> screenshot`
+- **Simulator (auf dem MacBook):** soll **durchgehend mitlaufen**. Dafür
+  abgekoppelt starten und über eine PID-Datei steuern — sonst reißt das Ende
+  eines Shell-Kommandos die App mit („Lost connection to device"):
+  ```sh
+  nohup flutter run -d <udid> --pid-file=/tmp/flutter.pid \
+    > /tmp/live.log 2>&1 < /dev/null & disown
+  kill -USR1 "$(cat /tmp/flutter.pid)"   # Hot-Reload
+  kill -USR2 "$(cat /tmp/flutter.pid)"   # Hot-Restart (Provider/Struktur)
+  xcrun simctl launch <udid> app.matchup.mobile   # App nach vorn holen
+  ```
+  `setsid` gibt es auf macOS **nicht**; `nohup … & disown` genügt. `flutter
+  run` nie an ein Kommando hängen, das ein Timeout haben kann.
+  **„Restarted application in 2 ms" ist kein Fehlersignal** — ob der Restart
+  wirkte, sieht man daran, dass die App wieder auf dem Home-Tab steht.
+  Den Stand per `xcrun simctl io <udid> screenshot`
   prüfen. Tippen geht doch — über die Fensterkoordinaten des Simulators:
   ```sh
   osascript -e 'tell application "System Events" to tell process "Simulator" \
@@ -173,6 +211,12 @@ nicht erst auf Nachfrage:
   `xcrun simctl terminate <udid> app.matchup.mobile`, dann
   `xcrun simctl openurl <udid> "app.matchup.mobile://login-callback/#access_token=X&type=recovery"`
   — iOS fragt „In MatchUp öffnen?", der Klick bestätigt.
+  **Synthetische Taps sind unzuverlässig:** Die Navi-Kapsel schwebt
+  (`extendBody`), daneben liegt der Inhalt — Fehlklicks öffnen News-Links im
+  In-App-Browser. Für Layout-Prüfungen sind **Golden-Vorschauen** unter
+  `test/goldens/` das verlässlichere Mittel (`flutter test --update-goldens
+  test/<name>_preview_test.dart`, dann die PNG ansehen). Genau so ist
+  aufgefallen, dass Heim/Auswärts auf dem Spielfeld vertauscht waren.
 - **Web-Demo:** mit dem Build-/Deploy-Ablauf oben neu nach `gh-pages` pushen
   und live verifizieren (md5 von `main.dart.js` gegen den Build vergleichen;
   GitHub Pages propagiert ~15–60 s).

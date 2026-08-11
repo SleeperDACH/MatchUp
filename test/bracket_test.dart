@@ -11,7 +11,7 @@ void main() {
     const seeding = ['A', 'B', 'C', 'D', 'E', 'F'];
 
     test('komplett ausgespielt → exakte Endplätze 1–6', () {
-      final totals = {
+      final totals = <int, Map<String, double>>{
         // Runde 0 (Spieltag 33): Halbfinals + Trost-Finale.
         33: {'A': 100, 'B': 90, 'C': 80, 'D': 70, 'E': 60, 'F': 50},
         // Runde 1 (Spieltag 34): Finale + Spiel um Platz 3.
@@ -51,7 +51,7 @@ void main() {
     });
 
     test('offene Runde → betroffene Plätze bleiben unbestimmt', () {
-      final totals = {
+      final totals = <int, Map<String, double>>{
         33: {'A': 100, 'B': 90, 'C': 80, 'D': 70, 'E': 60, 'F': 50},
       };
       final b = buildPlayoffBracket(
@@ -74,7 +74,7 @@ void main() {
   group('Byes (ungerade Playoff-Zahl)', () {
     test('3 Playoff-Teams → Topgesetzter bekommt Freilos, exakte Plätze', () {
       const seeding = ['A', 'B', 'C'];
-      final totals = {
+      final totals = <int, Map<String, double>>{
         33: {'A': 100, 'B': 90, 'C': 80}, // A hat Freilos; B schlägt C
         34: {'A': 95, 'B': 50}, // Finale A schlägt B; C ist per Bye schon 3.
       };
@@ -99,7 +99,7 @@ void main() {
         playoffTeams: 2,
         startRound: 34,
         weeksPerRound: 1,
-        roundTotals: {
+        roundTotals: <int, Map<String, double>>{
           34: {'A': 70, 'B': 70}, // Gleichstand
         },
         finishedMatchdays: {34},
@@ -117,7 +117,7 @@ void main() {
         playoffTeams: 2,
         startRound: 33,
         weeksPerRound: 2,
-        roundTotals: {
+        roundTotals: <int, Map<String, double>>{
           33: {'A': 40, 'B': 60},
           34: {'A': 50, 'B': 20}, // A: 90, B: 80 → A gewinnt in Summe
         },
@@ -131,7 +131,7 @@ void main() {
         playoffTeams: 2,
         startRound: 33,
         weeksPerRound: 2,
-        roundTotals: {
+        roundTotals: <int, Map<String, double>>{
           33: {'A': 40, 'B': 60},
         },
         finishedMatchdays: {33},

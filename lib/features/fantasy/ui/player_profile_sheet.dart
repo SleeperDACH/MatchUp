@@ -262,7 +262,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
       for (final r in rounds)
         (r, season[r]?[player.id] ?? const PlayerMatchStats())
     ];
-    final total = rows.fold<int>(
+    final total = rows.fold<double>(
         0, (s, e) => s + scorePlayer(e.$2, player.position, league.scoring));
     final games = rows.where((e) => e.$2.played).length;
 

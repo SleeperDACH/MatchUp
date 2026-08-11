@@ -383,7 +383,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     int slotIndex,
     Map<PlayerPosition, List<String?>> slots,
     Map<PlayerPosition, List<FantasyPlayer>> byPos,
-    Map<FantasyPlayer, int> points,
+    Map<FantasyPlayer, double> points,
     Map<String, PlayerMatchStats> stats,
   ) async {
     final samePosAssigned = slots[pos]!.whereType<String>().toSet();
@@ -521,7 +521,7 @@ class _Pitch extends StatelessWidget {
 
   final Map<PlayerPosition, List<String?>> slots;
   final Map<String, FantasyPlayer> playerById;
-  final Map<FantasyPlayer, int> points;
+  final Map<FantasyPlayer, double> points;
   final Map<String, String?> clubIcons;
   final ValueChanged<FantasyPlayer> onOpenProfile;
   final void Function(PlayerPosition pos, int index)? onTapSlot;
@@ -605,7 +605,7 @@ class _Slot extends StatelessWidget {
 
   final FantasyPlayer? player;
   final PlayerPosition pos;
-  final int? points;
+  final double? points;
   final String? iconUrl;
 
   /// Tippen auf den Spieler (Avatar/Name) → Profil.
@@ -789,7 +789,7 @@ class _Bench extends StatelessWidget {
   });
 
   final List<FantasyPlayer> bench;
-  final Map<FantasyPlayer, int> points;
+  final Map<FantasyPlayer, double> points;
   final Map<String, String?> clubIcons;
 
   /// Freie Kaderplätze (durch Drops entstanden).
@@ -974,7 +974,7 @@ class _PlayerPicker extends StatelessWidget {
 
   final PlayerPosition position;
   final List<FantasyPlayer> candidates;
-  final Map<FantasyPlayer, int> points;
+  final Map<FantasyPlayer, double> points;
   final Map<String, PlayerMatchStats> stats;
   final Map<String, String?> clubIcons;
   final bool canClear;

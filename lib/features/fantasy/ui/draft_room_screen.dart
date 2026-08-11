@@ -14,6 +14,7 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
 import 'pitch_painter.dart';
+import '../../../app/widgets/segmented_tab_bar.dart';
 
 /// Live-Draft-Raum: Snake-Reihenfolge, Pick-Timer (kurz = Live, lang =
 /// Slow), Auto-Pick bei Ablauf und Picks in Echtzeit. Die Reihenfolge
@@ -283,7 +284,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     // „bester zuerst"; Spieler ohne Vorsaison-BL-Werte landen am Ende.
     final seasonTotals =
         ref.watch(lastSeasonTotalsProvider).valueOrNull ?? const {};
-    final seasonPoints = <String, int>{
+    final seasonPoints = <String, double>{
       for (final p in pool)
         if (seasonTotals[p.id] != null)
           p.id: projectedSeasonPoints(
@@ -370,9 +371,8 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
           title: Text(league.name),
           // Board · Spieler (mit Queue) · Team · Chat — alles ohne den Raum
           // verlassen zu müssen.
-          bottom: TabBar(
+          bottom: SegmentedTabBar(
             controller: _tabs,
-            labelPadding: EdgeInsets.zero,
             tabs: [
               const Tab(
                   icon: Icon(Icons.grid_view_outlined, size: 20),
@@ -1260,13 +1260,11 @@ class _PlayersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return DefaultTabController(
       length: 2,
       child: Column(
         children: [
-          TabBar(
-            labelColor: scheme.primary,
+          SegmentedTabBar(
             tabs: [
               const Tab(text: 'Verfügbar'),
               Tab(text: 'Queue ($queueCount)'),

@@ -57,6 +57,7 @@ Future<void> main() async {
       // Startseite statt beim Passwort-Screen. Deshalb lesen wir den
       // Start-Link zusätzlich selbst; `type=recovery` steht im Fragment.
       await _pruefeRecoveryStartlink();
+      _beobachteRecoveryLinks();
     } catch (e, s) {
       debugPrint('Supabase-Initialisierung fehlgeschlagen: $e\n$s');
     }
@@ -65,22 +66,48 @@ Future<void> main() async {
   runApp(const ProviderScope(child: FantasyApp()));
 }
 
-/// Wurde die App über einen Passwort-Reset-Link gestartet? Dann direkt in den
-/// „Neues Passwort"-Screen. Nur nativ — im Web trägt schon die Adresszeile das
-/// Fragment, und dort greift der Listener rechtzeitig.
+/// Implicit-Flow: `#access_token=…&type=recovery`. Das Fragment ist kein
+/// Query-String, deshalb von Hand prüfen statt `queryParameters` zu nutzen.
+bool _istRecoveryLink(Uri uri) => uri.fragment.contains('type=recovery');
+
+/// Wurde die App über einen Passwort-Reset-Link **gestartet**? Dann direkt in
+/// den „Neues Passwort"-Screen. Nur nativ — im Web trägt schon die Adresszeile
+/// das Fragment, und dort greift der Listener rechtzeitig.
 Future<void> _pruefeRecoveryStartlink() async {
   if (kIsWeb) return;
   try {
     final uri = await AppLinks().getInitialLink();
-    if (uri == null) return;
-    // Implicit-Flow: `#access_token=…&type=recovery`. Das Fragment ist kein
-    // Query-String, deshalb von Hand prüfen statt queryParameters zu nutzen.
-    if (uri.fragment.contains('type=recovery')) {
+    if (uri != null && _istRecoveryLink(uri)) {
       passwordRecoveryMode.value = true;
     }
   } catch (e) {
     debugPrint('Start-Link konnte nicht gelesen werden: $e');
   }
+}
+
+/// Dasselbe für den **Warmstart**: Link kommt an, während die App schon läuft.
+///
+/// Das ist der häufigere Weg, nicht der Sonderfall — der Tester fordert die
+/// Mail *in der App* an, wechselt zu Mail und tippt den Link; MatchUp liegt
+/// dann im Hintergrund. `main()` läuft dabei nicht erneut, `getInitialLink()`
+/// also auch nicht. Übrig blieb allein der `passwordRecovery`-Listener, und
+/// der feuert nur, wenn Supabase den Token-Tausch in `getSessionFromUrl`
+/// erfolgreich abschließt. Scheitert der (abgelaufener oder schon benutzter
+/// Link, keine Verbindung), kam die App kommentarlos auf der Startseite hoch —
+/// genau das haben die TestFlight-Tester gemeldet.
+///
+/// Die App schaut sich den Link jetzt selbst an, unabhängig davon, was
+/// Supabase daraus macht. Kalt- und Warmstart verhalten sich damit gleich.
+void _beobachteRecoveryLinks() {
+  if (kIsWeb) return;
+  // `AppLinks()` ist ein Singleton mit Broadcast-Stream — diese Anmeldung
+  // kommt der internen von supabase_flutter nicht in die Quere.
+  AppLinks().uriLinkStream.listen(
+    (uri) {
+      if (_istRecoveryLink(uri)) passwordRecoveryMode.value = true;
+    },
+    onError: (Object e) => debugPrint('Deep-Link-Stream: $e'),
+  );
 }
 
 class FantasyApp extends ConsumerWidget {

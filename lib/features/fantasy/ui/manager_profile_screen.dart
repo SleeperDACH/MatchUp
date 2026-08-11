@@ -249,7 +249,7 @@ class ManagerProfileScreen extends ConsumerWidget {
   Widget _pitch(
     BuildContext context,
     Map<PlayerPosition, List<FantasyPlayer>> byPos,
-    Map<FantasyPlayer, int> points,
+    Map<FantasyPlayer, double> points,
     Map<String, String?> clubIcons,
     void Function(FantasyPlayer) onTap,
   ) {
@@ -273,7 +273,7 @@ class ManagerProfileScreen extends ConsumerWidget {
                     children: [
                       for (final p in (byPos[pos] ?? const <FantasyPlayer>[]))
                         _pitchPlayer(
-                            p, points[p] ?? 0, clubIcons[p.club], () => onTap(p)),
+                            p, points[p] ?? 0.0, clubIcons[p.club], () => onTap(p)),
                     ],
                   ),
                 ),
@@ -285,7 +285,7 @@ class ManagerProfileScreen extends ConsumerWidget {
   }
 
   Widget _pitchPlayer(
-      FantasyPlayer p, int pts, String? icon, VoidCallback onTap) {
+      FantasyPlayer p, double pts, String? icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -345,7 +345,7 @@ class ManagerProfileScreen extends ConsumerWidget {
   Widget _bench(
     BuildContext context,
     List<FantasyPlayer> bench,
-    Map<FantasyPlayer, int> points,
+    Map<FantasyPlayer, double> points,
     Map<String, String?> clubIcons,
     void Function(FantasyPlayer) onTap,
   ) {

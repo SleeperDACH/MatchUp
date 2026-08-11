@@ -113,7 +113,7 @@ class MatchupDetailScreen extends ConsumerWidget {
                 homeName: homeName,
                 awayName: isBye ? null : (awayName ?? '?'),
                 homeTotal: home.total,
-                awayTotal: away?.total ?? 0,
+                awayTotal: away?.total ?? 0.0,
                 homeMe: homeId == myId,
                 awayMe: awayId == myId,
                 started: live || allFinished,
@@ -165,8 +165,8 @@ class _Scoreboard extends StatelessWidget {
   final bool live;
   final String homeName;
   final String? awayName; // null = Bye
-  final int homeTotal;
-  final int awayTotal;
+  final double homeTotal;
+  final double awayTotal;
   final bool homeMe;
   final bool awayMe;
   final bool started;

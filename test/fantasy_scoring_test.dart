@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/features/fantasy/data/round_scoring_service.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
+import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 
 FantasyPlayer _p(String id, String name, PlayerPosition pos, String club) =>
@@ -13,42 +14,120 @@ FantasyPlayer _p(String id, String name, PlayerPosition pos, String club) =>
         nationality: 'de');
 
 void main() {
-  group('scorePlayer (Kickbase-Stil)', () {
-    const scoring = FantasyScoring.kickbaseStyle; // app2 gk/def6 mid5 fwd4 ...
-
-    test('Stürmer mit 2 Toren + Einsatz', () {
-      final pts = scorePlayer(const PlayerMatchStats(goals: 2, played: true),
-          PlayerPosition.fwd, scoring);
-      expect(pts, 2 + 2 * 4); // appearance + 2*goalFwd
+  // Die Referenzwerte stammen aus scoring/test/scoring.test.ts — beide
+  // Implementierungen derselben Punktevergabe müssen identisch rechnen.
+  group('scorePlayer (Voll-Advanced, Referenz aus dem TS-Modul)', () {
+    test('Einsatzstufen: exakte Werte je Minuten', () {
+      double m(int min) =>
+          scorePlayer(PlayerMatchStats(minutes: min), PlayerPosition.mid);
+      expect(m(0), 0);
+      expect(m(10), 2);
+      expect(m(45), 4);
+      expect(m(75), 6);
+      expect(m(90), 10);
     });
 
-    test('Verteidiger-Tor wiegt mehr als Stürmer-Tor', () {
-      final def = scorePlayer(const PlayerMatchStats(goals: 1, played: true),
-          PlayerPosition.def, scoring);
-      final fwd = scorePlayer(const PlayerMatchStats(goals: 1, played: true),
-          PlayerPosition.fwd, scoring);
-      expect(def, greaterThan(fwd));
-    });
-
-    test('Zu-Null nur für Torwart/Abwehr', () {
+    test('MID: 90 Min + 1 Tor = 26', () {
       expect(
-          scorePlayer(const PlayerMatchStats(played: true, cleanSheet: true),
-              PlayerPosition.gk, scoring),
-          2 + 4);
-      expect(
-          scorePlayer(const PlayerMatchStats(played: true, cleanSheet: true),
-              PlayerPosition.fwd, scoring),
-          2); // Zu-Null zählt für Stürmer nicht
+          scorePlayer(const PlayerMatchStats(minutes: 90, goals: 1),
+              PlayerPosition.mid),
+          26);
     });
 
-    test('Assists und Karten fließen ein (voller Feed)', () {
+    test('GK: 90 Min, 3 Paraden, 1 Gegentor, Rating 6.8 = 15', () {
+      expect(
+          scorePlayer(
+              const PlayerMatchStats(
+                  minutes: 90, saves: 3, goalsConceded: 1, rating: 6.8),
+              PlayerPosition.gk),
+          15);
+    });
+
+    test('FWD: 60 Min + 1 Tor + Rating 6.5 = 22', () {
+      expect(
+          scorePlayer(
+              const PlayerMatchStats(minutes: 60, goals: 1, rating: 6.5),
+              PlayerPosition.fwd),
+          22);
+    });
+
+    test('Elfmetertor zählt 12, reguläres Tor 16 — nicht doppelt', () {
+      final r = scorePlayerDetailed(
+          const PlayerMatchStats(minutes: 90, goals: 2, penaltyGoals: 1),
+          PlayerPosition.fwd);
+      final tor = r.breakdown.firstWhere((l) => l.label == 'Tor');
+      final elfer = r.breakdown.firstWhere((l) => l.label == 'Tor (Elfmeter)');
+      expect(tor.count, 1, reason: 'nur das nicht-Elfmeter-Tor');
+      expect(elfer.subtotal, 12);
+      expect(r.total, 10 + 16 + 12);
+    });
+
+    test('Key Pass zählt Großchancen nicht doppelt', () {
+      final r = scorePlayerDetailed(
+          const PlayerMatchStats(
+              minutes: 90, keyPasses: 4, bigChancesCreated: 1),
+          PlayerPosition.mid);
+      final kp = r.breakdown.firstWhere((l) => l.label == 'Key Pass');
+      expect(kp.count, 3);
+    });
+
+    test('Zu Null erst ab 60 Minuten und nur ohne Gegentor', () {
+      double cs(int min, int conceded) => scorePlayerDetailed(
+              PlayerMatchStats(minutes: min, goalsConceded: conceded),
+              PlayerPosition.def)
+          .breakdown
+          .where((l) => l.label == 'Zu Null')
+          .fold(0.0, (a, l) => a + l.subtotal);
+      expect(cs(90, 0), 12);
+      expect(cs(59, 0), 0, reason: 'unter der Mindestspielzeit');
+      expect(cs(90, 1), 0, reason: 'Gegentor schließt Zu Null aus');
+    });
+
+    test('Zu Null zählt für Mittelfeld und Sturm nicht', () {
+      expect(
+          scorePlayer(const PlayerMatchStats(minutes: 90), PlayerPosition.fwd),
+          10);
+    });
+
+    test('Paraden-Meilensteine sind kumulativ', () {
+      expect(reachedMilestones(4, FantasyScoringRules.standard.saveMilestones),
+          isEmpty);
+      expect(
+          reachedMilestones(5, FantasyScoringRules.standard.saveMilestones)
+              .fold(0.0, (a, m) => a + m.bonus),
+          8);
+      expect(
+          reachedMilestones(8, FantasyScoringRules.standard.saveMilestones)
+              .fold(0.0, (a, m) => a + m.bonus),
+          20);
+    });
+
+    test('Rating null löst keinen Malus aus', () {
+      final ohne = scorePlayerDetailed(
+          const PlayerMatchStats(minutes: 90), PlayerPosition.mid);
+      expect(ohne.breakdown.where((l) => l.label.startsWith('Rating')), isEmpty);
+      final schlecht = scorePlayerDetailed(
+          const PlayerMatchStats(minutes: 90, rating: 4.5), PlayerPosition.mid);
+      expect(schlecht.total, lessThan(ohne.total));
+    });
+
+    test('Katastrophenspiel wird klar negativ', () {
       final pts = scorePlayer(
           const PlayerMatchStats(
-              played: true, assists: 2, yellow: 1, minutes: 90),
-          PlayerPosition.mid,
-          scoring);
-      // appearance 2 + 2*assist(3) + 1*yellow(-1)
-      expect(pts, 2 + 2 * 3 - 1);
+              minutes: 90,
+              goalsConceded: 5,
+              ownGoals: 1,
+              red: 1,
+              rating: 3.5),
+          PlayerPosition.gk);
+      expect(pts, lessThan(0));
+    });
+
+    test('Bruchteile summieren korrekt (Key Pass 1,5 / Foul −0,4)', () {
+      final pts = scorePlayer(
+          const PlayerMatchStats(minutes: 90, keyPasses: 1, fouls: 1),
+          PlayerPosition.mid);
+      expect(pts, closeTo(10 + 1.5 - 0.4, 1e-9));
     });
   });
 
@@ -81,18 +160,21 @@ void main() {
   group('bestEleven (flexible Formation)', () {
     // Voller Kader, sodass eine gültige Formation (FPL: ABW 3–5, MF 2–5,
     // ST 1–3, Summe 11) gebildet werden kann.
-    Map<FantasyPlayer, int> squad(Map<String, int> defs, Map<String, int> mids,
-        Map<String, int> fwds, int gkPts) {
-      final m = <FantasyPlayer, int>{
-        _p('gk1', 'GK1', PlayerPosition.gk, 'C'): gkPts,
+    Map<FantasyPlayer, double> squad(Map<String, int> defs,
+        Map<String, int> mids, Map<String, int> fwds, int gkPts) {
+      final m = <FantasyPlayer, double>{
+        _p('gk1', 'GK1', PlayerPosition.gk, 'C'): gkPts.toDouble(),
       };
-      defs.forEach((id, p) => m[_p(id, id, PlayerPosition.def, 'C')] = p);
-      mids.forEach((id, p) => m[_p(id, id, PlayerPosition.mid, 'C')] = p);
-      fwds.forEach((id, p) => m[_p(id, id, PlayerPosition.fwd, 'C')] = p);
+      defs.forEach(
+          (id, p) => m[_p(id, id, PlayerPosition.def, 'C')] = p.toDouble());
+      mids.forEach(
+          (id, p) => m[_p(id, id, PlayerPosition.mid, 'C')] = p.toDouble());
+      fwds.forEach(
+          (id, p) => m[_p(id, id, PlayerPosition.fwd, 'C')] = p.toDouble());
       return m;
     }
 
-    int posCount(Lineup l, Map<FantasyPlayer, int> all, PlayerPosition pos) =>
+    int posCount(Lineup l, Map<FantasyPlayer, double> all, PlayerPosition pos) =>
         all.keys
             .where((p) => l.starterIds.contains(p.id) && p.position == pos)
             .length;
@@ -135,7 +217,12 @@ void main() {
     final fwd1 = _p('fwd1', 'FWD1', PlayerPosition.fwd, 'C');
     final fwd2 = _p('fwd2', 'FWD2', PlayerPosition.fwd, 'C');
     final fwd3 = _p('fwd3', 'FWD3', PlayerPosition.fwd, 'C');
-    final points = {gk: 5, fwd1: 9, fwd2: 7, fwd3: 3};
+    final points = <FantasyPlayer, double>{
+      gk: 5,
+      fwd1: 9,
+      fwd2: 7,
+      fwd3: 3
+    };
 
     test('chosenLineup summiert genau die gewählten Spieler', () {
       final lineup = chosenLineup(points, {'gk1', 'fwd3'});
@@ -243,7 +330,7 @@ void main() {
         roster: over,
         playerById: players,
         lineups: const [],
-        scoring: FantasyScoring.kickbaseStyle,
+        scoring: FantasyScoringRules.standard,
         rosterConfig: roster,
       );
       expect(totals['u1'], 0);
@@ -259,7 +346,7 @@ void main() {
         roster: ok,
         playerById: players,
         lineups: const [],
-        scoring: FantasyScoring.kickbaseStyle,
+        scoring: FantasyScoringRules.standard,
         rosterConfig: roster,
       );
       expect(totals['u1'], greaterThan(0));

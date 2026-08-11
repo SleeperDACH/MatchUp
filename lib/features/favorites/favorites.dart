@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/data/sportmonks/sportmonks_provider.dart';
+import '../../core/models/squad_member.dart';
 import '../../core/models/models.dart';
 import '../../core/models/team_fixture.dart';
 import '../auth/providers.dart';
@@ -214,6 +215,15 @@ final teamFixturesProvider =
     FutureProvider.family<List<TeamFixture>, String>((ref, teamId) {
   if (!AppConfig.isSupabaseConfigured) return Future.value(const []);
   return SupabaseSportmonksProvider().getTeamFixtures(teamId);
+});
+
+/// Kader eines Vereins. Family-Key ist die reine Sportmonks-Team-ID.
+/// Braucht die Server-Verbindung; der Kader wird serverseitig einen Tag
+/// gecacht (er ändert sich nur bei Transfers).
+final teamSquadProvider =
+    FutureProvider.family<List<SquadMember>, String>((ref, teamId) {
+  if (!AppConfig.isSupabaseConfigured) return Future.value(const []);
+  return SupabaseSportmonksProvider().getSquad(teamId);
 });
 
 /// Platzhalter-„Teams" der K.-o.-Runde sind keine echten Mannschaften und

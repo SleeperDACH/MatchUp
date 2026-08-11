@@ -68,8 +68,8 @@ class H2HRecord {
   final int wins;
   final int losses;
   final int ties;
-  final int pointsFor;
-  final int pointsAgainst;
+  final double pointsFor;
+  final double pointsAgainst;
 
   int get played => wins + losses + ties;
 
@@ -80,8 +80,8 @@ class H2HRecord {
     int win = 0,
     int loss = 0,
     int tie = 0,
-    int pf = 0,
-    int pa = 0,
+    double pf = 0,
+    double pa = 0,
   }) =>
       H2HRecord(
         managerId: managerId,
@@ -99,7 +99,7 @@ class H2HRecord {
 /// Gleichstand nach den insgesamt erzielten Spielerpunkten (dann Differenz).
 List<H2HRecord> h2hStandings(
   List<String> ids,
-  Map<int, Map<String, int>> totalsByRound,
+  Map<int, Map<String, num>> totalsByRound,
 ) {
   var records = {for (final id in ids) id: H2HRecord(managerId: id)};
 
@@ -107,8 +107,8 @@ List<H2HRecord> h2hStandings(
     final totals = entry.value;
     for (final m in roundPairings(ids, entry.key)) {
       if (m.isBye) continue; // spielfrei zählt nicht
-      final hp = totals[m.home] ?? 0;
-      final ap = totals[m.away] ?? 0;
+      final hp = (totals[m.home] ?? 0).toDouble();
+      final ap = (totals[m.away] ?? 0).toDouble();
       if (hp > ap) {
         records[m.home] = records[m.home]!._add(win: 1, pf: hp, pa: ap);
         records[m.away!] = records[m.away]!._add(loss: 1, pf: ap, pa: hp);

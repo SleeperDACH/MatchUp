@@ -136,8 +136,8 @@ class MatchupHero extends ConsumerWidget {
       scoring: league.scoring,
       rosterConfig: league.roster,
     );
-    final myPts = totals[myId] ?? 0;
-    final oppPts = totals[oppId] ?? 0;
+    final myPts = totals[myId] ?? 0.0;
+    final oppPts = totals[oppId] ?? 0.0;
     return MatchupBanner(
       round: round,
       homeName: nameOf[myId] ?? 'Du',
@@ -179,8 +179,8 @@ class MatchupBanner extends StatelessWidget {
   final int round;
   final String homeName;
   final String? awayName;
-  final int homePoints;
-  final int awayPoints;
+  final double homePoints;
+  final double awayPoints;
   final bool homeMe;
   final bool awayMe;
   final bool live;
@@ -579,8 +579,8 @@ class ScoreBadge extends StatelessWidget {
     required this.accent,
   });
 
-  final int left;
-  final int right;
+  final double left;
+  final double right;
   final bool leftWin;
   final bool rightWin;
   final Color accent;
@@ -591,7 +591,8 @@ class ScoreBadge extends StatelessWidget {
     Color numColor(bool win, bool otherWin) => win
         ? _cGreen
         : (otherWin ? _cRed : Colors.white);
-    Widget number(int v, bool win, bool otherWin) => Text('$v',
+    Widget number(double v, bool win, bool otherWin) =>
+        Text(formatPoints(v),
         style: TextStyle(
             color: numColor(win, otherWin),
             fontSize: 32,
@@ -693,8 +694,8 @@ class _MomentumBar extends StatelessWidget {
   const _MomentumBar(
       {required this.left, required this.right, this.leftColor = _cGreen});
 
-  final int left;
-  final int right;
+  final double left;
+  final double right;
 
   /// Farbe der Heim-Seite (Banner-Akzent: grün, bzw. rot solange live).
   final Color leftColor;
@@ -702,8 +703,10 @@ class _MomentumBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Flex nie 0 (sonst kollabiert die Seite komplett); min. schmaler Rest.
-    final l = left < 1 ? 1 : left;
-    final r = right < 1 ? 1 : right;
+    // Flex verlangt ganze Zahlen; die Dezimalpunkte der Wertung sind für
+    // die Balkenbreite ohne Belang.
+    final l = left < 1 ? 1 : left.round();
+    final r = right < 1 ? 1 : right.round();
     return Row(
       children: [
         Expanded(

@@ -10,6 +10,7 @@ import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import '../../../app/widgets/segmented_tab_bar.dart';
 
 /// Trade-Zentrale einer Liga: neue Angebote erstellen (Kader nebeneinander)
 /// und ein- wie ausgehende Angebote verwalten (annehmen / ablehnen /
@@ -36,9 +37,8 @@ class TradeScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Trade'),
-          bottom: TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.center,
+          bottom: SegmentedTabBar(
+            scrollable: true,
             tabs: [
               const Tab(text: 'Neuer Trade'),
               Tab(
