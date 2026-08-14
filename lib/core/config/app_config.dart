@@ -42,6 +42,19 @@ abstract final class AppConfig {
   /// Recovery-Screen zeigt.
   static const webResetRedirect = 'https://sleeperdach.github.io/MatchUp/';
 
+  /// Datenschutzerklärung — Pflichtangabe für App Store und Google Play.
+  ///
+  /// Liegt bewusst **außerhalb** von `/MatchUp/`: Unter diesem Pfad hatte ein
+  /// früherer Web-Demo-Build einen Service Worker registriert, der jede Anfrage
+  /// darunter abfängt und den zwischengespeicherten App-Rumpf ausliefert. Auf
+  /// der Nutzer-Seite (Repo `sleeperdach.github.io`) greift der nicht.
+  static const privacyUrl = 'https://sleeperdach.github.io/datenschutz.html';
+
+  /// Anleitung zur Kontolöschung — von Google Play als eigene, öffentlich
+  /// erreichbare URL verlangt (Data safety → Kontolöschung).
+  static const accountDeletionUrl =
+      'https://sleeperdach.github.io/konto-loeschen.html';
+
   /// Ziel-URL, auf der der Passwort-Reset-Link landet.
   ///
   /// Auf dem Handy zeigt er in die App: Der Tester fordert das neue Passwort

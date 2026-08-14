@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
@@ -317,7 +318,24 @@ class _HomeMenuDrawer extends ConsumerWidget {
               onTap: () => open(const ConversationsScreen()),
             ),
             const Spacer(),
-            // Bewusst sehr dezent, kaum sichtbar – nur der Vollständigkeit halber.
+            // Rechtliches, bewusst sehr dezent – nur der Vollständigkeit halber.
+            // Der Datenschutz steht über dem Impressum, weil beide Stores ihn
+            // verlangen und er häufiger gesucht wird.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => launchUrl(Uri.parse(AppConfig.privacyUrl),
+                    mode: LaunchMode.externalApplication),
+                style: TextButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor:
+                      scheme.onSurfaceVariant.withValues(alpha: 0.45),
+                ),
+                child: const Text('Datenschutz', style: TextStyle(fontSize: 10)),
+              ),
+            ),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
