@@ -49,3 +49,6 @@ app.*.map.json
 
 # Golden-Test-Artefakte (Vergleichsbilder fehlgeschlagener Tests)
 test/failures/
+
+# Persönliche Notizen – das Repo ist öffentlich
+*.pages
