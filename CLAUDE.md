@@ -162,7 +162,38 @@ flutter test --plain-name "Stufen stapeln" # einzelner Test per Name
 flutter analyze
 flutter run                                # mit Server — Keys stecken in AppConfig
 flutter build ipa                          # TestFlight; braucht keine Flags mehr
+flutter build appbundle                    # Google Play (AAB), signiert per key.properties
+flutter build apk                          # ein APK zum Sideloaden/Testen
 ```
+
+**Android-Release.** Drei Dinge, die am Flutter-Template fehlten und ohne die
+ein Play-Upload nicht funktioniert — bei Template-Updates nicht wieder
+verlieren:
+
+- `INTERNET` steht im **Haupt**-Manifest, nicht nur im Debug-Manifest. Das
+  Template gibt die Berechtigung nur Debug/Profile; ein Release-Build käme
+  sonst ohne Fehlermeldung nicht an Supabase — dieselbe stumme Falle wie beim
+  ersten TestFlight-Build.
+- Signiert wird mit dem **Upload-Keystore** `~/keys/matchup-upload.jks`
+  (PKCS12, Alias `matchup-upload`, gültig bis 2053). Zugang steht in
+  `android/key.properties` (gitignored). Fehlt die Datei, fällt der
+  Release-Build absichtlich auf den Debug-Key zurück, damit `flutter run
+  --release` weiter geht — ein so signiertes AAB lehnt Play ab. **Keystore +
+  Passwort gehören ins Backup:** ohne sie ist kein Update der App mehr
+  möglich, nur noch ein Key-Reset über den Play-Support.
+- Bei Play App Signing ist das der *Upload*-Key, nicht der Verteilungs-Key;
+  Google signiert selbst neu. SHA-256 des Upload-Zertifikats:
+  `1D:90:E9:68:C0:F1:7D:CB:F2:97:6F:EC:37:34:5F:84:87:1F:26:85:6E:AC:44:D1:4F:FE:8F:D5:EE:12:B8:D4`.
+
+Vor jedem Upload die Build-Nummer in `pubspec.yaml` (`version: x.y.z+N`)
+erhöhen — Play nimmt denselben `versionCode` kein zweites Mal an. iOS und
+Android teilen sich diese Nummer.
+
+Toolchain auf dem MacBook: JDK ist die JBR von Android Studio
+(`flutter config --jdk-dir=…`), SDK unter `~/Library/Android/sdk` mit
+`cmdline-tools/latest`, `platforms;android-36` (= `flutter.compileSdkVersion`)
+und akzeptierten Lizenzen. `flutter doctor` muss beim Android-Haken grün sein,
+sonst schlägt der Gradle-Lauf mit einer irreführenden Meldung fehl.
 
 Server-Deploy (Zugangsdaten aus `supabase/.env.local`, CLI ist eingeloggt +
 verlinkt):
@@ -217,6 +248,26 @@ nicht erst auf Nachfrage:
   `test/goldens/` das verlässlichere Mittel (`flutter test --update-goldens
   test/<name>_preview_test.dart`, dann die PNG ansehen). Genau so ist
   aufgefallen, dass Heim/Auswärts auf dem Spielfeld vertauscht waren.
+- **Android-Emulator (Gegentest vor einem Play-Upload):** AVD `matchup_pixel`
+  (Pixel 7, Android 36, arm64). Steuerung geht hier zuverlässiger als im
+  iOS-Simulator, weil `adb` Taps und Text direkt annimmt:
+  ```sh
+  ~/Library/Android/sdk/emulator/emulator -avd matchup_pixel -no-boot-anim \
+    > /tmp/emulator.log 2>&1 < /dev/null & disown
+  adb wait-for-device && adb install -r build/app/outputs/flutter-apk/app-release.apk
+  adb shell am start -n app.matchup.mobile/.MainActivity   # nicht `monkey`, s. u.
+  adb exec-out screencap -p > /tmp/android.png
+  adb shell input tap X Y; adb shell input text "…"; adb shell input keyevent 61  # 61 = TAB
+  ```
+  **Direkt nach `adb install` scheitert ein Start per `monkey`** („VM exiting
+  with result code -5"): der Paketmanager ist eine Sekunde später fertig als
+  das `Success`. `am start` benutzen, das sieht wie ein Absturz aus, ist aber
+  keiner. **Zwischen zwei Feldern per TAB wechseln, nicht per Tap** — die
+  Tastatur schiebt das Layout hoch, ein Tap auf die vorher notierte Koordinate
+  landet dann im falschen Feld.
+  Ob der Release-Build wirklich am Server hängt, zeigt eine Anmeldung mit
+  Fantasie-Daten: „E-Mail oder Passwort ist falsch" kommt von Supabase, ist
+  also der Beweis für den Round-Trip (und damit für die `INTERNET`-Berechtigung).
 - **Web-Demo:** mit dem Build-/Deploy-Ablauf oben neu nach `gh-pages` pushen
   und live verifizieren (md5 von `main.dart.js` gegen den Build vergleichen;
   GitHub Pages propagiert ~15–60 s).
