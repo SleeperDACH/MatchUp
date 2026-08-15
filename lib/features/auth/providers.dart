@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -19,7 +20,13 @@ final biometricLoginProvider = Provider<BiometricLoginService>((ref) {
 /// (lokaler Modus).
 final authStateProvider = StreamProvider<AuthState>((ref) {
   if (!AppConfig.isSupabaseConfigured) return const Stream.empty();
-  return Supabase.instance.client.auth.onAuthStateChange;
+  return Supabase.instance.client.auth.onAuthStateChange.map((e) {
+    if (kDebugMode) {
+      debugPrint('[AUTH] Ereignis ${e.event.name} '
+          'session=${e.session != null} user=${e.session?.user.email}');
+    }
+    return e;
+  });
 });
 
 final currentUserProvider = Provider<User?>((ref) {
@@ -39,8 +46,14 @@ final currentUserProvider = Provider<User?>((ref) {
   // im Ereignis null und `currentUser` ebenfalls null (richtig), und solange
   // der Stream nach einem `invalidate` noch lädt, liefert der Client bereits
   // den gültigen Nutzer.
-  return state.valueOrNull?.session?.user ??
-      Supabase.instance.client.auth.currentUser;
+  final ausEreignis = state.valueOrNull?.session?.user;
+  final ausClient = Supabase.instance.client.auth.currentUser;
+  if (kDebugMode) {
+    debugPrint('[AUTH] currentUserProvider neu berechnet: '
+        'ausEreignis=${ausEreignis?.email} ausClient=${ausClient?.email} '
+        'streamZustand=${state.runtimeType}');
+  }
+  return ausEreignis ?? ausClient;
 });
 
 /// Nutzername des angemeldeten Profils (für Begrüßung/Profil-Tab).

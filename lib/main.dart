@@ -1,5 +1,5 @@
 import 'package:app_links/app_links.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -138,6 +138,10 @@ class _RootGate extends ConsumerWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: passwordRecoveryMode,
       builder: (context, recovery, _) {
+        if (kDebugMode) {
+          debugPrint('[AUTH] Gate baut: user=${user?.email} '
+              'recovery=$recovery konfiguriert=${AppConfig.isSupabaseConfigured}');
+        }
         if (recovery) return const UpdatePasswordScreen();
         if (!AppConfig.isSupabaseConfigured) return const MainShell();
         return user == null ? const LoginScreen() : const MainShell();

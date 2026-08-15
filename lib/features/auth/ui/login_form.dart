@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,6 +84,10 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       } else {
         await auth.signIn(email: email, password: password);
       }
+      if (kDebugMode) {
+        debugPrint('[AUTH] signIn/signUp durch, '
+            'mounted=$mounted registerMode=$_registerMode');
+      }
       // Erfolg: zuletzt genutzte E-Mail merken, dem System die Anmeldedaten
       // zum Speichern anbieten und – falls gewünscht – die Biometrie-
       // Anmeldung einrichten. Danach rebuildet currentUserProvider und das
@@ -96,10 +101,15 @@ class _LoginFormState extends ConsumerState<LoginForm> {
         // wären veraltet.
         await bio.clearCredentials();
       }
+      if (kDebugMode) {
+        debugPrint('[AUTH] Nacharbeit fertig, mounted=$mounted');
+      }
       _erzwingeGateNeubewertung();
     } on AuthFailure catch (e) {
+      if (kDebugMode) debugPrint('[AUTH] AuthFailure: ${e.message}');
       setState(() => _error = e.message);
     } catch (e) {
+      if (kDebugMode) debugPrint('[AUTH] Unerwarteter Fehler: $e');
       setState(() => _error = 'Unerwarteter Fehler: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -146,8 +156,12 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       await ref
           .read(authRepositoryProvider)
           .signIn(email: creds.email, password: creds.password);
+      if (kDebugMode) {
+        debugPrint('[AUTH] Nacharbeit fertig, mounted=$mounted');
+      }
       _erzwingeGateNeubewertung();
     } on AuthFailure catch (e) {
+      if (kDebugMode) debugPrint('[AUTH] AuthFailure: ${e.message}');
       // Passwort wurde vermutlich geändert -> hinterlegte Daten verwerfen,
       // damit der Button nicht ins Leere führt.
       await bio.clearCredentials();
@@ -189,6 +203,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     } on AuthFailure catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
+      if (kDebugMode) debugPrint('[AUTH] Unerwarteter Fehler: $e');
       setState(() => _error = 'Unerwarteter Fehler: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
