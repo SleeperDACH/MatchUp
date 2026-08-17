@@ -22,6 +22,13 @@ const UA =
 // Nur diese Ligen sind erlaubt (die 5 im Sportmonks-Plan).
 const ALLOWED_LEAGUES = new Set(["82", "85", "88", "109", "1740"]);
 
+// Sportmonks hat **zwei getrennte Typ-Nummernkreise**, und sie überschneiden
+// sich: im `event`-Kreis ist 15 ein Eigentor, im `statistic`-Kreis ist 83
+// eine Rote Karte. Die Torjägerliste liegt im Statistik-Kreis, dort ist Tor
+// = 208. Wer hier eine Zahl ändert, prüft sie vorher gegen
+// `/v3/core/types/<id>` und schaut auf `model_type`.
+const ST_GOAL_TOPSCORER = 208;
+
 // TTL je Ressource (Sekunden): Fixtures kurz (Live), Tabelle länger.
 const TTL = {
   seasonFixtures: 60,
@@ -415,7 +422,8 @@ async function fixtureDetail(fixtureId: string) {
   };
 }
 
-// Torschützenliste (type_id 83 = Tore) — ausschließlich die AKTUELLE Saison.
+// Torschützenliste (Statistik-Typ 208 = Tore) — ausschließlich die AKTUELLE
+// Saison.
 // Vor Saisonstart ist die Liste leer (kein Rückgriff auf die letzte Saison,
 // damit keine „alten" Tore angezeigt werden).
 async function topScorers(leagueKey: string) {
@@ -429,11 +437,21 @@ async function topScorers(leagueKey: string) {
   };
   if (!cs?.id) return empty;
 
+  // Der Filter muss mit, und zwar genau so: `seasonTopscorerTypes`.
+  // `topscorerTypes` wird stillschweigend ignoriert (die Antwort sieht
+  // trotzdem plausibel aus). Ohne Filter mischt die Antwort Karten, Tore und
+  // Vorlagen in einer nach Typ gruppierten Liste — die Tore fangen erst auf
+  // Seite 2 an, `per_page=25` sieht also ausschließlich Karten.
   const ts = await smGet(
-    `/topscorers/seasons/${cs.id}?include=player;participant&per_page=25`,
+    `/topscorers/seasons/${cs.id}?filters=seasonTopscorerTypes:${ST_GOAL_TOPSCORER}` +
+      `&include=player;participant&per_page=25`,
   );
+  // Zweite Sicherung: sollte der Filter serverseitig doch mal wegfallen,
+  // liefert die Liste lieber nichts als Karten.
   // deno-lint-ignore no-explicit-any
-  const goals = ((ts?.data ?? []) as any[]).filter((t) => t.type_id === 83);
+  const goals = ((ts?.data ?? []) as any[]).filter(
+    (t) => t.type_id === ST_GOAL_TOPSCORER,
+  );
   if (goals.length === 0) return empty;
 
   goals.sort((a, b) => (a.position ?? 999) - (b.position ?? 999));

@@ -94,6 +94,15 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   **Sportmonks kennt keinen „gehaltener Elfmeter"-Typ.** Nach
   Produktentscheidung bekommt der gegnerische Torwart die Punkte bei jedem
   `missed_penalty` — bewusst großzügig und in Teilen sachlich falsch.
+  **Sportmonks hat zwei Typ-Nummernkreise, und sie überschneiden sich:** im
+  `event`-Kreis ist 15 ein Eigentor, im `statistic`-Kreis ist 83 eine Rote
+  Karte. Die Torjägerliste zeigte deshalb monatelang Rote Karten statt Tore
+  (Statistik-Typ für Tore ist **208**). Jede Typ-Zahl vor dem Einbau gegen
+  `/v3/core/types/<id>` prüfen und auf `model_type` schauen.
+  Die Torjäger-Abfrage braucht zwingend `filters=seasonTopscorerTypes:208` —
+  `topscorerTypes` wird **stillschweigend ignoriert**, und ohne Filter mischt
+  die Antwort Karten, Tore und Vorlagen nach Typ gruppiert; die Tore fangen
+  erst auf Seite 2 an, `per_page=25` sieht also nur Karten.
   `RoundScoringService.computeStats` ist nur noch **Notfallpfad** (OpenLigaDB,
   Tore/Zu-Null); solche Zeilen tragen `source='openligadb'` bzw.
   `fullStats: false` und sind nicht mit dem vollen Satz vergleichbar.
