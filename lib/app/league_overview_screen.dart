@@ -793,7 +793,6 @@ class _ScorerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final img = scorer.playerImg;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       child: Row(
@@ -804,13 +803,19 @@ class _ScorerTile extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 8),
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: scheme.surfaceContainerHighest,
-            backgroundImage: img != null ? NetworkImage(img) : null,
-            child: img == null
-                ? Icon(Icons.person, size: 18, color: scheme.onSurfaceVariant)
-                : null,
+          // Vereinswappen statt Spielerfoto: Sportmonks hat für die 2./3. Liga
+          // nur zu gut der Hälfte der Spieler ein Foto und liefert sonst seinen
+          // eigenen grauen Platzhalter — die Liste sah damit halb kaputt aus.
+          // Wappen sind lückenlos vorhanden, und `TeamBadge` zeigt sie genau
+          // wie Tabelle und Spielplan darüber (Initialen als Fallback).
+          TeamBadge(
+            team: TeamRef(
+              id: scorer.teamName ?? '?',
+              name: scorer.teamName ?? '',
+              shortName: scorer.teamName ?? '?',
+              iconUrl: scorer.teamImg,
+            ),
+            size: 32,
           ),
           const SizedBox(width: 10),
           Expanded(
