@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/main_shell.dart';
 import 'app/theme.dart';
+import 'app/widgets/matchup_splash.dart';
 import 'app/widgets/route_reset.dart';
 import 'core/config/app_config.dart';
 import 'features/auth/password_recovery.dart';
@@ -121,7 +122,9 @@ class FantasyApp extends ConsumerWidget {
       // MatchUp ist dark-only — kein Hell-Modus.
       theme: buildAppTheme(brightness: Brightness.dark),
       themeMode: ThemeMode.dark,
-      home: const _RootGate(),
+      // Der Splash liegt **über** dem Gate, damit die App darunter schon
+      // aufbaut und lädt, während die Marke einfährt.
+      home: const MatchUpSplash(child: _RootGate()),
     );
   }
 }

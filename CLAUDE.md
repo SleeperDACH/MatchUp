@@ -253,6 +253,28 @@ flutter build web --release --pwa-strategy=none --base-href "/MatchUp/" \
 # Inhalt von build/web auf Branch gh-pages pushen
 ```
 
+## Startbildschirm
+
+Zwei Schirme hintereinander, und nur der zweite lässt sich animieren:
+
+1. **Nativ** (`ios/Runner/Base.lproj/LaunchScreen.storyboard`) — zeigt das
+   Betriebssystem, bevor Flutter läuft. Statisch, nicht animierbar. Das
+   `LaunchImage`-Asset ist deshalb **absichtlich leer** (1×1 transparent);
+   sichtbar ist nur die Hintergrundfarbe, dieselbe wie `MatchUpColors.base`.
+   Stünde dort wieder das Logo, sähe man es erst fertig, dann verschwinden
+   und in der Flutter-Animation neu einfliegen.
+2. **Flutter** (`app/widgets/matchup_splash.dart`) — die grüne Markenhälfte
+   fährt von oben ein, die rote von unten, sie treffen sich in der Mitte,
+   dann erscheint die Wortmarke. Ein Tipp überspringt.
+
+Die App wird **erst gebaut, wenn die Wortmarke steht**: Animation und Aufbau
+teilen sich denselben Thread, und der Aufbau des Homescreens hält ihn
+spürbar an. Wo dieser Halt liegt, kann man wählen — er gehört ans Ende und
+nicht mitten in die Einfahrt. Im Debug-Build auf dem Simulator dauert das
+sichtbar lange; **Release/Profile lassen sich auf dem iOS-Simulator nicht
+starten** („Releasemode is not supported by iPhone 17 Pro"), gemessen ist der
+echte Ablauf also nur auf einem Gerät.
+
 ## Live-Update (immer nach Änderungen)
 
 Simulator **und** Web-Demo nach jeder Änderung auf den neuesten Stand bringen,
