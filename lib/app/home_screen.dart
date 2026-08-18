@@ -11,6 +11,7 @@ import '../features/auth/providers.dart';
 import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
+import '../features/fantasy/ui/draft_room_screen.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
 import '../features/fantasy/ui/fantasy_rank_chip.dart';
 import '../features/friends/providers.dart';
@@ -27,11 +28,13 @@ import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
 import '../features/tippspiel/ui/tip_rank_chip.dart';
+import 'home_now.dart';
 import 'impressum_screen.dart';
 import 'league_screen.dart';
 import 'profile_screen.dart';
 import 'theme.dart';
 import 'widgets/matchup_chevron.dart';
+import 'widgets/now_card.dart';
 
 /// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
 /// Tippspiel folgt als zweiter Bereich darunter.
@@ -99,8 +102,11 @@ class HomeScreen extends ConsumerWidget {
                 'App-Version wurde ohne Server ausgeliefert.',
               )
             else ...[
-              const _Appear(child: _WelcomeHeader()),
-              const SizedBox(height: 18),
+              const _Appear(child: _GreetingBar()),
+              const SizedBox(height: 12),
+              // Ganz oben das, was gerade ansteht — der Screen soll eine
+              // Handlung anbieten, nicht nur eine Liste.
+              const _Appear(delayMs: 40, child: _NowSection()),
               // Noch gar keine Liga (Fantasy + Tippspiel beide leer geladen):
               // statt zweier leerer Abschnitte ein großer Einstieg.
               if ((ref.watch(myFantasyLeaguesProvider).valueOrNull?.isEmpty ??
@@ -152,13 +158,15 @@ class HomeScreen extends ConsumerWidget {
             ? const _EmptyHint(
                 'Noch keine Fantasy-Liga — oben rechts mit + eine Redraft- '
                 'oder Dynasty-Liga erstellen.')
-            : Column(
-                children: [
-                  for (var i = 0; i < list.length; i++) ...[
-                    if (i > 0) const _RowDivider(),
-                    _FantasyLeagueCard(league: list[i]),
+            : _SectionBox(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < list.length; i++) ...[
+                      if (i > 0) const _RowDivider(),
+                      _FantasyLeagueCard(league: list[i]),
+                    ],
                   ],
-                ],
+                ),
               ),
       ),
     ];
@@ -186,13 +194,15 @@ class HomeScreen extends ConsumerWidget {
             ? const _EmptyHint(
                 'Noch keine Tipprunde — oben rechts mit + ein Tippspiel '
                 'erstellen.')
-            : Column(
-                children: [
-                  for (var i = 0; i < standalone.length; i++) ...[
-                    if (i > 0) const _RowDivider(),
-                    _TipRoundCard(round: standalone[i]),
+            : _SectionBox(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < standalone.length; i++) ...[
+                      if (i > 0) const _RowDivider(),
+                      _TipRoundCard(round: standalone[i]),
+                    ],
                   ],
-                ],
+                ),
               ),
       ),
     ];
@@ -360,94 +370,117 @@ class _HomeMenuDrawer extends ConsumerWidget {
 /// Bundesliga-News: Transferticker (Live-News) + Einstieg zu „Verletzungen &
 /// Sperren". Der Transfer-Teil blendet sich aus, wenn (noch) keine News da
 /// sind; der Ausfälle-Button ist immer erreichbar.
+/// Jetzt-Karte am Kopf des Screens. Lädt still im Hintergrund: solange nichts
+/// feststeht (oder nichts ansteht), bleibt der Platz leer, statt einen
+/// Ladeplatzhalter über den ganzen Screen zu schieben.
+class _NowSection extends ConsumerWidget {
+  const _NowSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final item = ref.watch(nowItemProvider).valueOrNull;
+    if (item == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: NowCard(item: item, onOpen: () => _open(context, ref, item)),
+    );
+  }
+
+  void _open(BuildContext context, WidgetRef ref, NowItem item) {
+    final league = item.league;
+    if (league != null) {
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => DraftRoomScreen(league: league)));
+      return;
+    }
+    final round = item.round;
+    if (round == null) return;
+    activateRound(ref, round);
+    Navigator.of(context).push(MaterialPageRoute(
+        // Direkt auf den Tippen-Tab: der Knopf verspricht genau das.
+        builder: (_) => LeagueScreen(round: round, initialTab: 0)));
+  }
+}
+
+/// News am Fuß des Screens. Bewusst klein gehalten: drei Schlagzeilen als
+/// Ausblick, alles Weitere hinter „Alle". Früher standen hier fünf Meldungen
+/// unter zwei Überschriften — das füllte die halbe Seite und drängte die
+/// Ligen nach oben weg.
 class _NewsSection extends ConsumerWidget {
   const _NewsSection();
 
-  static const _maxTransfers = 5;
+  static const _maxTransfers = 3;
+
+  void _openList(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const NewsListScreen(
+              topic: 'transfers',
+              title: 'News',
+              intro: 'Aktuelle Bundesliga-Schlagzeilen, neueste zuerst. '
+                  'Tippen öffnet den Artikel.',
+            )));
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final transfers = ref.watch(newsProvider('transfers'));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-          child: Row(
-            children: [
-              Icon(Icons.rss_feed, size: 18, color: scheme.primary),
-              const SizedBox(width: 8),
-              Text('Bundesliga aktuell',
-                  style: Theme.of(context).textTheme.titleMedium),
-            ],
-          ),
-        ),
-        // Transferticker.
-        transfers.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-            ),
-          ),
-          error: (_, _) => const SizedBox.shrink(),
-          data: (items) {
-            if (items.isEmpty) return const SizedBox.shrink();
-            final shown = items.take(_maxTransfers).toList();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
-                  child: Row(
-                    children: [
-                      Icon(Icons.newspaper,
-                          size: 15, color: const Color(0xFF5B9DF9)),
-                      const SizedBox(width: 6),
-                      Text('News',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelLarge
-                              ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: scheme.onSurfaceVariant)),
-                    ],
+    return transfers.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        final shown = items.take(_maxTransfers).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 0, 4, 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 20,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFF5B9DF9),
+                        borderRadius: BorderRadius.circular(2)),
                   ),
-                ),
-                for (var i = 0; i < shown.length; i++) ...[
-                  if (i > 0) const Divider(height: 1),
-                  NewsTile(item: shown[i]),
+                  const SizedBox(width: 10),
+                  const Icon(Icons.newspaper,
+                      size: 18, color: Color(0xFF5B9DF9)),
+                  const SizedBox(width: 8),
+                  Text('News',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => _openList(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: scheme.onSurfaceVariant,
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text('Alle ›'),
+                  ),
                 ],
-                const SizedBox(height: 2),
-                // Erweitern: vollständige, scrollbare Transfer-Liste.
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const NewsListScreen(
-                                  topic: 'transfers',
-                                  title: 'News',
-                                  intro:
-                                      'Aktuelle Bundesliga-Schlagzeilen, '
-                                      'neueste zuerst. Tippen öffnet den '
-                                      'Artikel.',
-                                ))),
-                    icon: const Icon(Icons.unfold_more, size: 18),
-                    label: const Text('Ältere News anzeigen'),
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-            );
-          },
-        ),
-      ],
+              ),
+            ),
+            _SectionBox(
+              child: Column(
+                children: [
+                  for (var i = 0; i < shown.length; i++) ...[
+                    if (i > 0) const _RowDivider(indent: 12),
+                    NewsTile(item: shown[i]),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -489,100 +522,114 @@ class _NoLeaguesHero extends ConsumerWidget {
 }
 
 /// Persönliche Begrüßung oben auf dem Home-Tab.
-class _WelcomeHeader extends ConsumerWidget {
-  const _WelcomeHeader();
+/// Schlanke Kopfzeile: Gruß links, die beiden Direktzugänge rechts. Die
+/// frühere Begrüßungskarte war ein Kasten mit Verlauf über den halben
+/// Bildschirmkopf — viel Fläche für einen Namen. Der Platz gehört jetzt der
+/// Jetzt-Karte direkt darunter.
+class _GreetingBar extends ConsumerWidget {
+  const _GreetingBar();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final name = ref.watch(currentUsernameProvider).valueOrNull;
     final unreadCount = ref.watch(unreadDmCountProvider);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF18271D), MatchUpColors.base],
-        ),
-        border: Border.all(color: MatchUpColors.green.withValues(alpha: 0.22)),
-      ),
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        name == null ? 'Willkommen ' : 'Hallo, $name ',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                      ),
-                    ),
-                    const _WavingHand(size: 24),
-                  ],
-                ),
-              ],
+          Flexible(
+            child: Text(
+              name == null ? 'Willkommen' : 'Hallo, $name',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                  ),
             ),
           ),
-          // Schneller Zugang zu den Transfers (gelbes Transfer-Symbol).
-          IconButton(
+          const SizedBox(width: 6),
+          const _WavingHand(size: 20),
+          const Spacer(),
+          // Transfers (gelb) und Direktnachrichten (grün) bleiben als
+          // Direktzugänge erhalten, nur ohne den Kasten drumherum.
+          _HeaderAction(
             tooltip: 'Transfers',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const TransfersScreen())),
-            icon: const Icon(Icons.swap_horiz,
-                size: 30, color: Color(0xFFFFC83D)),
+            icon: Icons.swap_horiz,
+            color: const Color(0xFFFFC83D),
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TransfersScreen())),
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                tooltip: 'Direktnachrichten',
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const ConversationsScreen())),
-                icon: const Icon(Icons.forum_outlined,
-                    size: 30, color: MatchUpColors.green),
-              ),
-              if (unreadCount > 0)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    constraints:
-                        const BoxConstraints(minWidth: 18, minHeight: 18),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: MatchUpColors.red,
-                      borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: MatchUpColors.base, width: 2),
-                    ),
-                    child: Center(
-                      child: Text(
-                        unreadCount > 99 ? '99+' : '$unreadCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          height: 1.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          _HeaderAction(
+            tooltip: 'Direktnachrichten',
+            icon: Icons.forum_outlined,
+            color: MatchUpColors.green,
+            badge: unreadCount,
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ConversationsScreen())),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Kompakter Icon-Knopf der Kopfzeile, optional mit rotem Zähler.
+class _HeaderAction extends StatelessWidget {
+  const _HeaderAction({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.badge = 0,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final int badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          tooltip: tooltip,
+          onPressed: onTap,
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          icon: Icon(icon, size: 26, color: color),
+        ),
+        if (badge > 0)
+          Positioned(
+            right: 2,
+            top: 0,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: MatchUpColors.red,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                    color: Theme.of(context).colorScheme.surface, width: 2),
+              ),
+              child: Center(
+                child: Text(
+                  badge > 99 ? '99+' : '$badge',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -839,18 +886,49 @@ class _LeagueTile extends StatelessWidget {
   }
 }
 
-/// Dünner, eingerückter Trenner zwischen zwei Liga-Zeilen (ersetzt die
-/// frühere Kasten-Optik der Cards).
+/// Dünner, eingerückter Trenner zwischen zwei Zeilen einer [_SectionBox].
 class _RowDivider extends StatelessWidget {
-  const _RowDivider();
+  const _RowDivider({this.indent = 49});
+
+  /// Linker Einzug — bei Liga-Zeilen bis hinter das Logo, bei News knapp.
+  final double indent;
 
   @override
   Widget build(BuildContext context) {
     return Divider(
       height: 1,
       thickness: 1,
-      indent: 49,
+      indent: indent,
       color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+    );
+  }
+}
+
+/// Abgesetzte Fläche für eine Abschnittsliste. Die Zeilen lagen vorher direkt
+/// auf dem Seitengrund und wirkten dadurch flach; jetzt fasst sie eine leicht
+/// hellere Karte mit feiner Kante.
+class _SectionBox extends StatelessWidget {
+  const _SectionBox({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest
+            .withValues(alpha: dark ? 0.55 : 0.75),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withValues(alpha: 0.07)
+              : scheme.outlineVariant,
+        ),
+      ),
+      child: child,
     );
   }
 }

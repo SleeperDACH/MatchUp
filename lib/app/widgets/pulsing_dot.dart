@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// Pulsierender roter Punkt — Signal für „läuft gerade" (Live-Status).
+/// Pulsierender Punkt — Signal für „läuft gerade" (Live-Status, Pick-Uhr).
 class PulsingDot extends StatefulWidget {
-  const PulsingDot({super.key, this.size = 8});
+  const PulsingDot({super.key, this.size = 8, this.color = MatchUpColors.red});
 
   final double size;
+
+  /// Signalfarbe; Standard ist das Live-Rot.
+  final Color color;
 
   @override
   State<PulsingDot> createState() => _PulsingDotState();
@@ -33,8 +36,8 @@ class _PulsingDotState extends State<PulsingDot>
       child: Container(
         width: widget.size,
         height: widget.size,
-        decoration: const BoxDecoration(
-            color: MatchUpColors.red, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+            color: widget.color, shape: BoxShape.circle),
       ),
     );
   }

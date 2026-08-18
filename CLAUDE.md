@@ -26,6 +26,15 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   wertet laufende Spiele zusätzlich live mit — dieselbe Formel, anderer Zeitpunkt.
 - **Spielmodi sind Feature-Module** unter `lib/features/` (tippspiel, später
   fantasy) und teilen sich den Core.
+- **Homescreen führt, statt aufzulisten.** Ganz oben steht die **Jetzt-Karte**
+  (`lib/app/home_now.dart` + `widgets/now_card.dart`): genau *eine* anstehende
+  Sache mit Uhr und Knopf. `nowItemProvider` wählt sie über alle Ligen hinweg —
+  ein laufender Draft schlägt alles (die Pick-Uhr läuft in Minuten ab), sonst
+  gewinnt die dringendste Tipp-Deadline; ein Fehler einer einzelnen Liga wird
+  übersprungen, nicht hochgereicht. Die offenen Tipps zählt sie über dieselbe
+  Do–Mi-Woche (`buildWeeks`/`currentWeekIndex`), die auch der Tippen-Tab
+  öffnet, damit Karte und Feed nie verschiedene Zahlen zeigen. Der Knopf
+  springt per `LeagueScreen(initialTab: 0)` direkt aufs Tippen.
 - **Navigation:** App-Shell `MainShell` mit unterer Leiste **Home / Live /
   Profil**. Eine Tipprunde öffnet `LeagueScreen` mit Tabs **Tippen / Tabelle
   / Liga** (`LeagueHubScreen` = ligainterner Chat + Regeln-Sheet); der

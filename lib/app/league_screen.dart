@@ -12,17 +12,22 @@ import '../features/tippspiel/ui/tips_table_tab.dart';
 
 /// Ansicht einer Tipprunde mit Tabs: Tippen, Tabelle und Liga (Chat + Regeln).
 class LeagueScreen extends ConsumerStatefulWidget {
-  const LeagueScreen({super.key, required this.round});
+  const LeagueScreen({super.key, required this.round, this.initialTab = 1});
 
   final TipRound round;
+
+  /// Start-Tab: 0 = Tippen, 1 = Tabelle (Standard), 2 = Liga. Die Jetzt-Karte
+  /// auf dem Homescreen springt direkt auf Tippen.
+  final int initialTab;
 
   @override
   ConsumerState<LeagueScreen> createState() => _LeagueScreenState();
 }
 
 class _LeagueScreenState extends ConsumerState<LeagueScreen> {
-  // Beim Öffnen zuerst die Tabelle (Index 1), nicht die Tippabgabe.
-  int _index = 1;
+  // Beim Öffnen zuerst die Tabelle, nicht die Tippabgabe — außer der Aufrufer
+  // will ausdrücklich woanders hin.
+  late int _index = widget.initialTab;
 
   @override
   Widget build(BuildContext context) {
