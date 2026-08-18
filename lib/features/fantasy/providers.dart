@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/data/openligadb/openligadb_provider.dart';
+import '../../core/logic/round_robin.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/models/models.dart';
 import '../auth/providers.dart';
@@ -291,4 +292,71 @@ final seasonStatsProvider =
     FutureProvider<Map<int, Map<String, PlayerMatchStats>>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
   return ref.watch(fantasyStatsSourceProvider).seasonStats(season: season);
+});
+
+/// Mein H2H-Tabellenplatz in einer Liga — `null`, solange nichts feststeht:
+/// Draft nicht fertig, weniger als zwei Manager, Daten noch nicht geladen
+/// oder noch kein Spieltag gewertet.
+///
+/// Die Rechnung lag früher im `FantasyRankChip`-Widget. Für die Liga-Karte
+/// auf dem Homescreen wird sie aber als **Wert** gebraucht (steht ein Platz
+/// fest, verdrängt er den Zustandstext) — und ein Widget kann man nicht
+/// fragen, ob es etwas gezeichnet hat. Der Chip liest jetzt hier mit, damit
+/// es die Wertung nicht zweimal gibt.
+final myFantasyRankProvider =
+    Provider.family<({int rank, int total})?, String>((ref, leagueId) {
+  final league = ref
+      .watch(myFantasyLeaguesProvider)
+      .valueOrNull
+      ?.where((l) => l.id == leagueId)
+      .firstOrNull;
+  if (league == null || league.draftStatus != DraftStatus.done) return null;
+
+  final myId = ref.watch(currentUserProvider)?.id;
+  final managers = ref.watch(fantasyManagersProvider(leagueId)).valueOrNull;
+  final pool = ref.watch(playerPoolProvider).valueOrNull;
+  final roster = ref.watch(leagueRosterProvider(leagueId)).valueOrNull;
+  final seasonStats = ref.watch(seasonStatsProvider).valueOrNull;
+  final lineups = ref.watch(leagueLineupsProvider(leagueId)).valueOrNull;
+
+  if (myId == null ||
+      managers == null ||
+      managers.length < 2 ||
+      pool == null ||
+      roster == null ||
+      seasonStats == null) {
+    return null;
+  }
+
+  final playerById = {for (final p in pool) p.id: p};
+  final ids = managers.map((m) => m.userId).toList()
+    ..sort((a, b) {
+      final pa =
+          managers.firstWhere((m) => m.userId == a).draftPosition ?? 1 << 30;
+      final pb =
+          managers.firstWhere((m) => m.userId == b).draftPosition ?? 1 << 30;
+      return pa != pb ? pa.compareTo(pb) : a.compareTo(b);
+    });
+
+  final totalsByRound = <int, Map<String, double>>{
+    for (final entry in seasonStats.entries)
+      entry.key: effectiveTotalsForRound(
+        stats: entry.value,
+        round: entry.key,
+        managers: managers,
+        roster: roster,
+        playerById: playerById,
+        lineups: lineups ?? const <FantasyLineup>[],
+        scoring: league.scoring,
+        rosterConfig: league.roster,
+      )
+  };
+  final standings = h2hStandings(ids, totalsByRound);
+  // Vor dem ersten gewerteten Spieltag stehen alle auf null — das ist kein
+  // Tabellenplatz, sondern eine Reihenfolge nach Zufall.
+  if (standings.every((r) => r.played == 0)) return null;
+
+  final idx = standings.indexWhere((r) => r.managerId == myId);
+  if (idx < 0) return null;
+  return (rank: idx + 1, total: managers.length);
 });

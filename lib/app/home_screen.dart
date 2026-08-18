@@ -1163,6 +1163,18 @@ class _LigaStatusZeile extends ConsumerWidget {
     if (league.draftStatus == DraftStatus.drafting) {
       return _StatusLine(status: status, farbe: farbe);
     }
+    // Läuft die Saison, ist der Tabellenplatz die Auskunft, die zählt —
+    // „Kader steht" sagt dann nichts mehr. Vor dem ersten gewerteten
+    // Spieltag gibt es keinen Platz; dann bleibt es beim Zustand.
+    final platz = ref.watch(myFantasyRankProvider(league.id));
+    if (platz != null) {
+      return _StatusZeile(
+        label: 'Platz ${platz.rank}',
+        detail: 'von ${platz.total}',
+        ton: platz.rank == 1 ? const Color(0xFFFFC83D) : MatchUpColors.green,
+        pulsiert: false,
+      );
+    }
     final runde = ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull;
     if (runde == null) return _StatusLine(status: status, farbe: farbe);
     final offen = ref.watch(offeneTippsProvider(runde.id)).valueOrNull;
