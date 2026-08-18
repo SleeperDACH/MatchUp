@@ -957,6 +957,25 @@ const double _kLeagueCardGap = 8;
 /// Seitlicher Innenabstand der Reihe (passend zum Seitenrand).
 const double _kLeagueRowPad = 12;
 
+/// Verlauf einer Kachel in ihrer Farbe.
+///
+/// Gemischt wird gegen den **Seitengrund**, nicht gegen die graue
+/// Kartenfläche: 28 % Markengrün über einem blaustichigen Grau ergaben ein
+/// stumpfes Salbeigrün — die Farbe sah blass aus, obwohl es dieselbe war.
+/// Über dem fast schwarzen Grund bleibt der Farbton erhalten, und mit dem
+/// höheren Anteil kommt er auch durch.
+LinearGradient kartenVerlauf(Color farbe, ColorScheme scheme, bool dark) =>
+    LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color.alphaBlend(
+            farbe.withValues(alpha: dark ? 0.50 : 0.26), scheme.surface),
+        Color.alphaBlend(
+            farbe.withValues(alpha: dark ? 0.14 : 0.07), scheme.surface),
+      ],
+    );
+
 /// Kartenbreite so, dass **genau vier** nebeneinander auf den Schirm passen;
 /// ab der fünften wird gewischt. Deshalb aus der Bildschirmbreite gerechnet
 /// statt fest verdrahtet — auf einem kleinen iPhone wären vier feste 186er
@@ -1014,19 +1033,8 @@ class _FantasyLeagueCard extends ConsumerWidget {
             child: Ink(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color.alphaBlend(
-                        farbe.withValues(alpha: dark ? 0.28 : 0.20),
-                        scheme.surfaceContainerHighest),
-                    Color.alphaBlend(
-                        farbe.withValues(alpha: dark ? 0.06 : 0.05),
-                        scheme.surfaceContainerHighest),
-                  ],
-                ),
-                border: Border.all(color: farbe.withValues(alpha: 0.45)),
+                gradient: kartenVerlauf(farbe, scheme, dark),
+                border: Border.all(color: farbe.withValues(alpha: 0.65)),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(9, 9, 8, 9),
@@ -1052,12 +1060,15 @@ class _FantasyLeagueCard extends ConsumerWidget {
                     ),
                     // Modus als Wort, weil die Farbe allein nur die Familie
                     // verrät, nicht den Namen.
+                    // Bewusst **nicht** in der Kartenfarbe: seit der Verlauf
+                    // kräftig ist, wäre Grün auf Grün kaum zu lesen. Den
+                    // Modus sagt ohnehin schon die Farbe der Karte.
                     Text(
                       league.mode.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          color: farbe,
+                          color: scheme.onSurface.withValues(alpha: 0.78),
                           fontSize: 11,
                           fontWeight: FontWeight.w800),
                     ),
@@ -1229,6 +1240,8 @@ class _StatusZeile extends StatelessWidget {
                 decoration: BoxDecoration(color: ton, shape: BoxShape.circle),
               ),
             const SizedBox(width: 6),
+            // Den Ton trägt der Punkt, nicht die Schrift: auf der farbigen
+            // Karte wäre farbige Schrift schlecht zu lesen.
             Expanded(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -1236,7 +1249,9 @@ class _StatusZeile extends StatelessWidget {
                 child: Text(label,
                     maxLines: 1,
                     style: TextStyle(
-                        color: ton, fontSize: 13, fontWeight: FontWeight.w800)),
+                        color: scheme.onSurface,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
               ),
             ),
           ],
@@ -1249,8 +1264,9 @@ class _StatusZeile extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(detail!,
                   maxLines: 1,
-                  style:
-                      TextStyle(color: scheme.onSurfaceVariant, fontSize: 11)),
+                  style: TextStyle(
+                      color: scheme.onSurface.withValues(alpha: 0.7),
+                      fontSize: 11)),
             ),
           ),
       ],
@@ -1345,19 +1361,8 @@ class _TipRoundCard extends ConsumerWidget {
             child: Ink(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color.alphaBlend(
-                        farbe.withValues(alpha: dark ? 0.26 : 0.19),
-                        scheme.surfaceContainerHighest),
-                    Color.alphaBlend(
-                        farbe.withValues(alpha: dark ? 0.06 : 0.05),
-                        scheme.surfaceContainerHighest),
-                  ],
-                ),
-                border: Border.all(color: farbe.withValues(alpha: 0.45)),
+                gradient: kartenVerlauf(farbe, scheme, dark),
+                border: Border.all(color: farbe.withValues(alpha: 0.65)),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(9, 8, 8, 8),
@@ -1390,7 +1395,7 @@ class _TipRoundCard extends ConsumerWidget {
                         wettbewerb,
                         maxLines: 1,
                         style: TextStyle(
-                            color: farbe,
+                            color: scheme.onSurface.withValues(alpha: 0.78),
                             fontSize: 11,
                             fontWeight: FontWeight.w800),
                       ),
