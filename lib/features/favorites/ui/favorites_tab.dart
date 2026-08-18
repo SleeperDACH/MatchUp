@@ -13,8 +13,6 @@ import 'favorites_manage_screen.dart';
 import '../../../app/widgets/segmented_tab_bar.dart';
 
 /// Reine Sportmonks-Team-ID aus dem Favoriten-Key (`sportmonks:503` → `503`).
-String _teamId(String key) => key.split(':').last;
-
 /// Sortierreihenfolge der Ligen: 1. Bundesliga … 3. Liga, Frauen zuletzt.
 int _leagueOrder(String? id) => switch (id) {
       'bundesliga' => 0,
@@ -63,10 +61,10 @@ class _FavGroup {
     return m;
   }
 
-  List<String> get teamIds => [for (final f in members) _teamId(f.key)];
+  List<String> get teamIds => [for (final f in members) teamIdOf(f.key)];
   List<({String teamId, String name, String? leagueId})> get newsArgs => [
         for (final f in members)
-          (teamId: _teamId(f.key), name: f.label, leagueId: f.leagueId)
+          (teamId: teamIdOf(f.key), name: f.label, leagueId: f.leagueId)
       ];
 }
 

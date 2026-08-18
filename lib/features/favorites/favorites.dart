@@ -209,8 +209,16 @@ final leagueTeamsProvider =
   });
 });
 
+/// Reine Sportmonks-Team-ID aus dem Favoriten-Schlüssel
+/// (`sportmonks:503` → `503`). [teamFixturesProvider] und [teamSquadProvider]
+/// erwarten sie **ohne** Präfix; mit Präfix liefert die Function nichts und
+/// der Aufrufer sieht nur eine leere Liste. Steht hier und nicht als Kopie in
+/// den Aufrufern, weil genau das schon zweimal passiert ist.
+String teamIdOf(String favoriteKey) => favoriteKey.split(':').last;
+
 /// Spielplan eines favorisierten Teams (wettbewerbsübergreifend). Family-Key
-/// ist die reine Sportmonks-Team-ID. Braucht die Server-Verbindung.
+/// ist die reine Sportmonks-Team-ID ([teamIdOf]). Braucht die
+/// Server-Verbindung.
 final teamFixturesProvider =
     FutureProvider.family<List<TeamFixture>, String>((ref, teamId) {
   if (!AppConfig.isSupabaseConfigured) return Future.value(const []);

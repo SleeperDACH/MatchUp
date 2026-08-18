@@ -2,10 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
+import '../core/models/team_fixture.dart';
 import '../core/ui/app_avatar.dart';
 import '../features/auth/providers.dart';
 import '../features/fantasy/logic/draft_order.dart';
@@ -29,11 +31,15 @@ import '../features/news/ui/news_tile.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
+import '../features/tippspiel/ui/team_badge.dart';
+import 'home_favorites.dart';
 import 'home_tip_status.dart';
 import 'impressum_screen.dart';
 import 'league_screen.dart';
+import 'match_detail_screen.dart';
 import 'profile_screen.dart';
 import 'theme.dart';
+import 'widgets/league_logo.dart';
 import 'widgets/matchup_chevron.dart';
 import 'widgets/pulsing_dot.dart';
 
@@ -128,6 +134,7 @@ class HomeScreen extends ConsumerWidget {
               ],
               // Die Abschnitte bringen ihren Abstand schon mit.
               const SizedBox(height: 4),
+              const _Appear(delayMs: 190, child: _FavoritenSpiele()),
               const _Appear(delayMs: 220, child: _NewsSection()),
             ],
           ],
@@ -405,6 +412,148 @@ class _HomeMenuDrawer extends ConsumerWidget {
 /// Bundesliga-News: Transferticker (Live-News) + Einstieg zu „Verletzungen &
 /// Sperren". Der Transfer-Teil blendet sich aus, wenn (noch) keine News da
 /// sind; der Ausfälle-Button ist immer erreichbar.
+/// Nächste Spiele der favorisierten Vereine — zwischen den eigenen Ligen und
+/// den News. Es ist die einzige Stelle auf dem Screen, an der es um Fußball
+/// statt um die eigenen Runden geht; deshalb steht sie hinter den Ligen und
+/// vor den News.
+///
+/// Gezeigt wird der **Tag** des nächsten Spiels mit allen Partien darauf: an
+/// einem Bundesliga-Samstag will man nicht nur den 15:30-Anstoß sehen.
+class _FavoritenSpiele extends ConsumerWidget {
+  const _FavoritenSpiele();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spiele = ref.watch(favoritenSpieleProvider).valueOrNull;
+    // Ohne Favoriten (oder solange nichts geladen ist) bleibt der Abschnitt
+    // weg — eine leere Überschrift wäre schlechter als gar keine.
+    if (spiele == null || spiele.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final tag = spiele.first.kickoff.toLocal();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+            child: Row(
+              children: [
+                Text('MEINE VEREINE',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    )),
+                const Spacer(),
+                Text(
+                  DateFormat('EEEE, d. MMM', 'de_DE').format(tag),
+                  style: TextStyle(
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.7)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < spiele.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                        height: 1,
+                        color:
+                            scheme.outlineVariant.withValues(alpha: 0.6)),
+                  _FavoritSpielZeile(fixture: spiele[i]),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Eine Partie: Wettbewerbslogo, beide Wappen, beide Kurznamen, rechts die
+/// Anstoßzeit. Das Wettbewerbslogo ist nicht Zierde — am selben Tag können
+/// Pokal und Liga nebeneinander stehen, und zwei Vereine desselben Klubs
+/// (Profis und zweite Mannschaft) tragen denselben Kurznamen.
+class _FavoritSpielZeile extends StatelessWidget {
+  const _FavoritSpielZeile({required this.fixture});
+
+  final TeamFixture fixture;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => MatchDetailScreen(fixtureId: fixture.id))),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: LeagueLogo(
+                    logoUrl: fixture.leagueLogo,
+                    name: fixture.leagueName,
+                    size: 16),
+              ),
+              const SizedBox(width: 8),
+              TeamBadge(team: fixture.home, size: 20),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(fixture.home.shortName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600)),
+              ),
+              Text('–',
+                  style: TextStyle(
+                      color: scheme.onSurfaceVariant, fontSize: 13)),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 7),
+                  child: Text(fixture.away.shortName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(width: 7),
+              TeamBadge(team: fixture.away, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                DateFormat('HH:mm', 'de_DE').format(fixture.kickoff.toLocal()),
+                style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// News ganz unten als schmale Querleiste — die dritte Form auf dem Screen
 /// (Karten quer, Zeilen längs, Leiste). Früher standen hier fünf Meldungen
 /// unter zwei Überschriften und füllten die halbe Seite.
