@@ -27,7 +27,8 @@ Future<void> ladeAppSchrift() async {
 }
 
 void main() {
-  testWidgets('Vorschau: Jetzt-Karte (Tipps offen, Draft, alles getippt)',
+  testWidgets(
+      'Vorschau: Jetzt-Karte (eine Runde, mehrere Runden, Draft, fertig)',
       (tester) async {
     await initializeDateFormatting('de_DE');
     await ladeAppSchrift();
@@ -41,6 +42,15 @@ void main() {
         detail: 'Spieltag 3',
         deadline: now.add(const Duration(hours: 2, minutes: 14)),
         openTips: 5,
+        offeneRunden: 1,
+      ),
+      NowItem(
+        kind: NowKind.tips,
+        label: 'Bundesliga 26/27',
+        detail: 'Spieltag 3',
+        deadline: now.add(const Duration(hours: 2, minutes: 14)),
+        openTips: 14,
+        offeneRunden: 3,
       ),
       NowItem(
         kind: NowKind.draft,

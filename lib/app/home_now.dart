@@ -35,6 +35,7 @@ class NowItem {
     this.round,
     this.league,
     this.openTips = 0,
+    this.offeneRunden = 0,
     this.myTurn = false,
   });
 
@@ -56,10 +57,20 @@ class NowItem {
   /// Ziel bei [NowKind.draft].
   final FantasyLeague? league;
 
+  /// Offene Tipps — bei mehreren Tipprunden die **Summe** über alle.
   final int openTips;
+
+  /// Zahl der Tipprunden mit offenen Tipps. > 1 heißt: die Karte spricht für
+  /// mehrere, auch wenn der Knopf in die dringendste führt.
+  final int offeneRunden;
 
   /// Beim Draft: der eigene Pick ist dran.
   final bool myTurn;
+
+  /// Zweite Zeile der Karte: bei einer Runde ihr Name, bei mehreren die
+  /// Anzahl — sonst sähe man nur die dringendste und übersähe den Rest.
+  String get kontext =>
+      offeneRunden > 1 ? '$offeneRunden Tippspiele' : label;
 }
 
 /// Die eine Sache, die gerade ansteht. `null` = nichts Dringendes (oder kein
@@ -124,6 +135,10 @@ Future<NowItem?> _tipItem(Ref ref, String myId) async {
   }
   final now = DateTime.now();
   NowItem? best;
+  // Über alle Runden hinweg mitzählen: die Karte nennt die Summe und sagt,
+  // in wie vielen Tippspielen noch etwas offen ist.
+  var summeOffen = 0;
+  var rundenOffen = 0;
   for (final r in rounds) {
     try {
       final all = <Fixture>[];
@@ -146,6 +161,10 @@ Future<NowItem?> _tipItem(Ref ref, String myId) async {
           if (t.userId == myId) t.fixtureId
       };
       final missing = open.where((f) => !mine.contains(f.id)).length;
+      if (missing > 0) {
+        summeOffen += missing;
+        rundenOffen++;
+      }
       final next = open.first;
       final item = NowItem(
         kind: missing > 0 ? NowKind.tips : NowKind.kickoff,
@@ -162,7 +181,17 @@ Future<NowItem?> _tipItem(Ref ref, String myId) async {
       continue; // Eine Liga ohne Daten darf die Karte nicht kippen.
     }
   }
-  return best;
+  if (best == null || best.kind != NowKind.tips) return best;
+  // Ziel bleibt die dringendste Runde; die Zahlen gelten für alle.
+  return NowItem(
+    kind: best.kind,
+    label: best.label,
+    detail: best.detail,
+    deadline: best.deadline,
+    round: best.round,
+    openTips: summeOffen,
+    offeneRunden: rundenOffen,
+  );
 }
 
 /// OpenLigaDB liefert als Rundennamen teils nur die Zahl („1"). Allein steht

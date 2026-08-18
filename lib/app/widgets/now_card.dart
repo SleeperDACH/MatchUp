@@ -216,11 +216,12 @@ class _DeadlineLineState extends State<_DeadlineLine> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final now = widget.jetzt ?? DateTime.now();
-    // Der Liganame steht jetzt hier: in der kompakten Karte gibt es keine
-    // eigene Zeile mehr dafür. Der Spieltag entfällt, sonst wird die Zeile
-    // so lang, dass ausgerechnet die Uhrzeit abgeschnitten wird.
+    // Der Liganame (bzw. „3 Tippspiele") steht jetzt hier: in der kompakten
+    // Karte gibt es keine eigene Zeile mehr dafür. Der Spieltag entfällt,
+    // sonst wird die Zeile so lang, dass ausgerechnet die Uhrzeit
+    // abgeschnitten wird.
     final parts = <String>[
-      widget.item.label,
+      widget.item.kontext,
       if (widget.item.deadline != null)
         formatDeadline(widget.item.deadline!, now,
             isPick: widget.item.kind == NowKind.draft),
