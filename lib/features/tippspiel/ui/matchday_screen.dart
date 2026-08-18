@@ -11,6 +11,7 @@ import '../logic/tip_weeks.dart';
 import '../models/tip.dart';
 import '../providers.dart';
 import 'round_selector.dart';
+import 'team_badge.dart';
 
 /// Tippen-Tab: In Runden mit mehreren Wettbewerben ein gemeinsamer
 /// Wochen-Feed (alle Ligen zusammen, Woche für Woche); sonst die klassische
@@ -581,16 +582,31 @@ class _TeamLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ohne Vereinslogo — nur der ausgeschriebene Name. Bis zu zwei Zeilen,
-    // damit auch längere Namen möglichst vollständig lesbar bleiben.
-    return Text(
-      team.name,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-      style: Theme.of(context).textTheme.bodyMedium,
+    // Wappen außen, Name innen — so stehen die beiden Logos an den Rändern
+    // der Karte und die Namen rücken an die Tippfelder in der Mitte.
+    // Der Name bleibt zweizeilig, damit auch „Borussia Mönchengladbach"
+    // lesbar bleibt; das Wappen darf dabei nicht schrumpfen, deshalb steht
+    // es außerhalb des flexiblen Teils.
+    final name = Flexible(
+      child: Text(
+        team.name,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+    );
+    final badge = TeamBadge(team: team, size: _badgeSize);
+    return Row(
+      mainAxisAlignment:
+          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: alignEnd
+          ? [name, const SizedBox(width: 7), badge]
+          : [badge, const SizedBox(width: 7), name],
     );
   }
+
+  static const _badgeSize = 22.0;
 }
 
 class _CenterInfo extends StatelessWidget {
