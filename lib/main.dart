@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/main_shell.dart';
 import 'app/theme.dart';
+import 'app/widgets/route_reset.dart';
 import 'core/config/app_config.dart';
 import 'features/auth/password_recovery.dart';
 import 'features/auth/providers.dart';
@@ -142,9 +143,18 @@ class _RootGate extends ConsumerWidget {
           debugPrint('[AUTH] Gate baut: user=${user?.email} '
               'recovery=$recovery konfiguriert=${AppConfig.isSupabaseConfigured}');
         }
-        if (recovery) return const UpdatePasswordScreen();
-        if (!AppConfig.isSupabaseConfigured) return const MainShell();
-        return user == null ? const LoginScreen() : const MainShell();
+        final Widget inhalt;
+        if (recovery) {
+          inhalt = const UpdatePasswordScreen();
+        } else if (!AppConfig.isSupabaseConfigured) {
+          inhalt = const MainShell();
+        } else {
+          inhalt = user == null ? const LoginScreen() : const MainShell();
+        }
+        // Das Gate tauscht nur den Inhalt der ersten Route. Ohne den Reset
+        // bleibt beim Kontowechsel alles stehen, was darüber liegt (Profil,
+        // ein zweiter Login) — und verdeckt genau die Umschaltung.
+        return RouteReset<String?>(wert: user?.id, child: inhalt);
       },
     );
   }
