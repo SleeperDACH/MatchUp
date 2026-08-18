@@ -515,37 +515,37 @@ class _FavoritSpielZeile extends StatelessWidget {
               const SizedBox(width: 8),
               TeamBadge(team: fixture.home, size: 20),
               const SizedBox(width: 7),
+              // Ausgeschriebene Namen: die Kurzformen („ENE", „HAN") sagen
+              // ohne Tabellenkontext wenig. Zwei Zeilen erlaubt, damit
+              // „Borussia Mönchengladbach" nicht zu „Borussia M…" wird.
               Expanded(
-                child: Text(fixture.home.shortName,
-                    maxLines: 1,
+                child: Text(fixture.home.name,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                        fontSize: 13, fontWeight: FontWeight.w600, height: 1.1)),
               ),
-              Text('–',
+              // Anstoßzeit mittig zwischen beiden Mannschaften.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  DateFormat('HH:mm', 'de_DE').format(fixture.kickoff.toLocal()),
                   style: TextStyle(
-                      color: scheme.onSurfaceVariant, fontSize: 13)),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 7),
-                  child: Text(fixture.away.shortName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600)),
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700),
                 ),
+              ),
+              Expanded(
+                child: Text(fixture.away.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600, height: 1.1)),
               ),
               const SizedBox(width: 7),
               TeamBadge(team: fixture.away, size: 20),
-              const SizedBox(width: 10),
-              Text(
-                DateFormat('HH:mm', 'de_DE').format(fixture.kickoff.toLocal()),
-                style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700),
-              ),
             ],
           ),
         ),
