@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/app/theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:matchup/app/widgets/matchup_splash.dart';
 
 // Vorschau des Startbildschirms in vier Phasen (kein Regressionstest):
@@ -15,13 +16,18 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    // Draußen · halb drin · zusammengetroffen · mit Wortmarke.
-    for (final ms in [120, 380, 700, 1150]) {
+    // Draußen · halb drin · zusammengetroffen · mit Wortmarke. Der letzte
+    // Zeitpunkt liegt nach dem Intro: dort wartet der Schirm auf die Daten.
+    for (final ms in [120, 380, 700, 1400]) {
       await tester.pumpWidget(
-        MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: buildAppTheme(),
-          home: const MatchUpSplash(child: SizedBox.shrink()),
+        ProviderScope(
+          // Der Schirm wartet sonst auf Daten, die es im Test nicht gibt.
+          overrides: [homeBereitProvider.overrideWithValue(false)],
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: buildAppTheme(),
+            home: const MatchUpSplash(child: SizedBox.shrink()),
+          ),
         ),
       );
       await tester.pump(Duration(milliseconds: ms));

@@ -1,108 +1,166 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/config/app_config.dart';
+import '../../features/auth/providers.dart';
+import '../../features/fantasy/providers.dart';
+import '../../features/tippspiel/providers.dart';
 import '../theme.dart';
 import 'matchup_chevron.dart';
 
-/// Animierter Startbildschirm: die grüne Hälfte der Marke fährt von oben ein,
-/// die rote von unten, beide treffen sich in der Mitte. Danach erscheint die
-/// Wortmarke, dann blendet der Schirm auf die App ab.
+/// „Der Homescreen hat sein Nötigstes geladen."
 ///
-/// Liegt über [child], statt es zu ersetzen — der Aufbau der App beginnt aber
-/// erst, wenn die Marke steht **und** die Wortmarke da ist. Grund: Animation
-/// und Aufbau teilen sich denselben Thread, und der Aufbau des Homescreens
-/// hält ihn spürbar an — im Debug-Build sekundenlang. Wo dieser Halt liegt,
-/// kann man wählen; er gehört ans Ende, wenn nichts Auffälliges mehr passiert,
-/// nicht mitten in die Einfahrt. Ein Tipp überspringt.
+/// Bewusst nur **Ligen und Tipprunden**: sie bestimmen, ob der Schirm etwas
+/// zu zeigen hat. News, Favoritenspiele und offene Tipps kommen nach und
+/// füllen sich sichtbar auf — darauf zu warten hieße, den Startschirm an die
+/// langsamste Quelle zu hängen.
 ///
-/// Der **native** iOS-Startbildschirm (LaunchScreen.storyboard) lässt sich
-/// nicht animieren; er zeigt nur noch den Hintergrund in derselben Farbe
-/// (`MatchUpColors.base`). Stünde dort weiter das fertige Logo, sähe man es
-/// erst fertig, dann verschwinden und wieder einfliegen.
-class MatchUpSplash extends StatefulWidget {
+/// Ohne Server oder ohne Anmeldung gibt es nichts zu laden; dann sofort wahr.
+final homeBereitProvider = Provider<bool>((ref) {
+  if (!AppConfig.isSupabaseConfigured) return true;
+  if (ref.watch(currentUserProvider) == null) return true;
+  return !ref.watch(myFantasyLeaguesProvider).isLoading &&
+      !ref.watch(myRoundsProvider).isLoading;
+});
+
+/// Animierter Startbildschirm: die grüne Markenhälfte fährt von oben ein, die
+/// rote von unten, beide treffen sich in der Mitte, dann erscheint die
+/// Wortmarke. Danach **bleibt der Schirm stehen**, bis der Homescreen
+/// geladen hat ([homeBereitProvider]) — er verdeckt also das Aufbauen statt
+/// nach fester Zeit auf einen halb leeren Screen abzublenden.
+///
+/// Der Startschirm hängt damit an fremden Daten. Gegen einen ewig stehenden
+/// Schirm (Netz weg, Abfrage hängt) gibt es [_maximaleWartezeit]; danach wird
+/// abgeblendet, komme was wolle. Ein Tipp überspringt sofort.
+///
+/// Der **native** iOS-Startbildschirm lässt sich nicht animieren; er zeigt
+/// nur noch den Hintergrund in derselben Farbe (`MatchUpColors.base`).
+class MatchUpSplash extends ConsumerStatefulWidget {
   const MatchUpSplash({super.key, required this.child});
 
   final Widget child;
 
   @override
-  State<MatchUpSplash> createState() => _MatchUpSplashState();
+  ConsumerState<MatchUpSplash> createState() => _MatchUpSplashState();
 }
 
-class _MatchUpSplashState extends State<MatchUpSplash>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
+class _MatchUpSplashState extends ConsumerState<MatchUpSplash>
+    with TickerProviderStateMixin {
+  /// Notbremse, falls die Daten nie ankommen.
+  static const _maximaleWartezeit = Duration(seconds: 8);
+
+  late final AnimationController _intro = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1500),
+    duration: const Duration(milliseconds: 1250),
   )..forward();
 
-  /// Die App wird erst gebaut, wenn die Marke steht (siehe Klassenkommentar).
-  bool _zeigeKind = false;
+  late final AnimationController _abblende = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  );
 
-  /// Anteile am Gesamtablauf.
-  static const _einfahrt = Interval(0.0, 0.52, curve: Curves.easeOutCubic);
-  static const _aufprall = Interval(0.46, 0.66, curve: Curves.easeOut);
-  static const _wortmarke = Interval(0.55, 0.82, curve: Curves.easeOut);
-  static const _abblende = Interval(0.86, 1.0, curve: Curves.easeIn);
+  Timer? _notbremse;
+  bool _zeigeKind = false;
+  bool _weg = false;
+
+  /// Anteile am Intro.
+  static const _einfahrt = Interval(0.0, 0.62, curve: Curves.easeOutCubic);
+  static const _aufprall = Interval(0.55, 0.78, curve: Curves.easeOut);
+  static const _wortmarke = Interval(0.66, 1.0, curve: Curves.easeOut);
 
   @override
   void initState() {
     super.initState();
-    _c.addListener(() {
-      if (!_zeigeKind && _c.value >= _wortmarke.end) {
-        setState(() => _zeigeKind = true);
-      }
+    _intro.addStatusListener((s) {
+      if (s != AnimationStatus.completed) return;
+      // Erst jetzt die App aufbauen: Animation und Aufbau teilen sich den
+      // Thread, und der Aufbau des Homescreens hält ihn spürbar an.
+      setState(() => _zeigeKind = true);
+      _pruefeFertig();
     });
+    _abblende.addStatusListener((s) {
+      if (s == AnimationStatus.completed) setState(() => _weg = true);
+    });
+    _notbremse = Timer(_maximaleWartezeit, _abblenden);
+  }
+
+  void _pruefeFertig() {
+    if (!mounted || !_intro.isCompleted) return;
+    if (ref.read(homeBereitProvider)) _abblenden();
+  }
+
+  void _abblenden() {
+    _notbremse?.cancel();
+    if (mounted && !_abblende.isAnimating && _abblende.isDismissed) {
+      // Übersprungen, bevor das Intro durch war: die App muss trotzdem her.
+      if (!_zeigeKind) setState(() => _zeigeKind = true);
+      _abblende.forward();
+    }
   }
 
   @override
   void dispose() {
-    _c.dispose();
+    _notbremse?.cancel();
+    _intro.dispose();
+    _abblende.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Sobald der Homescreen so weit ist, abblenden (auch wenn das Intro
+    // schon fertig ist und nur noch gewartet wird).
+    ref.listen<bool>(homeBereitProvider, (_, bereit) {
+      if (bereit) _pruefeFertig();
+    });
+
     return Stack(
       children: [
         if (_zeigeKind) widget.child,
-        AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) {
-            if (_c.isCompleted) return const SizedBox.shrink();
-            final t = _c.value;
-            final weg = 1 - _einfahrt.transform(t); // 1 = draußen, 0 = mittig
-            // Kurzer Stoß beim Zusammentreffen: hoch und wieder zurück.
-            final stoss = _aufprall.transform(t);
-            final puls = 1 + 0.07 * (stoss < 0.5 ? stoss * 2 : (1 - stoss) * 2);
-            final wort = _wortmarke.transform(t);
+        if (!_weg)
+          AnimatedBuilder(
+            animation: Listenable.merge([_intro, _abblende]),
+            builder: (context, _) {
+              final t = _intro.value;
+              final weg = 1 - _einfahrt.transform(t); // 1 = draußen, 0 = mittig
+              // Kurzer Stoß beim Zusammentreffen: hoch und wieder zurück.
+              final stoss = _aufprall.transform(t);
+              final puls =
+                  1 + 0.07 * (stoss < 0.5 ? stoss * 2 : (1 - stoss) * 2);
+              final wort = _wortmarke.transform(t);
 
-            return Opacity(
-              opacity: 1 - _abblende.transform(t),
-              child: GestureDetector(
-                // „Interaktiv": wer nicht warten will, tippt einmal.
-                onTap: () => _c.animateTo(1.0,
-                    duration: const Duration(milliseconds: 220)),
-                child: Container(
-                  color: MatchUpColors.base,
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Transform.scale(
-                        scale: puls,
-                        child: _GeteilteMarke(size: 108, weg: weg),
+              return Opacity(
+                opacity: 1 - _abblende.value,
+                child: GestureDetector(
+                  // „Interaktiv": wer nicht warten will, tippt einmal.
+                  onTap: _abblenden,
+                  // Material, sonst zeichnet Flutter Text ohne Unterlage mit
+                  // dem gelben Doppelstrich („missing Material widget").
+                  child: Material(
+                    color: MatchUpColors.base,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Transform.scale(
+                            scale: puls,
+                            child: _GeteilteMarke(size: 108, weg: weg),
+                          ),
+                          SizedBox(height: 26 + 8 * (1 - wort)),
+                          Opacity(
+                            opacity: wort,
+                            child: const _Wortmarke(fontSize: 40),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 26 + 8 * (1 - wort)),
-                      Opacity(
-                        opacity: wort,
-                        child: const _Wortmarke(fontSize: 40),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -131,17 +189,11 @@ class _GeteilteMarke extends StatelessWidget {
         children: [
           Transform.translate(
             offset: Offset(0, -weg * strecke),
-            child: ClipRect(
-              clipper: const _Haelfte(links: true),
-              child: marke,
-            ),
+            child: ClipRect(clipper: const _Haelfte(links: true), child: marke),
           ),
           Transform.translate(
             offset: Offset(0, weg * strecke),
-            child: ClipRect(
-              clipper: const _Haelfte(links: false),
-              child: marke,
-            ),
+            child: ClipRect(clipper: const _Haelfte(links: false), child: marke),
           ),
         ],
       ),

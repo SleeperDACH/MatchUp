@@ -267,13 +267,26 @@ Zwei Schirme hintereinander, und nur der zweite lässt sich animieren:
    fährt von oben ein, die rote von unten, sie treffen sich in der Mitte,
    dann erscheint die Wortmarke. Ein Tipp überspringt.
 
-Die App wird **erst gebaut, wenn die Wortmarke steht**: Animation und Aufbau
+Die App wird **erst gebaut, wenn das Intro durch ist**: Animation und Aufbau
 teilen sich denselben Thread, und der Aufbau des Homescreens hält ihn
 spürbar an. Wo dieser Halt liegt, kann man wählen — er gehört ans Ende und
-nicht mitten in die Einfahrt. Im Debug-Build auf dem Simulator dauert das
-sichtbar lange; **Release/Profile lassen sich auf dem iOS-Simulator nicht
-starten** („Releasemode is not supported by iPhone 17 Pro"), gemessen ist der
-echte Ablauf also nur auf einem Gerät.
+nicht mitten in die Einfahrt.
+
+Danach **bleibt der Schirm stehen, bis `homeBereitProvider` wahr ist** (Ligen
+und Tipprunden geladen; News, Favoritenspiele und offene Tipps füllen sich
+danach sichtbar auf — an die langsamste Quelle darf der Startschirm nicht
+gehängt werden). Weil er damit an fremden Daten hängt, gibt es eine
+Notbremse von 8 Sekunden; danach wird abgeblendet, komme was wolle. Ein Tipp
+überspringt.
+
+Der Text darin steht in einem `Material`. Ohne das zeichnet Flutter Text
+ohne Unterlage mit dem gelben Doppelstrich — das sah wie ein Designfehler
+aus, war aber der eingebaute Hinweis „missing Material widget".
+
+Im Debug-Build auf dem Simulator dauert der Aufbau sichtbar lange;
+**Release/Profile lassen sich auf dem iOS-Simulator nicht starten**
+(„Releasemode is not supported by iPhone 17 Pro"), gemessen ist der echte
+Ablauf also nur auf einem Gerät.
 
 ## Live-Update (immer nach Änderungen)
 
