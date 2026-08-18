@@ -465,6 +465,9 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
 
     final errors = <String>[];
     var saved = 0;
+    // Auch das Löschen ist eine Änderung — sonst bliebe der Cache unten
+    // stehen, wenn nur Tipps entfernt wurden.
+    var geaendert = false;
     for (final entry in draft.entries) {
       final id = entry.key;
       final home = entry.value.home.trim();
@@ -475,10 +478,12 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
         if (home.isEmpty && away.isEmpty) {
           await tips.clearTip(id);
           draftNotifier.clearEntry(id);
+          geaendert = true;
         } else if (homeGoals != null && awayGoals != null) {
           await tips.setTip(id, homeGoals, awayGoals);
           draftNotifier.clearEntry(id);
           saved++;
+          geaendert = true;
         } else {
           errors.add('${_label(id)}: Bitte Heim- und Auswärtstore eintragen.');
         }
@@ -487,6 +492,18 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
       } catch (_) {
         errors.add('${_label(id)}: Speichern fehlgeschlagen — bist du online?');
       }
+    }
+
+    // `tipsProvider` hält nur den Stand dieses Tippen-Tabs. Alles andere —
+    // Tabelle, Duelle, Platzierungs-Chip und die offenen Tipps auf dem
+    // Homescreen — liest `allRoundTipsProvider`, und der wurde beim
+    // Speichern bisher nie aufgefrischt: er lieferte weiter den Stand vom
+    // Öffnen der Runde. Am deutlichsten fiel das beim Entfernen eines Tipps
+    // auf, weil die Karte dann „Alles getippt" behielt.
+    final roundId = ref.read(activeRoundProvider)?.id;
+    if (geaendert && roundId != null) {
+      ref.invalidate(allRoundTipsProvider(roundId));
+      ref.invalidate(tipPresenceProvider(roundId));
     }
 
     if (!mounted) return;
