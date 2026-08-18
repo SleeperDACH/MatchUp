@@ -112,28 +112,27 @@ class HomeScreen extends ConsumerWidget {
               const _Appear(delayMs: 40, child: _NowSection()),
               // Noch gar keine Liga (Fantasy + Tippspiel beide leer geladen):
               // statt zweier leerer Abschnitte ein großer Einstieg.
-              if ((ref.watch(myFantasyLeaguesProvider).valueOrNull?.isEmpty ??
-                      false) &&
-                  (ref.watch(myRoundsProvider).valueOrNull?.isEmpty ?? false))
+              if (_beideLeer(ref))
                 const _Appear(delayMs: 80, child: _NoLeaguesHero())
               else ...[
-                _Appear(
-                  delayMs: 80,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: _fantasySection(context, ref),
+                // Der Abschnitt mit Inhalt steht oben. Wer nur ein Tippspiel
+                // hat, sah sonst zuerst eine leere Ligareihe, in der nur die
+                // große „+"-Karte stand.
+                for (final abschnitt in _tippspielZuerst(ref)
+                    ? [_tippspielSection(context, ref), _fantasySection(context, ref)]
+                    : [_fantasySection(context, ref), _tippspielSection(context, ref)]) ...[
+                  _Appear(
+                    delayMs: 80,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: abschnitt,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 18),
-                _Appear(
-                  delayMs: 150,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: _tippspielSection(context, ref),
-                  ),
-                ),
+                  const SizedBox(height: 18),
+                ],
               ],
-              const SizedBox(height: 22),
+              // Die Abschnitte bringen ihren Abstand schon mit.
+              const SizedBox(height: 4),
               const _Appear(delayMs: 220, child: _NewsSection()),
             ],
           ],
@@ -141,6 +140,23 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+
+  /// Eigenständige Tipprunden. Ligainterne Tippspiele (an eine Fantasy-Liga
+  /// gekoppelt) erreicht man ausschließlich über die Liga; `null` = lädt noch.
+  List<TipRound>? _standaloneRounds(WidgetRef ref) => ref
+      .watch(myRoundsProvider)
+      .valueOrNull
+      ?.where((r) => !r.isFantasyLinked)
+      .toList();
+
+  bool _beideLeer(WidgetRef ref) =>
+      (ref.watch(myFantasyLeaguesProvider).valueOrNull?.isEmpty ?? false) &&
+      (_standaloneRounds(ref)?.isEmpty ?? false);
+
+  /// Nur ein Tippspiel, keine Fantasy-Liga → Tippspiel nach oben.
+  bool _tippspielZuerst(WidgetRef ref) =>
+      (ref.watch(myFantasyLeaguesProvider).valueOrNull?.isEmpty ?? false) &&
+      (_standaloneRounds(ref)?.isNotEmpty ?? false);
 
   // ------------------------------------------------------------------
   // Fantasy (Hauptbereich): quer zu wischende Karten. Bewusst eine andere
@@ -161,6 +177,12 @@ class HomeScreen extends ConsumerWidget {
           height: _kLeagueCardHeight,
           child: Center(child: CircularProgressIndicator()),
         )
+      else if (list.isEmpty)
+        // Ohne eine einzige Liga wäre die Querreihe nur eine große leere
+        // „+"-Karte — als Zeile nimmt der Einstieg ein Sechstel des Platzes.
+        const _CreateRow(
+            text: 'Fantasy-Liga anlegen',
+            hint: 'Draften, Kader managen, Saison spielen')
       else
         _Bleed(
           hoehe: _kLeagueCardHeight,
@@ -185,10 +207,7 @@ class HomeScreen extends ConsumerWidget {
   // ------------------------------------------------------------------
   List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
     final rounds = ref.watch(myRoundsProvider);
-    // Nur eigenständig erstellte Tipprunden. Ligainterne Tippspiele (an eine
-    // Fantasy-Liga gekoppelt) erreicht man ausschließlich über die Liga.
-    final standalone =
-        rounds.valueOrNull?.where((r) => !r.isFantasyLinked).toList();
+    final standalone = _standaloneRounds(ref);
     return [
       _sectionHeader(context, 'Tippspiel', count: standalone?.length),
       rounds.when(
