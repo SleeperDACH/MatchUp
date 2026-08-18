@@ -265,6 +265,23 @@ nicht erst auf Nachfrage:
   run` nie an ein Kommando hängen, das ein Timeout haben kann.
   **„Restarted application in 2 ms" ist kein Fehlersignal** — ob der Restart
   wirkte, sieht man daran, dass die App wieder auf dem Home-Tab steht.
+  **Hot-Restart schreibt den Code nicht in die installierte App.** Er landet
+  in einem Wegwerf-Ordner (`…/Data/Application/<id>/tmp/…/main.dart.dill`),
+  auf den nur die laufende `flutter run`-Sitzung zeigt; das Bundle
+  (`Runner.app/…/flutter_assets/kernel_blob.bin`) bleibt auf dem Stand des
+  letzten Builds. Stirbt die Sitzung und startet die App kalt, läuft wieder
+  der alte Code — für den, der draufschaut, sieht das aus, als wäre die
+  Arbeit verschwunden. Daraus zwei Regeln:
+  * Nach einer abgeschlossenen Änderung einmal **neu installieren**
+    (`flutter run` neu starten), nicht nur hot-restarten. Ob es gewirkt hat,
+    zeigt der Zeitstempel von `kernel_blob.bin` — der muss neu sein.
+  * **`Lost connection to device` heißt nicht „App tot"**, sondern „ab jetzt
+    zeigt sie alten Code". Die App läuft weiter (im Simulator per
+    `xcrun simctl spawn <udid> launchctl list | grep matchup` sichtbar), nur
+    hängt niemand mehr am anderen Ende. Häufigster Auslöser: das MacBook war
+    im Ruhezustand.
+  Screenshots aus einer laufenden Sitzung belegen deshalb nur, dass der Code
+  **im Speicher** stimmt — nicht, dass er auf dem Gerät liegt.
   Den Stand per `xcrun simctl io <udid> screenshot`
   prüfen. Tippen geht doch — über die Fensterkoordinaten des Simulators:
   ```sh
