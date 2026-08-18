@@ -44,10 +44,13 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   drei Formen, damit der Schirm nicht als eine Folge gleicher dunkler Kästen
   liest. Jede Liga trägt dabei ihre **eigene** Farbe (`defaultAvatarColor`
   über die Liga-ID, wie bei den Avataren), nicht die Farbe ihres Typs; den
-  Typ sagt der Text-Anhänger. Die Palette ist dabei **nach Modus geteilt**
-  (`ui/league_colors.dart`): Redraft kühl, Dynasty warm, kein Ton in beiden —
-  eine eigene Farbe je Liga nützt nichts, wenn man den Modus nicht mehr
-  sieht. Die Kartenbreite rechnet `leagueCardWidth` aus der Bildschirmbreite,
+  Typ sagt der Text-Anhänger. Die Farbe kommt dabei vom **Modus**
+  (`ui/league_colors.dart`): Redraft grün, Dynasty rot, die beiden
+  Markenfarben. Eine Zwischenstufe mit einer gewürfelten Farbe je Liga (aus
+  zwei modusabhängigen Paletten) gab es; sie machte zwei Ligen desselben
+  Modus unterscheidbar, ließ den Homescreen aber bunt aussehen. Wer zwei
+  Ligen gleichen Modus auseinanderhalten will, gibt einer ein Logo — dessen
+  Farbe sticht die Modusfarbe. Die Kartenbreite rechnet `leagueCardWidth` aus der Bildschirmbreite,
   damit **genau vier** ohne Wischen dastehen; ab der fünften wird gescrollt.
   Zustandstexte darin schrumpfen (`FittedBox`) statt zu kappen — „Kader
   ste…" sagt nichts. Und jede Karte zeigt **Zustand**

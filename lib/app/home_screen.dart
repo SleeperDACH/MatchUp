@@ -990,8 +990,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
       managers,
       myId,
     );
-    final farbe =
-        parseColor(league.logoColor) ?? leagueColor(league.id, league.mode);
+    final farbe = parseColor(league.logoColor) ?? leagueColor(league.mode);
 
     // Offene Beitrittsanfragen nur für den Admin einer öffentlich–auf-
     // Einladung-Liga (Live über Realtime).
