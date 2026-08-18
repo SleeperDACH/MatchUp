@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/models.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
@@ -19,19 +20,30 @@ import 'tip_rules_settings_screen.dart';
 /// Öffnet ein eigenes Vollbild-Fenster (wie die Fantasy-Einstellungen).
 void showTipSettings(BuildContext context, TipRound round) {
   Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => _TipSettingsScreen(round: round)),
+    MaterialPageRoute(builder: (_) => _TipSettingsScreen(startRound: round)),
   );
 }
 
 class _TipSettingsScreen extends ConsumerWidget {
-  const _TipSettingsScreen({required this.round});
+  const _TipSettingsScreen({required this.startRound});
 
-  final TipRound round;
+  /// Stand beim Öffnen. Maßgeblich ist unten der **frische** Stand aus
+  /// `myRoundsProvider`: kommt man von einer Unterseite zurück (umbenannt,
+  /// Logo oder Sichtbarkeit geändert), muss hier der neue Wert stehen.
+  /// Vorher schloss sich der Screen beim Öffnen einer Unterseite — genau
+  /// deshalb, und das kostete den natürlichen Zurück-Weg.
+  final TipRound startRound;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final myId = ref.watch(currentUserProvider)?.id;
+    final round = ref
+            .watch(myRoundsProvider)
+            .valueOrNull
+            ?.where((r) => r.id == startRound.id)
+            .firstOrNull ??
+        startRound;
     final isCreator = myId == round.createdBy;
     final myName = (ref.watch(roundMembersProvider(round.id)).valueOrNull ??
             const <RoundMember>[])
@@ -293,180 +305,341 @@ class _TipSettingsScreen extends ConsumerWidget {
       }
     }
 
+    // Gruppen statt einer durchlaufenden Liste: vorher standen zwölf gleich
+    // aussehende Zeilen untereinander — Teamname, Logo, Nachtragen, Löschen —
+    // alle fett, alle mit demselben grünen Symbol. Zusammengehörendes steht
+    // jetzt beieinander, und Zerstörerisches ganz unten und abgesetzt.
+    final mitglieder = <Widget>[
+      // Eigenständige Tipprunde: über Freunde/Chats einladen. Gekoppelte
+      // Tippspiele bekommen ihre Mitglieder von der Fantasy-Liga.
+      if (!round.isFantasyLinked)
+        _Zeile(
+          icon: Icons.person_add_alt_1,
+          titel: 'Mitglieder einladen',
+          untertitel: 'Über deine Chats & Freunde',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TipInvitePlayersScreen(round: round),
+            ),
+          ),
+        ),
+      if (isCreator)
+        _Zeile(
+          icon: round.isPublic ? Icons.public : Icons.lock_outline,
+          titel: 'Sichtbarkeit & Beitritt',
+          untertitel: visibilityLabel(round.visibility, round.joinPolicy),
+          trailing: RequestsBadgeChevron(
+            pending: (round.isPublic && round.isInviteOnly)
+                ? ref
+                          .watch(tipJoinRequestsProvider(round.id))
+                          .valueOrNull
+                          ?.length ??
+                      0
+                : 0,
+          ),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => VisibilitySettingsPage(
+                kind: 'tip',
+                id: round.id,
+                name: round.name,
+                visibility: round.visibility,
+                joinPolicy: round.joinPolicy,
+              ),
+            ),
+          ),
+        ),
+      if (isCreator)
+        _Zeile(
+          icon: Icons.admin_panel_settings_outlined,
+          titel: 'Adminrechte übergeben',
+          untertitel: 'Ein Mitglied zum Admin machen; du bleibst dabei',
+          onTap: confirmTransferOwnership,
+        ),
+    ];
+
+    final wertung = <Widget>[
+      if (isCreator)
+        _Zeile(
+          icon: Icons.tune,
+          titel: 'Wertung & Modi',
+          untertitel: 'Punkte, Quoten-Bonus, Head-to-Head, Bonustipps …',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TipRulesSettingsScreen(round: round),
+            ),
+          ),
+        ),
+      // Gekoppelte Tippspiele haben keinen eigenen Liga-Tab — die Regeln
+      // sind daher nur hier erreichbar.
+      if (round.isFantasyLinked)
+        _Zeile(
+          icon: Icons.gavel_outlined,
+          titel: 'Regeln & Punkteverteilung',
+          untertitel: 'Wie in dieser Runde gewertet wird',
+          onTap: () => showTipRoundRules(
+            context,
+            round.scoring,
+            ref.read(selectedLeagueProvider),
+          ),
+        ),
+      if (isCreator)
+        _Zeile(
+          icon: Icons.edit_note,
+          titel: 'Tipps nachtragen',
+          untertitel: 'Für Mitglieder eintragen — auch nach Anstoß',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => TipBackfillScreen(round: round)),
+          ),
+        ),
+    ];
+
+    final erscheinung = <Widget>[
+      if (isCreator)
+        _Zeile(
+          icon: Icons.drive_file_rename_outline,
+          titel: 'Name ändern',
+          untertitel: round.name,
+          onTap: renameRound,
+        ),
+      if (isCreator)
+        _Zeile(
+          leading: AppAvatar(
+            imageUrl: round.logoUrl,
+            emoji: round.logoEmoji,
+            colorHex: round.logoColor,
+            fallbackIcon: Icons.image_outlined,
+            size: 30,
+            cornerRadius: 8,
+          ),
+          titel: 'Logo ändern',
+          untertitel: 'Bild hochladen oder Emoji + Farbe wählen',
+          onTap: editLogo,
+        ),
+    ];
+
     return Scaffold(
       appBar: AppBar(centerTitle: true, title: const Text('Einstellungen')),
       body: ListView(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 32),
         children: [
-          ListTile(
-            leading: Icon(Icons.badge_outlined, color: scheme.primary),
-            title: const Text('Mein Teamname',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(
-              (myName?.teamName?.trim().isNotEmpty ?? false)
-                  ? myName!.teamName!.trim()
-                  : 'Wird in dieser Liga statt deines Nutzernamens gezeigt.',
-            ),
-            onTap: editTeamName,
-          ),
-          // Eigenständige Tipprunde: über Freunde/Chats einladen. Gekoppelte
-          // Tippspiele bekommen ihre Mitglieder von der Fantasy-Liga.
-          if (!round.isFantasyLinked) ...[
-            const Divider(height: 1),
-            ListTile(
-              leading:
-                  Icon(Icons.person_add_alt_1, color: scheme.primary),
-              title: const Text('Mitglieder einladen',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('Über deine Chats & Freunde einladen'),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => TipInvitePlayersScreen(round: round)));
-              },
-            ),
-          ],
-          // Gekoppelte Tippspiele haben keinen eigenen Liga-Tab — die Regeln
-          // sind daher hier erreichbar.
-          if (round.isFantasyLinked) ...[
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.gavel_outlined, color: scheme.primary),
-              title: const Text('Regeln & Punkteverteilung',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              onTap: () {
-                Navigator.of(context).pop();
-                showTipRoundRules(context, round.scoring,
-                    ref.read(selectedLeagueProvider));
-              },
-            ),
-          ],
-          if (isCreator) ...[
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.drive_file_rename_outline,
-                  color: scheme.primary),
-              title: const Text('Liga-Name ändern',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(round.name),
-              onTap: renameRound,
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: AppAvatar(
-                imageUrl: round.logoUrl,
-                emoji: round.logoEmoji,
-                colorHex: round.logoColor,
-                fallbackIcon: Icons.image_outlined,
-                size: 40,
-                cornerRadius: 10,
+          _Kopf(round: round),
+          const SizedBox(height: 18),
+          _Gruppe(
+            titel: 'Meine Teilnahme',
+            zeilen: [
+              _Zeile(
+                icon: Icons.badge_outlined,
+                titel: 'Mein Teamname',
+                untertitel: (myName?.teamName?.trim().isNotEmpty ?? false)
+                    ? myName!.teamName!.trim()
+                    : 'Wird in dieser Liga statt deines Nutzernamens gezeigt',
+                onTap: editTeamName,
               ),
-              title: const Text('Runden-Logo ändern',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('Bild hochladen oder Emoji + Farbe wählen'),
-              onTap: editLogo,
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(
-                  round.isPublic ? Icons.public : Icons.lock_outline,
-                  color: scheme.primary),
-              title: const Text('Sichtbarkeit & Beitritt',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle:
-                  Text(visibilityLabel(round.visibility, round.joinPolicy)),
-              trailing: RequestsBadgeChevron(
-                  pending: (round.isPublic && round.isInviteOnly)
-                      ? ref
-                              .watch(tipJoinRequestsProvider(round.id))
-                              .valueOrNull
-                              ?.length ??
-                          0
-                      : 0),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => VisibilitySettingsPage(
-                          kind: 'tip',
-                          id: round.id,
-                          name: round.name,
-                          visibility: round.visibility,
-                          joinPolicy: round.joinPolicy,
-                        )));
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.edit_note, color: scheme.primary),
-              title: const Text('Tipps nachtragen',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text(
-                  'Für Mitglieder Tipps eintragen — auch nach Anstoß.'),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => TipBackfillScreen(round: round)));
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.tune, color: scheme.primary),
-              title: const Text('Wertung & Modi bearbeiten',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text(
-                  'Punkte, Quoten-Bonus, Head-to-Head, Bonustipps …'),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => TipRulesSettingsScreen(round: round)));
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.admin_panel_settings_outlined,
-                  color: scheme.primary),
-              title: const Text('Adminrechte übergeben',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text(
-                  'Ein Mitglied zum neuen Admin machen; du bleibst dabei.'),
-              onTap: confirmTransferOwnership,
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.logout, color: scheme.error),
-              title: Text('Tippspiel verlassen',
-                  style: TextStyle(
-                      color: scheme.error, fontWeight: FontWeight.bold)),
-              subtitle: const Text(
-                  'Adminrechte an ein Mitglied übergeben und austreten.'),
-              onTap: confirmLeaveAsAdmin,
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: scheme.error),
-              title: Text('Tippspiel löschen',
-                  style: TextStyle(
-                      color: scheme.error, fontWeight: FontWeight.bold)),
-              subtitle: const Text(
-                  'Entfernt die Tipprunde mit allen Tipps und dem Chat.'),
-              onTap: confirmDelete,
-            ),
-          ],
-          // Mitglieder (nicht der Ersteller) können die Runde verlassen.
-          if (!isCreator) ...[
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.logout, color: scheme.error),
-              title: Text('Tippspiel verlassen',
-                  style: TextStyle(
-                      color: scheme.error, fontWeight: FontWeight.bold)),
-              subtitle: const Text(
-                  'Entfernt dich aus der Liga; deine Tipps werden gelöscht.'),
-              onTap: confirmLeave,
-            ),
-          ],
-          const SizedBox(height: 24),
+            ],
+          ),
+          _Gruppe(titel: 'Mitglieder', zeilen: mitglieder),
+          _Gruppe(titel: 'Regeln & Wertung', zeilen: wertung),
+          _Gruppe(titel: 'Erscheinungsbild', zeilen: erscheinung),
+          _Gruppe(
+            titel: 'Gefahrenzone',
+            gefahr: true,
+            zeilen: [
+              _Zeile(
+                icon: Icons.logout,
+                titel: 'Tippspiel verlassen',
+                untertitel: isCreator
+                    ? 'Adminrechte an ein Mitglied übergeben und austreten'
+                    : 'Entfernt dich aus der Liga; deine Tipps werden gelöscht',
+                gefahr: true,
+                onTap: isCreator ? confirmLeaveAsAdmin : confirmLeave,
+              ),
+              if (isCreator)
+                _Zeile(
+                  icon: Icons.delete_outline,
+                  titel: 'Tippspiel löschen',
+                  untertitel: 'Mit allen Tipps und dem Chat, endgültig',
+                  gefahr: true,
+                  onTap: confirmDelete,
+                ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// Kopf des Einstellungs-Screens: zeigt, worum es überhaupt geht. Ohne ihn
+/// stand über zwölf Zeilen nur „Einstellungen" — bei mehreren Tipprunden zu
+/// wenig, um sicher zu sein, welche man gerade ändert.
+class _Kopf extends StatelessWidget {
+  const _Kopf({required this.round});
+
+  final TipRound round;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final league = Leagues.byId(round.leagueId);
+    final extra = round.competitions.length - 1;
+    return Row(
+      children: [
+        AppAvatar(
+          imageUrl: round.logoUrl,
+          emoji: round.logoEmoji,
+          colorHex: round.logoColor,
+          fallbackIcon: Icons.emoji_events_outlined,
+          size: 44,
+          cornerRadius: 12,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                round.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              Text(
+                extra > 0 ? '${league.name} +$extra' : league.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Eine Gruppe: kleine Überschrift, darunter die Zeilen in einer Karte.
+/// Leere Gruppen zeichnen nichts — für ein Mitglied ohne Adminrechte bleibt
+/// sonst eine Überschrift ohne Inhalt stehen.
+class _Gruppe extends StatelessWidget {
+  const _Gruppe({
+    required this.titel,
+    required this.zeilen,
+    this.gefahr = false,
+  });
+
+  final String titel;
+  final List<Widget> zeilen;
+  final bool gefahr;
+
+  @override
+  Widget build(BuildContext context) {
+    if (zeilen.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final farbe = gefahr ? scheme.error : scheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text(
+              titel.toUpperCase(),
+              style: TextStyle(
+                color: farbe,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: gefahr
+                    ? scheme.error.withValues(alpha: 0.35)
+                    : scheme.outlineVariant.withValues(alpha: 0.7),
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < zeilen.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 52,
+                      color: scheme.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                  zeilen[i],
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Eine Einstellungszeile. Der Titel ist bewusst **nicht** fett: vorher
+/// schrie jede der zwölf Zeilen gleich laut, und die Überschrift der Gruppe
+/// trägt die Gliederung.
+class _Zeile extends StatelessWidget {
+  const _Zeile({
+    required this.titel,
+    required this.untertitel,
+    required this.onTap,
+    this.icon,
+    this.leading,
+    this.trailing,
+    this.gefahr = false,
+  });
+
+  final String titel;
+  final String untertitel;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Widget? leading;
+  final Widget? trailing;
+  final bool gefahr;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final farbe = gefahr ? scheme.error : scheme.onSurface;
+    return ListTile(
+      leading:
+          leading ??
+          Icon(
+            icon,
+            color: gefahr
+                ? scheme.error
+                : scheme.onSurfaceVariant.withValues(alpha: 0.9),
+          ),
+      title: Text(
+        titel,
+        style: TextStyle(fontWeight: FontWeight.w600, color: farbe),
+      ),
+      subtitle: Text(
+        untertitel,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5),
+      ),
+      trailing:
+          trailing ??
+          Icon(
+            Icons.chevron_right,
+            size: 20,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+      onTap: onTap,
     );
   }
 }
