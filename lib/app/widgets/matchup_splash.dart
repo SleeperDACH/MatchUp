@@ -153,6 +153,16 @@ class _MatchUpSplashState extends ConsumerState<MatchUpSplash>
                             opacity: wort,
                             child: const _Wortmarke(fontSize: 40),
                           ),
+                          // Steht der Schirm und wartet auf die Daten, zeigt
+                          // das Pulsieren, dass etwas passiert. Vorher wäre
+                          // es nur Unruhe neben der Einfahrt.
+                          SizedBox(
+                            height: 34,
+                            child: Opacity(
+                              opacity: _intro.isCompleted ? 1 : 0,
+                              child: const _Ladepunkte(),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -163,6 +173,69 @@ class _MatchUpSplashState extends ConsumerState<MatchUpSplash>
           ),
       ],
     );
+  }
+}
+
+/// Drei Punkte, die nacheinander aufleuchten — in den Markenfarben. Zeigt,
+/// dass der Startschirm auf Daten wartet und nicht hängt.
+class _Ladepunkte extends StatefulWidget {
+  const _Ladepunkte();
+
+  @override
+  State<_Ladepunkte> createState() => _LadepunkteState();
+}
+
+class _LadepunkteState extends State<_Ladepunkte>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat();
+
+  static const _farben = [
+    MatchUpColors.green,
+    MatchUpColors.snow,
+    MatchUpColors.red,
+  ];
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(width: 9),
+              Opacity(
+                // Versetzt: jeder Punkt hat sein eigenes Drittel der Runde.
+                opacity: 0.25 + 0.75 * _staerke((_c.value + i / 3) % 1.0),
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                      color: _farben[i], shape: BoxShape.circle),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  /// Kurzes Aufleuchten im ersten Drittel, danach dunkel.
+  double _staerke(double t) {
+    if (t > 0.5) return 0;
+    final x = t * 2; // 0..1 im ersten Drittel
+    return x < 0.5 ? x * 2 : (1 - x) * 2;
   }
 }
 

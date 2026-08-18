@@ -263,9 +263,17 @@ Zwei Schirme hintereinander, und nur der zweite lässt sich animieren:
    sichtbar ist nur die Hintergrundfarbe, dieselbe wie `MatchUpColors.base`.
    Stünde dort wieder das Logo, sähe man es erst fertig, dann verschwinden
    und in der Flutter-Animation neu einfliegen.
+   **iOS merkt sich den Startbildschirm.** Ein `flutter run` über die
+   installierte App zeigt weiter den alten — erst
+   `xcrun simctl uninstall <udid> app.matchup.mobile` (bzw. App löschen)
+   räumt den Zwischenspeicher. Wer eine Änderung daran prüft, ohne vorher zu
+   deinstallieren, misst den alten Stand. Achtung: das löscht auch die
+   Anmeldung im Simulator.
 2. **Flutter** (`app/widgets/matchup_splash.dart`) — die grüne Markenhälfte
    fährt von oben ein, die rote von unten, sie treffen sich in der Mitte,
-   dann erscheint die Wortmarke. Ein Tipp überspringt.
+   dann erscheint die Wortmarke. Steht der Schirm danach und wartet auf
+   Daten, laufen drei Punkte in den Markenfarben — sonst wäre nicht zu
+   unterscheiden, ob geladen wird oder etwas hängt. Ein Tipp überspringt.
 
 Die App wird **erst gebaut, wenn das Intro durch ist**: Animation und Aufbau
 teilen sich denselben Thread, und der Aufbau des Homescreens hält ihn
