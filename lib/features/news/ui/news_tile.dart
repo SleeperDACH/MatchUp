@@ -76,11 +76,15 @@ class NewsTile extends StatelessWidget {
     );
   }
 
-  static String _relative(DateTime t) {
-    final d = DateTime.now().difference(t);
-    if (d.inMinutes < 60) return 'vor ${d.inMinutes.clamp(1, 59)} Min.';
-    if (d.inHours < 24) return 'vor ${d.inHours} Std.';
-    if (d.inDays < 7) return 'vor ${d.inDays} Tg.';
-    return '${t.day.toString().padLeft(2, '0')}.${t.month.toString().padLeft(2, '0')}.';
-  }
+  static String _relative(DateTime t) => relativeNewsTime(t);
+}
+
+/// Alter einer Meldung als kurzer Text („vor 3 Std."). Auch die Querleiste
+/// auf dem Homescreen zeigt ihn — dieselbe Schreibweise überall.
+String relativeNewsTime(DateTime t) {
+  final d = DateTime.now().difference(t);
+  if (d.inMinutes < 60) return 'vor ${d.inMinutes.clamp(1, 59)} Min.';
+  if (d.inHours < 24) return 'vor ${d.inHours} Std.';
+  if (d.inDays < 7) return 'vor ${d.inDays} Tg.';
+  return '${t.day.toString().padLeft(2, '0')}.${t.month.toString().padLeft(2, '0')}.';
 }

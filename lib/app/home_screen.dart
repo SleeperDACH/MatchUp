@@ -7,7 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../core/ui/app_avatar.dart';
+import '../core/ui/default_avatar.dart';
 import '../features/auth/providers.dart';
+import '../features/fantasy/logic/league_status.dart';
 import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
@@ -20,6 +22,7 @@ import '../features/leagues/providers.dart';
 import '../features/leagues/ui/league_search_screen.dart';
 import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
+import '../features/news/models/news_item.dart';
 import '../features/news/providers.dart';
 import '../features/news/ui/transfers_screen.dart';
 import '../features/news/ui/news_list_screen.dart';
@@ -35,6 +38,7 @@ import 'profile_screen.dart';
 import 'theme.dart';
 import 'widgets/matchup_chevron.dart';
 import 'widgets/now_card.dart';
+import 'widgets/pulsing_dot.dart';
 
 /// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
 /// Tippspiel folgt als zweiter Bereich darunter.
@@ -140,40 +144,43 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // ------------------------------------------------------------------
-  // Fantasy (Hauptbereich)
+  // Fantasy (Hauptbereich): quer zu wischende Karten. Bewusst eine andere
+  // Form als das Tippspiel darunter und die News ganz unten — drei gleich
+  // gebaute Listen untereinander waren der Grund, warum der Screen überall
+  // gleich aussah.
   // ------------------------------------------------------------------
   List<Widget> _fantasySection(BuildContext context, WidgetRef ref) {
     final leagues = ref.watch(myFantasyLeaguesProvider);
+    final list = leagues.valueOrNull;
     return [
-      _sectionHeader(context, 'Fantasy', Icons.shield_outlined,
-          accent: MatchUpColors.green, count: leagues.valueOrNull?.length),
-      leagues.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(20),
+      _sectionHeader(context, 'Meine Ligen', count: list?.length),
+      if (leagues.hasError)
+        _InfoCard('Fantasy-Ligen konnten nicht geladen werden: '
+            '${leagues.error}')
+      else if (list == null)
+        const SizedBox(
+          height: _kLeagueCardHeight,
           child: Center(child: CircularProgressIndicator()),
+        )
+      else
+        _Bleed(
+          hoehe: _kLeagueCardHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            physics: const BouncingScrollPhysics(),
+            itemCount: list.length + 1,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => i < list.length
+                ? _FantasyLeagueCard(league: list[i])
+                : const _NewLeagueCard(),
+          ),
         ),
-        error: (e, _) =>
-            _InfoCard('Fantasy-Ligen konnten nicht geladen werden: $e'),
-        data: (list) => list.isEmpty
-            ? const _EmptyHint(
-                'Noch keine Fantasy-Liga — oben rechts mit + eine Redraft- '
-                'oder Dynasty-Liga erstellen.')
-            : _SectionBox(
-                child: Column(
-                  children: [
-                    for (var i = 0; i < list.length; i++) ...[
-                      if (i > 0) const _RowDivider(),
-                      _FantasyLeagueCard(league: list[i]),
-                    ],
-                  ],
-                ),
-              ),
-      ),
     ];
   }
 
   // ------------------------------------------------------------------
-  // Tippspiel (zweiter Bereich)
+  // Tippspiel (zweiter Bereich): schlanke Zeilen, keine Kacheln.
   // ------------------------------------------------------------------
   List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
     final rounds = ref.watch(myRoundsProvider);
@@ -182,8 +189,7 @@ class HomeScreen extends ConsumerWidget {
     final standalone =
         rounds.valueOrNull?.where((r) => !r.isFantasyLinked).toList();
     return [
-      _sectionHeader(context, 'Tippspiel', Icons.emoji_events_outlined,
-          accent: const Color(0xFFFFC83D), count: standalone?.length),
+      _sectionHeader(context, 'Tippspiel', count: standalone?.length),
       rounds.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(20),
@@ -191,57 +197,62 @@ class HomeScreen extends ConsumerWidget {
         ),
         error: (e, _) => _InfoCard('Tipprunden konnten nicht geladen werden: $e'),
         data: (_) => (standalone == null || standalone.isEmpty)
-            ? const _EmptyHint(
-                'Noch keine Tipprunde — oben rechts mit + ein Tippspiel '
-                'erstellen.')
-            : _SectionBox(
-                child: Column(
-                  children: [
-                    for (var i = 0; i < standalone.length; i++) ...[
-                      if (i > 0) const _RowDivider(),
-                      _TipRoundCard(round: standalone[i]),
-                    ],
+            ? const _CreateRow(
+                text: 'Tippspiel anlegen',
+                hint: 'Spieltage tippen, Punkte sammeln')
+            : Column(
+                children: [
+                  for (var i = 0; i < standalone.length; i++) ...[
+                    if (i > 0) const _RowDivider(),
+                    _TipRoundCard(round: standalone[i]),
                   ],
-                ),
+                ],
               ),
       ),
     ];
   }
 
-  Widget _sectionHeader(BuildContext context, String title, IconData icon,
-      {Color? accent, int? count}) {
-    final c = accent ?? Theme.of(context).colorScheme.primary;
+  /// Leichte Abschnittsüberschrift: kleine Versalien, Zähler, optional ein
+  /// Link nach rechts. Vorher trug jeder Abschnitt denselben fetten Balken mit
+  /// Symbol — drei gleiche Köpfe über drei gleichen Kästen.
+  Widget _sectionHeader(BuildContext context, String title,
+      {int? count, String? moreLabel, VoidCallback? onMore}) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 0, 4, 10),
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
       child: Row(
         children: [
-          // Farbige Akzentleiste als Abschnitts-Marker.
-          Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(
-                color: c, borderRadius: BorderRadius.circular(2)),
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
           ),
-          const SizedBox(width: 10),
-          Icon(icon, size: 18, color: c),
-          const SizedBox(width: 8),
-          Text(title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
           if (count != null && count > 0) ...[
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-              decoration: BoxDecoration(
-                  color: c.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(9)),
-              child: Text('$count',
-                  style: TextStyle(
-                      color: c, fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
+            Text('$count',
+                style: TextStyle(
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800)),
           ],
+          const Spacer(),
+          if (onMore != null)
+            GestureDetector(
+              onTap: onMore,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Text('${moreLabel ?? 'Alle'} ›',
+                    style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
         ],
       ),
     );
@@ -406,10 +417,13 @@ class _NowSection extends ConsumerWidget {
 /// Ausblick, alles Weitere hinter „Alle". Früher standen hier fünf Meldungen
 /// unter zwei Überschriften — das füllte die halbe Seite und drängte die
 /// Ligen nach oben weg.
+/// News ganz unten als schmale Querleiste — die dritte Form auf dem Screen
+/// (Karten quer, Zeilen längs, Leiste). Früher standen hier fünf Meldungen
+/// unter zwei Überschriften und füllten die halbe Seite.
 class _NewsSection extends ConsumerWidget {
   const _NewsSection();
 
-  static const _maxTransfers = 3;
+  static const _maxTransfers = 6;
 
   void _openList(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(
@@ -423,64 +437,168 @@ class _NewsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     final transfers = ref.watch(newsProvider('transfers'));
-
     return transfers.when(
       loading: () => const SizedBox.shrink(),
       error: (_, _) => const SizedBox.shrink(),
       data: (items) {
         if (items.isEmpty) return const SizedBox.shrink();
         final shown = items.take(_maxTransfers).toList();
+        final scheme = Theme.of(context).colorScheme;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(2, 0, 4, 8),
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
               child: Row(
                 children: [
-                  Container(
-                    width: 4,
-                    height: 20,
-                    decoration: BoxDecoration(
-                        color: const Color(0xFF5B9DF9),
-                        borderRadius: BorderRadius.circular(2)),
-                  ),
-                  const SizedBox(width: 10),
-                  const Icon(Icons.newspaper,
-                      size: 18, color: Color(0xFF5B9DF9)),
-                  const SizedBox(width: 8),
-                  Text('News',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('NEWS',
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                      )),
                   const Spacer(),
-                  TextButton(
-                    onPressed: () => _openList(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: scheme.onSurfaceVariant,
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                  GestureDetector(
+                    onTap: () => _openList(context),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Text('Alle ›',
+                          style: TextStyle(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600)),
                     ),
-                    child: const Text('Alle ›'),
                   ),
                 ],
               ),
             ),
-            _SectionBox(
-              child: Column(
-                children: [
-                  for (var i = 0; i < shown.length; i++) ...[
-                    if (i > 0) const _RowDivider(indent: 12),
-                    NewsTile(item: shown[i]),
-                  ],
-                ],
+            _Bleed(
+              hoehe: 92,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                physics: const BouncingScrollPhysics(),
+                itemCount: shown.length + 1,
+                separatorBuilder: (_, _) => const SizedBox(width: 9),
+                itemBuilder: (_, i) => i < shown.length
+                    ? _NewsCard(item: shown[i])
+                    : _MoreNewsCard(onTap: () => _openList(context)),
               ),
             ),
           ],
         );
       },
+    );
+  }
+}
+
+/// Eine Schlagzeile als schmale Karte der News-Leiste.
+class _NewsCard extends StatelessWidget {
+  const _NewsCard({required this.item});
+
+  final NewsItem item;
+
+  static const _blau = Color(0xFF5B9DF9);
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final meta = [
+      if (item.source != null) item.source!,
+      if (item.publishedAt != null) relativeNewsTime(item.publishedAt!),
+    ].join(' · ');
+    return SizedBox(
+      width: 232,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => openNews(context, item.url),
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.7)),
+            ),
+            padding: const EdgeInsets.fromLTRB(11, 10, 11, 9),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    item.title,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, height: 1.15, fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.newspaper, size: 12, color: _blau),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: scheme.onSurfaceVariant, fontSize: 11)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Abschluss der News-Leiste: alles Weitere in der vollen Liste.
+class _MoreNewsCard extends StatelessWidget {
+  const _MoreNewsCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 96,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.8)),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.arrow_forward_rounded,
+                    size: 20, color: scheme.onSurfaceVariant),
+                const SizedBox(height: 6),
+                Text('Alle News',
+                    style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -634,26 +752,66 @@ class _HeaderAction extends StatelessWidget {
   }
 }
 
-/// Dezenter Hinweis, wenn ein Bereich noch leer ist.
-class _EmptyHint extends StatelessWidget {
-  const _EmptyHint(this.text);
+/// Leerer Tippspiel-Abschnitt als antippbare Zeile statt als Satz: der
+/// Hinweis „oben rechts mit +" ließ eine halbe Seite ungenutzt und war
+/// obendrein nur eine Wegbeschreibung.
+class _CreateRow extends ConsumerWidget {
+  const _CreateRow({required this.text, required this.hint});
 
   final String text;
+  final String hint;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    return _PressScale(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => showCreateOrJoin(context, ref),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.8)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.add_rounded, size: 22, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(text,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                      Text(hint,
+                          style: TextStyle(
+                              color: scheme.onSurfaceVariant, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
+/// Maße der Liga-Karten im Querlauf — auch für den Ladeplatz und die
+/// „Neue Liga"-Karte, damit die Reihe nicht springt.
+const double _kLeagueCardHeight = 168;
+const double _kLeagueCardWidth = 186;
+
+/// Eine Fantasy-Liga als Karte: eigene Farbe, eigener Zustand. Die Farbe
+/// kommt deterministisch aus der Liga-ID (dieselbe Palette wie die Avatare),
+/// solange die Liga kein eigenes Logo hat — vorher trugen alle Ligen dieselbe
+/// Marke in nur zwei Typ-Farben und waren dadurch nicht auseinanderzuhalten.
 class _FantasyLeagueCard extends ConsumerWidget {
   const _FantasyLeagueCard({required this.league});
 
@@ -661,32 +819,313 @@ class _FantasyLeagueCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final myId = ref.watch(currentUserProvider)?.id;
-    // Offene Beitrittsanfragen nur für den Admin einer öffentlich–auf-Einladung-
-    // Liga anzeigen (Live über Realtime).
+    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
+    final status = fantasyStatus(league, teams: managers?.length);
+    final farbe = parseColor(league.logoColor) ?? defaultAvatarColor(league.id);
+
+    // Offene Beitrittsanfragen nur für den Admin einer öffentlich–auf-
+    // Einladung-Liga (Live über Realtime).
     final showBadge =
         league.isPublic && league.isInviteOnly && myId == league.createdBy;
     final pending = showBadge
         ? (ref.watch(fantasyJoinRequestsProvider(league.id)).valueOrNull?.length ??
             0)
         : 0;
-    return _LeagueTile(
-      icon: league.mode == FantasyMode.dynasty
-          ? Icons.auto_awesome
-          : Icons.calendar_today,
-      title: league.name,
-      subtitle: league.mode.label,
-      logoUrl: league.logoUrl,
-      logoEmoji: league.logoEmoji,
-      logoColor: league.logoColor,
-      // MatchUp-Marke je Typ: Dynasty rot, Redraft grün.
-      brandColor: league.mode == FantasyMode.dynasty
-          ? MatchUpColors.red
-          : MatchUpColors.green,
-      badge: pending,
-      trailing: FantasyRankChip(league: league),
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => FantasyLeagueScreen(league: league))),
+
+    return _PressScale(
+      child: SizedBox(
+        width: _kLeagueCardWidth,
+        height: _kLeagueCardHeight,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => FantasyLeagueScreen(league: league))),
+            borderRadius: BorderRadius.circular(18),
+            child: Ink(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.alphaBlend(
+                        farbe.withValues(alpha: dark ? 0.26 : 0.18),
+                        scheme.surfaceContainerHighest),
+                    Color.alphaBlend(
+                        farbe.withValues(alpha: dark ? 0.06 : 0.05),
+                        scheme.surfaceContainerHighest),
+                  ],
+                ),
+                border: Border.all(color: farbe.withValues(alpha: 0.42)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _LeagueMark(
+                            league: league, farbe: farbe, size: 34),
+                        const Spacer(),
+                        if (pending > 0)
+                          _CountBadge(count: pending)
+                        else
+                          _ModePill(mode: league.mode, farbe: farbe),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      league.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                          ),
+                    ),
+                    const Spacer(),
+                    if (managers != null && managers.isNotEmpty)
+                      _ManagerRow(managers: managers),
+                    const SizedBox(height: 6),
+                    Divider(
+                        height: 9,
+                        thickness: 1,
+                        color: farbe.withValues(alpha: 0.28)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                            child: _StatusLine(status: status, farbe: farbe)),
+                        FantasyRankChip(league: league),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Liga-Zeichen: eigenes Logo, sonst die MatchUp-Marke in der Liga-Farbe.
+class _LeagueMark extends StatelessWidget {
+  const _LeagueMark(
+      {required this.league, required this.farbe, required this.size});
+
+  final FantasyLeague league;
+  final Color farbe;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCustom = (league.logoUrl != null && league.logoUrl!.isNotEmpty) ||
+        (league.logoEmoji != null && league.logoEmoji!.isNotEmpty);
+    if (hasCustom) {
+      return AppAvatar(
+        imageUrl: league.logoUrl,
+        emoji: league.logoEmoji,
+        colorHex: league.logoColor,
+        fallbackIcon: Icons.shield_outlined,
+        size: size,
+        cornerRadius: 10,
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+          color: farbe, borderRadius: BorderRadius.circular(10)),
+      alignment: Alignment.center,
+      child: MatchUpChevron(size: size * 0.5, color: MatchUpColors.base),
+    );
+  }
+}
+
+/// Überlappende Mitglieder-Avatare — füllt die Mitte der Karte mit etwas,
+/// das jede Liga anders zeigt, statt mit Leerraum.
+class _ManagerRow extends StatelessWidget {
+  const _ManagerRow({required this.managers});
+
+  final List<FantasyManager> managers;
+
+  static const _max = 5;
+  static const _size = 22.0;
+  static const _overlap = 7.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final gezeigt = managers.take(_max).toList();
+    final rest = managers.length - gezeigt.length;
+    return SizedBox(
+      height: _size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (var i = 0; i < gezeigt.length; i++)
+            Positioned(
+              left: i * (_size - _overlap),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: scheme.surface, width: 1.5),
+                ),
+                child: AppAvatar(
+                  imageUrl: gezeigt[i].avatarUrl,
+                  emoji: gezeigt[i].avatarEmoji,
+                  colorHex: gezeigt[i].avatarColor,
+                  fallbackText: gezeigt[i].username,
+                  seed: gezeigt[i].userId,
+                  size: _size,
+                ),
+              ),
+            ),
+          if (rest > 0)
+            Positioned(
+              left: gezeigt.length * (_size - _overlap) + 4,
+              top: 3,
+              child: Text('+$rest',
+                  style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kleiner Typ-Anhänger („Redraft" / „Dynasty"). Trägt jetzt der Text, was
+/// vorher die Farbe tragen musste — die gehört der Liga-Identität.
+class _ModePill extends StatelessWidget {
+  const _ModePill({required this.mode, required this.farbe});
+
+  final FantasyMode mode;
+  final Color farbe;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: farbe.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        mode.label,
+        style: TextStyle(
+            color: farbe, fontSize: 11, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+/// Zustandszeile der Liga-Karte: Punkt in der Ton-Farbe, Text, leise Zusatzzeile.
+class _StatusLine extends StatelessWidget {
+  const _StatusLine({required this.status, required this.farbe});
+
+  final LeagueStatus status;
+  final Color farbe;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final ton = switch (status.tone) {
+      LeagueStatusTone.wartet => scheme.onSurfaceVariant,
+      LeagueStatusTone.laeuft => MatchUpColors.green,
+      LeagueStatusTone.bereit => farbe,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            // Der laufende Draft ist das einzige, was wirklich tickt.
+            if (status.tone == LeagueStatusTone.laeuft)
+              PulsingDot(size: 7, color: ton)
+            else
+              Container(
+                width: 7,
+                height: 7,
+                decoration:
+                    BoxDecoration(color: ton, shape: BoxShape.circle),
+              ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(status.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: ton, fontSize: 13, fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+        if (status.detail != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 13, top: 1),
+            child: Text(status.detail!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: scheme.onSurfaceVariant, fontSize: 11)),
+          ),
+      ],
+    );
+  }
+}
+
+/// Letzte Karte der Reihe: neue Liga anlegen oder beitreten.
+class _NewLeagueCard extends ConsumerWidget {
+  const _NewLeagueCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    return _PressScale(
+      child: SizedBox(
+        width: 116,
+        height: _kLeagueCardHeight,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => showCreateOrJoin(context, ref),
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.8)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_rounded,
+                      size: 28, color: scheme.onSurfaceVariant),
+                  const SizedBox(height: 6),
+                  Text('Liga',
+                      style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700)),
+                  Text('anlegen',
+                      style: TextStyle(
+                          color: scheme.onSurfaceVariant, fontSize: 12)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -886,49 +1325,42 @@ class _LeagueTile extends StatelessWidget {
   }
 }
 
-/// Dünner, eingerückter Trenner zwischen zwei Zeilen einer [_SectionBox].
+/// Dünner, eingerückter Trenner zwischen zwei Tipprunden-Zeilen.
 class _RowDivider extends StatelessWidget {
-  const _RowDivider({this.indent = 49});
-
-  /// Linker Einzug — bei Liga-Zeilen bis hinter das Logo, bei News knapp.
-  final double indent;
+  const _RowDivider();
 
   @override
   Widget build(BuildContext context) {
     return Divider(
       height: 1,
       thickness: 1,
-      indent: indent,
+      indent: 49,
       color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
     );
   }
 }
 
-/// Abgesetzte Fläche für eine Abschnittsliste. Die Zeilen lagen vorher direkt
-/// auf dem Seitengrund und wirkten dadurch flach; jetzt fasst sie eine leicht
-/// hellere Karte mit feiner Kante.
-class _SectionBox extends StatelessWidget {
-  const _SectionBox({required this.child});
+/// Lässt eine Querleiste über den Seitenrand hinauslaufen: der Seiten-
+/// ListView hat 12 px Innenabstand, eine Kachelreihe soll aber bis an die
+/// Bildschirmkante reichen, damit die angeschnittene Karte zeigt, dass es
+/// weitergeht.
+class _Bleed extends StatelessWidget {
+  const _Bleed({required this.hoehe, required this.child});
 
+  final double hoehe;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest
-            .withValues(alpha: dark ? 0.55 : 0.75),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.07)
-              : scheme.outlineVariant,
-        ),
+    final breite = MediaQuery.sizeOf(context).width;
+    return SizedBox(
+      height: hoehe,
+      child: OverflowBox(
+        minWidth: breite,
+        maxWidth: breite,
+        alignment: Alignment.center,
+        child: child,
       ),
-      child: child,
     );
   }
 }
