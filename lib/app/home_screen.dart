@@ -8,11 +8,11 @@ import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../core/ui/app_avatar.dart';
 import '../features/auth/providers.dart';
+import '../features/fantasy/logic/draft_order.dart';
 import '../features/fantasy/logic/league_status.dart';
 import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
-import '../features/fantasy/ui/draft_room_screen.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
 import '../features/fantasy/ui/league_colors.dart';
 import '../features/friends/providers.dart';
@@ -29,13 +29,12 @@ import '../features/news/ui/news_tile.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
-import 'home_now.dart';
+import 'home_tip_status.dart';
 import 'impressum_screen.dart';
 import 'league_screen.dart';
 import 'profile_screen.dart';
 import 'theme.dart';
 import 'widgets/matchup_chevron.dart';
-import 'widgets/now_card.dart';
 import 'widgets/pulsing_dot.dart';
 
 /// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
@@ -105,10 +104,7 @@ class HomeScreen extends ConsumerWidget {
               )
             else ...[
               const _Appear(child: _GreetingBar()),
-              const SizedBox(height: 12),
-              // Ganz oben das, was gerade ansteht — der Screen soll eine
-              // Handlung anbieten, nicht nur eine Liste.
-              const _Appear(delayMs: 40, child: _NowSection()),
+              const SizedBox(height: 16),
               // Noch gar keine Liga (Fantasy + Tippspiel beide leer geladen):
               // statt zweier leerer Abschnitte ein großer Einstieg.
               if (_beideLeer(ref))
@@ -409,42 +405,6 @@ class _HomeMenuDrawer extends ConsumerWidget {
 /// Bundesliga-News: Transferticker (Live-News) + Einstieg zu „Verletzungen &
 /// Sperren". Der Transfer-Teil blendet sich aus, wenn (noch) keine News da
 /// sind; der Ausfälle-Button ist immer erreichbar.
-/// Jetzt-Karte am Kopf des Screens. Lädt still im Hintergrund: solange nichts
-/// feststeht (oder nichts ansteht), bleibt der Platz leer, statt einen
-/// Ladeplatzhalter über den ganzen Screen zu schieben.
-class _NowSection extends ConsumerWidget {
-  const _NowSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final item = ref.watch(nowItemProvider).valueOrNull;
-    if (item == null) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: NowCard(item: item, onOpen: () => _open(context, ref, item)),
-    );
-  }
-
-  void _open(BuildContext context, WidgetRef ref, NowItem item) {
-    final league = item.league;
-    if (league != null) {
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => DraftRoomScreen(league: league)));
-      return;
-    }
-    final round = item.round;
-    if (round == null) return;
-    activateRound(ref, round);
-    Navigator.of(context).push(MaterialPageRoute(
-        // Direkt auf den Tippen-Tab: der Knopf verspricht genau das.
-        builder: (_) => LeagueScreen(round: round, initialTab: 0)));
-  }
-}
-
-/// News am Fuß des Screens. Bewusst klein gehalten: drei Schlagzeilen als
-/// Ausblick, alles Weitere hinter „Alle". Früher standen hier fünf Meldungen
-/// unter zwei Überschriften — das füllte die halbe Seite und drängte die
-/// Ligen nach oben weg.
 /// News ganz unten als schmale Querleiste — die dritte Form auf dem Screen
 /// (Karten quer, Zeilen längs, Leiste). Früher standen hier fünf Meldungen
 /// unter zwei Überschriften und füllten die halbe Seite.
@@ -837,7 +797,7 @@ const double _kLeagueCardHeight = 132;
 
 /// Höhe der Tipprunden-Karten: flacher als eine Liga-Karte, weil sie nur
 /// Name und Wettbewerb trägt — und weil Tippspiel der zweite Bereich ist.
-const double _kTipCardHeight = 104;
+const double _kTipCardHeight = 126;
 
 /// Marken-Gold des Tippspiels (Fallback, wenn die Runde kein Logo hat).
 const Color _kTipGold = Color(0xFFFFC83D);
@@ -875,7 +835,12 @@ class _FantasyLeagueCard extends ConsumerWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final myId = ref.watch(currentUserProvider)?.id;
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
-    final status = fantasyStatus(league, teams: managers?.length);
+    final status = _draftGeschaerft(
+      fantasyStatus(league, teams: managers?.length),
+      league,
+      managers,
+      myId,
+    );
     final farbe =
         parseColor(league.logoColor) ?? leagueColor(league.id, league.mode);
 
@@ -949,7 +914,12 @@ class _FantasyLeagueCard extends ConsumerWidget {
                           fontWeight: FontWeight.w800),
                     ),
                     const Spacer(),
-                    _StatusLine(status: status, farbe: farbe),
+                    Divider(
+                        height: 7,
+                        thickness: 1,
+                        color: farbe.withValues(alpha: 0.28)),
+                    _LigaStatusZeile(
+                        league: league, status: status, farbe: farbe),
                   ],
                 ),
               ),
@@ -959,6 +929,27 @@ class _FantasyLeagueCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Schärft den Draft-Zustand für die Karte nach: **wer** dran ist und **bis
+/// wann**. Beides steht nicht in [fantasyStatus] — die Logik dort kennt nur
+/// die Liga, nicht den angemeldeten Nutzer, und soll ohne Uhrzeit-Format
+/// auskommen.
+LeagueStatus _draftGeschaerft(LeagueStatus status, FantasyLeague league,
+    List<FantasyManager>? managers, String? myId) {
+  if (league.draftStatus != DraftStatus.drafting) return status;
+  final dran = managers == null
+      ? null
+      : currentManager(managers, league.picksMade)?.userId;
+  final frist = league.currentPickDeadline?.toLocal();
+  return LeagueStatus(
+    dran != null && dran == myId ? 'Du bist dran' : status.label,
+    detail: [
+      if (status.detail != null) status.detail!,
+      if (frist != null) kurzeFrist(frist, DateTime.now()),
+    ].join(' · '),
+    tone: status.tone,
+  );
 }
 
 /// Liga-Zeichen: eigenes Logo, sonst die MatchUp-Marke in der Liga-Farbe.
@@ -995,7 +986,43 @@ class _LeagueMark extends StatelessWidget {
   }
 }
 
-/// Zustandszeile der Liga-Karte: Punkt in der Ton-Farbe, Text, leise Zusatzzeile.
+/// Fußzeile der Liga-Karte. Läuft ein Draft, gewinnt der — seine Uhr tickt in
+/// Minuten. Sonst zeigt die Karte, was im **ligainternen Tippspiel** offen
+/// ist: dessen Runde taucht im Tippspiel-Abschnitt bewusst nicht auf (man
+/// erreicht sie über die Liga), ihre offenen Tipps hätten sonst nirgends
+/// mehr Platz. Ist auch dort nichts offen, bleibt es beim Liga-Zustand.
+class _LigaStatusZeile extends ConsumerWidget {
+  const _LigaStatusZeile(
+      {required this.league, required this.status, required this.farbe});
+
+  final FantasyLeague league;
+  final LeagueStatus status;
+  final Color farbe;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (league.draftStatus == DraftStatus.drafting) {
+      return _StatusLine(status: status, farbe: farbe);
+    }
+    final runde = ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull;
+    if (runde == null) return _StatusLine(status: status, farbe: farbe);
+    final offen = ref.watch(offeneTippsProvider(runde.id)).valueOrNull;
+    if (offen == null || offen.anzahl == 0) {
+      return _StatusLine(status: status, farbe: farbe);
+    }
+    final frist = offen.frist;
+    return _StatusZeile(
+      label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
+      detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
+      ton: _kTipGold,
+      pulsiert: frist != null &&
+          frist.difference(DateTime.now()) < const Duration(hours: 1),
+    );
+  }
+}
+
+/// Zustandszeile einer Liga-Karte: übersetzt den Liga-Zustand in Farbe und
+/// Text und gibt ihn an [_StatusZeile] weiter.
 class _StatusLine extends StatelessWidget {
   const _StatusLine({required this.status, required this.farbe});
 
@@ -1010,30 +1037,55 @@ class _StatusLine extends StatelessWidget {
       LeagueStatusTone.laeuft => MatchUpColors.green,
       LeagueStatusTone.bereit => farbe,
     };
+    return _StatusZeile(
+      label: status.label,
+      detail: status.detail,
+      ton: ton,
+      // Der laufende Draft ist das einzige, was wirklich tickt.
+      pulsiert: status.tone == LeagueStatusTone.laeuft,
+    );
+  }
+}
+
+/// Fußzeile beider Kartensorten: farbiger Punkt, kurzes Wort, leise
+/// Zusatzzeile. Texte schrumpfen im Zweifel, statt zu kappen — auf einer
+/// Karte, von der vier nebeneinander passen, sagt „Kader ste…" nichts.
+class _StatusZeile extends StatelessWidget {
+  const _StatusZeile({
+    required this.label,
+    required this.detail,
+    required this.ton,
+    required this.pulsiert,
+  });
+
+  final String label;
+  final String? detail;
+  final Color ton;
+  final bool pulsiert;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
-            // Der laufende Draft ist das einzige, was wirklich tickt.
-            if (status.tone == LeagueStatusTone.laeuft)
+            if (pulsiert)
               PulsingDot(size: 7, color: ton)
             else
               Container(
                 width: 7,
                 height: 7,
-                decoration:
-                    BoxDecoration(color: ton, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: ton, shape: BoxShape.circle),
               ),
             const SizedBox(width: 6),
-            // Lieber schrumpfen als abschneiden: „Kader ste…" sagt nichts,
-            // dasselbe Wort eine Spur kleiner sagt alles.
             Expanded(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(status.label,
+                child: Text(label,
                     maxLines: 1,
                     style: TextStyle(
                         color: ton, fontSize: 13, fontWeight: FontWeight.w800)),
@@ -1041,16 +1093,16 @@ class _StatusLine extends StatelessWidget {
             ),
           ],
         ),
-        if (status.detail != null)
+        if (detail != null)
           Padding(
             padding: const EdgeInsets.only(left: 13, top: 1),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(status.detail!,
+              child: Text(detail!,
                   maxLines: 1,
-                  style: TextStyle(
-                      color: scheme.onSurfaceVariant, fontSize: 11)),
+                  style:
+                      TextStyle(color: scheme.onSurfaceVariant, fontSize: 11)),
             ),
           ),
       ],
@@ -1195,6 +1247,12 @@ class _TipRoundCard extends ConsumerWidget {
                             fontWeight: FontWeight.w800),
                       ),
                     ),
+                    const SizedBox(height: 5),
+                    Divider(
+                        height: 7,
+                        thickness: 1,
+                        color: farbe.withValues(alpha: 0.28)),
+                    _OffeneTippsZeile(roundId: round.id, farbe: farbe),
                   ],
                 ),
               ),
@@ -1202,6 +1260,40 @@ class _TipRoundCard extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Was auf dieser Karte noch zu tun ist: offene Tipps und bis wann. Lädt
+/// still nach — solange nichts feststeht, bleibt die Zeile leer, statt einen
+/// Ladepunkt in jede Karte zu setzen.
+class _OffeneTippsZeile extends ConsumerWidget {
+  const _OffeneTippsZeile({required this.roundId, required this.farbe});
+
+  final String roundId;
+  final Color farbe;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final offen = ref.watch(offeneTippsProvider(roundId)).valueOrNull;
+    if (offen == null) return const SizedBox(height: 26);
+    if (offen.anzahl == 0) {
+      return _StatusZeile(
+        label: 'Alles getippt',
+        detail: null,
+        ton: scheme.onSurfaceVariant,
+        pulsiert: false,
+      );
+    }
+    final frist = offen.frist;
+    return _StatusZeile(
+      label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
+      detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
+      ton: farbe,
+      // Es drängt: das nächste Spiel stößt in unter einer Stunde an.
+      pulsiert: frist != null &&
+          frist.difference(DateTime.now()) < const Duration(hours: 1),
     );
   }
 }

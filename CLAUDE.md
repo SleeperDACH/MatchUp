@@ -26,15 +26,19 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   wertet laufende Spiele zusätzlich live mit — dieselbe Formel, anderer Zeitpunkt.
 - **Spielmodi sind Feature-Module** unter `lib/features/` (tippspiel, später
   fantasy) und teilen sich den Core.
-- **Homescreen führt, statt aufzulisten.** Ganz oben steht die **Jetzt-Karte**
-  (`lib/app/home_now.dart` + `widgets/now_card.dart`): genau *eine* anstehende
-  Sache mit Uhr und Knopf. `nowItemProvider` wählt sie über alle Ligen hinweg —
-  ein laufender Draft schlägt alles (die Pick-Uhr läuft in Minuten ab), sonst
-  gewinnt die dringendste Tipp-Deadline; ein Fehler einer einzelnen Liga wird
-  übersprungen, nicht hochgereicht. Die offenen Tipps zählt sie über dieselbe
-  Do–Mi-Woche (`buildWeeks`/`currentWeekIndex`), die auch der Tippen-Tab
-  öffnet, damit Karte und Feed nie verschiedene Zahlen zeigen. Der Knopf
-  springt per `LeagueScreen(initialTab: 0)` direkt aufs Tippen.
+- **Der Homescreen sagt pro Karte, was zu tun ist** — nicht in einem Kasten
+  obendrüber. Eine „Jetzt"-Karte am Kopf gab es; sie nahm zu viel Platz für
+  eine Sache, die ohnehin auf die Karte gehört. Jetzt trägt jede Karte ihren
+  eigenen Zustand: `offeneTippsProvider(roundId)`
+  (`lib/app/home_tip_status.dart`) zählt die ungetippten Spiele **derselben**
+  Do–Mi-Woche, die auch der Tippen-Tab öffnet (`buildWeeks`/
+  `currentWeekIndex`) — sonst stünden auf Karte und Feed verschiedene Zahlen.
+  Fristen stehen absolut („bis Fr., 20:30", `kurzeFrist`), nicht als
+  Countdown: auf einer Karte, die minutenlang steht, veraltet eine Restdauer.
+  **Ligainterne Tipprunden hängen an der Ligakarte**: sie tauchen im
+  Tippspiel-Abschnitt bewusst nicht auf (erreichbar über die Liga), ihre
+  offenen Tipps hätten sonst nirgends Platz. Läuft ein Draft, gewinnt der —
+  seine Uhr tickt in Minuten.
 - **Der Homescreen darf nicht dreimal dasselbe zeigen.** Fantasy sind quer
   wischbare Karten, Tippspiel schlanke Zeilen, News eine schmale Querleiste —
   drei Formen, damit der Schirm nicht als eine Folge gleicher dunkler Kästen
