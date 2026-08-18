@@ -31,31 +31,27 @@ class LeagueStatus {
 /// Zustand aus dem, was die Liga selbst mitbringt. [teams] ist die Zahl der
 /// Manager (aus `fantasyManagersProvider`); `null`, solange sie lädt.
 LeagueStatus fantasyStatus(FantasyLeague league, {int? teams}) {
-  final platz = switch ((teams, league.maxTeams)) {
-    (final t?, final max?) => '$t/$max Teams',
-    (final t?, null) => t == 1 ? '1 Team' : '$t Teams',
-    _ => null,
-  };
+  final vollstaendig =
+      teams != null && league.maxTeams != null && teams >= league.maxTeams!;
   return switch (league.draftStatus) {
     // Kurze Wörter: auf der schmalen Karte (vier nebeneinander) ist für
-    // ganze Sätze kein Platz, und ein abgeschnittenes „Wartet a…" sagt
-    // weniger als ein vollständiges Wort.
+    // ganze Sätze kein Platz. Die Teamzahl steht bewusst **nicht** dabei —
+    // sie sagt auf dem Homescreen wenig und drängte sich als zweite Zeile
+    // in jede Karte.
     DraftStatus.setup => LeagueStatus(
-        teams != null && league.maxTeams != null && teams < league.maxTeams!
-            ? 'Offen'
-            : 'Startklar',
-        detail: platz,
+        vollstaendig ? 'Startklar' : 'Offen',
         tone: LeagueStatusTone.wartet,
       ),
+    // Einzige Zahl, die bleibt: der laufende Pick. Der sagt, ob man gleich
+    // dran ist — anders als die Teamzahl.
     DraftStatus.drafting => LeagueStatus(
         'Draft läuft',
-        // Pick-Nummer 1-basiert: `picksMade` zählt die fertigen Picks.
+        // 1-basiert: `picksMade` zählt die fertigen Picks.
         detail: 'Pick ${league.picksMade + 1}',
         tone: LeagueStatusTone.laeuft,
       ),
-    DraftStatus.done => LeagueStatus(
+    DraftStatus.done => const LeagueStatus(
         'Kader steht',
-        detail: platz,
         tone: LeagueStatusTone.bereit,
       ),
   };

@@ -24,10 +24,10 @@ FantasyLeague _liga({
     );
 
 void main() {
-  test('Setup mit freien Plätzen ist offen', () {
+  test('Setup mit freien Plätzen ist offen — ohne Teamzahl', () {
     final s = fantasyStatus(_liga(maxTeams: 10), teams: 3);
     expect(s.label, 'Offen');
-    expect(s.detail, '3/10 Teams');
+    expect(s.detail, isNull);
     expect(s.tone, LeagueStatusTone.wartet);
   });
 
@@ -43,13 +43,13 @@ void main() {
     expect(s.label, 'Startklar');
   });
 
-  test('Fertiger Draft meldet den Kader', () {
+  test('Fertiger Draft meldet den Kader, ohne Zahlen', () {
     final s = fantasyStatus(_liga(status: DraftStatus.done), teams: 8);
     expect(s.label, 'Kader steht');
-    expect(s.detail, '8 Teams');
+    expect(s.detail, isNull);
   });
 
-  test('Ohne geladene Managerzahl bleibt die zweite Zeile leer', () {
-    expect(fantasyStatus(_liga(maxTeams: 10)).detail, isNull);
+  test('Ohne geladene Managerzahl gilt die Liga als offen', () {
+    expect(fantasyStatus(_liga(maxTeams: 10)).label, 'Offen');
   });
 }

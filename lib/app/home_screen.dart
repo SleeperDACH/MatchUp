@@ -29,7 +29,6 @@ import '../features/news/ui/news_tile.dart';
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
-import '../features/tippspiel/ui/tip_rank_chip.dart';
 import 'home_now.dart';
 import 'impressum_screen.dart';
 import 'league_screen.dart';
@@ -196,39 +195,48 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(width: _kLeagueCardGap),
             itemBuilder: (_, i) => i < list.length
                 ? _FantasyLeagueCard(league: list[i])
-                : const _NewLeagueCard(),
+                : const _NewEntryCard(
+                    label: 'Liga', hoehe: _kLeagueCardHeight),
           ),
         ),
     ];
   }
 
   // ------------------------------------------------------------------
-  // Tippspiel (zweiter Bereich): schlanke Zeilen, keine Kacheln.
+  // Tippspiel: dieselbe Kartenform wie die Ligen, nur flacher — es ist der
+  // zweite Bereich, nicht der Hauptbereich.
   // ------------------------------------------------------------------
   List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
     final rounds = ref.watch(myRoundsProvider);
     final standalone = _standaloneRounds(ref);
     return [
       _sectionHeader(context, 'Tippspiel', count: standalone?.length),
-      rounds.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(20),
+      if (rounds.hasError)
+        _InfoCard('Tipprunden konnten nicht geladen werden: ${rounds.error}')
+      else if (standalone == null)
+        const SizedBox(
+          height: _kTipCardHeight,
           child: Center(child: CircularProgressIndicator()),
+        )
+      else if (standalone.isEmpty)
+        const _CreateRow(
+            text: 'Tippspiel anlegen',
+            hint: 'Spieltage tippen, Punkte sammeln')
+      else
+        _Bleed(
+          hoehe: _kTipCardHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
+            physics: const BouncingScrollPhysics(),
+            itemCount: standalone.length + 1,
+            separatorBuilder: (_, _) => const SizedBox(width: _kLeagueCardGap),
+            itemBuilder: (_, i) => i < standalone.length
+                ? _TipRoundCard(round: standalone[i])
+                : const _NewEntryCard(
+                    label: 'Tippspiel', hoehe: _kTipCardHeight),
+          ),
         ),
-        error: (e, _) => _InfoCard('Tipprunden konnten nicht geladen werden: $e'),
-        data: (_) => (standalone == null || standalone.isEmpty)
-            ? const _CreateRow(
-                text: 'Tippspiel anlegen',
-                hint: 'Spieltage tippen, Punkte sammeln')
-            : Column(
-                children: [
-                  for (var i = 0; i < standalone.length; i++) ...[
-                    if (i > 0) const _RowDivider(),
-                    _TipRoundCard(round: standalone[i]),
-                  ],
-                ],
-              ),
-      ),
     ];
   }
 
@@ -827,6 +835,13 @@ class _CreateRow extends ConsumerWidget {
 /// „Neue Liga"-Karte, damit die Reihe nicht springt.
 const double _kLeagueCardHeight = 132;
 
+/// Höhe der Tipprunden-Karten: flacher als eine Liga-Karte, weil sie nur
+/// Name und Wettbewerb trägt — und weil Tippspiel der zweite Bereich ist.
+const double _kTipCardHeight = 104;
+
+/// Marken-Gold des Tippspiels (Fallback, wenn die Runde kein Logo hat).
+const Color _kTipGold = Color(0xFFFFC83D);
+
 /// Abstand zwischen zwei Karten der Reihe.
 const double _kLeagueCardGap = 8;
 
@@ -1043,9 +1058,12 @@ class _StatusLine extends StatelessWidget {
   }
 }
 
-/// Letzte Karte der Reihe: neue Liga anlegen oder beitreten.
-class _NewLeagueCard extends ConsumerWidget {
-  const _NewLeagueCard();
+/// Letzte Karte einer Reihe: neu anlegen oder beitreten.
+class _NewEntryCard extends ConsumerWidget {
+  const _NewEntryCard({required this.label, required this.hoehe});
+
+  final String label;
+  final double hoehe;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1053,7 +1071,7 @@ class _NewLeagueCard extends ConsumerWidget {
     return _PressScale(
       child: SizedBox(
         width: leagueCardWidth(context),
-        height: _kLeagueCardHeight,
+        height: hoehe,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -1069,13 +1087,16 @@ class _NewLeagueCard extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.add_rounded,
-                      size: 24, color: scheme.onSurfaceVariant),
-                  const SizedBox(height: 4),
-                  Text('Liga',
-                      style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700)),
+                      size: 22, color: scheme.onSurfaceVariant),
+                  const SizedBox(height: 3),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(label,
+                        style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ),
                 ],
               ),
             ),
@@ -1093,37 +1114,128 @@ class _TipRoundCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final league = Leagues.byId(round.leagueId);
-    final icon = switch (league.id) {
-      'wm2026' => Icons.public,
-      'bundesliga' => Icons.sports_soccer,
-      _ => Icons.emoji_events_outlined,
-    };
     // Mehrere Wettbewerbe → „Bundesliga +2".
     final extra = round.competitions.length - 1;
-    final subtitle = extra > 0 ? '${league.name} +$extra' : league.name;
+    final wettbewerb = extra > 0 ? '${league.name} +$extra' : league.name;
+    final farbe = parseColor(round.logoColor) ?? _kTipGold;
+
     final myId = ref.watch(currentUserProvider)?.id;
     final showBadge =
         round.isPublic && round.isInviteOnly && myId == round.createdBy;
     final pending = showBadge
         ? (ref.watch(tipJoinRequestsProvider(round.id)).valueOrNull?.length ?? 0)
         : 0;
-    return _LeagueTile(
-      icon: icon,
-      title: round.name,
-      subtitle: subtitle,
-      logoUrl: round.logoUrl,
-      logoEmoji: round.logoEmoji,
-      logoColor: round.logoColor,
-      // MatchUp-Marke in Gold für Tippspiele.
-      brandColor: const Color(0xFFFFC83D),
-      badge: pending,
-      trailing: TipRankChip(round: round),
-      onTap: () {
-        activateRound(ref, round);
-        Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
-      },
+
+    return _PressScale(
+      child: SizedBox(
+        width: leagueCardWidth(context),
+        height: _kTipCardHeight,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              activateRound(ref, round);
+              Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.alphaBlend(
+                        farbe.withValues(alpha: dark ? 0.26 : 0.19),
+                        scheme.surfaceContainerHighest),
+                    Color.alphaBlend(
+                        farbe.withValues(alpha: dark ? 0.06 : 0.05),
+                        scheme.surfaceContainerHighest),
+                  ],
+                ),
+                border: Border.all(color: farbe.withValues(alpha: 0.45)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(9, 8, 8, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _RoundMark(round: round, farbe: farbe, size: 24),
+                        const Spacer(),
+                        if (pending > 0) _CountBadge(count: pending),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Expanded(
+                      child: Text(
+                        round.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            height: 1.1),
+                      ),
+                    ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        wettbewerb,
+                        maxLines: 1,
+                        style: TextStyle(
+                            color: farbe,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Zeichen einer Tipprunde: eigenes Logo, sonst die MatchUp-Marke in Gold.
+class _RoundMark extends StatelessWidget {
+  const _RoundMark(
+      {required this.round, required this.farbe, required this.size});
+
+  final TipRound round;
+  final Color farbe;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCustom = (round.logoUrl != null && round.logoUrl!.isNotEmpty) ||
+        (round.logoEmoji != null && round.logoEmoji!.isNotEmpty);
+    if (hasCustom) {
+      return AppAvatar(
+        imageUrl: round.logoUrl,
+        emoji: round.logoEmoji,
+        colorHex: round.logoColor,
+        fallbackIcon: Icons.emoji_events_outlined,
+        size: size,
+        cornerRadius: 8,
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration:
+          BoxDecoration(color: farbe, borderRadius: BorderRadius.circular(8)),
+      alignment: Alignment.center,
+      child: MatchUpChevron(size: size * 0.5, color: MatchUpColors.base),
     );
   }
 }
@@ -1150,148 +1262,6 @@ class _CountBadge extends StatelessWidget {
               color: scheme.onError,
               fontWeight: FontWeight.bold,
               fontSize: 12)),
-    );
-  }
-}
-
-/// Kompakte Liga-Zeile für den Homescreen (Fantasy & Tippspiel): kleine
-/// Icon-Kachel, Name, Kontextzeile und rechts ein farbiger Status-Punkt
-/// (statt eines Text-Chips) — dicht gereiht, aber als Karte erkennbar.
-class _LeagueTile extends StatelessWidget {
-  const _LeagueTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.logoUrl,
-    this.logoEmoji,
-    this.logoColor,
-    this.brandColor,
-    this.trailing,
-    this.badge = 0,
-  });
-
-  final IconData icon;
-  final String title;
-
-  /// Liga-Logo (Bild oder Emoji+Farbe); ohne beides greift die MatchUp-Marke
-  /// in [brandColor] (klar unterscheidbar je Liga-Typ), sonst das [icon].
-  final String? logoUrl;
-  final String? logoEmoji;
-  final String? logoColor;
-
-  /// Typ-Farbe der MatchUp-Marke als Fallback (Tippspiel/Redraft/Dynasty).
-  final Color? brandColor;
-
-  /// Kleine graue Zeile: Modus (Redraft/Dynasty) bzw. Wettbewerb.
-  final String subtitle;
-
-  /// Optionaler Zusatz vor dem Chevron (z. B. Platzierungs-Chip).
-  final Widget? trailing;
-
-  /// Anzahl offener Beitrittsanfragen (nur Admin; 0 = kein Badge).
-  final int badge;
-  final VoidCallback onTap;
-
-  /// Leading-Symbol: eigenes Liga-Logo, sonst die MatchUp-Marke in der
-  /// Typ-Farbe (Tippspiel/Redraft/Dynasty), sonst Icon.
-  Widget _leading(ColorScheme scheme) {
-    final hasCustom = (logoUrl != null && logoUrl!.isNotEmpty) ||
-        (logoEmoji != null && logoEmoji!.isNotEmpty);
-    if (!hasCustom && brandColor != null) {
-      return Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: brandColor,
-          borderRadius: BorderRadius.circular(9),
-        ),
-        alignment: Alignment.center,
-        child: MatchUpChevron(size: 17, color: MatchUpColors.base),
-      );
-    }
-    return AppAvatar(
-      imageUrl: logoUrl,
-      emoji: logoEmoji,
-      colorHex: logoColor,
-      fallbackIcon: icon,
-      size: 34,
-      cornerRadius: 9,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // Bewusst keine Card/Box: schlichte, randlose, dünne Listenzeile.
-    return _PressScale(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-            child: Row(
-              children: [
-                _leading(scheme),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold)),
-                      Text(subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(color: scheme.onSurfaceVariant)),
-                    ],
-                  ),
-                ),
-                if (badge > 0) ...[
-                  const SizedBox(width: 8),
-                  _CountBadge(count: badge),
-                ],
-                if (trailing != null) ...[
-                  const SizedBox(width: 8),
-                  trailing!,
-                ],
-                const SizedBox(width: 10),
-                // Nach rechts gedrehter MatchUp-Doppelchevron in Weiß.
-                const RotatedBox(
-                  quarterTurns: 1,
-                  child: MatchUpChevron(size: 14, color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Dünner, eingerückter Trenner zwischen zwei Tipprunden-Zeilen.
-class _RowDivider extends StatelessWidget {
-  const _RowDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Divider(
-      height: 1,
-      thickness: 1,
-      indent: 49,
-      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
     );
   }
 }
