@@ -34,7 +34,6 @@ import 'impressum_screen.dart';
 import 'league_screen.dart';
 import 'profile_screen.dart';
 import 'theme.dart';
-import 'widgets/league_logo.dart';
 import 'widgets/matchup_chevron.dart';
 import 'widgets/now_card.dart';
 import 'widgets/pulsing_dot.dart';
@@ -1207,11 +1206,7 @@ class _TipRoundCard extends ConsumerWidget {
   }
 }
 
-/// Zeichen einer Tipprunde. Reihenfolge bewusst so: ein selbst gesetztes
-/// Rundenlogo gewinnt, sonst das **Wettbewerbslogo** (Bundesliga, 2. Liga,
-/// DFB-Pokal …), sonst das gezeichnete Emblem. Ohne das Wettbewerbslogo
-/// trugen alle Tippkarten dieselbe goldene Marke und unterschieden sich nur
-/// im Kleingedruckten.
+/// Zeichen einer Tipprunde: eigenes Logo, sonst die MatchUp-Marke in Gold.
 class _RoundMark extends StatelessWidget {
   const _RoundMark(
       {required this.round, required this.farbe, required this.size});
@@ -1234,26 +1229,13 @@ class _RoundMark extends StatelessWidget {
         cornerRadius: 8,
       );
     }
-    // Heller Grund unter dem Logo: die Wettbewerbslogos sind für hellen
-    // Untergrund gezeichnet und würden auf dem dunklen Grund absaufen.
     return Container(
       width: size,
       height: size,
-      padding: EdgeInsets.all(size * 0.12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: LeagueLogo(
-        leagueId: round.leagueId,
-        size: size * 0.76,
-        fallback: Container(
-          decoration: BoxDecoration(
-              color: farbe, borderRadius: BorderRadius.circular(5)),
-          alignment: Alignment.center,
-          child: MatchUpChevron(size: size * 0.4, color: MatchUpColors.base),
-        ),
-      ),
+      decoration:
+          BoxDecoration(color: farbe, borderRadius: BorderRadius.circular(8)),
+      alignment: Alignment.center,
+      child: MatchUpChevron(size: size * 0.5, color: MatchUpColors.base),
     );
   }
 }
