@@ -20,7 +20,7 @@ void main() {
 
   test('unter einer Woche: Wochentag und Uhrzeit', () {
     expect(formatDeadline(now.add(const Duration(days: 3, hours: 3)), now),
-        'Anstoß am Freitag, 15:00 Uhr');
+        'Anstoß Fr., 15:00 Uhr');
   });
 
   test('weiter weg: mit Datum', () {

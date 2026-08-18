@@ -24,9 +24,9 @@ FantasyLeague _liga({
     );
 
 void main() {
-  test('Setup mit freien Plätzen wartet auf Teams', () {
+  test('Setup mit freien Plätzen ist offen', () {
     final s = fantasyStatus(_liga(maxTeams: 10), teams: 3);
-    expect(s.label, 'Wartet auf Teams');
+    expect(s.label, 'Offen');
     expect(s.detail, '3/10 Teams');
     expect(s.tone, LeagueStatusTone.wartet);
   });
@@ -36,6 +36,11 @@ void main() {
     expect(s.label, 'Draft läuft');
     expect(s.detail, 'Pick 14');
     expect(s.tone, LeagueStatusTone.laeuft);
+  });
+
+  test('Volle Setup-Liga ist startklar', () {
+    final s = fantasyStatus(_liga(maxTeams: 8), teams: 8);
+    expect(s.label, 'Startklar');
   });
 
   test('Fertiger Draft meldet den Kader', () {

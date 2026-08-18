@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../core/ui/app_avatar.dart';
-import '../core/ui/default_avatar.dart';
 import '../features/auth/providers.dart';
 import '../features/fantasy/logic/league_status.dart';
 import '../features/fantasy/models/fantasy_models.dart';
@@ -15,7 +14,7 @@ import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
 import '../features/fantasy/ui/draft_room_screen.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
-import '../features/fantasy/ui/fantasy_rank_chip.dart';
+import '../features/fantasy/ui/league_colors.dart';
 import '../features/friends/providers.dart';
 import '../features/friends/ui/friends_screen.dart';
 import '../features/leagues/providers.dart';
@@ -167,10 +166,12 @@ class HomeScreen extends ConsumerWidget {
           hoehe: _kLeagueCardHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
             physics: const BouncingScrollPhysics(),
             itemCount: list.length + 1,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            separatorBuilder: (_, _) =>
+                const SizedBox(width: _kLeagueCardGap),
             itemBuilder: (_, i) => i < list.length
                 ? _FantasyLeagueCard(league: list[i])
                 : const _NewLeagueCard(),
@@ -803,15 +804,32 @@ class _CreateRow extends ConsumerWidget {
   }
 }
 
-/// Maße der Liga-Karten im Querlauf — auch für den Ladeplatz und die
+/// Höhe der Liga-Karten im Querlauf — auch für den Ladeplatz und die
 /// „Neue Liga"-Karte, damit die Reihe nicht springt.
-const double _kLeagueCardHeight = 168;
-const double _kLeagueCardWidth = 186;
+const double _kLeagueCardHeight = 132;
 
-/// Eine Fantasy-Liga als Karte: eigene Farbe, eigener Zustand. Die Farbe
-/// kommt deterministisch aus der Liga-ID (dieselbe Palette wie die Avatare),
-/// solange die Liga kein eigenes Logo hat — vorher trugen alle Ligen dieselbe
-/// Marke in nur zwei Typ-Farben und waren dadurch nicht auseinanderzuhalten.
+/// Abstand zwischen zwei Karten der Reihe.
+const double _kLeagueCardGap = 8;
+
+/// Seitlicher Innenabstand der Reihe (passend zum Seitenrand).
+const double _kLeagueRowPad = 12;
+
+/// Kartenbreite so, dass **genau vier** nebeneinander auf den Schirm passen;
+/// ab der fünften wird gewischt. Deshalb aus der Bildschirmbreite gerechnet
+/// statt fest verdrahtet — auf einem kleinen iPhone wären vier feste 186er
+/// nur zweieinhalb.
+double leagueCardWidth(BuildContext context) {
+  final frei = MediaQuery.sizeOf(context).width -
+      2 * _kLeagueRowPad -
+      3 * _kLeagueCardGap;
+  return frei / 4;
+}
+
+/// Eine Fantasy-Liga als schmale Karte: eigene Farbe, eigener Zustand.
+/// Die Farbe kommt deterministisch aus der Liga-ID — aber aus der Palette
+/// ihres Modus, damit Redraft (kühl) und Dynasty (warm) auf einen Blick
+/// auseinanderzuhalten sind. Vorher trugen alle Ligen dieselbe Marke in nur
+/// zwei Typ-Farben und waren dadurch gar nicht zu unterscheiden.
 class _FantasyLeagueCard extends ConsumerWidget {
   const _FantasyLeagueCard({required this.league});
 
@@ -824,7 +842,8 @@ class _FantasyLeagueCard extends ConsumerWidget {
     final myId = ref.watch(currentUserProvider)?.id;
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
     final status = fantasyStatus(league, teams: managers?.length);
-    final farbe = parseColor(league.logoColor) ?? defaultAvatarColor(league.id);
+    final farbe =
+        parseColor(league.logoColor) ?? leagueColor(league.id, league.mode);
 
     // Offene Beitrittsanfragen nur für den Admin einer öffentlich–auf-
     // Einladung-Liga (Live über Realtime).
@@ -837,73 +856,66 @@ class _FantasyLeagueCard extends ConsumerWidget {
 
     return _PressScale(
       child: SizedBox(
-        width: _kLeagueCardWidth,
+        width: leagueCardWidth(context),
         height: _kLeagueCardHeight,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => FantasyLeagueScreen(league: league))),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             child: Ink(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
                     Color.alphaBlend(
-                        farbe.withValues(alpha: dark ? 0.26 : 0.18),
+                        farbe.withValues(alpha: dark ? 0.28 : 0.20),
                         scheme.surfaceContainerHighest),
                     Color.alphaBlend(
                         farbe.withValues(alpha: dark ? 0.06 : 0.05),
                         scheme.surfaceContainerHighest),
                   ],
                 ),
-                border: Border.all(color: farbe.withValues(alpha: 0.42)),
+                border: Border.all(color: farbe.withValues(alpha: 0.45)),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
+                padding: const EdgeInsets.fromLTRB(9, 9, 8, 9),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        _LeagueMark(
-                            league: league, farbe: farbe, size: 34),
+                        _LeagueMark(league: league, farbe: farbe, size: 26),
                         const Spacer(),
-                        if (pending > 0)
-                          _CountBadge(count: pending)
-                        else
-                          _ModePill(mode: league.mode, farbe: farbe),
+                        if (pending > 0) _CountBadge(count: pending),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 7),
                     Text(
                       league.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            height: 1.1,
-                          ),
+                      style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1),
+                    ),
+                    // Modus als Wort, weil die Farbe allein nur die Familie
+                    // verrät, nicht den Namen.
+                    Text(
+                      league.mode.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: farbe,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800),
                     ),
                     const Spacer(),
-                    if (managers != null && managers.isNotEmpty)
-                      _ManagerRow(managers: managers),
-                    const SizedBox(height: 6),
-                    Divider(
-                        height: 9,
-                        thickness: 1,
-                        color: farbe.withValues(alpha: 0.28)),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                            child: _StatusLine(status: status, farbe: farbe)),
-                        FantasyRankChip(league: league),
-                      ],
-                    ),
+                    _StatusLine(status: status, farbe: farbe),
                   ],
                 ),
               ),
@@ -949,86 +961,6 @@ class _LeagueMark extends StatelessWidget {
   }
 }
 
-/// Überlappende Mitglieder-Avatare — füllt die Mitte der Karte mit etwas,
-/// das jede Liga anders zeigt, statt mit Leerraum.
-class _ManagerRow extends StatelessWidget {
-  const _ManagerRow({required this.managers});
-
-  final List<FantasyManager> managers;
-
-  static const _max = 5;
-  static const _size = 22.0;
-  static const _overlap = 7.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final gezeigt = managers.take(_max).toList();
-    final rest = managers.length - gezeigt.length;
-    return SizedBox(
-      height: _size,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          for (var i = 0; i < gezeigt.length; i++)
-            Positioned(
-              left: i * (_size - _overlap),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: scheme.surface, width: 1.5),
-                ),
-                child: AppAvatar(
-                  imageUrl: gezeigt[i].avatarUrl,
-                  emoji: gezeigt[i].avatarEmoji,
-                  colorHex: gezeigt[i].avatarColor,
-                  fallbackText: gezeigt[i].username,
-                  seed: gezeigt[i].userId,
-                  size: _size,
-                ),
-              ),
-            ),
-          if (rest > 0)
-            Positioned(
-              left: gezeigt.length * (_size - _overlap) + 4,
-              top: 3,
-              child: Text('+$rest',
-                  style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Kleiner Typ-Anhänger („Redraft" / „Dynasty"). Trägt jetzt der Text, was
-/// vorher die Farbe tragen musste — die gehört der Liga-Identität.
-class _ModePill extends StatelessWidget {
-  const _ModePill({required this.mode, required this.farbe});
-
-  final FantasyMode mode;
-  final Color farbe;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: farbe.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        mode.label,
-        style: TextStyle(
-            color: farbe, fontSize: 11, fontWeight: FontWeight.w800),
-      ),
-    );
-  }
-}
-
 /// Zustandszeile der Liga-Karte: Punkt in der Ton-Farbe, Text, leise Zusatzzeile.
 class _StatusLine extends StatelessWidget {
   const _StatusLine({required this.status, required this.farbe});
@@ -1061,23 +993,31 @@ class _StatusLine extends StatelessWidget {
                     BoxDecoration(color: ton, shape: BoxShape.circle),
               ),
             const SizedBox(width: 6),
+            // Lieber schrumpfen als abschneiden: „Kader ste…" sagt nichts,
+            // dasselbe Wort eine Spur kleiner sagt alles.
             Expanded(
-              child: Text(status.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: ton, fontSize: 13, fontWeight: FontWeight.w800)),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(status.label,
+                    maxLines: 1,
+                    style: TextStyle(
+                        color: ton, fontSize: 13, fontWeight: FontWeight.w800)),
+              ),
             ),
           ],
         ),
         if (status.detail != null)
           Padding(
             padding: const EdgeInsets.only(left: 13, top: 1),
-            child: Text(status.detail!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    color: scheme.onSurfaceVariant, fontSize: 11)),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(status.detail!,
+                  maxLines: 1,
+                  style: TextStyle(
+                      color: scheme.onSurfaceVariant, fontSize: 11)),
+            ),
           ),
       ],
     );
@@ -1093,16 +1033,16 @@ class _NewLeagueCard extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     return _PressScale(
       child: SizedBox(
-        width: 116,
+        width: leagueCardWidth(context),
         height: _kLeagueCardHeight,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () => showCreateOrJoin(context, ref),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                     color: scheme.outlineVariant.withValues(alpha: 0.8)),
               ),
@@ -1110,16 +1050,13 @@ class _NewLeagueCard extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.add_rounded,
-                      size: 28, color: scheme.onSurfaceVariant),
-                  const SizedBox(height: 6),
+                      size: 24, color: scheme.onSurfaceVariant),
+                  const SizedBox(height: 4),
                   Text('Liga',
                       style: TextStyle(
                           color: scheme.onSurfaceVariant,
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700)),
-                  Text('anlegen',
-                      style: TextStyle(
-                          color: scheme.onSurfaceVariant, fontSize: 12)),
                 ],
               ),
             ),

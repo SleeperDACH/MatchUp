@@ -37,10 +37,13 @@ LeagueStatus fantasyStatus(FantasyLeague league, {int? teams}) {
     _ => null,
   };
   return switch (league.draftStatus) {
+    // Kurze Wörter: auf der schmalen Karte (vier nebeneinander) ist für
+    // ganze Sätze kein Platz, und ein abgeschnittenes „Wartet a…" sagt
+    // weniger als ein vollständiges Wort.
     DraftStatus.setup => LeagueStatus(
         teams != null && league.maxTeams != null && teams < league.maxTeams!
-            ? 'Wartet auf Teams'
-            : 'Draft startet noch nicht',
+            ? 'Offen'
+            : 'Startklar',
         detail: platz,
         tone: LeagueStatusTone.wartet,
       ),

@@ -46,12 +46,6 @@ class NowCard extends StatelessWidget {
         NowKind.kickoff => 'Zur Runde',
       };
 
-  IconData get _icon => switch (item.kind) {
-        NowKind.draft => Icons.gavel_rounded,
-        NowKind.tips => Icons.edit_note_rounded,
-        NowKind.kickoff => Icons.check_circle_outline,
-      };
-
   /// Pulsiert nur, wenn es wirklich brennt: eigener Pick oder Anstoß in
   /// unter einer Stunde. Sonst wäre das Signal wertlos.
   bool get _urgent {
@@ -71,102 +65,91 @@ class NowCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onOpen,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
               colors: [
                 Color.alphaBlend(
-                    accent.withValues(alpha: dark ? 0.20 : 0.16),
+                    accent.withValues(alpha: dark ? 0.22 : 0.17),
                     scheme.surfaceContainerHighest),
-                scheme.surfaceContainerHighest,
+                Color.alphaBlend(
+                    accent.withValues(alpha: dark ? 0.05 : 0.04),
+                    scheme.surfaceContainerHighest),
               ],
             ),
             border: Border.all(color: accent.withValues(alpha: 0.45)),
           ),
-          child: Stack(
-            children: [
-              // Großes, fast verschwundenes Symbol als Tiefe im Hintergrund.
-              Positioned(
-                right: -14,
-                bottom: -18,
-                child: Icon(_icon,
-                    size: 116, color: accent.withValues(alpha: 0.09)),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (_urgent)
-                          PulsingDot(size: 8, color: accent)
-                        else
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                                color: accent, shape: BoxShape.circle),
-                          ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            item.label.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: accent,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.8,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(13, 10, 10, 11),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          if (_urgent)
+                            PulsingDot(size: 8, color: accent)
+                          else
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                  color: accent, shape: BoxShape.circle),
+                            ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              _headline,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.05,
+                                      color: scheme.onSurface),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _headline,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: scheme.onSurface),
-                    ),
-                    const SizedBox(height: 2),
-                    _DeadlineLine(item: item, accent: accent, jetzt: jetzt),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        FilledButton(
-                          onPressed: onOpen,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: accent,
-                            foregroundColor: MatchUpColors.base,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 22, vertical: 10),
-                            textStyle: const TextStyle(
-                                fontFamily: 'BarlowCondensed',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: Text(_action),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16),
+                        child:
+                            _DeadlineLine(item: item, accent: accent, jetzt: jetzt),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                // Kompakter Knopf statt breiter Fläche: die Karte soll eine
+                // Zeile hoch sein, nicht ein Viertel des Bildschirms.
+                FilledButton(
+                  onPressed: onOpen,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: MatchUpColors.base,
+                    minimumSize: const Size(0, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    textStyle: const TextStyle(
+                        fontFamily: 'BarlowCondensed',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11)),
+                  ),
+                  child: Text(_action),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -233,8 +216,11 @@ class _DeadlineLineState extends State<_DeadlineLine> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final now = widget.jetzt ?? DateTime.now();
+    // Der Liganame steht jetzt hier: in der kompakten Karte gibt es keine
+    // eigene Zeile mehr dafür. Der Spieltag entfällt, sonst wird die Zeile
+    // so lang, dass ausgerechnet die Uhrzeit abgeschnitten wird.
     final parts = <String>[
-      if (widget.item.detail != null) widget.item.detail!,
+      widget.item.label,
       if (widget.item.deadline != null)
         formatDeadline(widget.item.deadline!, now,
             isPick: widget.item.kind == NowKind.draft),
@@ -266,8 +252,9 @@ String formatDeadline(DateTime deadline, DateTime now, {bool isPick = false}) {
         '${left.inHours}:${two(left.inMinutes % 60)} Std';
   }
   if (left < const Duration(days: 7)) {
-    return 'Anstoß am '
-        '${DateFormat("EEEE, HH:mm 'Uhr'", 'de_DE').format(deadline)}';
+    // Kurzer Wochentag: in der schmalen Karte steht neben der Zeile noch der
+    // Knopf, „Anstoß am Donnerstag, 15:00 Uhr" wird dort abgeschnitten.
+    return 'Anstoß ${DateFormat('E, HH:mm', 'de_DE').format(deadline)} Uhr';
   }
   return 'Anstoß ${DateFormat('E, d. MMM, HH:mm', 'de_DE').format(deadline)}';
 }
