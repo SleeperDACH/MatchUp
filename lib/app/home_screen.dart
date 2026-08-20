@@ -1743,113 +1743,206 @@ void showCreateOrJoin(BuildContext context, WidgetRef ref) async {
   }
 }
 
+/// Auswahl beim „+": Fantasy-Liga, Tippspiel oder einer bestehenden Runde
+/// beitreten. Gibt `'fantasy'`, `'tip'` bzw. `'join'` zurück.
+///
+/// Der Schirm hatte zwei bildschirmfüllende Bilder mit je einem Wort darauf —
+/// hübsch, aber er beantwortete die eine Frage nicht, die hier ansteht:
+/// **was ist der Unterschied?** Jede Karte sagt das jetzt in einer Zeile, und
+/// die Höhen stehen fest, statt sich über den ganzen Schirm zu ziehen.
 class _CreateOrJoinScreen extends StatelessWidget {
   const _CreateOrJoinScreen();
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(centerTitle: true, title: const Text('Liga erstellen')),
+      appBar: AppBar(
+        centerTitle: true,
+        title: const Text('Neu starten'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: 'Schließen',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // Zwei große farbige Felder.
-              Expanded(
-                child: _CreateBigTile(
-                  color: MatchUpColors.green,
-                  image: 'assets/images/fantasy_bg.jpg',
-                  title: 'Fantasy',
-                  onTap: () => Navigator.of(context).pop('fantasy'),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          children: [
+            Text(
+              'Was möchtest du spielen?',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Beides geht mit denselben Freunden — und beides kannst du '
+              'mehrfach haben.',
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(height: 18),
+            _StartKarte(
+              farbe: MatchUpColors.green,
+              bild: 'assets/images/fantasy_bg.jpg',
+              titel: 'Fantasy',
+              zeile: 'Spieler draften, Kader managen, Woche für Woche punkten',
+              onTap: () => Navigator.of(context).pop('fantasy'),
+            ),
+            const SizedBox(height: 12),
+            _StartKarte(
+              farbe: _kTipGold,
+              bild: 'assets/images/tippspiel_bg.jpg',
+              titel: 'Tippspiel',
+              zeile: 'Ergebnisse tippen, Punkte sammeln, Tabelle klettern',
+              onTap: () => Navigator.of(context).pop('tip'),
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Expanded(
+                    child: Divider(
+                        color:
+                            scheme.outlineVariant.withValues(alpha: 0.7))),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text('ODER',
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                      )),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Expanded(
-                child: _CreateBigTile(
-                  color: const Color(0xFFFFC83D),
-                  image: 'assets/images/tippspiel_bg.jpg',
-                  title: 'Tippspiel',
-                  onTap: () => Navigator.of(context).pop('tip'),
-                ),
-              ),
-              const SizedBox(height: 18),
-              // Beitreten – klein darunter.
-              _CreateJoinTile(onTap: () => Navigator.of(context).pop('join')),
-            ],
-          ),
+                Expanded(
+                    child: Divider(
+                        color:
+                            scheme.outlineVariant.withValues(alpha: 0.7))),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _BeitretenKarte(onTap: () => Navigator.of(context).pop('join')),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Großes Auswahlfeld (Fantasy / Tippspiel) mit Bild-Hintergrund; ein dunkler
-/// Verlauf unten hält den Titel gut lesbar.
-class _CreateBigTile extends StatelessWidget {
-  const _CreateBigTile({
-    required this.color,
-    required this.image,
-    required this.title,
+/// Eine der beiden Startkarten. Feste Höhe statt `Expanded`: auf einem großen
+/// Gerät wuchsen die alten Felder ins Riesenhafte, auf einem kleinen drückten
+/// sie den „Beitreten"-Weg aus dem Bild.
+class _StartKarte extends StatelessWidget {
+  const _StartKarte({
+    required this.farbe,
+    required this.bild,
+    required this.titel,
+    required this.zeile,
     required this.onTap,
   });
 
-  final Color color;
-  final String image;
-  final String title;
+  final Color farbe;
+  final String bild;
+  final String titel;
+  final String zeile;
   final VoidCallback onTap;
+
+  static const _hoehe = 168.0;
+  static final _radius = BorderRadius.circular(20);
 
   @override
   Widget build(BuildContext context) {
-    const radius = BorderRadius.all(Radius.circular(20));
-    return Container(
-      width: double.infinity,
-      // Rahmen als Vordergrund → liegt sauber (ohne Naht) über Bild & Ripple.
-      foregroundDecoration: BoxDecoration(
-        borderRadius: radius,
-        border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        clipBehavior: Clip.antiAlias,
-        borderRadius: radius,
-        child: Ink.image(
-          image: AssetImage(image),
-          fit: BoxFit.cover,
-          child: InkWell(
-            onTap: onTap,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Dunkler Verlauf unten für die Titel-Lesbarkeit.
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.center,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        MatchUpColors.base.withValues(alpha: 0.85),
-                      ],
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(26, 22, 26, 22),
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
+    return _PressScale(
+      child: SizedBox(
+        height: _hoehe,
+        child: Container(
+          // Rahmen im Vordergrund → liegt ohne Naht über Bild und Ripple.
+          foregroundDecoration: BoxDecoration(
+            borderRadius: _radius,
+            border: Border.all(color: farbe.withValues(alpha: 0.65), width: 1.5),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            clipBehavior: Clip.antiAlias,
+            borderRadius: _radius,
+            child: Ink.image(
+              image: AssetImage(bild),
+              fit: BoxFit.cover,
+              child: InkWell(
+                onTap: onTap,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Senkrechter Verlauf: oben nur ein Farbschleier, damit
+                    // das Bild sichtbar bleibt, unten fast deckend. Schräg
+                    // gelegt lag die Unterzeile teils auf hellem Rasen und
+                    // war schlecht zu lesen.
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            farbe.withValues(alpha: 0.16),
+                            MatchUpColors.base.withValues(alpha: 0.55),
+                            MatchUpColors.base.withValues(alpha: 0.96),
+                          ],
+                          stops: const [0.0, 0.45, 1.0],
+                        ),
                       ),
                     ),
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: farbe,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: MatchUpChevron(
+                                size: 18, color: MatchUpColors.base),
+                          ),
+                          const Spacer(),
+                          Text(
+                            titel,
+                            style: const TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.5,
+                              height: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  zeile,
+                                  maxLines: 2,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.82),
+                                    fontSize: 13,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Icon(Icons.arrow_forward_rounded,
+                                  size: 20, color: farbe),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1858,39 +1951,51 @@ class _CreateBigTile extends StatelessWidget {
   }
 }
 
-/// Kleineres „Beitreten"-Feld unter den großen Erstellen-Feldern.
-class _CreateJoinTile extends StatelessWidget {
-  const _CreateJoinTile({required this.onTap});
+/// Der dritte Weg: einer bestehenden Runde beitreten. Bewusst ruhiger als die
+/// beiden Startkarten — wer einen Code hat, sucht ihn gezielt.
+class _BeitretenKarte extends StatelessWidget {
+  const _BeitretenKarte({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(Icons.group_add_outlined, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Text('Beitreten',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              Text('Mit Einladungscode',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: scheme.onSurfaceVariant)),
-              const SizedBox(width: 6),
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
+    return _PressScale(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.9)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.vpn_key_outlined,
+                    size: 22, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Einer Runde beitreten',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                      Text('Mit dem Einladungscode von Freunden',
+                          style: TextStyle(
+                              color: scheme.onSurfaceVariant, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+              ],
+            ),
           ),
         ),
       ),
