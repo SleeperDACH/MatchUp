@@ -57,6 +57,15 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   (`fantasyStatus`, `logic/league_status.dart`): vor dem ersten gewerteten
   Spieltag rendert `FantasyRankChip` absichtlich nichts, ohne Zustandszeile
   wäre die Karte dann leer und von jeder anderen ununterscheidbar.
+- **Formulare und Einstellungslisten benutzen `FormSection`**
+  (`core/ui/form_section.dart`): kleine Versal-Überschrift, optional ein
+  erklärender Satz, Inhalt in abgesetzter Fläche — dazu `FormError` und
+  `FormActionBar`. Die Erstellen-Formulare und die Tipprunden-Einstellungen
+  sahen vorher verschieden aus, obwohl sie dieselbe Sache betreffen. Der
+  Hauptknopf gehört in die `FormActionBar` am unteren Rand, **nicht** ans
+  Ende der Liste: beim Tippspiel liegt dazwischen der ganze Wertungs-Editor.
+  Steuerelemente darin bringen **keine eigene Fläche** mit (`filled: false`
+  bei Textfeldern), sonst steht ein Kasten im Kasten.
 - **Navigation:** App-Shell `MainShell` mit unterer Leiste **Home / Live /
   Profil**. Eine Tipprunde öffnet `LeagueScreen` mit Tabs **Tippen / Tabelle
   / Liga** (`LeagueHubScreen` = ligainterner Chat + Regeln-Sheet); der

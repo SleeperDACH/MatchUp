@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
+import '../../../core/ui/form_section.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
@@ -425,9 +426,9 @@ class _TipSettingsScreen extends ConsumerWidget {
         children: [
           _Kopf(round: round),
           const SizedBox(height: 18),
-          _Gruppe(
+          FormSection.zeilen(
             titel: 'Meine Teilnahme',
-            zeilen: [
+            kinder: [
               _Zeile(
                 icon: Icons.badge_outlined,
                 titel: 'Mein Teamname',
@@ -438,13 +439,13 @@ class _TipSettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          _Gruppe(titel: 'Mitglieder', zeilen: mitglieder),
-          _Gruppe(titel: 'Regeln & Wertung', zeilen: wertung),
-          _Gruppe(titel: 'Erscheinungsbild', zeilen: erscheinung),
-          _Gruppe(
+          FormSection.zeilen(titel: 'Mitglieder', kinder: mitglieder),
+          FormSection.zeilen(titel: 'Regeln & Wertung', kinder: wertung),
+          FormSection.zeilen(titel: 'Erscheinungsbild', kinder: erscheinung),
+          FormSection.zeilen(
             titel: 'Gefahrenzone',
             gefahr: true,
-            zeilen: [
+            kinder: [
               _Zeile(
                 icon: Icons.logout,
                 titel: 'Tippspiel verlassen',
@@ -516,73 +517,6 @@ class _Kopf extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Eine Gruppe: kleine Überschrift, darunter die Zeilen in einer Karte.
-/// Leere Gruppen zeichnen nichts — für ein Mitglied ohne Adminrechte bleibt
-/// sonst eine Überschrift ohne Inhalt stehen.
-class _Gruppe extends StatelessWidget {
-  const _Gruppe({
-    required this.titel,
-    required this.zeilen,
-    this.gefahr = false,
-  });
-
-  final String titel;
-  final List<Widget> zeilen;
-  final bool gefahr;
-
-  @override
-  Widget build(BuildContext context) {
-    if (zeilen.isEmpty) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
-    final farbe = gefahr ? scheme.error : scheme.onSurfaceVariant;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-            child: Text(
-              titel.toUpperCase(),
-              style: TextStyle(
-                color: farbe,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: gefahr
-                    ? scheme.error.withValues(alpha: 0.35)
-                    : scheme.outlineVariant.withValues(alpha: 0.7),
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < zeilen.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: 52,
-                      color: scheme.outlineVariant.withValues(alpha: 0.6),
-                    ),
-                  zeilen[i],
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ui/form_section.dart';
+
 import '../models/tip.dart';
 
 /// Wiederverwendbares Formular für Basiswertung + kombinierbare Modi einer
@@ -92,40 +94,41 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Basiswertung', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 4),
-        Text(
-            'Punkte je Tipp — exaktes Ergebnis, richtige Tordifferenz, '
-            'nur richtige Tendenz.',
-            style: subtle),
-        const SizedBox(height: 12),
-        _PointsStepper(
+        FormSection(
+          titel: 'Basiswertung',
+          hinweis: 'Punkte je Tipp — exaktes Ergebnis, richtige Tordifferenz, '
+              'nur richtige Tendenz.',
+          kinder: [
+            _PointsStepper(
             label: 'Exaktes Ergebnis',
             value: _exact,
             onChanged: (v) => _set(() => _exact = v)),
-        _PointsStepper(
-            label: 'Tordifferenz',
-            value: _goalDiff,
-            onChanged: (v) => _set(() => _goalDiff = v)),
-        _PointsStepper(
-            label: 'Tendenz',
-            value: _tendency,
-            onChanged: (v) => _set(() => _tendency = v)),
-        _PointsStepper(
-            label: 'Falscher Tipp',
-            value: _wrongTip,
-            min: -5,
-            max: 0,
-            onChanged: (v) => _set(() => _wrongTip = v)),
-        const SizedBox(height: 2),
-        Text('Strafpunkte für einen komplett falschen Tipp — Standard 0, '
-            'bis −5 einstellbar.', style: subtle),
-        const SizedBox(height: 24),
-        Text('Modi', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 4),
-        Text('Frei kombinierbar — beliebig viele gleichzeitig aktivieren.',
-            style: subtle),
-        const SizedBox(height: 8),
+            _PointsStepper(
+                label: 'Tordifferenz',
+                value: _goalDiff,
+                onChanged: (v) => _set(() => _goalDiff = v)),
+            _PointsStepper(
+                label: 'Tendenz',
+                value: _tendency,
+                onChanged: (v) => _set(() => _tendency = v)),
+            _PointsStepper(
+                label: 'Falscher Tipp',
+                value: _wrongTip,
+                min: -5,
+                max: 0,
+                onChanged: (v) => _set(() => _wrongTip = v)),
+            const SizedBox(height: 4),
+            Text(
+                'Strafpunkte für einen komplett falschen Tipp — Standard 0, '
+                'bis −5 einstellbar.',
+                style: subtle),
+          ],
+        ),
+        FormSection(
+          titel: 'Modi',
+          hinweis: 'Frei kombinierbar — beliebig viele gleichzeitig '
+              'aktivieren.',
+          kinder: [
         // Quoten-Bonus nur, wenn die gewählten Wettbewerbe Quoten haben
         // (DFB-Pokal: keine Quoten → Modus ausgeblendet).
         if (widget.oddsAvailable) ...[
@@ -168,7 +171,9 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
               ? (v) => _set(() => _bonusTips = v)
               : null,
         ),
-        if (_bonusTips) _bonusTipsConfig(scheme),
+            if (_bonusTips) _bonusTipsConfig(scheme),
+          ],
+        ),
       ],
     );
   }
