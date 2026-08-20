@@ -272,13 +272,17 @@ Zwei Schirme hintereinander, und nur der zweite lässt sich animieren:
 2. **Flutter** (`app/widgets/matchup_splash.dart`) — die grüne Markenhälfte
    fährt von oben ein, die rote von unten, sie treffen sich in der Mitte,
    dann erscheint die Wortmarke. Steht der Schirm danach und wartet auf
-   Daten, laufen drei Punkte in den Markenfarben — sonst wäre nicht zu
+   Daten, läuft eine Welle aus drei Punkten in den Markenfarben von links
+   nach rechts (der aktive streckt sich zur Kapsel) — sonst wäre nicht zu
    unterscheiden, ob geladen wird oder etwas hängt. Ein Tipp überspringt.
 
-Die App wird **erst gebaut, wenn das Intro durch ist**: Animation und Aufbau
-teilen sich denselben Thread, und der Aufbau des Homescreens hält ihn
-spürbar an. Wo dieser Halt liegt, kann man wählen — er gehört ans Ende und
-nicht mitten in die Einfahrt.
+Die App wird **erst gebaut, wenn der Schirm weggeht** — nicht schon nach dem
+Intro. Animation und Aufbau teilen sich denselben Thread, und der Aufbau des
+Homescreens hält ihn im Debug-Build sekundenlang an. Baut die App früher,
+friert ausgerechnet die Ladeanzeige ein, während geladen wird. Solange
+gewartet wird, gehört der Thread der Animation; abgeblendet wird erst im
+Frame **nach** dem Aufbau (`addPostFrameCallback`), sonst ruckelt die
+Überblendung genauso.
 
 Danach **bleibt der Schirm stehen, bis `homeBereitProvider` wahr ist** (Ligen
 und Tipprunden geladen; News, Favoritenspiele und offene Tipps füllen sich

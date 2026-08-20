@@ -16,9 +16,10 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    // Draußen · halb drin · zusammengetroffen · mit Wortmarke. Der letzte
-    // Zeitpunkt liegt nach dem Intro: dort wartet der Schirm auf die Daten.
-    for (final ms in [120, 380, 700, 1400]) {
+    // Draußen · halb drin · zusammengetroffen · mit Wortmarke. Die letzten
+    // beiden liegen nach dem Intro: dort wartet der Schirm auf die Daten und
+    // die Ladewelle läuft — zwei Zeitpunkte, damit ihre Richtung sichtbar ist.
+    for (final ms in [120, 380, 700, 1400, 1600]) {
       await tester.pumpWidget(
         ProviderScope(
           // Der Schirm wartet sonst auf Daten, die es im Test nicht gibt.

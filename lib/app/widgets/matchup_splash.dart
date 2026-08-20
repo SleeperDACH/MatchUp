@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,11 +75,7 @@ class _MatchUpSplashState extends ConsumerState<MatchUpSplash>
   void initState() {
     super.initState();
     _intro.addStatusListener((s) {
-      if (s != AnimationStatus.completed) return;
-      // Erst jetzt die App aufbauen: Animation und Aufbau teilen sich den
-      // Thread, und der Aufbau des Homescreens hält ihn spürbar an.
-      setState(() => _zeigeKind = true);
-      _pruefeFertig();
+      if (s == AnimationStatus.completed) _pruefeFertig();
     });
     _abblende.addStatusListener((s) {
       if (s == AnimationStatus.completed) setState(() => _weg = true);
@@ -93,11 +90,17 @@ class _MatchUpSplashState extends ConsumerState<MatchUpSplash>
 
   void _abblenden() {
     _notbremse?.cancel();
-    if (mounted && !_abblende.isAnimating && _abblende.isDismissed) {
-      // Übersprungen, bevor das Intro durch war: die App muss trotzdem her.
-      if (!_zeigeKind) setState(() => _zeigeKind = true);
-      _abblende.forward();
-    }
+    if (!mounted || _abblende.isAnimating || !_abblende.isDismissed) return;
+    // Jetzt erst die App aufbauen. Vorher tat der Schirm das gleich nach dem
+    // Intro — und der Aufbau des Homescreens blockiert den Thread so lange,
+    // dass ausgerechnet die Ladeanzeige darüber einfror. Solange gewartet
+    // wird, gehört der Thread der Animation.
+    setState(() => _zeigeKind = true);
+    // Erst nach dem (teuren) Aufbau-Frame abblenden, sonst ruckelt die
+    // Überblendung genauso.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _abblende.forward();
+    });
   }
 
   @override
@@ -176,8 +179,9 @@ class _MatchUpSplashState extends ConsumerState<MatchUpSplash>
   }
 }
 
-/// Drei Punkte, die nacheinander aufleuchten — in den Markenfarben. Zeigt,
-/// dass der Startschirm auf Daten wartet und nicht hängt.
+/// Wanderndes Ladezeichen in den Markenfarben: eine Welle läuft von **links
+/// nach rechts**, der aktive Punkt streckt sich dabei zur Kapsel. Zeigt, dass
+/// der Startschirm auf Daten wartet und nicht hängt.
 class _Ladepunkte extends StatefulWidget {
   const _Ladepunkte();
 
@@ -189,7 +193,7 @@ class _LadepunkteState extends State<_Ladepunkte>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: const Duration(milliseconds: 1200),
   )..repeat();
 
   static const _farben = [
@@ -197,6 +201,14 @@ class _LadepunkteState extends State<_Ladepunkte>
     MatchUpColors.snow,
     MatchUpColors.red,
   ];
+
+  /// Zeitlicher Versatz je Punkt. Kleiner als ein Drittel, damit die Welle
+  /// zusammenhängt statt in drei Einzelblinker zu zerfallen.
+  static const _versatz = 0.16;
+
+  static const _hoehe = 7.0;
+  static const _breiteRuhe = 7.0;
+  static const _breiteAktiv = 17.0;
 
   @override
   void dispose() {
@@ -213,17 +225,8 @@ class _LadepunkteState extends State<_Ladepunkte>
           mainAxisSize: MainAxisSize.min,
           children: [
             for (var i = 0; i < 3; i++) ...[
-              if (i > 0) const SizedBox(width: 9),
-              Opacity(
-                // Versetzt: jeder Punkt hat sein eigenes Drittel der Runde.
-                opacity: 0.25 + 0.75 * _staerke((_c.value + i / 3) % 1.0),
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                      color: _farben[i], shape: BoxShape.circle),
-                ),
-              ),
+              if (i > 0) const SizedBox(width: 7),
+              _punkt(i),
             ],
           ],
         );
@@ -231,12 +234,24 @@ class _LadepunkteState extends State<_Ladepunkte>
     );
   }
 
-  /// Kurzes Aufleuchten im ersten Drittel, danach dunkel.
-  double _staerke(double t) {
-    if (t > 0.5) return 0;
-    final x = t * 2; // 0..1 im ersten Drittel
-    return x < 0.5 ? x * 2 : (1 - x) * 2;
+  Widget _punkt(int i) {
+    // **Minus** der Versatz: der linke Punkt läuft voraus, die Welle wandert
+    // nach rechts. Mit Plus lief sie andersherum.
+    final phase = (_c.value - i * _versatz) % 1.0;
+    final staerke = _welle(phase);
+    return Container(
+      width: _breiteRuhe + (_breiteAktiv - _breiteRuhe) * staerke,
+      height: _hoehe,
+      decoration: BoxDecoration(
+        color: _farben[i].withValues(alpha: 0.28 + 0.72 * staerke),
+        borderRadius: BorderRadius.circular(_hoehe / 2),
+      ),
+    );
   }
+
+  /// Weicher Ausschlag in der ersten Hälfte der Runde, danach Ruhe — ohne
+  /// Knick am Anfang und Ende, sonst zuckt die Welle.
+  double _welle(double t) => t < 0.5 ? math.sin(t * 2 * math.pi) : 0;
 }
 
 /// Die Marke in ihren beiden Hälften, jede um [weg] × Strecke verschoben:
