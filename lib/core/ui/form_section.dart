@@ -49,59 +49,47 @@ class FormSection extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final farbe = gefahr ? scheme.error : scheme.onSurfaceVariant;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(4, 0, 4, hinweis == null ? 8 : 3),
-            child: Text(
-              titel.toUpperCase(),
+          Text(
+            titel.toUpperCase(),
+            style: TextStyle(
+              color: farbe,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.3,
+            ),
+          ),
+          if (hinweis != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              hinweis!,
               style: TextStyle(
-                color: farbe,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-              ),
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                  fontSize: 12.5,
+                  height: 1.3),
             ),
-          ),
-          if (hinweis != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-              child: Text(
-                hinweis!,
-                style: TextStyle(
-                    color: scheme.onSurfaceVariant, fontSize: 12.5, height: 1.3),
-              ),
-            ),
-          Container(
-            padding: _alsZeilen
-                ? null
-                : const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: gefahr
-                    ? scheme.error.withValues(alpha: 0.35)
-                    : scheme.outlineVariant.withValues(alpha: 0.7),
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < kinder.length; i++) ...[
-                  if (i > 0 && _alsZeilen)
-                    Divider(
-                        height: 1,
-                        indent: 52,
-                        color: scheme.outlineVariant.withValues(alpha: 0.6)),
-                  kinder[i],
-                ],
-              ],
-            ),
-          ),
+          ],
+          const SizedBox(height: 8),
+          // Kein Kasten: Der Inhalt steht auf dem Seitengrund, eine feine
+          // Linie schließt den Abschnitt ab. Die früheren gefüllten Flächen
+          // machten aus jedem Formular eine Reihe grauer Kisten — viel Rand,
+          // wenig Inhalt.
+          for (var i = 0; i < kinder.length; i++) ...[
+            if (i > 0 && _alsZeilen)
+              Divider(
+                  height: 1,
+                  indent: 34,
+                  color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            kinder[i],
+          ],
+          const SizedBox(height: 10),
+          Divider(
+              height: 1,
+              color: scheme.outlineVariant
+                  .withValues(alpha: gefahr ? 0.0 : 0.45)),
         ],
       ),
     );

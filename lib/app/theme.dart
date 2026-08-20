@@ -96,6 +96,43 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       backgroundColor: cardColor,
       indicatorColor: MatchUpColors.green.withValues(alpha: 0.22),
     ),
+    // Ausgewählte Zustände in **Markengrün**, nicht in der abgeleiteten
+    // `secondaryContainer`-Farbe: aus dem grünen Seed macht Material daraus
+    // ein stumpfes Oliv, das neben den kräftigen Marken­flächen billig
+    // aussieht. Zentral gesetzt, damit es für jede Schaltfläche gilt.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? MatchUpColors.green
+                : Colors.transparent),
+        foregroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? MatchUpColors.base
+                : scheme.onSurfaceVariant),
+        iconColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? MatchUpColors.base
+                : scheme.onSurfaceVariant),
+        side: WidgetStatePropertyAll(
+            BorderSide(color: scheme.outlineVariant)),
+        textStyle: const WidgetStatePropertyAll(
+            TextStyle(fontWeight: FontWeight.w700)),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      selectedColor: MatchUpColors.green,
+      checkmarkColor: MatchUpColors.base,
+      backgroundColor: Colors.transparent,
+      side: BorderSide(color: scheme.outlineVariant),
+      labelStyle: TextStyle(
+          color: scheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+      secondaryLabelStyle: const TextStyle(
+          color: MatchUpColors.base,
+          fontWeight: FontWeight.w700,
+          fontSize: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: dark ? MatchUpColors.base : MatchUpColors._lightCard,
