@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ui/option_tile.dart';
+
 /// Auswahl der Sichtbarkeit (privat/öffentlich) und – bei öffentlich – des
 /// Beitrittsmodus (freier Eintritt / auf Einladung). Wiederverwendet in der
 /// Erstellung und den Einstellungen von Fantasy-Ligen und Tipprunden.
@@ -22,54 +24,48 @@ class VisibilityPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isPublic = visibility == 'public';
     final isInvite = joinPolicy == 'invite';
-
-    String hint;
-    if (!isPublic) {
-      hint = 'Nur per Einladungscode oder Chat-Einladung beitretbar.';
-    } else if (isInvite) {
-      hint = 'In der Suche findbar; Beitritt nur nach deiner Bestätigung '
-          'einer Anfrage.';
-    } else {
-      hint = 'In der Suche findbar; jeder kann direkt beitreten.';
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(
-                value: 'private',
-                label: Text('Privat'),
-                icon: Icon(Icons.lock_outline)),
-            ButtonSegment(
-                value: 'public',
-                label: Text('Öffentlich'),
-                icon: Icon(Icons.public)),
-          ],
-          selected: {isPublic ? 'public' : 'private'},
-          onSelectionChanged: (s) => onChanged(s.first, joinPolicy),
+        // Zwei Optionen mit Begründung statt eines Segmented-Buttons: was
+        // „öffentlich" bedeutet, gehört an die Option — nicht in einen
+        // Hinweis darunter, der sich beim Umschalten ändert.
+        OptionTile(
+          icon: Icons.lock_outline,
+          titel: 'Privat',
+          untertitel: 'Nur per Einladungscode oder Chat-Einladung.',
+          selected: !isPublic,
+          onTap: () => onChanged('private', joinPolicy),
+        ),
+        const SizedBox(height: 8),
+        OptionTile(
+          icon: Icons.public,
+          titel: 'Öffentlich',
+          untertitel: 'In der Suche findbar.',
+          selected: isPublic,
+          onTap: () => onChanged('public', joinPolicy),
         ),
         if (isPublic) ...[
+          const SizedBox(height: 10),
+          OptionTile(
+            icon: Icons.door_front_door_outlined,
+            titel: 'Freier Eintritt',
+            untertitel: 'Jeder kann direkt beitreten.',
+            selected: !isInvite,
+            onTap: () => onChanged('public', 'open'),
+          ),
           const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'open', label: Text('Freier Eintritt')),
-              ButtonSegment(value: 'invite', label: Text('Auf Einladung')),
-            ],
-            selected: {isInvite ? 'invite' : 'open'},
-            onSelectionChanged: (s) => onChanged('public', s.first),
+          OptionTile(
+            icon: Icons.how_to_reg_outlined,
+            titel: 'Auf Einladung',
+            untertitel: 'Beitritt erst nach deiner Bestätigung.',
+            selected: isInvite,
+            onTap: () => onChanged('public', 'invite'),
           ),
         ],
-        const SizedBox(height: 8),
-        Text(hint,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant)),
       ],
     );
   }

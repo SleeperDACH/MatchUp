@@ -57,6 +57,14 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   (`fantasyStatus`, `logic/league_status.dart`): vor dem ersten gewerteten
   Spieltag rendert `FantasyRankChip` absichtlich nichts, ohne Zustandszeile
   wäre die Karte dann leer und von jeder anderen ununterscheidbar.
+- **Keine Material-Auswahlelemente.** `SegmentedButton`, `ChoiceChip` und
+  `FilterChip` ziehen ihre Auswahlfarbe aus `secondaryContainer` — aus dem
+  grünen Seed wird das ein stumpfes Oliv, und der Rahmen passt nirgends zum
+  übrigen Look. Stattdessen: `PillChip`/`PillSelector` (`app/widgets/`) für
+  Umschalter und Filter, `OptionTile` (`core/ui/`) für Entscheidungen, die
+  eine Begründung brauchen (Liga-Modus, Sichtbarkeit), `CompetitionPicker`
+  für Wettbewerbe (mit Wappen — als Text unterscheiden sich „Bundesliga" und
+  „2. Bundesliga" kaum).
 - **Formulare und Einstellungslisten benutzen `FormSection`**
   (`core/ui/form_section.dart`): kleine Versal-Überschrift, optional ein
   erklärender Satz, Inhalt in abgesetzter Fläche — dazu `FormError` und

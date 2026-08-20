@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/form_section.dart';
+import '../../../core/ui/option_tile.dart';
 
 import '../../leagues/ui/visibility_picker.dart';
 import 'league_colors.dart';
@@ -192,7 +193,7 @@ class _CreateFantasyLeagueScreenState
   }
 }
 
-/// Auswahl des Modus. Die gewählte Karte trägt die Farbe **ihres** Modus —
+/// Auswahl des Modus. Die gewählte Option trägt die Farbe **ihres** Modus —
 /// Redraft grün, Dynasty rot, dieselbe Zuordnung wie auf dem Homescreen. So
 /// lernt man die Farbe schon beim Anlegen.
 class _ModeCard extends StatelessWidget {
@@ -208,57 +209,15 @@ class _ModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final farbe = leagueColor(mode);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-            color: selected ? farbe.withValues(alpha: 0.14) : null,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected
-                  ? farbe.withValues(alpha: 0.75)
-                  : scheme.outlineVariant.withValues(alpha: 0.6),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                mode == FantasyMode.dynasty
-                    ? Icons.auto_awesome
-                    : Icons.calendar_today,
-                size: 20,
-                color: selected ? farbe : scheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(mode.label,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15)),
-                    Text(mode.tagline,
-                        style: TextStyle(
-                            color: scheme.onSurfaceVariant, fontSize: 12.5)),
-                  ],
-                ),
-              ),
-              Icon(
-                selected
-                    ? Icons.check_circle
-                    : Icons.radio_button_unchecked,
-                color: selected ? farbe : scheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
-      ),
+    return OptionTile(
+      icon: mode == FantasyMode.dynasty
+          ? Icons.auto_awesome
+          : Icons.calendar_today,
+      titel: mode.label,
+      untertitel: mode.tagline,
+      selected: selected,
+      farbe: leagueColor(mode),
+      onTap: onTap,
     );
   }
 }

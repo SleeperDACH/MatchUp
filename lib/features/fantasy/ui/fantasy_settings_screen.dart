@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widgets/pill_selector.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../../core/ui/rename_league_dialog.dart';
 import '../../../core/ui/team_name_dialog.dart';
@@ -708,15 +709,10 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
               icon: Icons.format_list_numbered,
               label: 'Reihenfolge',
               child: editable
-                  ? SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'auto', label: Text('Zufällig')),
-                        ButtonSegment(value: 'manual', label: Text('Manuell')),
-                      ],
-                      selected: {_orderMode},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (s) =>
-                          setState(() => _orderMode = s.first),
+                  ? PillSelector<String>(
+                      options: const {'auto': 'Zufällig', 'manual': 'Manuell'},
+                      value: _orderMode,
+                      onSelect: (v) => setState(() => _orderMode = v),
                     )
                   : _ReadValue(_orderMode == 'manual' ? 'Manuell' : 'Zufällig'),
             ),
@@ -971,15 +967,10 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
               icon: Icons.date_range,
               label: 'Partie-Dauer',
               child: editable
-                  ? SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment(value: 1, label: Text('1 Woche')),
-                        ButtonSegment(value: 2, label: Text('2 Wochen')),
-                      ],
-                      selected: {_weeks},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (s) =>
-                          setState(() => _weeks = s.first),
+                  ? PillSelector<int>(
+                      options: const {1: '1 Woche', 2: '2 Wochen'},
+                      value: _weeks,
+                      onSelect: (v) => setState(() => _weeks = v),
                     )
                   : _ReadValue(_weeks == 2 ? '2 Wochen' : '1 Woche'),
             ),
