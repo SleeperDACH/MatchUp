@@ -16,7 +16,9 @@ class PillChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.leading,
+    this.trailing,
     this.centered = false,
+    this.outlined = false,
   });
 
   final String label;
@@ -26,9 +28,17 @@ class PillChip extends StatelessWidget {
   /// Optionales Symbol oder Wappen vor der Beschriftung.
   final Widget? leading;
 
+  /// Optionales Zeichen dahinter (z. B. ein Haken bei Mehrfachauswahl).
+  final Widget? trailing;
+
   /// Im [PillSelector] füllt die Pille ihr Segment und die Beschriftung gehört
   /// mittig; einzeln stehend schmiegt sie sich an den Text.
   final bool centered;
+
+  /// Mit feiner Kante. Frei stehende Pillen (Mehrfachauswahl in einem `Wrap`)
+  /// brauchen sie, damit man sieht, dass sie antippbar sind — in einer
+  /// gemeinsamen Spur genügt die Füllung.
+  final bool outlined;
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +47,25 @@ class PillChip extends StatelessWidget {
       color: selected
           ? MatchUpColors.green.withValues(alpha: 0.16)
           : Colors.transparent,
-      borderRadius: BorderRadius.circular(11),
+      // Entweder `shape` **oder** `borderRadius` — `Material` verbietet
+      // beides zusammen per Assertion.
+      borderRadius: outlined ? null : BorderRadius.circular(11),
+      shape: outlined
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(11),
+              side: BorderSide(
+                color: selected
+                    ? MatchUpColors.green.withValues(alpha: 0.75)
+                    : scheme.outlineVariant,
+              ),
+            )
+          : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(11),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: EdgeInsets.fromLTRB(
+              leading == null ? 14 : 9, 8, trailing == null ? 14 : 9, 8),
           child: Row(
             mainAxisSize: centered ? MainAxisSize.max : MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -64,6 +87,7 @@ class PillChip extends StatelessWidget {
                   ),
                 ),
               ),
+              if (trailing != null) ...[const SizedBox(width: 6), trailing!],
             ],
           ),
         ),

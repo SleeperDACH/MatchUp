@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widgets/pill_selector.dart';
 import '../../../core/ui/league_chat.dart';
 import '../../auth/providers.dart';
 import '../../tippspiel/providers.dart' show chatLastReadProvider;
@@ -881,11 +882,8 @@ class _AvailableTabState extends State<_AvailableTab> {
   Widget _filterChip(String label, bool selected, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-      ),
+      child: PillChip(
+          label: label, selected: selected, outlined: true, onTap: onTap),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widgets/competition_picker.dart';
 import '../../../core/ui/form_section.dart';
 
 import '../../../app/league_screen.dart';
@@ -145,23 +146,18 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
             hinweis: 'Wähle einen oder mehrere — die Spiele zählen gemeinsam '
                 'in einer Tabelle.',
             kinder: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final league in Leagues.tippspiel)
-                    FilterChip(
-                      label: Text(league.name),
-                      selected: _leagueIds.contains(league.id),
-                      onSelected: (sel) => setState(() {
-                        if (sel) {
-                          _leagueIds.add(league.id);
-                        } else if (_leagueIds.length > 1) {
-                          _leagueIds.remove(league.id);
-                        }
-                      }),
-                    ),
-                ],
+              CompetitionPicker(
+                leagues: Leagues.tippspiel,
+                selected: _leagueIds,
+                onToggle: (id) => setState(() {
+                  if (!_leagueIds.remove(id)) {
+                    _leagueIds.add(id);
+                  } else if (_leagueIds.isEmpty) {
+                    // Mindestens einer muss bleiben — sonst gäbe es keine
+                    // Spiele zu tippen.
+                    _leagueIds.add(id);
+                  }
+                }),
               ),
             ],
           ),

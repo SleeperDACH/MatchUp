@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../../../app/widgets/pill_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/league_screen.dart';
@@ -94,28 +96,26 @@ class _LeagueSearchScreenState extends ConsumerState<LeagueSearchScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
-                ChoiceChip(
-                  label: const Text('Alle'),
-                  selected: _type == 'all',
-                  onSelected: (_) => setState(() => _type = 'all'),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Fantasy'),
-                  selected: _type == 'fantasy',
-                  onSelected: (_) => setState(() => _type = 'fantasy'),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Tippspiel'),
-                  selected: _type == 'tip',
-                  onSelected: (_) => setState(() => _type = 'tip'),
-                ),
-                const SizedBox(width: 12),
-                FilterChip(
-                  label: const Text('Öffentlich'),
+                for (final (wert, text) in const [
+                  ('all', 'Alle'),
+                  ('fantasy', 'Fantasy'),
+                  ('tip', 'Tippspiel'),
+                ]) ...[
+                  PillChip(
+                    label: text,
+                    selected: _type == wert,
+                    outlined: true,
+                    onTap: () => setState(() => _type = wert),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                const SizedBox(width: 4),
+                PillChip(
+                  label: 'Öffentlich',
                   selected: _onlyJoinable,
-                  onSelected: (v) => setState(() => _onlyJoinable = v),
+                  outlined: true,
+                  onTap: () =>
+                      setState(() => _onlyJoinable = !_onlyJoinable),
                 ),
               ],
             ),
