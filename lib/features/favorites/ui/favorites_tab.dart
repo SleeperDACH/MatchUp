@@ -150,9 +150,8 @@ class _FavoritesTabState extends ConsumerState<FavoritesTab> {
       body: groups.isEmpty
           ? const _LeerHinweis(
               icon: Icons.star_border,
-              titel: 'Noch keine Favoriten',
-              text: 'Favorisiere deine Vereine — hier stehen dann ihre Spiele '
-                  'und ihre News.',
+              titel: 'Keine Favoriten ausgewählt',
+              text: _keineFavoriten,
               betont: true,
             )
           : _Body(
@@ -236,6 +235,12 @@ class FavoritesReorderScreen extends ConsumerWidget {
     );
   }
 }
+
+/// Einheitlicher Satz für alle leeren Zustände des Favoriten-Tabs. Steht an
+/// einer Stelle, damit die drei Ansichten nicht drei verschiedene Erklärungen
+/// für dieselbe Lage geben.
+const _keineFavoriten = 'Du hast aktuell keine Favoriten ausgewählt. Füge '
+    'Vereine hinzu — dann stehen hier ihre Spiele und ihre News.';
 
 /// Leerzustand mit Weg heraus: Symbol, ein Satz und ein Knopf, der zur
 /// Favoritenauswahl führt — bei einem Ladefehler zusätzlich „Erneut laden".
@@ -459,8 +464,8 @@ class _FixturesTab extends ConsumerWidget {
       }
       return const _LeerHinweis(
         icon: Icons.event_busy,
-        titel: 'Keine Spiele',
-        text: 'Zu deinen Favoriten liegt gerade kein Spielplan vor.',
+        titel: 'Keine Favoriten ausgewählt',
+        text: _keineFavoriten,
       );
     }
 
@@ -538,8 +543,8 @@ class _NewsTab extends ConsumerWidget {
       }
       return const _LeerHinweis(
         icon: Icons.newspaper,
-        titel: 'Keine News',
-        text: 'Zu deinen Favoriten gibt es gerade nichts zu lesen.',
+        titel: 'Keine Favoriten ausgewählt',
+        text: _keineFavoriten,
       );
     }
     return RefreshIndicator(
