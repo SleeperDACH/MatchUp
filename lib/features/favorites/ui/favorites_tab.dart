@@ -148,7 +148,14 @@ class _FavoritesTabState extends ConsumerState<FavoritesTab> {
         ],
       ),
       body: groups.isEmpty
-          ? _Empty(onAdd: _openManage)
+          ? const _LeerHinweis(
+              icon: Icons.star_border,
+              titel: 'Noch keine Favoriten',
+              text: 'Favorisiere deine Vereine — hier siehst du dann ihren '
+                  'Spielplan und aktuelle News.',
+              knopf: 'Favoriten hinzufügen',
+              betont: true,
+            )
           : _Body(
               groups: groups,
               selected: _selected.clamp(0, groups.length - 1),
@@ -231,36 +238,67 @@ class FavoritesReorderScreen extends ConsumerWidget {
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({required this.onAdd});
-  final VoidCallback onAdd;
+/// Leerzustand mit Weg heraus: Symbol, Satz und ein Knopf, der zur
+/// Favoritenauswahl führt.
+///
+/// Steht an **drei** Stellen: kein Favorit gewählt, kein Spielplan, keine
+/// News. Vorher war nur der erste Fall bedacht; in den beiden Tabs stand ein
+/// nackter Satz ohne Ausweg — wer dort landete, musste selbst darauf kommen,
+/// dass oben rechts ein Plus wartet.
+class _LeerHinweis extends StatelessWidget {
+  const _LeerHinweis({
+    required this.icon,
+    required this.titel,
+    required this.text,
+    required this.knopf,
+    this.betont = false,
+  });
+
+  final IconData icon;
+  final String titel;
+  final String text;
+  final String knopf;
+
+  /// Als Hauptknopf (gefüllt) statt als Nebenweg (umrandet).
+  final bool betont;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    void oeffneAuswahl() => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const FavoritesManageScreen()));
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.star_border, size: 56, color: scheme.onSurfaceVariant),
+            Icon(icon, size: 52, color: scheme.onSurfaceVariant),
             const SizedBox(height: 14),
-            const Text('Noch keine Favoriten',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(titel,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text(
-              'Favorisiere deine Teams — hier siehst du dann ihren Spielplan '
-              'und aktuelle News.',
+              text,
               textAlign: TextAlign.center,
-              style: TextStyle(color: scheme.onSurfaceVariant),
+              style: TextStyle(color: scheme.onSurfaceVariant, height: 1.3),
             ),
             const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: const Text('Team favorisieren'),
-            ),
+            if (betont)
+              FilledButton.icon(
+                onPressed: oeffneAuswahl,
+                icon: const Icon(Icons.add),
+                label: Text(knopf),
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: oeffneAuswahl,
+                icon: const Icon(Icons.star_border),
+                label: Text(knopf),
+              ),
           ],
         ),
       ),
@@ -406,7 +444,13 @@ class _FixturesTab extends ConsumerWidget {
           },
         );
       }
-      return const Center(child: Text('Kein Spielplan verfügbar.'));
+      return const _LeerHinweis(
+        icon: Icons.event_busy,
+        titel: 'Kein Spielplan verfügbar',
+        text: 'Für diesen Verein liegen gerade keine Spiele vor. Vielleicht '
+            'passt ein weiterer Favorit?',
+        knopf: 'Favoriten hinzufügen',
+      );
     }
 
     final upcoming = [
@@ -478,7 +522,13 @@ class _NewsTab extends ConsumerWidget {
           },
         );
       }
-      return const Center(child: Text('Aktuell keine News für dieses Team.'));
+      return const _LeerHinweis(
+        icon: Icons.newspaper,
+        titel: 'Keine News',
+        text: 'Zu diesem Verein gibt es gerade nichts. Mit mehr Favoriten '
+            'wird es hier voller.',
+        knopf: 'Favoriten hinzufügen',
+      );
     }
     return RefreshIndicator(
       onRefresh: () async {
