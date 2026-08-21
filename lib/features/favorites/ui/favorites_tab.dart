@@ -151,9 +151,8 @@ class _FavoritesTabState extends ConsumerState<FavoritesTab> {
           ? const _LeerHinweis(
               icon: Icons.star_border,
               titel: 'Noch keine Favoriten',
-              text: 'Favorisiere deine Vereine — hier siehst du dann ihren '
-                  'Spielplan und aktuelle News.',
-              knopf: 'Favoriten hinzufügen',
+              text: 'Favorisiere deine Vereine — hier stehen dann ihre Spiele '
+                  'und ihre News.',
               betont: true,
             )
           : _Body(
@@ -238,35 +237,43 @@ class FavoritesReorderScreen extends ConsumerWidget {
   }
 }
 
-/// Leerzustand mit Weg heraus: Symbol, Satz und ein Knopf, der zur
-/// Favoritenauswahl führt.
+/// Leerzustand mit Weg heraus: Symbol, ein Satz und ein Knopf, der zur
+/// Favoritenauswahl führt — bei einem Ladefehler zusätzlich „Erneut laden".
 ///
-/// Steht an **drei** Stellen: kein Favorit gewählt, kein Spielplan, keine
-/// News. Vorher war nur der erste Fall bedacht; in den beiden Tabs stand ein
-/// nackter Satz ohne Ausweg — wer dort landete, musste selbst darauf kommen,
-/// dass oben rechts ein Plus wartet.
+/// Steht an **vier** Stellen: kein Favorit gewählt, kein Spielplan, keine
+/// News, Laden fehlgeschlagen. Vorher war nur der erste Fall bedacht; in den
+/// Tabs stand ein nackter Satz bzw. allein „Erneut laden" — wer dort landete,
+/// kam nicht auf den Gedanken, dass ein weiterer Favorit hilft.
 class _LeerHinweis extends StatelessWidget {
   const _LeerHinweis({
     required this.icon,
     required this.titel,
     required this.text,
-    required this.knopf,
     this.betont = false,
+    this.onRetry,
   });
 
   final IconData icon;
   final String titel;
   final String text;
-  final String knopf;
 
   /// Als Hauptknopf (gefüllt) statt als Nebenweg (umrandet).
   final bool betont;
+
+  /// Nur beim Ladefehler: Wiederholen steht dann vorn.
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     void oeffneAuswahl() => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const FavoritesManageScreen()));
+
+    final zurAuswahl = OutlinedButton.icon(
+      onPressed: oeffneAuswahl,
+      icon: const Icon(Icons.star_border, size: 18),
+      label: const Text('Favoriten hinzufügen'),
+    );
 
     return Center(
       child: Padding(
@@ -284,21 +291,25 @@ class _LeerHinweis extends StatelessWidget {
             Text(
               text,
               textAlign: TextAlign.center,
-              style: TextStyle(color: scheme.onSurfaceVariant, height: 1.3),
+              style: TextStyle(color: scheme.onSurfaceVariant, height: 1.35),
             ),
-            const SizedBox(height: 18),
-            if (betont)
+            const SizedBox(height: 20),
+            if (onRetry != null) ...[
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Erneut laden'),
+              ),
+              const SizedBox(height: 10),
+              zurAuswahl,
+            ] else if (betont)
               FilledButton.icon(
                 onPressed: oeffneAuswahl,
                 icon: const Icon(Icons.add),
-                label: Text(knopf),
+                label: const Text('Favoriten hinzufügen'),
               )
             else
-              OutlinedButton.icon(
-                onPressed: oeffneAuswahl,
-                icon: const Icon(Icons.star_border),
-                label: Text(knopf),
-              ),
+              zurAuswahl,
           ],
         ),
       ),
@@ -435,8 +446,10 @@ class _FixturesTab extends ConsumerWidget {
         return const Center(child: CircularProgressIndicator());
       }
       if (asyncs.every((a) => a.hasError)) {
-        return _Retry(
-          message: 'Spielplan konnte nicht geladen werden.',
+        return _LeerHinweis(
+          icon: Icons.cloud_off,
+          titel: 'Spielplan nicht geladen',
+          text: 'Die Spiele deiner Favoriten konnten nicht abgerufen werden.',
           onRetry: () {
             for (final id in teamIds) {
               ref.invalidate(teamFixturesProvider(id));
@@ -446,10 +459,8 @@ class _FixturesTab extends ConsumerWidget {
       }
       return const _LeerHinweis(
         icon: Icons.event_busy,
-        titel: 'Kein Spielplan verfügbar',
-        text: 'Für diesen Verein liegen gerade keine Spiele vor. Vielleicht '
-            'passt ein weiterer Favorit?',
-        knopf: 'Favoriten hinzufügen',
+        titel: 'Keine Spiele',
+        text: 'Zu deinen Favoriten liegt gerade kein Spielplan vor.',
       );
     }
 
@@ -513,8 +524,11 @@ class _NewsTab extends ConsumerWidget {
     if (items.isEmpty) {
       if (anyLoading) return const Center(child: CircularProgressIndicator());
       if (asyncs.every((a) => a.hasError)) {
-        return _Retry(
-          message: 'News konnten nicht geladen werden.',
+        return _LeerHinweis(
+          icon: Icons.cloud_off,
+          titel: 'News nicht geladen',
+          text: 'Die Meldungen zu deinen Favoriten konnten nicht abgerufen '
+              'werden.',
           onRetry: () {
             for (final a in args) {
               ref.invalidate(teamNewsProvider(a));
@@ -525,9 +539,7 @@ class _NewsTab extends ConsumerWidget {
       return const _LeerHinweis(
         icon: Icons.newspaper,
         titel: 'Keine News',
-        text: 'Zu diesem Verein gibt es gerade nichts. Mit mehr Favoriten '
-            'wird es hier voller.',
-        knopf: 'Favoriten hinzufügen',
+        text: 'Zu deinen Favoriten gibt es gerade nichts zu lesen.',
       );
     }
     return RefreshIndicator(
@@ -542,26 +554,6 @@ class _NewsTab extends ConsumerWidget {
         itemCount: items.length,
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (context, i) => NewsTile(item: items[i]),
-      ),
-    );
-  }
-}
-
-class _Retry extends StatelessWidget {
-  const _Retry({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry, child: const Text('Erneut laden')),
-        ],
       ),
     );
   }
