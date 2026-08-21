@@ -236,9 +236,9 @@ class FavoritesReorderScreen extends ConsumerWidget {
   }
 }
 
-/// Einheitlicher Satz für alle leeren Zustände des Favoriten-Tabs. Steht an
-/// einer Stelle, damit die drei Ansichten nicht drei verschiedene Erklärungen
-/// für dieselbe Lage geben.
+/// Satz für den Fall, dass **gar kein** Favorit gewählt ist. Bewusst nur
+/// dort: steht oben das Wappen eines Vereins, wäre „keine Favoriten
+/// ausgewählt" sichtbar falsch — dann nennt der Leerzustand den Verein.
 const _keineFavoriten = 'Du hast aktuell keine Favoriten ausgewählt. Füge '
     'Vereine hinzu — dann stehen hier ihre Spiele und ihre News.';
 
@@ -339,8 +339,11 @@ class _Body extends StatelessWidget {
     final group = groups[selected];
     return Column(
       children: [
-        // Team-Auswahl (mehrere Favoriten) als Chips.
-        if (groups.length > 1)
+        // Wappen-Leiste — auch bei **einem** Favoriten. Vorher erschien sie
+        // erst ab zwei: der Screen nannte den einzigen Favoriten dann
+        // nirgends, und der Leerzustand darunter („keine Favoriten
+        // ausgewählt") bestätigte den falschen Eindruck.
+        if (groups.isNotEmpty)
           SizedBox(
             height: 78,
             child: ListView.builder(
@@ -413,8 +416,9 @@ class _Body extends StatelessWidget {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _FixturesTab(teamIds: group.teamIds),
-                      _NewsTab(args: group.newsArgs),
+                      _FixturesTab(
+                          teamIds: group.teamIds, name: group.label),
+                      _NewsTab(args: group.newsArgs, name: group.label),
                     ],
                   ),
                 ),
@@ -431,8 +435,11 @@ class _Body extends StatelessWidget {
 // Spielplan (wettbewerbsübergreifend)
 // ---------------------------------------------------------------------
 class _FixturesTab extends ConsumerWidget {
-  const _FixturesTab({required this.teamIds});
+  const _FixturesTab({required this.teamIds, required this.name});
   final List<String> teamIds;
+
+  /// Anzeigename des gewählten Favoriten — der Leerzustand nennt ihn.
+  final String name;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -462,10 +469,10 @@ class _FixturesTab extends ConsumerWidget {
           },
         );
       }
-      return const _LeerHinweis(
+      return _LeerHinweis(
         icon: Icons.event_busy,
-        titel: 'Keine Favoriten ausgewählt',
-        text: _keineFavoriten,
+        titel: 'Keine Spiele',
+        text: 'Für $name ist gerade kein Spielplan hinterlegt.',
       );
     }
 
@@ -505,8 +512,11 @@ class _FixturesTab extends ConsumerWidget {
 // Team-News
 // ---------------------------------------------------------------------
 class _NewsTab extends ConsumerWidget {
-  const _NewsTab({required this.args});
+  const _NewsTab({required this.args, required this.name});
   final List<({String teamId, String name, String? leagueId})> args;
+
+  /// Anzeigename des gewählten Favoriten — der Leerzustand nennt ihn.
+  final String name;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -541,10 +551,10 @@ class _NewsTab extends ConsumerWidget {
           },
         );
       }
-      return const _LeerHinweis(
+      return _LeerHinweis(
         icon: Icons.newspaper,
-        titel: 'Keine Favoriten ausgewählt',
-        text: _keineFavoriten,
+        titel: 'Keine News',
+        text: 'Zu $name gibt es gerade nichts zu lesen.',
       );
     }
     return RefreshIndicator(
