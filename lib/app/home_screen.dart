@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
@@ -17,8 +16,6 @@ import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
 import '../features/fantasy/ui/league_colors.dart';
-import '../features/friends/providers.dart';
-import '../features/friends/ui/friends_screen.dart';
 import '../features/leagues/providers.dart';
 import '../features/leagues/ui/league_search_screen.dart';
 import '../features/messaging/providers.dart';
@@ -33,11 +30,10 @@ import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'home_favorites.dart';
+import 'home_menu_drawer.dart';
 import 'home_tip_status.dart';
-import 'impressum_screen.dart';
 import 'league_screen.dart';
 import 'match_detail_screen.dart';
-import 'profile_screen.dart';
 import 'theme.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/matchup_chevron.dart';
@@ -55,7 +51,7 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       // Seitenmenü (Profil · Freunde · Chats) über das Hamburger-Symbol.
-      drawer: (configured && user != null) ? const _HomeMenuDrawer() : null,
+      drawer: (configured && user != null) ? const HomeMenuDrawer() : null,
       appBar: AppBar(
         centerTitle: true,
         // Hamburger oben links öffnet das schmale Seitenmenü.
@@ -285,125 +281,6 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// Schmales Seitenmenü über das Hamburger-Symbol oben links (füllt den
-/// Bildschirm nicht): Kopf mit Avatar + Name, darunter Profil, Freunde und
-/// Chats als schnelle Direktzugänge.
-class _HomeMenuDrawer extends ConsumerWidget {
-  const _HomeMenuDrawer();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final profile = ref.watch(currentProfileProvider).valueOrNull;
-    final username = ref.watch(currentUsernameProvider).valueOrNull;
-    final requests = ref.watch(incomingRequestsCountProvider);
-    final unreadDms = ref.watch(hasUnreadDmsProvider);
-
-    // Drawer schließen und dann das Ziel öffnen.
-    void open(Widget screen) {
-      Navigator.of(context).pop();
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => screen));
-    }
-
-    return Drawer(
-      width: 264,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Kopf: Avatar + Nutzername.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Row(
-                children: [
-                  AppAvatar(
-                    imageUrl: profile?.avatarUrl,
-                    emoji: profile?.avatarEmoji,
-                    colorHex: profile?.avatarColor,
-                    fallbackText: username,
-                    size: 40,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      username ?? 'Profil',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.person_outline, color: scheme.primary),
-              title: const Text('Profil'),
-              onTap: () => open(const ProfileScreen()),
-            ),
-            ListTile(
-              leading: Icon(Icons.group_outlined, color: scheme.primary),
-              title: const Text('Freunde'),
-              trailing: requests > 0
-                  ? Badge.count(count: requests)
-                  : null,
-              onTap: () => open(const FriendsScreen()),
-            ),
-            ListTile(
-              leading: Icon(Icons.forum_outlined, color: scheme.primary),
-              title: const Text('Chats'),
-              trailing: unreadDms
-                  ? Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                          color: MatchUpColors.red, shape: BoxShape.circle),
-                    )
-                  : null,
-              onTap: () => open(const ConversationsScreen()),
-            ),
-            const Spacer(),
-            // Rechtliches, bewusst sehr dezent – nur der Vollständigkeit halber.
-            // Der Datenschutz steht über dem Impressum, weil beide Stores ihn
-            // verlangen und er häufiger gesucht wird.
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => launchUrl(Uri.parse(AppConfig.privacyUrl),
-                    mode: LaunchMode.externalApplication),
-                style: TextButton.styleFrom(
-                  minimumSize: Size.zero,
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  foregroundColor:
-                      scheme.onSurfaceVariant.withValues(alpha: 0.45),
-                ),
-                child: const Text('Datenschutz', style: TextStyle(fontSize: 10)),
-              ),
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => open(const ImpressumScreen()),
-                style: TextButton.styleFrom(
-                  minimumSize: Size.zero,
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  foregroundColor:
-                      scheme.onSurfaceVariant.withValues(alpha: 0.45),
-                ),
-                child: const Text('Impressum', style: TextStyle(fontSize: 10)),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

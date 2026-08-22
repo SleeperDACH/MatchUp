@@ -92,6 +92,22 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       ),
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
     ),
+    // Seitenmenü: **neutrale** Fläche. Ohne diese Angabe mischt Material 3 die
+    // Seed-Farbe in den Drawer-Grund (`surfaceContainerLow`) — aus dem grünen
+    // Seed wurde eine olivgrün gestochene Fläche, die zu keiner anderen
+    // Oberfläche der App passte.
+    drawerTheme: DrawerThemeData(
+      backgroundColor: cardColor,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrimColor: Colors.black.withValues(alpha: dark ? 0.55 : 0.32),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(26),
+          bottomRight: Radius.circular(26),
+        ),
+      ),
+    ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: cardColor,
       indicatorColor: MatchUpColors.green.withValues(alpha: 0.22),
