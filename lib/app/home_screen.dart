@@ -17,6 +17,7 @@ import '../features/fantasy/ui/create_fantasy_league.dart';
 import '../features/fantasy/ui/fantasy_league_screen.dart';
 import '../features/fantasy/ui/league_colors.dart';
 import '../features/leagues/providers.dart';
+import '../features/leagues/ui/join_by_code.dart';
 import '../features/leagues/ui/league_search_screen.dart';
 import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
@@ -1934,92 +1935,3 @@ class _BeitretenKarte extends StatelessWidget {
   }
 }
 
-Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
-  final controller = TextEditingController();
-  final code = await showDialog<String>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Beitreten'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('Gib den Einladungscode ein – für eine Fantasy-Liga '
-              'oder eine Tipprunde.'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Einladungscode',
-              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-            ),
-            onSubmitted: (value) => Navigator.of(context).pop(value),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(controller.text),
-          child: const Text('Beitreten'),
-        ),
-      ],
-    ),
-  );
-  if (code == null || code.trim().isEmpty) return;
-  final trimmed = code.trim();
-
-  // 1) Als Fantasy-Liga versuchen.
-  try {
-    final league =
-        await ref.read(fantasyLeagueRepositoryProvider).joinLeague(trimmed);
-    ref.invalidate(myFantasyLeaguesProvider);
-    if (!context.mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => FantasyLeagueScreen(league: league)));
-    // Nach Draft-Start ist man nur „pending" — der Admin muss noch ein freies
-    // Team zuweisen. Kurzer Hinweis, damit klar ist, warum kein Kader da ist.
-    if (league.draftStatus != DraftStatus.setup && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Beigetreten! Der Draft läuft bereits — der Admin weist '
-            'dir ein Team zu, sobald ein Platz frei ist.'),
-      ));
-    }
-    return;
-  } catch (e) {
-    final msg = e.toString();
-    if (!msg.contains('Ungültiger Einladungscode')) {
-      // Der Code gehört zu einer Fantasy-Liga, der Beitritt scheiterte aber
-      // aus einem anderen Grund (z. B. Draft bereits begonnen).
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg.contains('bereits begonnen')
-            ? 'Der Draft dieser Liga hat bereits begonnen.'
-            : 'Beitritt fehlgeschlagen: $e'),
-      ));
-      return;
-    }
-    // Sonst: kein Fantasy-Code -> als Tipprunde weiterversuchen.
-  }
-
-  // 2) Als Tipprunde versuchen.
-  try {
-    final round = await ref.read(tipRoundRepositoryProvider).joinRound(trimmed);
-    ref.invalidate(myRoundsProvider);
-    activateRound(ref, round);
-    if (!context.mounted) return;
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
-  } catch (e) {
-    if (!context.mounted) return;
-    final msg = e.toString();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg.contains('Ungültiger Einladungscode')
-          ? 'Dieser Code passt zu keiner Fantasy-Liga und keiner Tipprunde.'
-          : 'Beitritt fehlgeschlagen: $e'),
-    ));
-  }
-}

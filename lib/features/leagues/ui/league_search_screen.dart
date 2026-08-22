@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/league_screen.dart';
 import '../../../core/ui/app_avatar.dart';
+import 'join_by_code.dart';
 import '../../fantasy/providers.dart';
 import '../../fantasy/ui/fantasy_league_screen.dart';
 import '../../tippspiel/providers.dart';
@@ -90,6 +91,22 @@ class _LeagueSearchScreenState extends ConsumerState<LeagueSearchScreen> {
               ),
             ),
           ),
+          // Der Weg zu allem, was hier **nicht** steht. Die Liste zeigt nur
+          // öffentliche Ligen; eine private taucht in keiner Suche auf, egal
+          // wie genau man ihren Namen tippt. Wer eingeladen wurde, kam bisher
+          // nur über das „+" auf dem Homescreen hierher — auf dem Schirm, der
+          // „Ligen entdecken" heißt, fehlte genau diese Tür.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => joinAnyFlow(context, ref),
+                icon: const Icon(Icons.vpn_key_outlined, size: 18),
+                label: const Text('Mit Einladungscode beitreten'),
+              ),
+            ),
+          ),
           SizedBox(
             height: 40,
             child: ListView(
@@ -129,12 +146,19 @@ class _LeagueSearchScreenState extends ConsumerState<LeagueSearchScreen> {
               data: (all) {
                 final list = _filter(all);
                 return list.isEmpty
+                  // Beide Leerzustände nennen den Einladungscode: Wer hier
+                  // nichts findet, sucht oft eine private Liga — und die steht
+                  // in keiner Suche, egal wie genau der Name stimmt.
                   ? _CenteredNote(all.isEmpty
                       ? 'Aktuell gibt es keine öffentlichen Ligen oder '
-                          'Tipprunden zum Beitreten.\nStelle eine eigene Liga in '
-                          'den Einstellungen auf „öffentlich", damit andere sie '
+                          'Tipprunden zum Beitreten.\nHast du einen '
+                          'Einladungscode, kommst du damit auch in eine private '
+                          'Liga.\nOder stelle eine eigene Liga in den '
+                          'Einstellungen auf „öffentlich", damit andere sie '
                           'hier finden.'
-                      : 'Keine Treffer mit diesen Filtern.')
+                      : 'Keine Treffer mit diesen Filtern.\nPrivate Ligen '
+                          'tauchen hier nicht auf — für die brauchst du einen '
+                          'Einladungscode.')
                   : RefreshIndicator(
                       onRefresh: () async =>
                           ref.invalidate(publicLeagueSearchProvider(_query)),

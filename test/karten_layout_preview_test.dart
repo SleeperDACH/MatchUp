@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/app/widgets/matchup_chevron.dart';
+
+import 'support/schrift.dart';
 
 /// Vorschau zum **Vergleichen von Karten-Anordnungen** auf dem Homescreen.
 ///
@@ -434,30 +433,8 @@ Widget _panel(String titel, String hinweis, _Bauer bau) => SizedBox(
       ),
     );
 
-/// Echte Schrift in die Vorschau laden. Ohne das zeichnet `flutter test` jeden
-/// Text als graue Kästchen — für Abstände reicht das, für die Frage „welche
-/// Zeile führt?" nicht: genau die Staffelung wäre unsichtbar.
-///
-/// Gehört in `setUpAll`, **nicht** in den Test: `testWidgets` läuft in einer
-/// Fake-Async-Zone, in der echtes Datei-I/O nie zurückkommt — der Test hing
-/// dort bis zum Timeout, statt zu scheitern.
-Future<void> _ladeSchrift() async {
-  final loader = FontLoader('BarlowCondensed');
-  const dateien = [
-    'assets/fonts/BarlowCondensed-Regular.ttf',
-    'assets/fonts/BarlowCondensed-Medium.ttf',
-    'assets/fonts/BarlowCondensed-SemiBold.ttf',
-    'assets/fonts/BarlowCondensed-Bold.ttf',
-  ];
-  for (final d in dateien) {
-    loader
-        .addFont(File(d).readAsBytes().then((b) => ByteData.view(b.buffer)));
-  }
-  await loader.load();
-}
-
 void main() {
-  setUpAll(_ladeSchrift);
+  setUpAll(ladeSchrift);
 
   testWidgets('Vorschau: Anordnung auf den Liga- und Tippspiel-Karten',
       (tester) async {
