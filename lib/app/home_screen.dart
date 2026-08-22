@@ -817,6 +817,38 @@ class _CreateRow extends ConsumerWidget {
   }
 }
 
+/// Fuß einer Liga- oder Tipprunden-Karte: der Zustand sitzt in einer eigenen,
+/// abgesetzten Leiste in der Kartenfarbe.
+///
+/// Vorher trennte eine dünne Linie den Zustand vom Rest, und Name samt
+/// Untertitel schwebten mit viel totem Raum in der Kartenmitte. Die Leiste
+/// gibt der Karte einen Boden: oben Marke und Name, unten der Zustand — was
+/// zu tun ist, steht immer an derselben Stelle, auch wenn der Name zwei
+/// Zeilen braucht.
+class _KartenSockel extends StatelessWidget {
+  const _KartenSockel({required this.farbe, required this.child});
+
+  final Color farbe;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: farbe.withValues(alpha: 0.20),
+          // 15, nicht 16: innen am 1px-Rahmen entlang, sonst blitzt in den
+          // unteren Ecken die Kartenfläche durch.
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(15),
+            bottomRight: Radius.circular(15),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(9, 5, 8, 5),
+          child: child,
+        ),
+      );
+}
+
 /// Höhe der Liga-Karten im Querlauf — auch für den Ladeplatz und die
 /// „Neue Liga"-Karte, damit die Reihe nicht springt.
 const double _kLeagueCardHeight = 132;
@@ -913,51 +945,64 @@ class _FantasyLeagueCard extends ConsumerWidget {
                 gradient: kartenVerlauf(farbe, scheme, dark),
                 border: Border.all(color: farbe.withValues(alpha: 0.65)),
               ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(9, 9, 8, 9),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _LeagueMark(league: league, farbe: farbe, size: 26),
-                        const Spacer(),
-                        if (pending > 0) _CountBadge(count: pending),
-                      ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(9, 9, 8, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _LeagueMark(
+                                  league: league, farbe: farbe, size: 26),
+                              const Spacer(),
+                              if (pending > 0) _CountBadge(count: pending),
+                            ],
+                          ),
+                          // Der Zwischenraum liegt **über** dem Namen: so
+                          // sitzt der Text am Sockel statt in der Mitte zu
+                          // schweben, und eine zweite Namenszeile wächst nach
+                          // oben in den freien Platz.
+                          const Spacer(),
+                          Flexible(
+                            child: Text(
+                              league.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.05),
+                            ),
+                          ),
+                          // Modus als Wort, weil die Farbe allein nur die
+                          // Familie verrät, nicht den Namen. Bewusst **nicht**
+                          // in der Kartenfarbe: seit der Verlauf kräftig ist,
+                          // wäre Grün auf Grün kaum zu lesen. Und leiser als
+                          // der Name — sonst sind beide Zeilen gleich laut.
+                          Text(
+                            league.mode.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: scheme.onSurface.withValues(alpha: 0.6),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 7),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 7),
-                    Text(
-                      league.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          height: 1.1),
-                    ),
-                    // Modus als Wort, weil die Farbe allein nur die Familie
-                    // verrät, nicht den Namen.
-                    // Bewusst **nicht** in der Kartenfarbe: seit der Verlauf
-                    // kräftig ist, wäre Grün auf Grün kaum zu lesen. Den
-                    // Modus sagt ohnehin schon die Farbe der Karte.
-                    Text(
-                      league.mode.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: scheme.onSurface.withValues(alpha: 0.78),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800),
-                    ),
-                    const Spacer(),
-                    Divider(
-                        height: 7,
-                        thickness: 1,
-                        color: farbe.withValues(alpha: 0.28)),
-                    _LigaStatusZeile(
+                  ),
+                  _KartenSockel(
+                    farbe: farbe,
+                    child: _LigaStatusZeile(
                         league: league, status: status, farbe: farbe),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1253,50 +1298,59 @@ class _TipRoundCard extends ConsumerWidget {
                 gradient: kartenVerlauf(farbe, scheme, dark),
                 border: Border.all(color: farbe.withValues(alpha: 0.65)),
               ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(9, 8, 8, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _RoundMark(round: round, farbe: farbe, size: 24),
-                        const Spacer(),
-                        if (pending > 0) _CountBadge(count: pending),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Expanded(
-                      child: Text(
-                        round.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            height: 1.1),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(9, 8, 8, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _RoundMark(round: round, farbe: farbe, size: 24),
+                              const Spacer(),
+                              if (pending > 0) _CountBadge(count: pending),
+                            ],
+                          ),
+                          const Spacer(),
+                          Flexible(
+                            child: Text(
+                              round.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.05),
+                            ),
+                          ),
+                          // Der Wettbewerb schrumpft statt zu kappen: aus
+                          // „Bundesliga +1" darf nicht „Bundesli…" werden.
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              wettbewerb,
+                              maxLines: 1,
+                              style: TextStyle(
+                                  color:
+                                      scheme.onSurface.withValues(alpha: 0.6),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                        ],
                       ),
                     ),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        wettbewerb,
-                        maxLines: 1,
-                        style: TextStyle(
-                            color: scheme.onSurface.withValues(alpha: 0.78),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Divider(
-                        height: 7,
-                        thickness: 1,
-                        color: farbe.withValues(alpha: 0.28)),
-                    _OffeneTippsZeile(roundId: round.id, farbe: farbe),
-                  ],
-                ),
+                  ),
+                  _KartenSockel(
+                    farbe: farbe,
+                    child: _OffeneTippsZeile(roundId: round.id, farbe: farbe),
+                  ),
+                ],
               ),
             ),
           ),
