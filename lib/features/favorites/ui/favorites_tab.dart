@@ -124,7 +124,10 @@ class _FavoritesTabState extends ConsumerState<FavoritesTab> {
     // Nationalmannschaften) werden ausgeblendet.
     final favTeams = ref
         .watch(favoritesProvider)
-        .where((f) => f.type == FavoriteType.team && _leagueOrder(f.leagueId) < 4)
+        .where((f) =>
+            f.type == FavoriteType.team &&
+            _leagueOrder(f.leagueId) < 4 &&
+            isResolvableTeamFavorite(f))
         .toList();
     // Männer- und Frauen-Team desselben Vereins teilen sich einen Tab.
     final groups = _groupFavorites(favTeams);
@@ -174,7 +177,10 @@ class FavoritesReorderScreen extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final favs = ref
         .watch(favoritesProvider)
-        .where((f) => f.type == FavoriteType.team && _leagueOrder(f.leagueId) < 4)
+        .where((f) =>
+            f.type == FavoriteType.team &&
+            _leagueOrder(f.leagueId) < 4 &&
+            isResolvableTeamFavorite(f))
         .toList();
     final groups = _groupFavorites(favs);
     return Scaffold(

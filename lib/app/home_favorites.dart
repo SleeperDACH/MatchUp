@@ -18,9 +18,13 @@ import '../features/favorites/logic/next_favorite_fixtures.dart';
 /// an einen Verein, nicht an einen Wettbewerb.
 final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
   if (!AppConfig.isSupabaseConfigured) return const [];
+  // `isResolvableTeamFavorite`: ein Schlüssel aus einer früheren Quelle
+  // (`openligadb:100`) wird zu `100` gekürzt — und diese ID gibt es bei
+  // Sportmonks, nur gehört sie einem **fremden** Verein. Ungefiltert stand
+  // hier das Spiel eines Vereins, den nie jemand favorisiert hat.
   final teams = ref
       .watch(favoritesProvider)
-      .where((f) => f.type == FavoriteType.team)
+      .where((f) => f.type == FavoriteType.team && isResolvableTeamFavorite(f))
       .toList();
   if (teams.isEmpty) return const [];
 

@@ -152,23 +152,38 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
     } catch (_) {/* offline o.ä. — bleibt leer */}
   }
 
+  /// **Alle** gespeicherten Zeilen zu Typ und Schlüssel — bei Teams über die
+  /// reine Team-ID ([teamIdOf]) verglichen. Mehrzahl mit Absicht: Zu einem
+  /// Verein können mehrere Zeilen mit unterschiedlichem Schlüssel-Präfix
+  /// liegen (`503`, `sportmonks:503`, `openligadb:503`). Traf der Stern nur
+  /// eine davon, blieb die andere liegen — im Favoriten-Tab stand dann weiter
+  /// das Wappen, während Spielplan und News leer waren, weil die alte ID bei
+  /// Sportmonks nichts liefert.
+  List<Favorite> findAll(FavoriteType type, String key) =>
+      [for (final f in state) if (matchesFavorite(f, type, key)) f];
+
   bool isFavorite(FavoriteType type, String key) =>
-      state.any((f) => f.type == type && f.key == key);
+      findAll(type, key).isNotEmpty;
 
   Future<void> toggle(Favorite fav) async {
     final repo = _repo;
     if (repo == null) return;
-    final exists = isFavorite(fav.type, fav.key);
+    // Gelöscht wird mit dem Schlüssel der **gespeicherten** Zeilen: mit dem
+    // übergebenen traf das Delete bei abweichendem Präfix keine Zeile, der
+    // Favorit verschwand kurz und war nach dem nächsten Laden wieder da.
+    final vorhanden = findAll(fav.type, fav.key);
     final previous = state;
-    state = exists
+    state = vorhanden.isNotEmpty
         ? [
             for (final f in state)
-              if (!(f.type == fav.type && f.key == fav.key)) f
+              if (!vorhanden.any((v) => v.type == f.type && v.key == f.key)) f
           ]
         : [...state, fav];
     try {
-      if (exists) {
-        await repo.remove(fav.type, fav.key);
+      if (vorhanden.isNotEmpty) {
+        for (final v in vorhanden) {
+          await repo.remove(v.type, v.key);
+        }
       } else {
         await repo.add(fav);
       }
@@ -208,6 +223,60 @@ final leagueTeamsProvider =
     return teams;
   });
 });
+
+/// Teams für die Favoriten-**Auswahl**: die Teams der Liga plus die bereits
+/// gespeicherten Favoriten derselben Liga, auch wenn sie im aktuellen
+/// Spielplan fehlen (Verein abgestiegen, Spielplan noch nicht veröffentlicht,
+/// alt gespeicherter Schlüssel). Ohne sie stand so ein Favorit weiter im
+/// Favoriten-Tab, ließ sich aber nirgends abwählen — den Stern dazu gab es
+/// schlicht nicht. Bewusst getrennt von [leagueTeamsProvider], das die Frage
+/// „wer spielt in dieser Liga" beantwortet (u. a. für die Tabellen-Zuordnung
+/// im Vereins-Screen) und diese Nachzügler deshalb nicht enthalten darf.
+final leaguePickerTeamsProvider =
+    Provider.family<AsyncValue<List<TeamRef>>, String>((ref, leagueId) {
+  final favs = ref.watch(favoritesProvider);
+  return ref.watch(leagueTeamsProvider(leagueId)).whenData((teams) {
+    final bekannt = {for (final t in teams) teamIdOf(t.id)};
+    final ergaenzt = [...teams];
+    for (final f in favs) {
+      if (f.type != FavoriteType.team || f.leagueId != leagueId) continue;
+      if (!bekannt.add(teamIdOf(f.key))) continue;
+      ergaenzt.add(TeamRef(
+        id: f.key,
+        name: f.label,
+        shortName: f.shortName ?? f.label,
+        iconUrl: f.iconUrl,
+      ));
+    }
+    if (ergaenzt.length == teams.length) return teams;
+    return ergaenzt
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  });
+});
+
+/// Lässt sich zu diesem Team-Favoriten überhaupt etwas laden? Spielplan und
+/// News laufen über Sportmonks; ein Schlüssel aus einer früheren Quelle
+/// (`openligadb:100`) trifft dort nichts. Solche Zeilen dürfen nicht angezeigt
+/// werden — sonst steht ihr Wappen im Favoriten-Tab, während darunter alles
+/// leer bleibt. Migration `0075_favorites_drop_openligadb.sql` löscht die
+/// Bestandszeilen; diese Prüfung hält die Anzeige auch ohne sie richtig.
+bool isResolvableTeamFavorite(Favorite f) =>
+    f.type != FavoriteType.team || f.key.startsWith('sportmonks:');
+
+/// Meint dieser Favorit denselben Eintrag? Bei Teams über die reine Team-ID
+/// ([teamIdOf]), damit ein abweichendes Schlüssel-Präfix denselben Verein
+/// bezeichnet. Einzige Vergleichsstelle — Stern-Anzeige und Löschen dürfen
+/// nicht auseinanderlaufen, sonst leuchtet der Stern an einer Zeile, die der
+/// Klick nicht trifft.
+bool matchesFavorite(Favorite f, FavoriteType type, String key) =>
+    f.type == type &&
+    (type == FavoriteType.team
+        ? teamIdOf(f.key) == teamIdOf(key)
+        : f.key == key);
+
+/// Ist dieses Team favorisiert? (Stern in der Favoritenauswahl.)
+bool isTeamFavorited(List<Favorite> favs, String teamId) =>
+    favs.any((f) => matchesFavorite(f, FavoriteType.team, teamId));
 
 /// Reine Sportmonks-Team-ID aus dem Favoriten-Schlüssel
 /// (`sportmonks:503` → `503`). [teamFixturesProvider] und [teamSquadProvider]

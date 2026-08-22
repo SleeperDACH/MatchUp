@@ -68,7 +68,7 @@ class _LeagueTeamsPicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final teamsAsync = ref.watch(leagueTeamsProvider(league.id));
+    final teamsAsync = ref.watch(leaguePickerTeamsProvider(league.id));
     final favorites = ref.watch(favoritesProvider);
     final notifier = ref.read(favoritesProvider.notifier);
 
@@ -104,8 +104,7 @@ class _LeagueTeamsPicker extends ConsumerWidget {
             separatorBuilder: (_, _) => const Divider(height: 1, indent: 60),
             itemBuilder: (context, i) {
               final team = teams[i];
-              final isFav = favorites.any(
-                  (f) => f.type == FavoriteType.team && f.key == team.id);
+              final isFav = isTeamFavorited(favorites, team.id);
               return ListTile(
                 leading: TeamBadge(team: team),
                 title: Text(team.name),

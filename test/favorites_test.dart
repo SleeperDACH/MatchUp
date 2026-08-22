@@ -19,4 +19,39 @@ void main() {
       expect(isPlaceholderTeam(_t('1A', '1A')), isTrue);
     });
   });
+
+  group('isTeamFavorited', () {
+    Favorite fav(String key) => Favorite(
+        type: FavoriteType.team,
+        key: key,
+        label: 'Testverein',
+        leagueId: 'bundesliga');
+
+    test('erkennt den Favoriten am Schlüssel', () {
+      expect(isTeamFavorited([fav('sportmonks:503')], 'sportmonks:503'),
+          isTrue);
+      expect(isTeamFavorited([fav('sportmonks:503')], 'sportmonks:504'),
+          isFalse);
+      expect(isTeamFavorited(const [], 'sportmonks:503'), isFalse);
+    });
+
+    test('abweichendes Präfix zählt als derselbe Verein', () {
+      // Sonst leuchtet der Stern nicht und die alte Zeile bleibt für immer.
+      expect(isTeamFavorited([fav('503')], 'sportmonks:503'), isTrue);
+      expect(isTeamFavorited([fav('openligadb:503')], 'sportmonks:503'),
+          isTrue);
+    });
+
+    test('nicht auflösbare Schlüssel gelten nicht als anzeigbar', () {
+      expect(isResolvableTeamFavorite(fav('sportmonks:503')), isTrue);
+      expect(isResolvableTeamFavorite(fav('openligadb:100')), isFalse);
+      expect(isResolvableTeamFavorite(fav('100')), isFalse);
+    });
+
+    test('Ligen-Favoriten zählen nicht als Team', () {
+      final liga = Favorite(
+          type: FavoriteType.league, key: 'bundesliga', label: 'Bundesliga');
+      expect(isTeamFavorited([liga], 'bundesliga'), isFalse);
+    });
+  });
 }
