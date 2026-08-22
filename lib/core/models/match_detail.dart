@@ -147,5 +147,10 @@ class MatchDetail {
   final List<MatchStat> stats;
   final List<MatchEvent> events;
 
-  bool get hasScore => homeScore != null && awayScore != null;
+  /// Wie bei [Fixture.hasScore]: erst ab Anpfiff, sonst zeigt der
+  /// Detailschirm ein 0:0 für ein Spiel, das noch nicht läuft.
+  bool get hasScore =>
+      status != FixtureStatus.scheduled &&
+      homeScore != null &&
+      awayScore != null;
 }

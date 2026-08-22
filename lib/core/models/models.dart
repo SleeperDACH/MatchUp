@@ -116,7 +116,18 @@ class Fixture {
 
   /// Ein (vorläufiger) Spielstand liegt vor — live oder endgültig.
   /// Grundlage für die Live-Wertung in der Tabelle.
-  bool get hasScore => homeScore != null && awayScore != null;
+  ///
+  /// **Der Status entscheidet, nicht das Vorhandensein der Zahlen.** Sportmonks
+  /// liefert im `CURRENT`-Eintrag schon vor dem Anpfiff ein 0:0; die Edge
+  /// Function reicht das unverändert durch. Ohne die Statusprüfung stand
+  /// deshalb im Live-Tab „0:0" bei Spielen, die erst in Minuten anfangen — und
+  /// schlimmer: die Live-Wertung (`round_table.dart`, `tip_duels_tab.dart`)
+  /// hielt so ein Spiel für begonnen und verteilte Punkte für ein Ergebnis,
+  /// das es noch gar nicht gab.
+  bool get hasScore =>
+      status != FixtureStatus.scheduled &&
+      homeScore != null &&
+      awayScore != null;
 }
 
 /// Eine Zeile der Liga-/Gruppentabelle.

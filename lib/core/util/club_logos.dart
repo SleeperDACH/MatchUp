@@ -7,7 +7,10 @@
 /// **TheSportsDB**-CDN (im Projekt ohnehin für den Spielerpool genutzt). Clubs
 /// ohne Eintrag behalten ihr OpenLigaDB-Icon (meist stabile PNGs).
 ///
-/// Schlüssel = kanonischer OpenLigaDB-Teamname.
+/// Schlüssel = Teamname **so, wie ihn die jeweilige Quelle schreibt** (früher
+/// nur OpenLigaDB; seit dem Pokal über Sportmonks auch deren Schreibweise).
+/// Verglichen wird auf Gleichheit — bewusst kein Teil-Treffer: „Hansa" steckt
+/// sowohl in „LSK Hansa" als auch in „Hansa Rostock".
 library;
 
 const _base = 'https://r2.thesportsdb.com/images/media/team/badge/';
@@ -21,6 +24,14 @@ const _overrides = <String, String>{
   'FC Bayern München': '${_base}01ogkh1716960412.png',
   'SC Paderborn 07': '${_base}kddvva1566048058.png',
   'SV 07 Elversberg': '${_base}z079go1677573926.png',
+
+  // Sportmonks liefert hier ein **falsches** Wappen, keine schlechte Kopie:
+  // Unter der eigenen Team-ID des Lüneburger SK Hansa (3744) liegt Byte für
+  // Byte dasselbe Bild wie unter Hansa Rostock (575) — geprüft über die
+  // Prüfsumme beider Dateien. Im Pokalspiel stand deshalb das Rostocker
+  // Wappen neben dem Lüneburger Namen. Reparieren lässt sich das nur beim
+  // Anbieter; bis dahin dieser Override.
+  'LSK Hansa': '${_base}s13nob1580152636.png',
 };
 
 /// Beste Logo-URL für [teamName] (kanonischer OpenLigaDB-Name); [openLigaUrl]

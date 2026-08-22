@@ -848,7 +848,7 @@ class _MatchdayFixtures extends ConsumerWidget {
 
   Widget _row(BuildContext context, Fixture f) {
     final scheme = Theme.of(context).colorScheme;
-    final hasScore = f.homeScore != null && f.awayScore != null;
+    final hasScore = f.hasScore;
     final live = f.status == FixtureStatus.live;
 
     Widget mid;

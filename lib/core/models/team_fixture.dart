@@ -32,5 +32,10 @@ class TeamFixture {
   final int? homeScore;
   final int? awayScore;
 
-  bool get hasScore => homeScore != null && awayScore != null;
+  /// Wie bei [Fixture.hasScore]: erst ab Anpfiff. Vor dem Spiel liefert der
+  /// Feed bereits ein 0:0, das sonst im Spielplan der Favoriten stünde.
+  bool get hasScore =>
+      status != FixtureStatus.scheduled &&
+      homeScore != null &&
+      awayScore != null;
 }
