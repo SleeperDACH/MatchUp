@@ -177,12 +177,19 @@ class HomeScreen extends ConsumerWidget {
           child: Center(child: CircularProgressIndicator()),
         )
       else if (list.isEmpty)
-        // Ohne eine einzige Liga wäre die Querreihe nur eine große leere
-        // „+"-Karte — als Zeile nimmt der Einstieg ein Sechstel des Platzes.
+        // Wer noch keine Liga hat, braucht den Einstieg — sonst stünde hier
+        // eine leere Überschrift. Als Zeile statt als Karte: so nimmt er ein
+        // Sechstel des Platzes und sagt nebenbei, wozu das gut ist.
         const _CreateRow(
             text: 'Fantasy-Liga anlegen',
             hint: 'Draften, Kader managen, Saison spielen')
       else
+        // Hier hängt **keine** „+"-Karte mehr hinter den Ligen. Sie stand die
+        // ganze Saison in der Reihe für etwas, das man ein- oder zweimal im
+        // Jahr tut, und war bei vier Ligen die angeschnittene fünfte Karte am
+        // rechten Rand — genau die Stelle, an der man eine weitere Liga
+        // vermutet. Angelegt wird über das „+" oben rechts; wer noch gar keine
+        // Liga hat, sieht statt der Reihe die `_CreateRow`.
         _Bleed(
           hoehe: _kLeagueCardHeight,
           child: ListView.separated(
@@ -190,13 +197,10 @@ class HomeScreen extends ConsumerWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
             physics: const BouncingScrollPhysics(),
-            itemCount: list.length + 1,
+            itemCount: list.length,
             separatorBuilder: (_, _) =>
                 const SizedBox(width: _kLeagueCardGap),
-            itemBuilder: (_, i) => i < list.length
-                ? _FantasyLeagueCard(league: list[i])
-                : const _NewEntryCard(
-                    label: 'Liga', hoehe: _kLeagueCardHeight),
+            itemBuilder: (_, i) => _FantasyLeagueCard(league: list[i]),
           ),
         ),
     ];
@@ -229,12 +233,9 @@ class HomeScreen extends ConsumerWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
             physics: const BouncingScrollPhysics(),
-            itemCount: standalone.length + 1,
+            itemCount: standalone.length,
             separatorBuilder: (_, _) => const SizedBox(width: _kLeagueCardGap),
-            itemBuilder: (_, i) => i < standalone.length
-                ? _TipRoundCard(round: standalone[i])
-                : const _NewEntryCard(
-                    label: 'Tippspiel', hoehe: _kTipCardHeight),
+            itemBuilder: (_, i) => _TipRoundCard(round: standalone[i]),
           ),
         ),
     ];
@@ -1205,55 +1206,6 @@ class _StatusZeile extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-/// Letzte Karte einer Reihe: neu anlegen oder beitreten.
-class _NewEntryCard extends ConsumerWidget {
-  const _NewEntryCard({required this.label, required this.hoehe});
-
-  final String label;
-  final double hoehe;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    return _PressScale(
-      child: SizedBox(
-        width: leagueCardWidth(context),
-        height: hoehe,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => showCreateOrJoin(context, ref),
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: scheme.outlineVariant.withValues(alpha: 0.8)),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_rounded,
-                      size: 22, color: scheme.onSurfaceVariant),
-                  const SizedBox(height: 3),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(label,
-                        style: TextStyle(
-                            color: scheme.onSurfaceVariant,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
