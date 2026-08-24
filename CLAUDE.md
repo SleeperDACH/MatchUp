@@ -210,6 +210,106 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   immer der kanonische OpenLigaDB-Name, sonst bricht das Stats-Matching.
   ids: `seed:*` bzw. `tsdb:*`. Echter Voll-Kader nur mit Bezahl-Feed.
 
+## Anmeldung über Google und Apple
+
+Zwei Wege, und welcher genommen wird, entscheidet die Plattform — nicht eine
+Einstellung (`lib/features/auth/social_auth.dart`):
+
+| | Google | Apple |
+|---|---|---|
+| iOS/macOS | nativ (`google_sign_in`) | nativ (`sign_in_with_apple`) |
+| Android | nativ (`google_sign_in`) | Browser (`signInWithOAuth`) |
+| Web | Browser | Browser |
+
+**Nativ** heißt: Das System zeigt seinen eigenen Auswahldialog, liefert ein
+ID-Token, und das geht per `signInWithIdToken` an Supabase — die Sitzung steht,
+wenn der Aufruf zurückkommt. **Browser** heißt: `signInWithOAuth` öffnet ein
+Fenster und kehrt *sofort* zurück; die Sitzung entsteht erst, wenn der
+Deep-Link `app.matchup.mobile://login-callback` wieder in der App landet.
+Deshalb hängt nach dem Knopf nichts, was die Sitzung braucht. Der Rückgabewert
+`false` bedeutet ausschließlich „abgebrochen" — und Abbruch ist kein Fehler,
+die Oberfläche zeigt dann nichts Rotes an.
+
+Drei Dinge, die beim Nachbauen Zeit kosten:
+
+- **Android braucht die *Web*-Client-ID, nicht die Android-Client-ID.** Sie
+  geht als `serverClientId` in `initialize()`; das ID-Token wird auf sie
+  ausgestellt, und genau diese `aud` prüft Supabase. Wer die Android-Client-ID
+  einträgt, bekommt „Invalid audience". Der Android-Client selbst wird in der
+  Google Cloud Console nur über Paketname + SHA-1 hinterlegt.
+- **Seit `google_sign_in` 7 liefert `authentication` nur noch das ID-Token.**
+  Ein Access-Token gäbe es allein über den Autorisierungs-Client — Supabase
+  braucht keins. Anleitungen, die `accessToken` aus `authentication` lesen,
+  beziehen sich auf Version 6.
+- **Der Nonce ist bei Apple Pflicht und wird zweimal gebraucht:** Apple bekommt
+  den SHA-256-Abdruck, Supabase das Original. Wer beiden denselben Wert gibt,
+  bekommt „Nonce mismatch".
+
+**Profile entstehen hier nicht von selbst.** `signUp` legt die `profiles`-Zeile
+mit dem selbst gewählten Namen an — über Google oder Apple läuft dieser Weg
+nie. `AuthRepository.ensureProfileFromIdentity` holt das nach und leitet den
+Namen ab (`username_vorschlag.dart`, reine Funktionen mit Tests). Ohne das wäre
+der Nutzer angemeldet und stünde in jeder Liga, Tabelle und jedem Chat
+namenlos da. Der Name ist ein Vorschlag, kein Pflichtfeld — ändern geht über
+`updateUsername`. **Apple gibt den Namen nur bei der allerersten Anmeldung
+heraus**, danach nie wieder; wer ihn da nicht mitnimmt, hat ihn für immer
+verloren.
+
+Die Knöpfe zeigt der Anmeldescreen nur, wo sie funktionieren
+(`AppConfig.hasGoogleSignIn` / `hasAppleSignIn`) — ein Anmeldeweg, der in eine
+Fehlermeldung läuft, ist schlechter als keiner. Im Test sind beide Flags über
+`googleSignInAvailableProvider` / `appleSignInAvailableProvider`
+überschreibbar; ohne das zeigte die Golden-Vorschau genau das, was der Nutzer
+später *nicht* sieht.
+
+### Einrichtung (Konsolen, einmalig)
+
+Der Code steht; ohne diese Schritte bleiben beide Knöpfe unsichtbar.
+
+1. **Google Cloud Console** → APIs & Dienste → Anmeldedaten:
+   * OAuth-Client **Web** anlegen. Als autorisierte Weiterleitung
+     `https://zleuiewcydrazogkfafp.supabase.co/auth/v1/callback` eintragen.
+   * OAuth-Client **iOS** anlegen, Bundle-ID `app.matchup.mobile`.
+   * OAuth-Client **Android** anlegen, Paketname `app.matchup.mobile`, dazu
+     **beide** SHA-1: der des Upload-Keystores (`keytool -list -v -keystore
+     ~/keys/matchup-upload.jks`) **und** der des Play-App-Signing-Keys aus der
+     Play Console. Fehlt der zweite, funktioniert die Anmeldung im Testgerät
+     und scheitert für jeden, der die App aus dem Store lädt.
+2. **Supabase** → Authentication → Providers → Google aktivieren: Secret des
+   **Web**-Clients eintragen, und unter „Client IDs" die **Web-** und die
+   **iOS**-Client-ID (kommagetrennt). Die Android-Client-ID gehört **nicht**
+   dorthin: Sie taucht nie als `aud` eines ID-Tokens auf — Android stellt seine
+   Token auf die Web-Client-ID aus (`serverClientId`), und nur die prüft
+   Supabase. Der Android-Client existiert allein, damit Google die App an
+   Paketname + SHA-1 wiedererkennt.
+3. **Apple Developer** → Identifiers:
+   * Beim App-Identifier `app.matchup.mobile` die Capability **Sign in with
+     Apple** einschalten. Sie muss im Provisioning-Profil stecken, sonst
+     scheitert schon der iOS-Build an `Runner.entitlements`.
+   * Eine **Service-ID** für den Browser-Weg (Android/Web) anlegen, Rückkehr
+     `…supabase.co/auth/v1/callback`.
+   * Einen **Key** mit Sign-in-with-Apple anlegen und in Supabase →
+     Authentication → Providers → Apple hinterlegen.
+4. **Werte in `AppConfig`** eintragen (`googleIosClientId`,
+   `googleWebClientId`, `appleServiceId`) — als `defaultValue` fest im Code,
+   aus demselben Grund wie die Supabase-Keys: ein Build ohne `--dart-define`
+   hätte sonst keine Anbieter-Anmeldung, und zwar wortlos. Die Werte sind
+   öffentlich; geheim ist allein das Client-*Secret*, und das liegt nur im
+   Supabase-Dashboard.
+5. **`ios/Runner/Info.plist`**: das *umgekehrte* Schema der iOS-Client-ID
+   (`com.googleusercontent.apps.…`) als weiteren `CFBundleURLTypes`-Eintrag
+   ergänzen. Ohne das kehrt die Google-Anmeldung auf iOS nicht in die App
+   zurück. **Steht noch aus** — die Client-ID gibt es noch nicht, und ein
+   falsches Schema ist schlimmer als keins.
+6. **Redirect-URLs in Supabase** (Authentication → URL Configuration): der
+   Deep-Link steht dort schon vom Passwort-Reset; für den Browser-Weg wird
+   nichts Weiteres gebraucht.
+
+`ios/Runner/Runner.entitlements` ist angelegt und in allen drei
+Build-Konfigurationen als `CODE_SIGN_ENTITLEMENTS` eingehängt. Solange die
+Capability am App-Identifier fehlt, **verschärft das den iOS-Build-Fehler**:
+Zur fehlenden Signatur kommt dann ein fehlendes Entitlement.
+
 ## Befehle
 
 ```sh

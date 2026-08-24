@@ -51,6 +51,9 @@ dependencies:
   # Start-Link beim Kaltstart lesen (Passwort-Reset-Mail). Kommt ohnehin mit
   # supabase_flutter, wird hier aber direkt benutzt — siehe main.dart.
   app_links: ^7.0.0
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^8.1.0
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

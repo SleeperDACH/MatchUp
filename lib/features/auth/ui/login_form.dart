@@ -7,6 +7,7 @@ import '../../../app/widgets/liquid_glass.dart';
 import '../../../app/widgets/matchup_logo.dart';
 import '../auth_repository.dart';
 import '../providers.dart';
+import 'social_buttons.dart';
 
 /// Login/Registrierung — eingebettet im Runden-Tab, solange niemand
 /// angemeldet ist.
@@ -111,6 +112,33 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     } catch (e) {
       if (kDebugMode) debugPrint('[AUTH] Unerwarteter Fehler: $e');
       setState(() => _error = 'Unerwarteter Fehler: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Anmeldung über Google oder Apple.
+  ///
+  /// [anmelden] meldet `false`, wenn der Nutzer abgebrochen hat — dann bleibt
+  /// das Formular still stehen. Beim Browser-Weg (Web, Apple auf Android)
+  /// bedeutet `true` nur „Fenster ist offen"; die Sitzung entsteht erst, wenn
+  /// der Deep-Link zurückkommt, und das Gate schaltet dann von selbst um.
+  Future<void> _socialLogin(Future<bool> Function() anmelden) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final weiter = await anmelden();
+      if (!weiter) return;
+      if (kDebugMode) debugPrint('[AUTH] Anbieter-Anmeldung durch');
+      _erzwingeGateNeubewertung();
+    } on AuthFailure catch (e) {
+      if (kDebugMode) debugPrint('[AUTH] AuthFailure: ${e.message}');
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[AUTH] Unerwarteter Fehler: $e');
+      if (mounted) setState(() => _error = 'Unerwarteter Fehler: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -265,10 +293,31 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   /// Eingabefelder, Aktions- und Wechsel-Buttons (innerhalb der Glaskarte).
   Widget _buildFormBody(
       BuildContext context, bool showBioButton, bool showBioSetup) {
+    // Nur zeigen, was auf dieser Plattform auch funktioniert — fehlt die
+    // Client-ID, führte der Knopf in eine Fehlermeldung statt in ein Konto.
+    final zeigeGoogle = ref.watch(googleSignInAvailableProvider);
+    final zeigeApple = ref.watch(appleSignInAvailableProvider);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Die Anbieter stehen oben: Wer ein Google- oder Apple-Konto benutzt,
+        // soll nicht erst an zwei Feldern vorbei, die er nie ausfüllen wird.
+        if (zeigeGoogle)
+          GoogleSignInButton(
+            onPressed:
+                _busy ? null : () => _socialLogin(
+                        ref.read(socialAuthProvider).signInWithGoogle),
+          ),
+        if (zeigeGoogle && zeigeApple) const SizedBox(height: 10),
+        if (zeigeApple)
+          AppleSignInButton(
+            onPressed:
+                _busy ? null : () => _socialLogin(
+                        ref.read(socialAuthProvider).signInWithApple),
+          ),
+        if (zeigeGoogle || zeigeApple) const SocialDivider(),
         if (_registerMode) ...[
           TextField(
             controller: _username,

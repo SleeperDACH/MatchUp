@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
 import 'user_profile.dart';
+import 'username_vorschlag.dart';
 
 /// Login, Registrierung und Profil. Wirft [AuthFailure] mit
 /// deutschsprachigen Meldungen für die UI.
@@ -183,6 +184,63 @@ class AuthRepository {
     await _client
         .from('profiles')
         .upsert({'id': user.id, 'username': username.trim()});
+  }
+
+  /// Sorgt dafür, dass ein Google-/Apple-Konto ein Profil hat.
+  ///
+  /// Bei der E-Mail-Registrierung legt [signUp] die Profilzeile mit dem selbst
+  /// gewählten Namen an. Über Google oder Apple läuft dieser Weg nie — dort
+  /// entsteht der Nutzer bei Supabase, und `profiles` bliebe leer. Die Folge
+  /// wäre kein Fehler, sondern etwas Schlimmeres: eine angemeldete Person, die
+  /// in jeder Liga, jeder Tabelle und jedem Chat namenlos steht.
+  ///
+  /// Der Name wird deshalb abgeleitet — aus dem, was der Anbieter mitgibt
+  /// ([bevorzugterName]), sonst aus den Metadaten der Sitzung, sonst aus dem
+  /// Teil vor dem `@` der E-Mail. Ändern lässt er sich danach jederzeit über
+  /// [updateUsername]; ein Vorschlag, den man korrigieren kann, ist besser als
+  /// ein Pflichtfeld zwischen Anmeldung und App.
+  ///
+  /// Ist `username` schon vergeben, wird durchgezählt (`Felix`, `Felix2`, …).
+  /// Das ist kein theoretischer Fall: „Michael Müller" gibt es mehr als einmal.
+  ///
+  /// Läuft **nach jeder** Anmeldung über einen Anbieter, auch der zweiten und
+  /// dritten — hat das Konto längst ein Profil, kostet das eine Abfrage und
+  /// endet hier.
+  Future<void> ensureProfileFromIdentity({String? bevorzugterName}) async {
+    final user = currentUser;
+    if (user == null) return;
+    final vorhanden = await _client
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+    if (vorhanden != null) return;
+
+    final basis = nutzernameVorschlag(
+      bevorzugt: bevorzugterName,
+      metadaten: user.userMetadata,
+      email: user.email,
+    );
+    // Zehn Versuche reichen: Der Zähler hängt am Namen, nicht am Zufall.
+    // Wer als elfter „Michael Müller" kommt, bekommt seine Unterscheidung aus
+    // der Nutzer-ID — die ist eindeutig, und eine Endlosschleife im
+    // Anmeldevorgang wäre das schlechtere Ende.
+    for (var versuch = 0; versuch < 10; versuch++) {
+      final name = versuch == 0
+          ? basis
+          : nutzernameMitAnhang(basis, '${versuch + 1}');
+      try {
+        await _client.from('profiles').insert({'id': user.id, 'username': name});
+        return;
+      } on PostgrestException catch (e) {
+        if (e.code != '23505') rethrow;
+      }
+    }
+    await _client.from('profiles').insert({
+      'id': user.id,
+      'username': nutzernameMitAnhang(
+          basis, user.id.replaceAll('-', '').substring(0, 6)),
+    });
   }
 
   Future<String?> fetchUsername() async {

@@ -5,11 +5,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/app_config.dart';
 import 'auth_repository.dart';
 import 'biometric_login.dart';
+import 'social_auth.dart';
 import 'user_profile.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(Supabase.instance.client);
 });
+
+/// Anmeldung über Google und Apple (nativ, wo möglich; sonst Browser).
+final socialAuthProvider = Provider<SocialAuthService>((ref) {
+  return SocialAuthService(Supabase.instance.client);
+});
+
+/// Zeigt der Anmeldescreen den Google- bzw. Apple-Knopf?
+///
+/// Die Antwort steckt eigentlich schon in [AppConfig] — als Provider ist sie
+/// im Test überschreibbar. Sonst ließe sich das Formular mit den Knöpfen nie
+/// abbilden: Ohne einkompilierte Client-IDs sind beide Werte `false`, und eine
+/// Golden-Vorschau zeigte genau das, was der Nutzer später **nicht** sieht.
+final googleSignInAvailableProvider =
+    Provider<bool>((ref) => AppConfig.hasGoogleSignIn);
+final appleSignInAvailableProvider =
+    Provider<bool>((ref) => AppConfig.hasAppleSignIn);
 
 /// E-Mail merken + Face-ID-/Fingerabdruck-Schnellanmeldung.
 final biometricLoginProvider = Provider<BiometricLoginService>((ref) {
