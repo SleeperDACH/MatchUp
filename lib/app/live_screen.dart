@@ -405,8 +405,16 @@ class _LigaKopf extends StatelessWidget {
   }
 }
 
-/// Ein Spiel als Zeile der Tafel: Namen zur Mitte hin, Ergebnis oder Anstoß
-/// dazwischen, Wappen an den Außenkanten.
+/// Ein Spiel als Zeile der Tafel: Wappen außen, der Name **direkt daneben an
+/// der Außenkante**, Ergebnis oder Anstoß in der Mitte.
+///
+/// Zuerst standen die Namen zur Mitte hin ausgerichtet, also an das Ergebnis
+/// gedrängt. Das ließ die Zeile in der Mitte zusammengeschoben aussehen und
+/// riss neben den Wappen Löcher auf, deren Breite bei jeder Zeile anders war
+/// — bei „RB Leipzig" ein großes, bei „Borussia Mönchengladbach" keins.
+/// Jetzt beginnt links jeder Name an derselben Kante und endet rechts an
+/// derselben: Die Spalten fluchten über alle Zeilen, und der Luftraum sammelt
+/// sich dort, wo er nicht stört — um das Ergebnis.
 ///
 /// Der Entwurf („Richtung B") hatte die Wappen weggelassen — dichter, ruhiger.
 /// Sie sind trotzdem geblieben, klein und außen: Sie tragen das Wiedererkennen
@@ -444,11 +452,10 @@ class _SpielZeile extends StatelessWidget {
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.centerLeft,
                   child: Text(
                     f.home.name,
                     maxLines: 1,
-                    textAlign: TextAlign.end,
                     style: const TextStyle(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w600,
@@ -506,10 +513,11 @@ class _SpielZeile extends StatelessWidget {
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.centerRight,
                   child: Text(
                     f.away.name,
                     maxLines: 1,
+                    textAlign: TextAlign.end,
                     style: const TextStyle(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w600,

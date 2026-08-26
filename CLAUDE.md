@@ -789,10 +789,16 @@ Was sich daraus geändert hat:
   einem `Expanded` teilt sich der Name den freien Platz dann hälftig mit der
   Linie, und die endet mitten im Nichts statt am Rand. Der Name steht deshalb
   in `Flexible(flex: 0)` — natürliche Breite, darf trotzdem schrumpfen.
-- **Die Spielzeile** (`_SpielZeile`): Namen zur Mitte hin, Ergebnis oder
-  Anstoß dazwischen, Wappen an den Außenkanten, der Live-Punkt ganz außen.
-  Der 4-px-Streifen links ist weg — er verschob die Zeile gegen die anderen.
-  Laufende Spiele sind rot getönt und tragen das Ergebnis in Rot.
+- **Die Spielzeile** (`_SpielZeile`): Wappen außen, der Name **direkt daneben
+  an der Außenkante**, Ergebnis oder Anstoß in der Mitte, der Live-Punkt ganz
+  außen. Der 4-px-Streifen links ist weg — er verschob die Zeile gegen die
+  anderen. Laufende Spiele sind rot getönt und tragen das Ergebnis in Rot.
+  Zuerst waren die Namen **zur Mitte hin** ausgerichtet, also an das Ergebnis
+  gedrängt; die Zeile sah dadurch in der Mitte zusammengeschoben aus, und
+  neben den Wappen klaffte bei jeder Zeile eine andere Lücke — bei „RB
+  Leipzig" eine große, bei „Borussia Mönchengladbach" keine. Über mehrere
+  Zeilen ergab das einen unruhigen linken und rechten Rand. Jetzt fluchten die
+  Spalten, und der Luftraum sammelt sich um das Ergebnis, wo er nicht stört.
 - **„Anstoß" unter der Uhrzeit ist gestrichen** — das sagte dasselbe zweimal,
   derselbe Fehler wie „bis 20:30" unter einer 20:30. „beendet" bleibt: Einem
   3:2 sieht man nicht an, ob es das Endergebnis ist.
