@@ -26,9 +26,11 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   wertet laufende Spiele zusätzlich live mit — dieselbe Formel, anderer Zeitpunkt.
 - **Spielmodi sind Feature-Module** unter `lib/features/` (tippspiel, später
   fantasy) und teilen sich den Core.
-- **Der Homescreen sagt pro Tipprunden-Karte, was zu tun ist** — nicht in
-  einem Kasten obendrüber. (Die Fantasy-Karte sagt es seit dem Entfernen ihres
-  Sockels nicht mehr; siehe unten.) Eine „Jetzt"-Karte am Kopf gab es; sie nahm zu viel Platz für
+- **Die Karten sagen nicht mehr, was zu tun ist.** Sie trugen dafür einen
+  Sockel; der ist auf ausdrücklichen Wunsch bei beiden Sorten entfernt (siehe
+  unten). Der Grundsatz dahinter — was zu tun ist, gehört auf die Karte und
+  nicht in einen Kasten obendrüber — bleibt gültig für den Tag, an dem so
+  etwas zurückkommt: Eine „Jetzt"-Karte am Kopf gab es; sie nahm zu viel Platz für
   eine Sache, die ohnehin auf die Karte gehört. (Am Kopf steht seit
   „Richtung A" wieder eine Karte, aber eine **andere**: das nächste Spiel des
   eigenen Vereins, siehe unten. Sie sammelt keine Aufgaben ein, sie zeigt
@@ -61,20 +63,26 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   damit jede Identität fehlte (siehe „Einfarbig ist auch kein Zustand"). Die
   Modusfarbe (`ui/league_colors.dart`: Redraft grün, Dynasty rot) steckt in der
   30er-Marke oben links; ein eigenes Liga-Logo sticht sie weiterhin.
-  **Die Liga-Karte hat keinen Sockel mehr** — sie zeigt Marke, Name und Modus,
-  sonst nichts, und ist dadurch deutlich flacher als die Tipprunden-Karte (108
-  gegen 140). Der Sockel im Ton des Zustands blieb dort, wo er wirklich etwas
-  zu tun ankündigt: auf der Tipprunden-Karte („18 Tipps offen"), samt
-  gefärbtem Rahmen bei `_Sockel.dringend`.
+  **Keine der beiden Karten hat noch einen Sockel** — beide zeigen Marke, Name
+  und Untertitel, sonst nichts, und teilen sich deshalb ein Maß
+  (`_kKartenHoehe`, 108 statt vorher 146 und 140). Was sie unterscheidet, sind
+  Zeichen und Farbe.
 
   **Was damit vom Startbildschirm verschwunden ist**, sollte kennen, wer es
   zurückholen will: „Draft läuft" samt Pick-Uhr, „Kader steht", der eigene
-  Tabellenplatz und die offenen Tipps des ligainternen Tippspiels. Auf
+  Tabellenplatz, „Alles getippt" und „18 Tipps offen · bis Fr., 18:30". Auf
   ausdrücklichen Wunsch entfernt — die Zeile stand bei den meisten Ligen die
-  meiste Zeit auf „Offen" und trug dafür Höhe. Nebeneffekt: Die Ligakarte
-  beobachtet dadurch drei Provider weniger (`myFantasyRankProvider`,
-  `fantasyTipRoundProvider`, `offeneTippsProvider`), von denen zwei je Liga ans
-  Netz gingen.
+  meiste Zeit auf „Offen" und trug dafür Höhe. Damit sind auch der Ton-Typ
+  `_Sockel`, `_StatusZeile` und der gefärbte Rahmen bei „dringend" weg.
+
+  **Nebeneffekt, der zählt:** Je Ligakarte fallen drei Provider weg
+  (`myFantasyRankProvider`, `fantasyTipRoundProvider`, `offeneTippsProvider`),
+  je Tippkarte einer — zwei davon gingen pro Karte ans Netz. Bei vier Ligen
+  und zwei Runden sind das zehn Abrufe weniger beim Öffnen des
+  Startbildschirms. `lib/app/home_tip_status.dart` ist dadurch **ohne
+  Aufrufer**; die Datei bleibt bewusst stehen und sagt das im Kopf, weil die
+  Zählregel darin (dieselbe Do–Mi-Woche wie der Tippen-Tab) nichts ist, was
+  man versehentlich ein zweites Mal erfindet.
   Die Kartenbreite rechnet `leagueCardWidth` aus der Bildschirmbreite, geteilt
   durch **3,75**: die vierte Karte wird am rechten Rand angeschnitten. Vorher
   passten genau vier hinein — das war als Ordnung gedacht und las sich als

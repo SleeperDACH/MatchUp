@@ -29,7 +29,6 @@ import '../features/tippspiel/ui/create_tip_round.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'home_favorites.dart';
 import 'home_menu_drawer.dart';
-import 'home_tip_status.dart';
 import 'league_screen.dart';
 import 'match_detail_screen.dart';
 import 'theme.dart';
@@ -193,7 +192,7 @@ class HomeScreen extends ConsumerWidget {
         )
       else if (list == null)
         SizedBox(
-          height: kartenHoehe(context, _kLeagueCardHeight),
+          height: kartenHoehe(context, _kKartenHoehe),
           child: const Center(child: CircularProgressIndicator()),
         )
       else if (list.isEmpty)
@@ -213,7 +212,7 @@ class HomeScreen extends ConsumerWidget {
         // vermutet. Angelegt wird über das „+" oben rechts; wer noch gar keine
         // Liga hat, sieht statt der Reihe die `_CreateRow`.
         _Bleed(
-          hoehe: kartenHoehe(context, _kLeagueCardHeight),
+          hoehe: kartenHoehe(context, _kKartenHoehe),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
@@ -253,7 +252,7 @@ class HomeScreen extends ConsumerWidget {
         )
       else if (standalone == null)
         SizedBox(
-          height: kartenHoehe(context, _kTipCardHeight),
+          height: kartenHoehe(context, _kKartenHoehe),
           child: const Center(child: CircularProgressIndicator()),
         )
       else if (standalone.isEmpty)
@@ -264,7 +263,7 @@ class HomeScreen extends ConsumerWidget {
         )
       else
         _Bleed(
-          hoehe: kartenHoehe(context, _kTipCardHeight),
+          hoehe: kartenHoehe(context, _kKartenHoehe),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
@@ -1417,57 +1416,6 @@ class _CreateRow extends ConsumerWidget {
   }
 }
 
-/// Fuß einer Liga- oder Tipprunden-Karte: der Zustand sitzt in einer eigenen,
-/// abgesetzten Leiste.
-///
-/// Vorher trennte eine dünne Linie den Zustand vom Rest, und Name samt
-/// Untertitel schwebten mit viel totem Raum in der Kartenmitte. Die Leiste
-/// gibt der Karte einen Boden: oben Marke und Name, unten der Zustand — was
-/// zu tun ist, steht immer an derselben Stelle, auch wenn der Name zwei
-/// Zeilen braucht.
-///
-/// Die Leiste trägt den Ton des **Zustands**, nicht mehr die Farbe der Liga.
-/// Die Farbe sagte vorher den Modus an — Redraft oder Dynasty —, und danach
-/// sucht auf dem Startbildschirm niemand. Jetzt ist sie das einzige Farbfeld
-/// der Karte und sagt, ob etwas ansteht.
-class _KartenSockel extends StatelessWidget {
-  const _KartenSockel({required this.sockel});
-
-  final _Sockel sockel;
-
-  @override
-  Widget build(BuildContext context) {
-    // Lädt der Zustand noch, bleibt der Boden leer statt einen Ladepunkt in
-    // jede Karte zu setzen — die Höhe steht trotzdem, damit die Reihe beim
-    // Nachladen nicht springt.
-    final s = sockel;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: s == null
-            ? Colors.transparent
-            : s.ton.withValues(alpha: s.dringend ? 0.18 : 0.10),
-        // 15, nicht 16: innen am 1px-Rahmen entlang, sonst blitzt in den
-        // unteren Ecken die Kartenfläche durch.
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(15),
-          bottomRight: Radius.circular(15),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(9, 5, 8, 5),
-        child: s == null
-            ? SizedBox(height: kartenHoehe(context, 26))
-            : _StatusZeile(
-                label: s.label,
-                detail: s.detail,
-                ton: s.ton,
-                pulsiert: s.pulsiert,
-              ),
-      ),
-    );
-  }
-}
-
 /// Wie weit die Systemschrift innerhalb der Kartenreihen mitwächst.
 ///
 /// Knapp vier Karten nebeneinander können nicht breiter werden — bei
@@ -1491,25 +1439,18 @@ TextScaler kartenSkala(BuildContext context) =>
 double kartenHoehe(BuildContext context, double basis) =>
     basis * (kartenSkala(context).scale(14) / 14);
 
-/// Höhe der Tipprunden-Karten: flacher als eine Liga-Karte, weil sie nur Name
-/// und Wettbewerb trägt — und weil Tippspiel der zweite Bereich ist. Der
-/// Unterschied ist das, was die beiden Reihen auseinanderhält, seit sie
-/// wieder dieselbe Form haben.
-const double _kTipCardHeight = 140;
-
-/// Höhe der Liga-Karten im Querlauf — auch für den Ladeplatz, damit die Reihe
-/// nicht springt. Grundmaß bei Standardschrift; auf dem Gerät durch
+/// Höhe der Karten im Querlauf — für Ligen **und** Tipprunden, denn seit
+/// beide ihren Sockel verloren haben, tragen sie dasselbe: Marke, Name,
+/// Untertitel. Auch der Ladeplatz rechnet damit, damit die Reihe beim
+/// Nachladen nicht springt. Grundmaß bei Standardschrift; auf dem Gerät durch
 /// [kartenHoehe] geschickt.
-///
-/// Die Liga-Karte trägt **keinen Sockel** mehr, deshalb ist sie deutlich
-/// flacher als die Tipprunden-Karte: Marke, Name, Modus, fertig.
 ///
 /// Wer hier kürzt, prüft es mit einem Namen mit Unterlängen — zu wenig Höhe
 /// meldet sich **nicht** als Überlauf, sondern staucht still den `Flexible`
 /// um den Namen und schneidet ihn ab. Aus „Tipptest" wurde auf dem Gerät
 /// lesbar „Tinntest". Gehalten wird das von der Messung in
 /// `test/home_vorschau_test.dart`.
-const double _kLeagueCardHeight = 108;
+const double _kKartenHoehe = 108;
 
 /// Blau der Abschnitte, die nicht mir gehören, sondern dem Fußball: die
 /// Spiele meiner Vereine und die News. Grün und Rot sind vergeben (Marke und
@@ -1545,14 +1486,9 @@ const double _kLeagueRowPad = 12;
 /// Gemischt wird gegen den **Seitengrund**, nicht gegen die graue
 /// Kartenfläche: 28 % Markengrün über einem blaustichigen Grau ergaben ein
 /// stumpfes Salbeigrün — die Farbe sah blass aus, obwohl es dieselbe war.
-BoxDecoration _kartenFlaeche(
-  BuildContext context,
-  _Sockel sockel,
-  Color farbe,
-) {
+BoxDecoration _kartenFlaeche(BuildContext context, Color farbe) {
   final scheme = Theme.of(context).colorScheme;
   final dark = Theme.of(context).brightness == Brightness.dark;
-  final dringend = sockel?.dringend ?? false;
   final grund = Color.alphaBlend(
     scheme.surfaceContainerHighest.withValues(alpha: 0.45),
     scheme.surface,
@@ -1569,9 +1505,7 @@ BoxDecoration _kartenFlaeche(
       ],
     ),
     border: Border.all(
-      color: dringend
-          ? sockel!.ton.withValues(alpha: 0.45)
-          : farbe.withValues(alpha: dark ? 0.22 : 0.18),
+      color: farbe.withValues(alpha: dark ? 0.22 : 0.18),
       width: 0.8,
     ),
   );
@@ -1625,7 +1559,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
     return _PressScale(
       child: SizedBox(
         width: leagueCardWidth(context),
-        height: kartenHoehe(context, _kLeagueCardHeight),
+        height: kartenHoehe(context, _kKartenHoehe),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -1636,7 +1570,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
             ),
             borderRadius: BorderRadius.circular(16),
             child: Ink(
-              decoration: _kartenFlaeche(context, null, farbe),
+              decoration: _kartenFlaeche(context, farbe),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1753,132 +1687,13 @@ class _LeagueMark extends StatelessWidget {
 /// ist: dessen Runde taucht im Tippspiel-Abschnitt bewusst nicht auf (man
 /// erreicht sie über die Liga), ihre offenen Tipps hätten sonst nirgends
 /// mehr Platz. Ist auch dort nichts offen, bleibt es beim Liga-Zustand.
-/// Was im Sockel einer Karte steht — **und in welchem Ton**.
-///
-/// Als Wert statt als Widget, weil die Karte den Ton selbst braucht: Seit die
-/// Karten flach sind, ist der Sockel die einzige Farbe darauf, und ein
-/// dringender Zustand färbt zusätzlich den Rahmen. Solange die Zustandszeile
-/// ihre Farbe erst beim Bauen kannte, kam sie beim Rahmen nie an.
-typedef _Sockel = ({
-  String label,
-  String? detail,
-  Color ton,
-  bool pulsiert,
-
-  /// Hier ist etwas **zu tun** — nicht nur etwas zu vermelden. Nur das färbt
-  /// den Kartenrahmen; ein Tabellenplatz ist eine Auskunft, kein Auftrag.
-  bool dringend,
-})?;
-
-/// Sockel einer Tipprunden-Karte. Lädt still nach — solange nichts feststeht,
-/// bleibt der Sockel leer, statt einen Ladepunkt in jede Karte zu setzen.
-_Sockel _tippSockel(BuildContext context, WidgetRef ref, String roundId) {
-  final scheme = Theme.of(context).colorScheme;
-  final offen = ref.watch(offeneTippsProvider(roundId)).valueOrNull;
-  if (offen == null) return null;
-  if (offen.anzahl == 0) {
-    return (
-      label: 'Alles getippt',
-      detail: null,
-      ton: scheme.onSurfaceVariant,
-      pulsiert: false,
-      dringend: false,
-    );
-  }
-  final frist = offen.frist;
-  return (
-    label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
-    detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
-    ton: _kTipGold,
-    // Es drängt: das nächste Spiel stößt in unter einer Stunde an.
-    pulsiert:
-        frist != null &&
-        frist.difference(DateTime.now()) < const Duration(hours: 1),
-    dringend: true,
-  );
-}
-
-/// Fußzeile beider Kartensorten: farbiger Punkt, kurzes Wort, leise
-/// Zusatzzeile. Texte schrumpfen im Zweifel, statt zu kappen — auf einer
-/// Karte, von der vier nebeneinander passen, sagt „Kader ste…" nichts.
-class _StatusZeile extends StatelessWidget {
-  const _StatusZeile({
-    required this.label,
-    required this.detail,
-    required this.ton,
-    required this.pulsiert,
-  });
-
-  final String label;
-  final String? detail;
-  final Color ton;
-  final bool pulsiert;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            if (pulsiert)
-              PulsingDot(size: 7, color: ton)
-            else
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(color: ton, shape: BoxShape.circle),
-              ),
-            const SizedBox(width: 6),
-            // Den Ton trägt der Punkt, nicht die Schrift: auf der farbigen
-            // Karte wäre farbige Schrift schlecht zu lesen.
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: scheme.onSurface,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (detail != null)
-          Padding(
-            padding: const EdgeInsets.only(left: 13, top: 1),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                detail!,
-                maxLines: 1,
-                style: TextStyle(
-                  color: scheme.onSurface.withValues(alpha: 0.82),
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 /// Eine Tipprunde als Karte — dieselbe Form wie eine Liga-Karte, nur flacher.
 ///
 /// Zwischendurch war das hier eine Zeile: andere Form für den zweiten
 /// Bereich, und der Name bekam die volle Breite statt der knapp hundert
 /// Punkte einer Karte. Zurückgedreht auf ausdrücklichen Wunsch — der Screen
 /// hat damit zwei gleich gebaute Reihen untereinander, und was sie trennt,
-/// sind Höhe, Marke und Farbe. Der Preis steht in [_kTipCardHeight]: Der Name
+/// sind Höhe, Marke und Farbe. Der Preis steht in [_kKartenHoehe]: Der Name
 /// muss auf zwei Zeilen passen, und „Bundesliga +1" schrumpft, statt zu
 /// kappen.
 class _TipRoundCard extends ConsumerWidget {
@@ -1894,7 +1709,6 @@ class _TipRoundCard extends ConsumerWidget {
     final extra = round.competitions.length - 1;
     final wettbewerb = extra > 0 ? '${league.name} +$extra' : league.name;
     final farbe = parseColor(round.logoColor) ?? _kTipGold;
-    final sockel = _tippSockel(context, ref, round.id);
 
     final myId = ref.watch(currentUserProvider)?.id;
     final showBadge =
@@ -1907,7 +1721,7 @@ class _TipRoundCard extends ConsumerWidget {
     return _PressScale(
       child: SizedBox(
         width: leagueCardWidth(context),
-        height: kartenHoehe(context, _kTipCardHeight),
+        height: kartenHoehe(context, _kKartenHoehe),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -1919,7 +1733,7 @@ class _TipRoundCard extends ConsumerWidget {
             },
             borderRadius: BorderRadius.circular(16),
             child: Ink(
-              decoration: _kartenFlaeche(context, sockel, farbe),
+              decoration: _kartenFlaeche(context, farbe),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1979,7 +1793,6 @@ class _TipRoundCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  _KartenSockel(sockel: sockel),
                 ],
               ),
             ),

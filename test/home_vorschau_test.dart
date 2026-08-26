@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/app/home_screen.dart';
 import 'package:matchup/app/home_favorites.dart';
-import 'package:matchup/app/home_tip_status.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
@@ -179,14 +178,6 @@ Future<void> _bauen(WidgetTester tester) async {
         ),
         tipJoinRequestsProvider.overrideWith(
           (ref, id) => Stream.value(const []),
-        ),
-        fantasyTipRoundProvider.overrideWith((ref, id) async => null),
-        offeneTippsProvider.overrideWith(
-          (ref, id) async => switch (id) {
-            'r1' => OffeneTipps(anzahl: 18, frist: anstoss),
-            'r2' => OffeneTipps(anzahl: 2, frist: anstoss),
-            _ => OffeneTipps.leer,
-          },
         ),
         newsProvider.overrideWith((ref, topic) async => const <NewsItem>[]),
       ],

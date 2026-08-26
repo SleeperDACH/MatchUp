@@ -1,3 +1,18 @@
+/// Offene Tipps einer Runde — **derzeit von keiner Oberfläche benutzt.**
+///
+/// Die Zahl stand im Sockel der Tipprunden-Karte auf dem Startbildschirm
+/// („18 Tipps offen · bis Fr., 18:30"); der Sockel ist auf Wunsch entfernt.
+/// Absichtlich stehen geblieben, weil hier eine Regel steckt, die man nicht
+/// aus Versehen zweimal erfindet: Gezählt wird über **dieselbe** Do–Mi-Woche,
+/// die auch der Tippen-Tab beim Öffnen zeigt (`buildWeeks`/
+/// `currentWeekIndex`) — sonst stünden auf Karte und Feed verschiedene
+/// Zahlen. Sobald irgendwo wieder „was ist offen" angezeigt werden soll,
+/// gehört es hierher und nicht in ein neues Stück Logik daneben.
+///
+/// [kurzeFrist] hat eigene Tests (`test/kurze_frist_test.dart`) und wird von
+/// dort mitgehalten.
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
