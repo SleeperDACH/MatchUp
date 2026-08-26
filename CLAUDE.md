@@ -26,8 +26,9 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   wertet laufende Spiele zusätzlich live mit — dieselbe Formel, anderer Zeitpunkt.
 - **Spielmodi sind Feature-Module** unter `lib/features/` (tippspiel, später
   fantasy) und teilen sich den Core.
-- **Der Homescreen sagt pro Karte, was zu tun ist** — nicht in einem Kasten
-  obendrüber. Eine „Jetzt"-Karte am Kopf gab es; sie nahm zu viel Platz für
+- **Der Homescreen sagt pro Tipprunden-Karte, was zu tun ist** — nicht in
+  einem Kasten obendrüber. (Die Fantasy-Karte sagt es seit dem Entfernen ihres
+  Sockels nicht mehr; siehe unten.) Eine „Jetzt"-Karte am Kopf gab es; sie nahm zu viel Platz für
   eine Sache, die ohnehin auf die Karte gehört. (Am Kopf steht seit
   „Richtung A" wieder eine Karte, aber eine **andere**: das nächste Spiel des
   eigenen Vereins, siehe unten. Sie sammelt keine Aufgaben ein, sie zeigt
@@ -52,18 +53,28 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   Form — die Tipprunden-Karte ist flacher (`_kTipCardHeight` 126 gegen 132),
   trägt das Gold des Tippspiels und ein anderes Zeichen. Und der Preis bleibt:
   Der Rundenname muss auf zwei Zeilen einer 95 Punkte breiten Karte passen.
-  Die Liga-Karte trägt ihre Farbe als **Hauch aus der Ecke**
-  (`_kartenFlaeche`), nicht als Fläche: oben links, wo die Marke ohnehin in
-  derselben Farbe steht, bei drei Vierteln der Diagonale verklungen. Beide
-  Extreme davor waren falsch — der kräftige Verlauf, weil vier Farbflächen
-  gleich laut riefen und ausgerechnet den Modus ansagten, und das flache Grau
-  danach, weil der Reihe damit jede Identität fehlte (siehe „Einfarbig ist
-  auch kein Zustand"). Die Modusfarbe (`ui/league_colors.dart`: Redraft grün,
-  Dynasty rot) steckt in der 30er-Marke oben links; ein eigenes Liga-Logo
-  sticht sie weiterhin. Das einzige **volle** Farbfeld der Karte bleibt der
-  Sockel im Ton des Zustands, und bei einem Auftrag (laufender Draft, offene
-  Tipps — `_Sockel.dringend`) färbt sich zusätzlich der Rahmen. Ein
-  Tabellenplatz ist eine Auskunft und färbt den Rahmen deshalb nicht.
+  Die Karten tragen ihre Farbe als **Hauch aus der Ecke** (`_kartenFlaeche`),
+  nicht als Fläche: oben links, wo die Marke ohnehin in derselben Farbe steht,
+  bei drei Vierteln der Diagonale verklungen. Beide Extreme davor waren falsch
+  — der kräftige Verlauf, weil vier Farbflächen gleich laut riefen und
+  ausgerechnet den Modus ansagten, und das flache Grau danach, weil der Reihe
+  damit jede Identität fehlte (siehe „Einfarbig ist auch kein Zustand"). Die
+  Modusfarbe (`ui/league_colors.dart`: Redraft grün, Dynasty rot) steckt in der
+  30er-Marke oben links; ein eigenes Liga-Logo sticht sie weiterhin.
+  **Die Liga-Karte hat keinen Sockel mehr** — sie zeigt Marke, Name und Modus,
+  sonst nichts, und ist dadurch deutlich flacher als die Tipprunden-Karte (108
+  gegen 140). Der Sockel im Ton des Zustands blieb dort, wo er wirklich etwas
+  zu tun ankündigt: auf der Tipprunden-Karte („18 Tipps offen"), samt
+  gefärbtem Rahmen bei `_Sockel.dringend`.
+
+  **Was damit vom Startbildschirm verschwunden ist**, sollte kennen, wer es
+  zurückholen will: „Draft läuft" samt Pick-Uhr, „Kader steht", der eigene
+  Tabellenplatz und die offenen Tipps des ligainternen Tippspiels. Auf
+  ausdrücklichen Wunsch entfernt — die Zeile stand bei den meisten Ligen die
+  meiste Zeit auf „Offen" und trug dafür Höhe. Nebeneffekt: Die Ligakarte
+  beobachtet dadurch drei Provider weniger (`myFantasyRankProvider`,
+  `fantasyTipRoundProvider`, `offeneTippsProvider`), von denen zwei je Liga ans
+  Netz gingen.
   Die Kartenbreite rechnet `leagueCardWidth` aus der Bildschirmbreite, geteilt
   durch **3,75**: die vierte Karte wird am rechten Rand angeschnitten. Vorher
   passten genau vier hinein — das war als Ordnung gedacht und las sich als

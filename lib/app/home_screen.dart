@@ -8,8 +8,6 @@ import '../core/models/team_fixture.dart';
 import '../core/util/club_colors.dart';
 import '../core/ui/app_avatar.dart';
 import '../features/auth/providers.dart';
-import '../features/fantasy/logic/draft_order.dart';
-import '../features/fantasy/logic/league_status.dart';
 import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
@@ -1503,19 +1501,15 @@ const double _kTipCardHeight = 140;
 /// nicht springt. Grundmaß bei Standardschrift; auf dem Gerät durch
 /// [kartenHoehe] geschickt.
 ///
-/// **Das Maß muss den zweizeiligen Sockel tragen.** Es stand auf 132, und
-/// solange im Sockel nur „Offen" stand, ging das auf. Sobald dort zwei Zeilen
-/// standen („Draft läuft" über „Pick 1", „18 Tipps offen" über der Frist),
-/// fehlten rund fünf Punkte — und die nahm sich der `Flexible` um den Namen,
-/// nicht der Untertitel darunter. Gestaucht auf 12,1 statt 17 Punkt wurde der
-/// Name dann beschnitten: Aus „Tipptest" las sich auf dem Gerät „Tinntest",
-/// aus „BuLi 26/27" ein oben wie unten gekappter Streifen. Nichts daran
-/// meldete sich als Überlauf, weil formal alles passte.
+/// Die Liga-Karte trägt **keinen Sockel** mehr, deshalb ist sie deutlich
+/// flacher als die Tipprunden-Karte: Marke, Name, Modus, fertig.
 ///
-/// Der Aufschlag ist bewusst großzügig. Wer hier kürzt, prüft es mit einem
-/// Namen mit Unterlängen und einem Sockel mit Frist — beides steht in
+/// Wer hier kürzt, prüft es mit einem Namen mit Unterlängen — zu wenig Höhe
+/// meldet sich **nicht** als Überlauf, sondern staucht still den `Flexible`
+/// um den Namen und schneidet ihn ab. Aus „Tipptest" wurde auf dem Gerät
+/// lesbar „Tinntest". Gehalten wird das von der Messung in
 /// `test/home_vorschau_test.dart`.
-const double _kLeagueCardHeight = 146;
+const double _kLeagueCardHeight = 108;
 
 /// Blau der Abschnitte, die nicht mir gehören, sondern dem Fußball: die
 /// Spiele meiner Vereine und die News. Grün und Rot sind vergeben (Marke und
@@ -1614,15 +1608,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final myId = ref.watch(currentUserProvider)?.id;
-    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
-    final status = _draftGeschaerft(
-      fantasyStatus(league, teams: managers?.length),
-      league,
-      managers,
-      myId,
-    );
     final farbe = parseColor(league.logoColor) ?? leagueColor(league.mode);
-    final sockel = _ligaSockel(context, ref, league, status, farbe);
 
     // Offene Beitrittsanfragen nur für den Admin einer öffentlich–auf-
     // Einladung-Liga (Live über Realtime).
@@ -1650,7 +1636,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
             ),
             borderRadius: BorderRadius.circular(16),
             child: Ink(
-              decoration: _kartenFlaeche(context, sockel, farbe),
+              decoration: _kartenFlaeche(context, null, farbe),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1712,7 +1698,6 @@ class _FantasyLeagueCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  _KartenSockel(sockel: sockel),
                 ],
               ),
             ),
@@ -1721,31 +1706,6 @@ class _FantasyLeagueCard extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// Schärft den Draft-Zustand für die Karte nach: **wer** dran ist und **bis
-/// wann**. Beides steht nicht in [fantasyStatus] — die Logik dort kennt nur
-/// die Liga, nicht den angemeldeten Nutzer, und soll ohne Uhrzeit-Format
-/// auskommen.
-LeagueStatus _draftGeschaerft(
-  LeagueStatus status,
-  FantasyLeague league,
-  List<FantasyManager>? managers,
-  String? myId,
-) {
-  if (league.draftStatus != DraftStatus.drafting) return status;
-  final dran = managers == null
-      ? null
-      : currentManager(managers, league.picksMade)?.userId;
-  final frist = league.currentPickDeadline?.toLocal();
-  return LeagueStatus(
-    dran != null && dran == myId ? 'Du bist dran' : status.label,
-    detail: [
-      if (status.detail != null) status.detail!,
-      if (frist != null) kurzeFrist(frist, DateTime.now()),
-    ].join(' · '),
-    tone: status.tone,
-  );
 }
 
 /// Liga-Zeichen: eigenes Logo, sonst die MatchUp-Marke in der Liga-Farbe.
@@ -1809,65 +1769,6 @@ typedef _Sockel = ({
   /// den Kartenrahmen; ein Tabellenplatz ist eine Auskunft, kein Auftrag.
   bool dringend,
 })?;
-
-/// Sockel einer Liga-Karte. Läuft ein Draft, gewinnt der — seine Uhr tickt in
-/// Minuten. Sonst zeigt die Karte, was im **ligainternen Tippspiel** offen
-/// ist: dessen Runde taucht im Tippspiel-Abschnitt bewusst nicht auf (man
-/// erreicht sie über die Liga), ihre offenen Tipps hätten sonst nirgends mehr
-/// Platz. Ist auch dort nichts offen, bleibt es beim Liga-Zustand.
-_Sockel _ligaSockel(
-  BuildContext context,
-  WidgetRef ref,
-  FantasyLeague league,
-  LeagueStatus status,
-  Color farbe,
-) {
-  _Sockel ausZustand() {
-    final scheme = Theme.of(context).colorScheme;
-    final ton = switch (status.tone) {
-      LeagueStatusTone.wartet => scheme.onSurfaceVariant,
-      LeagueStatusTone.laeuft => MatchUpColors.green,
-      LeagueStatusTone.bereit => farbe,
-    };
-    return (
-      label: status.label,
-      detail: status.detail,
-      ton: ton,
-      // Der laufende Draft ist das einzige, was wirklich tickt.
-      pulsiert: status.tone == LeagueStatusTone.laeuft,
-      dringend: status.tone == LeagueStatusTone.laeuft,
-    );
-  }
-
-  if (league.draftStatus == DraftStatus.drafting) return ausZustand();
-  // Läuft die Saison, ist der Tabellenplatz die Auskunft, die zählt —
-  // „Kader steht" sagt dann nichts mehr. Vor dem ersten gewerteten
-  // Spieltag gibt es keinen Platz; dann bleibt es beim Zustand.
-  final platz = ref.watch(myFantasyRankProvider(league.id));
-  if (platz != null) {
-    return (
-      label: 'Platz ${platz.rank}',
-      detail: 'von ${platz.total}',
-      ton: platz.rank == 1 ? _kTipGold : MatchUpColors.green,
-      pulsiert: false,
-      dringend: false,
-    );
-  }
-  final runde = ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull;
-  if (runde == null) return ausZustand();
-  final offen = ref.watch(offeneTippsProvider(runde.id)).valueOrNull;
-  if (offen == null || offen.anzahl == 0) return ausZustand();
-  final frist = offen.frist;
-  return (
-    label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
-    detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
-    ton: _kTipGold,
-    pulsiert:
-        frist != null &&
-        frist.difference(DateTime.now()) < const Duration(hours: 1),
-    dringend: true,
-  );
-}
 
 /// Sockel einer Tipprunden-Karte. Lädt still nach — solange nichts feststeht,
 /// bleibt der Sockel leer, statt einen Ladepunkt in jede Karte zu setzen.
