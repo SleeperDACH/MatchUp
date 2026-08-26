@@ -73,7 +73,8 @@ class HomeScreen extends ConsumerWidget {
               tooltip: 'Ligen entdecken',
               icon: const Icon(Icons.search, size: 25),
               onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LeagueSearchScreen())),
+                MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
+              ),
             ),
           // Erstellen & Beitreten zusammengefasst in einem Knopf oben rechts.
           if (configured && user != null)
@@ -116,9 +117,16 @@ class HomeScreen extends ConsumerWidget {
                 // Der Abschnitt mit Inhalt steht oben. Wer nur ein Tippspiel
                 // hat, sah sonst zuerst eine leere Ligareihe, in der nur die
                 // große „+"-Karte stand.
-                for (final abschnitt in _tippspielZuerst(ref)
-                    ? [_tippspielSection(context, ref), _fantasySection(context, ref)]
-                    : [_fantasySection(context, ref), _tippspielSection(context, ref)]) ...[
+                for (final abschnitt
+                    in _tippspielZuerst(ref)
+                        ? [
+                            _tippspielSection(context, ref),
+                            _fantasySection(context, ref),
+                          ]
+                        : [
+                            _fantasySection(context, ref),
+                            _tippspielSection(context, ref),
+                          ]) ...[
                   _Appear(
                     delayMs: 80,
                     child: Column(
@@ -169,8 +177,10 @@ class HomeScreen extends ConsumerWidget {
     return [
       _sectionHeader(context, 'Meine Ligen', count: list?.length),
       if (leagues.hasError)
-        _InfoCard('Fantasy-Ligen konnten nicht geladen werden: '
-            '${leagues.error}')
+        _InfoCard(
+          'Fantasy-Ligen konnten nicht geladen werden: '
+          '${leagues.error}',
+        )
       else if (list == null)
         const SizedBox(
           height: _kLeagueCardHeight,
@@ -181,8 +191,9 @@ class HomeScreen extends ConsumerWidget {
         // eine leere Überschrift. Als Zeile statt als Karte: so nimmt er ein
         // Sechstel des Platzes und sagt nebenbei, wozu das gut ist.
         const _CreateRow(
-            text: 'Fantasy-Liga anlegen',
-            hint: 'Draften, Kader managen, Saison spielen')
+          text: 'Fantasy-Liga anlegen',
+          hint: 'Draften, Kader managen, Saison spielen',
+        )
       else
         // Hier hängt **keine** „+"-Karte mehr hinter den Ligen. Sie stand die
         // ganze Saison in der Reihe für etwas, das man ein- oder zweimal im
@@ -194,12 +205,10 @@ class HomeScreen extends ConsumerWidget {
           hoehe: _kLeagueCardHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding:
-                const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
+            padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
             physics: const BouncingScrollPhysics(),
             itemCount: list.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(width: _kLeagueCardGap),
+            separatorBuilder: (_, _) => const SizedBox(width: _kLeagueCardGap),
             itemBuilder: (_, i) => _FantasyLeagueCard(league: list[i]),
           ),
         ),
@@ -224,8 +233,9 @@ class HomeScreen extends ConsumerWidget {
         )
       else if (standalone.isEmpty)
         const _CreateRow(
-            text: 'Tippspiel anlegen',
-            hint: 'Spieltage tippen, Punkte sammeln')
+          text: 'Tippspiel anlegen',
+          hint: 'Spieltage tippen, Punkte sammeln',
+        )
       else
         _Bleed(
           hoehe: _kTipCardHeight,
@@ -244,8 +254,13 @@ class HomeScreen extends ConsumerWidget {
   /// Leichte Abschnittsüberschrift: kleine Versalien, Zähler, optional ein
   /// Link nach rechts. Vorher trug jeder Abschnitt denselben fetten Balken mit
   /// Symbol — drei gleiche Köpfe über drei gleichen Kästen.
-  Widget _sectionHeader(BuildContext context, String title,
-      {int? count, String? moreLabel, VoidCallback? onMore}) {
+  Widget _sectionHeader(
+    BuildContext context,
+    String title, {
+    int? count,
+    String? moreLabel,
+    VoidCallback? onMore,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
@@ -262,11 +277,14 @@ class HomeScreen extends ConsumerWidget {
           ),
           if (count != null && count > 0) ...[
             const SizedBox(width: 8),
-            Text('$count',
-                style: TextStyle(
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800)),
+            Text(
+              '$count',
+              style: TextStyle(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ],
           const Spacer(),
           if (onMore != null)
@@ -275,11 +293,14 @@ class HomeScreen extends ConsumerWidget {
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Text('${moreLabel ?? 'Alle'} ›',
-                    style: TextStyle(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
+                child: Text(
+                  '${moreLabel ?? 'Alle'} ›',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
         ],
@@ -318,20 +339,23 @@ class _FavoritenSpiele extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
             child: Row(
               children: [
-                Text('MEINE VEREINE',
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    )),
+                Text(
+                  'MEINE VEREINE',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
                 const Spacer(),
                 Text(
                   DateFormat('EEEE, d. MMM', 'de_DE').format(tag),
                   style: TextStyle(
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600),
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -341,7 +365,8 @@ class _FavoritenSpiele extends ConsumerWidget {
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                color: scheme.outlineVariant.withValues(alpha: 0.7),
+              ),
             ),
             clipBehavior: Clip.antiAlias,
             child: Column(
@@ -349,9 +374,9 @@ class _FavoritenSpiele extends ConsumerWidget {
                 for (var i = 0; i < spiele.length; i++) ...[
                   if (i > 0)
                     Divider(
-                        height: 1,
-                        color:
-                            scheme.outlineVariant.withValues(alpha: 0.6)),
+                      height: 1,
+                      color: scheme.outlineVariant.withValues(alpha: 0.6),
+                    ),
                   _FavoritSpielZeile(fixture: spiele[i]),
                 ],
               ],
@@ -378,8 +403,11 @@ class _FavoritSpielZeile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => MatchDetailScreen(fixtureId: fixture.id))),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MatchDetailScreen(fixtureId: fixture.id),
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           child: Row(
@@ -387,9 +415,10 @@ class _FavoritSpielZeile extends StatelessWidget {
               SizedBox(
                 width: 18,
                 child: LeagueLogo(
-                    logoUrl: fixture.leagueLogo,
-                    name: fixture.leagueName,
-                    size: 16),
+                  logoUrl: fixture.leagueLogo,
+                  name: fixture.leagueName,
+                  size: 16,
+                ),
               ),
               const SizedBox(width: 8),
               TeamBadge(team: fixture.home, size: 20),
@@ -398,30 +427,44 @@ class _FavoritSpielZeile extends StatelessWidget {
               // ohne Tabellenkontext wenig. Zwei Zeilen erlaubt, damit
               // „Borussia Mönchengladbach" nicht zu „Borussia M…" wird.
               Expanded(
-                child: Text(fixture.home.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600, height: 1.1)),
+                child: Text(
+                  fixture.home.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                  ),
+                ),
               ),
               // Anstoßzeit mittig zwischen beiden Mannschaften.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text(
-                  DateFormat('HH:mm', 'de_DE').format(fixture.kickoff.toLocal()),
+                  DateFormat(
+                    'HH:mm',
+                    'de_DE',
+                  ).format(fixture.kickoff.toLocal()),
                   style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700),
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               Expanded(
-                child: Text(fixture.away.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600, height: 1.1)),
+                child: Text(
+                  fixture.away.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                  ),
+                ),
               ),
               const SizedBox(width: 7),
               TeamBadge(team: fixture.away, size: 20),
@@ -442,13 +485,17 @@ class _NewsSection extends ConsumerWidget {
   static const _maxTransfers = 6;
 
   void _openList(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(
+    Navigator.of(context).push(
+      MaterialPageRoute(
         builder: (_) => const NewsListScreen(
-              topic: 'transfers',
-              title: 'News',
-              intro: 'Aktuelle Bundesliga-Schlagzeilen, neueste zuerst. '
-                  'Tippen öffnet den Artikel.',
-            )));
+          topic: 'transfers',
+          title: 'News',
+          intro:
+              'Aktuelle Bundesliga-Schlagzeilen, neueste zuerst. '
+              'Tippen öffnet den Artikel.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -468,25 +515,32 @@ class _NewsSection extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
               child: Row(
                 children: [
-                  Text('NEWS',
-                      style: TextStyle(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                      )),
+                  Text(
+                    'NEWS',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
                   const Spacer(),
                   GestureDetector(
                     onTap: () => _openList(context),
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      child: Text('Alle ›',
-                          style: TextStyle(
-                              color: scheme.onSurfaceVariant,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        'Alle ›',
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -539,7 +593,8 @@ class _NewsCard extends StatelessWidget {
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.7)),
+                color: scheme.outlineVariant.withValues(alpha: 0.7),
+              ),
             ),
             padding: const EdgeInsets.fromLTRB(11, 10, 11, 9),
             child: Column(
@@ -551,7 +606,10 @@ class _NewsCard extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, height: 1.15, fontSize: 14),
+                      fontWeight: FontWeight.w600,
+                      height: 1.15,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -560,11 +618,15 @@ class _NewsCard extends StatelessWidget {
                     const Icon(Icons.newspaper, size: 12, color: _blau),
                     const SizedBox(width: 5),
                     Expanded(
-                      child: Text(meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: scheme.onSurfaceVariant, fontSize: 11)),
+                      child: Text(
+                        meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -597,19 +659,26 @@ class _MoreNewsCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.8)),
+                color: scheme.outlineVariant.withValues(alpha: 0.8),
+              ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.arrow_forward_rounded,
-                    size: 20, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 20,
+                  color: scheme.onSurfaceVariant,
+                ),
                 const SizedBox(height: 6),
-                Text('Alle News',
-                    style: TextStyle(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  'Alle News',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
@@ -633,9 +702,10 @@ class _NoLeaguesHero extends ConsumerWidget {
           height: 64,
           child: FilledButton.icon(
             icon: const Icon(Icons.add, size: 26),
-            label: const Text('Liga erstellen',
-                style:
-                    TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            label: const Text(
+              'Liga erstellen',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             onPressed: () => showCreateOrJoin(context, ref),
           ),
         ),
@@ -647,7 +717,8 @@ class _NoLeaguesHero extends ConsumerWidget {
             icon: const Icon(Icons.search),
             label: const Text('Liga suchen', style: TextStyle(fontSize: 16)),
             onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LeagueSearchScreen())),
+              MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
+            ),
           ),
         ),
       ],
@@ -678,9 +749,9 @@ class _GreetingBar extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
-                  ),
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurface,
+              ),
             ),
           ),
           const SizedBox(width: 6),
@@ -692,8 +763,9 @@ class _GreetingBar extends ConsumerWidget {
             tooltip: 'Transfers',
             icon: Icons.swap_horiz,
             color: const Color(0xFFFFC83D),
-            onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const TransfersScreen())),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const TransfersScreen())),
           ),
           _HeaderAction(
             tooltip: 'Direktnachrichten',
@@ -701,7 +773,8 @@ class _GreetingBar extends ConsumerWidget {
             color: MatchUpColors.green,
             badge: unreadCount,
             onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ConversationsScreen())),
+              MaterialPageRoute(builder: (_) => const ConversationsScreen()),
+            ),
           ),
         ],
       ),
@@ -748,7 +821,9 @@ class _HeaderAction extends StatelessWidget {
                 color: MatchUpColors.red,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(
-                    color: Theme.of(context).colorScheme.surface, width: 2),
+                  color: Theme.of(context).colorScheme.surface,
+                  width: 2,
+                ),
               ),
               child: Center(
                 child: Text(
@@ -791,22 +866,35 @@ class _CreateRow extends ConsumerWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.8)),
+                color: scheme.outlineVariant.withValues(alpha: 0.8),
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.add_rounded, size: 22, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.add_rounded,
+                  size: 22,
+                  color: scheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(text,
-                          style: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
-                      Text(hint,
-                          style: TextStyle(
-                              color: scheme.onSurfaceVariant, fontSize: 12)),
+                      Text(
+                        text,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        hint,
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -835,20 +923,20 @@ class _KartenSockel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(
-          color: farbe.withValues(alpha: 0.20),
-          // 15, nicht 16: innen am 1px-Rahmen entlang, sonst blitzt in den
-          // unteren Ecken die Kartenfläche durch.
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(15),
-            bottomRight: Radius.circular(15),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(9, 5, 8, 5),
-          child: child,
-        ),
-      );
+    decoration: BoxDecoration(
+      color: farbe.withValues(alpha: 0.20),
+      // 15, nicht 16: innen am 1px-Rahmen entlang, sonst blitzt in den
+      // unteren Ecken die Kartenfläche durch.
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(15),
+        bottomRight: Radius.circular(15),
+      ),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(9, 5, 8, 5),
+      child: child,
+    ),
+  );
 }
 
 /// Höhe der Liga-Karten im Querlauf — auch für den Ladeplatz und die
@@ -881,9 +969,13 @@ LinearGradient kartenVerlauf(Color farbe, ColorScheme scheme, bool dark) =>
       end: Alignment.bottomRight,
       colors: [
         Color.alphaBlend(
-            farbe.withValues(alpha: dark ? 0.50 : 0.26), scheme.surface),
+          farbe.withValues(alpha: dark ? 0.50 : 0.26),
+          scheme.surface,
+        ),
         Color.alphaBlend(
-            farbe.withValues(alpha: dark ? 0.14 : 0.07), scheme.surface),
+          farbe.withValues(alpha: dark ? 0.14 : 0.07),
+          scheme.surface,
+        ),
       ],
     );
 
@@ -892,7 +984,8 @@ LinearGradient kartenVerlauf(Color farbe, ColorScheme scheme, bool dark) =>
 /// statt fest verdrahtet — auf einem kleinen iPhone wären vier feste 186er
 /// nur zweieinhalb.
 double leagueCardWidth(BuildContext context) {
-  final frei = MediaQuery.sizeOf(context).width -
+  final frei =
+      MediaQuery.sizeOf(context).width -
       2 * _kLeagueRowPad -
       3 * _kLeagueCardGap;
   return frei / 4;
@@ -927,8 +1020,11 @@ class _FantasyLeagueCard extends ConsumerWidget {
     final showBadge =
         league.isPublic && league.isInviteOnly && myId == league.createdBy;
     final pending = showBadge
-        ? (ref.watch(fantasyJoinRequestsProvider(league.id)).valueOrNull?.length ??
-            0)
+        ? (ref
+                  .watch(fantasyJoinRequestsProvider(league.id))
+                  .valueOrNull
+                  ?.length ??
+              0)
         : 0;
 
     return _PressScale(
@@ -938,8 +1034,11 @@ class _FantasyLeagueCard extends ConsumerWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => FantasyLeagueScreen(league: league))),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => FantasyLeagueScreen(league: league),
+              ),
+            ),
             borderRadius: BorderRadius.circular(16),
             child: Ink(
               decoration: BoxDecoration(
@@ -959,7 +1058,10 @@ class _FantasyLeagueCard extends ConsumerWidget {
                           Row(
                             children: [
                               _LeagueMark(
-                                  league: league, farbe: farbe, size: 26),
+                                league: league,
+                                farbe: farbe,
+                                size: 26,
+                              ),
                               const Spacer(),
                               if (pending > 0) _CountBadge(count: pending),
                             ],
@@ -975,9 +1077,10 @@ class _FantasyLeagueCard extends ConsumerWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.05),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                height: 1.05,
+                              ),
                             ),
                           ),
                           // Modus als Wort, weil die Farbe allein nur die
@@ -990,9 +1093,10 @@ class _FantasyLeagueCard extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                color: scheme.onSurface.withValues(alpha: 0.6),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600),
+                              color: scheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const SizedBox(height: 7),
                         ],
@@ -1002,7 +1106,10 @@ class _FantasyLeagueCard extends ConsumerWidget {
                   _KartenSockel(
                     farbe: farbe,
                     child: _LigaStatusZeile(
-                        league: league, status: status, farbe: farbe),
+                      league: league,
+                      status: status,
+                      farbe: farbe,
+                    ),
                   ),
                 ],
               ),
@@ -1018,8 +1125,12 @@ class _FantasyLeagueCard extends ConsumerWidget {
 /// wann**. Beides steht nicht in [fantasyStatus] — die Logik dort kennt nur
 /// die Liga, nicht den angemeldeten Nutzer, und soll ohne Uhrzeit-Format
 /// auskommen.
-LeagueStatus _draftGeschaerft(LeagueStatus status, FantasyLeague league,
-    List<FantasyManager>? managers, String? myId) {
+LeagueStatus _draftGeschaerft(
+  LeagueStatus status,
+  FantasyLeague league,
+  List<FantasyManager>? managers,
+  String? myId,
+) {
   if (league.draftStatus != DraftStatus.drafting) return status;
   final dran = managers == null
       ? null
@@ -1037,8 +1148,11 @@ LeagueStatus _draftGeschaerft(LeagueStatus status, FantasyLeague league,
 
 /// Liga-Zeichen: eigenes Logo, sonst die MatchUp-Marke in der Liga-Farbe.
 class _LeagueMark extends StatelessWidget {
-  const _LeagueMark(
-      {required this.league, required this.farbe, required this.size});
+  const _LeagueMark({
+    required this.league,
+    required this.farbe,
+    required this.size,
+  });
 
   final FantasyLeague league;
   final Color farbe;
@@ -1046,7 +1160,8 @@ class _LeagueMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasCustom = (league.logoUrl != null && league.logoUrl!.isNotEmpty) ||
+    final hasCustom =
+        (league.logoUrl != null && league.logoUrl!.isNotEmpty) ||
         (league.logoEmoji != null && league.logoEmoji!.isNotEmpty);
     if (hasCustom) {
       return AppAvatar(
@@ -1062,7 +1177,9 @@ class _LeagueMark extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-          color: farbe, borderRadius: BorderRadius.circular(10)),
+        color: farbe,
+        borderRadius: BorderRadius.circular(10),
+      ),
       alignment: Alignment.center,
       child: MatchUpChevron(size: size * 0.5, color: MatchUpColors.base),
     );
@@ -1075,8 +1192,11 @@ class _LeagueMark extends StatelessWidget {
 /// erreicht sie über die Liga), ihre offenen Tipps hätten sonst nirgends
 /// mehr Platz. Ist auch dort nichts offen, bleibt es beim Liga-Zustand.
 class _LigaStatusZeile extends ConsumerWidget {
-  const _LigaStatusZeile(
-      {required this.league, required this.status, required this.farbe});
+  const _LigaStatusZeile({
+    required this.league,
+    required this.status,
+    required this.farbe,
+  });
 
   final FantasyLeague league;
   final LeagueStatus status;
@@ -1110,7 +1230,8 @@ class _LigaStatusZeile extends ConsumerWidget {
       label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
       detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
       ton: _kTipGold,
-      pulsiert: frist != null &&
+      pulsiert:
+          frist != null &&
           frist.difference(DateTime.now()) < const Duration(hours: 1),
     );
   }
@@ -1182,12 +1303,15 @@ class _StatusZeile extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(label,
-                    maxLines: 1,
-                    style: TextStyle(
-                        color: scheme.onSurface,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800)),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1198,11 +1322,14 @@ class _StatusZeile extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(detail!,
-                  maxLines: 1,
-                  style: TextStyle(
-                      color: scheme.onSurface.withValues(alpha: 0.7),
-                      fontSize: 11)),
+              child: Text(
+                detail!,
+                maxLines: 1,
+                style: TextStyle(
+                  color: scheme.onSurface.withValues(alpha: 0.7),
+                  fontSize: 11,
+                ),
+              ),
             ),
           ),
       ],
@@ -1229,7 +1356,8 @@ class _TipRoundCard extends ConsumerWidget {
     final showBadge =
         round.isPublic && round.isInviteOnly && myId == round.createdBy;
     final pending = showBadge
-        ? (ref.watch(tipJoinRequestsProvider(round.id)).valueOrNull?.length ?? 0)
+        ? (ref.watch(tipJoinRequestsProvider(round.id)).valueOrNull?.length ??
+              0)
         : 0;
 
     return _PressScale(
@@ -1242,7 +1370,8 @@ class _TipRoundCard extends ConsumerWidget {
             onTap: () {
               activateRound(ref, round);
               Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
+                MaterialPageRoute(builder: (_) => LeagueScreen(round: round)),
+              );
             },
             borderRadius: BorderRadius.circular(16),
             child: Ink(
@@ -1274,9 +1403,10 @@ class _TipRoundCard extends ConsumerWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.05),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                height: 1.05,
+                              ),
                             ),
                           ),
                           // Der Wettbewerb schrumpft statt zu kappen: aus
@@ -1288,10 +1418,10 @@ class _TipRoundCard extends ConsumerWidget {
                               wettbewerb,
                               maxLines: 1,
                               style: TextStyle(
-                                  color:
-                                      scheme.onSurface.withValues(alpha: 0.6),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600),
+                                color: scheme.onSurface.withValues(alpha: 0.6),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -1341,7 +1471,8 @@ class _OffeneTippsZeile extends ConsumerWidget {
       detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
       ton: farbe,
       // Es drängt: das nächste Spiel stößt in unter einer Stunde an.
-      pulsiert: frist != null &&
+      pulsiert:
+          frist != null &&
           frist.difference(DateTime.now()) < const Duration(hours: 1),
     );
   }
@@ -1349,8 +1480,11 @@ class _OffeneTippsZeile extends ConsumerWidget {
 
 /// Zeichen einer Tipprunde: eigenes Logo, sonst die MatchUp-Marke in Gold.
 class _RoundMark extends StatelessWidget {
-  const _RoundMark(
-      {required this.round, required this.farbe, required this.size});
+  const _RoundMark({
+    required this.round,
+    required this.farbe,
+    required this.size,
+  });
 
   final TipRound round;
   final Color farbe;
@@ -1358,7 +1492,8 @@ class _RoundMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasCustom = (round.logoUrl != null && round.logoUrl!.isNotEmpty) ||
+    final hasCustom =
+        (round.logoUrl != null && round.logoUrl!.isNotEmpty) ||
         (round.logoEmoji != null && round.logoEmoji!.isNotEmpty);
     if (hasCustom) {
       return AppAvatar(
@@ -1373,8 +1508,10 @@ class _RoundMark extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration:
-          BoxDecoration(color: farbe, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: farbe,
+        borderRadius: BorderRadius.circular(8),
+      ),
       alignment: Alignment.center,
       child: MatchUpChevron(size: size * 0.5, color: MatchUpColors.base),
     );
@@ -1397,12 +1534,15 @@ class _CountBadge extends StatelessWidget {
         color: scheme.error,
         borderRadius: BorderRadius.circular(11),
       ),
-      child: Text('$count',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-              color: scheme.onError,
-              fontWeight: FontWeight.bold,
-              fontSize: 12)),
+      child: Text(
+        '$count',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: scheme.onError,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
     );
   }
 }
@@ -1444,12 +1584,15 @@ class _Appear extends StatefulWidget {
   State<_Appear> createState() => _AppearState();
 }
 
-class _AppearState extends State<_Appear>
-    with SingleTickerProviderStateMixin {
+class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 420));
-  late final Animation<double> _t =
-      CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _c,
+    curve: Curves.easeOutCubic,
+  );
 
   @override
   void initState() {
@@ -1472,7 +1615,9 @@ class _AppearState extends State<_Appear>
       builder: (context, child) => Opacity(
         opacity: _t.value,
         child: Transform.translate(
-            offset: Offset(0, (1 - _t.value) * 14), child: child),
+          offset: Offset(0, (1 - _t.value) * 14),
+          child: child,
+        ),
       ),
       child: widget.child,
     );
@@ -1523,8 +1668,9 @@ class _WavingHand extends StatefulWidget {
 class _WavingHandState extends State<_WavingHand>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 2600))
-    ..repeat();
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  )..repeat();
 
   @override
   void dispose() {
@@ -1541,7 +1687,10 @@ class _WavingHandState extends State<_WavingHand>
         final t = _c.value;
         final angle = t < 0.45 ? math.sin(t / 0.45 * math.pi * 3) * 0.35 : 0.0;
         return Transform.rotate(
-            angle: angle, alignment: Alignment.bottomCenter, child: child);
+          angle: angle,
+          alignment: Alignment.bottomCenter,
+          child: child,
+        );
       },
       child: Text('👋', style: TextStyle(fontSize: widget.size)),
     );
@@ -1556,14 +1705,10 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(text),
-      ),
+      child: Padding(padding: const EdgeInsets.all(16), child: Text(text)),
     );
   }
 }
-
 
 // ---------------------------------------------------------------------
 // MatchUp-Wortmarke für die Kopfzeile: zweifarbiger Doppel-Chevron
@@ -1593,8 +1738,9 @@ class _MatchUpTitle extends StatelessWidget {
             children: const [
               TextSpan(text: 'Match'),
               TextSpan(
-                  text: 'Up',
-                  style: TextStyle(color: MatchUpColors.green)),
+                text: 'Up',
+                style: TextStyle(color: MatchUpColors.green),
+              ),
             ],
           ),
         ),
@@ -1611,17 +1757,20 @@ class _MatchUpTitle extends StatelessWidget {
 /// **Fantasy** und **Tippspiel**, darunter klein **Beitreten**. Der Screen gibt
 /// nur die Wahl zurück; den jeweiligen Flow startet danach der Aufrufer.
 void showCreateOrJoin(BuildContext context, WidgetRef ref) async {
-  final choice = await Navigator.of(context).push<String>(MaterialPageRoute(
-    fullscreenDialog: true,
-    builder: (_) => const _CreateOrJoinScreen(),
-  ));
+  final choice = await Navigator.of(context).push<String>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => const _CreateOrJoinScreen(),
+    ),
+  );
   if (choice == null || !context.mounted) return;
   switch (choice) {
     case 'fantasy':
       createFantasyLeagueFlow(context, FantasyMode.liga);
     case 'tip':
-      Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const CreateTipRoundScreen()));
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CreateTipRoundScreen()));
     case 'join':
       joinAnyFlow(context, ref);
   }
@@ -1656,10 +1805,9 @@ class _CreateOrJoinScreen extends StatelessWidget {
           children: [
             Text(
               'Was möchtest du spielen?',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1687,23 +1835,27 @@ class _CreateOrJoinScreen extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                    child: Divider(
-                        color:
-                            scheme.outlineVariant.withValues(alpha: 0.7))),
+                  child: Divider(
+                    color: scheme.outlineVariant.withValues(alpha: 0.7),
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text('ODER',
-                      style: TextStyle(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                      )),
+                  child: Text(
+                    'ODER',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
                 ),
                 Expanded(
-                    child: Divider(
-                        color:
-                            scheme.outlineVariant.withValues(alpha: 0.7))),
+                  child: Divider(
+                    color: scheme.outlineVariant.withValues(alpha: 0.7),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -1745,7 +1897,10 @@ class _StartKarte extends StatelessWidget {
           // Rahmen im Vordergrund → liegt ohne Naht über Bild und Ripple.
           foregroundDecoration: BoxDecoration(
             borderRadius: _radius,
-            border: Border.all(color: farbe.withValues(alpha: 0.65), width: 1.5),
+            border: Border.all(
+              color: farbe.withValues(alpha: 0.65),
+              width: 1.5,
+            ),
           ),
           child: Material(
             color: Colors.transparent,
@@ -1789,7 +1944,9 @@ class _StartKarte extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: MatchUpChevron(
-                                size: 18, color: MatchUpColors.base),
+                              size: 18,
+                              color: MatchUpColors.base,
+                            ),
                           ),
                           const Spacer(),
                           Text(
@@ -1817,8 +1974,11 @@ class _StartKarte extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              Icon(Icons.arrow_forward_rounded,
-                                  size: 20, color: farbe),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 20,
+                                color: farbe,
+                              ),
                             ],
                           ),
                         ],
@@ -1856,28 +2016,42 @@ class _BeitretenKarte extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.9)),
+                color: scheme.outlineVariant.withValues(alpha: 0.9),
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.vpn_key_outlined,
-                    size: 22, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.vpn_key_outlined,
+                  size: 22,
+                  color: scheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Einer Runde beitreten',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
-                      Text('Mit dem Einladungscode von Freunden',
-                          style: TextStyle(
-                              color: scheme.onSurfaceVariant, fontSize: 12)),
+                      const Text(
+                        'Einer Runde beitreten',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Mit dem Einladungscode von Freunden',
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right,
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                Icon(
+                  Icons.chevron_right,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
               ],
             ),
           ),
@@ -1886,4 +2060,3 @@ class _BeitretenKarte extends StatelessWidget {
     );
   }
 }
-
