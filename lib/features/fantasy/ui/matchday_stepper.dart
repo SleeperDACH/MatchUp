@@ -19,6 +19,10 @@ class MatchdayStepper extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
+          // Das Ziel im Namen, nicht die Richtung allein: „Schaltfläche,
+          // Schaltfläche" links und rechts von „Spieltag 7" sagte nicht,
+          // welcher Spieltag hinter welchem Pfeil liegt.
+          tooltip: round > 1 ? 'Zurück zu Spieltag ${round - 1}' : 'Zurück',
           icon: const Icon(Icons.chevron_left),
           onPressed: round > 1 ? () => onChanged(round - 1) : null,
         ),
@@ -29,6 +33,7 @@ class MatchdayStepper extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium),
         ),
         IconButton(
+          tooltip: round < max ? 'Weiter zu Spieltag ${round + 1}' : 'Weiter',
           icon: const Icon(Icons.chevron_right),
           onPressed: round < max ? () => onChanged(round + 1) : null,
         ),

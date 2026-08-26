@@ -677,6 +677,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
               subtitle: '11 in der Startelf + ${_rounds - 11} auf der Bank',
               child: editable
                   ? _Stepper(
+                      label: 'Anzahl Runden',
                       value: _rounds,
                       min: _minRounds,
                       max: _maxRounds,
@@ -695,6 +696,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                     'Rookies je Manager pro Saison (nach dem Saison-Rollover)',
                 child: editable
                     ? _Stepper(
+                        label: 'U20-Draft-Runden',
                         value: _u20Rounds,
                         min: _minU20Rounds,
                         max: _maxU20Rounds,
@@ -845,6 +847,7 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
                 label: 'Max. Teilnehmer',
                 child: editable
                     ? _Stepper(
+                        label: 'Max. Teilnehmer',
                         value: _maxTeams,
                         min: _minTeams,
                         max: _maxTeamsCap,
@@ -956,6 +959,7 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
                   : null,
               child: editable
                   ? _Stepper(
+                      label: 'Playoff-Teams',
                       value: _teams,
                       min: _minTeams,
                       max: _maxTeams,
@@ -981,6 +985,7 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
               subtitle: 'Spieltage vor Playoff-Start (5–10)',
               child: editable
                   ? _Stepper(
+                      label: 'Trade-Deadline',
                       value: _offset,
                       min: _minOffset,
                       max: _maxOffset,
@@ -1318,11 +1323,17 @@ class _ReadValue extends StatelessWidget {
 
 class _Stepper extends StatelessWidget {
   const _Stepper(
-      {required this.value,
+      {required this.label,
+      required this.value,
       required this.min,
       required this.max,
       required this.onChanged});
 
+  /// Die Beschriftung der [_SettingRow], in der der Stepper sitzt. Er steht
+  /// dort rechts neben ihr und wusste selbst nicht, was er zählt — für die
+  /// Vorlesehilfe hießen beide Knöpfe „Schaltfläche", auf jeder der fünf
+  /// Zeilen dieselben zwei.
+  final String label;
   final int value;
   final int min;
   final int max;
@@ -1334,10 +1345,16 @@ class _Stepper extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
+          tooltip: '$label verringern',
           visualDensity: VisualDensity.compact,
           onPressed: value > min ? () => onChanged(value - 1) : null,
           icon: const Icon(Icons.remove_circle_outline),
         ),
+        // Die Zahl bleibt als eigene Station stehen: Die umgebende
+        // `_SettingRow` sagt nur ihre Beschriftung an, den Wert trägt allein
+        // dieser Text. Ein zweites „Anzahl Runden" davorzusetzen hätte die
+        // Beschriftung in einer Zeile viermal wiederholt — zwischen zwei
+        // benannten Knöpfen steht die Zahl auch so am richtigen Platz.
         SizedBox(
           width: 28,
           child: Text('$value',
@@ -1345,6 +1362,7 @@ class _Stepper extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         ),
         IconButton(
+          tooltip: '$label erhöhen',
           visualDensity: VisualDensity.compact,
           onPressed: value < max ? () => onChanged(value + 1) : null,
           icon: const Icon(Icons.add_circle_outline),

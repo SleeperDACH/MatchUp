@@ -109,6 +109,14 @@ class _LeagueTeamsPicker extends ConsumerWidget {
                 leading: TeamBadge(team: team),
                 title: Text(team.name),
                 trailing: IconButton(
+                  // Der Name nennt Verein und Richtung: In einer Liste von
+                  // 18 gleich aussehenden Zeilen sagte „Schaltfläche" weder,
+                  // zu wem der Stern gehört, noch ob er gerade gesetzt ist —
+                  // gefüllt oder umrandet ist ein rein bildlicher
+                  // Unterschied.
+                  tooltip: isFav
+                      ? '${team.name} aus Favoriten entfernen'
+                      : '${team.name} zu Favoriten hinzufügen',
                   icon: Icon(
                     isFav ? Icons.star : Icons.star_border,
                     color: isFav ? scheme.primary : scheme.onSurfaceVariant,

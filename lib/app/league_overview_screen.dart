@@ -452,8 +452,15 @@ class _MatchdaysTabState extends ConsumerState<_MatchdaysTab> {
           children: [
             _RoundSelector(
               name: roundDisplayName(widget.leagueId, activeRound),
-              canPrev: idx > 0,
-              canNext: idx < rounds.length - 1,
+              // Die Namen der Nachbarn, nicht nur ihre Erreichbarkeit: der
+              // Pfeil trägt sie als Beschriftung, und bei Turnieren heißt
+              // der Nachbar „Viertelfinale", nicht „Spieltag 6".
+              prevName: idx > 0
+                  ? roundDisplayName(widget.leagueId, rounds[idx - 1])
+                  : null,
+              nextName: idx < rounds.length - 1
+                  ? roundDisplayName(widget.leagueId, rounds[idx + 1])
+                  : null,
               onPrev: () => setState(() => _round = rounds[idx - 1]),
               onNext: () => setState(() => _round = rounds[idx + 1]),
             ),
@@ -481,15 +488,19 @@ class _MatchdaysTabState extends ConsumerState<_MatchdaysTab> {
 class _RoundSelector extends StatelessWidget {
   const _RoundSelector({
     required this.name,
-    required this.canPrev,
-    required this.canNext,
+    required this.prevName,
+    required this.nextName,
     required this.onPrev,
     required this.onNext,
   });
 
   final String name;
-  final bool canPrev;
-  final bool canNext;
+
+  /// Name der Nachbarrunde, `null` am Rand der Liste — dient zugleich als
+  /// „gibt es sie überhaupt". Vorher standen hier zwei `bool`s; die sagten
+  /// dem Pfeil, ob er darf, aber nicht, wohin er führt.
+  final String? prevName;
+  final String? nextName;
   final VoidCallback onPrev;
   final VoidCallback onNext;
 
@@ -503,7 +514,8 @@ class _RoundSelector extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: canPrev ? onPrev : null,
+            tooltip: prevName == null ? 'Zurück' : 'Zurück zu $prevName',
+            onPressed: prevName == null ? null : onPrev,
             icon: const Icon(Icons.chevron_left),
           ),
           Expanded(
@@ -515,7 +527,8 @@ class _RoundSelector extends StatelessWidget {
                     ?.copyWith(fontWeight: FontWeight.bold)),
           ),
           IconButton(
-            onPressed: canNext ? onNext : null,
+            tooltip: nextName == null ? 'Weiter' : 'Weiter zu $nextName',
+            onPressed: nextName == null ? null : onNext,
             icon: const Icon(Icons.chevron_right),
           ),
         ],

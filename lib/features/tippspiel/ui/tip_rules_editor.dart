@@ -307,18 +307,31 @@ class _PointsStepper extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Expanded(child: Text(label)),
+          // Beschriftung und Wert als eine Ansage: vorgelesen standen hier
+          // vier Stationen („Exakt getippt", „Schaltfläche", „3",
+          // „Schaltfläche"), von denen die Zahl zu nichts gehörte.
+          Expanded(
+            child: Semantics(
+              label: '$label: $value',
+              excludeSemantics: true,
+              child: Text(label),
+            ),
+          ),
           IconButton(
+            tooltip: '$label verringern',
             icon: const Icon(Icons.remove_circle_outline),
             onPressed: value > min ? () => onChanged(value - 1) : null,
           ),
-          SizedBox(
-            width: 28,
-            child: Text('$value',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ExcludeSemantics(
+            child: SizedBox(
+              width: 28,
+              child: Text('$value',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
           ),
           IconButton(
+            tooltip: '$label erhöhen',
             icon: const Icon(Icons.add_circle_outline),
             onPressed: value < max ? () => onChanged(value + 1) : null,
           ),
@@ -346,18 +359,31 @@ class _OddsStepper extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Expanded(child: Text(label)),
+          Expanded(
+            child: Semantics(
+              // Mit Komma, nicht mit Punkt: „2.5" spricht die Vorlesehilfe
+              // als „zwei Punkt fünf" aus. Im Bild steht weiter der Punkt —
+              // `toStringAsFixed` kennt kein Gebietsschema.
+              label: '$label: ${value.toStringAsFixed(1).replaceAll('.', ',')}',
+              excludeSemantics: true,
+              child: Text(label),
+            ),
+          ),
           IconButton(
+            tooltip: '$label verringern',
             icon: const Icon(Icons.remove_circle_outline),
             onPressed: value > 1.5 ? () => onChanged(value - 0.5) : null,
           ),
-          SizedBox(
-            width: 34,
-            child: Text(value.toStringAsFixed(1),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ExcludeSemantics(
+            child: SizedBox(
+              width: 34,
+              child: Text(value.toStringAsFixed(1),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
           ),
           IconButton(
+            tooltip: '$label erhöhen',
             icon: const Icon(Icons.add_circle_outline),
             onPressed: value < 10.0 ? () => onChanged(value + 0.5) : null,
           ),

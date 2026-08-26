@@ -32,12 +32,28 @@ class RoundSelector extends ConsumerWidget {
       }
     }
 
+    // Vorgelesen hießen beide Pfeile „Schaltfläche" — welche Runde dahinter
+    // liegt, stand nur im Text dazwischen, und der gehört zu keinem der
+    // beiden Knöpfe. Der Name nennt deshalb das Ziel: bei Turnieren
+    // „Achtelfinale" statt „Runde 5". Am Rand der Liste gibt es kein Ziel,
+    // dort bleibt die Richtung allein stehen — der Pfeil ist dann ohnehin
+    // abgeblendet.
+    String ziel(int nummer) {
+      if (rounds != null) {
+        for (final r in rounds) {
+          if (r.number == nummer && r.name.isNotEmpty) return r.name;
+        }
+      }
+      return '${league.roundLabel} $nummer';
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
+            tooltip: previous == null ? 'Zurück' : 'Zurück zu ${ziel(previous)}',
             icon: const Icon(Icons.chevron_left),
             onPressed: previous == null
                 ? null
@@ -54,6 +70,7 @@ class RoundSelector extends ConsumerWidget {
             ),
           ),
           IconButton(
+            tooltip: next == null ? 'Weiter' : 'Weiter zu ${ziel(next)}',
             icon: const Icon(Icons.chevron_right),
             onPressed: next == null
                 ? null
@@ -95,6 +112,10 @@ class WeekSelector extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
+            // Nur die Nummer, nicht die Datumsspanne: „Zurück zu Woche 3"
+            // reicht als Ziel, „Zurück zu Woche 3 · 15.–21. Sep" wäre eine
+            // vorgelesene Zeile für einen Pfeil.
+            tooltip: index > first ? 'Zurück zu Woche ${index - 1}' : 'Zurück',
             icon: const Icon(Icons.chevron_left),
             onPressed: index > first ? () => go(index - 1) : null,
           ),
@@ -108,6 +129,7 @@ class WeekSelector extends ConsumerWidget {
             ),
           ),
           IconButton(
+            tooltip: index < last ? 'Weiter zu Woche ${index + 1}' : 'Weiter',
             icon: const Icon(Icons.chevron_right),
             onPressed: index < last ? () => go(index + 1) : null,
           ),

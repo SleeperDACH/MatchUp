@@ -552,6 +552,9 @@ class _ReplyPreview extends StatelessWidget {
             ),
           ),
           IconButton(
+            // „Schließen" wäre zweideutig — der Chat bleibt offen, nur die
+            // Antwortvorschau darüber verschwindet.
+            tooltip: 'Antwort verwerfen',
             icon: const Icon(Icons.close),
             iconSize: 20,
             onPressed: onCancel,
@@ -612,6 +615,10 @@ class _Composer extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             IconButton.filled(
+              // Auch beim Senden benannt: der Knopf zeigt dann einen Kreisel
+              // statt des Papierfliegers und hätte sonst gar kein Symbol,
+              // aus dem sich etwas ableiten ließe.
+              tooltip: sending ? 'Wird gesendet' : 'Senden',
               onPressed: sending ? null : onSend,
               iconSize: 26,
               padding: const EdgeInsets.all(14),

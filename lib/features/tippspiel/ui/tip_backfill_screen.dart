@@ -90,6 +90,11 @@ class _TipBackfillScreenState extends ConsumerState<TipBackfillScreen> {
                   style: Theme.of(context).textTheme.titleMedium),
               const Spacer(),
               IconButton(
+                // Die „Spieltag"-Beschriftung steht links in der Zeile, die
+                // Zahl zwischen den Pfeilen — vorgelesen ergab das drei
+                // Stationen, von denen keine sagte, wohin ein Pfeil führt.
+                tooltip:
+                    md > minRound ? 'Zurück zu Spieltag ${md - 1}' : 'Zurück',
                 icon: const Icon(Icons.chevron_left),
                 onPressed:
                     md > minRound ? () => setState(() => _matchday = md - 1) : null,
@@ -102,6 +107,8 @@ class _TipBackfillScreenState extends ConsumerState<TipBackfillScreen> {
                         fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               IconButton(
+                tooltip:
+                    md < maxRound ? 'Weiter zu Spieltag ${md + 1}' : 'Weiter',
                 icon: const Icon(Icons.chevron_right),
                 onPressed:
                     md < maxRound ? () => setState(() => _matchday = md + 1) : null,

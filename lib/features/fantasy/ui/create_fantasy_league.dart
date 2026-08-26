@@ -245,19 +245,31 @@ class _StepperRow extends StatelessWidget {
       height: 40,
       child: Row(
         children: [
-          Expanded(child: Text(label)),
+          // Beschriftung und Wert als eine Ansage — die Zahl allein gehörte
+          // vorgelesen zu nichts.
+          Expanded(
+            child: Semantics(
+              label: '$label: $value',
+              excludeSemantics: true,
+              child: Text(label),
+            ),
+          ),
           IconButton(
+            tooltip: '$label verringern',
             icon: const Icon(Icons.remove_circle_outline),
             onPressed: value > min ? () => onChanged(value - 1) : null,
           ),
-          SizedBox(
-            width: 28,
-            child: Text('$value',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16)),
+          ExcludeSemantics(
+            child: SizedBox(
+              width: 28,
+              child: Text('$value',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
           ),
           IconButton(
+            tooltip: '$label erhöhen',
             icon: const Icon(Icons.add_circle_outline),
             onPressed: value < max ? () => onChanged(value + 1) : null,
           ),

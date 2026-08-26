@@ -170,6 +170,8 @@ class _Stepper extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
+            tooltip:
+                spieltag > 1 ? 'Zurück zu Spieltag ${spieltag - 1}' : 'Zurück',
             icon: const Icon(Icons.chevron_left),
             onPressed: spieltag > 1 ? () => onChanged(spieltag - 1) : null,
           ),
@@ -179,6 +181,9 @@ class _Stepper extends StatelessWidget {
                   .titleMedium
                   ?.copyWith(fontWeight: FontWeight.bold)),
           IconButton(
+            tooltip: spieltag < max
+                ? 'Weiter zu Spieltag ${spieltag + 1}'
+                : 'Weiter',
             icon: const Icon(Icons.chevron_right),
             onPressed: spieltag < max ? () => onChanged(spieltag + 1) : null,
           ),

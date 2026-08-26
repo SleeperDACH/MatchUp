@@ -77,6 +77,7 @@ class _LeagueSearchScreenState extends ConsumerState<LeagueSearchScreen> {
                 suffixIcon: _controller.text.isEmpty
                     ? null
                     : IconButton(
+                        tooltip: 'Suche leeren',
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _controller.clear();
