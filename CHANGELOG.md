@@ -8,6 +8,94 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.3.0+5 — 26. August 2026
+
+20 Commits seit 1.2.0+4 (22. August). Zwei Schirme sind neu gebaut — der
+Startbildschirm bekommt einen Kopf, der Live-Tab wird eine Tafel — und das
+Anmelden geht jetzt auch mit Google und Apple.
+
+### Neu
+
+- **Anmeldung mit Google und Apple.** Auf iOS beide nativ (das System zeigt
+  seinen eigenen Dialog), auf Android Google nativ und Apple über den
+  Browser, im Web beide über den Browser. Wer sich so anmeldet, bekommt
+  automatisch ein Profil mit abgeleitetem Namen — sonst stünde man in jeder
+  Liga, Tabelle und jedem Chat namenlos da. Der Name ist ein Vorschlag und
+  bleibt änderbar. Ein Abbruch ist kein Fehler und zeigt nichts Rotes an.
+- **Der Startbildschirm hat einen Kopf: das nächste Spiel deines Vereins.**
+  Die Anstoßzeit steht als große Zahl zwischen beiden Wappen, dahinter
+  schimmern die Trikotfarben der beiden Vereine — Rot links heißt Bayern, und
+  das sieht man, bevor man den Namen gelesen hat. Läuft das Spiel, steht dort
+  das Ergebnis; heute anstehende Spiele tragen „HEUTE" in Gold, laufende
+  „LIVE" in Rot. Gezeigt wird das Spiel deines **obersten** Favoriten, nicht
+  das früheste des Tages: Wer Bayern über Bochum stellt, will an einem Samstag
+  mit beiden Bayern oben sehen. Die übrigen Partien desselben Tages stehen
+  weiter unter „Meine Vereine".
+- **Der Live-Tab ist neu gebaut.** Statt einer Karte je Wettbewerb eine
+  durchgehende Tafel: schmale Kopfzeile je Liga, Spiele als Zeilen darunter,
+  Namen zur Mitte hin. Oben steht jetzt der gewählte Tag und, wenn etwas
+  läuft, wie viele Spiele. **Die Tagesleiste zeigt, wo etwas los ist** — jeder
+  Tag mit Spielen hat einen Punkt, rot, wenn dort gerade gespielt wird, und
+  Tage ohne Spiele stehen gedimmt. Vorher waren es fünfzehn gleiche Zellen,
+  durch die man sich tippen musste.
+- **Die Wettbewerbe stehen als fünf Kacheln am unteren Rand** — Wappen,
+  Kurzname, alle ohne Wischen sichtbar und direkt antippbar. Vorher fünf
+  farbige Textknöpfe in zwei Reihen, die dauerhaft ein Fünftel des Schirms
+  belegten.
+
+### Geändert
+
+- **Der Startbildschirm ist ruhiger geworden.** Die Begrüßung war die größte
+  und fetteste Schrift der Seite — sie ist eine graue Zeile über der neuen
+  Kopfkarte. Die Ligakarten tragen ihre Farbe nur noch als Hauch in der Ecke
+  statt als volle Fläche, und die vierte Karte wird am Rand angeschnitten,
+  damit man sieht, dass es seitlich weitergeht. Jeder Abschnittskopf hat einen
+  schmalen Strich in der Farbe seines Bereichs — vorher standen dort fünf
+  gleiche graue Zeilen ohne Takt.
+- **Die Karten sagen nicht mehr, was ansteht.** Die Zustandsleiste am unteren
+  Rand („Offen", „Draft läuft", „18 Tipps offen") ist auf Wunsch entfernt;
+  die Karten sind dadurch deutlich flacher.
+- **Die Teilnehmerzahl einer Fantasy-Liga lässt sich wieder ändern** —
+  Zahnrad › Regeln & Format › Teilnehmerzahl. Die Seite dafür gab es, sie war
+  nur von nirgendwo zu erreichen. Unter die Zahl der bereits beigetretenen
+  Teams lässt sie sich nicht setzen.
+- **Vorlesehilfen.** 24 Symbolknöpfe hatten keinen Namen und hießen für
+  VoiceOver und TalkBack schlicht „Schaltfläche" — auch das Hamburger-Symbol,
+  der Favoriten-Stern und das „+" oben rechts. Blätter-Pfeile nennen jetzt ihr
+  Ziel („Weiter zu Spieltag 8") statt ihrer Richtung, und bei +/−-Steppern
+  trägt die Beschriftung den Wert mit („Exakt getippt: 3").
+- **Große Systemschrift.** Bei 1,3-facher Schrift lief der Liganame unten aus
+  der Karte. Die Kartenreihen deckeln die Schrift jetzt und wachsen innerhalb
+  dessen in der Höhe mit; alles, was längs steht, wächst weiter ungebremst.
+
+### Behoben
+
+- **Die Fantasy-Kader waren monatelang veraltet:** Zugänge fehlten, längst
+  abgewanderte Spieler standen weiter im Pool. Der automatische Kader-Abgleich
+  war zwar gebaut, aber nie in Betrieb genommen. Jetzt läuft er täglich — beim
+  ersten Lauf kamen 68 Spieler dazu und 62 Abgänge raus. Wer gedraftet oder im
+  Kader ist, wird dabei nie entfernt.
+- **„Tipptest" war als „Tinntest" zu lesen.** Auf zu knappen Karten schnitt
+  Flutter die Unterlängen ab — betroffen war jeder Name mit p, g, j, q oder y.
+  Ohne Fehlermeldung, weil formal alles passte.
+- **Der eigene Tipp auf der Kopfkarte zeigte nur einen von mehreren.** Wer
+  dasselbe Spiel in zwei Runden verschieden getippt hatte, sah trotzdem nur
+  eine Zahl. (Die Anzeige ist inzwischen ganz von der Kopfkarte gewichen, s. o.)
+
+### Intern
+
+- **Zwei Schirme lassen sich jetzt ansehen, ohne auf den eigenen Account
+  angewiesen zu sein.** Homescreen und Live-Tab haben Golden-Vorschauen mit
+  gesetzten Zuständen. Der Anlass war handfest: Bei der Abnahme fehlte dem
+  Testaccount eine eigenständige Tipprunde, und der Live-Tab zeigte an einem
+  spielfreien Mittwoch nur „Keine Spiele an diesem Tag".
+- Ein Test misst, dass Kartennamen mindestens eine volle Zeile hoch sind — den
+  „Tinntest"-Fehler hätte ein Bild nicht gefangen, er sah ja aus wie ein Wort.
+- Die Reihenfolge der Favoriten lag doppelt vor (Favoriten-Tab und
+  Homescreen); sie ist zu einer Regel zusammengezogen.
+- Design-Canvas für beide Überarbeitungen unter `design/` — Diagnose des
+  Ist-Zustands und die verworfenen Richtungen.
+
 ## 1.2.0+4 — 22. August 2026
 
 47 Commits seit 1.1.0+3 (11. August). Der Schwerpunkt liegt auf dem, was man
