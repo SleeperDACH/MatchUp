@@ -326,6 +326,41 @@ Build-Konfigurationen als `CODE_SIGN_ENTITLEMENTS` eingehängt. Solange die
 Capability am App-Identifier fehlt, **verschärft das den iOS-Build-Fehler**:
 Zur fehlenden Signatur kommt dann ein fehlendes Entitlement.
 
+### Die Teilnehmerzahl war nicht verwaist — die Seite war es
+
+`LeagueSettingsPage` in `fantasy_settings_screen.dart` konnte die
+Teilnehmerzahl schon immer bearbeiten. Sie wurde nur **in keiner Datei
+geöffnet**: Im Zahnrad standen Draft-, Playoff-, Punkte- und
+Sichtbarkeits-Einstellungen, aber nichts, was zur Liga-Größe führte. Wer sie
+nach dem Anlegen ändern wollte, hatte keinen Weg dorthin. Jetzt steht unter
+„Regeln & Format" die Kachel **Teilnehmerzahl** mit dem aktuellen Stand im
+Untertitel.
+
+Zwei Dinge, die dabei mit hochkamen:
+
+- **Ein `update`, das keine Zeile trifft, ist kein Fehler.** Das Repository
+  filterte zusätzlich auf `.eq('draft_status', 'setup')`. Wäre die Seite je
+  erreichbar gewesen und der Draft zwischen Öffnen und Speichern gestartet,
+  hätte PostgREST null Zeilen geändert und **keinen** Fehler geliefert — die
+  Oberfläche hätte „Gespeichert" gemeldet. Der Filter ist weg. Wann die Zahl
+  änderbar ist, entscheidet sichtbar die Oberfläche (`_editable`); was erlaubt
+  ist, entscheidet die RLS-Policy „Ersteller verwaltet seine Fantasy-Liga".
+  Eine stille dritte Meinung dazwischen half niemandem.
+- **Die Zahl kann nicht unter die schon beigetretenen Teams fallen.** Ein
+  Limit von 4 in einer Liga mit sechs Teams wäre keine Einstellung, sondern
+  ein Widerspruch — die sechs bleiben ja. Der Stepper zieht seine Untergrenze
+  deshalb aus `fantasyManagersProvider`, und ein Hinweis nennt den Grund.
+
+**Nach Draft-Start bleibt die Zahl gesperrt**, und das ist kein Versehen:
+Migration `0041_post_draft_join.sql` hält ausdrücklich fest, dass die
+Team-Anzahl nach dem Draft fix ist. Wer danach beitritt, wird `pending` und
+muss vom Admin einem **verwaisten** Team zugewiesen werden
+(`fantasy_assign_team`). Ein höheres `max_teams` erzeugte deshalb Plätze, die
+niemand füllen kann: Platzhalter sind virtuell und haben keine Mitgliedszeile
+(siehe die Notiz zum Slot-Modell). Das zu öffnen heißt, `user_id` nullable zu
+machen, einen Surrogatschlüssel einzuführen und `fantasy_assign_team`
+umzustellen — eine Migration mit DB-Test, keine Client-Änderung.
+
 ## Befehle
 
 ```sh

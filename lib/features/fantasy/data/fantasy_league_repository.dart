@@ -219,6 +219,15 @@ class FantasyLeagueRepository {
       .eq('id', leagueId);
 
   /// Liga-Einstellungen (Teilnehmer-Limit) — ebenfalls nur vor dem Draft.
+  /// Teilnehmerzahl setzen (nur Ersteller — das erzwingt die RLS-Policy
+  /// „Ersteller verwaltet seine Fantasy-Liga").
+  ///
+  /// Hier stand zusätzlich `.eq('draft_status', 'setup')`. Als Sicherung war
+  /// das untauglich: Ein `update`, das keine Zeile trifft, ist in PostgREST
+  /// kein Fehler — der Aufrufer bekam „Gespeichert" gemeldet und nichts war
+  /// gespeichert. Wann die Zahl änderbar ist, entscheidet die Oberfläche
+  /// sichtbar (`_editable`); was erlaubt ist, entscheidet die RLS. Eine
+  /// stille dritte Meinung dazwischen hat niemandem geholfen.
   Future<void> updateLeagueSettings(
     String leagueId, {
     required int? maxTeams,
@@ -226,8 +235,7 @@ class FantasyLeagueRepository {
       _client
           .from('fantasy_leagues')
           .update({'max_teams': maxTeams})
-          .eq('id', leagueId)
-          .eq('draft_status', 'setup');
+          .eq('id', leagueId);
 
   /// Sichtbarkeit / Beitrittsmodus setzen (nur Ersteller, RLS). `private`
   /// ignoriert `joinPolicy`; wird der Konsistenz halber auf `open` gesetzt.

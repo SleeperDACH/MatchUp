@@ -181,6 +181,20 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const ScoringInfoScreen())),
             ),
+            // Die Teilnehmerzahl. Die Seite dahinter gab es schon, sie war nur
+            // von nirgendwo zu erreichen — `LeagueSettingsPage` wurde in
+            // keiner Datei geöffnet. Wer die Zahl nach dem Anlegen ändern
+            // wollte, fand im Zahnrad Draft, Playoffs, Punkte und
+            // Sichtbarkeit, aber nichts für die Liga-Größe.
+            ListTile(
+              leading: Icon(Icons.groups, color: scheme.primary),
+              title: const Text('Teilnehmerzahl'),
+              subtitle: Text(l.maxTeams != null
+                  ? 'Höchstens ${l.maxTeams} Teams'
+                  : 'Ohne eigenes Limit — höchstens 18'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => open(LeagueSettingsPage(league: l)),
+            ),
             ListTile(
               leading: Icon(Icons.sports, color: scheme.primary),
               title: const Text('Draft-Einstellungen'),
@@ -797,6 +811,12 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
     _maxTeams = (l.maxTeams ?? 12).clamp(_minTeams, _maxTeamsCap);
   }
 
+  /// Kleinste zulässige Teilnehmerzahl: nie unter die, die schon drin sind.
+  /// Ein Limit von 4 in einer Liga mit sechs Teams wäre keine Einstellung,
+  /// sondern ein Widerspruch — die sechs bleiben ja.
+  int _untergrenze(int mitglieder) =>
+      mitglieder > _minTeams ? mitglieder : _minTeams;
+
   Future<void> _save() async {
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
@@ -823,8 +843,14 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
     final scheme = Theme.of(context).colorScheme;
     final l = widget.league;
     final editable = _editable(ref, l);
+    final mitglieder =
+        ref.watch(fantasyManagersProvider(l.id)).valueOrNull?.length ?? 0;
+    final untergrenze = _untergrenze(mitglieder);
+    // Der gemerkte Wert kann unter der Grenze liegen, wenn seit dem Öffnen
+    // jemand beigetreten ist.
+    if (_maxTeams < untergrenze) _maxTeams = untergrenze;
     return Scaffold(
-      appBar: AppBar(title: const Text('Liga-Einstellungen')),
+      appBar: AppBar(title: const Text('Teilnehmerzahl')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -849,11 +875,21 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
                     ? _Stepper(
                         label: 'Max. Teilnehmer',
                         value: _maxTeams,
-                        min: _minTeams,
+                        min: untergrenze,
                         max: _maxTeamsCap,
                         onChanged: (v) => setState(() => _maxTeams = v))
                     : _ReadValue('$_maxTeams'),
               ),
+              if (editable && untergrenze > _minTeams) ...[
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                  child: _Note(mitglieder == 1
+                      ? 'Ein Team ist schon in der Liga — darunter geht es nicht.'
+                      : '$mitglieder Teams sind schon in der Liga — darunter '
+                          'geht es nicht.'),
+                ),
+              ],
             ],
           ]),
           const SizedBox(height: 8),
