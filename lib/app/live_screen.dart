@@ -247,7 +247,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                 for (final id in leagueIds) ...[
                   _LigaKopf(
                     league: Leagues.byId(id),
-                    anzahl: byLeague[id]!.length,
+                    erster: id == leagueIds.first,
                   ),
                   for (var i = 0; i < byLeague[id]!.length; i++) ...[
                     if (i > 0)
@@ -325,60 +325,78 @@ class _Kopf extends StatelessWidget {
   }
 }
 
-/// Kopfzeile eines Wettbewerbs in der Tafel — eine schmale, leicht abgesetzte
-/// Zeile statt einer Karte mit Rahmen.
+/// Kopfzeile eines Wettbewerbs in der Tafel — eine **Kapitelmarke**: Wappen,
+/// Name, und eine Haarlinie, die bis an den rechten Rand läuft.
 ///
-/// Der Name steht **nicht** mehr in der Ligafarbe: Fünf farbige Überschriften
-/// untereinander riefen gleich laut, und die Farbe sagt ohnehin das Quadrat
-/// davor. So bleibt Farbe für das übrig, was gerade läuft.
+/// Davor war es ein getöntes Band über die volle Breite, und das war an drei
+/// Stellen falsch. Die Tönung stand auf 3 % Deckung — weder Fläche noch
+/// nichts, nur ein Grauschleier, der die Tafel in Streifen zerschnitt. Der
+/// Name stand in gesperrten Versalien und sah dadurch aus wie eine
+/// Systembeschriftung statt wie ein Wettbewerb. Und die Zahl rechts war der
+/// **dritte** Ort, an dem derselbe Wettbewerb angesagt wurde (Wappen, Name,
+/// Anzahl) — genau der Vorwurf, mit dem der alte Live-Tab in die
+/// Überarbeitung ging, und er stand hier unverändert wieder da. Zählen kann
+/// man die Zeilen darunter selbst.
+///
+/// Jetzt trägt die Linie die Struktur und nicht mehr eine Fläche: Sie beginnt
+/// hinter dem Namen und bindet ihn an das, was darunter steht. Der Name steht
+/// in normaler Schreibung — bei „2. Bundesliga" und „Frauen-Bundesliga" tut
+/// jede Sperrung ohnehin nur weh —, die Farbe kommt allein aus dem Wappen.
 class _LigaKopf extends StatelessWidget {
-  const _LigaKopf({required this.league, required this.anzahl});
+  const _LigaKopf({required this.league, required this.erster});
 
   final LeagueInfo league;
-  final int anzahl;
+
+  /// Der erste Wettbewerb des Tages braucht oben weniger Luft — über ihm steht
+  /// schon die Tagesleiste.
+  final bool erster;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final farbe = leagueColor(league.id);
-    return Container(
-      color: scheme.onSurface.withValues(alpha: 0.03),
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, erster ? 10 : 26, 12, 8),
       child: Row(
         children: [
           LeagueLogo(
             leagueId: league.id,
-            size: 14,
+            size: 20,
             fallback: Container(
-              width: 14,
-              height: 14,
+              width: 20,
+              height: 20,
               decoration: BoxDecoration(
                 color: farbe,
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(5),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
+          const SizedBox(width: 9),
+          // `flex: 0` ist hier der Punkt: Ein `Flexible` hat sonst flex 1 und
+          // teilt sich den freien Platz **hälftig** mit dem `Expanded` der
+          // Linie — der Name reserviert dann die Hälfte der Zeile, obwohl er
+          // sie nicht braucht, und die Linie endet mitten im Nichts statt am
+          // Rand. Mit flex 0 nimmt er seine natürliche Breite und darf
+          // trotzdem schrumpfen, falls je ein sehr langer Name kommt.
+          Flexible(
+            flex: 0,
             child: Text(
-              league.name.toUpperCase(),
+              league.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: scheme.onSurfaceVariant,
-                fontSize: 11,
+                color: scheme.onSurface,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 1.3,
+                letterSpacing: -0.1,
               ),
             ),
           ),
-          Text(
-            '$anzahl',
-            style: TextStyle(
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: scheme.onSurface.withValues(alpha: 0.12),
             ),
           ),
         ],

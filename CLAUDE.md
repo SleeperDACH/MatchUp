@@ -773,11 +773,22 @@ Was sich daraus geändert hat:
   Auskunft, die die Navileiste gibt. Die Kopfzeile trägt jetzt den **gewählten
   Tag**, rechts daneben steht, was gerade läuft („2 live", pulsierender Punkt).
   Läuft nichts, bleibt die Seite leer — „0 live" wäre eine Meldung über nichts.
-- **Keine Liga-Karten.** Je Wettbewerb eine schmale, leicht abgesetzte
-  Kopfzeile (`_LigaKopf`), darunter die Spiele als Haarlinien-Liste. Der
-  Liganame steht dabei **nicht** mehr in der Ligafarbe: Fünf farbige
+- **Keine Liga-Karten.** Je Wettbewerb eine **Kapitelmarke** (`_LigaKopf`):
+  Wappen, Name, und eine Haarlinie bis an den rechten Rand; darunter die
+  Spiele. Der Liganame steht **nicht** in der Ligafarbe — fünf farbige
   Überschriften untereinander riefen gleich laut, und die Farbe sagt ohnehin
-  das Quadrat davor. So bleibt Farbe für das übrig, was läuft.
+  das Wappen. So bleibt Farbe für das übrig, was läuft.
+  Der erste Entwurf war ein getöntes Band über die volle Breite, und das war
+  an drei Stellen falsch: Die Tönung auf 3 % Deckung war weder Fläche noch
+  nichts, nur ein Grauschleier, der die Tafel in Streifen zerschnitt; der Name
+  in gesperrten Versalien sah aus wie eine Systembeschriftung; und die Anzahl
+  rechts war der **dritte** Ort, an dem derselbe Wettbewerb angesagt wurde —
+  genau der Vorwurf, mit dem der alte Live-Tab in die Überarbeitung ging, hier
+  unbemerkt wieder eingebaut.
+  **Fallstrick an der Linie:** `Flexible` hat standardmäßig `flex: 1`. Neben
+  einem `Expanded` teilt sich der Name den freien Platz dann hälftig mit der
+  Linie, und die endet mitten im Nichts statt am Rand. Der Name steht deshalb
+  in `Flexible(flex: 0)` — natürliche Breite, darf trotzdem schrumpfen.
 - **Die Spielzeile** (`_SpielZeile`): Namen zur Mitte hin, Ergebnis oder
   Anstoß dazwischen, Wappen an den Außenkanten, der Live-Punkt ganz außen.
   Der 4-px-Streifen links ist weg — er verschob die Zeile gegen die anderen.
