@@ -159,6 +159,25 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   **eingeloggter Nutzer** den Sync on-demand auslösen (JWT-Verifikation in
   der Function): `SupabaseTipStore.save` stößt ihn an, wenn ein Tipp scheitert,
   weil das Spiel in der App schon sichtbar, aber noch nicht gespiegelt ist.
+- **Kader-Sync: Edge Function `supabase/functions/sync-squads/`** (gleiche
+  Schutz-/Deploy-Konvention) holt die kompletten Kader der 18 Bundesliga-
+  Vereine von Sportmonks, spielt Zugänge per Upsert ein und entfernt Abgänge
+  über `fantasy_prune_departed_players` (Migration 0073). Zwei Sicherungen:
+  Geprunt wird **nur**, wenn alle 18 Kader plausibel geladen wurden
+  (`MIN_SQUAD` 15) — sonst reißt eine API-Lücke halbe Kader weg; und gelöscht
+  wird nur, wer in **keiner** referenzierenden Tabelle steht (nicht gedraftet,
+  nicht gerostert, keine Trades/Waiver, keine Match-Stats). Ein gedrafteter
+  Spieler verschwindet niemandem aus dem Kader.
+  **Der Zeitplan ist der eigentliche Punkt** (Migration 0076, täglich 04:17
+  UTC): Die Function war geschrieben, committet und hier dokumentiert — aber
+  monatelang **weder deployed noch eingeplant**. Der Pool stand deshalb auf
+  dem Stand eines einmaligen Hand-Imports; Zugänge fehlten, Abgänge standen
+  weiter drin. Wer eine Function schreibt, ist erst fertig, wenn sie läuft:
+  `supabase functions list` zeigt, was wirklich draußen ist, und
+  `select * from cron.job` , was wirklich getaktet ist.
+  Der `x-sync-secret` steht dabei **nicht** in der Migration — das Repo ist
+  öffentlich. Er kommt aus dem Vault (`select vault.create_secret('<SECRET>',
+  'sync_secret')`).
 - Stats-Sync: Edge Function `supabase/functions/sync-stats/` (gleiche
   Schutz-/Deploy-Konvention) füllt `player_match_stats` mit dem **vollen
   Roh-Stat-Satz aus Sportmonks** (Migration 0074: ~25 Zähler plus Rating).
