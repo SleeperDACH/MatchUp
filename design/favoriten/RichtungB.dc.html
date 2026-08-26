@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
+    .zeile { display: flex; align-items: center; gap: 9px; padding: 11px 12px; }
+    .nam { flex: 1; font-size: 15.5px; font-weight: 600; }
+    .lin { height: 0.8px; background: #22252F; margin: 0 12px; }
+    .marke { display: flex; align-items: center; gap: 10px; padding: 22px 14px 8px 14px; }
+    .marke .t { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA; }
+    .marke .l { flex-grow: 1; height: 0.8px; background: rgba(237,239,244,0.12); }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; padding: 16px 12px 0 12px; gap: 10px;">
+    <div style="width: 54px; height: 54px; border-radius: 27px; background: #DC052D; border: 2.5px solid #EDEFF4; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #fff;">FCB</div>
+    <div style="width: 42px; height: 42px; border-radius: 21px; background: #252937; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #8A90A0; opacity: 0.75;">HSV</div>
+    <div style="width: 42px; height: 42px; border-radius: 21px; background: #252937; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #8A90A0; opacity: 0.75;">BVB</div>
+    <div style="width: 42px; height: 42px; border-radius: 21px; background: #252937; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #8A90A0; opacity: 0.75;">RBL</div>
+    <div style="flex-grow: 1;"></div>
+    <div style="width: 38px; height: 38px; border-radius: 19px; border: 0.8px dashed #3A3F4D; display: flex; align-items: center; justify-content: center; color: #6E7482; font-size: 20px;">+</div>
+  </div>
+
+  <div style="padding: 12px 14px 0 14px;">
+    <div style="font-size: 23px; font-weight: 800; letter-spacing: -0.3px;">FC Bayern München</div>
+    <div style="font-size: 13px; color: #A6ACBA; margin-top: 1px;">Bundesliga · Platz 1</div>
+  </div>
+
+  <!-- Kein Reiter. Das nächste Spiel steht heraus, dann läuft alles weiter. -->
+  <div style="margin: 16px 12px 0 12px; border-radius: 16px; background: linear-gradient(150deg, rgba(220,5,45,0.20), rgba(220,5,45,0.05) 70%); border: 0.8px solid rgba(220,5,45,0.32); padding: 12px 14px;">
+    <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.3px; color: #A6ACBA;">NÄCHSTES SPIEL · FR, 28. AUG.</div>
+    <div style="display: flex; align-items: center; margin-top: 10px;">
+      <div style="flex: 1; text-align: center;">
+        <div style="width: 36px; height: 36px; border-radius: 18px; background: #DC052D; border: 2px solid #EDEFF4; margin: 0 auto;"></div>
+        <div style="font-size: 13px; font-weight: 600; margin-top: 5px;">Bayern</div>
+      </div>
+      <div class="num" style="font-size: 30px; font-weight: 700; letter-spacing: -1px; padding: 0 8px;">20:30</div>
+      <div style="flex: 1; text-align: center;">
+        <div style="width: 36px; height: 36px; border-radius: 18px; background: #EDEFF4; border: 2px solid #E32219; margin: 0 auto;"></div>
+        <div style="font-size: 13px; font-weight: 600; margin-top: 5px;">Stuttgart</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="marke" style="padding-top: 20px;"><div class="t">DANACH</div><div class="l"></div></div>
+  <div class="zeile">
+    <div class="num" style="width: 62px; font-size: 13px; font-weight: 700; color: #A6ACBA;">Fr 4.9.</div>
+    <div class="nam">SC Freiburg</div>
+    <div class="num" style="width: 46px; text-align: center; font-size: 15px; font-weight: 700;">15:30</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #252937;"></div>
+  </div>
+  <div class="lin"></div>
+  <div class="zeile">
+    <div class="num" style="width: 62px; font-size: 13px; font-weight: 700; color: #A6ACBA;">Di 9.9.</div>
+    <div class="nam">Werder Bremen</div>
+    <div class="num" style="width: 46px; text-align: center; font-size: 15px; font-weight: 700;">18:30</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #1D9053;"></div>
+  </div>
+
+  <div class="marke"><div class="t">ZULETZT</div><div class="l"></div></div>
+  <div class="zeile">
+    <div class="num" style="width: 62px; font-size: 13px; font-weight: 700; color: #A6ACBA;">Fr 21.8.</div>
+    <div class="nam">1. FC Köln</div>
+    <div class="num" style="width: 46px; text-align: center; font-size: 16px; font-weight: 700; color: #4ADE6A;">3:1</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #EDEFF4;"></div>
+  </div>
+  <div class="lin"></div>
+  <div class="zeile">
+    <div class="num" style="width: 62px; font-size: 13px; font-weight: 700; color: #A6ACBA;">Fr 14.8.</div>
+    <div class="nam">Eintracht Frankfurt</div>
+    <div class="num" style="width: 46px; text-align: center; font-size: 16px; font-weight: 700; color: #4ADE6A;">0:2</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #252937;"></div>
+  </div>
+
+  <div class="marke"><div class="t">NEWS</div><div class="l"></div></div>
+  <div style="padding: 2px 14px 0 14px;">
+    <div style="font-size: 15px; font-weight: 600; line-height: 1.2;">Diesmal mit Kaufoption: Bayern verleiht Wahi erneut</div>
+    <div style="font-size: 11.5px; color: #6E7482; margin-top: 3px;">kicker · vor 7 Std.</div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+  <div style="margin: 0 auto 14px auto; width: 330px; height: 62px; border-radius: 22px; background: rgba(26,29,39,0.92); border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center;">
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #8A90A0;">Home</div>
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #8A90A0;">Live</div>
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #4ADE6A;">Favoriten</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

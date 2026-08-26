@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
+    .zeile { display: flex; align-items: center; gap: 10px; padding: 11px 12px; }
+    .nam { flex: 1; font-size: 15px; font-weight: 600; }
+    .lin { height: 0.8px; background: #22252F; margin: 0 12px; }
+    .marke { display: flex; align-items: center; gap: 10px; padding: 20px 14px 6px 14px; }
+    .marke .t { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA; }
+    .marke .l { flex-grow: 1; height: 0.8px; background: rgba(237,239,244,0.12); }
+    .chip { display: flex; align-items: center; gap: 6px; padding: 5px 11px 5px 5px; border-radius: 999px; border: 0.8px solid #2A2E3A; font-size: 13px; font-weight: 600; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 16px 14px 0 14px;">
+    <div style="font-size: 21px; font-weight: 800; letter-spacing: -0.3px;">Meine Vereine</div>
+    <div style="font-size: 13px; font-weight: 600; color: #A6ACBA;">4 · bearbeiten</div>
+  </div>
+
+  <!-- Filterpillen statt Auswahl: „Alle" ist der Normalfall -->
+  <div style="display: flex; gap: 7px; padding: 14px 12px 0 12px; overflow: hidden;">
+    <div class="chip" style="background: #EDEFF4; border-color: #EDEFF4; color: #12141C; padding-left: 11px;">Alle</div>
+    <div class="chip"><div style="width: 20px; height: 20px; border-radius: 10px; background: #DC052D;"></div>Bayern</div>
+    <div class="chip"><div style="width: 20px; height: 20px; border-radius: 10px; background: #252937;"></div>HSV</div>
+    <div class="chip"><div style="width: 20px; height: 20px; border-radius: 10px; background: #FDE100;"></div>BVB</div>
+  </div>
+
+  <!-- Ein Strom über alle Favoriten, nach Zeit. Das Wappen sagt, wer spielt. -->
+  <div class="marke" style="padding-top: 22px;"><div class="t">MORGEN · FR, 28. AUG.</div><div class="l"></div></div>
+  <div class="zeile">
+    <div style="width: 26px; height: 26px; border-radius: 13px; background: #DC052D;"></div>
+    <div class="nam">Bayern <span style="color:#6E7482; font-weight:500;">gegen</span> Stuttgart</div>
+    <div class="num" style="font-size: 15px; font-weight: 700;">20:30</div>
+  </div>
+  <div class="lin"></div>
+  <div class="zeile">
+    <div style="width: 26px; height: 26px; border-radius: 13px; background: #252937;"></div>
+    <div class="nam">Hannover 96 <span style="color:#6E7482; font-weight:500;">gegen</span> HSV</div>
+    <div class="num" style="font-size: 15px; font-weight: 700;">18:30</div>
+  </div>
+
+  <div class="marke"><div class="t">SA, 29. AUG.</div><div class="l"></div></div>
+  <div class="zeile">
+    <div style="width: 26px; height: 26px; border-radius: 13px; background: #FDE100;"></div>
+    <div class="nam">Dortmund <span style="color:#6E7482; font-weight:500;">gegen</span> Union Berlin</div>
+    <div class="num" style="font-size: 15px; font-weight: 700;">15:30</div>
+  </div>
+  <div class="lin"></div>
+  <div class="zeile">
+    <div style="width: 26px; height: 26px; border-radius: 13px; background: #DD0741;"></div>
+    <div class="nam">Leipzig <span style="color:#6E7482; font-weight:500;">gegen</span> Gladbach</div>
+    <div class="num" style="font-size: 15px; font-weight: 700;">15:30</div>
+  </div>
+
+  <div class="marke"><div class="t">ZULETZT</div><div class="l"></div></div>
+  <div class="zeile">
+    <div style="width: 26px; height: 26px; border-radius: 13px; background: #DC052D;"></div>
+    <div class="nam">Bayern <span style="color:#6E7482; font-weight:500;">gegen</span> Köln</div>
+    <div class="num" style="font-size: 16px; font-weight: 700; color: #4ADE6A;">3:1</div>
+  </div>
+  <div class="lin"></div>
+  <div class="zeile">
+    <div style="width: 26px; height: 26px; border-radius: 13px; background: #FDE100;"></div>
+    <div class="nam">Leverkusen <span style="color:#6E7482; font-weight:500;">gegen</span> Dortmund</div>
+    <div class="num" style="font-size: 16px; font-weight: 700; color: #F23030;">2:0</div>
+  </div>
+  <div class="lin"></div>
+  <div class="zeile">
+    <div style="width: 26px; height: 26px; border-radius: 13px; background: #252937;"></div>
+    <div class="nam">HSV <span style="color:#6E7482; font-weight:500;">gegen</span> Schalke</div>
+    <div class="num" style="font-size: 16px; font-weight: 700; color: #A6ACBA;">1:1</div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+  <div style="margin: 0 auto 14px auto; width: 330px; height: 62px; border-radius: 22px; background: rgba(26,29,39,0.92); border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center;">
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #8A90A0;">Home</div>
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #8A90A0;">Live</div>
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #4ADE6A;">Favoriten</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

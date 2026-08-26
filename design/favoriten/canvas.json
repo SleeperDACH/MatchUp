@@ -1,0 +1,29 @@
+{
+  "artboards": [
+    { "file": "Diagnose.dc.html", "x": 0, "y": 0, "w": 402, "h": 874, "title": "Ist-Zustand" },
+    { "file": "Main.dc.html", "x": 522, "y": 0, "w": 402, "h": 874, "title": "Richtung A — Der Verein führt" },
+    { "file": "RichtungB.dc.html", "x": 1044, "y": 0, "w": 402, "h": 874, "title": "Richtung B — Eine Seite" },
+    { "file": "RichtungC.dc.html", "x": 1566, "y": 0, "w": 402, "h": 874, "title": "Richtung C — Alle auf einmal" }
+  ],
+  "annotations": [
+    { "id": "d1", "x": -300, "y": 20, "w": 250,
+      "text": "1 — „Favoriten\" ist wieder die größte Schrift des Schirms. Dieselbe Sache wie „Live\" und „Hallo, SFV03\": Die Navileiste sagt schon, wo man ist." },
+    { "id": "d2", "x": -300, "y": 150, "w": 250,
+      "text": "2 — Die Wappenleiste ist der Kleinkram des Schirms: 32-px-Wappen, 9,5-px-Beschriftung, „Borussia Dortmund\" zweizeilig. Dabei ist sie die wichtigste Auswahl hier." },
+    { "id": "d3", "x": -300, "y": 300, "w": 250,
+      "text": "3 — Der grüne Reiterbalken ist das lauteste Element auf dem Schirm — eine ganze Zeile Signalfarbe, um zwei Optionen anzusagen." },
+    { "id": "d4", "x": -300, "y": 440, "w": 250,
+      "text": "4 — Vier Spiele ergeben acht Blöcke: je eine Datums-Überschrift und eine gerahmte Karte. In der Karte steht dann nochmal Wettbewerb und Spieltag." },
+    { "id": "d5", "x": -300, "y": 600, "w": 250,
+      "text": "5 — Wappen innen, Namen außen — also genau andersherum als im gerade überarbeiteten Live-Tab. Die beiden Schirme fluchten nicht miteinander." },
+    { "id": "a1", "x": 522, "y": -220, "w": 402,
+      "text": "Richtung A — Der Verein führt  (Vorschlag)\nDie Wappenreihe wird der Kopf: groß, ohne Beschriftung, das gewählte Wappen hervorgehoben. Darunter der Vereinsname als Überschrift. Spiele als Zeilen wie im Live-Tab — Wappen außen, Namen an der Außenkante, kein Rahmen. Der Reiter wird eine leise Textumschaltung.\nTradeoff: Bleibt bei „ein Verein zur Zeit\". Wer vier Favoriten hat, tippt weiter durch." },
+    { "id": "b1", "x": 1044, "y": -220, "w": 402,
+      "text": "Richtung B — Eine Seite\nKein Reiter mehr. Das nächste Spiel steht als Karte heraus, darunter läuft alles in einem Strom weiter: Danach, Zuletzt, News. Einmal scrollen statt umschalten.\nTradeoff: News rutschen ans Ende und werden seltener gesehen. Und die Seite wird lang — bei einem Verein mit vollem Spielplan sehr lang." },
+    { "id": "c1", "x": 1566, "y": -220, "w": 402,
+      "text": "Richtung C — Alle auf einmal\nKeine Auswahl mehr, sondern ein Strom über ALLE Favoriten, nach Zeit sortiert; das Wappen sagt, wer spielt. Die Pillen oben filtern, statt zu wählen — „Alle\" ist der Normalfall.\nTradeoff: Der einzelne Verein hat keinen Ort mehr — kein Vereinskopf, keine Vereins-News. Das ist die größte Änderung der drei." },
+    { "id": "k1", "x": 0, "y": 940, "w": 500,
+      "text": "Maße und Farben aus theme.dart. Alle drei Richtungen streichen den Titel „Favoriten\" und den grünen Reiterbalken, und alle drei drehen Wappen und Namen so, wie der Live-Tab es seit gestern hat: Wappen an der Außenkante, Namen daneben.\n\nWas keine der drei löst: Bei einem Verein ohne hinterlegten Spielplan bleibt der Schirm leer — das ist eine Datenfrage, keine Gestaltungsfrage." }
+  ],
+  "launch": { "view": "canvas" }
+}

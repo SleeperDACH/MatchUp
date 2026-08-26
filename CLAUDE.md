@@ -854,6 +854,45 @@ bringt niemandem etwas außer der Gewohnheit, ihn zu übergehen. Die Bilder sind
 zum Ansehen da; was gehalten werden muss, steht als **Messung** daneben (etwa
 die Zeilenhöhe der Kartennamen) und läuft bei jedem `flutter test`.
 
+## Favoriten-Tab — „A, der Verein führt"
+
+Dritter Schirm nach demselben Verfahren: Diagnose plus drei Richtungen als
+Design-Canvas (`design/favoriten/`), gewählt wurde **A**.
+
+- **Kein Titel „Favoriten"** — er war die größte Schrift des Schirms für eine
+  Auskunft, die die Navileiste gibt. Den Kopf bildet die **Wappenreihe**
+  selbst: das gewählte Wappen 52 Punkte und voll deckend, die übrigen 40 und
+  auf 55 % zurückgenommen. **Ohne Beschriftung** — vorher trugen 32er-Wappen
+  eine 9,5-Punkt-Zeile, in der „Borussia Dortmund" zweizeilig umbrach;
+  ausgerechnet die wichtigste Auswahl des Schirms war sein Kleinstes. Am Ende
+  der Reihe sitzen die beiden Aktionen (sortieren, hinzufügen) als runde
+  Knöpfe.
+- **Der Vereinsname ist die Überschrift**, darunter Wettbewerb und
+  Tabellenplatz („Bundesliga · Platz 12"). Der Platz kommt über die
+  **Team-ID** aus `leagueTableProvider`, nicht über den Namen: „1. FC Köln"
+  und „FC Köln" stehen in denselben Daten nebeneinander, ein Namensvergleich
+  träfe mal und mal nicht. Fehlt die Tabelle (Pokal, Saisonstart, noch am
+  Laden), bleibt es beim Wettbewerb allein.
+- **Der Reiter ist eine leise Textumschaltung** mit Unterstrich. Vorher lag
+  dort eine ganze Zeile in Signalgrün — das lauteste Element des Schirms, um
+  zwei Optionen anzusagen. Grün heißt in dieser App „hier läuft etwas"; ein
+  Reiter läuft nicht.
+- **Die Spiele sind Zeilen statt Karten**, und zwar dieselben wie im Live-Tab:
+  Wappen an den Außenkanten, Namen direkt daneben, Uhrzeit oder Ergebnis in
+  der Mitte. Vorher stand es genau andersherum (Wappen innen, Namen außen) —
+  zwei Schirme, die dieselbe Liste zeigen, fluchteten nicht miteinander.
+  Datum, Wettbewerb und Spieltag stehen in **einer** Zeile darüber; vorher
+  ergaben vier Spiele acht Blöcke, weil das Datum über der Box stand und
+  Wettbewerb plus Spieltag noch einmal darin.
+
+**Das trifft die Vereinsseite mit** (`club_screen.dart`): Sie benutzt
+`fixturesWithDateHeaders`/`TeamFixtureCard` aus `app/widgets/`. Bewusst nicht
+abgekoppelt — zwei Darstellungen derselben Liste wären beim nächsten
+Feinschliff sofort wieder auseinandergelaufen.
+
+Angesehen wird der Tab über `test/favoriten_vorschau_test.dart`; wie bei den
+anderen beiden Vorschauen läuft der Bildvergleich nur mit `--update-goldens`.
+
 ## Startbildschirm
 
 Zwei Schirme hintereinander, und nur der zweite lässt sich animieren:

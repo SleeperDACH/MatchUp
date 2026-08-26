@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
+    .zeile { display: flex; align-items: center; gap: 9px; padding: 11px 12px; }
+    .nam { flex: 1; font-size: 15.5px; font-weight: 600; }
+    .lin { height: 0.8px; background: #22252F; margin: 0 12px; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- Kein Titel. Die Wappenreihe IST der Kopf: groß, ohne Beschriftung. -->
+  <div style="display: flex; align-items: center; padding: 16px 12px 0 12px; gap: 10px;">
+    <div style="width: 54px; height: 54px; border-radius: 27px; background: #DC052D; border: 2.5px solid #EDEFF4; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #fff;">FCB</div>
+    <div style="width: 42px; height: 42px; border-radius: 21px; background: #252937; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #8A90A0; opacity: 0.75;">HSV</div>
+    <div style="width: 42px; height: 42px; border-radius: 21px; background: #252937; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #8A90A0; opacity: 0.75;">BVB</div>
+    <div style="width: 42px; height: 42px; border-radius: 21px; background: #252937; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #8A90A0; opacity: 0.75;">RBL</div>
+    <div style="flex-grow: 1;"></div>
+    <div style="width: 38px; height: 38px; border-radius: 19px; border: 0.8px dashed #3A3F4D; display: flex; align-items: center; justify-content: center; color: #6E7482; font-size: 20px;">+</div>
+  </div>
+
+  <!-- Der gewählte Verein bekommt einen Namen und sein nächstes Spiel -->
+  <div style="padding: 12px 14px 0 14px;">
+    <div style="font-size: 23px; font-weight: 800; letter-spacing: -0.3px;">FC Bayern München</div>
+    <div style="font-size: 13px; color: #A6ACBA; margin-top: 1px;">Bundesliga · Platz 1</div>
+  </div>
+
+  <!-- Reiter als leise Textumschaltung, nicht als grüner Balken -->
+  <div style="display: flex; align-items: center; gap: 18px; padding: 16px 14px 0 14px;">
+    <div style="font-size: 14px; font-weight: 700; padding-bottom: 6px; border-bottom: 2px solid #EDEFF4;">Spielplan</div>
+    <div style="font-size: 14px; font-weight: 600; color: #6E7482; padding-bottom: 6px;">News</div>
+  </div>
+  <div style="height: 0.8px; background: #22252F; margin: -0.8px 14px 0 14px;"></div>
+
+  <!-- Spiele als Zeilen: Wappen außen, Namen an der Außenkante, wie im Live-Tab -->
+  <div style="display: flex; align-items: center; gap: 10px; padding: 18px 14px 8px 14px;">
+    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA;">NÄCHSTE SPIELE</div>
+    <div style="flex-grow: 1; height: 0.8px; background: rgba(237,239,244,0.12);"></div>
+  </div>
+
+  <div style="display: flex; align-items: baseline; gap: 8px; padding: 2px 14px 0 14px;">
+    <div style="font-size: 13px; font-weight: 700; color: #EDEFF4;">Fr, 28. Aug.</div>
+    <div style="font-size: 12px; color: #6E7482;">· Bundesliga, 3. Spieltag</div>
+  </div>
+  <div class="zeile">
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #DC052D;"></div>
+    <div class="nam">FC Bayern München</div>
+    <div class="num" style="width: 56px; text-align: center; font-size: 16px; font-weight: 700;">20:30</div>
+    <div class="nam" style="text-align: right;">VfB Stuttgart</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #EDEFF4;"></div>
+  </div>
+  <div class="lin"></div>
+
+  <div style="display: flex; align-items: baseline; gap: 8px; padding: 10px 14px 0 14px;">
+    <div style="font-size: 13px; font-weight: 700; color: #EDEFF4;">Fr, 4. Sep.</div>
+    <div style="font-size: 12px; color: #6E7482;">· Bundesliga, 4. Spieltag</div>
+  </div>
+  <div class="zeile">
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #252937;"></div>
+    <div class="nam">SC Freiburg</div>
+    <div class="num" style="width: 56px; text-align: center; font-size: 16px; font-weight: 700;">15:30</div>
+    <div class="nam" style="text-align: right;">FC Bayern München</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #DC052D;"></div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 10px; padding: 22px 14px 8px 14px;">
+    <div style="font-size: 12px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA;">ERGEBNISSE</div>
+    <div style="flex-grow: 1; height: 0.8px; background: rgba(237,239,244,0.12);"></div>
+  </div>
+
+  <div style="display: flex; align-items: baseline; gap: 8px; padding: 2px 14px 0 14px;">
+    <div style="font-size: 13px; font-weight: 700; color: #EDEFF4;">Fr, 21. Aug.</div>
+    <div style="font-size: 12px; color: #6E7482;">· Bundesliga, 2. Spieltag</div>
+  </div>
+  <div class="zeile">
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #DC052D;"></div>
+    <div class="nam">FC Bayern München</div>
+    <div class="num" style="width: 56px; text-align: center; font-size: 19px; font-weight: 700; color: #4ADE6A;">3:1</div>
+    <div class="nam" style="text-align: right;">1. FC Köln</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #EDEFF4;"></div>
+  </div>
+  <div class="lin"></div>
+
+  <div style="display: flex; align-items: baseline; gap: 8px; padding: 10px 14px 0 14px;">
+    <div style="font-size: 13px; font-weight: 700; color: #EDEFF4;">Fr, 14. Aug.</div>
+    <div style="font-size: 12px; color: #6E7482;">· Bundesliga, 1. Spieltag</div>
+  </div>
+  <div class="zeile">
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #252937;"></div>
+    <div class="nam">Eintracht Frankfurt</div>
+    <div class="num" style="width: 56px; text-align: center; font-size: 19px; font-weight: 700; color: #4ADE6A;">0:2</div>
+    <div class="nam" style="text-align: right;">FC Bayern München</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #DC052D;"></div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+  <div style="margin: 0 auto 14px auto; width: 330px; height: 62px; border-radius: 22px; background: rgba(26,29,39,0.92); border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center;">
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #8A90A0;">Home</div>
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #8A90A0;">Live</div>
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #4ADE6A;">Favoriten</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

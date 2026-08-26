@@ -8,10 +8,10 @@ import '../../news/models/news_item.dart';
 import '../../news/providers.dart';
 import '../../news/ui/news_tile.dart';
 import '../../tippspiel/ui/team_badge.dart';
+import '../../tippspiel/providers.dart';
 import '../favorites.dart';
 import '../logic/favorite_order.dart';
 import 'favorites_manage_screen.dart';
-import '../../../app/widgets/segmented_tab_bar.dart';
 
 /// Reine Sportmonks-Team-ID aus dem Favoriten-Key (`sportmonks:503` → `503`).
 /// Favoriten-Tab: Auswahl der favorisierten Teams oben, darunter je Team der
@@ -47,24 +47,11 @@ class _FavoritesTabState extends ConsumerState<FavoritesTab> {
     // Männer- und Frauen-Team desselben Vereins teilen sich einen Tab.
     final groups = groupFavorites(favTeams);
 
+    // Kein AppBar-Titel: „Favoriten" war die größte Schrift des Schirms für
+    // eine Auskunft, die die Navileiste gibt — dieselbe Sache wie „Live" und
+    // „Hallo, SFV03". Den Kopf bildet jetzt die Wappenreihe selbst; die beiden
+    // Aktionen sitzen an ihrem Ende.
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Favoriten'),
-        actions: [
-          if (groups.length > 1)
-            IconButton(
-              tooltip: 'Reihenfolge sortieren',
-              icon: const Icon(Icons.swap_vert),
-              onPressed: _openReorder,
-            ),
-          IconButton(
-            tooltip: 'Teams favorisieren',
-            icon: const Icon(Icons.add),
-            onPressed: _openManage,
-          ),
-        ],
-      ),
       body: groups.isEmpty
           ? const _LeerHinweis(
               icon: Icons.star_border,
@@ -72,10 +59,15 @@ class _FavoritesTabState extends ConsumerState<FavoritesTab> {
               text: _keineFavoriten,
               betont: true,
             )
-          : _Body(
-              groups: groups,
-              selected: _selected.clamp(0, groups.length - 1),
-              onSelect: (i) => setState(() => _selected = i),
+          : SafeArea(
+              bottom: false,
+              child: _Body(
+                groups: groups,
+                selected: _selected.clamp(0, groups.length - 1),
+                onSelect: (i) => setState(() => _selected = i),
+                onManage: _openManage,
+                onReorder: groups.length > 1 ? _openReorder : null,
+              ),
             ),
     );
   }
@@ -248,79 +240,35 @@ class _Body extends StatelessWidget {
     required this.groups,
     required this.selected,
     required this.onSelect,
+    required this.onManage,
+    this.onReorder,
   });
 
   final List<FavGroup> groups;
   final int selected;
   final ValueChanged<int> onSelect;
+  final VoidCallback onManage;
+
+  /// Reihenfolge ändern — erst ab zwei Favoriten sinnvoll, sonst `null`.
+  final VoidCallback? onReorder;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final group = groups[selected];
     return Column(
+      // `stretch`: Sonst schrumpft der Vereinskopf auf seine Textbreite und
+      // die äußere Column zentriert ihn — der Name stünde mittig statt links
+      // an derselben Kante wie alles darunter.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Wappen-Leiste — auch bei **einem** Favoriten. Vorher erschien sie
-        // erst ab zwei: der Screen nannte den einzigen Favoriten dann
-        // nirgends, und der Leerzustand darunter („keine Favoriten
-        // ausgewählt") bestätigte den falschen Eindruck.
-        if (groups.isNotEmpty)
-          SizedBox(
-            height: 78,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-              itemCount: groups.length,
-              itemBuilder: (context, i) {
-                final g = groups[i];
-                final sel = i == selected;
-                return GestureDetector(
-                  onTap: () => onSelect(i),
-                  child: Container(
-                    width: 52,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: sel ? scheme.primary : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                          // Wappen unbeschnitten (contain) statt rund geclippt.
-                          child: TeamBadge(
-                            team: TeamRef(
-                              id: g.key,
-                              name: g.label,
-                              shortName: g.shortName ?? g.label,
-                              iconUrl: g.iconUrl,
-                            ),
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          g.label,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            height: 1.0,
-                            fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-                            color: sel ? scheme.onSurface : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+        _WappenReihe(
+          groups: groups,
+          selected: selected,
+          onSelect: onSelect,
+          onManage: onManage,
+          onReorder: onReorder,
+        ),
+        _VereinsKopf(group: group),
         Expanded(
           child: DefaultTabController(
             // Key: bei Gruppen-Wechsel neu aufbauen (Tab-Zustand + Provider).
@@ -328,17 +276,11 @@ class _Body extends StatelessWidget {
             length: 2,
             child: Column(
               children: [
-                Material(
-                  color: Theme.of(context).appBarTheme.backgroundColor,
-                  child: const SegmentedTabBar(
-                    tabs: [Tab(text: 'Spielplan'), Tab(text: 'News')],
-                  ),
-                ),
+                const _LeiseReiter(titel: ['Spielplan', 'News']),
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _FixturesTab(
-                          teamIds: group.teamIds, name: group.label),
+                      _FixturesTab(teamIds: group.teamIds, name: group.label),
                       _NewsTab(args: group.newsArgs, name: group.label),
                     ],
                   ),
@@ -348,6 +290,272 @@ class _Body extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Die Wappen der Favoriten als Kopf des Schirms — **ohne Beschriftung**.
+///
+/// Vorher war das der Kleinkram des Schirms: 32-Punkte-Wappen mit
+/// 9,5-Punkte-Text darunter, bei dem „Borussia Dortmund" zweizeilig umbrach.
+/// Ausgerechnet die wichtigste Auswahl hier war das Kleinste darauf. Jetzt
+/// trägt das Wappen allein — es ist das, woran man einen Verein erkennt, und
+/// wie der Gewählte heißt, steht direkt darunter als Überschrift. Der Gewählte
+/// ist größer und voll deckend, die übrigen kleiner und zurückgenommen.
+class _WappenReihe extends StatelessWidget {
+  const _WappenReihe({
+    required this.groups,
+    required this.selected,
+    required this.onSelect,
+    required this.onManage,
+    this.onReorder,
+  });
+
+  final List<FavGroup> groups;
+  final int selected;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onManage;
+  final VoidCallback? onReorder;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 74,
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+              itemCount: groups.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (context, i) {
+                final g = groups[i];
+                final sel = i == selected;
+                final groesse = sel ? 52.0 : 40.0;
+                return Semantics(
+                  button: true,
+                  selected: sel,
+                  label: g.label,
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: () => onSelect(i),
+                    behavior: HitTestBehavior.opaque,
+                    child: Center(
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 160),
+                        // Nicht Gewählte treten zurück, statt zu verschwinden:
+                        // Man soll sehen, dass es sie gibt.
+                        opacity: sel ? 1 : 0.55,
+                        child: TeamBadge(
+                          team: TeamRef(
+                            id: g.key,
+                            name: g.label,
+                            shortName: g.shortName ?? g.label,
+                            iconUrl: g.iconUrl,
+                          ),
+                          size: groesse,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (onReorder != null)
+            _RundKnopf(
+              icon: Icons.swap_vert,
+              tooltip: 'Reihenfolge sortieren',
+              onTap: onReorder!,
+            ),
+          const SizedBox(width: 8),
+          _RundKnopf(
+            icon: Icons.add,
+            tooltip: 'Teams favorisieren',
+            onTap: onManage,
+            farbe: scheme.onSurface,
+          ),
+          const SizedBox(width: 12),
+        ],
+      ),
+    );
+  }
+}
+
+/// Runder Knopf am Ende der Wappenreihe — gestrichelt, damit er als Platz für
+/// etwas Neues liest und nicht als weiterer Verein.
+class _RundKnopf extends StatelessWidget {
+  const _RundKnopf({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.farbe,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final Color? farbe;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final ton = farbe ?? scheme.onSurfaceVariant;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: scheme.onSurface.withValues(alpha: 0.18),
+                width: 0.8,
+              ),
+            ),
+            child: Icon(icon, size: 19, color: ton),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Name des gewählten Vereins als Überschrift, darunter Wettbewerb und — wenn
+/// die Tabelle geladen ist — der Tabellenplatz.
+///
+/// Der Platz kommt über die **Team-ID** aus der Tabelle, nicht über den Namen:
+/// „1. FC Köln" und „FC Köln" stehen in denselben Daten nebeneinander, ein
+/// Namensvergleich träfe mal und mal nicht. Lädt die Tabelle noch oder gibt es
+/// sie nicht (Pokal, Saisonstart), bleibt es beim Wettbewerb allein — eine
+/// Zeile, die auf Daten wartet, soll nicht wackeln.
+class _VereinsKopf extends ConsumerWidget {
+  const _VereinsKopf({required this.group});
+
+  final FavGroup group;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final ligaId = group.members.first.leagueId;
+    final liga = ligaId == null ? null : Leagues.byId(ligaId);
+
+    int? platz;
+    if (liga != null) {
+      final tabelle = ref.watch(leagueTableProvider(liga.id)).valueOrNull;
+      if (tabelle != null) {
+        final meine = group.teamIds.toSet();
+        platz = tabelle
+            .where((r) => meine.contains(teamIdOf(r.team.id)))
+            .map((r) => r.rank)
+            .firstOrNull;
+      }
+    }
+
+    final unterzeile = [
+      if (liga != null) liga.name,
+      if (platz != null) 'Platz $platz',
+    ].join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 2, 14, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            group.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          ),
+          if (unterzeile.isNotEmpty)
+            Text(
+              unterzeile,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Reiter als leise Textumschaltung mit Unterstrich.
+///
+/// Vorher lag hier eine ganze Zeile in Signalgrün — das lauteste Element des
+/// Schirms, um zwei Optionen anzusagen. Grün heißt in dieser App „hier läuft
+/// etwas"; ein Reiter läuft nicht.
+class _LeiseReiter extends StatelessWidget {
+  const _LeiseReiter({required this.titel});
+
+  final List<String> titel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final controller = DefaultTabController.of(context);
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+        child: Row(
+          children: [
+            for (var i = 0; i < titel.length; i++) ...[
+              Semantics(
+                button: true,
+                selected: controller.index == i,
+                label: titel[i],
+                excludeSemantics: true,
+                child: GestureDetector(
+                  onTap: () => controller.animateTo(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.only(bottom: 7),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: controller.index == i
+                              ? scheme.onSurface
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      titel[i],
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: controller.index == i
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: controller.index == i
+                            ? scheme.onSurface
+                            : scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (i < titel.length - 1) const SizedBox(width: 18),
+            ],
+            const Spacer(),
+          ],
+        ),
+      ),
     );
   }
 }
