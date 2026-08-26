@@ -1,0 +1,31 @@
+{
+  "artboards": [
+    { "file": "Diagnose.dc.html", "x": 0, "y": 0, "w": 402, "h": 874, "title": "Ist-Zustand" },
+    { "file": "Main.dc.html", "x": 522, "y": 0, "w": 402, "h": 874, "title": "Richtung A — Was läuft" },
+    { "file": "RichtungB.dc.html", "x": 1044, "y": 0, "w": 402, "h": 874, "title": "Richtung B — Tafel" },
+    { "file": "RichtungC.dc.html", "x": 1566, "y": 0, "w": 402, "h": 874, "title": "Richtung C — Der Tag" }
+  ],
+  "annotations": [
+    { "id": "d1", "x": -300, "y": 20, "w": 250,
+      "text": "1 — Die größte Schrift des Schirms ist „Live\". Die Navileiste sagt schon, wo man ist." },
+    { "id": "d2", "x": -300, "y": 130, "w": 250,
+      "text": "2 — Der Tab heißt Live, aber laufende Spiele muss man suchen: ein 9-Punkt-Wort und ein 4-px-Streifen. Ein laufendes 2:1 ist so groß wie ein beendetes 3:2." },
+    { "id": "d3", "x": -300, "y": 285, "w": 250,
+      "text": "3 — Die Tagesleiste sagt nicht, wo etwas los ist. 15 gleiche Zellen; an welchem Tag Spiele sind, findet man nur durch Tippen heraus." },
+    { "id": "d4", "x": -300, "y": 430, "w": 250,
+      "text": "4 — „Anstoß\" unter der Uhrzeit sagt dasselbe zweimal. Derselbe Fehler wie „bis 20:30\" unter einer 20:30 auf der Kopfkarte." },
+    { "id": "d5", "x": -300, "y": 570, "w": 250,
+      "text": "5 — Der Wettbewerb steht dreimal je Box: Logo, Name in Ligafarbe, Anzahl. Dazu Karte und Rahmen — fünfmal untereinander." },
+    { "id": "d6", "x": -300, "y": 715, "w": 250,
+      "text": "6 — Die Liga-Leiste klebt fest unten und nimmt ~90 Punkte, in fünf Farben. Das ist eine Navileiste unter der Navileiste — und mehr Farbe als im Rest der App zusammen." },
+    { "id": "a1", "x": 522, "y": -210, "w": 402,
+      "text": "Richtung A — Was läuft  (Vorschlag)\nDer Tab beantwortet seine eigene Frage: Laufende Spiele stehen oben und groß, mit Wappen und rotem Ergebnis. Der Rest des Tages folgt als schlanke Zeile, der Wettbewerb nur noch als Farbkante.\nTradeoff: An einem spielfreien Tag ist der obere Block leer — dann führt „Heute auch\". Und zwei laufende Spiele füllen schon den halben Schirm." },
+    { "id": "b1", "x": 1044, "y": -210, "w": 402,
+      "text": "Richtung B — Tafel\nEine durchgehende Fläche, keine Karten, keine Rahmen: Ligatrenner als schmale Zeile, Spiele als Haarlinien-Liste, Namen zur Mitte hin. Liest wie eine Ergebnistafel — viel mehr Spiele auf einen Blick.\nTradeoff: Live ist nur noch Farbe und ein Punkt, kein eigener Ort. Sehr dicht; wer nur wissen will „was läuft\", muss lesen." },
+    { "id": "c1", "x": 1566, "y": -210, "w": 402,
+      "text": "Richtung C — Der Tag\nGruppiert nach Anstoßzeit statt nach Wettbewerb: 15:30 ist eine Zeitmarke, darunter alles, was dann angepfiffen wird — wettbewerbsübergreifend, der Wettbewerb nur als Farbpunkt. So liest man einen Fußballsamstag wirklich.\nTradeoff: Wer einer Liga folgt, findet ihre Spiele nicht mehr beieinander. Und die 15:30-Konferenz ist der Star — an Tagen ohne sie zerfällt der Schirm in Einzeiler." },
+    { "id": "k1", "x": 0, "y": 940, "w": 500,
+      "text": "Alle Maße und Farben stammen aus theme.dart und live_screen.dart — Grund #12141C, Karte #1A1D27, Linie #2A2E3A, Rot #F23030, Ligafarben aus leagueColor().\n\nBewusst NICHT entworfen: die Spielminute. Der Feed liefert sie nicht — FixtureStatus kennt nur scheduled/live/finished. Eine „67.'\" im Entwurf wäre ein Versprechen, das die Daten nicht halten." }
+  ],
+  "launch": { "view": "canvas" }
+}

@@ -732,6 +732,60 @@ Material-Symbole werden darin zu leeren Kästchen und Wappen zu Ersatzflächen
 (nur die App-Schrift wird geladen, Netz gibt es im Test keins). Verglichen
 wird die Anordnung, nicht das Bild.
 
+## Live-Tab — „B, Tafel"
+
+Wie beim Startbildschirm lagen drei Richtungen als Design-Canvas nebeneinander
+(`design/live/`, publiziert als Artefakt), dazu die Diagnose des alten Standes
+in sechs Punkten. Gewählt wurde **B — Tafel**: eine durchgehende Fläche statt
+Karten.
+
+Was sich daraus geändert hat:
+
+- **Kein Titel „Live" mehr.** Er war die größte Schrift des Schirms für eine
+  Auskunft, die die Navileiste gibt. Die Kopfzeile trägt jetzt den **gewählten
+  Tag**, rechts daneben steht, was gerade läuft („2 live", pulsierender Punkt).
+  Läuft nichts, bleibt die Seite leer — „0 live" wäre eine Meldung über nichts.
+- **Keine Liga-Karten.** Je Wettbewerb eine schmale, leicht abgesetzte
+  Kopfzeile (`_LigaKopf`), darunter die Spiele als Haarlinien-Liste. Der
+  Liganame steht dabei **nicht** mehr in der Ligafarbe: Fünf farbige
+  Überschriften untereinander riefen gleich laut, und die Farbe sagt ohnehin
+  das Quadrat davor. So bleibt Farbe für das übrig, was läuft.
+- **Die Spielzeile** (`_SpielZeile`): Namen zur Mitte hin, Ergebnis oder
+  Anstoß dazwischen, Wappen an den Außenkanten, der Live-Punkt ganz außen.
+  Der 4-px-Streifen links ist weg — er verschob die Zeile gegen die anderen.
+  Laufende Spiele sind rot getönt und tragen das Ergebnis in Rot.
+- **„Anstoß" unter der Uhrzeit ist gestrichen** — das sagte dasselbe zweimal,
+  derselbe Fehler wie „bis 20:30" unter einer 20:30. „beendet" bleibt: Einem
+  3:2 sieht man nicht an, ob es das Endergebnis ist.
+- **Die Liga-Leiste unten ist eine Zeile** (`_WettbewerbeZeile`). Vorher fünf
+  farbige Knöpfe in zwei Reihen: rund 90 Punkte Dauerbild und fünf
+  Signalfarben — mehr, als der Rest der App zusammen benutzt. Die Auswahl
+  kommt jetzt erst auf Tippen, als Sheet.
+
+**Zwei bewusste Abweichungen vom Entwurf**, beide dokumentiert, weil sie sonst
+wie Nachlässigkeit aussehen:
+
+- Der Entwurf ließ die **Wappen** weg (dichter, ruhiger). Sie sind geblieben,
+  klein und außen: Sie tragen das Wiedererkennen auf einen Blick, und über sie
+  führt der **einzige** Weg vom Live-Tab auf eine Vereinsseite (`ClubLink`).
+  Ohne sie wäre der still verschwunden.
+- Die **Punkte in der Tagesleiste** standen nur in Richtung A. Sie sind
+  trotzdem hier, weil sie einen eigenen Diagnosepunkt erledigen: Fünfzehn
+  gleiche Zellen sagten nicht, an welchem Tag überhaupt gespielt wird. Jetzt
+  hat jeder Spieltag einen Punkt, rot, wenn dort etwas läuft, und Tage ohne
+  Spiele stehen gedimmt. Ausgewählt ist hell statt grün — auf einer Tafel,
+  deren einzige Farbe „hier läuft etwas" heißt, wäre ein grüner Klotz ein
+  Signal ohne Anlass.
+
+**Nicht entworfen: die Spielminute.** `FixtureStatus` kennt nur `scheduled`,
+`live`, `finished` — der Feed liefert keine Minute. Ein „67.'" wäre ein
+Versprechen, das die Daten nicht halten; wer es will, klärt das zuerst mit
+Sportmonks.
+
+Angesehen wird der Tab über `test/live_vorschau_test.dart` (Golden): Auf dem
+Gerät zeigt er nur, was der Kalender gerade hergibt — an einem spielfreien
+Mittwoch nichts.
+
 ## Startbildschirm
 
 Zwei Schirme hintereinander, und nur der zweite lässt sich animieren:

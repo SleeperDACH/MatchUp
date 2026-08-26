@@ -9,6 +9,7 @@ import '../core/models/models.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'club_screen.dart';
+import 'home_screen.dart' show minTastflaeche;
 import 'league_overview_screen.dart';
 import 'main_shell.dart' show navBarBottomInset, navBarHeight;
 import 'match_detail_screen.dart';
@@ -16,7 +17,8 @@ import 'theme.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/pulsing_dot.dart';
 
-/// Signaturfarbe je Wettbewerb (für die Liga-Buttons über dem Datum).
+/// Signaturfarbe je Wettbewerb — im Quadrat vor dem Liganamen, in der
+/// Wettbewerbszeile unten und im Auswahl-Sheet.
 Color leagueColor(String leagueId) => switch (leagueId) {
       'bundesliga' => const Color(0xFFD20515), // Bundesliga-Rot
       'bundesliga2' => const Color(0xFF2E6BE6), // Blau
@@ -36,9 +38,15 @@ class _LiveItem {
   final Fixture fixture;
 }
 
-/// Live-Tab: oben farbige Liga-Buttons (öffnen die Liga-Übersicht), darunter
-/// eine Tagesleiste; gezeigt werden die Spiele des gewählten Tages, nach
-/// Wettbewerb gruppiert.
+/// Live-Tab als **Tafel**: Kopfzeile mit dem Tag und dem, was gerade läuft,
+/// darunter die Tagesleiste, dann die Spiele des gewählten Tages als
+/// durchgehende Liste — je Wettbewerb eine schmale Kopfzeile, die Spiele als
+/// Haarlinien darunter. Ganz unten eine Zeile zu den Wettbewerben.
+///
+/// Vorher saß jede Liga in einer eigenen Karte mit Rahmen, „Live" stand als
+/// größte Schrift oben, und fünf farbige Liga-Knöpfe klebten fest am unteren
+/// Rand. Was daran nicht trug, steht in `design/live/` — die Diagnose und die
+/// drei Richtungen, aus denen „B — Tafel" gewählt wurde.
 class LiveScreen extends ConsumerStatefulWidget {
   const LiveScreen({super.key});
 
@@ -127,45 +135,68 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     _dayController ??= ScrollController(
         initialScrollOffset: (7 * _dayItemExtent - 120).clamp(0, 1e9));
 
+    // Tage, an denen überhaupt gespielt wird, und die mit laufendem Spiel —
+    // die Tagesleiste soll zeigen, wo etwas los ist, statt fünfzehn gleiche
+    // Zellen zu zeigen, durch die man sich tippen muss.
+    final mitSpielen = <DateTime>{};
+    final mitLive = <DateTime>{};
+    for (final it in items) {
+      final lt = it.fixture.kickoff.toLocal();
+      final tag = DateTime(lt.year, lt.month, lt.day);
+      mitSpielen.add(tag);
+      if (it.fixture.status == FixtureStatus.live) mitLive.add(tag);
+    }
+    final liveHeute = [
+      for (final it in items)
+        if (it.fixture.status == FixtureStatus.live &&
+            _sameDay(it.fixture.kickoff.toLocal(), _selectedDay))
+          it,
+    ].length;
+
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Live'),
-      ),
-      body: Column(
-        children: [
-          // Oben die Tagesleiste (scrollbar), darunter die Spiele des
-          // gewählten Tages. Ein feiner Strich trennt die Datumsauswahl von
-          // der Spielliste. Die Liga-Buttons stehen fest ganz unten.
-          _DateStrip(
-            days: days,
-            today: today,
-            selected: _selectedDay,
-            controller: _dayController,
-            onSelect: (d) => setState(() => _selectedDay = d),
-          ),
-          const Divider(height: 1),
-          Expanded(child: _buildDay(context, items, anyLoading, error)),
-          // Feiner Strich, der die Liga-Buttons von der Spielliste abtrennt.
-          const Divider(height: 1),
-          // Farbige Liga-Buttons — Antippen öffnet die Liga-Übersicht
-          // (Spieltage, Tabelle, Torjäger, News).
-          _LeagueButtons(
-            onOpen: (id) => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) =>
-                    LeagueOverviewScreen(league: Leagues.byId(id)))),
-          ),
-          // Abstand zur schwebenden Navi-Leiste. Die Leiste ist nicht Teil
-          // dieser Column (`extendBody` in der MainShell), ihr Platz muss hier
-          // also selbst frei gehalten werden: Kapselhöhe + deren unterer Rand
-          // + Geräte-Sicherheitsbereich, dazu die sichtbare Lücke — ohne die
-          // kleben die Liga-Buttons an der Kapsel.
-          SizedBox(
-              height: math.max(MediaQuery.viewPaddingOf(context).bottom,
-                      navBarBottomInset) +
-                  navBarHeight +
-                  _navBarGap),
-        ],
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Kopfzeile: der gewählte Tag, und rechts, was gerade läuft. Der
+            // Titel „Live" stand hier als größte Schrift des Schirms und trug
+            // keine Information — in welchem Tab man ist, sagt die Navileiste.
+            _Kopf(tag: _selectedDay, live: liveHeute),
+            _DateStrip(
+              days: days,
+              today: today,
+              selected: _selectedDay,
+              controller: _dayController,
+              mitSpielen: mitSpielen,
+              mitLive: mitLive,
+              onSelect: (d) => setState(() => _selectedDay = d),
+            ),
+            Expanded(child: _buildDay(context, items, anyLoading, error)),
+            // Die fünf Wettbewerbe in **einer** Zeile. Vorher stand hier eine
+            // festgenagelte Leiste aus fünf verschiedenfarbigen Knöpfen in
+            // zwei Reihen: rund 90 Punkte Dauerbild, mehr Signalfarben als im
+            // Rest der App zusammen, und eine Navigationsleiste direkt über
+            // der Navigationsleiste.
+            _WettbewerbeZeile(
+              onOpen: (id) => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      LeagueOverviewScreen(league: Leagues.byId(id)),
+                ),
+              ),
+            ),
+            // Abstand zur schwebenden Navi-Leiste. Die Leiste ist nicht Teil
+            // dieser Column (`extendBody` in der MainShell), ihr Platz muss
+            // hier also selbst frei gehalten werden.
+            SizedBox(
+              height:
+                  math.max(MediaQuery.viewPaddingOf(context).bottom,
+                          navBarBottomInset) +
+                      navBarHeight +
+                      _navBarGap,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -208,14 +239,35 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       onRefresh: () async => _refresh(),
       child: list.isEmpty
           ? const _Empty('Keine Spiele an diesem Tag.')
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          : ListView(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: leagueIds.length,
-              itemBuilder: (context, i) => _LeagueBox(
-                league: Leagues.byId(leagueIds[i]),
-                items: byLeague[leagueIds[i]]!,
-              ),
+              children: [
+                // Eine durchgehende Fläche: je Wettbewerb eine schmale
+                // Kopfzeile, darunter die Spiele als Haarlinien-Liste. Vorher
+                // saß jede Liga in einer eigenen Karte mit Rahmen und Radius
+                // — fünf Rahmen untereinander, und der Wettbewerb stand
+                // dreimal darin (Logo, Name in Ligafarbe, Anzahl).
+                for (final id in leagueIds) ...[
+                  _LigaKopf(
+                    league: Leagues.byId(id),
+                    anzahl: byLeague[id]!.length,
+                  ),
+                  for (var i = 0; i < byLeague[id]!.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 0.8,
+                        thickness: 0.8,
+                        indent: 16,
+                        endIndent: 16,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.07),
+                      ),
+                    _SpielZeile(item: byLeague[id]![i]),
+                  ],
+                ],
+              ],
             ),
     );
   }
@@ -227,60 +279,111 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   }
 }
 
-/// Farbige Liga-Buttons über dem Datum. 1. + 2. Bundesliga stehen groß in der
-/// oberen Reihe, die übrigen drei kleiner darunter — alle fünf ohne Wischen
-/// sichtbar. Antippen öffnet die Liga-Übersicht (kein Filter).
-class _LeagueButtons extends StatelessWidget {
-  const _LeagueButtons({required this.onOpen});
+/// Kopfzeile des Live-Tabs: der gewählte Tag, und rechts, was gerade läuft.
+///
+/// Hier stand „Live" als 24-Punkte-Titel — die größte Schrift des Schirms für
+/// eine Auskunft, die die Navileiste schon gibt. Der Tag trägt sie jetzt, und
+/// die rechte Seite beantwortet die Frage, für die es den Tab gibt. Läuft
+/// nichts, bleibt sie leer: eine „0 live" wäre eine Meldung über nichts.
+class _Kopf extends StatelessWidget {
+  const _Kopf({required this.tag, required this.live});
 
-  final ValueChanged<String> onOpen;
-
-  static const _big = ['bundesliga', 'bundesliga2'];
-  static const _small = ['liga3', 'dfb_pokal', 'frauen_bundesliga'];
-  static const _shortLabel = {
-    'liga3': '3. Liga',
-    'dfb_pokal': 'DFB-Pokal',
-    'frauen_bundesliga': 'Frauen',
-  };
+  final DateTime tag;
+  final int live;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Row(
-            children: [
-              for (final id in _big) ...[
-                Expanded(
-                  child: _LeagueButton(
-                    leagueId: id,
-                    label: Leagues.byId(id).name,
-                    color: leagueColor(id),
-                    big: true,
-                    onTap: () => onOpen(id),
-                  ),
-                ),
-                if (id != _big.last) const SizedBox(width: 8),
-              ],
-            ],
+          Expanded(
+            child: Text(
+              DateFormat('EEEE, d. MMM', 'de_DE').format(tag),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              for (final id in _small) ...[
-                Expanded(
-                  child: _LeagueButton(
-                    leagueId: id,
-                    label: _shortLabel[id]!,
-                    color: leagueColor(id),
-                    big: false,
-                    onTap: () => onOpen(id),
-                  ),
-                ),
-                if (id != _small.last) const SizedBox(width: 8),
-              ],
-            ],
+          if (live > 0) ...[
+            const SizedBox(width: 8),
+            const PulsingDot(size: 8),
+            const SizedBox(width: 6),
+            Text(
+              live == 1 ? '1 live' : '$live live',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: MatchUpColors.red,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Kopfzeile eines Wettbewerbs in der Tafel — eine schmale, leicht abgesetzte
+/// Zeile statt einer Karte mit Rahmen.
+///
+/// Der Name steht **nicht** mehr in der Ligafarbe: Fünf farbige Überschriften
+/// untereinander riefen gleich laut, und die Farbe sagt ohnehin das Quadrat
+/// davor. So bleibt Farbe für das übrig, was gerade läuft.
+class _LigaKopf extends StatelessWidget {
+  const _LigaKopf({required this.league, required this.anzahl});
+
+  final LeagueInfo league;
+  final int anzahl;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final farbe = leagueColor(league.id);
+    return Container(
+      color: scheme.onSurface.withValues(alpha: 0.03),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: Row(
+        children: [
+          LeagueLogo(
+            leagueId: league.id,
+            size: 14,
+            fallback: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: farbe,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              league.name.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.3,
+              ),
+            ),
+          ),
+          Text(
+            '$anzahl',
+            style: TextStyle(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),
@@ -288,61 +391,222 @@ class _LeagueButtons extends StatelessWidget {
   }
 }
 
-/// Schlichter, flacher Liga-Button: Liga-Logo + Name in der Liga-Farbe, ohne
-/// Box/Rahmen. Antippen öffnet die Liga-Übersicht.
-class _LeagueButton extends StatelessWidget {
-  const _LeagueButton({
-    required this.leagueId,
-    required this.label,
-    required this.color,
-    required this.big,
-    required this.onTap,
-  });
+/// Ein Spiel als Zeile der Tafel: Namen zur Mitte hin, Ergebnis oder Anstoß
+/// dazwischen, Wappen an den Außenkanten.
+///
+/// Der Entwurf („Richtung B") hatte die Wappen weggelassen — dichter, ruhiger.
+/// Sie sind trotzdem geblieben, klein und außen: Sie tragen das Wiedererkennen
+/// auf einen Blick, und über sie führt der **einzige** Weg vom Live-Tab auf
+/// eine Vereinsseite ([ClubLink]). Ohne sie wäre der Weg still verschwunden.
+///
+/// „Anstoß" unter der Uhrzeit ist weg — das sagte dasselbe zweimal. „beendet"
+/// bleibt, denn einem 3:2 sieht man nicht an, ob es das Endergebnis ist.
+class _SpielZeile extends StatelessWidget {
+  const _SpielZeile({required this.item});
 
-  final String leagueId;
-  final String label;
-  final Color color;
-  final bool big;
-  final VoidCallback onTap;
+  final _LiveItem item;
 
   @override
   Widget build(BuildContext context) {
-    final logo = leagueLogoUrl(leagueId);
-    final logoSize = big ? 26.0 : 18.0;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: big ? 10 : 8, horizontal: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (logo != null) ...[
-              LeagueLogo(
-                leagueId: leagueId,
-                size: logoSize,
-                fallback:
-                    Icon(Icons.emoji_events, size: logoSize, color: color),
-              ),
-              SizedBox(width: big ? 8 : 5),
-            ],
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: big ? 15 : 12,
-                  letterSpacing: -0.2,
+    final scheme = Theme.of(context).colorScheme;
+    final f = item.fixture;
+    final live = f.status == FixtureStatus.live;
+    final finished = f.status == FixtureStatus.finished;
+
+    return Material(
+      color: live
+          ? MatchUpColors.red.withValues(alpha: 0.07)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => MatchDetailScreen(fixtureId: f.id)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
+          child: Row(
+            children: [
+              ClubLink(team: f.home, child: TeamBadge(team: f.home, size: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  f.home.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            Icon(Icons.chevron_right,
-                size: big ? 18 : 14, color: color.withValues(alpha: 0.7)),
+              SizedBox(
+                width: 62,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (f.hasScore)
+                      // Der Stand wechselt animiert: bei einem Tor skaliert
+                      // die neue Zahl kurz ein.
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 350),
+                        transitionBuilder: (child, anim) => ScaleTransition(
+                          scale: Tween(begin: 0.6, end: 1.0).animate(anim),
+                          child: FadeTransition(opacity: anim, child: child),
+                        ),
+                        child: Text(
+                          '${f.homeScore}:${f.awayScore}',
+                          key: ValueKey('${f.homeScore}:${f.awayScore}'),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: live
+                                ? MatchUpColors.red
+                                : scheme.onSurfaceVariant,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        DateFormat('HH:mm').format(f.kickoff.toLocal()),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    if (finished)
+                      Text(
+                        'beendet',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  f.away.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ClubLink(team: f.away, child: TeamBadge(team: f.away, size: 18)),
+              // Der Live-Punkt sitzt an der Außenkante — kein 4-px-Streifen
+              // mehr, der die Zeile gegen die anderen verschiebt.
+              SizedBox(
+                width: 13,
+                child: live
+                    ? const Align(
+                        alignment: Alignment.centerRight,
+                        child: PulsingDot(size: 7),
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Die fünf Wettbewerbe in einer Zeile, ganz unten.
+///
+/// Vorher standen hier fünf farbige Knöpfe in zwei Reihen: rund 90 Punkte
+/// Dauerbild und fünf Signalfarben — mehr, als der Rest der App zusammen
+/// benutzt. Jetzt eine Zeile; die Farben stecken in den Quadraten davor und
+/// die Auswahl kommt erst auf Tippen.
+class _WettbewerbeZeile extends StatelessWidget {
+  const _WettbewerbeZeile({required this.onOpen});
+
+  final ValueChanged<String> onOpen;
+
+  Future<void> _waehlen(BuildContext context) async {
+    final id = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final l in Leagues.all)
+              ListTile(
+                leading: LeagueLogo(
+                  leagueId: l.id,
+                  size: 24,
+                  fallback: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: leagueColor(l.id),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                ),
+                title: Text(l.name),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(sheetContext).pop(l.id),
+              ),
           ],
+        ),
+      ),
+    );
+    if (id != null) onOpen(id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _waehlen(context),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            constraints: BoxConstraints(minHeight: minTastflaeche(context)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                for (final l in Leagues.all) ...[
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: leagueColor(l.id),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                ],
+                const SizedBox(width: 4),
+                const Expanded(
+                  child: Text(
+                    'Wettbewerbe',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -355,6 +619,8 @@ class _DateStrip extends StatelessWidget {
     required this.days,
     required this.today,
     required this.selected,
+    required this.mitSpielen,
+    required this.mitLive,
     required this.onSelect,
     this.controller,
   });
@@ -362,35 +628,62 @@ class _DateStrip extends StatelessWidget {
   final List<DateTime> days;
   final DateTime today;
   final DateTime selected;
+
+  /// Tage, an denen überhaupt gespielt wird — sie bekommen einen Punkt.
+  final Set<DateTime> mitSpielen;
+
+  /// Tage mit laufendem Spiel — deren Punkt ist rot.
+  final Set<DateTime> mitLive;
+
   final ValueChanged<DateTime> onSelect;
   final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Die Trennlinie zur Spielliste liefert der Divider darunter (im
-    // Live-Tab), daher hier kein eigener unterer Rand mehr.
     return SizedBox(
-        height: 62,
-        child: ListView.builder(
-          controller: controller,
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          itemCount: days.length,
-          itemBuilder: (context, i) {
-            final d = days[i];
-            final sel = _sameDay(d, selected);
-            final isToday = _sameDay(d, today);
-            return GestureDetector(
+      height: 66,
+      child: ListView.builder(
+        controller: controller,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        itemCount: days.length,
+        itemBuilder: (context, i) {
+          final d = days[i];
+          final sel = _sameDay(d, selected);
+          final isToday = _sameDay(d, today);
+          final hatSpiele = mitSpielen.any((t) => _sameDay(t, d));
+          final hatLive = mitLive.any((t) => _sameDay(t, d));
+          // Der Punkt beantwortet, wofür man sich vorher durch fünfzehn
+          // gleiche Zellen tippen musste: Wird an dem Tag gespielt? Rot
+          // heißt, dort läuft gerade etwas.
+          final punkt = hatLive
+              ? MatchUpColors.red
+              : (hatSpiele ? scheme.onSurfaceVariant : Colors.transparent);
+          return Semantics(
+            button: true,
+            selected: sel,
+            label: [
+              DateFormat('EEEE, d. MMMM', 'de_DE').format(d),
+              if (hatLive) 'Spiele laufen' else if (hatSpiele) 'Spieltag',
+            ].join(', '),
+            excludeSemantics: true,
+            child: GestureDetector(
               onTap: () => onSelect(d),
+              behavior: HitTestBehavior.opaque,
               child: Container(
                 width: 52,
-                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
+                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 decoration: BoxDecoration(
-                  color: sel ? scheme.primary : Colors.transparent,
+                  // Ausgewählt ist hell, nicht grün: Auf einer Tafel, deren
+                  // einzige Farbe „hier läuft etwas" heißt, wäre ein grüner
+                  // Klotz ein Signal ohne Anlass.
+                  color: sel ? scheme.onSurface : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: isToday && !sel
-                      ? Border.all(color: scheme.primary)
+                      ? Border.all(
+                          color: scheme.onSurface.withValues(alpha: 0.35),
+                        )
                       : null,
                 ),
                 child: Column(
@@ -400,223 +693,43 @@ class _DateStrip extends StatelessWidget {
                       DateFormat('EEE', 'de_DE').format(d),
                       style: TextStyle(
                         fontSize: 11,
-                        color:
-                            sel ? scheme.onPrimary : scheme.onSurfaceVariant,
+                        color: sel ? scheme.surface : scheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
                       '${d.day}',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                         color: sel
-                            ? scheme.onPrimary
-                            : (isToday ? scheme.primary : scheme.onSurface),
+                            ? scheme.surface
+                            : (hatSpiele
+                                  ? scheme.onSurface
+                                  : scheme.onSurfaceVariant.withValues(
+                                      alpha: 0.55,
+                                    )),
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: sel && punkt != Colors.transparent
+                            ? scheme.surface
+                            : punkt,
+                        shape: BoxShape.circle,
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        ),
-    );
-  }
-}
-
-/// Alle Spiele **einer** Liga an diesem Tag in einer Box.
-///
-/// Der Liga-Kopf ersetzt das Kürzel an jeder Begegnung. Innerhalb der Box
-/// stehen die Spiele nach Anstoßzeit; wechselt die Anstoßzeit, trennt eine
-/// feine Linie — Spiele derselben Anstoßzeit bleiben als Block zusammen, so
-/// wie man einen Spieltag liest.
-class _LeagueBox extends StatelessWidget {
-  const _LeagueBox({required this.league, required this.items});
-
-  final LeagueInfo league;
-  final List<_LiveItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final farbe = leagueColor(league.id);
-
-    final zeilen = <Widget>[];
-    DateTime? letzteZeit;
-    for (final it in items) {
-      final zeit = it.fixture.kickoff;
-      if (letzteZeit != null && zeit != letzteZeit) {
-        zeilen.add(Divider(
-          height: 1,
-          thickness: 1,
-          indent: 12,
-          endIndent: 12,
-          color: scheme.outlineVariant.withValues(alpha: 0.4),
-        ));
-      }
-      letzteZeit = zeit;
-      zeilen.add(_MatchTile(item: it));
-    }
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-            child: Row(
-              children: [
-                LeagueLogo(
-                  leagueId: league.id,
-                  size: 18,
-                  fallback: Icon(Icons.emoji_events, size: 18, color: farbe),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    league.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: farbe,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        letterSpacing: -0.2),
-                  ),
-                ),
-                Text('${items.length}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.bold)),
-              ],
             ),
-          ),
-          ...zeilen,
-          const SizedBox(height: 4),
-        ],
+          );
+        },
       ),
-    );
-  }
-}
-
-class _MatchTile extends StatelessWidget {
-  const _MatchTile({required this.item});
-  final _LiveItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final f = item.fixture;
-    final live = f.status == FixtureStatus.live;
-    final finished = f.status == FixtureStatus.finished;
-
-    final scoreOrTime = SizedBox(
-      width: 70,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (f.hasScore)
-            // Score wechselt animiert (Tor-Effekt): bei Live-Spielen skaliert
-            // der neue Stand kurz ein, sobald ein Tor fällt.
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
-              transitionBuilder: (child, anim) => ScaleTransition(
-                  scale: Tween(begin: 0.6, end: 1.0).animate(anim),
-                  child: FadeTransition(opacity: anim, child: child)),
-              child: Text('${f.homeScore}:${f.awayScore}',
-                  key: ValueKey('${f.homeScore}:${f.awayScore}'),
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: live ? MatchUpColors.red : scheme.onSurface)),
-            )
-          else
-            Text(DateFormat('HH:mm').format(f.kickoff.toLocal()),
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 3),
-          if (live)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                PulsingDot(size: 7),
-                SizedBox(width: 4),
-                Text('LIVE',
-                    style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: MatchUpColors.red)),
-              ],
-            )
-          else
-            Text(finished ? 'beendet' : 'Anstoß',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant)),
-        ],
-      ),
-    );
-
-    // Keine eigene Karte mehr: Die Zeile sitzt in der Liga-Box. Der rote
-    // Akzent für laufende Spiele bleibt (Tönung + Streifen links).
-    return Material(
-      color: live ? MatchUpColors.red.withValues(alpha: 0.08) : Colors.transparent,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => MatchDetailScreen(fixtureId: f.id))),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Platzhalter gleicher Breite, damit die Mannschaftsnamen
-              // untereinander fluchten — mit und ohne Live-Streifen.
-              Container(
-                  width: 4, color: live ? MatchUpColors.red : Colors.transparent),
-              Expanded(
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-                  child: Row(
-                    children: [
-                      Expanded(child: _TeamSide(team: f.home)),
-                      scoreOrTime,
-                      Expanded(child: _TeamSide(team: f.away, alignEnd: true)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TeamSide extends StatelessWidget {
-  const _TeamSide({required this.team, this.alignEnd = false});
-  final TeamRef team;
-  final bool alignEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    // Das Wappen öffnet die Vereinsseite; der Rest der Kachel bleibt der
-    // Spielansicht vorbehalten.
-    final badge = ClubLink(team: team, child: TeamBadge(team: team));
-    final label = Flexible(
-      child: Text(team.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: alignEnd ? TextAlign.end : TextAlign.start,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
-    );
-    return Row(
-      mainAxisAlignment:
-          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
-      children: alignEnd
-          ? [label, const SizedBox(width: 8), badge]
-          : [badge, const SizedBox(width: 8), label],
     );
   }
 }

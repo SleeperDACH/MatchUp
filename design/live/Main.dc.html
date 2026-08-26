@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
+    .kopf { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- Kopf: kein Titel „Live" mehr — dafür der Tag und was gerade läuft -->
+  <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 16px 16px 0 16px;">
+    <div style="font-size: 21px; font-weight: 800; letter-spacing: -0.3px;">Samstag, 30. Aug.</div>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <div style="width: 8px; height: 8px; border-radius: 4px; background: #F23030;"></div>
+      <div style="font-size: 13px; font-weight: 700; color: #F23030;">2 live</div>
+    </div>
+  </div>
+
+  <!-- Tagesleiste: Punkte zeigen, wo Spiele sind; rot = da läuft was -->
+  <div style="display: flex; align-items: center; padding: 12px 12px 0 12px; gap: 6px;">
+    <div style="width: 46px; text-align: center; padding: 6px 0;"><div style="font-size: 11px; color: #A6ACBA;">Do.</div><div class="num" style="font-size: 17px; font-weight: 700; color: #6E7482; margin-top: 1px;">28</div><div style="height: 4px; margin-top: 4px;"></div></div>
+    <div style="width: 46px; text-align: center; padding: 6px 0;"><div style="font-size: 11px; color: #A6ACBA;">Fr.</div><div class="num" style="font-size: 17px; font-weight: 700; margin-top: 1px;">29</div><div style="width: 4px; height: 4px; border-radius: 2px; background: #6E7482; margin: 4px auto 0 auto;"></div></div>
+    <div style="width: 46px; text-align: center; padding: 6px 0; background: rgba(242,48,48,0.14); border: 0.8px solid rgba(242,48,48,0.55); border-radius: 12px;"><div style="font-size: 11px; color: #F23030;">Sa.</div><div class="num" style="font-size: 17px; font-weight: 700; color: #F23030; margin-top: 1px;">30</div><div style="width: 4px; height: 4px; border-radius: 2px; background: #F23030; margin: 4px auto 0 auto;"></div></div>
+    <div style="width: 46px; text-align: center; padding: 6px 0;"><div style="font-size: 11px; color: #A6ACBA;">So.</div><div class="num" style="font-size: 17px; font-weight: 700; margin-top: 1px;">31</div><div style="width: 4px; height: 4px; border-radius: 2px; background: #6E7482; margin: 4px auto 0 auto;"></div></div>
+    <div style="width: 46px; text-align: center; padding: 6px 0;"><div style="font-size: 11px; color: #A6ACBA;">Mo.</div><div class="num" style="font-size: 17px; font-weight: 700; color: #6E7482; margin-top: 1px;">01</div><div style="height: 4px; margin-top: 4px;"></div></div>
+    <div style="width: 46px; text-align: center; padding: 6px 0;"><div style="font-size: 11px; color: #A6ACBA;">Di.</div><div class="num" style="font-size: 17px; font-weight: 700; color: #6E7482; margin-top: 1px;">02</div><div style="height: 4px; margin-top: 4px;"></div></div>
+    <div style="width: 46px; text-align: center; padding: 6px 0;"><div style="font-size: 11px; color: #A6ACBA;">Mi.</div><div class="num" style="font-size: 17px; font-weight: 700; margin-top: 1px;">03</div><div style="width: 4px; height: 4px; border-radius: 2px; background: #6E7482; margin: 4px auto 0 auto;"></div></div>
+  </div>
+
+  <!-- JETZT: die laufenden Spiele, herausgehoben -->
+  <div class="kopf" style="display: flex; align-items: center; gap: 8px; padding: 20px 16px 0 16px;">
+    <div style="width: 3px; height: 13px; border-radius: 2px; background: #F23030;"></div>
+    <span style="color: #EDEFF4;">JETZT</span>
+  </div>
+
+  <div style="margin: 10px 12px 0 12px; border-radius: 18px; background: linear-gradient(160deg, rgba(242,48,48,0.16), rgba(242,48,48,0.04) 70%); border: 0.8px solid rgba(242,48,48,0.34); overflow: hidden;">
+    <div style="display: flex; align-items: center; padding: 11px 14px 0 14px; gap: 7px;">
+      <div style="width: 14px; height: 14px; border-radius: 3px; background: #D20515;"></div>
+      <div style="flex-grow: 1; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA;">BUNDESLIGA</div>
+      <div style="width: 7px; height: 7px; border-radius: 4px; background: #F23030;"></div>
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #F23030;">LIVE</div>
+    </div>
+    <div style="display: flex; align-items: center; padding: 10px 14px 14px 14px;">
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div style="width: 40px; height: 40px; border-radius: 20px; background: #DC052D; border: 2px solid #EDEFF4;"></div>
+        <div style="font-size: 13px; font-weight: 600; text-align: center; line-height: 1.1;">FC Bayern<br>München</div>
+      </div>
+      <div class="num" style="font-size: 34px; font-weight: 700; letter-spacing: -1px; padding: 0 10px; color: #F23030;">2:1</div>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div style="width: 40px; height: 40px; border-radius: 20px; background: #EDEFF4; border: 2px solid #E32219;"></div>
+        <div style="font-size: 13px; font-weight: 600; text-align: center; line-height: 1.1;">VfB<br>Stuttgart</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin: 8px 12px 0 12px; border-radius: 18px; background: linear-gradient(160deg, rgba(242,48,48,0.16), rgba(242,48,48,0.04) 70%); border: 0.8px solid rgba(242,48,48,0.34); overflow: hidden;">
+    <div style="display: flex; align-items: center; padding: 11px 14px 0 14px; gap: 7px;">
+      <div style="width: 14px; height: 14px; border-radius: 3px; background: #D20515;"></div>
+      <div style="flex-grow: 1; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA;">BUNDESLIGA</div>
+      <div style="width: 7px; height: 7px; border-radius: 4px; background: #F23030;"></div>
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #F23030;">LIVE</div>
+    </div>
+    <div style="display: flex; align-items: center; padding: 10px 14px 14px 14px;">
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div style="width: 40px; height: 40px; border-radius: 20px; background: #DD0741; border: 2px solid #EDEFF4;"></div>
+        <div style="font-size: 13px; font-weight: 600; text-align: center; line-height: 1.1;">RB Leipzig</div>
+      </div>
+      <div class="num" style="font-size: 34px; font-weight: 700; letter-spacing: -1px; padding: 0 10px; color: #F23030;">0:0</div>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <div style="width: 40px; height: 40px; border-radius: 20px; background: #EDEFF4; border: 2px solid #00A551;"></div>
+        <div style="font-size: 13px; font-weight: 600; text-align: center; line-height: 1.1;">Bor. Mönchen-<br>gladbach</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Der übrige Tag: schlanke Zeilen, Wettbewerb als Farbkante -->
+  <div class="kopf" style="display: flex; align-items: center; gap: 8px; padding: 20px 16px 0 16px;">
+    <div style="width: 3px; height: 13px; border-radius: 2px; background: #6E7482;"></div>
+    <span style="color: #A6ACBA;">HEUTE AUCH</span>
+  </div>
+
+  <div style="margin: 8px 12px 0 12px;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 0.8px solid #2A2E3A;">
+      <div style="width: 3px; height: 26px; border-radius: 2px; background: #D20515;"></div>
+      <div class="num" style="width: 40px; font-size: 14px; font-weight: 700; color: #A6ACBA;">3:2</div>
+      <div style="flex-grow: 1; font-size: 14px; font-weight: 600;">Mainz 05 <span style="color:#6E7482;">–</span> Paderborn</div>
+      <div style="font-size: 11px; color: #6E7482;">beendet</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 0.8px solid #2A2E3A;">
+      <div style="width: 3px; height: 26px; border-radius: 2px; background: #2E6BE6;"></div>
+      <div class="num" style="width: 40px; font-size: 14px; font-weight: 700; color: #A6ACBA;">1:1</div>
+      <div style="flex-grow: 1; font-size: 14px; font-weight: 600;">Hamburger SV <span style="color:#6E7482;">–</span> Hannover 96</div>
+      <div style="font-size: 11px; color: #6E7482;">beendet</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 0.8px solid #2A2E3A;">
+      <div style="width: 3px; height: 26px; border-radius: 2px; background: #D20515;"></div>
+      <div class="num" style="width: 40px; font-size: 14px; font-weight: 700;">18:30</div>
+      <div style="flex-grow: 1; font-size: 14px; font-weight: 600;">Union Berlin <span style="color:#6E7482;">–</span> Frankfurt</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 2px;">
+      <div style="width: 3px; height: 26px; border-radius: 2px; background: #2E6BE6;"></div>
+      <div class="num" style="width: 40px; font-size: 14px; font-weight: 700;">20:30</div>
+      <div style="flex-grow: 1; font-size: 14px; font-weight: 600;">Bochum <span style="color:#6E7482;">–</span> Osnabrück</div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+
+  <!-- Wettbewerbe: eine Zeile statt einer Leiste aus fünf Farben -->
+  <div style="margin: 0 12px 10px 12px; display: flex; align-items: center; gap: 8px; padding: 11px 12px; border-radius: 14px; border: 0.8px solid #2A2E3A;">
+    <div style="display: flex; gap: 5px;">
+      <div style="width: 16px; height: 16px; border-radius: 3px; background: #D20515;"></div>
+      <div style="width: 16px; height: 16px; border-radius: 3px; background: #2E6BE6;"></div>
+      <div style="width: 16px; height: 16px; border-radius: 3px; background: #EF7D00;"></div>
+      <div style="width: 16px; height: 16px; border-radius: 3px; background: #FFC83D;"></div>
+      <div style="width: 16px; height: 16px; border-radius: 3px; background: #E0218A;"></div>
+    </div>
+    <div style="flex-grow: 1; font-size: 14px; font-weight: 600; padding-left: 4px;">Wettbewerbe</div>
+    <div style="color: #6E7482; font-size: 14px;">›</div>
+  </div>
+
+  <div style="margin: 0 auto 14px auto; width: 330px; height: 62px; border-radius: 22px; background: rgba(26,29,39,0.92); border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center;">
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #8A90A0;">Home</div>
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #4ADE6A;">Live</div>
+    <div style="flex-grow: 1; text-align: center; font-size: 12px; font-weight: 600; color: #8A90A0;">Favoriten</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
