@@ -178,6 +178,15 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   Der `x-sync-secret` steht dabei **nicht** in der Migration — das Repo ist
   öffentlich. Er kommt aus dem Vault (`select vault.create_secret('<SECRET>',
   'sync_secret')`).
+  **`net.http_post` bricht nach 5 Sekunden ab** (pg_net-Standard), ein voller
+  Kader-Lauf über 18 Vereine dauert rund 8 — deshalb steht in Migration 0077
+  `timeout_milliseconds := 120000`. Ohne das ist der Fehler besonders
+  hinterhältig: In `cron.job_run_details` stünde „succeeded" (pg_net setzt den
+  Auftrag ja erfolgreich ab), und ob die Function ihren Lauf zu Ende bringt,
+  wenn der Aufrufer die Verbindung kappt, ist nicht garantiert. Wer hier eine
+  Edge Function einplant, die länger als fünf Sekunden läuft, prüft das
+  Ergebnis in `net._http_response` (`status_code`, `timed_out`) — nicht in
+  `cron.job_run_details`.
 - Stats-Sync: Edge Function `supabase/functions/sync-stats/` (gleiche
   Schutz-/Deploy-Konvention) füllt `player_match_stats` mit dem **vollen
   Roh-Stat-Satz aus Sportmonks** (Migration 0074: ~25 Zähler plus Rating).
