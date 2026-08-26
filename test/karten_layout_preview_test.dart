@@ -13,9 +13,14 @@ import 'support/schrift.dart';
 /// Debatte steht. Wer eine Variante ändert, muss die Vorschau neu erzeugen:
 /// `flutter test --update-goldens test/karten_layout_preview_test.dart`.
 ///
-/// Kartenfläche, Verlauf, Rahmen, Radius und Maße bleiben in allen Varianten
-/// identisch — verglichen wird nur, wie Logo, Name, Untertitel und
-/// Zustandszeile darin angeordnet sind. Die Karten sind hier nachgebaut und
+/// **Die Fläche zeigt hier einen überholten Stand.** Verglichen wurde damals
+/// die Anordnung, und dafür musste die Fläche in allen vier Varianten gleich
+/// sein — sie ist deshalb bewusst nicht mitgezogen worden, als die Karten mit
+/// „Richtung A" flach wurden (kein Verlauf mehr, Rahmen und Sockel im Ton des
+/// Zustands, Breite geteilt durch 3,75 statt 4). Wie der Screen heute
+/// aussieht, steht in `test/goldens/home_vorschau.png`; hier steht, wogegen
+/// bei der Anordnung entschieden wurde. Verglichen wird nur, wie Logo, Name,
+/// Untertitel und Zustandszeile in der Karte angeordnet sind. Die Karten sind hier nachgebaut und
 /// nicht die echten Widgets: die hängen an Riverpod-Providern (Manager,
 /// Beitrittsanfragen, offene Tipps) und ließen sich ohne halben Homescreen
 /// nicht rendern. Maße und Farben sind aus `home_screen.dart` übernommen.

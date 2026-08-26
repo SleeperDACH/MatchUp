@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../core/models/team_fixture.dart';
+import '../core/util/club_colors.dart';
 import '../core/ui/app_avatar.dart';
 import '../features/auth/providers.dart';
 import '../features/fantasy/logic/draft_order.dart';
@@ -108,7 +107,12 @@ class HomeScreen extends ConsumerWidget {
               )
             else ...[
               const _Appear(child: _GreetingBar()),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              // Die Kopfkarte führt: das nächste Spiel des eigenen Vereins
+              // ist der Inhalt, an dem eine Zeit hängt. Sie blendet sich
+              // aus, wenn es keinen Favoriten gibt.
+              const _Appear(delayMs: 40, child: _NaechstesSpiel()),
+              const SizedBox(height: 18),
               // Noch gar keine Liga (Fantasy + Tippspiel beide leer geladen):
               // statt zweier leerer Abschnitte ein großer Einstieg.
               if (_beideLeer(ref))
@@ -175,16 +179,24 @@ class HomeScreen extends ConsumerWidget {
     final leagues = ref.watch(myFantasyLeaguesProvider);
     final list = leagues.valueOrNull;
     return [
-      _sectionHeader(context, 'Meine Ligen', count: list?.length),
+      abschnittsKopf(
+        context,
+        'Meine Ligen',
+        count: list?.length,
+        marke: MatchUpColors.green,
+      ),
       if (leagues.hasError)
         _InfoCard(
-          'Fantasy-Ligen konnten nicht geladen werden: '
-          '${leagues.error}',
+          'Deine Ligen ließen sich nicht laden.',
+          hinweis:
+              'Zieh den Screen nach unten, um es noch einmal zu '
+              'versuchen.',
+          technisch: '${leagues.error}',
         )
       else if (list == null)
-        const SizedBox(
-          height: _kLeagueCardHeight,
-          child: Center(child: CircularProgressIndicator()),
+        SizedBox(
+          height: kartenHoehe(context, _kLeagueCardHeight),
+          child: const Center(child: CircularProgressIndicator()),
         )
       else if (list.isEmpty)
         // Wer noch keine Liga hat, braucht den Einstieg — sonst stünde hier
@@ -193,6 +205,7 @@ class HomeScreen extends ConsumerWidget {
         const _CreateRow(
           text: 'Fantasy-Liga anlegen',
           hint: 'Draften, Kader managen, Saison spielen',
+          farbe: MatchUpColors.green,
         )
       else
         // Hier hängt **keine** „+"-Karte mehr hinter den Ligen. Sie stand die
@@ -202,7 +215,7 @@ class HomeScreen extends ConsumerWidget {
         // vermutet. Angelegt wird über das „+" oben rechts; wer noch gar keine
         // Liga hat, sieht statt der Reihe die `_CreateRow`.
         _Bleed(
-          hoehe: _kLeagueCardHeight,
+          hoehe: kartenHoehe(context, _kLeagueCardHeight),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
@@ -216,102 +229,692 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // ------------------------------------------------------------------
-  // Tippspiel: dieselbe Kartenform wie die Ligen, nur flacher — es ist der
-  // zweite Bereich, nicht der Hauptbereich.
+  // Tippspiel: Zeilen. Bewusst eine **andere Form** als die Kartenreihe der
+  // Ligen darüber — vorher war es dieselbe Reihe, nur flacher, und dadurch
+  // sah der halbe Screen gleich aus. Die Zeile gibt dem Namen zugleich die
+  // Breite, die eine Karte für vier nebeneinander nie hat.
   // ------------------------------------------------------------------
   List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
     final rounds = ref.watch(myRoundsProvider);
     final standalone = _standaloneRounds(ref);
     return [
-      _sectionHeader(context, 'Tippspiel', count: standalone?.length),
+      abschnittsKopf(
+        context,
+        'Tippspiel',
+        count: standalone?.length,
+        marke: _kTipGold,
+      ),
       if (rounds.hasError)
-        _InfoCard('Tipprunden konnten nicht geladen werden: ${rounds.error}')
+        _InfoCard(
+          'Deine Tipprunden ließen sich nicht laden.',
+          hinweis:
+              'Zieh den Screen nach unten, um es noch einmal zu '
+              'versuchen.',
+          technisch: '${rounds.error}',
+        )
       else if (standalone == null)
-        const SizedBox(
-          height: _kTipCardHeight,
-          child: Center(child: CircularProgressIndicator()),
+        SizedBox(
+          height: minTastflaeche(context) + 12,
+          child: const Center(child: CircularProgressIndicator()),
         )
       else if (standalone.isEmpty)
         const _CreateRow(
           text: 'Tippspiel anlegen',
           hint: 'Spieltage tippen, Punkte sammeln',
+          farbe: _kTipGold,
         )
       else
-        _Bleed(
-          hoehe: _kTipCardHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
-            physics: const BouncingScrollPhysics(),
-            itemCount: standalone.length,
-            separatorBuilder: (_, _) => const SizedBox(width: _kLeagueCardGap),
-            itemBuilder: (_, i) => _TipRoundCard(round: standalone[i]),
-          ),
+        // Zeilen, keine Reihe: die Runden laufen längs und reichen deshalb
+        // nur bis zum Seitenrand — kein `_Bleed`, kein Schrift-Deckel.
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < standalone.length; i++) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.6),
+                ),
+              _TipRoundRow(round: standalone[i]),
+            ],
+          ],
         ),
     ];
   }
+}
 
-  /// Leichte Abschnittsüberschrift: kleine Versalien, Zähler, optional ein
-  /// Link nach rechts. Vorher trug jeder Abschnitt denselben fetten Balken mit
-  /// Symbol — drei gleiche Köpfe über drei gleichen Kästen.
-  Widget _sectionHeader(
-    BuildContext context,
-    String title, {
-    int? count,
-    String? moreLabel,
-    VoidCallback? onMore,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+/// Kleinste Tastfläche der Plattform: **44 Punkte auf iOS, 48 auf Android**.
+///
+/// Zwei Zahlen, nicht eine. Hier stand einmal 36, begründet mit den 24 aus
+/// WCAG 2.2 — die gelten aber für Web. Beides in eine plattformübergreifende
+/// Zahl zusammenzuziehen ist der Fehler, den Apples und Googles Richtlinien
+/// beide ausdrücklich nennen: sie sagen verschiedene Maße, weil Finger auf
+/// beiden Systemen verschieden geführt werden.
+double minTastflaeche(BuildContext context) =>
+    Theme.of(context).platform == TargetPlatform.android ? 48 : 44;
+
+/// Kopf eines Abschnitts: kleine Versalien, Zähler, rechts entweder ein
+/// Zusatz (das Datum bei „Meine Vereine") oder ein Link. Vorher trug jeder
+/// Abschnitt denselben fetten Balken mit Symbol — drei gleiche Köpfe über
+/// drei gleichen Kästen.
+///
+/// Eine Funktion für alle vier Abschnitte; „Meine Vereine" und „News" hatten
+/// die Zeile abgeschrieben, samt der 12-px-Versalien und des `letterSpacing`.
+/// Beim Vorlesen zahlt sich das aus: die Versalien stehen nur im Bild —
+/// VoiceOver und TalkBack buchstabieren „NEWS" sonst als N-E-W-S. Als
+/// Überschrift ausgezeichnet ist die Zeile obendrein, damit sich der Screen
+/// abschnittsweise durchspringen lässt statt Zeile für Zeile.
+Widget abschnittsKopf(
+  BuildContext context,
+  String titel, {
+  int? count,
+  String? zusatz,
+  String? moreLabel,
+  VoidCallback? onMore,
+  Color? marke,
+}) {
+  final scheme = Theme.of(context).colorScheme;
+  final versalien = TextStyle(
+    color: scheme.onSurface.withValues(alpha: 0.92),
+    fontSize: 12,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 1.2,
+  );
+  return Padding(
+    // Steht rechts ein Link, bringt dessen Tastfläche die Luft nach unten
+    // schon mit — sonst klaffte unter der Überschrift das Doppelte.
+    padding: EdgeInsets.fromLTRB(4, 0, onMore == null ? 4 : 0, 4),
+    child: ConstrainedBox(
+      // Mindest-, keine Festhöhe: Der Kopf ist zugleich die Tastfläche des
+      // Links, also bekommt er das Maß der Plattform — und weil alle Köpfe
+      // dasselbe Maß tragen sollen, gilt es für alle. Kostet gegenüber der
+      // reinen Textzeile rund 26 Punkte je Abschnitt; der Screen hat sie.
+      // Nach oben offen, damit die Zeile bei großer Systemschrift umbrechen
+      // darf.
+      constraints: BoxConstraints(minHeight: minTastflaeche(context)),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
-            ),
-          ),
-          if (count != null && count > 0) ...[
-            const SizedBox(width: 8),
-            Text(
-              '$count',
-              style: TextStyle(
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+          // Beide Seiten dürfen schrumpfen und umbrechen. Bei dreifacher
+          // Systemschrift passten „MEINE VEREINE" und das Datum sonst nicht
+          // mehr nebeneinander — die Zeile lief 67 Punkte über den rechten
+          // Rand hinaus, mit dem gelb-schwarzen Balken darüber.
+          Flexible(
+            flex: 3,
+            child: Semantics(
+              header: true,
+              label: count != null && count > 0 ? '$titel, $count' : titel,
+              excludeSemantics: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Ein kurzer Strich in der Farbe des Abschnitts. Fünf
+                  // gleiche graue Versalzeilen untereinander gaben dem Screen
+                  // keinen Takt — man sah fünfmal dasselbe und wusste nicht,
+                  // wo ein Bereich anfängt. Der Strich ist die kleinste
+                  // Menge Farbe, die das trennt, und er wiederholt die Farbe,
+                  // die im Abschnitt darunter ohnehin vorkommt.
+                  if (marke != null) ...[
+                    Container(
+                      width: 3,
+                      height: 13,
+                      decoration: BoxDecoration(
+                        color: marke,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Flexible(child: Text(titel.toUpperCase(), style: versalien)),
+                  if (count != null && count > 0) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '$count',
+                      style: versalien.copyWith(
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-          ],
-          const Spacer(),
-          if (onMore != null)
-            GestureDetector(
-              onTap: onMore,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Text(
-                  '${moreLabel ?? 'Alle'} ›',
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+          ),
+          if (zusatz != null) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              flex: 2,
+              child: Text(
+                zusatz,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
+          ],
+          if (onMore != null)
+            _MehrLink(label: moreLabel ?? 'Alle', onTap: onMore),
         ],
+      ),
+    ),
+  );
+}
+
+/// „Alle ›" am rechten Rand einer Abschnittsüberschrift.
+///
+/// War ein `GestureDetector` um 13-px-Text: gut 22 Punkte hoch, halb so viel
+/// wie [minTastflaeche] verlangt — und für die Vorlesehilfe gar kein Knopf,
+/// sondern vorgelesener Text mit einem Chevron am Ende („Alle, geschlossenes
+/// Anführungszeichen"). Jetzt ein echtes Feld über die volle Kopfhöhe; das
+/// Chevron ist Zierde und bleibt draußen.
+class _MehrLink extends StatelessWidget {
+  const _MehrLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label: '$label anzeigen',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          constraints: BoxConstraints(
+            minWidth: minTastflaeche(context),
+            minHeight: minTastflaeche(context),
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(
+            '$label ›',
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-/// Bundesliga-News: Transferticker (Live-News) + Einstieg zu „Verletzungen &
-/// Sperren". Der Transfer-Teil blendet sich aus, wenn (noch) keine News da
-/// sind; der Ausfälle-Button ist immer erreichbar.
+/// Die Kopfkarte: das **nächste Spiel eines favorisierten Vereins**.
+///
+/// Sie steht ganz oben, weil die Zeit führt. Vorher war die größte und
+/// fetteste Schrift auf dem Schirm „Hallo, SFV03" — eine Zeile ohne
+/// Information —, und das nächste Spiel des eigenen Vereins stand als 46
+/// Punkte hohe Zeile weit unten zwischen Ligen und News. Jetzt trägt es den
+/// Kopf, und die Begrüßung ist auf eine graue Zeile zurückgetreten.
+///
+/// Gezeigt wird das Spiel des **obersten Favoriten** — nicht das früheste des
+/// Tages. Wer Bayern über Bochum stellt, will an einem Samstag mit beiden
+/// Bayern oben sehen, auch wenn Bochum um 13:30 anfängt. Welcher Verein oben
+/// steht, entscheidet dieselbe Reihenfolge wie im Favoriten-Tab
+/// (`favoritenRaenge`); vorsortiert wird im `favoritenSpieleProvider`, hier
+/// steht deshalb schlicht der erste Eintrag.
+///
+/// Die übrigen Partien desselben Tages bleiben unten in [_FavoritenSpiele].
+class _NaechstesSpiel extends ConsumerWidget {
+  const _NaechstesSpiel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spiele = ref.watch(favoritenSpieleProvider).valueOrNull;
+    // Ohne Favoriten (oder solange nichts geladen ist) fällt die Kopfkarte
+    // weg und der Screen beginnt mit den Ligen — ein leerer Platzhalter an
+    // der auffälligsten Stelle wäre schlechter als keine Karte.
+    if (spiele == null || spiele.isEmpty) return const SizedBox.shrink();
+    final fixture = spiele.first;
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final anstoss = fixture.kickoff.toLocal();
+    final laeuft = fixture.status == FixtureStatus.live;
+    final tonHeim = vereinsTon(fixture.home.name);
+    final tonAusw = vereinsTon(fixture.away.name);
+
+    void oeffnen() => Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MatchDetailScreen(fixtureId: fixture.id),
+      ),
+    );
+
+    // Die große Zahl ist der Anstoß — sobald gespielt wird, das Ergebnis.
+    final zahl = fixture.hasScore
+        ? '${fixture.homeScore}:${fixture.awayScore}'
+        : DateFormat('HH:mm', 'de_DE').format(anstoss);
+
+    return _PressScale(
+      eineAnsage: false,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: oeffnen,
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              // **Die Farben der beiden Vereine**, von links und rechts
+              // hereingezogen — aber nur als Andeutung an den Rändern. Die
+              // eigentliche Farbe sitzt im Hof hinter den Wappen
+              // ([_HeroVerein]). Über die ganze Karte gezogen war sie
+              // falsch: Bayern gegen Stuttgart sind zwei rote Vereine, das
+              // ergab eine durchgehend rote Fläche, auf der weder die beiden
+              // Seiten auseinanderzuhalten waren noch der goldene Sockel
+              // sauber lag. So gehört die Farbe zum Verein, nicht zur Karte.
+              // Die Mitte bleibt in jedem Fall neutral — dort steht die
+              // Uhrzeit, und die soll nicht auf Farbe liegen.
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  _heroGrund(scheme, dark, tonHeim),
+                  _heroGrund(scheme, dark, null),
+                  _heroGrund(scheme, dark, null),
+                  _heroGrund(scheme, dark, tonAusw),
+                ],
+                stops: const [0.0, 0.30, 0.70, 1.0],
+              ),
+              border: Border.all(
+                color: scheme.onSurface.withValues(alpha: 0.10),
+                width: 0.8,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Eine Ansage für das Spiel. Ohne sie wären es sieben
+                // Stationen — Wettbewerb, zwei Wappen, zwei Namen, ein
+                // nacktes „20:30" und ein Datum —, und keine sagte, in
+                // welchem Verhältnis die beiden Vereine zueinander stehen.
+                // Der Sockel bleibt draußen: er ist ein eigener Knopf mit
+                // einem eigenen Ziel.
+                Semantics(
+                  button: true,
+                  label: [
+                    '${fixture.home.name} gegen ${fixture.away.name}',
+                    if (fixture.hasScore)
+                      'steht $zahl'
+                    else
+                      '$zahl Uhr, ${DateFormat('EEEE, d. MMMM', 'de_DE').format(anstoss)}',
+                    fixture.leagueName,
+                  ].join(', '),
+                  onTap: oeffnen,
+                  excludeSemantics: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                        child: Row(
+                          children: [
+                            // Das Wettbewerbslogo ist keine Zierde: am selben Tag
+                            // stehen hier Pokal und Liga nebeneinander.
+                            LeagueLogo(
+                              logoUrl: fixture.leagueLogo,
+                              name: fixture.leagueName,
+                              size: 15,
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                fixture.leagueName.toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.4,
+                                ),
+                              ),
+                            ),
+                            // Farbe nur, wo etwas ansteht: an einem gewöhnlichen
+                            // Spieltag in drei Wochen bleibt die Ecke leer.
+                            if (laeuft)
+                              const _Marke(
+                                text: 'LIVE',
+                                farbe: MatchUpColors.red,
+                                pulsiert: true,
+                              )
+                            else if (_istHeute(anstoss))
+                              const _Marke(text: 'HEUTE', farbe: _kTipGold),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _HeroVerein(
+                                team: fixture.home,
+                                ton: tonHeim,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    zahl,
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      fontSize: 38,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -1,
+                                      height: 1.0,
+                                      color: laeuft
+                                          ? MatchUpColors.red
+                                          : scheme.onSurface,
+                                      // Tabellenziffern: die Zahl steht mittig
+                                      // zwischen zwei Wappen und darf beim
+                                      // Umspringen von 20:30 auf 1:1 nicht wandern.
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures(),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    // Der Tag steht hier, nicht die Spielstätte —
+                                    // die liefert der Vereins-Spielplan nicht mit,
+                                    // und für sie einen zweiten Abruf je Spiel zu
+                                    // machen wäre der Zeile nicht wert.
+                                    DateFormat(
+                                      'EEEE, d. MMM',
+                                      'de_DE',
+                                    ).format(anstoss),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: scheme.onSurfaceVariant,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: _HeroVerein(
+                                team: fixture.away,
+                                ton: tonAusw,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _HeroSockel(fixture: fixture),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ein Verein der Kopfkarte: Wappen über ausgeschriebenem Namen — und hinter
+/// dem Wappen ein weicher Hof in der Trikotfarbe.
+///
+/// Der Hof ist die Stelle, an der die Vereinsfarbe wirklich hingehört: Er
+/// klebt am Verein, nicht an der Karte. Wappen sind klein, vielfarbig und im
+/// Test wie bei fehlendem Netz gar nicht da; der Hof trägt die Farbe auch
+/// dann. Unbekannte Vereine bekommen keinen — siehe [vereinsTon].
+class _HeroVerein extends StatelessWidget {
+  const _HeroVerein({required this.team, required this.ton});
+
+  final TeamRef team;
+  final Color? ton;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 68,
+        height: 68,
+        alignment: Alignment.center,
+        decoration: ton == null
+            ? null
+            : BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  stops: const [0.34, 1.0],
+                  colors: [
+                    ton!.withValues(alpha: 0.62),
+                    ton!.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+        child: TeamBadge(team: team, size: 44),
+      ),
+      const SizedBox(height: 3),
+      Text(
+        // Ausgeschrieben und zweizeilig: „Borussia Mönchengladbach" soll
+        // nicht zu „Borussia M…" werden, und die Kurzform („ENE") sagt
+        // ohne Tabelle daneben wenig.
+        team.name,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          height: 1.1,
+        ),
+      ),
+    ],
+  );
+}
+
+/// Kleine Marke am oberen Rand der Kopfkarte („HEUTE", „LIVE").
+class _Marke extends StatelessWidget {
+  const _Marke({
+    required this.text,
+    required this.farbe,
+    this.pulsiert = false,
+  });
+
+  final String text;
+  final Color farbe;
+  final bool pulsiert;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (pulsiert) ...[
+        PulsingDot(size: 7, color: farbe),
+        const SizedBox(width: 5),
+      ],
+      Text(
+        text,
+        style: TextStyle(
+          color: farbe,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+        ),
+      ),
+    ],
+  );
+}
+
+/// Sockel der Kopfkarte: was **ich** mit diesem Spiel noch zu tun habe.
+///
+/// Die Karte zeigt das Spiel meines Vereins; ob es zugleich in einer meiner
+/// Tipprunden liegt, beantwortet [spielTippProvider] über die Fixture-ID.
+/// Liegt es in keiner, bleibt der Sockel weg — eine Handlungsleiste ohne
+/// Handlung wäre schlimmer als keine.
+///
+/// Eine **ligainterne** Tipprunde darf hier verlinkt werden, obwohl sie im
+/// Tippspiel-Abschnitt bewusst fehlt. Die Regel dort heißt „nicht als eigener
+/// Eintrag auflisten, man erreicht sie über die Liga"; hier steht kein
+/// Eintrag, sondern der Weg zu **diesem einen** Spiel. `LeagueScreen` kennt
+/// den gekoppelten Fall und blendet Liga- und Chat-Tab selbst aus.
+class _HeroSockel extends ConsumerWidget {
+  const _HeroSockel({required this.fixture});
+
+  final TeamFixture fixture;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final treffer = ref.watch(spielTippProvider(fixture.id)).valueOrNull;
+    if (treffer == null) return const SizedBox.shrink();
+
+    final tipp = treffer.tipp;
+    final anstoss = fixture.kickoff.toLocal();
+    final abgelaufen = !anstoss.isAfter(DateTime.now());
+    // Nach Anpfiff ist nichts mehr zu tun: dann steht dort der eigene Tipp
+    // oder, wenn keiner abgegeben wurde, gar nichts mehr.
+    if (tipp == null && abgelaufen) return const SizedBox.shrink();
+
+    final offen = tipp == null;
+    final ton = offen ? _kTipGold : scheme.onSurfaceVariant;
+    final text = offen
+        ? 'Noch nicht getippt'
+        : 'Dein Tipp: ${tipp.homeGoals}:${tipp.awayGoals}';
+    final detail = offen ? kurzeFrist(anstoss, DateTime.now()) : null;
+
+    void oeffnen() {
+      activateRound(ref, treffer.round);
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LeagueScreen(round: treffer.round, initialTab: 0),
+        ),
+      );
+    }
+
+    return Semantics(
+      button: true,
+      label: [text, ?detail, 'in ${treffer.round.name}'].join(', '),
+      onTap: oeffnen,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: oeffnen,
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(19),
+            bottomRight: Radius.circular(19),
+          ),
+          child: Container(
+            constraints: BoxConstraints(minHeight: minTastflaeche(context)),
+            decoration: BoxDecoration(
+              color: ton.withValues(alpha: offen ? 0.12 : 0.07),
+              border: Border(
+                top: BorderSide(color: scheme.outlineVariant, width: 0.8),
+              ),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(19),
+                bottomRight: Radius.circular(19),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            child: Row(
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(color: ton, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: ton,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (detail != null) ...[
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '· $detail',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                Icon(Icons.chevron_right, size: 18, color: ton),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Grund der Kopfkarte an einer Stelle: der Seitengrund, leicht angehoben,
+/// und — wo ein Verein steht — mit dessen Farbe unterlegt.
+Color _heroGrund(ColorScheme scheme, bool dark, Color? verein) {
+  final grund = Color.alphaBlend(
+    scheme.surfaceContainerHighest.withValues(alpha: dark ? 0.55 : 0.75),
+    scheme.surface,
+  );
+  if (verein == null) return grund;
+  return Color.alphaBlend(verein.withValues(alpha: dark ? 0.16 : 0.10), grund);
+}
+
+/// Die Farbe, mit der ein Verein auf einer dunklen Fläche **erkennbar** ist.
+///
+/// [clubColors] liefert die Trikotfarben, und deren `primary` ist oft Weiß
+/// (Stuttgart, Gladbach, Köln, HSV) oder Schwarz (Frankfurt, Freiburg). Beides
+/// verschwindet auf dem fast schwarzen Grund oder überstrahlt ihn; erkennbar
+/// ist dann die Farbe des Kragens. Deshalb hier die Ausweichregel: zu helle
+/// oder zu dunkle Grundfarben treten an `secondary` ab.
+///
+/// `null` heißt **unbekannter Verein** — und dann bleibt die Karte an dieser
+/// Seite grau. Eine erfundene Farbe für einen Pokalgegner aus der Oberliga
+/// wäre schlimmer als keine: sie sähe aus wie eine Auskunft.
+Color? vereinsTon(String teamName) {
+  const unbekannt = ClubColors(Color(0x00000000), Color(0x00000000));
+  final farben = clubColors(teamName, fallback: unbekannt);
+  if (farben.primary.a == 0) return null;
+  final l = farben.primary.computeLuminance();
+  return (l > 0.55 || l < 0.05) ? farben.secondary : farben.primary;
+}
+
+/// Fällt der Anstoß auf den heutigen Tag?
+bool _istHeute(DateTime zeit) {
+  final jetzt = DateTime.now();
+  return zeit.year == jetzt.year &&
+      zeit.month == jetzt.month &&
+      zeit.day == jetzt.day;
+}
+
 /// Nächste Spiele der favorisierten Vereine — zwischen den eigenen Ligen und
 /// den News. Es ist die einzige Stelle auf dem Screen, an der es um Fußball
 /// statt um die eigenen Runden geht; deshalb steht sie hinter den Ligen und
@@ -324,9 +927,15 @@ class _FavoritenSpiele extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final spiele = ref.watch(favoritenSpieleProvider).valueOrNull;
-    // Ohne Favoriten (oder solange nichts geladen ist) bleibt der Abschnitt
-    // weg — eine leere Überschrift wäre schlechter als gar keine.
+    final alle = ref.watch(favoritenSpieleProvider).valueOrNull;
+    // Das erste Spiel trägt die Kopfkarte — es ist das des **obersten
+    // Favoriten**, dafür sortiert `favoritenSpielZuerst` die Liste vor. Hier
+    // stehen die übrigen Partien desselben Tages, weiter nach Anstoß: An
+    // einem Bundesliga-Samstag will man nicht nur den 15:30-Anstoß sehen.
+    // Ohne Favoriten, solange nichts geladen ist oder wenn es bei dem einen
+    // Spiel bleibt, fällt der Abschnitt weg — eine leere Überschrift wäre
+    // schlechter als gar keine.
+    final spiele = alle?.skip(1).toList();
     if (spiele == null || spiele.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     final tag = spiele.first.kickoff.toLocal();
@@ -335,30 +944,11 @@ class _FavoritenSpiele extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-            child: Row(
-              children: [
-                Text(
-                  'MEINE VEREINE',
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  DateFormat('EEEE, d. MMM', 'de_DE').format(tag),
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
+          abschnittsKopf(
+            context,
+            'Meine Vereine',
+            zusatz: DateFormat('EEEE, d. MMM', 'de_DE').format(tag),
+            marke: _kVereinsBlau,
           ),
           Container(
             decoration: BoxDecoration(
@@ -400,75 +990,97 @@ class _FavoritSpielZeile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => MatchDetailScreen(fixtureId: fixture.id),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 18,
-                child: LeagueLogo(
-                  logoUrl: fixture.leagueLogo,
-                  name: fixture.leagueName,
-                  size: 16,
-                ),
-              ),
-              const SizedBox(width: 8),
-              TeamBadge(team: fixture.home, size: 20),
-              const SizedBox(width: 7),
-              // Ausgeschriebene Namen: die Kurzformen („ENE", „HAN") sagen
-              // ohne Tabellenkontext wenig. Zwei Zeilen erlaubt, damit
-              // „Borussia Mönchengladbach" nicht zu „Borussia M…" wird.
-              Expanded(
-                child: Text(
-                  fixture.home.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 1.1,
+    final anstoss = DateFormat(
+      'HH:mm',
+      'de_DE',
+    ).format(fixture.kickoff.toLocal());
+    void oeffnen() => Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MatchDetailScreen(fixtureId: fixture.id),
+      ),
+    );
+    // Vorgelesen ergab die Zeile fünf Stationen, darunter ein alleinstehendes
+    // „15:30" und zwei Vereinsnamen ohne erkennbares Verhältnis zueinander.
+    // Ein Satz sagt dasselbe, was das Auge in der Zeile sofort sieht — das
+    // „gegen" steht im Bild als Anordnung da und muss hier ausgesprochen
+    // werden. Der Wettbewerb gehört dazu: am selben Tag stehen hier Pokal
+    // und Liga nebeneinander.
+    return Semantics(
+      button: true,
+      label:
+          '${fixture.home.name} gegen ${fixture.away.name}, '
+          '$anstoss Uhr, ${fixture.leagueName}',
+      onTap: oeffnen,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: oeffnen,
+          child: Container(
+            // Mit den 20er-Wappen kam die Zeile auf 38 Punkte und blieb damit
+            // unter dem Maß beider Plattformen. Als Mindesthöhe statt als
+            // ausgerechnetes Polster: 12 Punkte oben und unten ergaben genau
+            // Apples 44 und hätten Androids 48 wieder verfehlt.
+            constraints: BoxConstraints(minHeight: minTastflaeche(context)),
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  child: LeagueLogo(
+                    logoUrl: fixture.leagueLogo,
+                    name: fixture.leagueName,
+                    size: 16,
                   ),
                 ),
-              ),
-              // Anstoßzeit mittig zwischen beiden Mannschaften.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  DateFormat(
-                    'HH:mm',
-                    'de_DE',
-                  ).format(fixture.kickoff.toLocal()),
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                const SizedBox(width: 8),
+                TeamBadge(team: fixture.home, size: 20),
+                const SizedBox(width: 7),
+                // Ausgeschriebene Namen: die Kurzformen („ENE", „HAN") sagen
+                // ohne Tabellenkontext wenig. Zwei Zeilen erlaubt, damit
+                // „Borussia Mönchengladbach" nicht zu „Borussia M…" wird.
+                Expanded(
+                  child: Text(
+                    fixture.home.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.1,
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: Text(
-                  fixture.away.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 1.1,
+                // Anstoßzeit mittig zwischen beiden Mannschaften.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    anstoss,
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 7),
-              TeamBadge(team: fixture.away, size: 20),
-            ],
+                Expanded(
+                  child: Text(
+                    fixture.away.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                TeamBadge(team: fixture.away, size: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -507,47 +1119,17 @@ class _NewsSection extends ConsumerWidget {
       data: (items) {
         if (items.isEmpty) return const SizedBox.shrink();
         final shown = items.take(_maxTransfers).toList();
-        final scheme = Theme.of(context).colorScheme;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-              child: Row(
-                children: [
-                  Text(
-                    'NEWS',
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => _openList(context),
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      child: Text(
-                        'Alle ›',
-                        style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            abschnittsKopf(
+              context,
+              'News',
+              onMore: () => _openList(context),
+              marke: _kVereinsBlau,
             ),
             _Bleed(
-              hoehe: 92,
+              hoehe: kartenHoehe(context, 92),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -571,8 +1153,6 @@ class _NewsCard extends StatelessWidget {
   const _NewsCard({required this.item});
 
   final NewsItem item;
-
-  static const _blau = Color(0xFF5B9DF9);
 
   @override
   Widget build(BuildContext context) {
@@ -615,7 +1195,7 @@ class _NewsCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.newspaper, size: 12, color: _blau),
+                    const Icon(Icons.newspaper, size: 12, color: _kVereinsBlau),
                     const SizedBox(width: 5),
                     Expanded(
                       child: Text(
@@ -695,42 +1275,66 @@ class _NoLeaguesHero extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 64,
-          child: FilledButton.icon(
-            icon: const Icon(Icons.add, size: 26),
-            label: const Text(
-              'Liga erstellen',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    // Zwei Knöpfe nebeneinander gibt es hier nicht, also darf die Schrift
+    // weiter mitwachsen als in den Kartenreihen — aber nicht unbegrenzt:
+    // „Liga erstellen" steht mit dem Symbol in einer Zeile, die nicht
+    // umbricht, und lief bei dreifacher Systemschrift seitlich aus dem Bild.
+    // Die Höhen sind Mindesthöhen geworden: 64 fest hieß, dass eine 56 Punkte
+    // hohe Zeile Schrift unten abgeschnitten wurde.
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.6,
+      child: Column(
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 64),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.add, size: 26),
+                label: const Text(
+                  'Liga erstellen',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () => showCreateOrJoin(context, ref),
+              ),
             ),
-            onPressed: () => showCreateOrJoin(context, ref),
           ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: OutlinedButton.icon(
-            icon: const Icon(Icons.search),
-            label: const Text('Liga suchen', style: TextStyle(fontSize: 16)),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
+          const SizedBox(height: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 52),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.search),
+                label: const Text(
+                  'Liga suchen',
+                  style: TextStyle(fontSize: 16),
+                ),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-/// Persönliche Begrüßung oben auf dem Home-Tab.
-/// Schlanke Kopfzeile: Gruß links, die beiden Direktzugänge rechts. Die
-/// frühere Begrüßungskarte war ein Kasten mit Verlauf über den halben
-/// Bildschirmkopf — viel Fläche für einen Namen. Der Platz gehört jetzt der
-/// Jetzt-Karte direkt darunter.
+/// Schlanke Kopfzeile: Gruß links, die beiden Direktzugänge rechts.
+///
+/// Die Begrüßung **tritt zurück**. Sie war zweimal hintereinander das
+/// Auffälligste auf dem Schirm: erst als Kasten mit Verlauf über den halben
+/// Bildschirmkopf, dann als größte und fetteste Schrift der Seite — und
+/// „Hallo, SFV03" trägt keine Information. Jetzt ist sie eine graue Zeile
+/// über der Kopfkarte, die den Platz übernommen hat.
+///
+/// Die beiden Symbole daneben sind aus derselben Überlegung entfärbt: Gold
+/// und Grün versprachen etwas Anstehendes, wo nichts anstand. Farbe hat auf
+/// diesem Screen nur noch, was gerade läuft oder wartet — beim
+/// Nachrichten-Knopf also der rote Zähler, wenn tatsächlich etwas ungelesen
+/// ist.
 class _GreetingBar extends ConsumerWidget {
   const _GreetingBar();
 
@@ -743,26 +1347,32 @@ class _GreetingBar extends ConsumerWidget {
       padding: const EdgeInsets.only(left: 4),
       child: Row(
         children: [
-          Flexible(
+          // Der Gruß füllt den Platz bis zu den beiden Knöpfen — die bleiben
+          // dadurch am rechten Rand. Ein `Spacer` neben einem `Flexible`
+          // teilte den freien Platz hälftig: der Name bekam nur die Hälfte
+          // und brach bei großer Systemschrift zu „Hallo" / „, S…" um, das
+          // Komma führte die zweite Zeile an.
+          Expanded(
             child: Text(
+              // Zwei Zeilen erlaubt: bei größter Systemschrift blieb von
+              // „Hallo, SFV03" in einer Zeile nur „H…" übrig.
               name == null ? 'Willkommen' : 'Hallo, $name',
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurface,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+                color: scheme.onSurfaceVariant,
               ),
             ),
           ),
-          const SizedBox(width: 6),
-          const _WavingHand(size: 20),
-          const Spacer(),
-          // Transfers (gelb) und Direktnachrichten (grün) bleiben als
-          // Direktzugänge erhalten, nur ohne den Kasten drumherum.
+          // Transfers und Direktnachrichten bleiben als Direktzugänge
+          // erhalten — entfärbt, siehe oben.
           _HeaderAction(
             tooltip: 'Transfers',
             icon: Icons.swap_horiz,
-            color: const Color(0xFFFFC83D),
+            color: scheme.onSurfaceVariant,
             onTap: () => Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const TransfersScreen())),
@@ -770,7 +1380,7 @@ class _GreetingBar extends ConsumerWidget {
           _HeaderAction(
             tooltip: 'Direktnachrichten',
             icon: Icons.forum_outlined,
-            color: MatchUpColors.green,
+            color: scheme.onSurfaceVariant,
             badge: unreadCount,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ConversationsScreen()),
@@ -800,45 +1410,60 @@ class _HeaderAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          tooltip: tooltip,
-          onPressed: onTap,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          icon: Icon(icon, size: 26, color: color),
-        ),
-        if (badge > 0)
-          Positioned(
-            right: 2,
-            top: 0,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: MatchUpColors.red,
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.surface,
-                  width: 2,
+    // Knopf und Zähler sind **eine** Ansage. Vorgelesen wurden vorher zwei
+    // Stationen: „Direktnachrichten, Schaltfläche" und daneben ein nacktes
+    // „3", das nicht sagte, wovon es drei zählt.
+    return Semantics(
+      button: true,
+      label: badge > 0 ? '$tooltip, $badge ungelesen' : tooltip,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          IconButton(
+            tooltip: tooltip,
+            onPressed: onTap,
+            visualDensity: VisualDensity.compact,
+            // Vorher 40 — unter dem Maß beider Plattformen. Die fehlenden
+            // Punkte holt sich der Knopf aus dem Luftraum um das Symbol,
+            // sichtbar ändert sich nichts.
+            constraints: BoxConstraints(
+              minWidth: minTastflaeche(context),
+              minHeight: minTastflaeche(context),
+            ),
+            icon: Icon(icon, size: 26, color: color),
+          ),
+          if (badge > 0)
+            Positioned(
+              right: 2,
+              top: 2,
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: MatchUpColors.red,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.surface,
+                    width: 2,
+                  ),
                 ),
-              ),
-              child: Center(
-                child: Text(
-                  badge > 99 ? '99+' : '$badge',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    height: 1.0,
+                child: Center(
+                  child: Text(
+                    badge > 99 ? '99+' : '$badge',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      height: 1.0,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -847,10 +1472,20 @@ class _HeaderAction extends StatelessWidget {
 /// Hinweis „oben rechts mit +" ließ eine halbe Seite ungenutzt und war
 /// obendrein nur eine Wegbeschreibung.
 class _CreateRow extends ConsumerWidget {
-  const _CreateRow({required this.text, required this.hint});
+  const _CreateRow({
+    required this.text,
+    required this.hint,
+    required this.farbe,
+  });
 
   final String text;
   final String hint;
+
+  /// Farbe des Abschnitts, in dem die Zeile steht. Ein Leerzustand ist die
+  /// **Einladung** in einen Bereich; als grauer Umriss neben einem grauen
+  /// Kopf sah er aus wie etwas Abgeschaltetes. Das „+" trägt jetzt die Farbe
+  /// des Bereichs, in den es führt.
+  final Color farbe;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -865,16 +1500,20 @@ class _CreateRow extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.8),
-              ),
+              color: farbe.withValues(alpha: 0.06),
+              border: Border.all(color: farbe.withValues(alpha: 0.30)),
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.add_rounded,
-                  size: 22,
-                  color: scheme.onSurfaceVariant,
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: farbe.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.add_rounded, size: 20, color: farbe),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -908,44 +1547,88 @@ class _CreateRow extends ConsumerWidget {
 }
 
 /// Fuß einer Liga- oder Tipprunden-Karte: der Zustand sitzt in einer eigenen,
-/// abgesetzten Leiste in der Kartenfarbe.
+/// abgesetzten Leiste.
 ///
 /// Vorher trennte eine dünne Linie den Zustand vom Rest, und Name samt
 /// Untertitel schwebten mit viel totem Raum in der Kartenmitte. Die Leiste
 /// gibt der Karte einen Boden: oben Marke und Name, unten der Zustand — was
 /// zu tun ist, steht immer an derselben Stelle, auch wenn der Name zwei
 /// Zeilen braucht.
+///
+/// Die Leiste trägt den Ton des **Zustands**, nicht mehr die Farbe der Liga.
+/// Die Farbe sagte vorher den Modus an — Redraft oder Dynasty —, und danach
+/// sucht auf dem Startbildschirm niemand. Jetzt ist sie das einzige Farbfeld
+/// der Karte und sagt, ob etwas ansteht.
 class _KartenSockel extends StatelessWidget {
-  const _KartenSockel({required this.farbe, required this.child});
+  const _KartenSockel({required this.sockel});
 
-  final Color farbe;
-  final Widget child;
+  final _Sockel sockel;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: farbe.withValues(alpha: 0.20),
-      // 15, nicht 16: innen am 1px-Rahmen entlang, sonst blitzt in den
-      // unteren Ecken die Kartenfläche durch.
-      borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(15),
-        bottomRight: Radius.circular(15),
+  Widget build(BuildContext context) {
+    // Lädt der Zustand noch, bleibt der Boden leer statt einen Ladepunkt in
+    // jede Karte zu setzen — die Höhe steht trotzdem, damit die Reihe beim
+    // Nachladen nicht springt.
+    final s = sockel;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: s == null
+            ? Colors.transparent
+            : s.ton.withValues(alpha: s.dringend ? 0.18 : 0.10),
+        // 15, nicht 16: innen am 1px-Rahmen entlang, sonst blitzt in den
+        // unteren Ecken die Kartenfläche durch.
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(15),
+          bottomRight: Radius.circular(15),
+        ),
       ),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(9, 5, 8, 5),
-      child: child,
-    ),
-  );
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(9, 5, 8, 5),
+        child: s == null
+            ? SizedBox(height: kartenHoehe(context, 26))
+            : _StatusZeile(
+                label: s.label,
+                detail: s.detail,
+                ton: s.ton,
+                pulsiert: s.pulsiert,
+              ),
+      ),
+    );
+  }
 }
 
+/// Wie weit die Systemschrift innerhalb der Kartenreihen mitwächst.
+///
+/// Knapp vier Karten nebeneinander können nicht breiter werden — bei
+/// dreifacher Systemschrift stünde auf jeder noch ein halbes Wort. Deshalb
+/// ist die Schrift **in den Reihen** bei 1,3 gedeckelt (überall sonst auf dem
+/// Screen wächst sie ungebremst weiter: Begrüßung, Kopfkarte, Tippspiel-
+/// Zeilen, Vereinszeilen und Leerzustände stehen längs und haben den Platz).
+const double _kMaxKartenSkala = 1.3;
+
+/// Die gedeckelte Textskala an dieser Stelle.
+TextScaler kartenSkala(BuildContext context) =>
+    MediaQuery.textScalerOf(context).clamp(maxScaleFactor: _kMaxKartenSkala);
+
+/// Kartenmaß bei der eingestellten Systemschrift.
+///
+/// Der Deckel allein genügt nicht: schon bei 1,3 braucht ein zweizeiliger
+/// Liganame 38 statt 29 Punkte, und in eine feste 132-Punkte-Karte passte er
+/// dann samt Modus und Sockel nicht mehr — Flutter meldete das als
+/// „RenderFlex overflowed", auf dem Gerät sah man den Namen abgeschnitten
+/// hinter dem Sockel verschwinden. Die Karte wächst also mit der Schrift.
+double kartenHoehe(BuildContext context, double basis) =>
+    basis * (kartenSkala(context).scale(14) / 14);
+
 /// Höhe der Liga-Karten im Querlauf — auch für den Ladeplatz und die
-/// „Neue Liga"-Karte, damit die Reihe nicht springt.
+/// „Neue Liga"-Karte, damit die Reihe nicht springt. Grundmaß bei
+/// Standardschrift; auf dem Gerät durch [kartenHoehe] geschickt.
 const double _kLeagueCardHeight = 132;
 
-/// Höhe der Tipprunden-Karten: flacher als eine Liga-Karte, weil sie nur
-/// Name und Wettbewerb trägt — und weil Tippspiel der zweite Bereich ist.
-const double _kTipCardHeight = 126;
+/// Blau der Abschnitte, die nicht mir gehören, sondern dem Fußball: die
+/// Spiele meiner Vereine und die News. Grün und Rot sind vergeben (Marke und
+/// Modusfarben), Gold gehört dem Tippspiel.
+const Color _kVereinsBlau = Color(0xFF5B9DF9);
 
 /// Marken-Gold des Tippspiels (Fallback, wenn die Runde kein Logo hat).
 const Color _kTipGold = Color(0xFFFFC83D);
@@ -956,39 +1639,73 @@ const double _kLeagueCardGap = 8;
 /// Seitlicher Innenabstand der Reihe (passend zum Seitenrand).
 const double _kLeagueRowPad = 12;
 
-/// Verlauf einer Kachel in ihrer Farbe.
+/// Fläche einer Kachel: grauer Grund mit einem **Hauch** der eigenen Farbe in
+/// der Ecke, in der die Marke sitzt. Der Rahmen färbt sich nur, wenn etwas
+/// ansteht.
+///
+/// Zwei Extreme lagen davor, und beide waren falsch. Zuerst trug jede Karte
+/// einen kräftigen Verlauf in ihrer Farbe: vier Farbflächen nebeneinander,
+/// die gleich laut riefen und ausgerechnet den Modus ansagten — wonach auf dem
+/// Startbildschirm niemand sucht. Dann gar keine: flaches Grau, Farbe nur noch
+/// im Sockel. Das nahm der Reihe aber jede Identität, und weil ringsum ohnehin
+/// alles dunkelgrau ist, war der halbe Schirm einfarbig und leblos. Wer nichts
+/// Dringendes offen hatte, sah vier gleiche Rechtecke.
+///
+/// Der Hauch ist die Mitte: Er sitzt oben links, wo die Marke ohnehin in
+/// derselben Farbe steht, und ist bei drei Vierteln der Diagonale verklungen.
+/// Die Karte behält damit ihr Gesicht, ohne dass die Fläche mit dem Sockel um
+/// die Aufmerksamkeit streitet — der bleibt das einzige **volle** Farbfeld.
 ///
 /// Gemischt wird gegen den **Seitengrund**, nicht gegen die graue
 /// Kartenfläche: 28 % Markengrün über einem blaustichigen Grau ergaben ein
 /// stumpfes Salbeigrün — die Farbe sah blass aus, obwohl es dieselbe war.
-/// Über dem fast schwarzen Grund bleibt der Farbton erhalten, und mit dem
-/// höheren Anteil kommt er auch durch.
-LinearGradient kartenVerlauf(Color farbe, ColorScheme scheme, bool dark) =>
-    LinearGradient(
+BoxDecoration _kartenFlaeche(
+  BuildContext context,
+  _Sockel sockel,
+  Color farbe,
+) {
+  final scheme = Theme.of(context).colorScheme;
+  final dark = Theme.of(context).brightness == Brightness.dark;
+  final dringend = sockel?.dringend ?? false;
+  final grund = Color.alphaBlend(
+    scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+    scheme.surface,
+  );
+  return BoxDecoration(
+    borderRadius: BorderRadius.circular(16),
+    gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
+      stops: const [0.0, 0.75],
       colors: [
-        Color.alphaBlend(
-          farbe.withValues(alpha: dark ? 0.50 : 0.26),
-          scheme.surface,
-        ),
-        Color.alphaBlend(
-          farbe.withValues(alpha: dark ? 0.14 : 0.07),
-          scheme.surface,
-        ),
+        Color.alphaBlend(farbe.withValues(alpha: dark ? 0.26 : 0.14), grund),
+        grund,
       ],
-    );
+    ),
+    border: Border.all(
+      color: dringend
+          ? sockel!.ton.withValues(alpha: 0.45)
+          : farbe.withValues(alpha: dark ? 0.22 : 0.18),
+      width: 0.8,
+    ),
+  );
+}
 
-/// Kartenbreite so, dass **genau vier** nebeneinander auf den Schirm passen;
-/// ab der fünften wird gewischt. Deshalb aus der Bildschirmbreite gerechnet
-/// statt fest verdrahtet — auf einem kleinen iPhone wären vier feste 186er
-/// nur zweieinhalb.
+/// Kartenbreite so, dass die vierte Karte am rechten Rand **angeschnitten**
+/// wird.
+///
+/// Vorher passten genau vier hinein. Das war als Ordnung gedacht und las sich
+/// als starres Raster: nichts an der Reihe sagte, dass es seitlich
+/// weitergeht, und wer eine fünfte Liga hatte, fand sie nicht. Ein Viertel
+/// Karte über der Kante sagt es ohne ein Wort. Gerechnet statt fest
+/// verdrahtet — auf einem kleinen iPhone wären vier feste 186er nur
+/// zweieinhalb.
 double leagueCardWidth(BuildContext context) {
   final frei =
       MediaQuery.sizeOf(context).width -
       2 * _kLeagueRowPad -
       3 * _kLeagueCardGap;
-  return frei / 4;
+  return frei / 3.75;
 }
 
 /// Eine Fantasy-Liga als schmale Karte: eigene Farbe, eigener Zustand.
@@ -1004,7 +1721,6 @@ class _FantasyLeagueCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final myId = ref.watch(currentUserProvider)?.id;
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
     final status = _draftGeschaerft(
@@ -1014,6 +1730,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
       myId,
     );
     final farbe = parseColor(league.logoColor) ?? leagueColor(league.mode);
+    final sockel = _ligaSockel(context, ref, league, status, farbe);
 
     // Offene Beitrittsanfragen nur für den Admin einer öffentlich–auf-
     // Einladung-Liga (Live über Realtime).
@@ -1030,7 +1747,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
     return _PressScale(
       child: SizedBox(
         width: leagueCardWidth(context),
-        height: _kLeagueCardHeight,
+        height: kartenHoehe(context, _kLeagueCardHeight),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -1041,11 +1758,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
             ),
             borderRadius: BorderRadius.circular(16),
             child: Ink(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: kartenVerlauf(farbe, scheme, dark),
-                border: Border.all(color: farbe.withValues(alpha: 0.65)),
-              ),
+              decoration: _kartenFlaeche(context, sockel, farbe),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1060,7 +1773,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
                               _LeagueMark(
                                 league: league,
                                 farbe: farbe,
-                                size: 26,
+                                size: 30,
                               ),
                               const Spacer(),
                               if (pending > 0) _CountBadge(count: pending),
@@ -1083,17 +1796,15 @@ class _FantasyLeagueCard extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          // Modus als Wort, weil die Farbe allein nur die
-                          // Familie verrät, nicht den Namen. Bewusst **nicht**
-                          // in der Kartenfarbe: seit der Verlauf kräftig ist,
-                          // wäre Grün auf Grün kaum zu lesen. Und leiser als
+                          // Modus als Wort, weil die Marke allein nur die
+                          // Farbfamilie verrät, nicht den Namen. Leiser als
                           // der Name — sonst sind beide Zeilen gleich laut.
                           Text(
                             league.mode.label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: scheme.onSurface.withValues(alpha: 0.6),
+                              color: scheme.onSurface.withValues(alpha: 0.78),
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1103,14 +1814,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  _KartenSockel(
-                    farbe: farbe,
-                    child: _LigaStatusZeile(
-                      league: league,
-                      status: status,
-                      farbe: farbe,
-                    ),
-                  ),
+                  _KartenSockel(sockel: sockel),
                 ],
               ),
             ),
@@ -1191,76 +1895,108 @@ class _LeagueMark extends StatelessWidget {
 /// ist: dessen Runde taucht im Tippspiel-Abschnitt bewusst nicht auf (man
 /// erreicht sie über die Liga), ihre offenen Tipps hätten sonst nirgends
 /// mehr Platz. Ist auch dort nichts offen, bleibt es beim Liga-Zustand.
-class _LigaStatusZeile extends ConsumerWidget {
-  const _LigaStatusZeile({
-    required this.league,
-    required this.status,
-    required this.farbe,
-  });
+/// Was im Sockel einer Karte steht — **und in welchem Ton**.
+///
+/// Als Wert statt als Widget, weil die Karte den Ton selbst braucht: Seit die
+/// Karten flach sind, ist der Sockel die einzige Farbe darauf, und ein
+/// dringender Zustand färbt zusätzlich den Rahmen. Solange die Zustandszeile
+/// ihre Farbe erst beim Bauen kannte, kam sie beim Rahmen nie an.
+typedef _Sockel = ({
+  String label,
+  String? detail,
+  Color ton,
+  bool pulsiert,
 
-  final FantasyLeague league;
-  final LeagueStatus status;
-  final Color farbe;
+  /// Hier ist etwas **zu tun** — nicht nur etwas zu vermelden. Nur das färbt
+  /// den Kartenrahmen; ein Tabellenplatz ist eine Auskunft, kein Auftrag.
+  bool dringend,
+})?;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (league.draftStatus == DraftStatus.drafting) {
-      return _StatusLine(status: status, farbe: farbe);
-    }
-    // Läuft die Saison, ist der Tabellenplatz die Auskunft, die zählt —
-    // „Kader steht" sagt dann nichts mehr. Vor dem ersten gewerteten
-    // Spieltag gibt es keinen Platz; dann bleibt es beim Zustand.
-    final platz = ref.watch(myFantasyRankProvider(league.id));
-    if (platz != null) {
-      return _StatusZeile(
-        label: 'Platz ${platz.rank}',
-        detail: 'von ${platz.total}',
-        ton: platz.rank == 1 ? const Color(0xFFFFC83D) : MatchUpColors.green,
-        pulsiert: false,
-      );
-    }
-    final runde = ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull;
-    if (runde == null) return _StatusLine(status: status, farbe: farbe);
-    final offen = ref.watch(offeneTippsProvider(runde.id)).valueOrNull;
-    if (offen == null || offen.anzahl == 0) {
-      return _StatusLine(status: status, farbe: farbe);
-    }
-    final frist = offen.frist;
-    return _StatusZeile(
-      label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
-      detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
-      ton: _kTipGold,
-      pulsiert:
-          frist != null &&
-          frist.difference(DateTime.now()) < const Duration(hours: 1),
-    );
-  }
-}
-
-/// Zustandszeile einer Liga-Karte: übersetzt den Liga-Zustand in Farbe und
-/// Text und gibt ihn an [_StatusZeile] weiter.
-class _StatusLine extends StatelessWidget {
-  const _StatusLine({required this.status, required this.farbe});
-
-  final LeagueStatus status;
-  final Color farbe;
-
-  @override
-  Widget build(BuildContext context) {
+/// Sockel einer Liga-Karte. Läuft ein Draft, gewinnt der — seine Uhr tickt in
+/// Minuten. Sonst zeigt die Karte, was im **ligainternen Tippspiel** offen
+/// ist: dessen Runde taucht im Tippspiel-Abschnitt bewusst nicht auf (man
+/// erreicht sie über die Liga), ihre offenen Tipps hätten sonst nirgends mehr
+/// Platz. Ist auch dort nichts offen, bleibt es beim Liga-Zustand.
+_Sockel _ligaSockel(
+  BuildContext context,
+  WidgetRef ref,
+  FantasyLeague league,
+  LeagueStatus status,
+  Color farbe,
+) {
+  _Sockel ausZustand() {
     final scheme = Theme.of(context).colorScheme;
     final ton = switch (status.tone) {
       LeagueStatusTone.wartet => scheme.onSurfaceVariant,
       LeagueStatusTone.laeuft => MatchUpColors.green,
       LeagueStatusTone.bereit => farbe,
     };
-    return _StatusZeile(
+    return (
       label: status.label,
       detail: status.detail,
       ton: ton,
       // Der laufende Draft ist das einzige, was wirklich tickt.
       pulsiert: status.tone == LeagueStatusTone.laeuft,
+      dringend: status.tone == LeagueStatusTone.laeuft,
     );
   }
+
+  if (league.draftStatus == DraftStatus.drafting) return ausZustand();
+  // Läuft die Saison, ist der Tabellenplatz die Auskunft, die zählt —
+  // „Kader steht" sagt dann nichts mehr. Vor dem ersten gewerteten
+  // Spieltag gibt es keinen Platz; dann bleibt es beim Zustand.
+  final platz = ref.watch(myFantasyRankProvider(league.id));
+  if (platz != null) {
+    return (
+      label: 'Platz ${platz.rank}',
+      detail: 'von ${platz.total}',
+      ton: platz.rank == 1 ? _kTipGold : MatchUpColors.green,
+      pulsiert: false,
+      dringend: false,
+    );
+  }
+  final runde = ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull;
+  if (runde == null) return ausZustand();
+  final offen = ref.watch(offeneTippsProvider(runde.id)).valueOrNull;
+  if (offen == null || offen.anzahl == 0) return ausZustand();
+  final frist = offen.frist;
+  return (
+    label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
+    detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
+    ton: _kTipGold,
+    pulsiert:
+        frist != null &&
+        frist.difference(DateTime.now()) < const Duration(hours: 1),
+    dringend: true,
+  );
+}
+
+/// Sockel einer Tipprunden-Karte. Lädt still nach — solange nichts feststeht,
+/// bleibt der Sockel leer, statt einen Ladepunkt in jede Karte zu setzen.
+_Sockel _tippSockel(BuildContext context, WidgetRef ref, String roundId) {
+  final scheme = Theme.of(context).colorScheme;
+  final offen = ref.watch(offeneTippsProvider(roundId)).valueOrNull;
+  if (offen == null) return null;
+  if (offen.anzahl == 0) {
+    return (
+      label: 'Alles getippt',
+      detail: null,
+      ton: scheme.onSurfaceVariant,
+      pulsiert: false,
+      dringend: false,
+    );
+  }
+  final frist = offen.frist;
+  return (
+    label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
+    detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
+    ton: _kTipGold,
+    // Es drängt: das nächste Spiel stößt in unter einer Stunde an.
+    pulsiert:
+        frist != null &&
+        frist.difference(DateTime.now()) < const Duration(hours: 1),
+    dringend: true,
+  );
 }
 
 /// Fußzeile beider Kartensorten: farbiger Punkt, kurzes Wort, leise
@@ -1326,7 +2062,7 @@ class _StatusZeile extends StatelessWidget {
                 detail!,
                 maxLines: 1,
                 style: TextStyle(
-                  color: scheme.onSurface.withValues(alpha: 0.7),
+                  color: scheme.onSurface.withValues(alpha: 0.82),
                   fontSize: 11,
                 ),
               ),
@@ -1337,20 +2073,30 @@ class _StatusZeile extends StatelessWidget {
   }
 }
 
-class _TipRoundCard extends ConsumerWidget {
-  const _TipRoundCard({required this.round});
+/// Eine Tipprunde als **Zeile**, nicht als Karte.
+///
+/// Die Runden standen bis hierher in derselben quer zu wischenden Kartenreihe
+/// wie die Ligen darüber — zwei gleich gebaute Reihen untereinander, nur die
+/// zweite etwas flacher. Als Zeile bekommt der Abschnitt eine eigene Form und
+/// der Name den Platz, den eine 95 Punkte breite Karte ihm nie geben konnte:
+/// „Xcode Xcode" musste dort auf zwei Zeilen, hier steht es einmal quer.
+///
+/// Und weil die Zeile längs läuft, gilt hier der Schrift-Deckel der Reihen
+/// nicht: sie darf mit der Systemschrift wachsen, sie hat den Platz.
+class _TipRoundRow extends ConsumerWidget {
+  const _TipRoundRow({required this.round});
 
   final TipRound round;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final league = Leagues.byId(round.leagueId);
     // Mehrere Wettbewerbe → „Bundesliga +2".
     final extra = round.competitions.length - 1;
     final wettbewerb = extra > 0 ? '${league.name} +$extra' : league.name;
     final farbe = parseColor(round.logoColor) ?? _kTipGold;
+    final sockel = _tippSockel(context, ref, round.id);
 
     final myId = ref.watch(currentUserProvider)?.id;
     final showBadge =
@@ -1360,81 +2106,90 @@ class _TipRoundCard extends ConsumerWidget {
               0)
         : 0;
 
-    return _PressScale(
-      child: SizedBox(
-        width: leagueCardWidth(context),
-        height: _kTipCardHeight,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              activateRound(ref, round);
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => LeagueScreen(round: round)),
-              );
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Ink(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: kartenVerlauf(farbe, scheme, dark),
-                border: Border.all(color: farbe.withValues(alpha: 0.65)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(9, 8, 8, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              _RoundMark(round: round, farbe: farbe, size: 24),
-                              const Spacer(),
-                              if (pending > 0) _CountBadge(count: pending),
-                            ],
-                          ),
-                          const Spacer(),
-                          Flexible(
-                            child: Text(
-                              round.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                height: 1.05,
-                              ),
-                            ),
-                          ),
-                          // Der Wettbewerb schrumpft statt zu kappen: aus
-                          // „Bundesliga +1" darf nicht „Bundesli…" werden.
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              wettbewerb,
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: scheme.onSurface.withValues(alpha: 0.6),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                        ],
+    // Wettbewerb und Frist stehen in einer Zeile unter dem Namen: beides ist
+    // Beiwerk zur selben Runde, und zwei eigene Zeilen dafür machten die
+    // Reihe dreizeilig.
+    final unterzeile = [
+      wettbewerb,
+      if (sockel != null && sockel.detail != null) sockel.detail!,
+    ].join(' · ');
+
+    void oeffnen() {
+      activateRound(ref, round);
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
+    }
+
+    return Semantics(
+      button: true,
+      // Eine Ansage für die ganze Zeile. Einzeln vorgelesen wären es vier
+      // Stationen, darunter ein nacktes „18 offen".
+      label: [
+        round.name,
+        unterzeile,
+        if (sockel != null) sockel.label,
+        if (pending == 1)
+          '1 offene Beitrittsanfrage'
+        else if (pending > 1)
+          '$pending offene Beitrittsanfragen',
+      ].join(', '),
+      onTap: oeffnen,
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: oeffnen,
+          child: Container(
+            constraints: BoxConstraints(minHeight: minTastflaeche(context)),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+            child: Row(
+              children: [
+                _RoundMark(round: round, farbe: farbe, size: 30),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        round.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
+                        ),
                       ),
-                    ),
+                      Text(
+                        unterzeile,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                  _KartenSockel(
-                    farbe: farbe,
-                    child: _OffeneTippsZeile(roundId: round.id, farbe: farbe),
-                  ),
+                ),
+                if (pending > 0) ...[
+                  const SizedBox(width: 8),
+                  _CountBadge(count: pending),
                 ],
-              ),
+                if (sockel != null) ...[
+                  const SizedBox(width: 8),
+                  _OffenPille(sockel: sockel),
+                ],
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+              ],
             ),
           ),
         ),
@@ -1443,37 +2198,45 @@ class _TipRoundCard extends ConsumerWidget {
   }
 }
 
-/// Was auf dieser Karte noch zu tun ist: offene Tipps und bis wann. Lädt
-/// still nach — solange nichts feststeht, bleibt die Zeile leer, statt einen
-/// Ladepunkt in jede Karte zu setzen.
-class _OffeneTippsZeile extends ConsumerWidget {
-  const _OffeneTippsZeile({required this.roundId, required this.farbe});
+/// Was an einer Tipprunde offen ist, am rechten Rand ihrer Zeile.
+///
+/// Nur was drängt bekommt die goldene Fläche; „Alles getippt" steht als
+/// leiser Text ohne Kasten da. Ein Kasten für jeden Zustand hieße vier
+/// gleich laute Pillen untereinander, und dann sagt keine mehr etwas.
+class _OffenPille extends StatelessWidget {
+  const _OffenPille({required this.sockel});
 
-  final String roundId;
-  final Color farbe;
+  final _Sockel sockel;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final offen = ref.watch(offeneTippsProvider(roundId)).valueOrNull;
-    if (offen == null) return const SizedBox(height: 26);
-    if (offen.anzahl == 0) {
-      return _StatusZeile(
-        label: 'Alles getippt',
-        detail: null,
-        ton: scheme.onSurfaceVariant,
-        pulsiert: false,
-      );
-    }
-    final frist = offen.frist;
-    return _StatusZeile(
-      label: offen.anzahl == 1 ? '1 Tipp offen' : '${offen.anzahl} Tipps offen',
-      detail: frist == null ? null : kurzeFrist(frist, DateTime.now()),
-      ton: farbe,
-      // Es drängt: das nächste Spiel stößt in unter einer Stunde an.
-      pulsiert:
-          frist != null &&
-          frist.difference(DateTime.now()) < const Duration(hours: 1),
+  Widget build(BuildContext context) {
+    final s = sockel!;
+    final text = Text(
+      s.label,
+      maxLines: 1,
+      style: TextStyle(
+        color: s.ton,
+        fontSize: 13,
+        fontWeight: s.dringend ? FontWeight.w700 : FontWeight.w500,
+      ),
+    );
+    if (!s.dringend) return text;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (s.pulsiert) ...[
+          PulsingDot(size: 6, color: s.ton),
+          const SizedBox(width: 5),
+        ],
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: s.ton.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: text,
+        ),
+      ],
     );
   }
 }
@@ -1527,20 +2290,26 @@ class _CountBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: scheme.error,
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Text(
-        '$count',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: scheme.onError,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
+    return Semantics(
+      label: count == 1
+          ? '1 offene Beitrittsanfrage'
+          : '$count offene Beitrittsanfragen',
+      excludeSemantics: true,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: scheme.error,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Text(
+          '$count',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: scheme.onError,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
         ),
       ),
     );
@@ -1551,6 +2320,11 @@ class _CountBadge extends StatelessWidget {
 /// ListView hat 12 px Innenabstand, eine Kachelreihe soll aber bis an die
 /// Bildschirmkante reichen, damit die angeschnittene Karte zeigt, dass es
 /// weitergeht.
+///
+/// Hier sitzt zugleich der Deckel für die Systemschrift ([_kMaxKartenSkala]):
+/// alles, was quer gewischt wird, steht in einer festen Kartenbreite und kann
+/// nicht beliebig mitwachsen. Wer die Höhe setzt, rechnet sie mit
+/// [kartenHoehe] aus derselben Skala aus.
 class _Bleed extends StatelessWidget {
   const _Bleed({required this.hoehe, required this.child});
 
@@ -1566,7 +2340,10 @@ class _Bleed extends StatelessWidget {
         minWidth: breite,
         maxWidth: breite,
         alignment: Alignment.center,
-        child: child,
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: _kMaxKartenSkala,
+          child: child,
+        ),
       ),
     );
   }
@@ -1593,10 +2370,22 @@ class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
     parent: _c,
     curve: Curves.easeOutCubic,
   );
+  bool _gestartet = false;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_gestartet) return;
+    _gestartet = true;
+    // „Bewegung reduzieren" heißt nicht „nichts anzeigen": der Inhalt steht
+    // dann sofort da, nur ohne Einblenden und Hochgleiten. Gestaffelt baute
+    // sich der Screen sonst häppchenweise vor jemandem auf, der Bewegung
+    // ausdrücklich abbestellt hat — und wer sie aus Reisekrankheit abstellt,
+    // wird von 220 ms Verzögerung nicht verschont.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _c.value = 1;
+      return;
+    }
     Future.delayed(Duration(milliseconds: widget.delayMs), () {
       if (mounted) _c.forward();
     });
@@ -1626,9 +2415,15 @@ class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
 
 /// Drückt sein Kind beim Antippen leicht zusammen (taktiles Feedback).
 class _PressScale extends StatefulWidget {
-  const _PressScale({required this.child});
+  const _PressScale({required this.child, this.eineAnsage = true});
 
   final Widget child;
+
+  /// Ob das Gedrückte auch **eine** Ansage ist. Für die Kartenreihen ja; die
+  /// Kopfkarte setzt es ab, weil in ihr zwei Knöpfe mit zwei Zielen stecken —
+  /// das Spiel und der Sockel, der in die Tipprunde führt. Zusammengelegt
+  /// bliebe von den beiden Wegen nur einer vorlesbar.
+  final bool eineAnsage;
 
   @override
   State<_PressScale> createState() => _PressScaleState();
@@ -1649,63 +2444,66 @@ class _PressScaleState extends State<_PressScale> {
         scale: _down ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 110),
         curve: Curves.easeOut,
-        child: widget.child,
+        // Was als Ganzes gedrückt wird, wird auch als Ganzes vorgelesen.
+        // Eine Liga-Karte war für die Vorlesehilfe sonst vier Stationen —
+        // Marke, Name, Modus, Zustand —, durch die einzeln gewischt wird:
+        // bei vier Ligen sechzehn Halte für vier Knöpfe.
+        child: widget.eineAnsage
+            ? MergeSemantics(child: widget.child)
+            : widget.child,
       ),
     );
   }
 }
 
-/// Kleine, periodisch winkende Hand (👋) — Begrüßung im Kopfbereich.
-class _WavingHand extends StatefulWidget {
-  const _WavingHand({this.size = 24});
-
-  final double size;
-
-  @override
-  State<_WavingHand> createState() => _WavingHandState();
-}
-
-class _WavingHandState extends State<_WavingHand>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2600),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, child) {
-        // In der ersten Phase winken (Sinus), danach ruhen.
-        final t = _c.value;
-        final angle = t < 0.45 ? math.sin(t / 0.45 * math.pi * 3) * 0.35 : 0.0;
-        return Transform.rotate(
-          angle: angle,
-          alignment: Alignment.bottomCenter,
-          child: child,
-        );
-      },
-      child: Text('👋', style: TextStyle(fontSize: widget.size)),
-    );
-  }
-}
-
+/// Meldung an der Stelle, an der sonst Inhalt stünde.
+///
+/// Hier stand einmal „Fantasy-Ligen konnten nicht geladen werden:
+/// PostgrestException(message: …, code: 500)" — ein Satz, der zwei Dinge
+/// vermischte: eine Auskunft für den Nutzer und eine für den Entwickler. Der
+/// Nutzer las die Hälfte nicht und erfuhr nicht, was er tun kann; der
+/// Beta-Tester brauchte die zweite Hälfte aber. Jetzt drei Ebenen: was ist,
+/// was man tun kann, und — leiser — woran es lag.
 class _InfoCard extends StatelessWidget {
-  const _InfoCard(this.text);
+  const _InfoCard(this.text, {this.hinweis, this.technisch});
 
   final String text;
 
+  /// Der Weg nach vorn. Ohne ihn ist eine Fehlermeldung eine Sackgasse.
+  final String? hinweis;
+
+  /// Der Rohtext des Fehlers — für den Beta-Test, nicht für den Nutzer.
+  final String? technisch;
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Card(
-      child: Padding(padding: const EdgeInsets.all(16), child: Text(text)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+            if (hinweis != null) ...[
+              const SizedBox(height: 4),
+              Text(hinweis!, style: TextStyle(color: scheme.onSurfaceVariant)),
+            ],
+            if (technisch != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                technisch!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1890,101 +2688,112 @@ class _StartKarte extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _PressScale(
-      child: SizedBox(
-        height: _hoehe,
-        child: Container(
-          // Rahmen im Vordergrund → liegt ohne Naht über Bild und Ripple.
-          foregroundDecoration: BoxDecoration(
-            borderRadius: _radius,
-            border: Border.all(
-              color: farbe.withValues(alpha: 0.65),
-              width: 1.5,
+    // Die Karte trägt ein Bild in festem Format und kann nicht beliebig
+    // wachsen, ohne den „Beitreten"-Weg wieder aus dem Bild zu drücken —
+    // genau das, wogegen die feste Höhe einmal gesetzt wurde. Also
+    // derselbe Deckel wie in den Kartenreihen, und innerhalb dessen
+    // wächst die Höhe mit: bei 1,3 braucht allein „Fantasy" 44 statt 34
+    // Punkte, und die Unterzeile darunter zwei Zeilen statt einer.
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: _kMaxKartenSkala,
+      child: _PressScale(
+        child: SizedBox(
+          height: kartenHoehe(context, _hoehe),
+          child: Container(
+            // Rahmen im Vordergrund → liegt ohne Naht über Bild und Ripple.
+            foregroundDecoration: BoxDecoration(
+              borderRadius: _radius,
+              border: Border.all(
+                color: farbe.withValues(alpha: 0.65),
+                width: 1.5,
+              ),
             ),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            clipBehavior: Clip.antiAlias,
-            borderRadius: _radius,
-            child: Ink.image(
-              image: AssetImage(bild),
-              fit: BoxFit.cover,
-              child: InkWell(
-                onTap: onTap,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Senkrechter Verlauf: oben nur ein Farbschleier, damit
-                    // das Bild sichtbar bleibt, unten fast deckend. Schräg
-                    // gelegt lag die Unterzeile teils auf hellem Rasen und
-                    // war schlecht zu lesen.
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            farbe.withValues(alpha: 0.16),
-                            MatchUpColors.base.withValues(alpha: 0.55),
-                            MatchUpColors.base.withValues(alpha: 0.96),
-                          ],
-                          stops: const [0.0, 0.45, 1.0],
+            child: Material(
+              color: Colors.transparent,
+              clipBehavior: Clip.antiAlias,
+              borderRadius: _radius,
+              child: Ink.image(
+                image: AssetImage(bild),
+                fit: BoxFit.cover,
+                child: InkWell(
+                  onTap: onTap,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Senkrechter Verlauf: oben nur ein Farbschleier, damit
+                      // das Bild sichtbar bleibt, unten fast deckend. Schräg
+                      // gelegt lag die Unterzeile teils auf hellem Rasen und
+                      // war schlecht zu lesen.
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              farbe.withValues(alpha: 0.16),
+                              MatchUpColors.base.withValues(alpha: 0.55),
+                              MatchUpColors.base.withValues(alpha: 0.96),
+                            ],
+                            stops: const [0.0, 0.45, 1.0],
+                          ),
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: farbe,
-                              borderRadius: BorderRadius.circular(10),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: farbe,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: MatchUpChevron(
+                                size: 18,
+                                color: MatchUpColors.base,
+                              ),
                             ),
-                            child: MatchUpChevron(
-                              size: 18,
-                              color: MatchUpColors.base,
+                            const Spacer(),
+                            Text(
+                              titel,
+                              style: const TextStyle(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
+                                height: 1.0,
+                              ),
                             ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            titel,
-                            style: const TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: -0.5,
-                              height: 1.0,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  zeile,
-                                  maxLines: 2,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.82),
-                                    fontSize: 13,
-                                    height: 1.2,
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    zeile,
+                                    maxLines: 2,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.82,
+                                      ),
+                                      fontSize: 13,
+                                      height: 1.2,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Icon(
-                                Icons.arrow_forward_rounded,
-                                size: 20,
-                                color: farbe,
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(width: 10),
+                                Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 20,
+                                  color: farbe,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
