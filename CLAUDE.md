@@ -28,8 +28,11 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   fantasy) und teilen sich den Core.
 - **Der Homescreen sagt pro Karte, was zu tun ist** — nicht in einem Kasten
   obendrüber. Eine „Jetzt"-Karte am Kopf gab es; sie nahm zu viel Platz für
-  eine Sache, die ohnehin auf die Karte gehört. Jetzt trägt jede Karte ihren
-  eigenen Zustand: `offeneTippsProvider(roundId)`
+  eine Sache, die ohnehin auf die Karte gehört. (Am Kopf steht seit
+  „Richtung A" wieder eine Karte, aber eine **andere**: das nächste Spiel des
+  eigenen Vereins, siehe unten. Sie sammelt keine Aufgaben ein, sie zeigt
+  einen Inhalt.) Jede Karte trägt ihren eigenen Zustand:
+  `offeneTippsProvider(roundId)`
   (`lib/app/home_tip_status.dart`) zählt die ungetippten Spiele **derselben**
   Do–Mi-Woche, die auch der Tippen-Tab öffnet (`buildWeeks`/
   `currentWeekIndex`) — sonst stünden auf Karte und Feed verschiedene Zahlen.
@@ -42,16 +45,26 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
 - **Der Homescreen darf nicht dreimal dasselbe zeigen.** Fantasy sind quer
   wischbare Karten, Tippspiel schlanke Zeilen, News eine schmale Querleiste —
   drei Formen, damit der Schirm nicht als eine Folge gleicher dunkler Kästen
-  liest. Jede Liga trägt dabei ihre **eigene** Farbe (`defaultAvatarColor`
-  über die Liga-ID, wie bei den Avataren), nicht die Farbe ihres Typs; den
-  Typ sagt der Text-Anhänger. Die Farbe kommt dabei vom **Modus**
-  (`ui/league_colors.dart`): Redraft grün, Dynasty rot, die beiden
-  Markenfarben. Eine Zwischenstufe mit einer gewürfelten Farbe je Liga (aus
-  zwei modusabhängigen Paletten) gab es; sie machte zwei Ligen desselben
-  Modus unterscheidbar, ließ den Homescreen aber bunt aussehen. Wer zwei
-  Ligen gleichen Modus auseinanderhalten will, gibt einer ein Logo — dessen
-  Farbe sticht die Modusfarbe. Die Kartenbreite rechnet `leagueCardWidth` aus der Bildschirmbreite,
-  damit **genau vier** ohne Wischen dastehen; ab der fünften wird gescrollt.
+  liest. Das Tippspiel war zwischendurch dieselbe Kartenreihe wie Fantasy,
+  nur flacher; seit „Richtung A" sind es wieder Zeilen (`_TipRoundRow`), und
+  die geben dem Namen die Breite, die eine Karte für vier nebeneinander nie
+  hat.
+  Die Liga-Karte trägt ihre Farbe als **Hauch aus der Ecke**
+  (`_kartenFlaeche`), nicht als Fläche: oben links, wo die Marke ohnehin in
+  derselben Farbe steht, bei drei Vierteln der Diagonale verklungen. Beide
+  Extreme davor waren falsch — der kräftige Verlauf, weil vier Farbflächen
+  gleich laut riefen und ausgerechnet den Modus ansagten, und das flache Grau
+  danach, weil der Reihe damit jede Identität fehlte (siehe „Einfarbig ist
+  auch kein Zustand"). Die Modusfarbe (`ui/league_colors.dart`: Redraft grün,
+  Dynasty rot) steckt in der 30er-Marke oben links; ein eigenes Liga-Logo
+  sticht sie weiterhin. Das einzige **volle** Farbfeld der Karte bleibt der
+  Sockel im Ton des Zustands, und bei einem Auftrag (laufender Draft, offene
+  Tipps — `_Sockel.dringend`) färbt sich zusätzlich der Rahmen. Ein
+  Tabellenplatz ist eine Auskunft und färbt den Rahmen deshalb nicht.
+  Die Kartenbreite rechnet `leagueCardWidth` aus der Bildschirmbreite, geteilt
+  durch **3,75**: die vierte Karte wird am rechten Rand angeschnitten. Vorher
+  passten genau vier hinein — das war als Ordnung gedacht und las sich als
+  starres Raster, und wer eine fünfte Liga hatte, fand sie nicht.
   Zustandstexte darin schrumpfen (`FittedBox`) statt zu kappen — „Kader
   ste…" sagt nichts. Und jede Karte zeigt **Zustand**
   (`fantasyStatus`, `logic/league_status.dart`): vor dem ersten gewerteten
@@ -369,6 +382,264 @@ flutter build web --release --pwa-strategy=none --base-href "/MatchUp/" \
 # danach flutter_service_worker.js löschen, .nojekyll setzen,
 # Inhalt von build/web auf Branch gh-pages pushen
 ```
+
+## Installierte Skills
+
+Zwei Skills liegen in `~/.agents/skills/`, verlinkt nach `~/.claude/skills/` —
+also **global**, nicht im Repo. Wer das Projekt frisch auscheckt, hat sie
+nicht; sie sind Werkzeug des Arbeitsplatzes, nicht Teil der App.
+
+- **`frontend-design`** (`anthropics/skills`) — eine einzige `SKILL.md`, reiner
+  Text, kein ausführbarer Code. Auf Web-Frontends zugeschnitten: Die
+  Gestaltungsprinzipien lassen sich übertragen, die Anweisungen zu Markup und
+  CSS nicht.
+- **`ui-ux-pro-max`** (`nextlevelbuilder/ui-ux-pro-max-skill`) — 5 Python-
+  Skripte (~4.000 Zeilen) plus 3,9 MB Datenkatalog, darunter
+  `data/stacks/flutter.csv`: **52 Regeln, Stand 13.08.2026, für „flutter
+  3.44.x"** — die Version, die hier läuft.
+
+**Zum Risiko von `ui-ux-pro-max`:** Der Installer bewertet ihn mit *Gen: High
+Risk* (Socket 0 Alerts, Snyk Low Risk); `frontend-design` steht dort auf
+*Safe*. Der Unterschied ist, dass hier ausführbarer Code mitkommt — Skills
+laufen mit den vollen Rechten des Agenten. Durchgesehen ergab: keine
+Netzwerkzugriffe (`urllib.parse` ist nur String-Zerlegung), kein `subprocess`,
+kein `os.system`, kein `eval`/`exec`; gelesen werden die eigenen CSV/JSON-
+Dateien, geschrieben wird genau eine Datei, und zwar atomar (Temp-Datei,
+`fsync`, `os.replace`) mit einer `safe_slug`-Funktion gegen Path-Traversal.
+Gelesen als „enthält ausführbaren Code", nicht als „hier ist etwas Bösartiges".
+Wer das Urteil nicht übernimmt, prüft selbst nach — der Befund ist mit
+`grep -rE "subprocess|os.system|eval\(|urlopen" ~/.agents/skills/ui-ux-pro-max/scripts`
+in einer Minute nachvollzogen.
+
+**Zum Nutzen:** Das Niveau des Flutter-Katalogs ist Grundhygiene („const
+constructors", „dispose controllers", „ListView.builder für lange Listen").
+Diese Datei hier steht darüber — was der Katalog nicht liefert, ist der Grund,
+*warum* etwas so gebaut ist. Als Checkliste taugt er trotzdem. Ein Durchlauf
+gegen alle 16 als *High* markierten Regeln (24.08.2026) fand genau eine Lücke:
+
+* `PopScope` statt `WillPopScope`, Controller-Disposal, `ListView.builder` —
+  alles sauber.
+* **`Semantics` kam in der App kein einziges Mal vor**, und 24 von 43
+  `IconButton` hatten keinen `tooltip`. Flutter leitet daraus keine
+  Beschriftung ab: Für VoiceOver und TalkBack heißen diese Knöpfe
+  „Schaltfläche" — auch das Hamburger-Symbol, der Favoriten-Stern und das „+"
+  oben rechts. Seit Juni 2025 ist das für Verbraucher-Apps zudem eine Frage
+  des European Accessibility Act, nicht mehr nur des Anstands. Aufgearbeitet:
+  erst der Homescreen (siehe unten), dann der Rest der App (siehe
+  „Knöpfe brauchen Namen").
+* Die Zeile „große Systemschriften — sauber" war **falsch** und ist oben
+  gestrichen. Sie stützte sich darauf, dass `textScaler` nirgends angefasst
+  wird; genau das ist aber der Grund, warum die Schrift ungebremst wächst —
+  und die Karten hatten feste Höhen. Bei 1,3-facher Systemschrift lief der
+  Liganame unten aus der Karte, Flutter meldete „RenderFlex overflowed". Ein
+  Katalogeintrag prüft die Regel, nicht ihre Folgen; das musste man laufen
+  lassen.
+
+**Wo die Apple-Regeln liegen:** nicht im Stack-Katalog. `data/stacks/
+swiftui.csv` bringt 50 Regeln, davon sind die meisten SwiftUI-Syntax
+(`@State`, Modifier-Reihenfolge) und für Dart wertlos. Die brauchbaren nativen
+Regeln stehen in `data/app-interface.csv` — erreichbar ausgerechnet über
+`--domain web`, was den Namen zum Stolperstein macht. Von dort kommt die
+Regel, die hier am meisten wert war:
+
+> Native targets use 44pt on iOS and 48dp on Android; web WCAG 2.2 has a
+> separate 24×24 CSS px minimum. **Don't:** Collapse iOS 44pt, Android 48dp,
+> and web 24 CSS px into one cross-platform number.
+
+Deshalb `minTastflaeche(context)` in `home_screen.dart` — **zwei Zahlen, nicht
+eine.** Die 24 aus WCAG 2.2 sind die Web-Zahl und taugen hier nicht als
+Rechtfertigung für ein kleineres Ziel; die Kopfzeilen tragen jetzt das Maß der
+Plattform.
+
+**Was `--design-system` nicht kann:** App-Screens. Zwei Läufe („fantasy sports
+league social entertainment mobile", „native app home dashboard dark sports")
+geben beide Landingpage-Muster aus — Hero, Feature-Grid, Social Proof,
+„Start trial", dazu `cursor-pointer`, Hover-States und Breakpoints bis 1440 px.
+Auch `--domain product` liefert ein Feld „Landing Page Pattern", und
+`--domain ux` ist eine Korrektheits-Checkliste, keine Quelle für Komposition.
+Brauchbar war nur die Bestätigung: Die Palette des zweiten Laufs (`#0F172A`,
+Grün `#22C55E`) trifft die Marke fast, und als Stil kommt Glassmorphism heraus
+— also das, was `liquid_glass.dart` und die Navileiste ohnehin tun. **Die
+Gestaltungsrichtung kommt aus `frontend-design`** (Token-Plan, ASCII-Entwürfe,
+eine bewusste Wette), `ui-ux-pro-max` ist der Prüfdurchgang danach.
+
+### Knöpfe brauchen Namen
+
+Alle 24 namenlosen Symbolknöpfe haben einen `tooltip` — den nimmt Flutter
+zugleich als Beschriftung für die Vorlesehilfen. Zwei Muster kamen dabei
+heraus, beide anderswo wiederverwendbar:
+
+**Blätter-Pfeile nennen ihr Ziel, nicht ihre Richtung.** Sechsmal steht in der
+App dieselbe Zeile: ‹ Spieltag 7 ›. Vorgelesen waren das drei Stationen, und
+keine sagte, wohin ein Pfeil führt — die Zahl in der Mitte gehört zu keinem
+der beiden Knöpfe. Jetzt heißen sie „Zurück zu Spieltag 6" und „Weiter zu
+Spieltag 8"; bei Turnieren steht dort der echte Name („Zurück zu
+Achtelfinale"), weil `RoundSelector` und `_RoundSelector` die Rundenliste
+ohnehin haben. Am Rand der Liste gibt es kein Ziel, dort bleibt „Zurück"
+allein stehen. In `league_overview_screen.dart` sind aus den beiden `bool`s
+`canPrev`/`canNext` deshalb `String? prevName`/`nextName` geworden: dasselbe
+„gibt es sie überhaupt", nur mit der Antwort auf „wohin" darin.
+
+**Bei +/−-Steppern trägt die Zahl den Bezug.** „Exakt getippt" — „Schaltfläche"
+— „3" — „Schaltfläche": Beschriftung und Wert standen als getrennte Stationen
+da. Wo der Stepper seine Beschriftung selbst rendert (`tip_rules_editor.dart`,
+`create_fantasy_league.dart`), sagt sie jetzt beides an („Exakt getippt: 3")
+und die Zahl daneben ist `ExcludeSemantics`. Wo die Beschriftung außerhalb
+liegt (`fantasy_settings_screen.dart`, in der `_SettingRow`), bleibt die Zahl
+eine eigene Station und der Stepper bekommt die Beschriftung als Parameter
+gereicht — sie ein zweites Mal an die Zahl zu hängen hätte „Anzahl Runden" in
+einer Zeile viermal wiederholt.
+
+Gehalten wird der Stand von `test/knopfnamen_test.dart`: Der Test liest
+`lib/` und lässt keinen `IconButton` ohne `tooltip` durch. Ein Widget-Test je
+Knopf wäre hier der teurere Weg zur schwächeren Aussage — die meisten dieser
+Knöpfe stecken in privaten Klassen, die ohne halben Screen samt Providern
+nicht zu rendern sind.
+
+### Systemschrift auf dem Homescreen
+
+Was quer gewischt wird, kann nicht beliebig wachsen: die Liga-Karten stehen
+zu knapp vier nebeneinander, ihre Breite ist aus der Bildschirmbreite
+gerechnet.
+Deshalb sitzt in `_Bleed` ein Deckel (`_kMaxKartenSkala`, 1,3) für alles in
+den Reihen, und `kartenHoehe()` lässt die Karte innerhalb dessen **in der Höhe
+mitwachsen** — der Deckel allein hätte den Überlauf nur verschoben.
+
+Der Rest des Screens wächst ungebremst weiter: Begrüßung, Vereinszeilen,
+Leerzustände und News-Titel stehen längs und haben den Platz. Nur wo Text und
+Symbol in einer Zeile stehen, die nicht umbricht — die beiden Knöpfe des
+Leerzustands —, liegt der Deckel bei 1,6, und die Höhen sind dort
+Mindesthöhen.
+
+### Richtung A — die Zeit führt
+
+Der Startbildschirm folgt einem von drei Entwürfen, die als Design-Canvas
+nebeneinander lagen (`design/homescreen/`, publiziert als Artefakt). Die
+Diagnose des alten Standes stand darin in fünf Punkten; drei davon sind hier
+abgearbeitet, und der Grund ist jedes Mal derselbe: **Was am lautesten war,
+trug am wenigsten.**
+
+- Die größte, fetteste Schrift auf dem Schirm war „Hallo, SFV03". Die
+  Begrüßung ist jetzt eine graue 15er-Zeile, und die beiden Symbole daneben
+  sind entfärbt — Gold und Grün versprachen etwas Anstehendes, wo nichts
+  anstand. Der rote Zähler am Nachrichten-Knopf bleibt: der zählt wirklich
+  etwas.
+- Das nächste Spiel des eigenen Vereins — der emotionalste Inhalt des Schirms
+  — bekam eine 46 Punkte hohe Zeile weit unten. Es ist jetzt die **Kopfkarte**
+  (`_NaechstesSpiel`): Anstoßzeit als 38er-Zahl mit Tabellenziffern zwischen
+  beiden Wappen, darunter der Tag, oben links der Wettbewerb mit Logo. Farbe
+  bekommt die Ecke oben rechts nur, wenn etwas ansteht — „HEUTE" in Gold,
+  „LIVE" in Rot mit pulsierendem Punkt. Läuft das Spiel, steht statt der
+  Uhrzeit das Ergebnis. Die übrigen Partien desselben Tages bleiben unten in
+  `_FavoritenSpiele`, das jetzt das erste Spiel überspringt — die Regel
+  „alle Spiele des Tages, wenn es mehrere gibt" gilt unverändert, sie ist nur
+  auf zwei Stellen verteilt.
+  **Oben steht das Spiel des obersten Favoriten**, nicht das früheste des
+  Tages: Wer Bayern über Bochum stellt, will an einem Samstag mit beiden
+  Bayern auf der Kopfkarte sehen, auch wenn Bochum um 13:30 anfängt.
+  `favoritenSpielZuerst` (pur, getestet) hebt es im `favoritenSpieleProvider`
+  an den Anfang; der Rest bleibt nach Anstoß sortiert, damit die Liste
+  darunter den Tagesverlauf liest. Bei Favorit gegen Favorit zählt der höher
+  stehende. Welcher Verein „oben" ist, sagt `favoritenRaenge` — bewusst
+  **dieselbe** Regel, die der Favoriten-Tab anzeigt (manuelle Sortierung,
+  sonst Liga-Rang, Frauen zuletzt). Sie lag privat in `favorites_tab.dart`
+  und ist nach `features/favorites/logic/favorite_order.dart` gezogen: Zwei
+  Sortierungen, die beide behaupten, die Favoritenreihenfolge zu sein, laufen
+  irgendwann auseinander — und dann steht auf der Kopfkarte ein anderer
+  Verein als oben im Favoriten-Tab.
+- Vier Farbflächen sagten den Modus an. Siehe oben: aus der Fläche ist ein
+  Hauch in der Ecke geworden.
+
+**Der Sockel der Kopfkarte ist der Teil, der Datenarbeit gekostet hat.** Er
+beantwortet „muss ich dieses Spiel noch tippen?" — und dafür müssen zwei
+Quellen zusammenfinden: Das Spiel kommt aus dem **Vereins**-Spielplan
+(Favoriten, `teamFixturesProvider`), die Tipprunden aus dem **Saison**-Spielplan
+ihrer Wettbewerbe (`leagueSeasonFixturesProvider`). Beide Wege enden bei
+derselben ID (`sportmonks:<id>`), deshalb ist der Abgleich in
+`spielTippProvider` exakt und nicht über Namen und Anstoßzeit geraten — was
+bei zwei Mannschaften desselben Klubs schiefe Treffer gäbe. Gefunden und noch
+nicht getippt: goldene Leiste „Noch nicht getippt · bis 20:30", die direkt in
+den Tippen-Tab der Runde führt (`LeagueScreen(initialTab: 0)`). Schon
+getippt: leise „Dein Tipp: 2:0". In keiner Runde: **kein Sockel** — eine
+Handlungsleiste ohne Handlung ist schlechter als keine.
+
+Der Entwurf hatte an zwei Stellen mehr versprochen, als die Daten hergeben,
+und beides ist bewusst nicht nachgebaut: die **Spielstätte** unter der Uhrzeit
+(steht nur im Spiel-Detail, ein zweiter Abruf je Spiel wäre der Zeile nicht
+wert — dort steht jetzt der Tag) und **Archivo** als zweite Schriftfamilie für
+die Zahlen (Barlow Condensed mit `FontFeature.tabularFigures()` tut es; eine
+zweite Familie im Bundle ist eine eigene Entscheidung, keine Folge dieser).
+
+Die Kopfkarte hat **zwei** Vorlese-Stationen, nicht eine: das Spiel und der
+Sockel führen an verschiedene Orte. Deshalb setzt sie `_PressScale`s
+`eineAnsage` ab, das sonst jede Karte zu einer Ansage zusammenfasst.
+
+### Einfarbig ist auch kein Zustand
+
+Der erste Wurf von „Richtung A" nahm die Diagnose zu wörtlich und strich
+**alle** Farbe: flache graue Karten, Farbe nur noch dort, wo etwas anstand.
+Das Urteil dazu kam in einem Satz — „alles so einfarbig und trostlos" — und es
+war richtig. Wer nichts Dringendes offen hat, und das ist der Normalfall, sah
+einen Schirm aus lauter dunkelgrauen Rechtecken.
+
+Der Fehler ist benennbar: Die Diagnose hatte die **Hierarchie** angegriffen
+(„vier Farbflächen rufen gleich laut und sagen nur den Modus"), nicht die
+Farbe. Als Antwort darauf ist Null genauso falsch wie Voll — nur leiser. Was
+seitdem gilt:
+
+- **Farbe darf Identität tragen, nicht nur Alarm.** Der Hauch in der
+  Kartenecke sagt „das ist diese Liga", der Sockel sagt „hier ist etwas zu
+  tun". Zwei verschiedene Aufgaben, zwei verschiedene Stärken — das Problem
+  war nie, dass beide Farbe benutzen, sondern dass sie gleich laut waren.
+- **Wo Farbe zum Inhalt gehört, ist sie keine Dekoration.** Die Kopfkarte
+  bekommt die **Trikotfarben** der beiden Vereine (`core/util/club_colors.dart`,
+  bis dahin nur im Spiel-Detail benutzt) — als weicher Hof hinter jedem
+  Wappen. Rot links heißt Bayern, und das sieht man vor dem Namen. Über die
+  ganze Karte gezogen war es falsch: Bayern gegen Stuttgart sind zwei rote
+  Vereine, das ergab eine durchgehend rote Fläche. Die Farbe klebt am Verein,
+  nicht an der Karte, und die Mitte bleibt neutral, weil dort die Uhrzeit
+  steht. `vereinsTon()` weicht dabei auf `secondary` aus, wenn die Grundfarbe
+  fast weiß oder fast schwarz ist (Stuttgart, Gladbach, Frankfurt) — und gibt
+  `null` für unbekannte Vereine zurück: eine erfundene Farbe für einen
+  Pokalgegner aus der Oberliga sähe aus wie eine Auskunft.
+- **Fünf gleiche graue Versalköpfe geben keinen Takt** (Punkt 5 der
+  Diagnose, zuerst übersehen). Jeder Abschnittskopf trägt jetzt einen 3 px
+  breiten Strich in der Farbe seines Bereichs: Grün für die Ligen, Gold fürs
+  Tippspiel, Blau (`_kVereinsBlau`) für Vereine und News. Die kleinste Menge
+  Farbe, die trennt — und sie wiederholt nur, was im Abschnitt darunter
+  ohnehin vorkommt.
+- **Ein Leerzustand ist eine Einladung, kein abgeschalteter Bereich.** Die
+  `_CreateRow` war ein grauer Umriss unter einem grauen Kopf und sah aus wie
+  etwas, das nicht geht. Sie trägt jetzt die Farbe des Bereichs, in den sie
+  führt.
+
+### Den Homescreen ansehen, ohne auf den eigenen Account angewiesen zu sein
+
+`test/home_vorschau_test.dart` rendert den **ganzen** Screen mit gesetzten
+Zuständen nach `test/goldens/home_vorschau.png`:
+
+```sh
+flutter test --update-goldens test/home_vorschau_test.dart
+```
+
+Der Anlass war handfest: Bei der Abnahme von „Richtung A" hatte der
+Testaccount keine eigenständige Tipprunde, also war der komplette neue
+Zeilen-Abschnitt im Simulator nicht zu sehen — und ein zweiter Screenshot
+hätte daran nichts geändert. Drei Dinge, die dabei zu wissen sind:
+
+- **`AppConfig.supabaseInitialized = true` setzen**, sonst hält der Screen
+  sich für serverlos und zeigt statt allem eine Hinweiskarte.
+- **Die Gerätegröße über `tester.view` setzen, nicht über
+  `setSurfaceSize`.** Letzteres ändert nur, worauf gezeichnet wird; die
+  `MediaQuery` bleibt bei 800×600. Fast überall egal — aber `_Bleed` und
+  `leagueCardWidth` rechnen ihre Maße genau daraus, und dann steht eine 800
+  breite Kartenreihe hinter einem 402 breiten Bild.
+- **Kein `pumpAndSettle`.** Die Draft-Anzeige pulsiert endlos, der Aufruf
+  liefe in den Timeout; stattdessen ein paar feste `pump`-Schritte.
+
+Material-Symbole werden darin zu leeren Kästchen und Wappen zu Ersatzflächen
+(nur die App-Schrift wird geladen, Netz gibt es im Test keins). Verglichen
+wird die Anordnung, nicht das Bild.
 
 ## Startbildschirm
 

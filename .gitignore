@@ -52,3 +52,8 @@ test/failures/
 
 # Persönliche Notizen – das Repo ist öffentlich
 *.pages
+
+# Der Design-Canvas wird als eine 2,4-MB-Seite gebündelt (Editor-Code plus
+# Inhalt). Die Quellen daneben — canvas.json und die .dc.html-Artboards —
+# sind die Wahrheit, das Bündel ist daraus erzeugt.
+design/**/matchup-*.html

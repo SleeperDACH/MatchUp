@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .fig { font-family: 'Archivo', 'Helvetica Neue', sans-serif; font-variant-numeric: tabular-nums; }
+    .kopf { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 12px 0 12px;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EDEFF4" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    <div style="display: flex; align-items: center; gap: 7px;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 14 L12 7 L20 14" stroke="#4ADE6A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19 L12 12 L20 19" stroke="#F23030" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div style="font-size: 25px; font-weight: 700; letter-spacing: -0.4px;">Match<span style="color: #4ADE6A;">Up</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#EDEFF4" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 L21 21" stroke-linecap="round"/></svg>
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#EDEFF4" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  <!-- Bühne: die Liga, die dich braucht, bekommt die ganze Breite -->
+  <div class="kopf" style="padding: 18px 16px 0 16px;">JETZT DRAN</div>
+  <div style="margin: 10px 12px 0 12px; height: 192px; border-radius: 22px; background: linear-gradient(150deg, #2E7943 0%, #1A3027 58%, #161A22 100%); border: 0.8px solid rgba(255,255,255,0.12); position: relative; overflow: hidden;">
+    <svg width="220" height="220" viewBox="0 0 24 24" fill="none" style="position: absolute; right: -54px; top: -34px; opacity: 0.09;"><path d="M5 13 L12 7 L19 13M5 18 L12 12 L19 18" stroke="#EDEFF4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div style="position: relative; padding: 16px 18px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box;">
+      <div style="display: flex; align-items: center; gap: 9px;">
+        <div style="width: 34px; height: 34px; border-radius: 17px; background: #4ADE6A; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 13 L12 7 L19 13M5 18 L12 12 L19 18" stroke="#12141C" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.4px; color: rgba(237,239,244,0.72);">REDRAFT · 12 MANAGER</div>
+      </div>
+      <div style="font-size: 34px; font-weight: 700; letter-spacing: -0.6px; line-height: 1.05; padding-top: 10px;">BuLi 26/27</div>
+      <div style="flex-grow: 1;"></div>
+      <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+        <div>
+          <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.4px; color: rgba(237,239,244,0.66);">DRAFT LÄUFT</div>
+          <div class="fig" style="font-size: 30px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.1; color: #FFC83D;">Runde 4</div>
+        </div>
+        <div style="background: #4ADE6A; color: #12141C; font-size: 16px; font-weight: 700; border-radius: 14px; padding: 12px 20px; min-height: 44px; box-sizing: border-box; display: flex; align-items: center;">Zum Draft</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Die übrigen Ligen als schmale Pillen -->
+  <div style="display: flex; gap: 8px; padding: 10px 12px 0 12px;">
+    <div style="flex-grow: 1; height: 46px; border-radius: 14px; background: #1A1D27; border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 7px; padding: 0 10px;">
+      <div style="width: 8px; height: 8px; border-radius: 4px; background: #4ADE6A;"></div>
+      <div style="flex-grow: 1; min-width: 0;"><div style="font-size: 14px; font-weight: 700; line-height: 1.1;">Draftest3</div><div style="font-size: 11px; color: #A6ACBA;">Platz 2</div></div>
+    </div>
+    <div style="flex-grow: 1; height: 46px; border-radius: 14px; background: #1A1D27; border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 7px; padding: 0 10px;">
+      <div style="width: 8px; height: 8px; border-radius: 4px; background: #F23030;"></div>
+      <div style="flex-grow: 1; min-width: 0;"><div style="font-size: 14px; font-weight: 700; line-height: 1.1;">DynastyTest</div><div style="font-size: 11px; color: #A6ACBA;">Offen</div></div>
+    </div>
+    <div style="flex-grow: 1; height: 46px; border-radius: 14px; background: #1A1D27; border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 7px; padding: 0 10px;">
+      <div style="width: 8px; height: 8px; border-radius: 4px; background: #4ADE6A;"></div>
+      <div style="flex-grow: 1; min-width: 0;"><div style="font-size: 14px; font-weight: 700; line-height: 1.1;">testadmin</div><div style="font-size: 11px; color: #A6ACBA;">Offen</div></div>
+    </div>
+  </div>
+
+  <!-- Spiel des Vereins, ebenfalls groß -->
+  <div class="kopf" style="padding: 22px 16px 0 16px;">HEUTE ABEND</div>
+  <div style="margin: 10px 12px 0 12px; border-radius: 20px; background: #1A1D27; border: 0.8px solid rgba(255,255,255,0.08); padding: 14px 16px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 40px; height: 40px; border-radius: 20px; background: #DC052D; border: 2.5px solid #EDEFF4; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff;">FCB</div>
+      <div style="flex-grow: 1;"><div style="font-size: 19px; font-weight: 700; line-height: 1.1;">Bayern – Stuttgart</div><div style="font-size: 12.5px; color: #A6ACBA;">Bundesliga · 3. Spieltag</div></div>
+      <div class="fig" style="font-size: 26px; font-weight: 700; letter-spacing: -0.6px;">20:30</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 11px; border-top: 0.8px solid #2A2E3A;">
+      <div style="width: 7px; height: 7px; border-radius: 4px; background: #FFC83D;"></div>
+      <div style="font-size: 14px; font-weight: 700; color: #FFC83D;">18 Tipps offen</div>
+      <div style="flex-grow: 1;"></div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFC83D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+    </div>
+  </div>
+
+  <div class="kopf" style="display: flex; justify-content: space-between; padding: 22px 16px 0 16px;"><span>NEWS</span><span style="letter-spacing: 0; font-weight: 600; font-size: 13px;">Alle ›</span></div>
+  <div style="padding: 8px 16px 0 16px;">
+    <div style="font-size: 15px; font-weight: 600; line-height: 1.2;">Diesmal mit Kaufoption: Frankfurt verleiht Wahi erneut nach Nizza</div>
+    <div style="font-size: 11.5px; color: #6E7482; padding-top: 4px;">kicker · vor 7 Std.</div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+
+  <div style="margin: 0 auto 14px auto; width: 330px; height: 62px; border-radius: 22px; background: rgba(26,29,39,0.92); border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;"><svg width="21" height="21" viewBox="0 0 24 24" fill="#4ADE6A"><path d="M12 3 3 10v11h6v-6h6v6h6V10z"/></svg><div style="font-size: 12px; font-weight: 600; color: #4ADE6A;">Home</div></div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#8A90A0" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3l3 6-3 3-3-3z"/></svg><div style="font-size: 12px; font-weight: 600; color: #8A90A0;">Live</div></div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#8A90A0" stroke-width="1.8" stroke-linejoin="round"><path d="M12 4l2.4 5 5.6.7-4 3.9 1 5.4-5-2.7-5 2.7 1-5.4-4-3.9 5.6-.7z"/></svg><div style="font-size: 12px; font-weight: 600; color: #8A90A0;">Favoriten</div></div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

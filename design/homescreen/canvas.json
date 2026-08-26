@@ -1,0 +1,112 @@
+{
+  "artboards": [
+    {
+      "file": "Diagnose.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 402,
+      "h": 874,
+      "title": "Ist-Zustand"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 522,
+      "y": 0,
+      "w": 402,
+      "h": 874,
+      "title": "Richtung A — Anstoß"
+    },
+    {
+      "file": "RichtungB.dc.html",
+      "x": 1044,
+      "y": 0,
+      "w": 402,
+      "h": 874,
+      "title": "Richtung B — Blatt"
+    },
+    {
+      "file": "RichtungC.dc.html",
+      "x": 1566,
+      "y": 0,
+      "w": 402,
+      "h": 874,
+      "title": "Richtung C — Bühne"
+    },
+    {
+      "file": "Ligakarte.dc.html",
+      "x": 522,
+      "y": 1010,
+      "w": 880,
+      "h": 460,
+      "title": "Die Ligakarte im Detail"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "d1",
+      "x": -300,
+      "y": 40,
+      "w": 250,
+      "text": "1 — Die größte, fetteste Schrift auf dem Schirm ist „Hallo, SFV03\". Die Zeile trägt keine Information."
+    },
+    {
+      "id": "d2",
+      "x": -300,
+      "y": 175,
+      "w": 250,
+      "text": "2 — Die vier Farbflächen sagen den Modus (Redraft/Dynasty). Danach sucht niemand. Der Zustand steht klein im Sockel."
+    },
+    {
+      "id": "d3",
+      "x": -300,
+      "y": 310,
+      "w": 250,
+      "text": "3 — Genau vier Karten passen nebeneinander. Dadurch liest die Reihe als starres Raster, nicht als etwas zum Wischen."
+    },
+    {
+      "id": "d4",
+      "x": -300,
+      "y": 445,
+      "w": 250,
+      "text": "4 — Das nächste Spiel deines Vereins ist der emotionalste Inhalt des Schirms und bekommt eine 46 Punkte hohe Zeile."
+    },
+    {
+      "id": "d5",
+      "x": -300,
+      "y": 580,
+      "w": 250,
+      "text": "5 — Fünf Abschnitte, fünf gleiche graue Versal-Köpfe, fünf gleiche Abstände. Kein Takt, kein Schwerpunkt."
+    },
+    {
+      "id": "a1",
+      "x": 522,
+      "y": -190,
+      "w": 402,
+      "text": "Richtung A — Anstoß  (Vorschlag)\nZeit führt. Das nächste Spiel wird der Kopf des Schirms, die Ligen werden ruhig, Farbe erscheint nur, wo etwas ansteht.\nRisiko: die Reihe zeigt jetzt 4,5 Karten statt 4 — das war eine bewusste Entscheidung und wird hier umgedreht."
+    },
+    {
+      "id": "b1",
+      "x": 1044,
+      "y": -190,
+      "w": 402,
+      "text": "Richtung B — Blatt\nKeine Farbflächen mehr, nur Haarlinien und Zahlen an der rechten Kante. Liest wie eine Ergebnisseite.\nTradeoff: sehr ruhig und dicht — Zustände springen einen weniger an, und es sieht weniger nach App aus."
+    },
+    {
+      "id": "c1",
+      "x": 1566,
+      "y": -190,
+      "w": 402,
+      "text": "Richtung C — Bühne\nEine Liga bekommt die ganze Breite, der Rest wird zur Pille. Der stärkste Schwerpunkt der drei.\nTradeoff: nur eine Liga ist sichtbar, und der bunte Verlauf kommt zurück — genau das, wogegen einmal entschieden wurde."
+    },
+    {
+      "id": "k1",
+      "x": 0,
+      "y": 1010,
+      "w": 400,
+      "text": "Alle Maße, Farben und Radien sind aus theme.dart und home_screen.dart übernommen — Grund #12141C, Karte #1A1D27, Grün #4ADE6A, Rot #F23030, Gold #FFC83D, Radius 16, Rahmen 0,8 px.\n\nEine Zutat ist neu: die Zahlen (20:30, 18, Platz 2) stehen in Archivo mit Tabellenziffern. Barlow Condensed hat dafür keine eigene Stimme — und Zahlen sind der eigentliche Inhalt dieser App. Kostet eine zweite Schriftfamilie im Bundle."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

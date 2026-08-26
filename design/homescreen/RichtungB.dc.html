@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Archivo:wght@500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .fig { font-family: 'Archivo', 'Helvetica Neue', sans-serif; font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 12px 0 12px;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EDEFF4" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    <div style="display: flex; align-items: center; gap: 7px;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 14 L12 7 L20 14" stroke="#4ADE6A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19 L12 12 L20 19" stroke="#F23030" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div style="font-size: 25px; font-weight: 700; letter-spacing: -0.4px;">Match<span style="color: #4ADE6A;">Up</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#EDEFF4" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 L21 21" stroke-linecap="round"/></svg>
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#EDEFF4" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  <!-- Kopfzeile wie ein Blattkopf: Datum rechts, Linie darunter -->
+  <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 20px 16px 8px 16px; border-bottom: 1.5px solid #EDEFF4; margin: 0 4px;">
+    <div style="font-size: 13px; font-weight: 700; letter-spacing: 1.6px;">SFV03</div>
+    <div style="font-size: 13px; font-weight: 500; color: #A6ACBA;">Freitag, 28. August</div>
+  </div>
+
+  <!-- Anstoß als Satz, nicht als Kasten -->
+  <div style="padding: 16px 16px 0 16px;">
+    <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.6px; color: #A6ACBA;">NÄCHSTES SPIEL</div>
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; padding-top: 8px;">
+      <div style="font-size: 29px; font-weight: 700; line-height: 1.0; letter-spacing: -0.5px;">Bayern<br><span style="color: #A6ACBA; font-weight: 500;">gegen</span> Stuttgart</div>
+      <div class="fig" style="font-size: 34px; font-weight: 700; letter-spacing: -1px; line-height: 1;">20:30</div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.8px solid #2A2E3A; margin-top: 12px;">
+      <div style="font-size: 14px; font-weight: 500; color: #A6ACBA;">Bundesliga · 3. Spieltag</div>
+      <div style="font-size: 14px; font-weight: 700; color: #FFC83D;">18 Tipps offen ›</div>
+    </div>
+  </div>
+
+  <!-- Ligen als Tabelle: Zahl rechts trägt die Aussage -->
+  <div style="padding: 24px 16px 0 16px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #EDEFF4; padding-bottom: 6px;">
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.6px;">MEINE LIGEN</div>
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 1.2px; color: #A6ACBA;">PLATZ</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 0.8px solid #2A2E3A;">
+      <div style="width: 3px; height: 30px; background: #4ADE6A;"></div>
+      <div style="flex-grow: 1;"><div style="font-size: 18px; font-weight: 700; line-height: 1.1;">Draftest3</div><div style="font-size: 12.5px; font-weight: 500; color: #A6ACBA;">Redraft · Kader steht</div></div>
+      <div class="fig" style="font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">2.</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 0.8px solid #2A2E3A;">
+      <div style="width: 3px; height: 30px; background: #FFC83D;"></div>
+      <div style="flex-grow: 1;"><div style="font-size: 18px; font-weight: 700; line-height: 1.1;">BuLi 26/27</div><div style="font-size: 12.5px; font-weight: 700; color: #FFC83D;">Draft läuft</div></div>
+      <div class="fig" style="font-size: 15px; font-weight: 600; color: #FFC83D;">jetzt ›</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 0.8px solid #2A2E3A;">
+      <div style="width: 3px; height: 30px; background: #F23030;"></div>
+      <div style="flex-grow: 1;"><div style="font-size: 18px; font-weight: 700; line-height: 1.1;">DynastyTest</div><div style="font-size: 12.5px; font-weight: 500; color: #A6ACBA;">Dynasty · Offen</div></div>
+      <div class="fig" style="font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: #6E7482;">–</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0;">
+      <div style="width: 3px; height: 30px; background: #4ADE6A;"></div>
+      <div style="flex-grow: 1;"><div style="font-size: 18px; font-weight: 700; line-height: 1.1;">testadmin</div><div style="font-size: 12.5px; font-weight: 500; color: #A6ACBA;">Redraft · Offen</div></div>
+      <div class="fig" style="font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: #6E7482;">–</div>
+    </div>
+  </div>
+
+  <!-- Tippspiel gleiche Bauform, andere Spalte -->
+  <div style="padding: 18px 16px 0 16px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #EDEFF4; padding-bottom: 6px;">
+      <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.6px;">TIPPSPIEL</div>
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 1.2px; color: #A6ACBA;">OFFEN</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 0.8px solid #2A2E3A;">
+      <div style="flex-grow: 1;"><div style="font-size: 18px; font-weight: 700; line-height: 1.1;">Xcode Xcode</div><div style="font-size: 12.5px; font-weight: 500; color: #A6ACBA;">Bundesliga +1 · bis Fr., 18:30</div></div>
+      <div class="fig" style="font-size: 26px; font-weight: 700; color: #FFC83D; letter-spacing: -0.5px;">18</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0;">
+      <div style="flex-grow: 1;"><div style="font-size: 18px; font-weight: 700; line-height: 1.1;">TEST TIPP</div><div style="font-size: 12.5px; font-weight: 500; color: #A6ACBA;">Bundesliga · bis Fr., 20:30</div></div>
+      <div class="fig" style="font-size: 26px; font-weight: 700; color: #FFC83D; letter-spacing: -0.5px;">2</div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+
+  <div style="margin: 0 auto 14px auto; width: 330px; height: 62px; border-radius: 22px; background: rgba(26,29,39,0.92); border: 0.8px solid rgba(255,255,255,0.07); display: flex; align-items: center;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;"><svg width="21" height="21" viewBox="0 0 24 24" fill="#4ADE6A"><path d="M12 3 3 10v11h6v-6h6v6h6V10z"/></svg><div style="font-size: 12px; font-weight: 600; color: #4ADE6A;">Home</div></div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#8A90A0" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3l3 6-3 3-3-3z"/></svg><div style="font-size: 12px; font-weight: 600; color: #8A90A0;">Live</div></div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#8A90A0" stroke-width="1.8" stroke-linejoin="round"><path d="M12 4l2.4 5 5.6.7-4 3.9 1 5.4-5-2.7-5 2.7 1-5.4-4-3.9 5.6-.7z"/></svg><div style="font-size: 12px; font-weight: 600; color: #8A90A0;">Favoriten</div></div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
