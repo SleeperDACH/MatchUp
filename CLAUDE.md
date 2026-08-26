@@ -757,10 +757,18 @@ Was sich daraus geändert hat:
 - **„Anstoß" unter der Uhrzeit ist gestrichen** — das sagte dasselbe zweimal,
   derselbe Fehler wie „bis 20:30" unter einer 20:30. „beendet" bleibt: Einem
   3:2 sieht man nicht an, ob es das Endergebnis ist.
-- **Die Liga-Leiste unten ist eine Zeile** (`_WettbewerbeZeile`). Vorher fünf
-  farbige Knöpfe in zwei Reihen: rund 90 Punkte Dauerbild und fünf
-  Signalfarben — mehr, als der Rest der App zusammen benutzt. Die Auswahl
-  kommt jetzt erst auf Tippen, als Sheet.
+- **Die Wettbewerbe sind fünf gleich breite Kacheln** (`_WettbewerbsKacheln`)
+  — alle ohne Wischen sichtbar und direkt antippbar. Drei Fassungen hat das
+  gebraucht, und die mittlere ist die lehrreiche: Zuerst fünf farbige
+  Textknöpfe in zwei Reihen (rund 90 Punkte Dauerbild, fünf Signalfarben als
+  Schrift). Dann eine einzelne Zeile „Wettbewerbe", die die Auswahl hinter ein
+  Sheet legte — ruhig, aber **ein Tipp mehr für etwas, das man auf einen Blick
+  treffen können soll**; zurückgedreht auf Ansage. Jetzt Kacheln: Das Wappen
+  trägt die Erkennung, die Farbe sitzt in Tönung und Kante statt in der
+  Schrift, die Beschriftung steht ruhig darunter (`_kurzerName`: „2. Liga",
+  „Pokal", „Frauen" — die vollen Namen passen bei knapp 72 Punkten je Kachel
+  nicht). Gleich breit, weil sonst „Bundesliga" die Reihe dominiert und
+  „Pokal" den Restplatz bekommt.
 
 **Zwei bewusste Abweichungen vom Entwurf**, beide dokumentiert, weil sie sonst
 wie Nachlässigkeit aussehen:

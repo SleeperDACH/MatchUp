@@ -9,7 +9,6 @@ import '../core/models/models.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'club_screen.dart';
-import 'home_screen.dart' show minTastflaeche;
 import 'league_overview_screen.dart';
 import 'main_shell.dart' show navBarBottomInset, navBarHeight;
 import 'match_detail_screen.dart';
@@ -172,12 +171,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
               onSelect: (d) => setState(() => _selectedDay = d),
             ),
             Expanded(child: _buildDay(context, items, anyLoading, error)),
-            // Die fünf Wettbewerbe in **einer** Zeile. Vorher stand hier eine
-            // festgenagelte Leiste aus fünf verschiedenfarbigen Knöpfen in
-            // zwei Reihen: rund 90 Punkte Dauerbild, mehr Signalfarben als im
-            // Rest der App zusammen, und eine Navigationsleiste direkt über
-            // der Navigationsleiste.
-            _WettbewerbeZeile(
+            // Die fünf Wettbewerbe als Kachelreihe — alle ohne Wischen
+            // sichtbar und direkt antippbar.
+            _WettbewerbsKacheln(
               onOpen: (id) => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) =>
@@ -258,8 +254,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       Divider(
                         height: 0.8,
                         thickness: 0.8,
-                        indent: 16,
-                        endIndent: 16,
+                        indent: 12,
+                        endIndent: 12,
                         color: Theme.of(
                           context,
                         ).colorScheme.onSurface.withValues(alpha: 0.07),
@@ -347,7 +343,7 @@ class _LigaKopf extends StatelessWidget {
     final farbe = leagueColor(league.id);
     return Container(
       color: scheme.onSurface.withValues(alpha: 0.03),
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
       child: Row(
         children: [
           LeagueLogo(
@@ -422,7 +418,7 @@ class _SpielZeile extends StatelessWidget {
           MaterialPageRoute(builder: (_) => MatchDetailScreen(fixtureId: f.id)),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
+          padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
           child: Row(
             children: [
               ClubLink(team: f.home, child: TeamBadge(team: f.home, size: 18)),
@@ -518,93 +514,129 @@ class _SpielZeile extends StatelessWidget {
   }
 }
 
-/// Die fünf Wettbewerbe in einer Zeile, ganz unten.
+/// Kurzform des Wettbewerbsnamens für die Kachelreihe. „2. Bundesliga" und
+/// „Frauen-Bundesliga" passen dort nicht — und fünf Kacheln nebeneinander
+/// haben je knapp 72 Punkte.
+String _kurzerName(String leagueId) => switch (leagueId) {
+  'bundesliga' => 'Bundesliga',
+  'bundesliga2' => '2. Liga',
+  'liga3' => '3. Liga',
+  'dfb_pokal' => 'Pokal',
+  'frauen_bundesliga' => 'Frauen',
+  _ => Leagues.byId(leagueId).name,
+};
+
+/// Die fünf Wettbewerbe als Kachelreihe am unteren Rand — **alle fünf ohne
+/// Wischen sichtbar und direkt antippbar**.
 ///
-/// Vorher standen hier fünf farbige Knöpfe in zwei Reihen: rund 90 Punkte
-/// Dauerbild und fünf Signalfarben — mehr, als der Rest der App zusammen
-/// benutzt. Jetzt eine Zeile; die Farben stecken in den Quadraten davor und
-/// die Auswahl kommt erst auf Tippen.
-class _WettbewerbeZeile extends StatelessWidget {
-  const _WettbewerbeZeile({required this.onOpen});
+/// Drei Fassungen hat das gebraucht. Zuerst standen hier fünf farbige
+/// Textknöpfe in zwei Reihen unterschiedlicher Größe: rund 90 Punkte
+/// Dauerbild und fünf Signalfarben als Schrift — mehr Farbe, als der Rest der
+/// App zusammen benutzt. Dann eine einzelne Zeile „Wettbewerbe", die die
+/// Auswahl hinter ein Sheet legte: ruhig, aber ein Tipp mehr für etwas, das
+/// man auf einen Blick treffen können soll.
+///
+/// Jetzt fünf gleich breite Kacheln: das Wappen trägt die Erkennung, die
+/// Farbe sitzt in Tönung und Kante statt in der Schrift, und die Beschriftung
+/// steht ruhig darunter. Gleich breit, weil sonst „Bundesliga" die Reihe
+/// dominiert und „Pokal" zum Restplatz wird.
+class _WettbewerbsKacheln extends StatelessWidget {
+  const _WettbewerbsKacheln({required this.onOpen});
 
   final ValueChanged<String> onOpen;
 
-  Future<void> _waehlen(BuildContext context) async {
-    final id = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final l in Leagues.all)
-              ListTile(
-                leading: LeagueLogo(
-                  leagueId: l.id,
-                  size: 24,
-                  fallback: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: leagueColor(l.id),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                  ),
-                ),
-                title: Text(l.name),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(sheetContext).pop(l.id),
-              ),
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
+      child: Row(
+        children: [
+          for (final l in Leagues.all) ...[
+            Expanded(child: _WettbewerbsKachel(league: l, onOpen: onOpen)),
+            if (l != Leagues.all.last) const SizedBox(width: 7),
           ],
-        ),
+        ],
       ),
     );
-    if (id != null) onOpen(id);
   }
+}
+
+class _WettbewerbsKachel extends StatelessWidget {
+  const _WettbewerbsKachel({required this.league, required this.onOpen});
+
+  final LeagueInfo league;
+  final ValueChanged<String> onOpen;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+    final farbe = leagueColor(league.id);
+    return Semantics(
+      button: true,
+      label: league.name,
+      onTap: () => onOpen(league.id),
+      excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _waehlen(context),
+          onTap: () => onOpen(league.id),
           borderRadius: BorderRadius.circular(14),
-          child: Container(
-            constraints: BoxConstraints(minHeight: minTastflaeche(context)),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: scheme.outlineVariant),
+              // Der Farbton sitzt in der Fläche, nicht in der Schrift: fünf
+              // farbige Wörter nebeneinander lasen sich als fünf Alarme.
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color.alphaBlend(
+                    farbe.withValues(alpha: 0.22),
+                    scheme.surface,
+                  ),
+                  Color.alphaBlend(
+                    farbe.withValues(alpha: 0.06),
+                    scheme.surface,
+                  ),
+                ],
+              ),
+              border: Border.all(
+                color: farbe.withValues(alpha: 0.42),
+                width: 0.8,
+              ),
             ),
-            child: Row(
-              children: [
-                for (final l in Leagues.all) ...[
-                  Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: leagueColor(l.id),
-                      borderRadius: BorderRadius.circular(3),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LeagueLogo(
+                    leagueId: league.id,
+                    size: 24,
+                    fallback: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: farbe,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 5),
-                ],
-                const SizedBox(width: 4),
-                const Expanded(
-                  child: Text(
-                    'Wettbewerbe',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  const SizedBox(height: 6),
+                  Text(
+                    _kurzerName(league.id),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.1,
+                      color: scheme.onSurface.withValues(alpha: 0.92),
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
