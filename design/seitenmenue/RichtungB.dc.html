@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .marke { display: flex; align-items: center; gap: 10px; padding: 18px 20px 6px 20px; }
+    .marke .t { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA; }
+    .marke .l { flex-grow: 1; height: 0.8px; background: rgba(237,239,244,0.12); }
+    .z { display: flex; align-items: center; gap: 11px; padding: 9px 20px; }
+    .nam { flex-grow: 1; font-size: 15px; font-weight: 600; }
+    .sub { font-size: 12px; color: #6E7482; margin-top: 1px; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #0A0B10; position: relative; overflow: hidden; color: #EDEFF4;">
+  <div style="position: absolute; inset: 0; background: #12141C; opacity: 0.45;"></div>
+
+  <div style="position: absolute; top: 0; left: 0; width: 292px; height: 874px; background: #1A1D27; border-top-right-radius: 16px; border-bottom-right-radius: 16px; display: flex; flex-direction: column;">
+    <div style="height: 44px;"></div>
+
+    <div style="display: flex; align-items: center; gap: 13px; padding: 10px 20px 14px 20px;">
+      <div style="width: 52px; height: 52px; border-radius: 26px; background: #4B3FE4;"></div>
+      <div style="flex-grow: 1;">
+        <div style="font-size: 21px; font-weight: 800; letter-spacing: -0.3px;">SFV03</div>
+        <div class="sub" style="font-size: 12.5px; color: #A6ACBA;">Profil &amp; Einstellungen</div>
+      </div>
+      <div style="color: #6E7482; font-size: 15px;">›</div>
+    </div>
+
+    <!-- Die leere Fläche trägt jetzt Inhalt statt Luft -->
+    <div class="marke"><div class="t">FREUNDE</div><div class="l"></div><div style="font-size: 11px; color: #F23030; font-weight: 700;">2 neu</div></div>
+    <div class="z">
+      <div style="width: 30px; height: 30px; border-radius: 15px; background: #2E6BE6;"></div>
+      <div><div class="nam">Lena</div><div class="sub">möchte dich hinzufügen</div></div>
+    </div>
+    <div class="z">
+      <div style="width: 30px; height: 30px; border-radius: 15px; background: #EF7D00;"></div>
+      <div><div class="nam">Tim</div><div class="sub">möchte dich hinzufügen</div></div>
+    </div>
+
+    <div class="marke"><div class="t">CHATS</div><div class="l"></div></div>
+    <div class="z">
+      <div style="width: 30px; height: 30px; border-radius: 15px; background: #1D9053;"></div>
+      <div style="flex-grow: 1;"><div class="nam">Jonas</div><div class="sub">Hast du schon gedraftet?</div></div>
+      <div style="width: 8px; height: 8px; border-radius: 4px; background: #F23030;"></div>
+    </div>
+    <div class="z">
+      <div style="width: 30px; height: 30px; border-radius: 15px; background: #B4478E;"></div>
+      <div style="flex-grow: 1;"><div class="nam">BuLi 26/27</div><div class="sub">Marie: „Der Pick war stark"</div></div>
+    </div>
+    <div style="padding: 4px 20px 0 20px; font-size: 13px; font-weight: 600; color: #A6ACBA;">Alle Chats ›</div>
+
+    <div style="flex-grow: 1;"></div>
+    <div style="height: 0.8px; background: rgba(237,239,244,0.07); margin: 0 20px;"></div>
+    <div style="padding: 14px 20px 18px 20px; display: flex; gap: 14px;">
+      <div style="font-size: 12.5px; color: #A6ACBA;">Datenschutz</div>
+      <div style="font-size: 12.5px; color: #A6ACBA;">Impressum</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

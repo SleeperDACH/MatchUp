@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- Kein Hamburger mehr. Der Avatar oben links IST der Zugang. -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 12px 0 14px;">
+    <div style="display: flex; align-items: center; gap: 9px;">
+      <div style="width: 34px; height: 34px; border-radius: 17px; background: #4B3FE4;"></div>
+      <div style="width: 9px; height: 9px; border-radius: 5px; background: #F23030; margin-left: -18px; margin-top: -20px;"></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 7px;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 14 L12 7 L20 14" stroke="#4ADE6A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19 L12 12 L20 19" stroke="#F23030" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div style="font-size: 25px; font-weight: 700; letter-spacing: -0.4px;">Match<span style="color: #4ADE6A;">Up</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 21px; height: 21px; border: 2px solid #A6ACBA; border-radius: 11px;"></div>
+      <div style="width: 23px; height: 23px; border: 1.8px solid #A6ACBA; border-radius: 12px;"></div>
+    </div>
+  </div>
+
+  <div style="padding: 16px 16px 0 16px; font-size: 15px; color: #A6ACBA;">Hallo, SFV03</div>
+
+  <!-- Das Menü ist ein Blatt von unten, kein Panel von der Seite -->
+  <div style="flex-grow: 1;"></div>
+
+  <div style="background: #1A1D27; border-top-left-radius: 22px; border-top-right-radius: 22px; border-top: 0.8px solid rgba(255,255,255,0.08); padding: 10px 0 22px 0;">
+    <div style="width: 38px; height: 4px; border-radius: 2px; background: #3A3F4D; margin: 0 auto 14px auto;"></div>
+
+    <div style="display: flex; align-items: center; gap: 13px; padding: 4px 20px 16px 20px;">
+      <div style="width: 52px; height: 52px; border-radius: 26px; background: #4B3FE4;"></div>
+      <div style="flex-grow: 1;">
+        <div style="font-size: 21px; font-weight: 800; letter-spacing: -0.3px;">SFV03</div>
+        <div style="font-size: 12.5px; color: #A6ACBA; margin-top: 1px;">Profil &amp; Einstellungen</div>
+      </div>
+      <div style="color: #6E7482; font-size: 15px;">›</div>
+    </div>
+
+    <div style="display: flex; gap: 10px; padding: 0 16px;">
+      <div style="flex: 1; border-radius: 14px; border: 0.8px solid #2A2E3A; padding: 12px 0; text-align: center; position: relative;">
+        <div style="width: 22px; height: 22px; border: 2px solid #A6ACBA; border-radius: 4px; margin: 0 auto 7px auto;"></div>
+        <div style="font-size: 13px; font-weight: 600;">Freunde</div>
+        <div style="position: absolute; top: 8px; right: 10px; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: #F23030; color: #fff; font-size: 11px; font-weight: 700;">2</div>
+      </div>
+      <div style="flex: 1; border-radius: 14px; border: 0.8px solid #2A2E3A; padding: 12px 0; text-align: center; position: relative;">
+        <div style="width: 22px; height: 22px; border: 2px solid #A6ACBA; border-radius: 4px; margin: 0 auto 7px auto;"></div>
+        <div style="font-size: 13px; font-weight: 600;">Chats</div>
+        <div style="position: absolute; top: 11px; right: 13px; width: 8px; height: 8px; border-radius: 4px; background: #F23030;"></div>
+      </div>
+      <div style="flex: 1; border-radius: 14px; border: 0.8px solid #2A2E3A; padding: 12px 0; text-align: center;">
+        <div style="width: 22px; height: 22px; border: 2px solid #A6ACBA; border-radius: 4px; margin: 0 auto 7px auto;"></div>
+        <div style="font-size: 13px; font-weight: 600;">Ligen</div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 18px 20px 0 20px;">
+      <div style="font-size: 12.5px; color: #A6ACBA;">Datenschutz</div>
+      <div style="font-size: 12.5px; color: #A6ACBA;">Impressum</div>
+      <div style="flex-grow: 1;"></div>
+      <div class="num" style="font-size: 11px; color: #4A505E;">1.3.0 (5)</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -854,7 +854,41 @@ bringt niemandem etwas außer der Gewohnheit, ihn zu übergehen. Die Bilder sind
 zum Ansehen da; was gehalten werden muss, steht als **Messung** daneben (etwa
 die Zeilenhöhe der Kartennamen) und läuft bei jedem `flutter test`.
 
-## Favoriten-Tab — „A, der Verein führt"
+## Seitenmenü — „B, das Menü trägt Inhalt"
+
+Vierter Schirm nach demselben Verfahren (`design/seitenmenue/`), gewählt wurde
+**B**: Das Menü beantwortet beim Öffnen die Frage, für die man es aufmacht —
+**wer will was von mir?**
+
+- **Offene Freundschaftsanfragen und die letzten Gespräche stehen darin**, mit
+  Namen und Vorschautext, höchstens drei je Abschnitt (`_maxZeilen`); darunter
+  „Alle Anfragen"/„Alle Chats". Mehr würde aus dem Menü einen zweiten
+  Chat-Screen neben dem echten machen.
+- **Kein Grün mehr.** Vorher trugen drei Icon-Kacheln und der Ring um den
+  Avatar das Markengrün — obwohl Grün in dieser App „hier läuft etwas" heißt
+  und dort nichts lief. Schlimmer: Die echten Signale (rote Zahl, roter Punkt)
+  standen direkt daneben und mussten dagegen ankommen. Jetzt hat nur Farbe,
+  was wartet: „2 neu" an der Abschnittsmarke, ein roter Punkt je Zeile.
+- **Der Eintrag „Profil" ist entfallen** — er stand für dasselbe Ziel wie der
+  Kopf darüber ein zweites Mal. Der Kopf heißt jetzt „Profil & Einstellungen".
+- **Die Abschnittsmarke ist dieselbe wie im Live- und Favoriten-Tab** (Wort,
+  Haarlinie bis an den Rand, rechts der Hinweis auf Offenes). Ein Menü ist kein
+  Grund für ein eigenes Gliederungsmuster.
+- **Leere Abschnitte fallen auf schlichte Zeilen zurück** („Freunde
+  verwalten", „Nachricht schreiben"). Eine Überschrift mit nichts darunter
+  wäre schlimmer als der alte Zustand.
+
+Damit lädt das Menü **Daten** — vorher war es reine Navigation. Es zeigt, was
+da ist, und wartet nicht: Fehlen Namen oder Bilder noch, stehen die Zeilen mit
+dem, was schon bekannt ist.
+
+Angesehen wird es über `test/seitenmenue_vorschau_test.dart`. Der
+Bildvergleich ist hier **fest** eingeschaltet — anders als bei den drei
+Schirmen steht im Menü kein Datum, das Bild ist von Tag zu Tag gleich. Der
+Test braucht `SharedPreferences.setMockInitialValues({})`, weil der
+Ungelesen-Punkt je Gespräch seine Lesemarke von dort holt.
+
+## Favoriten-Tab — „A, der Verein führt""
 
 Dritter Schirm nach demselben Verfahren: Diagnose plus drei Richtungen als
 Design-Canvas (`design/favoriten/`), gewählt wurde **A**.

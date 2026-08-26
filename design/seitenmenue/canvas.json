@@ -1,0 +1,29 @@
+{
+  "artboards": [
+    { "file": "Diagnose.dc.html", "x": 0, "y": 0, "w": 402, "h": 874, "title": "Ist-Zustand" },
+    { "file": "Main.dc.html", "x": 522, "y": 0, "w": 402, "h": 874, "title": "Richtung A — Ruhige Liste" },
+    { "file": "RichtungB.dc.html", "x": 1044, "y": 0, "w": 402, "h": 874, "title": "Richtung B — Das Menü trägt Inhalt" },
+    { "file": "RichtungC.dc.html", "x": 1566, "y": 0, "w": 402, "h": 874, "title": "Richtung C — Blatt statt Panel" }
+  ],
+  "annotations": [
+    { "id": "d1", "x": -300, "y": 30, "w": 250,
+      "text": "1 — Drei grüne Icon-Kacheln, alle gleich. Grün heißt in dieser App inzwischen „hier läuft etwas\" — hier läuft nichts, und direkt daneben stehen die echten Signale (rote 2, roter Punkt) und konkurrieren damit." },
+    { "id": "d2", "x": -300, "y": 210, "w": 250,
+      "text": "2 — Der grüne Ring um den Avatar bedeutet nichts. Noch eine grüne Sache." },
+    { "id": "d3", "x": -300, "y": 310, "w": 250,
+      "text": "3 — „Profil\" steht zweimal: als „Profil ansehen\" im Kopf und als erster Eintrag. Der Kopf führt ohnehin dorthin." },
+    { "id": "d4", "x": -300, "y": 440, "w": 250,
+      "text": "4 — Zwei Drittel der Fläche sind leer. Ein bildschirmhohes Panel für drei Zeilen." },
+    { "id": "d5", "x": -300, "y": 560, "w": 250,
+      "text": "5 — Das Rechtliche klebt 700 Punkte tiefer am unteren Rand, in 11-Punkt-Grau — weit weg von allem anderen." },
+    { "id": "a1", "x": 522, "y": -230, "w": 402,
+      "text": "Richtung A — Ruhige Liste  (Vorschlag)\nDasselbe Menü, nur aufgeräumt: keine Farbkacheln, keine Ringe, Zeilen mit Haarlinien. Der Kopf ist das Profil (der doppelte Eintrag fällt weg), jede Zeile sagt in einer Unterzeile, was dort ansteht („2 offene Anfragen\"). Farbe hat nur noch, was wirklich offen ist. Das Rechtliche rückt an die Liste heran, dazu die Versionsnummer.\nTradeoff: Die leere Fläche bleibt leer — nur eben ehrlich leer." },
+    { "id": "b1", "x": 1044, "y": -230, "w": 402,
+      "text": "Richtung B — Das Menü trägt Inhalt\nDie freie Fläche bekommt eine Aufgabe: offene Freundschaftsanfragen und die letzten Chats stehen direkt im Menü, mit Namen und Vorschautext. Man sieht beim Öffnen, was los ist, statt erst zu tippen.\nTradeoff: Das Menü lädt jetzt Daten und kann warten oder scheitern — bisher war es reine Navigation. Und es wird zu einem halben Chat-Screen neben dem echten." },
+    { "id": "c1", "x": 1566, "y": -230, "w": 402,
+      "text": "Richtung C — Blatt statt Panel\nDas Seitenmenü verschwindet. Der Zugang ist der eigene Avatar oben links (mit rotem Punkt, wenn etwas offen ist); er öffnet ein Blatt von unten: Profilzeile plus drei Kacheln (Freunde, Chats, Ligen). Der Hamburger fällt weg.\nTradeoff: Die größte Änderung — eine gelernte Geste geht verloren, und das Blatt kann nicht wachsen. Dafür passt es zur Navileiste unten, statt ein zweites Navigationsmuster daneben zu stellen." },
+    { "id": "k1", "x": 0, "y": 940, "w": 500,
+      "text": "Alle drei nehmen das Grün heraus, wo es nichts ankündigt, und lassen Rot dort stehen, wo etwas offen ist — dieselbe Regel wie auf dem Startbildschirm und im Live-Tab.\n\nWas keine der drei entscheidet: ob „Einstellungen\" einen eigenen Ort braucht. Heute gibt es keinen; im Entwurf A steht die Zeile als Platzhalter." }
+  ],
+  "launch": { "view": "canvas" }
+}

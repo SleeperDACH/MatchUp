@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .z { display: flex; align-items: center; gap: 12px; padding: 13px 20px; }
+    .lab { flex-grow: 1; font-size: 16.5px; font-weight: 600; }
+    .sub { font-size: 12.5px; color: #A6ACBA; margin-top: 1px; }
+    .ico { width: 22px; display: flex; justify-content: center; color: #A6ACBA; }
+    .lin { height: 0.8px; background: rgba(237,239,244,0.07); margin: 0 20px; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #0A0B10; position: relative; overflow: hidden; color: #EDEFF4;">
+  <div style="position: absolute; inset: 0; background: #12141C; opacity: 0.45;"></div>
+
+  <div style="position: absolute; top: 0; left: 0; width: 292px; height: 874px; background: #1A1D27; border-top-right-radius: 16px; border-bottom-right-radius: 16px; display: flex; flex-direction: column;">
+    <div style="height: 44px;"></div>
+
+    <!-- Kopf ohne Ring, ohne „Profil ansehen": der Kopf IST das Profil -->
+    <div style="display: flex; align-items: center; gap: 13px; padding: 10px 20px 16px 20px;">
+      <div style="width: 52px; height: 52px; border-radius: 26px; background: #4B3FE4;"></div>
+      <div style="flex-grow: 1;">
+        <div style="font-size: 21px; font-weight: 800; letter-spacing: -0.3px;">SFV03</div>
+        <div class="sub">Angemeldet</div>
+      </div>
+      <div style="color: #6E7482; font-size: 15px;">›</div>
+    </div>
+
+    <div class="lin"></div>
+
+    <!-- Zeilen ohne Farbkacheln. Farbe nur, wo wirklich etwas offen ist. -->
+    <div class="z">
+      <div class="ico">◻</div>
+      <div><div class="lab">Freunde</div><div class="sub">2 offene Anfragen</div></div>
+      <div style="flex-grow: 1;"></div>
+      <div style="min-width: 22px; padding: 3px 7px; border-radius: 999px; background: rgba(242,48,48,0.16); border: 0.8px solid rgba(242,48,48,0.45); color: #F23030; font-size: 12px; font-weight: 700; text-align: center;">2</div>
+    </div>
+    <div class="lin"></div>
+    <div class="z">
+      <div class="ico">◻</div>
+      <div><div class="lab">Chats</div><div class="sub">Neue Nachricht von Jonas</div></div>
+      <div style="flex-grow: 1;"></div>
+      <div style="width: 8px; height: 8px; border-radius: 4px; background: #F23030;"></div>
+    </div>
+    <div class="lin"></div>
+    <div class="z">
+      <div class="ico">◻</div>
+      <div><div class="lab">Einstellungen</div></div>
+    </div>
+
+    <div style="flex-grow: 1;"></div>
+
+    <!-- Das Rechtliche rückt an die Liste heran, nicht an den Bildschirmrand -->
+    <div class="lin"></div>
+    <div style="padding: 14px 20px 10px 20px; display: flex; gap: 14px;">
+      <div style="font-size: 12.5px; color: #A6ACBA;">Datenschutz</div>
+      <div style="font-size: 12.5px; color: #A6ACBA;">Impressum</div>
+    </div>
+    <div style="padding: 0 20px 18px 20px; font-size: 11px; color: #4A505E;">MatchUp 1.3.0 (5)</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

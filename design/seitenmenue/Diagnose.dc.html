@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .eintrag { display: flex; align-items: center; gap: 13px; padding: 10px; margin: 2px 10px; }
+    .kachel { width: 38px; height: 38px; border-radius: 12px; background: rgba(74,222,106,0.13); border: 0.8px solid rgba(74,222,106,0.20); display: flex; align-items: center; justify-content: center; }
+    .lab { flex-grow: 1; font-size: 16.5px; font-weight: 600; }
+  </style>
+</helmet>
+
+<div class="mu" style="width: 402px; height: 874px; background: #0A0B10; position: relative; overflow: hidden; color: #EDEFF4;">
+  <!-- abgedunkelter Schirm dahinter -->
+  <div style="position: absolute; inset: 0; background: #12141C; opacity: 0.45;"></div>
+
+  <div style="position: absolute; top: 0; left: 0; width: 292px; height: 874px; background: #1A1D27; border-top-right-radius: 16px; border-bottom-right-radius: 16px; display: flex; flex-direction: column;">
+    <div style="height: 44px;"></div>
+
+    <!-- Kopf: Avatar mit grünem Ring, „Profil ansehen" -->
+    <div style="display: flex; align-items: center; gap: 13px; padding: 12px 20px;">
+      <div style="width: 52px; height: 52px; border-radius: 26px; border: 1.5px solid rgba(74,222,106,0.55); display: flex; align-items: center; justify-content: center;">
+        <div style="width: 46px; height: 46px; border-radius: 23px; background: #4B3FE4;"></div>
+      </div>
+      <div>
+        <div style="font-size: 20px; font-weight: 800; letter-spacing: -0.3px;">SFV03</div>
+        <div style="font-size: 12.5px; color: #A6ACBA; margin-top: 2px;">Profil ansehen</div>
+      </div>
+    </div>
+
+    <div style="height: 1px; background: #2A2E3A; margin: 12px 20px 10px 20px;"></div>
+
+    <div class="eintrag"><div class="kachel"><div style="width: 16px; height: 16px; border: 2px solid #4ADE6A; border-radius: 3px;"></div></div><div class="lab">Profil</div></div>
+    <div class="eintrag"><div class="kachel"><div style="width: 16px; height: 16px; border: 2px solid #4ADE6A; border-radius: 3px;"></div></div><div class="lab">Freunde</div><div style="min-width: 20px; padding: 2px 6px; border-radius: 999px; background: #F23030; color: #fff; font-size: 12px; font-weight: 700; text-align: center;">2</div></div>
+    <div class="eintrag"><div class="kachel"><div style="width: 16px; height: 16px; border: 2px solid #4ADE6A; border-radius: 3px;"></div></div><div class="lab">Chats</div><div style="width: 9px; height: 9px; border-radius: 5px; background: #F23030;"></div></div>
+
+    <div style="flex-grow: 1;"></div>
+    <div style="padding: 0 20px 18px 20px; font-size: 11px; color: #5C6472;">Datenschutz &nbsp;·&nbsp; Impressum</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
