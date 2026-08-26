@@ -229,10 +229,11 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // ------------------------------------------------------------------
-  // Tippspiel: Zeilen. Bewusst eine **andere Form** als die Kartenreihe der
-  // Ligen darüber — vorher war es dieselbe Reihe, nur flacher, und dadurch
-  // sah der halbe Screen gleich aus. Die Zeile gibt dem Namen zugleich die
-  // Breite, die eine Karte für vier nebeneinander nie hat.
+  // Tippspiel: dieselbe Kartenreihe wie die Ligen darüber, nur flacher — es
+  // ist der zweite Bereich, nicht der Hauptbereich. Zwischendurch waren es
+  // Zeilen (andere Form, mehr Platz für den Namen); zurückgedreht auf
+  // ausdrücklichen Wunsch. Was die beiden Reihen unterscheidet, sind jetzt
+  // Höhe, Marke und Farbe, nicht die Form.
   // ------------------------------------------------------------------
   List<Widget> _tippspielSection(BuildContext context, WidgetRef ref) {
     final rounds = ref.watch(myRoundsProvider);
@@ -254,7 +255,7 @@ class HomeScreen extends ConsumerWidget {
         )
       else if (standalone == null)
         SizedBox(
-          height: minTastflaeche(context) + 12,
+          height: kartenHoehe(context, _kTipCardHeight),
           child: const Center(child: CircularProgressIndicator()),
         )
       else if (standalone.isEmpty)
@@ -264,22 +265,16 @@ class HomeScreen extends ConsumerWidget {
           farbe: _kTipGold,
         )
       else
-        // Zeilen, keine Reihe: die Runden laufen längs und reichen deshalb
-        // nur bis zum Seitenrand — kein `_Bleed`, kein Schrift-Deckel.
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < standalone.length; i++) ...[
-              if (i > 0)
-                Divider(
-                  height: 1,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.6),
-                ),
-              _TipRoundRow(round: standalone[i]),
-            ],
-          ],
+        _Bleed(
+          hoehe: kartenHoehe(context, _kTipCardHeight),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
+            physics: const BouncingScrollPhysics(),
+            itemCount: standalone.length,
+            separatorBuilder: (_, _) => const SizedBox(width: _kLeagueCardGap),
+            itemBuilder: (_, i) => _TipRoundCard(round: standalone[i]),
+          ),
         ),
     ];
   }
@@ -1718,6 +1713,12 @@ TextScaler kartenSkala(BuildContext context) =>
 double kartenHoehe(BuildContext context, double basis) =>
     basis * (kartenSkala(context).scale(14) / 14);
 
+/// Höhe der Tipprunden-Karten: flacher als eine Liga-Karte, weil sie nur Name
+/// und Wettbewerb trägt — und weil Tippspiel der zweite Bereich ist. Der
+/// Unterschied ist das, was die beiden Reihen auseinanderhält, seit sie
+/// wieder dieselbe Form haben.
+const double _kTipCardHeight = 126;
+
 /// Höhe der Liga-Karten im Querlauf — auch für den Ladeplatz und die
 /// „Neue Liga"-Karte, damit die Reihe nicht springt. Grundmaß bei
 /// Standardschrift; auf dem Gerät durch [kartenHoehe] geschickt.
@@ -2171,18 +2172,17 @@ class _StatusZeile extends StatelessWidget {
   }
 }
 
-/// Eine Tipprunde als **Zeile**, nicht als Karte.
+/// Eine Tipprunde als Karte — dieselbe Form wie eine Liga-Karte, nur flacher.
 ///
-/// Die Runden standen bis hierher in derselben quer zu wischenden Kartenreihe
-/// wie die Ligen darüber — zwei gleich gebaute Reihen untereinander, nur die
-/// zweite etwas flacher. Als Zeile bekommt der Abschnitt eine eigene Form und
-/// der Name den Platz, den eine 95 Punkte breite Karte ihm nie geben konnte:
-/// „Xcode Xcode" musste dort auf zwei Zeilen, hier steht es einmal quer.
-///
-/// Und weil die Zeile längs läuft, gilt hier der Schrift-Deckel der Reihen
-/// nicht: sie darf mit der Systemschrift wachsen, sie hat den Platz.
-class _TipRoundRow extends ConsumerWidget {
-  const _TipRoundRow({required this.round});
+/// Zwischendurch war das hier eine Zeile: andere Form für den zweiten
+/// Bereich, und der Name bekam die volle Breite statt der knapp hundert
+/// Punkte einer Karte. Zurückgedreht auf ausdrücklichen Wunsch — der Screen
+/// hat damit zwei gleich gebaute Reihen untereinander, und was sie trennt,
+/// sind Höhe, Marke und Farbe. Der Preis steht in [_kTipCardHeight]: Der Name
+/// muss auf zwei Zeilen passen, und „Bundesliga +1" schrumpft, statt zu
+/// kappen.
+class _TipRoundCard extends ConsumerWidget {
+  const _TipRoundCard({required this.round});
 
   final TipRound round;
 
@@ -2204,137 +2204,82 @@ class _TipRoundRow extends ConsumerWidget {
               0)
         : 0;
 
-    // Wettbewerb und Frist stehen in einer Zeile unter dem Namen: beides ist
-    // Beiwerk zur selben Runde, und zwei eigene Zeilen dafür machten die
-    // Reihe dreizeilig.
-    final unterzeile = [
-      wettbewerb,
-      if (sockel != null && sockel.detail != null) sockel.detail!,
-    ].join(' · ');
-
-    void oeffnen() {
-      activateRound(ref, round);
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
-    }
-
-    return Semantics(
-      button: true,
-      // Eine Ansage für die ganze Zeile. Einzeln vorgelesen wären es vier
-      // Stationen, darunter ein nacktes „18 offen".
-      label: [
-        round.name,
-        unterzeile,
-        if (sockel != null) sockel.label,
-        if (pending == 1)
-          '1 offene Beitrittsanfrage'
-        else if (pending > 1)
-          '$pending offene Beitrittsanfragen',
-      ].join(', '),
-      onTap: oeffnen,
-      excludeSemantics: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: oeffnen,
-          child: Container(
-            constraints: BoxConstraints(minHeight: minTastflaeche(context)),
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
-            child: Row(
-              children: [
-                _RoundMark(round: round, farbe: farbe, size: 30),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        round.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          height: 1.15,
-                        ),
+    return _PressScale(
+      child: SizedBox(
+        width: leagueCardWidth(context),
+        height: kartenHoehe(context, _kTipCardHeight),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              activateRound(ref, round);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => LeagueScreen(round: round)),
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              decoration: _kartenFlaeche(context, sockel, farbe),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(9, 8, 8, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _RoundMark(round: round, farbe: farbe, size: 28),
+                              const Spacer(),
+                              if (pending > 0) _CountBadge(count: pending),
+                            ],
+                          ),
+                          // Der Zwischenraum liegt **über** dem Namen: so
+                          // sitzt der Text am Sockel statt in der Mitte zu
+                          // schweben, und eine zweite Namenszeile wächst nach
+                          // oben in den freien Platz.
+                          const Spacer(),
+                          Flexible(
+                            child: Text(
+                              round.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                height: 1.05,
+                              ),
+                            ),
+                          ),
+                          // Der Wettbewerb schrumpft statt zu kappen: aus
+                          // „Bundesliga +1" darf nicht „Bundesli…" werden.
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              wettbewerb,
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: scheme.onSurface.withValues(alpha: 0.78),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                        ],
                       ),
-                      Text(
-                        unterzeile,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                if (pending > 0) ...[
-                  const SizedBox(width: 8),
-                  _CountBadge(count: pending),
+                  _KartenSockel(sockel: sockel),
                 ],
-                if (sockel != null) ...[
-                  const SizedBox(width: 8),
-                  _OffenPille(sockel: sockel),
-                ],
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_right,
-                  size: 16,
-                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
-                ),
-              ],
+              ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Was an einer Tipprunde offen ist, am rechten Rand ihrer Zeile.
-///
-/// Nur was drängt bekommt die goldene Fläche; „Alles getippt" steht als
-/// leiser Text ohne Kasten da. Ein Kasten für jeden Zustand hieße vier
-/// gleich laute Pillen untereinander, und dann sagt keine mehr etwas.
-class _OffenPille extends StatelessWidget {
-  const _OffenPille({required this.sockel});
-
-  final _Sockel sockel;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = sockel!;
-    final text = Text(
-      s.label,
-      maxLines: 1,
-      style: TextStyle(
-        color: s.ton,
-        fontSize: 13,
-        fontWeight: s.dringend ? FontWeight.w700 : FontWeight.w500,
-      ),
-    );
-    if (!s.dringend) return text;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (s.pulsiert) ...[
-          PulsingDot(size: 6, color: s.ton),
-          const SizedBox(width: 5),
-        ],
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: s.ton.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: text,
-        ),
-      ],
     );
   }
 }

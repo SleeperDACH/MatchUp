@@ -42,13 +42,16 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   Tippspiel-Abschnitt bewusst nicht auf (erreichbar über die Liga), ihre
   offenen Tipps hätten sonst nirgends Platz. Läuft ein Draft, gewinnt der —
   seine Uhr tickt in Minuten.
-- **Der Homescreen darf nicht dreimal dasselbe zeigen.** Fantasy sind quer
-  wischbare Karten, Tippspiel schlanke Zeilen, News eine schmale Querleiste —
-  drei Formen, damit der Schirm nicht als eine Folge gleicher dunkler Kästen
-  liest. Das Tippspiel war zwischendurch dieselbe Kartenreihe wie Fantasy,
-  nur flacher; seit „Richtung A" sind es wieder Zeilen (`_TipRoundRow`), und
-  die geben dem Namen die Breite, die eine Karte für vier nebeneinander nie
-  hat.
+- **Fantasy und Tippspiel sind zwei Kartenreihen, News eine schmale
+  Querleiste.** Die Tipprunden waren zwischendurch Zeilen — andere Form für
+  den zweiten Bereich, und der Name bekam die volle Breite statt der knapp
+  hundert Punkte einer Karte. Zurückgedreht auf ausdrücklichen Wunsch. Wer das
+  wieder anfasst, sollte den Grund kennen, der einmal dagegen sprach: Zwei
+  gleich gebaute Reihen untereinander lassen den halben Schirm gleich
+  aussehen. Was sie jetzt trennt, ist **Höhe, Marke und Farbe** statt der
+  Form — die Tipprunden-Karte ist flacher (`_kTipCardHeight` 126 gegen 132),
+  trägt das Gold des Tippspiels und ein anderes Zeichen. Und der Preis bleibt:
+  Der Rundenname muss auf zwei Zeilen einer 95 Punkte breiten Karte passen.
   Die Liga-Karte trägt ihre Farbe als **Hauch aus der Ecke**
   (`_kartenFlaeche`), nicht als Fläche: oben links, wo die Marke ohnehin in
   derselben Farbe steht, bei drei Vierteln der Diagonale verklungen. Beide
