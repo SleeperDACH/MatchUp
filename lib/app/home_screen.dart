@@ -759,12 +759,25 @@ class _Marke extends StatelessWidget {
   );
 }
 
-/// Sockel der Kopfkarte: was **ich** mit diesem Spiel noch zu tun habe.
+/// Sockel der Kopfkarte: was **ich** mit diesem Spiel noch zu tun habe —
+/// **je Runde eine Zeile**.
 ///
-/// Die Karte zeigt das Spiel meines Vereins; ob es zugleich in einer meiner
-/// Tipprunden liegt, beantwortet [spielTippProvider] über die Fixture-ID.
-/// Liegt es in keiner, bleibt der Sockel weg — eine Handlungsleiste ohne
-/// Handlung wäre schlimmer als keine.
+/// Die Karte zeigt das Spiel meines Vereins; in welchen meiner Tipprunden es
+/// zugleich liegt, beantwortet [spielTippProvider] über die Fixture-ID. In
+/// keiner: kein Sockel — eine Handlungsleiste ohne Handlung wäre schlimmer
+/// als keine.
+///
+/// Hier stand zuerst genau **eine** Zeile, und die zeigte eine einzige Runde
+/// an. Wer dasselbe Spiel in mehreren Runden tippt, tippt dort aber womöglich
+/// Verschiedenes — andere Mitspieler, andere Wertung, anderer Mut —, und die
+/// Karte behauptete „Dein Tipp: 2:0", als gäbe es nur einen. Deshalb trägt
+/// jede Runde ihre eigene Zeile, mit ihrem Zeichen und ihrem Namen: Ohne den
+/// Namen wären zwei Zahlen untereinander nicht zuzuordnen, und jede Zeile
+/// führt in ihre eigene Runde.
+///
+/// Die Frist steht nicht mehr dabei. Sie ist der Anstoß, und der steht als
+/// 38-Punkte-Zahl direkt darüber — „Noch nicht getippt · bis 20:30" unter
+/// einer 20:30 sagte dasselbe zweimal.
 ///
 /// Eine **ligainterne** Tipprunde darf hier verlinkt werden, obwohl sie im
 /// Tippspiel-Abschnitt bewusst fehlt. Die Regel dort heißt „nicht als eigener
@@ -779,94 +792,179 @@ class _HeroSockel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final treffer = ref.watch(spielTippProvider(fixture.id)).valueOrNull;
-    if (treffer == null) return const SizedBox.shrink();
+    final alle = ref.watch(spielTippProvider(fixture.id)).valueOrNull;
+    if (alle == null || alle.isEmpty) return const SizedBox.shrink();
 
-    final tipp = treffer.tipp;
-    final anstoss = fixture.kickoff.toLocal();
-    final abgelaufen = !anstoss.isAfter(DateTime.now());
-    // Nach Anpfiff ist nichts mehr zu tun: dann steht dort der eigene Tipp
-    // oder, wenn keiner abgegeben wurde, gar nichts mehr.
-    if (tipp == null && abgelaufen) return const SizedBox.shrink();
+    // Nach Anpfiff ist in einer ungetippten Runde nichts mehr zu tun und auch
+    // nichts mehr zu zeigen — die Zeile fällt weg, die getippten bleiben.
+    final abgelaufen = !fixture.kickoff.toLocal().isAfter(DateTime.now());
+    final zeilen = [
+      for (final t in alle)
+        if (!(t.offen && abgelaufen)) t,
+    ];
+    if (zeilen.isEmpty) return const SizedBox.shrink();
 
-    final offen = tipp == null;
+    // Der Grund der ganzen Leiste richtet sich danach, ob überhaupt etwas
+    // offen ist: eine goldene Fläche unter lauter erledigten Runden wäre ein
+    // Alarm ohne Anlass.
+    final etwasOffen = zeilen.any((t) => t.offen);
+    final grundton = etwasOffen ? _kTipGold : scheme.onSurfaceVariant;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: grundton.withValues(alpha: etwasOffen ? 0.12 : 0.07),
+        border: Border(
+          top: BorderSide(color: scheme.outlineVariant, width: 0.8),
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(19),
+          bottomRight: Radius.circular(19),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < zeilen.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                indent: 14,
+                endIndent: 14,
+                color: scheme.onSurface.withValues(alpha: 0.08),
+              ),
+            _HeroSockelZeile(
+              eintrag: zeilen[i],
+              // Bei einer einzigen Runde sagt „Dein Tipp: 2:0" mehr als der
+              // Rundenname neben einer nackten Zahl. Erst ab der zweiten
+              // braucht die Zahl einen Besitzer.
+              mitName: zeilen.length > 1,
+              rund: i == zeilen.length - 1,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Eine Runde im Sockel der Kopfkarte.
+class _HeroSockelZeile extends ConsumerWidget {
+  const _HeroSockelZeile({
+    required this.eintrag,
+    required this.mitName,
+    required this.rund,
+  });
+
+  final SpielTipp eintrag;
+
+  /// Trägt die Zeile den Rundennamen? Nur nötig, wenn mehrere untereinander
+  /// stehen.
+  final bool mitName;
+
+  /// Letzte Zeile — nur die bekommt unten die runden Ecken der Karte.
+  final bool rund;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final round = eintrag.round;
+    final tipp = eintrag.tipp;
+    final offen = eintrag.offen;
     final ton = offen ? _kTipGold : scheme.onSurfaceVariant;
-    final text = offen
+    final wert = offen
         ? 'Noch nicht getippt'
-        : 'Dein Tipp: ${tipp.homeGoals}:${tipp.awayGoals}';
-    final detail = offen ? kurzeFrist(anstoss, DateTime.now()) : null;
+        : '${tipp!.homeGoals}:${tipp.awayGoals}';
 
     void oeffnen() {
-      activateRound(ref, treffer.round);
+      activateRound(ref, round);
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => LeagueScreen(round: treffer.round, initialTab: 0),
+          builder: (_) => LeagueScreen(round: round, initialTab: 0),
         ),
       );
     }
 
+    final ecken = rund
+        ? const BorderRadius.only(
+            bottomLeft: Radius.circular(19),
+            bottomRight: Radius.circular(19),
+          )
+        : BorderRadius.zero;
+
     return Semantics(
       button: true,
-      label: [text, ?detail, 'in ${treffer.round.name}'].join(', '),
+      label: offen
+          ? 'Noch nicht getippt in ${round.name}'
+          : 'Dein Tipp in ${round.name}: $wert',
       onTap: oeffnen,
       excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: oeffnen,
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(19),
-            bottomRight: Radius.circular(19),
-          ),
+          borderRadius: ecken,
           child: Container(
             constraints: BoxConstraints(minHeight: minTastflaeche(context)),
-            decoration: BoxDecoration(
-              color: ton.withValues(alpha: offen ? 0.12 : 0.07),
-              border: Border(
-                top: BorderSide(color: scheme.outlineVariant, width: 0.8),
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(19),
-                bottomRight: Radius.circular(19),
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: Row(
               children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(color: ton, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    text,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ton,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                if (mitName) ...[
+                  _RoundMark(
+                    round: round,
+                    farbe: parseColor(round.logoColor) ?? _kTipGold,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      round.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                if (detail != null) ...[
-                  const SizedBox(width: 6),
-                  Flexible(
+                ] else ...[
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: ton,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
                     child: Text(
-                      '· $detail',
+                      offen ? 'Noch nicht getippt' : 'Dein Tipp: $wert',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: scheme.onSurfaceVariant,
+                        color: ton,
                         fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 ],
-                const Spacer(),
+                if (mitName) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    wert,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: ton,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      // Tabellenziffern: zwei Ergebnisse untereinander sollen
+                      // auf derselben Kante stehen.
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 6),
                 Icon(Icons.chevron_right, size: 18, color: ton),
               ],
             ),

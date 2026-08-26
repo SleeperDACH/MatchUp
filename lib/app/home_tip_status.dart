@@ -113,27 +113,36 @@ String kurzeFrist(DateTime frist, DateTime jetzt) {
 class SpielTipp {
   const SpielTipp({required this.round, this.tipp});
 
-  /// Die Runde, in der das Spiel steht. Bei mehreren gewinnt die, in der es
-  /// noch offen ist — die Kopfkarte soll auf das zeigen, was noch zu tun ist.
+  /// Die Runde, in der das Spiel steht.
   final TipRound round;
 
-  /// Der eigene Tipp, oder `null` für „noch nicht getippt".
+  /// Der eigene Tipp darin, oder `null` für „noch nicht getippt".
   final MemberTip? tipp;
+
+  bool get offen => tipp == null;
 }
 
-/// Family-Key ist die Fixture-ID. `null` = das Spiel liegt in keiner meiner
-/// Runden (oder es steht noch nicht fest).
-final spielTippProvider = FutureProvider.family<SpielTipp?, String>((
+/// Family-Key ist die Fixture-ID. Leere Liste = das Spiel liegt in keiner
+/// meiner Runden (oder es steht noch nicht fest).
+///
+/// **Alle** Runden, nicht die interessanteste. Zuerst lieferte dieser Provider
+/// genau eine — die offene, sonst irgendeine getippte. Das war falsch gedacht:
+/// Wer dasselbe Spiel in drei Runden tippt, tippt dort womöglich
+/// Verschiedenes (andere Mitspieler, andere Wertung, anderer Mut), und die
+/// Kopfkarte behauptete dann „Dein Tipp: 2:0", als gäbe es nur einen. Die
+/// Reihenfolge ist die von [myRoundsProvider] und bleibt damit stabil, auch
+/// wenn eine Runde getippt wird.
+final spielTippProvider = FutureProvider.family<List<SpielTipp>, String>((
   ref,
   fixtureId,
 ) async {
-  if (!AppConfig.isSupabaseConfigured) return null;
+  if (!AppConfig.isSupabaseConfigured) return const [];
   final myId = ref.watch(currentUserProvider)?.id;
-  if (myId == null) return null;
+  if (myId == null) return const [];
 
   try {
     final rounds = await ref.watch(myRoundsProvider.future);
-    SpielTipp? getippt;
+    final treffer = <SpielTipp>[];
     for (final round in rounds) {
       var enthalten = false;
       for (final id in round.competitions) {
@@ -148,18 +157,19 @@ final spielTippProvider = FutureProvider.family<SpielTipp?, String>((
       if (!enthalten) continue;
 
       final tips = await ref.watch(allRoundTipsProvider(round.id).future);
-      final meiner = tips
-          .where((t) => t.userId == myId && t.fixtureId == fixtureId)
-          .firstOrNull;
-      // Eine offene Runde gewinnt sofort; eine schon getippte wird gemerkt,
-      // falls keine offene mehr kommt.
-      if (meiner == null) return SpielTipp(round: round);
-      getippt ??= SpielTipp(round: round, tipp: meiner);
+      treffer.add(
+        SpielTipp(
+          round: round,
+          tipp: tips
+              .where((t) => t.userId == myId && t.fixtureId == fixtureId)
+              .firstOrNull,
+        ),
+      );
     }
-    return getippt;
+    return treffer;
   } catch (_) {
     // Wie bei den offenen Tipps: eine hakelige Datenquelle darf die Karte
     // nicht kippen, sie zeigt dann eben nur das Spiel.
-    return null;
+    return const [];
   }
 });

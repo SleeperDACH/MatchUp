@@ -144,10 +144,23 @@ void main() {
           myFantasyLeaguesProvider.overrideWith((ref) async => ligen),
           myRoundsProvider.overrideWith((ref) async => runden),
           favoritenSpieleProvider.overrideWith((ref) async => [spiel]),
-          // Das Spiel der Kopfkarte steht in einer Runde und ist noch nicht
-          // getippt — der Sockel zeigt seinen goldenen Auftrag.
+          // Das Spiel der Kopfkarte steht in **beiden** Runden: in der einen
+          // getippt, in der anderen nicht. Genau der Fall, für den der Sockel
+          // je Runde eine Zeile trägt — mit einer einzigen Runde sähe man ihm
+          // nicht an, dass er mehrere kann.
           spielTippProvider.overrideWith(
-            (ref, id) async => SpielTipp(round: runden.first),
+            (ref, id) async => [
+              SpielTipp(
+                round: runden.first,
+                tipp: MemberTip(
+                  userId: 'ich',
+                  fixtureId: id,
+                  homeGoals: 2,
+                  awayGoals: 0,
+                ),
+              ),
+              SpielTipp(round: runden.last),
+            ],
           ),
           fantasyManagersProvider.overrideWith((ref, id) async => const []),
           fantasyJoinRequestsProvider.overrideWith(

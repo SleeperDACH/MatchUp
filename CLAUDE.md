@@ -557,11 +557,25 @@ Quellen zusammenfinden: Das Spiel kommt aus dem **Vereins**-Spielplan
 ihrer Wettbewerbe (`leagueSeasonFixturesProvider`). Beide Wege enden bei
 derselben ID (`sportmonks:<id>`), deshalb ist der Abgleich in
 `spielTippProvider` exakt und nicht über Namen und Anstoßzeit geraten — was
-bei zwei Mannschaften desselben Klubs schiefe Treffer gäbe. Gefunden und noch
-nicht getippt: goldene Leiste „Noch nicht getippt · bis 20:30", die direkt in
-den Tippen-Tab der Runde führt (`LeagueScreen(initialTab: 0)`). Schon
-getippt: leise „Dein Tipp: 2:0". In keiner Runde: **kein Sockel** — eine
+bei zwei Mannschaften desselben Klubs schiefe Treffer gäbe. In keiner Runde: **kein Sockel** — eine
 Handlungsleiste ohne Handlung ist schlechter als keine.
+
+**Je Runde eine Zeile**, nicht eine Zeile für die interessanteste Runde. Wer
+dasselbe Spiel in mehreren Runden tippt, tippt dort womöglich Verschiedenes —
+andere Mitspieler, andere Wertung, anderer Mut; auf dem Gerät standen für
+Bayern–Stuttgart tatsächlich 1:9 und 2:0 nebeneinander. Der erste Entwurf gab
+genau eine Runde aus (die offene, sonst irgendeine getippte) und behauptete
+damit „Dein Tipp: 2:0", als gäbe es nur einen. Jede Zeile trägt jetzt Zeichen
+und Namen ihrer Runde und führt in **deren** Tippen-Tab
+(`LeagueScreen(initialTab: 0)`); bei einer einzigen Runde entfällt der Name,
+weil „Dein Tipp: 2:0" dann mehr sagt als ein Name neben einer nackten Zahl.
+Offene Zeilen sind gold, getippte leise, und golden getönt ist die Leiste nur,
+wenn wirklich etwas offen ist. Nach Anpfiff fallen ungetippte Zeilen weg —
+dort ist nichts mehr zu tun.
+
+**Die Frist steht nicht dabei.** Sie ist der Anstoß, und der steht als
+38-Punkte-Zahl direkt darüber; „Noch nicht getippt · bis 20:30" unter einer
+20:30 sagte dasselbe zweimal.
 
 Der Entwurf hatte an zwei Stellen mehr versprochen, als die Daten hergeben,
 und beides ist bewusst nicht nachgebaut: die **Spielstätte** unter der Uhrzeit
