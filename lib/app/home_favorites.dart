@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/config/app_config.dart';
 import '../core/models/team_fixture.dart';
 import '../features/favorites/favorites.dart';
+import '../features/favorites/logic/favorite_order.dart';
 import '../features/favorites/logic/next_favorite_fixtures.dart';
 
 /// Die nächsten Spiele der favorisierten Vereine für den Homescreen.
@@ -34,10 +35,31 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
       // `teamIdOf`: der Favoriten-Schlüssel trägt das `sportmonks:`-Präfix,
       // der Spielplan-Endpunkt will die nackte ID.
       alle.addAll(
-          await ref.watch(teamFixturesProvider(teamIdOf(t.key)).future));
+        await ref.watch(teamFixturesProvider(teamIdOf(t.key)).future),
+      );
     } catch (_) {
       continue; // Ein Verein ohne Spielplan darf die Zeile nicht leeren.
     }
   }
-  return naechsteFavoritenSpiele(fixtures: alle, jetzt: DateTime.now());
+  final tagesspiele = naechsteFavoritenSpiele(
+    fixtures: alle,
+    jetzt: DateTime.now(),
+  );
+
+  // Vorn steht das Spiel des **obersten Favoriten**, nicht das früheste: Die
+  // Kopfkarte des Homescreens nimmt sich den ersten Eintrag, der Abschnitt
+  // „Meine Vereine" den Rest. An einem Samstag mit vier Vereinen wäre sonst
+  // der 13:30-Anstoß auf der Kopfkarte gelandet, egal wem er gehört.
+  final raenge = favoritenRaenge(ref.watch(favoritesProvider));
+  return favoritenSpielZuerst(
+    spiele: tagesspiele,
+    rang: (f) {
+      final h = raenge[teamIdOf(f.home.id)];
+      final a = raenge[teamIdOf(f.away.id)];
+      if (h == null) return a;
+      if (a == null) return h;
+      // Favorit gegen Favorit: der höher stehende bestimmt den Rang.
+      return h < a ? h : a;
+    },
+  );
 });

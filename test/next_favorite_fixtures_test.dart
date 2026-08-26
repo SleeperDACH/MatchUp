@@ -77,4 +77,70 @@ void main() {
     );
     expect(list.map((f) => f.id), ['frueh', 'spaet']);
   });
+  group('favoritenSpielZuerst', () {
+    // Rangkarte: fcb ist der oberste Favorit, bvb der zweite.
+    int? rang(TeamFixture f) => switch ((f.home.id, f.away.id)) {
+      (_, _) when f.home.id == 'fcb' || f.away.id == 'fcb' => 0,
+      (_, _) when f.home.id == 'bvb' || f.away.id == 'bvb' => 1,
+      _ => null,
+    };
+
+    test('das Spiel des obersten Favoriten kommt nach vorn', () {
+      // Der BVB stößt früher an — auf die Kopfkarte gehört trotzdem Bayern.
+      final list = favoritenSpielZuerst(
+        spiele: [
+          _fx('frueh', 'bvb', 'x', DateTime(2026, 8, 22, 13, 30)),
+          _fx('spaet', 'fcb', 'y', DateTime(2026, 8, 22, 18, 30)),
+        ],
+        rang: rang,
+      );
+      expect(list.map((f) => f.id), ['spaet', 'frueh']);
+    });
+
+    test('der Rest bleibt nach Anstoß sortiert', () {
+      final list = favoritenSpielZuerst(
+        spiele: [
+          _fx('a', 'bvb', 'x', DateTime(2026, 8, 22, 13, 30)),
+          _fx('b', 'z', 'q', DateTime(2026, 8, 22, 15, 30)),
+          _fx('c', 'fcb', 'y', DateTime(2026, 8, 22, 18, 30)),
+        ],
+        rang: rang,
+      );
+      expect(list.map((f) => f.id), ['c', 'a', 'b']);
+    });
+
+    test('steht der oberste Favorit schon vorn, ändert sich nichts', () {
+      final spiele = [
+        _fx('a', 'fcb', 'x', DateTime(2026, 8, 22, 13, 30)),
+        _fx('b', 'bvb', 'y', DateTime(2026, 8, 22, 15, 30)),
+      ];
+      expect(identical(favoritenSpielZuerst(spiele: spiele, rang: rang), spiele),
+          isTrue);
+    });
+
+    test('Favorit gegen Favorit zählt mit dem höheren Rang', () {
+      // Das Duell trägt Rang 0 (Bayern) und schlägt das reine BVB-Spiel.
+      final list = favoritenSpielZuerst(
+        spiele: [
+          _fx('bvb-solo', 'bvb', 'x', DateTime(2026, 8, 22, 13, 30)),
+          _fx('duell', 'bvb', 'fcb', DateTime(2026, 8, 22, 18, 30)),
+        ],
+        rang: rang,
+      );
+      expect(list.first.id, 'duell');
+    });
+
+    test('kennt der Rang keinen der Vereine, bleibt die Reihenfolge', () {
+      // Ein Spiel, das nur über den Gegner in die Liste geriet.
+      final list = favoritenSpielZuerst(
+        spiele: [
+          _fx('a', 'fremd', 'auch-fremd', DateTime(2026, 8, 22, 13, 30)),
+          _fx('b', 'noch-fremd', 'x', DateTime(2026, 8, 22, 15, 30)),
+        ],
+        rang: (_) => null,
+      );
+      expect(list.map((f) => f.id), ['a', 'b']);
+    });
+  });
+
 }
