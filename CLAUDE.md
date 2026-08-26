@@ -553,32 +553,23 @@ trug am wenigsten.**
 - Vier Farbflächen sagten den Modus an. Siehe oben: aus der Fläche ist ein
   Hauch in der Ecke geworden.
 
-**Der Sockel der Kopfkarte ist der Teil, der Datenarbeit gekostet hat.** Er
-beantwortet „muss ich dieses Spiel noch tippen?" — und dafür müssen zwei
-Quellen zusammenfinden: Das Spiel kommt aus dem **Vereins**-Spielplan
-(Favoriten, `teamFixturesProvider`), die Tipprunden aus dem **Saison**-Spielplan
-ihrer Wettbewerbe (`leagueSeasonFixturesProvider`). Beide Wege enden bei
-derselben ID (`sportmonks:<id>`), deshalb ist der Abgleich in
-`spielTippProvider` exakt und nicht über Namen und Anstoßzeit geraten — was
-bei zwei Mannschaften desselben Klubs schiefe Treffer gäbe. In keiner Runde: **kein Sockel** — eine
-Handlungsleiste ohne Handlung ist schlechter als keine.
+**Was die Kopfkarte bewusst *nicht* trägt: die eigenen Tipps.** Sie hatte
+einen Sockel, der je Tipprunde eine Zeile zeigte („Tipptest 1:9",
+„BuLi 26/27 2:0"), samt Weg in den jeweiligen Tippen-Tab. Mit zwei Runden
+wuchs die Karte um knapp neunzig Punkte und schob alles darunter aus dem
+Bild — für eine Auskunft, die der Tippspiel-Abschnitt ohnehin gibt („8 Tipps
+offen · bis Sa., 15:30"). Entfernt; die Kopfkarte zeigt das Spiel und sonst
+nichts.
 
-**Je Runde eine Zeile**, nicht eine Zeile für die interessanteste Runde. Wer
-dasselbe Spiel in mehreren Runden tippt, tippt dort womöglich Verschiedenes —
-andere Mitspieler, andere Wertung, anderer Mut; auf dem Gerät standen für
-Bayern–Stuttgart tatsächlich 1:9 und 2:0 nebeneinander. Der erste Entwurf gab
-genau eine Runde aus (die offene, sonst irgendeine getippte) und behauptete
-damit „Dein Tipp: 2:0", als gäbe es nur einen. Jede Zeile trägt jetzt Zeichen
-und Namen ihrer Runde und führt in **deren** Tippen-Tab
-(`LeagueScreen(initialTab: 0)`); bei einer einzigen Runde entfällt der Name,
-weil „Dein Tipp: 2:0" dann mehr sagt als ein Name neben einer nackten Zahl.
-Offene Zeilen sind gold, getippte leise, und golden getönt ist die Leiste nur,
-wenn wirklich etwas offen ist. Nach Anpfiff fallen ungetippte Zeilen weg —
-dort ist nichts mehr zu tun.
-
-**Die Frist steht nicht dabei.** Sie ist der Anstoß, und der steht als
-38-Punkte-Zahl direkt darüber; „Noch nicht getippt · bis 20:30" unter einer
-20:30 sagte dasselbe zweimal.
+Der Abgleich dahinter ist mit ausgebaut worden und steht in der Historie
+(`spielTippProvider`, Commit „Die Kopfkarte zeigt jeden Tipp, nicht einen von
+mehreren"). Er ist wiederverwendbar, falls der eigene Tipp einmal **im
+Spiel-Detail** stehen soll — dort ist Platz, und die Frage „was habe ich hier
+getippt" gehört näher ans Spiel als an den Startbildschirm. Sein Kern: Das
+Spiel kommt aus dem Vereins-Spielplan, die Tipprunden aus dem Saison-
+Spielplan ihrer Wettbewerbe; beide Wege enden bei derselben ID
+(`sportmonks:<id>`), der Abgleich ist deshalb exakt und nicht über Namen und
+Anstoßzeit geraten.
 
 Der Entwurf hatte an zwei Stellen mehr versprochen, als die Daten hergeben,
 und beides ist bewusst nicht nachgebaut: die **Spielstätte** unter der Uhrzeit
@@ -629,6 +620,35 @@ seitdem gilt:
   `_CreateRow` war ein grauer Umriss unter einem grauen Kopf und sah aus wie
   etwas, das nicht geht. Sie trägt jetzt die Farbe des Bereichs, in den sie
   führt.
+
+### „Tinntest" — wenn zu wenig Höhe den Namen frisst
+
+Ein Fehler, der sich nirgends meldete und trotzdem Text zerstörte: Auf der
+Tipprunden-Karte stand „Tipptest", zu lesen war „Tinntest". Beide
+`p`-Unterlängen waren abgeschnitten.
+
+Die Ursache lag nicht bei der Schrift, sondern in der Kartenhöhe. Der
+`_KartenSockel` ist ein- **oder zweizeilig** („Draft läuft" über „Pick 1",
+„18 Tipps offen" über der Frist). Mit der einzeiligen Fassung ging das alte
+Maß auf; mit der zweiten Zeile fehlten rund fünf Punkte. Die nahm sich der
+`Flexible` um den Namen — nicht der Untertitel darunter, der ist nicht
+flexibel. Statt 17 bekam der Name 12,1 Punkt, und was nicht hineinpasste,
+wurde weggeschnitten. **Kein Überlauf, keine Warnung, kein gelb-schwarzer
+Balken:** Für Flutter war das eine gültige Anordnung. Sichtbar wurde es erst
+an einem Namen mit Unterlängen — und nur an dem, weshalb Wochen mit
+„Draftest3" und „BuLi 26/27" nichts auffiel.
+
+Drei Dinge folgen daraus:
+
+- Die Kartenhöhen tragen jetzt den **zweizeiligen** Sockel (`_kLeagueCardHeight`
+  146, `_kTipCardHeight` 140), mit Reserve.
+- `height: 1.05` an der Namenszeile war ohnehin knapper als die Schrift: Barlow
+  Condensed braucht bei 14 Punkt rund 16,8. Steht jetzt auf 1,2.
+- `test/home_vorschau_test.dart` hält den Stand mit einer Messung statt mit
+  einem Bild: Jeder Kartenname muss mindestens eine volle Zeile hoch sein. Ein
+  Golden hätte den Fehler nicht gefangen — er sah ja aus wie ein Wort.
+  Deshalb steht in der Vorschau ein Name mit Unterlängen („Tipptest",
+  „Übungsliga") und ein Sockel mit Frist.
 
 ### Den Homescreen ansehen, ohne auf den eigenen Account angewiesen zu sein
 

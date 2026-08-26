@@ -491,7 +491,6 @@ class _NaechstesSpiel extends ConsumerWidget {
         : DateFormat('HH:mm', 'de_DE').format(anstoss);
 
     return _PressScale(
-      eineAnsage: false,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -533,8 +532,6 @@ class _NaechstesSpiel extends ConsumerWidget {
                 // Stationen — Wettbewerb, zwei Wappen, zwei Namen, ein
                 // nacktes „20:30" und ein Datum —, und keine sagte, in
                 // welchem Verhältnis die beiden Vereine zueinander stehen.
-                // Der Sockel bleibt draußen: er ist ein eigener Knopf mit
-                // einem eigenen Ziel.
                 Semantics(
                   button: true,
                   label: [
@@ -657,7 +654,6 @@ class _NaechstesSpiel extends ConsumerWidget {
                     ],
                   ),
                 ),
-                _HeroSockel(fixture: fixture),
               ],
             ),
           ),
@@ -752,222 +748,6 @@ class _Marke extends StatelessWidget {
       ),
     ],
   );
-}
-
-/// Sockel der Kopfkarte: was **ich** mit diesem Spiel noch zu tun habe —
-/// **je Runde eine Zeile**.
-///
-/// Die Karte zeigt das Spiel meines Vereins; in welchen meiner Tipprunden es
-/// zugleich liegt, beantwortet [spielTippProvider] über die Fixture-ID. In
-/// keiner: kein Sockel — eine Handlungsleiste ohne Handlung wäre schlimmer
-/// als keine.
-///
-/// Hier stand zuerst genau **eine** Zeile, und die zeigte eine einzige Runde
-/// an. Wer dasselbe Spiel in mehreren Runden tippt, tippt dort aber womöglich
-/// Verschiedenes — andere Mitspieler, andere Wertung, anderer Mut —, und die
-/// Karte behauptete „Dein Tipp: 2:0", als gäbe es nur einen. Deshalb trägt
-/// jede Runde ihre eigene Zeile, mit ihrem Zeichen und ihrem Namen: Ohne den
-/// Namen wären zwei Zahlen untereinander nicht zuzuordnen, und jede Zeile
-/// führt in ihre eigene Runde.
-///
-/// Die Frist steht nicht mehr dabei. Sie ist der Anstoß, und der steht als
-/// 38-Punkte-Zahl direkt darüber — „Noch nicht getippt · bis 20:30" unter
-/// einer 20:30 sagte dasselbe zweimal.
-///
-/// Eine **ligainterne** Tipprunde darf hier verlinkt werden, obwohl sie im
-/// Tippspiel-Abschnitt bewusst fehlt. Die Regel dort heißt „nicht als eigener
-/// Eintrag auflisten, man erreicht sie über die Liga"; hier steht kein
-/// Eintrag, sondern der Weg zu **diesem einen** Spiel. `LeagueScreen` kennt
-/// den gekoppelten Fall und blendet Liga- und Chat-Tab selbst aus.
-class _HeroSockel extends ConsumerWidget {
-  const _HeroSockel({required this.fixture});
-
-  final TeamFixture fixture;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final alle = ref.watch(spielTippProvider(fixture.id)).valueOrNull;
-    if (alle == null || alle.isEmpty) return const SizedBox.shrink();
-
-    // Nach Anpfiff ist in einer ungetippten Runde nichts mehr zu tun und auch
-    // nichts mehr zu zeigen — die Zeile fällt weg, die getippten bleiben.
-    final abgelaufen = !fixture.kickoff.toLocal().isAfter(DateTime.now());
-    final zeilen = [
-      for (final t in alle)
-        if (!(t.offen && abgelaufen)) t,
-    ];
-    if (zeilen.isEmpty) return const SizedBox.shrink();
-
-    // Der Grund der ganzen Leiste richtet sich danach, ob überhaupt etwas
-    // offen ist: eine goldene Fläche unter lauter erledigten Runden wäre ein
-    // Alarm ohne Anlass.
-    final etwasOffen = zeilen.any((t) => t.offen);
-    final grundton = etwasOffen ? _kTipGold : scheme.onSurfaceVariant;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: grundton.withValues(alpha: etwasOffen ? 0.12 : 0.07),
-        border: Border(
-          top: BorderSide(color: scheme.outlineVariant, width: 0.8),
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(19),
-          bottomRight: Radius.circular(19),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < zeilen.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 1,
-                indent: 14,
-                endIndent: 14,
-                color: scheme.onSurface.withValues(alpha: 0.08),
-              ),
-            _HeroSockelZeile(
-              eintrag: zeilen[i],
-              // Bei einer einzigen Runde sagt „Dein Tipp: 2:0" mehr als der
-              // Rundenname neben einer nackten Zahl. Erst ab der zweiten
-              // braucht die Zahl einen Besitzer.
-              mitName: zeilen.length > 1,
-              rund: i == zeilen.length - 1,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Eine Runde im Sockel der Kopfkarte.
-class _HeroSockelZeile extends ConsumerWidget {
-  const _HeroSockelZeile({
-    required this.eintrag,
-    required this.mitName,
-    required this.rund,
-  });
-
-  final SpielTipp eintrag;
-
-  /// Trägt die Zeile den Rundennamen? Nur nötig, wenn mehrere untereinander
-  /// stehen.
-  final bool mitName;
-
-  /// Letzte Zeile — nur die bekommt unten die runden Ecken der Karte.
-  final bool rund;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final round = eintrag.round;
-    final tipp = eintrag.tipp;
-    final offen = eintrag.offen;
-    final ton = offen ? _kTipGold : scheme.onSurfaceVariant;
-    final wert = offen
-        ? 'Noch nicht getippt'
-        : '${tipp!.homeGoals}:${tipp.awayGoals}';
-
-    void oeffnen() {
-      activateRound(ref, round);
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => LeagueScreen(round: round, initialTab: 0),
-        ),
-      );
-    }
-
-    final ecken = rund
-        ? const BorderRadius.only(
-            bottomLeft: Radius.circular(19),
-            bottomRight: Radius.circular(19),
-          )
-        : BorderRadius.zero;
-
-    return Semantics(
-      button: true,
-      label: offen
-          ? 'Noch nicht getippt in ${round.name}'
-          : 'Dein Tipp in ${round.name}: $wert',
-      onTap: oeffnen,
-      excludeSemantics: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: oeffnen,
-          borderRadius: ecken,
-          child: Container(
-            constraints: BoxConstraints(minHeight: minTastflaeche(context)),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              children: [
-                if (mitName) ...[
-                  _RoundMark(
-                    round: round,
-                    farbe: parseColor(round.logoColor) ?? _kTipGold,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      round.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: ton,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      offen ? 'Noch nicht getippt' : 'Dein Tipp: $wert',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: ton,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-                if (mitName) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    wert,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: ton,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      // Tabellenziffern: zwei Ergebnisse untereinander sollen
-                      // auf derselben Kante stehen.
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 6),
-                Icon(Icons.chevron_right, size: 18, color: ton),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Grund der Kopfkarte an einer Stelle: der Seitengrund, leicht angehoben,
@@ -1717,12 +1497,25 @@ double kartenHoehe(BuildContext context, double basis) =>
 /// und Wettbewerb trägt — und weil Tippspiel der zweite Bereich ist. Der
 /// Unterschied ist das, was die beiden Reihen auseinanderhält, seit sie
 /// wieder dieselbe Form haben.
-const double _kTipCardHeight = 126;
+const double _kTipCardHeight = 140;
 
-/// Höhe der Liga-Karten im Querlauf — auch für den Ladeplatz und die
-/// „Neue Liga"-Karte, damit die Reihe nicht springt. Grundmaß bei
-/// Standardschrift; auf dem Gerät durch [kartenHoehe] geschickt.
-const double _kLeagueCardHeight = 132;
+/// Höhe der Liga-Karten im Querlauf — auch für den Ladeplatz, damit die Reihe
+/// nicht springt. Grundmaß bei Standardschrift; auf dem Gerät durch
+/// [kartenHoehe] geschickt.
+///
+/// **Das Maß muss den zweizeiligen Sockel tragen.** Es stand auf 132, und
+/// solange im Sockel nur „Offen" stand, ging das auf. Sobald dort zwei Zeilen
+/// standen („Draft läuft" über „Pick 1", „18 Tipps offen" über der Frist),
+/// fehlten rund fünf Punkte — und die nahm sich der `Flexible` um den Namen,
+/// nicht der Untertitel darunter. Gestaucht auf 12,1 statt 17 Punkt wurde der
+/// Name dann beschnitten: Aus „Tipptest" las sich auf dem Gerät „Tinntest",
+/// aus „BuLi 26/27" ein oben wie unten gekappter Streifen. Nichts daran
+/// meldete sich als Überlauf, weil formal alles passte.
+///
+/// Der Aufschlag ist bewusst großzügig. Wer hier kürzt, prüft es mit einem
+/// Namen mit Unterlängen und einem Sockel mit Frist — beides steht in
+/// `test/home_vorschau_test.dart`.
+const double _kLeagueCardHeight = 146;
 
 /// Blau der Abschnitte, die nicht mir gehören, sondern dem Fußball: die
 /// Spiele meiner Vereine und die News. Grün und Rot sind vergeben (Marke und
@@ -1891,7 +1684,13 @@ class _FantasyLeagueCard extends ConsumerWidget {
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                height: 1.05,
+                                // 1.05 schnitt die Unterlängen ab: Aus
+                                // „Tipptest" wurde auf dem Gerät lesbar
+                                // „Tinntest". Barlow Condensed braucht mehr
+                                // als das, sobald p, g, j, q oder y
+                                // vorkommen — und Rundennamen kommen aus
+                                // freier Eingabe.
+                                height: 1.2,
                               ),
                             ),
                           ),
@@ -2249,7 +2048,13 @@ class _TipRoundCard extends ConsumerWidget {
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                height: 1.05,
+                                // 1.05 schnitt die Unterlängen ab: Aus
+                                // „Tipptest" wurde auf dem Gerät lesbar
+                                // „Tinntest". Barlow Condensed braucht mehr
+                                // als das, sobald p, g, j, q oder y
+                                // vorkommen — und Rundennamen kommen aus
+                                // freier Eingabe.
+                                height: 1.2,
                               ),
                             ),
                           ),
@@ -2458,15 +2263,9 @@ class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
 
 /// Drückt sein Kind beim Antippen leicht zusammen (taktiles Feedback).
 class _PressScale extends StatefulWidget {
-  const _PressScale({required this.child, this.eineAnsage = true});
+  const _PressScale({required this.child});
 
   final Widget child;
-
-  /// Ob das Gedrückte auch **eine** Ansage ist. Für die Kartenreihen ja; die
-  /// Kopfkarte setzt es ab, weil in ihr zwei Knöpfe mit zwei Zielen stecken —
-  /// das Spiel und der Sockel, der in die Tipprunde führt. Zusammengelegt
-  /// bliebe von den beiden Wegen nur einer vorlesbar.
-  final bool eineAnsage;
 
   @override
   State<_PressScale> createState() => _PressScaleState();
@@ -2491,9 +2290,7 @@ class _PressScaleState extends State<_PressScale> {
         // Eine Liga-Karte war für die Vorlesehilfe sonst vier Stationen —
         // Marke, Name, Modus, Zustand —, durch die einzeln gewischt wird:
         // bei vier Ligen sechzehn Halte für vier Knöpfe.
-        child: widget.eineAnsage
-            ? MergeSemantics(child: widget.child)
-            : widget.child,
+        child: MergeSemantics(child: widget.child),
       ),
     );
   }

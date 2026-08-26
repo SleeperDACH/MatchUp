@@ -6,7 +6,6 @@ import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../features/auth/providers.dart';
 import '../features/tippspiel/logic/tip_weeks.dart';
-import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
 
 /// Offene Tipps einer Tipprunde — steht auf deren Karte auf dem Homescreen.
@@ -95,81 +94,3 @@ String kurzeFrist(DateTime frist, DateTime jetzt) {
   }
   return 'bis ${DateFormat('d.M.', 'de_DE').format(frist)}';
 }
-
-/// Der eigene Tipp zu **einem bestimmten Spiel** — für die Kopfkarte des
-/// Homescreens.
-///
-/// Die Kopfkarte zeigt das nächste Spiel eines favorisierten Vereins. Ob
-/// dieses Spiel zugleich in einer der eigenen Tipprunden liegt, weiß sie damit
-/// noch nicht: Favoriten kommen aus dem Vereins-Spielplan, Tipprunden aus dem
-/// Saison-Spielplan ihrer Wettbewerbe. Beide Wege enden aber bei derselben ID
-/// (`sportmonks:<id>`) — der Abgleich ist deshalb exakt und nicht über Namen
-/// und Anstoßzeit geraten, was bei zwei Mannschaften desselben Klubs schiefe
-/// Treffer gäbe.
-///
-/// Die Saison-Spielpläne holt [offeneTippsProvider] ohnehin schon; dieser
-/// Provider trifft dieselben Family-Keys und liest damit aus dem Cache.
-@immutable
-class SpielTipp {
-  const SpielTipp({required this.round, this.tipp});
-
-  /// Die Runde, in der das Spiel steht.
-  final TipRound round;
-
-  /// Der eigene Tipp darin, oder `null` für „noch nicht getippt".
-  final MemberTip? tipp;
-
-  bool get offen => tipp == null;
-}
-
-/// Family-Key ist die Fixture-ID. Leere Liste = das Spiel liegt in keiner
-/// meiner Runden (oder es steht noch nicht fest).
-///
-/// **Alle** Runden, nicht die interessanteste. Zuerst lieferte dieser Provider
-/// genau eine — die offene, sonst irgendeine getippte. Das war falsch gedacht:
-/// Wer dasselbe Spiel in drei Runden tippt, tippt dort womöglich
-/// Verschiedenes (andere Mitspieler, andere Wertung, anderer Mut), und die
-/// Kopfkarte behauptete dann „Dein Tipp: 2:0", als gäbe es nur einen. Die
-/// Reihenfolge ist die von [myRoundsProvider] und bleibt damit stabil, auch
-/// wenn eine Runde getippt wird.
-final spielTippProvider = FutureProvider.family<List<SpielTipp>, String>((
-  ref,
-  fixtureId,
-) async {
-  if (!AppConfig.isSupabaseConfigured) return const [];
-  final myId = ref.watch(currentUserProvider)?.id;
-  if (myId == null) return const [];
-
-  try {
-    final rounds = await ref.watch(myRoundsProvider.future);
-    final treffer = <SpielTipp>[];
-    for (final round in rounds) {
-      var enthalten = false;
-      for (final id in round.competitions) {
-        final fixtures = await ref.watch(
-          leagueSeasonFixturesProvider(id).future,
-        );
-        if (fixtures.any((f) => f.id == fixtureId)) {
-          enthalten = true;
-          break;
-        }
-      }
-      if (!enthalten) continue;
-
-      final tips = await ref.watch(allRoundTipsProvider(round.id).future);
-      treffer.add(
-        SpielTipp(
-          round: round,
-          tipp: tips
-              .where((t) => t.userId == myId && t.fixtureId == fixtureId)
-              .firstOrNull,
-        ),
-      );
-    }
-    return treffer;
-  } catch (_) {
-    // Wie bei den offenen Tipps: eine hakelige Datenquelle darf die Karte
-    // nicht kippen, sie zeigt dann eben nur das Spiel.
-    return const [];
-  }
-});

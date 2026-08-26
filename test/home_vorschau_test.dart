@@ -93,105 +93,110 @@ void main() {
   });
 
   testWidgets('Vorschau: Startbildschirm — Richtung A', (tester) async {
-    final vorher = AppConfig.supabaseInitialized;
-    AppConfig.supabaseInitialized = true;
-    addTearDown(() => AppConfig.supabaseInitialized = vorher);
-
-    // Die echte Gerätefläche, nicht die 800×600 des Testfensters — und zwar
-    // über `tester.view`, **nicht** über `setSurfaceSize`. Letzteres ändert
-    // nur, worauf gezeichnet wird; die `MediaQuery` blieb bei 800×600. Das
-    // fällt fast nirgends auf, aber `_Bleed` und `leagueCardWidth` rechnen
-    // ihre Maße genau daraus: Die Kartenreihe stand 800 breit hinter einem
-    // 402 breiten Bild, jede Karte doppelt so breit wie auf dem Gerät, und
-    // die erste hing links außerhalb. Ein `MediaQuery`-Widget um den Screen
-    // reicht ebenso wenig — die Größe muss aus der View kommen, sonst
-    // widersprechen sich Bild und Maße weiter.
-    tester.view.physicalSize = const Size(402 * 3, 874 * 3);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-
-    // Ein fester Anstoß am selben Tag: so trägt die Kopfkarte ihre
-    // „HEUTE"-Marke, ohne dass die Vorschau von der Uhr abhängt.
-    final heute = DateTime.now();
-    final anstoss = DateTime(heute.year, heute.month, heute.day, 20, 30);
-    final spiel = _spiel(anstoss);
-
-    final ligen = [
-      _liga('l1', 'Draftest3', FantasyMode.liga),
-      _liga(
-        'l2',
-        'BuLi 26/27',
-        FantasyMode.liga,
-        draft: DraftStatus.drafting,
-      ),
-      _liga('l3', 'DynastyTest', FantasyMode.dynasty),
-      _liga('l4', 'testadmin', FantasyMode.liga),
-    ];
-    final runden = [
-      _runde('r1', 'Xcode Xcode', ['bl1', 'bl2']),
-      _runde('r2', 'TEST TIPP', ['bl1']),
-    ];
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          // Angemeldet, aber ohne echten Supabase-User: den Screen
-          // interessiert nur, ob überhaupt einer da ist — und die Karten
-          // vergleichen die ID mit `createdBy`.
-          currentUserProvider.overrideWith((ref) => null),
-          currentUsernameProvider.overrideWith((ref) async => 'SFV03'),
-          unreadDmCountProvider.overrideWith((ref) => 18),
-          myFantasyLeaguesProvider.overrideWith((ref) async => ligen),
-          myRoundsProvider.overrideWith((ref) async => runden),
-          favoritenSpieleProvider.overrideWith((ref) async => [spiel]),
-          // Das Spiel der Kopfkarte steht in **beiden** Runden: in der einen
-          // getippt, in der anderen nicht. Genau der Fall, für den der Sockel
-          // je Runde eine Zeile trägt — mit einer einzigen Runde sähe man ihm
-          // nicht an, dass er mehrere kann.
-          spielTippProvider.overrideWith(
-            (ref, id) async => [
-              SpielTipp(
-                round: runden.first,
-                tipp: MemberTip(
-                  userId: 'ich',
-                  fixtureId: id,
-                  homeGoals: 2,
-                  awayGoals: 0,
-                ),
-              ),
-              SpielTipp(round: runden.last),
-            ],
-          ),
-          fantasyManagersProvider.overrideWith((ref, id) async => const []),
-          fantasyJoinRequestsProvider.overrideWith(
-            (ref, id) => Stream.value(const []),
-          ),
-          tipJoinRequestsProvider.overrideWith(
-            (ref, id) => Stream.value(const []),
-          ),
-          fantasyTipRoundProvider.overrideWith((ref, id) async => null),
-          offeneTippsProvider.overrideWith(
-            (ref, id) async => switch (id) {
-              'r1' => OffeneTipps(anzahl: 18, frist: anstoss),
-              'r2' => OffeneTipps(anzahl: 2, frist: anstoss),
-              _ => OffeneTipps.leer,
-            },
-          ),
-          newsProvider.overrideWith((ref, topic) async => const <NewsItem>[]),
-        ],
-        child: MaterialApp(theme: buildAppTheme(), home: const HomeScreen()),
-      ),
-    );
-    // Die Provider lösen sich gestaffelt auf, und die Einblend-Animation
-    // (`_Appear`) läuft dazu. `pumpAndSettle` würde an der pulsierenden
-    // Draft-Anzeige hängen bleiben, die nie zur Ruhe kommt.
-    for (var i = 0; i < 6; i++) {
-      await tester.pump(const Duration(milliseconds: 200));
-    }
-
+    await _bauen(tester);
     await expectLater(
       find.byType(HomeScreen),
       matchesGoldenFile('goldens/home_vorschau.png'),
     );
   });
+
+  testWidgets('Kartennamen werden nicht auf eine halbe Zeile gestaucht', (
+    tester,
+  ) async {
+    // Der Fehler, den das hier festhält, meldete sich nirgends: Bei
+    // zweizeiligem Sockel („Draft läuft" über „Pick 1") fehlten der Karte
+    // rund fünf Punkte, und die nahm sich der `Flexible` um den Namen. Aus
+    // „Tipptest" wurde auf dem Gerät lesbar „Tinntest" — formal passte alles,
+    // es gab keinen Überlauf und keine Warnung.
+    await _bauen(tester);
+
+    // Eine volle Zeile bei 14 Punkt und `height: 1.2`.
+    const zeile = 14 * 1.2;
+    for (final name in ['Tipptest', 'TEST TIPP', 'BuLi 26/27', 'Draftest3']) {
+      final box = tester.renderObject<RenderBox>(find.text(name));
+      expect(
+        box.size.height,
+        greaterThanOrEqualTo(zeile),
+        reason:
+            '„$name" bekommt nur ${box.size.height} statt $zeile Punkt — '
+            'die Karte ist zu kurz, und der Name wird beschnitten',
+      );
+    }
+  });
+}
+
+/// Baut den Homescreen mit gesetzten Zuständen auf.
+Future<void> _bauen(WidgetTester tester) async {
+  final vorher = AppConfig.supabaseInitialized;
+  AppConfig.supabaseInitialized = true;
+  addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+  // Die echte Gerätefläche, nicht die 800×600 des Testfensters — und zwar
+  // über `tester.view`, **nicht** über `setSurfaceSize`. Letzteres ändert
+  // nur, worauf gezeichnet wird; die `MediaQuery` blieb bei 800×600. Das
+  // fällt fast nirgends auf, aber `_Bleed` und `leagueCardWidth` rechnen
+  // ihre Maße genau daraus: Die Kartenreihe stand 800 breit hinter einem
+  // 402 breiten Bild, jede Karte doppelt so breit wie auf dem Gerät, und
+  // die erste hing links außerhalb. Ein `MediaQuery`-Widget um den Screen
+  // reicht ebenso wenig — die Größe muss aus der View kommen, sonst
+  // widersprechen sich Bild und Maße weiter.
+  tester.view.physicalSize = const Size(402 * 3, 874 * 3);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
+
+  // Ein fester Anstoß am selben Tag: so trägt die Kopfkarte ihre
+  // „HEUTE"-Marke, ohne dass die Vorschau von der Uhr abhängt.
+  final heute = DateTime.now();
+  final anstoss = DateTime(heute.year, heute.month, heute.day, 20, 30);
+  final spiel = _spiel(anstoss);
+
+  final ligen = [
+    _liga('l1', 'Draftest3', FantasyMode.liga),
+    _liga('l2', 'BuLi 26/27', FantasyMode.liga, draft: DraftStatus.drafting),
+    _liga('l3', 'Übungsliga', FantasyMode.dynasty),
+    _liga('l4', 'testadmin', FantasyMode.liga),
+  ];
+  final runden = [
+    _runde('r1', 'Tipptest', ['bl1', 'bl2']),
+    _runde('r2', 'TEST TIPP', ['bl1']),
+  ];
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        // Angemeldet, aber ohne echten Supabase-User: den Screen
+        // interessiert nur, ob überhaupt einer da ist — und die Karten
+        // vergleichen die ID mit `createdBy`.
+        currentUserProvider.overrideWith((ref) => null),
+        currentUsernameProvider.overrideWith((ref) async => 'SFV03'),
+        unreadDmCountProvider.overrideWith((ref) => 18),
+        myFantasyLeaguesProvider.overrideWith((ref) async => ligen),
+        myRoundsProvider.overrideWith((ref) async => runden),
+        favoritenSpieleProvider.overrideWith((ref) async => [spiel]),
+        fantasyManagersProvider.overrideWith((ref, id) async => const []),
+        fantasyJoinRequestsProvider.overrideWith(
+          (ref, id) => Stream.value(const []),
+        ),
+        tipJoinRequestsProvider.overrideWith(
+          (ref, id) => Stream.value(const []),
+        ),
+        fantasyTipRoundProvider.overrideWith((ref, id) async => null),
+        offeneTippsProvider.overrideWith(
+          (ref, id) async => switch (id) {
+            'r1' => OffeneTipps(anzahl: 18, frist: anstoss),
+            'r2' => OffeneTipps(anzahl: 2, frist: anstoss),
+            _ => OffeneTipps.leer,
+          },
+        ),
+        newsProvider.overrideWith((ref, topic) async => const <NewsItem>[]),
+      ],
+      child: MaterialApp(theme: buildAppTheme(), home: const HomeScreen()),
+    ),
+  );
+  // Die Provider lösen sich gestaffelt auf, und die Einblend-Animation
+  // (`_Appear`) läuft dazu. `pumpAndSettle` würde an der pulsierenden
+  // Draft-Anzeige hängen bleiben, die nie zur Ruhe kommt.
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 200));
+  }
 }
