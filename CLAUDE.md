@@ -818,9 +818,24 @@ wie Nachlässigkeit aussehen:
 Versprechen, das die Daten nicht halten; wer es will, klärt das zuerst mit
 Sportmonks.
 
-Angesehen wird der Tab über `test/live_vorschau_test.dart` (Golden): Auf dem
-Gerät zeigt er nur, was der Kalender gerade hergibt — an einem spielfreien
-Mittwoch nichts.
+- **Die Spielzeile ist bewusst groß**: Wappen 22, Namen 15,5, Ergebnis 19.
+  Die Namen **schrumpfen statt zu kappen** (`FittedBox`, dieselbe Regel wie
+  beim Wettbewerb auf den Homescreen-Karten) — auf einer Ergebnistafel ist der
+  Verein der Inhalt, und „Bor. Mönchengladb…" wäre keiner. Es trifft nur die
+  zwei, drei längsten Namen.
+
+Angesehen wird der Tab über `test/live_vorschau_test.dart`: Auf dem Gerät
+zeigt er nur, was der Kalender gerade hergibt — an einem spielfreien Mittwoch
+nichts.
+
+**Der Bildvergleich beider Vorschauen (Home und Live) läuft nur mit
+`--update-goldens`.** Beide Schirme benutzen intern `DateTime.now()` — der
+Live-Tab wählt beim Öffnen heute, die Kopfkarte schreibt das Datum ihres
+Spiels hin. Ein fest eingecheckter Vergleich ist damit **am nächsten Tag
+rot**, und das ist genau einmal passiert. Ein Test, der täglich rot wird,
+bringt niemandem etwas außer der Gewohnheit, ihn zu übergehen. Die Bilder sind
+zum Ansehen da; was gehalten werden muss, steht als **Messung** daneben (etwa
+die Zeilenhöhe der Kartennamen) und läuft bei jedem `flutter test`.
 
 ## Startbildschirm
 

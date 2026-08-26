@@ -418,25 +418,28 @@ class _SpielZeile extends StatelessWidget {
           MaterialPageRoute(builder: (_) => MatchDetailScreen(fixtureId: f.id)),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
           child: Row(
             children: [
-              ClubLink(team: f.home, child: TeamBadge(team: f.home, size: 18)),
+              ClubLink(team: f.home, child: TeamBadge(team: f.home, size: 22)),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  f.home.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    f.home.name,
+                    maxLines: 1,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
               SizedBox(
-                width: 62,
+                width: 56,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -453,7 +456,7 @@ class _SpielZeile extends StatelessWidget {
                           '${f.homeScore}:${f.awayScore}',
                           key: ValueKey('${f.homeScore}:${f.awayScore}'),
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 19,
                             fontWeight: FontWeight.w700,
                             color: live
                                 ? MatchUpColors.red
@@ -466,7 +469,7 @@ class _SpielZeile extends StatelessWidget {
                       Text(
                         DateFormat('HH:mm').format(f.kickoff.toLocal()),
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
@@ -475,7 +478,7 @@ class _SpielZeile extends StatelessWidget {
                       Text(
                         'beendet',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
                         ),
                       ),
@@ -483,18 +486,21 @@ class _SpielZeile extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: Text(
-                  f.away.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    f.away.name,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              ClubLink(team: f.away, child: TeamBadge(team: f.away, size: 18)),
+              ClubLink(team: f.away, child: TeamBadge(team: f.away, size: 22)),
               // Der Live-Punkt sitzt an der Außenkante — kein 4-px-Streifen
               // mehr, der die Zeile gegen die anderen verschiebt.
               SizedBox(
