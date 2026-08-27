@@ -15,6 +15,7 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'roster_limit_banner.dart';
 import 'draft_room_screen.dart';
+import 'draft_start.dart';
 import 'fantasy_chat_screen.dart';
 import 'fantasy_settings_screen.dart';
 import 'fantasy_table_screen.dart';
@@ -363,12 +364,23 @@ class _NaechsterSchritt extends ConsumerWidget {
                 ),
               ),
               // Den Draft startet nur der Ersteller — und nur, solange er
-              // noch nicht läuft.
+              // noch nicht läuft. Der Knopf **startet** ihn auch, statt bloß
+              // den Raum zu öffnen; die Rückfrage steckt in
+              // `draftStartenMitBestaetigung` und kommt auf beiden Wegen.
               if (isAdmin && league.draftStatus == DraftStatus.setup) ...[
                 const SizedBox(width: 9),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: openRoom,
+                    onPressed: () async {
+                      final gestartet = await draftStartenMitBestaetigung(
+                        context,
+                        ref,
+                        league,
+                      );
+                      // Nach dem Start gehört man in den Raum — dort läuft ab
+                      // jetzt die Uhr.
+                      if (gestartet && context.mounted) openRoom();
+                    },
                     child: const Text('Draft starten'),
                   ),
                 ),

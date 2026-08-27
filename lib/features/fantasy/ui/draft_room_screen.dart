@@ -13,6 +13,7 @@ import '../logic/draft_order.dart';
 import '../logic/draft_ranking.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'draft_start.dart';
 import 'club_badge.dart';
 import 'pitch_painter.dart';
 import '../../../app/widgets/segmented_tab_bar.dart';
@@ -180,42 +181,12 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
   }
 
   /// Admin: Draft starten (nach Bestätigung).
-  Future<void> _startDraft(FantasyLeague league) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final isU20 = league.draftPhase == DraftPhase.u20;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isU20 ? 'U20-Draft starten?' : 'Draft starten?'),
-        content: Text(isU20
-            ? 'Der U20-Draft startet mit der aktuellen Reihenfolge und kann '
-                'nicht mehr geändert werden.'
-            : 'Der Draft startet mit der aktuellen Reihenfolge und kann nicht '
-                'mehr geändert werden. ${league.draftOrderMode == 'manual' ? '' : 'Die Reihenfolge wird beim Start zufällig ausgelost.'}'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Abbrechen')),
-          FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Starten')),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-    try {
-      // Im U20-Setup startet der U20-Draft, sonst der Haupt-Draft.
-      if (isU20) {
-        await _repo.startU20Draft(_leagueId);
-      } else {
-        await _repo.startDraft(_leagueId);
-      }
-      ref.invalidate(draftLeagueProvider(_leagueId));
-      ref.invalidate(fantasyManagersProvider(_leagueId));
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
-    }
-  }
+  ///
+  /// Die Rückfrage und der Start liegen in `draft_start.dart` — der
+  /// Auftrags-Kopf der Liga-Übersicht startet über denselben Weg, und zwei
+  /// Kopien der Warnung liefen beim nächsten Feinschliff auseinander.
+  Future<void> _startDraft(FantasyLeague league) =>
+      draftStartenMitBestaetigung(context, ref, league);
 
   /// Speichert die eigene Draft-Queue optimistisch: zeigt die neue Reihenfolge
   /// sofort (setState) und persistiert sie. Bei Fehler wird zurückgesetzt und

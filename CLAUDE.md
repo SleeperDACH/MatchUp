@@ -945,6 +945,13 @@ Draft, Saison. Richtung C beschreibt nur die Saison; für die beiden anderen
 Phasen ist Richtung A umgesetzt, sonst hätte der Schirm in zwei von drei
 Zuständen keinen Kopf.
 
+- **Der Draft startet nur nach Rückfrage**, und zwar auf jedem Weg. Die
+  Bestätigung samt Start liegt in `ui/draft_start.dart`
+  (`draftStartenMitBestaetigung`) — der Knopf im Draft-Raum und der im
+  Auftrags-Kopf rufen dieselbe Stelle. Der Kopf-Knopf **öffnete vorher nur den
+  Raum**, obwohl er „Draft starten" hieß: ein Knopf, der ankündigt zu starten
+  und stattdessen navigiert. Nach dem Start führt er in den Raum, weil dort ab
+  jetzt die Uhr läuft.
 - **In der Saison führt das eigene Duell** (`MatchupHero`, gab es schon). Im
   Aufbau und im Draft steht dort `_NaechsterSchritt`: **ein** Auftrag, groß,
   mit dem Knopf dazu — „Noch 7 Plätze frei · Spieler einladen / Draft
