@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../app/theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -112,27 +114,24 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         children: [
           // Liga-Identität (nur Ersteller).
           if (isOwner) ...[
-            _Section('Liga'),
+            _Section('Liga', farbe: _grpLiga),
             _settingsGroup(context, [
               ListTile(
-                leading: Icon(Icons.drive_file_rename_outline,
-                    color: scheme.primary),
+                leading: Icon(Icons.drive_file_rename_outline),
                 title: const Text('Liga-Name ändern'),
                 subtitle: Text(l.name),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const _Chevron(),
                 onTap: renameLeague,
               ),
               ListTile(
-                leading: Icon(Icons.image_outlined, color: scheme.primary),
+                leading: Icon(Icons.image_outlined),
                 title: const Text('Liga-Logo ändern'),
                 subtitle: const Text('Bild hochladen oder Emoji + Farbe wählen'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const _Chevron(),
                 onTap: editLogo,
               ),
               ListTile(
-                leading: Icon(
-                    l.isPublic ? Icons.public : Icons.lock_outline,
-                    color: scheme.primary),
+                leading: Icon(l.isPublic ? Icons.public : Icons.lock_outline),
                 title: const Text('Sichtbarkeit & Beitritt'),
                 subtitle: Text(visibilityLabel(l.visibility, l.joinPolicy)),
                 trailing: RequestsBadgeChevron(
@@ -151,33 +150,33 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                       joinPolicy: l.joinPolicy,
                     )),
               ),
-            ]),
+            ], farbe: _grpLiga),
           ],
 
           // Persönliches.
-          _Section('Mein Team'),
+          _Section('Mein Team', farbe: _grpTeam),
           _settingsGroup(context, [
             ListTile(
-              leading: Icon(Icons.badge_outlined, color: scheme.primary),
+              leading: Icon(Icons.badge_outlined),
               title: const Text('Mein Teamname'),
               subtitle: Text(
                 (myManager?.teamName?.trim().isNotEmpty ?? false)
                     ? myManager!.teamName!.trim()
                     : 'In dieser Liga statt deines Nutzernamens',
               ),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const _Chevron(),
               onTap: editTeamName,
             ),
-          ]),
+          ], farbe: _grpTeam),
 
           // Spielregeln & Format.
-          _Section('Regeln & Format'),
+          _Section('Regeln & Format', farbe: _grpRegeln),
           _settingsGroup(context, [
             ListTile(
-              leading: Icon(Icons.calculate_outlined, color: scheme.primary),
+              leading: Icon(Icons.calculate_outlined),
               title: const Text('Punktevergabe'),
               subtitle: const Text('Wie Fantasy-Punkte vergeben werden'),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const _Chevron(),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const ScoringInfoScreen())),
             ),
@@ -187,65 +186,64 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             // wollte, fand im Zahnrad Draft, Playoffs, Punkte und
             // Sichtbarkeit, aber nichts für die Liga-Größe.
             ListTile(
-              leading: Icon(Icons.groups, color: scheme.primary),
+              leading: Icon(Icons.groups),
               title: const Text('Teilnehmerzahl'),
               subtitle: Text(l.maxTeams != null
                   ? 'Höchstens ${l.maxTeams} Teams'
                   : 'Ohne eigenes Limit — höchstens 18'),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const _Chevron(),
               onTap: () => open(LeagueSettingsPage(league: l)),
             ),
             ListTile(
-              leading: Icon(Icons.sports, color: scheme.primary),
+              leading: Icon(Icons.sports),
               title: const Text('Draft-Einstellungen'),
               subtitle: Text(
                   '${l.pickTime.label} · ${l.rounds} Runden${l.hasPause ? ' · Pause' : ''}'),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const _Chevron(),
               onTap: () => open(DraftSettingsPage(league: l)),
             ),
             ListTile(
-              leading: Icon(Icons.emoji_events_outlined, color: scheme.primary),
+              leading: Icon(Icons.emoji_events_outlined),
               title: const Text('Playoff-Einstellungen'),
               subtitle: Text(l.hasPlayoffs
                   ? '${l.playoffTeams} Teams · ${l.playoffWeeks == 2 ? '2-Wochen' : '1-Wochen'}-Partien'
                   : 'noch nicht konfiguriert'),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const _Chevron(),
               onTap: () => open(PlayoffSettingsPage(league: l)),
             ),
-          ]),
+          ], farbe: _grpRegeln),
 
           // Rollover in die nächste Saison: sobald die laufende Saison steht
           // (Draft fertig). Danach steht der U20-Draft im Setup an.
           if (l.mode == FantasyMode.dynasty &&
               isOwner &&
               l.draftStatus == DraftStatus.done) ...[
-            _Section('Neue Saison'),
+            _Section('Neue Saison', farbe: _grpAdmin),
             _settingsGroup(context, [
               ListTile(
-                leading: Icon(Icons.calendar_month, color: scheme.primary),
+                leading: Icon(Icons.calendar_month),
                 title: const Text('Saison-Rollover'),
                 subtitle: Text(
                     'Startet Saison ${l.season + 1}/${(l.season + 2) % 100}: '
                     'Kader bleibt, danach ein neuer U20-Draft für die Rookies.'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const _Chevron(),
                 onTap: () => _confirmRollover(context, ref, l),
               ),
-            ]),
+            ], farbe: _grpAdmin),
           ],
 
           if (isOwner) ...[
-            _Section('Admin'),
+            _Section('Admin', farbe: _grpAdmin),
             _settingsGroup(context, [
               ListTile(
-                leading: Icon(Icons.admin_panel_settings_outlined,
-                    color: scheme.primary),
+                leading: Icon(Icons.admin_panel_settings_outlined),
                 title: const Text('Mitglieder & Kader verwalten'),
                 subtitle: const Text(
                     'Kicken, verwaiste Teams zuweisen, Kader bearbeiten'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const _Chevron(),
                 onTap: () => open(FantasyAdminScreen(league: l)),
               ),
-            ]),
+            ], farbe: _grpAdmin),
           ],
 
           // Ligainternes Tippspiel nachträglich einschalten (nur wenn es beim
@@ -253,21 +251,21 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
           if (isOwner &&
               !l.tipEnabled &&
               ref.watch(fantasyTipRoundProvider(l.id)).valueOrNull == null) ...[
-            _Section('Tippspiel'),
+            _Section('Tippspiel', farbe: _grpRegeln),
             _settingsGroup(context, [
               ListTile(
                 leading:
-                    Icon(Icons.emoji_events_outlined, color: scheme.primary),
+                    Icon(Icons.emoji_events_outlined),
                 title: const Text('Ligainternes Tippspiel einschalten'),
                 subtitle: const Text(
                     'Blendet die Tippspiel-Option auf der Übersicht ein.'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const _Chevron(),
                 onTap: () => _enableTip(context, ref, l),
               ),
-            ]),
+            ], farbe: _grpRegeln),
           ],
 
-          _Section('Gefahrenzone'),
+          _Section('Gefahrenzone', farbe: _grpGefahr),
           _settingsGroup(context, [
             if (isOwner) ...[
               // Admin kann verlassen, muss dabei die Adminrechte übergeben.
@@ -302,7 +300,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                     'bestehen und kann neu zugewiesen werden.'),
                 onTap: () => _confirmLeave(context, ref, l),
               ),
-          ]),
+          ], farbe: _grpGefahr),
 
           // Mitspieler einladen — ganz unten.
           _Section('Einladen'),
@@ -655,7 +653,6 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final editable = _editable(ref, widget.league);
     return Scaffold(
       appBar: AppBar(title: const Text('Draft-Einstellungen')),
@@ -735,10 +732,10 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
             if (_orderMode == 'manual') ...[
               const Divider(height: 1),
               ListTile(
-                leading: Icon(Icons.swap_vert, color: scheme.primary),
+                leading: Icon(Icons.swap_vert),
                 title: const Text('Reihenfolge festlegen'),
                 subtitle: const Text('Teilnehmer per Ziehen anordnen'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const _Chevron(),
                 enabled: editable,
                 onTap: editable
                     ? () => Navigator.of(context).push(MaterialPageRoute(
@@ -752,7 +749,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
             SwitchListTile(
               value: _pauseOn,
               onChanged: editable ? (v) => setState(() => _pauseOn = v) : null,
-              secondary: Icon(Icons.nightlight_outlined, color: scheme.primary),
+              secondary: Icon(Icons.nightlight_outlined),
               title: const Text('Slow-Draft-Pause'),
               subtitle: const Text(
                   'In diesem Zeitfenster (z. B. nachts) wird kein Pick '
@@ -840,7 +837,6 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final l = widget.league;
     final editable = _editable(ref, l);
     final mitglieder =
@@ -860,7 +856,7 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
               value: _limitTeams,
               onChanged:
                   editable ? (v) => setState(() => _limitTeams = v) : null,
-              secondary: Icon(Icons.groups, color: scheme.primary),
+              secondary: Icon(Icons.groups),
               title: const Text('Teilnehmer begrenzen'),
               subtitle: Text(_limitTeams
                   ? 'Höchstens $_maxTeams Teilnehmer'
@@ -1271,45 +1267,144 @@ class _SaveButton extends StatelessWidget {
   }
 }
 
+/// Gruppenkopf der Einstellungen — dieselbe Kapitelmarke wie im Live-Tab, im
+/// Favoriten-Tab, im Seitenmenü und in der Liga-Übersicht.
+///
+/// Vorher standen hier 11-Punkt-Versalien in Grau, kaum vom Untertitel der
+/// Zeilen darunter zu unterscheiden: neun Zeilen ohne Takt. Der farbige Strich
+/// gehört zur Gruppe darunter und wiederholt die Farbe, die ihre Symbole
+/// tragen — er gliedert, statt zu schmücken.
 class _Section extends StatelessWidget {
-  const _Section(this.text);
+  const _Section(this.text, {this.farbe});
+
   final String text;
+  final Color? farbe;
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 14, 4, 2),
-      child: Text(text.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.6,
-              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      padding: const EdgeInsets.fromLTRB(0, 26, 0, 8),
+      child: Row(
+        children: [
+          if (farbe != null) ...[
+            Container(
+              width: 3,
+              height: 14,
+              decoration: BoxDecoration(
+                color: farbe,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 9),
+          ],
+          Text(
+            text.toUpperCase(),
+            style: TextStyle(
+              color: scheme.onSurface,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              height: 0.8,
+              color: scheme.onSurface.withValues(alpha: 0.12),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// Fasst mehrere Einstellungs-Zeilen zu einer Gruppe zusammen — flach (ohne
-/// Karten-/Box-Design), nur dünne Trenner, kompakte Zeilen.
-Widget _settingsGroup(BuildContext context, List<Widget> tiles) {
+/// Fasst mehrere Einstellungs-Zeilen zu einer Gruppe zusammen — flach, nur
+/// Haarlinien dazwischen.
+///
+/// [farbe] färbt die Symbole der Gruppe. Vorher trug **jedes** Symbol des
+/// Schirms das Markengrün: neun grüne Punkte untereinander, obwohl Grün in
+/// dieser App „hier läuft etwas" heißt und hier nichts läuft. Eine Farbe je
+/// Gruppe trennt die Bereiche, statt neunmal dasselbe Signal zu geben.
+///
+/// Die Zeilen sind außerdem nicht mehr `dense`: Titel 16 statt 14, Untertitel
+/// deutlich leiser — vorher waren beide fast gleich groß, und ausgerechnet der
+/// Untertitel trägt die Auskunft (den aktuellen Wert).
+Widget _settingsGroup(
+  BuildContext context,
+  List<Widget> tiles, {
+  Color? farbe,
+}) {
   final scheme = Theme.of(context).colorScheme;
-  return ListTileTheme(
-    data: const ListTileThemeData(
-      dense: true,
-      contentPadding: EdgeInsets.symmetric(horizontal: 4),
-      minVerticalPadding: 6,
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < tiles.length; i++) ...[
-          if (i > 0)
-            Divider(height: 1, indent: 44, color: scheme.outlineVariant),
-          tiles[i],
+  final ton = farbe ?? scheme.primary;
+  return IconTheme.merge(
+    data: IconThemeData(color: ton, size: 22),
+    child: ListTileTheme(
+      data: ListTileThemeData(
+        dense: false,
+        // `iconColor` und nicht `IconTheme`: `ListTile` löst die Farbe seiner
+        // führenden Symbole selbst auf und überstimmt die umgebende
+        // `IconTheme` — die Gruppenfarbe kam damit nie an.
+        iconColor: ton,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        minVerticalPadding: 10,
+        // **Aus dem Theme abgeleitet, nicht neu gebaut.** Ein blankes
+        // `TextStyle` erbt die `fontFamily` nicht — die Zeilen wären auf
+        // Roboto zurückgefallen statt Barlow Condensed zu benutzen, und zwar
+        // auf dem Gerät genauso wie in der Vorschau.
+        titleTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: scheme.onSurface,
+        ),
+        subtitleTextStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontSize: 12.5,
+          height: 1.25,
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < tiles.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                indent: 44,
+                color: scheme.onSurface.withValues(alpha: 0.07),
+              ),
+            tiles[i],
+          ],
         ],
-      ],
+      ),
     ),
   );
 }
+
+/// Das Chevron am Zeilenende bleibt grau. `ListTileThemeData.iconColor` färbt
+/// führende **und** folgende Symbole; in der Gruppenfarbe wären die Chevrons
+/// eine zweite Farbspur, die nichts unterscheidet.
+class _Chevron extends StatelessWidget {
+  const _Chevron();
+
+  @override
+  Widget build(BuildContext context) => Icon(
+    Icons.chevron_right,
+    size: 20,
+    color: Theme.of(
+      context,
+    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+  );
+}
+
+/// Farben der Einstellungs-Gruppen. Eine je Bereich — sie steht im Strich des
+/// Gruppenkopfs und in den Symbolen darunter.
+const _grpLiga = MatchUpColors.green;
+const _grpTeam = Color(0xFF4FC3A1);
+const _grpRegeln = Color(0xFFFFC83D);
+const _grpAdmin = Color(0xFF5B9DF9);
+const _grpGefahr = MatchUpColors.red;
 
 class _CardColumn extends StatelessWidget {
   const _CardColumn(this.children);
@@ -1487,7 +1582,7 @@ class _InviteBanner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(Icons.key, color: scheme.primary),
+              Icon(Icons.key),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

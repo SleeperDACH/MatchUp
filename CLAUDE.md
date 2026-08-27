@@ -900,6 +900,43 @@ bringt niemandem etwas außer der Gewohnheit, ihn zu übergehen. Die Bilder sind
 zum Ansehen da; was gehalten werden muss, steht als **Messung** daneben (etwa
 die Zeilenhöhe der Kartennamen) und läuft bei jedem `flutter test`.
 
+## Fantasy-Einstellungen
+
+Kein eigener Canvas — der Schirm bekommt die Sprache, die die anderen fünf
+inzwischen sprechen. Drei Befunde, drei Änderungen:
+
+- **Neun grüne Symbole untereinander.** Jede Zeile trug `scheme.primary`,
+  obwohl Grün in dieser App „hier läuft etwas" heißt und in einer
+  Einstellungsliste nichts läuft. Jetzt hat **jede Gruppe eine Farbe** (Liga
+  grün, Mein Team türkis, Regeln & Format gold, Admin blau, Gefahrenzone rot),
+  und dieselbe Farbe steht im Strich des Gruppenkopfs. Die Farbe gliedert,
+  statt neunmal dasselbe Signal zu geben.
+- **Die Gruppenköpfe waren 11-Punkt-Versalien in Grau**, kaum von den
+  Untertiteln zu unterscheiden. Jetzt dieselbe Kapitelmarke wie überall sonst:
+  farbiger Strich, Wort, Haarlinie bis an den Rand.
+- **Titel und Untertitel waren fast gleich groß.** Titel jetzt 16, Untertitel
+  12,5 und leiser; die Zeilen sind nicht mehr `dense`.
+
+Zwei Fallen, beide beim Nachsehen im Bild aufgefallen und nicht im Code:
+
+- **Ein blankes `TextStyle` erbt die `fontFamily` nicht.** `titleTextStyle:
+  TextStyle(...)` in `ListTileThemeData` ersetzt den aufgelösten Stil; die
+  Zeilen fielen auf Roboto zurück statt Barlow Condensed zu benutzen — auf dem
+  Gerät genauso wie in der Vorschau. Die Stile leiten sich deshalb per
+  `copyWith` aus `Theme.of(context).textTheme` ab.
+- **`ListTile` löst die Farbe seiner Symbole selbst auf** und überstimmt eine
+  umgebende `IconTheme`. Die Gruppenfarbe kam erst über
+  `ListTileThemeData.iconColor` an. Sie färbt allerdings führende **und**
+  folgende Symbole — deshalb tragen die Chevrons ein eigenes, graues Widget
+  (`_Chevron`), sonst wäre rechts eine zweite Farbspur entstanden, die nichts
+  unterscheidet.
+
+Angesehen über `test/fantasy_einstellungen_vorschau_test.dart` (fester
+Bildvergleich, der Schirm zeigt kein Datum). Der Test braucht einen echten
+`User` in `currentUserProvider` — ohne ihn greift der Schirm auf
+`Supabase.instance` zu, die es im Test nicht gibt, und die ID muss `createdBy`
+treffen, sonst fehlen Admin-Bereich und Gefahrenzone.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
