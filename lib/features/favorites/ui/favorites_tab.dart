@@ -9,6 +9,7 @@ import '../../news/providers.dart';
 import '../../news/ui/news_tile.dart';
 import '../../tippspiel/ui/team_badge.dart';
 import '../../tippspiel/providers.dart';
+import '../../../app/widgets/leise_reiter.dart';
 import '../favorites.dart';
 import '../logic/favorite_order.dart';
 import 'favorites_manage_screen.dart';
@@ -276,7 +277,7 @@ class _Body extends StatelessWidget {
             length: 2,
             child: Column(
               children: [
-                const _LeiseReiter(titel: ['Spielplan', 'News']),
+                const LeiseReiter(titel: ['Spielplan', 'News']),
                 Expanded(
                   child: TabBarView(
                     children: [
@@ -489,72 +490,6 @@ class _VereinsKopf extends ConsumerWidget {
               style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// Reiter als leise Textumschaltung mit Unterstrich.
-///
-/// Vorher lag hier eine ganze Zeile in Signalgrün — das lauteste Element des
-/// Schirms, um zwei Optionen anzusagen. Grün heißt in dieser App „hier läuft
-/// etwas"; ein Reiter läuft nicht.
-class _LeiseReiter extends StatelessWidget {
-  const _LeiseReiter({required this.titel});
-
-  final List<String> titel;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final controller = DefaultTabController.of(context);
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) => Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-        child: Row(
-          children: [
-            for (var i = 0; i < titel.length; i++) ...[
-              Semantics(
-                button: true,
-                selected: controller.index == i,
-                label: titel[i],
-                excludeSemantics: true,
-                child: GestureDetector(
-                  onTap: () => controller.animateTo(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    padding: const EdgeInsets.only(bottom: 7),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: controller.index == i
-                              ? scheme.onSurface
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      titel[i],
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: controller.index == i
-                            ? FontWeight.w700
-                            : FontWeight.w600,
-                        color: controller.index == i
-                            ? scheme.onSurface
-                            : scheme.onSurfaceVariant.withValues(alpha: 0.75),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (i < titel.length - 1) const SizedBox(width: 18),
-            ],
-            const Spacer(),
-          ],
-        ),
       ),
     );
   }

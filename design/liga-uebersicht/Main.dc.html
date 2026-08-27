@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><script src="./support.js"></script></head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
+    .marke { display: flex; align-items: center; gap: 10px; padding: 22px 14px 6px 14px; }
+    .marke .t { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA; }
+    .marke .l { flex-grow: 1; height: 0.8px; background: rgba(237,239,244,0.12); }
+    .z { display: flex; align-items: center; gap: 11px; padding: 11px 14px; }
+    .n { flex: 1; font-size: 15px; font-weight: 600; }
+    .lin { height: 0.8px; background: #22252F; margin: 0 14px; }
+  </style>
+</helmet>
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+  <div style="display: flex; align-items: center; padding: 14px 14px 0 14px;">
+    <div style="font-size: 22px;">‹</div>
+    <div style="flex-grow: 1; text-align: center;">
+      <div style="font-size: 20px; font-weight: 800;">MatchUp! #1</div>
+      <div style="font-size: 11px; color: #A6ACBA;">Redraft · 3 von 10 Teams</div>
+    </div>
+    <div style="width: 22px; height: 22px; border: 2px solid #A6ACBA; border-radius: 11px;"></div>
+  </div>
+
+  <!-- Reiter leise, wie im Favoriten-Tab -->
+  <div style="display: flex; align-items: center; gap: 18px; padding: 16px 14px 0 14px;">
+    <div style="font-size: 14px; font-weight: 700; padding-bottom: 7px; border-bottom: 2px solid #EDEFF4;">Übersicht</div>
+    <div style="font-size: 14px; font-weight: 600; color: #6E7482; padding-bottom: 7px;">MatchUp</div>
+    <div style="font-size: 14px; font-weight: 600; color: #6E7482; padding-bottom: 7px;">Kader</div>
+    <div style="font-size: 14px; font-weight: 600; color: #6E7482; padding-bottom: 7px;">Tabelle</div>
+  </div>
+  <div style="height: 0.8px; background: #22252F; margin: -0.8px 14px 0 14px;"></div>
+
+  <!-- EIN Auftrag, groß und antippbar. Kein Dekor. -->
+  <div style="margin: 18px 14px 0 14px; border-radius: 16px; background: linear-gradient(150deg, rgba(255,200,61,0.18), rgba(255,200,61,0.05) 70%); border: 0.8px solid rgba(255,200,61,0.40); padding: 15px 16px;">
+    <div style="font-size: 11px; font-weight: 700; letter-spacing: 1.3px; color: #FFC83D;">ALS NÄCHSTES</div>
+    <div style="font-size: 19px; font-weight: 800; margin-top: 6px;">Noch 7 Plätze frei</div>
+    <div style="font-size: 13px; color: #A6ACBA; margin-top: 2px; line-height: 1.3;">Lade Freunde ein — sobald alle da sind, startest du den Draft.</div>
+    <div style="display: flex; gap: 9px; margin-top: 13px;">
+      <div style="flex: 1; text-align: center; padding: 11px 0; border-radius: 11px; background: #FFC83D; color: #12141C; font-size: 14px; font-weight: 700;">Spieler einladen</div>
+      <div style="flex: 1; text-align: center; padding: 11px 0; border-radius: 11px; border: 0.8px solid #3A3F4D; font-size: 14px; font-weight: 700; color: #A6ACBA;">Draft starten</div>
+    </div>
+  </div>
+
+  <!-- Kein „Schnellzugriff" mehr: Zeilen statt Kacheln -->
+  <div class="marke"><div class="t">LIGA</div><div class="l"></div></div>
+  <div class="z">
+    <div style="width: 20px; color: #A6ACBA;">◻</div>
+    <div class="n">Draft-Raum</div>
+    <div style="font-size: 12px; color: #6E7482;">noch nicht gestartet</div>
+    <div style="color: #6E7482;">›</div>
+  </div>
+  <div class="lin"></div>
+  <div class="z">
+    <div style="width: 20px; color: #A6ACBA;">◻</div>
+    <div class="n">Liga-Chat</div>
+    <div style="width: 8px; height: 8px; border-radius: 4px; background: #F23030;"></div>
+    <div style="color: #6E7482;">›</div>
+  </div>
+  <div class="lin"></div>
+  <div class="z">
+    <div style="width: 20px; color: #A6ACBA;">◻</div>
+    <div class="n">Teilnehmer</div>
+    <div style="font-size: 12px; color: #6E7482;">3</div>
+    <div style="color: #6E7482;">›</div>
+  </div>
+
+  <!-- Der Spieltag in derselben Zeilenform wie Live- und Favoriten-Tab -->
+  <div class="marke"><div class="t">1. SPIELTAG</div><div class="l"></div></div>
+  <div style="display: flex; align-items: baseline; gap: 8px; padding: 2px 14px 0 14px;">
+    <div style="font-size: 13px; font-weight: 700;">Fr, 28. Aug.</div>
+  </div>
+  <div class="z">
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #DC052D;"></div>
+    <div class="n">Bayern</div>
+    <div class="num" style="width: 56px; text-align: center; font-size: 16px; font-weight: 700;">20:30</div>
+    <div class="n" style="text-align: right;">Stuttgart</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #EDEFF4;"></div>
+  </div>
+  <div class="lin"></div>
+  <div style="display: flex; align-items: baseline; gap: 8px; padding: 10px 14px 0 14px;">
+    <div style="font-size: 13px; font-weight: 700;">Sa, 29. Aug.</div>
+  </div>
+  <div class="z">
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #DD0741;"></div>
+    <div class="n">Leipzig</div>
+    <div class="num" style="width: 56px; text-align: center; font-size: 16px; font-weight: 700;">15:30</div>
+    <div class="n" style="text-align: right;">Gladbach</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #252937;"></div>
+  </div>
+  <div class="lin"></div>
+  <div class="z">
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #C3141E;"></div>
+    <div class="n">Mainz</div>
+    <div class="num" style="width: 56px; text-align: center; font-size: 16px; font-weight: 700;">15:30</div>
+    <div class="n" style="text-align: right;">Paderborn</div>
+    <div style="width: 22px; height: 22px; border-radius: 11px; background: #004E9E;"></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

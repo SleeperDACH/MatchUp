@@ -1,0 +1,31 @@
+{
+  "artboards": [
+    { "file": "Diagnose.dc.html", "x": 0, "y": 0, "w": 402, "h": 874, "title": "Ist-Zustand (Aufbau)" },
+    { "file": "Main.dc.html", "x": 522, "y": 0, "w": 402, "h": 874, "title": "Richtung A — Ein Auftrag" },
+    { "file": "RichtungB.dc.html", "x": 1044, "y": 0, "w": 402, "h": 874, "title": "Richtung B — Die Runde" },
+    { "file": "RichtungC.dc.html", "x": 1566, "y": 0, "w": 402, "h": 874, "title": "Richtung C — Das Duell führt" }
+  ],
+  "annotations": [
+    { "id": "d1", "x": -300, "y": 20, "w": 250,
+      "text": "1 — Die Setup-Karte ist 165 Punkte hoch und sagt zwei Wörter, mit einem halbtransparenten Riesen-Chevron als Dekor. Größte Fläche des Schirms für eine Zustandsmeldung — und nicht einmal antippbar." },
+    { "id": "d2", "x": -300, "y": 190, "w": 250,
+      "text": "2 — Fünf Farben, alle gleich laut: Gold, Grün, Blau, Grün, Grün, dazu die Ligafarben in den Spielzeilen. Nichts sagt, was wichtig ist." },
+    { "id": "d3", "x": -300, "y": 330, "w": 250,
+      "text": "3 — Der grüne Reiterbalken ist wieder das lauteste Navigationselement — genau das, was im Favoriten-Tab gerade entfernt wurde." },
+    { "id": "d4", "x": -300, "y": 460, "w": 250,
+      "text": "4 — „Schnellzugriff\" ist eine Rubrik über zwei Kacheln. Bei zwei Einträgen braucht es keine Überschrift, und gefüllte Kästen passen nicht mehr zum Rest der App." },
+    { "id": "d5", "x": -300, "y": 620, "w": 250,
+      "text": "5 — Der Spieltag ist eine dritte Variante derselben Liste (Namen außen, Wappen innen, Datum in der Mitte) — Live- und Favoriten-Tab haben inzwischen dieselbe." },
+    { "id": "d6", "x": -300, "y": 780, "w": 250,
+      "text": "6 — Nichts sagt, was als Nächstes zu tun ist. „Setup\" ist ein Zustand, kein Auftrag; der Draft-Start steckt hinter einer Kachel." },
+    { "id": "a1", "x": 522, "y": -240, "w": 402,
+      "text": "Richtung A — Ein Auftrag  (Vorschlag)\nDer Kopf sagt, was zu tun ist, und ist der Knopf dafür: „Noch 7 Plätze frei\" plus die zwei Wege (einladen / Draft starten). Darunter Zeilen statt Kacheln, und der Spieltag in derselben Form wie Live- und Favoriten-Tab.\nJe Phase ein anderer Auftrag: im Aufbau einladen, im Draft „Du bist dran\", in der Saison „Aufstellung setzen\".\nTradeoff: Der Kopf muss für jede Phase getextet werden — mehr Fälle als eine Statusmeldung." },
+    { "id": "b1", "x": 1044, "y": -240, "w": 402,
+      "text": "Richtung B — Die Runde\nKein Hero. Der Zustand ist eine Fortschrittsleiste („3 von 10 Teams\"), und die Teilnehmer selbst sind der Inhalt — mit den freien Plätzen als gestrichelte Zeilen. Die Aktion sitzt fest am unteren Rand, wo der Daumen ist.\nTradeoff: Trägt im Aufbau gut, in der laufenden Saison weniger — dann ist die Teilnehmerliste kalter Kaffee und steht ohnehin in der Tabelle." },
+    { "id": "c1", "x": 1566, "y": -240, "w": 402,
+      "text": "Richtung C — Das Duell führt\nFür die laufende Saison gedacht (deshalb hier eine andere Liga): Oben das eigene Head-to-Head mit Punktestand und einem Sockel für das, was ansteht („Aufstellung setzen · bis Fr., 20:30\"). Darunter „Mein Team\" und „Liga\" als zwei kurze Zeilengruppen.\nTradeoff: Im Aufbau gibt es kein Duell — dann braucht der Kopf trotzdem etwas, also läuft es auf A hinaus. C ist eher die Fortsetzung von A für die Saison als eine eigene Richtung." },
+    { "id": "k1", "x": 0, "y": 940, "w": 520,
+      "text": "Der Schirm sieht in drei Phasen verschieden aus — Aufbau, Draft, Saison. Die Entwürfe zeigen A und B im Aufbau (vergleichbar mit dem Ist-Zustand), C in der Saison.\n\nAlle drei nehmen den grünen Reiterbalken heraus, ersetzen die Kacheln durch Zeilen und ziehen den Spieltag auf die Zeilenform von Live- und Favoriten-Tab. Was bleibt: In der Saison steht oben ohnehin schon das MatchupHero — C baut darauf auf." }
+  ],
+  "launch": { "view": "canvas" }
+}

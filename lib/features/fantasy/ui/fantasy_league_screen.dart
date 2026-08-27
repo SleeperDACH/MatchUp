@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/league_screen.dart';
-import '../../../app/widgets/matchup_chevron.dart';
+import '../../../app/theme.dart';
 import '../../../app/widgets/vibrant_league_title.dart';
+import '../../../app/widgets/team_fixture_list.dart';
 import '../../../core/models/models.dart';
+import '../../../core/models/team_fixture.dart';
 import '../../auth/providers.dart';
-import '../../leagues/providers.dart';
 import '../../tippspiel/providers.dart';
 import '../../tippspiel/ui/create_tip_round.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
-import 'club_badge.dart';
 import 'roster_limit_banner.dart';
 import 'draft_room_screen.dart';
 import 'fantasy_chat_screen.dart';
@@ -26,7 +26,7 @@ import 'matchups_screen.dart';
 import 'player_pool_screen.dart';
 import 'trade_screen.dart';
 import 'weekly_recap_screen.dart';
-import '../../../app/widgets/segmented_tab_bar.dart';
+import '../../../app/widgets/leise_reiter.dart';
 
 /// Vollwertiger Fantasy-Liga-Screen mit Tabs. Zeigt schon vor dem Draft
 /// Tabelle, Teilnehmer und (leeren) Kader an; die Übersicht führt durch
@@ -62,18 +62,13 @@ class FantasyLeagueScreen extends ConsumerWidget {
                   builder: (_) => FantasyLeagueSettingsScreen(league: live))),
             ),
           ],
-          // Feste Vier-Tab-Leiste (Icon + Label), alle auf einen Blick.
-          bottom: const SegmentedTabBar(
-            tabs: [
-              Tab(
-                  icon: Icon(Icons.dashboard_outlined, size: 20),
-                  text: 'Übersicht'),
-              Tab(icon: MatchUpChevron(size: 20), text: 'MatchUp'),
-              Tab(icon: Icon(Icons.shield_outlined, size: 20), text: 'Kader'),
-              Tab(
-                  icon: Icon(Icons.leaderboard_outlined, size: 20),
-                  text: 'Tabelle'),
-            ],
+          // Leise Reiter statt gefüllter Segmente: Der grüne Balken war das
+          // lauteste Element des Schirms und sagte nur, welcher Reiter offen
+          // ist. Die Symbole sind mit weggefallen — vier Wörter nebeneinander
+          // brauchen keine Piktogramme, um unterscheidbar zu sein.
+          bottom: const LeiseReiter(
+            titel: ['Übersicht', 'MatchUp', 'Kader', 'Tabelle'],
+            horizontal: 12,
           ),
         ),
         body: TabBarView(
@@ -93,14 +88,27 @@ class FantasyLeagueScreen extends ConsumerWidget {
 // Übersicht
 // ---------------------------------------------------------------------------
 
-// Akzentfarben für die Übersicht (MatchUp-Palette + abgestimmte Töne).
-const _cGreen = Color(0xFF4ADE6A);
-const _cTeal = Color(0xFF4FC3A1);
+// Akzentfarben der Liga-Ansicht. `_cTeal` und `_cBlue` gehörten zu den
+// „Schnellzugriff"-Kacheln und sind mit ihnen entfallen; die übrigen tragen
+// noch Kader- und Tippspiel-Teile.
+const _cGreen = MatchUpColors.green;
 const _cAmber = Color(0xFFFFC83D);
-const _cRed = Color(0xFFF23030);
-const _cBlue = Color(0xFF5B9DF9);
-const _cBase = Color(0xFF12141C);
+const _cRed = MatchUpColors.red;
+const _cBase = MatchUpColors.base;
 
+/// Übersicht der Fantasy-Liga.
+///
+/// Umgesetzt ist „Richtung C" aus `design/liga-uebersicht/`: **Das Duell
+/// führt.** In der laufenden Saison steht oben das eigene Head-to-Head, und
+/// sein Sockel sagt, was ansteht („Aufstellung setzen"). Im Aufbau und im
+/// Draft gibt es kein Duell — dort steht stattdessen der eine Auftrag, der
+/// gerade dran ist (Richtung A). Darunter in beiden Fällen zwei kurze
+/// Zeilengruppen: **Mein Team** und **Liga**.
+///
+/// Was dabei weggefallen ist: die 165 Punkte hohe Zustandskarte mit dem
+/// halbtransparenten Dekor-Chevron (größte Fläche des Schirms für zwei
+/// Wörter, und nicht antippbar), die Rubrik „Schnellzugriff" über zwei
+/// gefüllten Kacheln, und die dritte Variante der Spielplan-Zeile.
 class _OverviewTab extends ConsumerWidget {
   const _OverviewTab({required this.league, required this.isAdmin});
 
@@ -110,255 +118,389 @@ class _OverviewTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final drafted = league.draftStatus != DraftStatus.setup;
-    // Draft komplett durch = Draft fertig. Der Aufbau-Draft draftet den ganzen
-    // Kader → danach direkt Saison. Ein U20-Draft (nach Rollover) steht als
-    // eigener Setup-Zustand (Phase u20) an — dann nicht „fertig".
     final draftFullyDone = league.draftStatus == DraftStatus.done;
-    // „Saison läuft": Draft fertig. In diesem Zustand ersetzt der Live-MatchUp
-    // den Status-Kopf.
     final seasonRunning = draftFullyDone;
-    final labelStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.onSurfaceVariant);
-    final action = _draftAction(context, ref, league, isAdmin);
     final currentRound = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final openTrades = ref.watch(incomingTradeOffersProvider(league.id));
+    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
+
+    void go(Widget screen) => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => screen));
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top: 4, bottom: 24),
       children: [
+        // --- Kopf ----------------------------------------------------------
         if (seasonRunning && currentRound != null)
-          MatchupHero(
-            league: league,
-            round: currentRound,
-            fallback: _StatusHero(league: league),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: MatchupHero(
+              league: league,
+              round: currentRound,
+              fallback: _NaechsterSchritt(
+                league: league,
+                isAdmin: isAdmin,
+                managerZahl: managers?.length,
+              ),
+            ),
           )
         else
-          _StatusHero(league: league),
-        if (action != null) ...[
-          const SizedBox(height: 14),
-          action,
-        ],
-        const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: _NaechsterSchritt(
+              league: league,
+              isAdmin: isAdmin,
+              managerZahl: managers?.length,
+            ),
+          ),
+
         // Wochen-Recap (versteckt sich, bis es gewertete Punkte gibt).
-        if (seasonRunning) WeeklyRecapCard(league: league),
-        // Spieler einladen: über die eigenen Chats/Freunde eine Beitreten-
-        // Einladung verschicken — nur solange der Draft noch nicht durch ist.
-        if (!draftFullyDone) ...[
-          _InvitePlayersButton(league: league),
-          const SizedBox(height: 12),
+        if (seasonRunning)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+            child: WeeklyRecapCard(league: league),
+          ),
+
+        // --- Mein Team -----------------------------------------------------
+        if (drafted) ...[
+          const _Abschnittsmarke('Mein Team'),
+          _LigaZeile(
+            label: 'Aufstellung',
+            onTap: () => go(LineupScreen(league: league)),
+          ),
+          const _Trenner(),
+          _LigaZeile(
+            label: 'Free Agency',
+            onTap: () => go(FreeAgencyScreen(league: league)),
+          ),
+          const _Trenner(),
+          _LigaZeile(
+            label: 'Trades',
+            zahl: openTrades,
+            onTap: () => go(TradeScreen(league: league)),
+          ),
         ],
-        // Ligainternes Tippspiel (über dem Schnellzugriff) — nur wenn die Liga
-        // ein Tippspiel anbietet bzw. schon eines aktiviert ist.
+
+        // --- Liga ----------------------------------------------------------
+        const _Abschnittsmarke('Liga'),
+        if (!draftFullyDone) ...[
+          _LigaZeile(
+            label: 'Draft-Raum',
+            hinweis: switch (league.draftStatus) {
+              DraftStatus.setup => 'noch nicht gestartet',
+              DraftStatus.drafting => 'läuft',
+              DraftStatus.done => null,
+            },
+            onTap: () => go(DraftRoomScreen(league: league)),
+          ),
+          const _Trenner(),
+        ],
+        // Ligainternes Tippspiel — nur wenn die Liga eines anbietet.
         if (league.tipEnabled ||
             ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull !=
                 null) ...[
           _LeagueTipspielButton(league: league, isAdmin: isAdmin),
-          const SizedBox(height: 20),
+          const _Trenner(),
         ],
-        Text('Schnellzugriff', style: labelStyle),
-        const SizedBox(height: 14),
-        // Randlose Icon-Aktionen (farbige Kreise statt gefüllter Kästen),
-        // gleichmäßig in einer Reihe verteilt.
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (drafted) ...[
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.sports_soccer,
-                  label: 'Aufstellung',
-                  color: _cTeal,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => LineupScreen(league: league))),
-                ),
-              ),
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.person_add_alt,
-                  label: 'Free Agency',
-                  color: _cAmber,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => FreeAgencyScreen(league: league))),
-                ),
-              ),
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.swap_horiz,
-                  label: 'Trade',
-                  color: _cRed,
-                  badge: openTrades,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => TradeScreen(league: league))),
-                ),
-              ),
-            ],
-            if (!draftFullyDone)
-              Expanded(
-                child: _QuickAction(
-                  icon: Icons.meeting_room_outlined,
-                  label: 'Draft-Raum',
-                  color: _cBlue,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => DraftRoomScreen(league: league))),
-                ),
-              ),
-            Expanded(
-              child: _QuickAction(
-                icon: Icons.forum_outlined,
-                label: 'Liga-Chat',
-                color: _cGreen,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => FantasyChatScreen(league: league))),
+        _LigaZeile(
+          label: 'Liga-Chat',
+          onTap: () => go(FantasyChatScreen(league: league)),
+        ),
+        if (!draftFullyDone) ...[
+          const _Trenner(),
+          _LigaZeile(
+            label: 'Spieler einladen',
+            hinweis: managers == null ? null : '${managers.length} dabei',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => InvitePlayersScreen(league: league),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 26),
+          ),
+        ],
+
+        // --- Spieltag ------------------------------------------------------
         _MatchdayFixtures(league: league),
       ],
     );
   }
-
-  /// Primäre Draft-Aktion für den aktuellen Zustand — oder `null`, wenn es
-  /// gerade nichts zu tun gibt (dann führt das „Draft-Raum"-Tile in den Raum,
-  /// wo auch der Warte-Hinweis steht).
-  Widget? _draftAction(
-      BuildContext context, WidgetRef ref, FantasyLeague live, bool isAdmin) {
-    void openRoom() => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => DraftRoomScreen(league: live)));
-
-    final dynasty = live.mode == FantasyMode.dynasty;
-
-    switch (live.draftStatus) {
-      case DraftStatus.setup:
-        // Kein eigener Button mehr — der Einstieg läuft über die
-        // „Draft-Raum"-Kachel; dort startet der Admin auch den Draft.
-        return null;
-      case DraftStatus.drafting:
-        return FilledButton.icon(
-          icon: const Icon(Icons.sports),
-          label: Text(dynasty ? 'Zum ${live.draftPhase.label}' : 'Zum Draft'),
-          onPressed: openRoom,
-        );
-      case DraftStatus.done:
-        // Nach dem Aufbau-Draft läuft direkt die Saison; der U20-Draft (nach
-        // Rollover) hat einen eigenen Setup-Zustand mit Draft-Raum.
-        return null;
-    }
-  }
 }
 
-/// Farbiger Status-Kopf: zeigt die aktuelle Phase der Liga mit Akzentfarbe.
-class _StatusHero extends StatelessWidget {
-  const _StatusHero({required this.league});
+/// Der eine Auftrag, der gerade dran ist — Kopf des Schirms in allen Phasen
+/// ohne laufendes Duell.
+///
+/// Vorher stand hier eine Zustandsmeldung („Setup") in einer 165 Punkte hohen
+/// Karte, die nicht antippbar war; was zu tun ist, steckte hinter einer Kachel
+/// weiter unten. Ein Zustand ist kein Auftrag.
+class _NaechsterSchritt extends ConsumerWidget {
+  const _NaechsterSchritt({
+    required this.league,
+    required this.isAdmin,
+    this.managerZahl,
+  });
 
   final FantasyLeague league;
-
-  ({Color color, IconData icon, String title, String subtitle}) _info() {
-    switch (league.draftStatus) {
-      case DraftStatus.setup:
-        // Nach dem Saison-Rollover: U20-Draft im Setup (im Draft-Raum starten).
-        if (league.mode == FantasyMode.dynasty &&
-            league.draftPhase == DraftPhase.u20) {
-          return (
-            color: _cTeal,
-            icon: Icons.auto_awesome,
-            title: 'Neue Saison',
-            subtitle: 'Geh in den Draft-Raum und starte den U20-Draft.'
-          );
-        }
-        return (
-          color: _cAmber,
-          icon: Icons.hourglass_top,
-          title: 'Setup',
-          subtitle: 'Lade Freunde ein und starte den Draft.'
-        );
-      case DraftStatus.drafting:
-        return (
-          color: _cGreen,
-          icon: Icons.sports,
-          title: 'Draft läuft',
-          subtitle: 'Der Draft ist gerade im Gange.'
-        );
-      case DraftStatus.done:
-        return (
-          color: _cGreen,
-          icon: Icons.emoji_events,
-          title: 'Saison läuft',
-          subtitle: 'Stell deine Elf auf und sammle Punkte.'
-        );
-    }
-  }
+  final bool isAdmin;
+  final int? managerZahl;
 
   @override
-  Widget build(BuildContext context) {
-    final i = _info();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final gold = const Color(0xFFFFC83D);
+
+    void openRoom() => Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => DraftRoomScreen(league: league)),
+    );
+
+    final (String titel, String satz, String knopf, VoidCallback tun) =
+        switch (league.draftStatus) {
+          DraftStatus.setup =>
+            league.maxTeams != null && managerZahl != null
+                ? (
+                    'Noch ${(league.maxTeams! - managerZahl!).clamp(0, 99)} Plätze frei',
+                    'Lade Freunde ein — sobald alle da sind, startet der Draft.',
+                    'Spieler einladen',
+                    () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => InvitePlayersScreen(league: league),
+              ),
+            ),
+                  )
+                : (
+                    'Die Liga steht',
+                    'Lade Freunde ein und starte den Draft.',
+                    'Spieler einladen',
+                    () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => InvitePlayersScreen(league: league),
+              ),
+            ),
+                  ),
+          DraftStatus.drafting => (
+            league.mode == FantasyMode.dynasty
+                ? 'Der ${league.draftPhase.label} läuft'
+                : 'Der Draft läuft',
+            'Wer an der Reihe ist, siehst du im Draft-Raum.',
+            'Zum Draft',
+            openRoom,
+          ),
+          DraftStatus.done => (
+            'Die Saison läuft',
+            'Stell deine Aufstellung, bevor der Spieltag anpfeift.',
+            'Aufstellung',
+            () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => LineupScreen(league: league)),
+            ),
+          ),
+        };
+
     return Container(
-      constraints: const BoxConstraints(minHeight: 170),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [i.color.withValues(alpha: 0.38), _cBase],
+          colors: [
+            Color.alphaBlend(gold.withValues(alpha: 0.18), scheme.surface),
+            Color.alphaBlend(gold.withValues(alpha: 0.05), scheme.surface),
+          ],
         ),
-        border: Border.all(color: i.color.withValues(alpha: 0.45)),
+        border: Border.all(color: gold.withValues(alpha: 0.40), width: 0.8),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(
-          children: [
-            heroWatermark(),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Center(
-                child: Row(
-                  children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(color: i.color, shape: BoxShape.circle),
-            child: Icon(i.icon, color: _cBase, size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(i.title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
-                const SizedBox(height: 2),
-                Text(i.subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.75))),
-              ],
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ALS NÄCHSTES',
+            style: TextStyle(
+              color: gold,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.3,
             ),
           ),
-                  ],
+          const SizedBox(height: 6),
+          Text(
+            titel,
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            satz,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.3,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 13),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: tun,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: gold,
+                    foregroundColor: scheme.surface,
+                  ),
+                  child: Text(knopf),
                 ),
               ),
+              // Den Draft startet nur der Ersteller — und nur, solange er
+              // noch nicht läuft.
+              if (isAdmin && league.draftStatus == DraftStatus.setup) ...[
+                const SizedBox(width: 9),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: openRoom,
+                    child: const Text('Draft starten'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kapitelmarke wie im Live-, Favoriten- und Menü-Schirm.
+class _Abschnittsmarke extends StatelessWidget {
+  const _Abschnittsmarke(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 24, 14, 6),
+      child: Row(
+        children: [
+          Text(
+            text.toUpperCase(),
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
             ),
-          ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              height: 0.8,
+              color: scheme.onSurface.withValues(alpha: 0.12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Trenner extends StatelessWidget {
+  const _Trenner();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    child: Container(
+      height: 0.8,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.07),
+    ),
+  );
+}
+
+/// Eine Zeile der Übersicht — ersetzt die gefüllten „Schnellzugriff"-Kacheln.
+class _LigaZeile extends StatelessWidget {
+  const _LigaZeile({
+    required this.label,
+    required this.onTap,
+    this.hinweis,
+    this.zahl = 0,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+
+  /// Leiser Zusatz rechts („läuft", „3 dabei").
+  final String? hinweis;
+
+  /// Roter Zähler — etwas wartet auf dich.
+  final int zahl;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label: [label, ?hinweis, if (zahl > 0) '$zahl offen'].join(', '),
+      onTap: onTap,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (hinweis != null)
+                Text(
+                  hinweis!,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              if (zahl > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: MatchUpColors.red,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$zahl',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 6),
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Farbige Kennzahl-Pille (Teilnehmer / Kadergröße / Startelf).
-/// Farbige Aktions-Kachel im Schnellzugriff-Raster.
-/// Randlose Schnellzugriff-Aktion: farbiger Icon-Kreis + Label darunter,
-/// ohne getönte Box. Optionaler Zähler-Hinweis (z. B. offene Trades).
-/// Auffälliger „Spieler einladen"-Button auf der Übersicht: öffnet die
-/// Chat-/Freunde-Auswahl und verschickt eine Beitreten-Einladung. Liegen
-/// Beitrittsanfragen vor (öffentlich–auf Einladung), zeigt der Button einen
-/// Badge und führt zu deren Bearbeitung.
-/// Ligainternes Tippspiel: aktiviert (alle öffnen), noch nicht aktiviert
-/// (Admin aktiviert; Mitglieder sehen einen ausgegrauten Hinweis).
 class _LeagueTipspielButton extends ConsumerWidget {
   const _LeagueTipspielButton({required this.league, required this.isAdmin});
 
@@ -429,165 +571,6 @@ class _TipTile extends StatelessWidget {
       ),
     );
     return enabled ? tile : Opacity(opacity: 0.55, child: tile);
-  }
-}
-
-class _InvitePlayersButton extends ConsumerWidget {
-  const _InvitePlayersButton({required this.league});
-
-  final FantasyLeague league;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final myId = ref.watch(currentUserProvider)?.id;
-    final pending = (league.isPublic &&
-            league.isInviteOnly &&
-            myId == league.createdBy)
-        ? (ref.watch(fantasyJoinRequestsProvider(league.id)).valueOrNull?.length ??
-            0)
-        : 0;
-    final subtitle = pending > 0
-        ? '$pending offene Anfrage${pending == 1 ? '' : 'n'} · Chats & Freunde einladen'
-        : 'Über deine Chats & Freunde zur Liga einladen';
-
-    return Material(
-      color: scheme.primary.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => InvitePlayersScreen(league: league))),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          child: Row(
-            children: [
-              Icon(Icons.person_add_alt_1, color: scheme.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Spieler einladen',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text(subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              if (pending > 0) ...[
-                Container(
-                  constraints: const BoxConstraints(minWidth: 22),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: scheme.error,
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Text('$pending',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: scheme.onError,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12)),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap,
-      this.badge = 0});
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  /// Zahl für einen auffälligen Hinweis oben rechts (0 = kein Hinweis).
-  final int badge;
-
-  @override
-  Widget build(BuildContext context) {
-    // Getönte Karte in der Aktionsfarbe — füllt die Reihe und wirkt lebendiger
-    // als ein freistehendes Icon.
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.22),
-            color.withValues(alpha: 0.07),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.38)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                              color: color.withValues(alpha: 0.45),
-                              blurRadius: 10,
-                              spreadRadius: -2),
-                        ],
-                      ),
-                      child: Icon(icon, color: _cBase, size: 24),
-                    ),
-                    if (badge > 0)
-                      Positioned(
-                        top: -5,
-                        right: -7,
-                        child: _NotifyBadge(count: badge),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11.5,
-                        height: 1.15)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -789,127 +772,51 @@ class _MiniAction extends StatelessWidget {
   }
 }
 
-/// Zeigt die Partien des aktuellen Spieltags (unten in der Übersicht):
-/// Anstoßzeit bzw. Ergebnis je Spiel.
+/// Die Partien des aktuellen Spieltags, unten in der Übersicht.
+///
+/// Benutzt dieselbe Zeilenform wie Live- und Favoriten-Tab
+/// (`fixturesWithDateHeaders`) statt einer eigenen Box mit eigener Anordnung.
+/// Der Spielplan kommt hier als [Fixture] und wird dafür auf [TeamFixture]
+/// gedreht — dieselben Felder, nur ein anderer Einstiegspunkt in dieselben
+/// Daten. Drei Darstellungen derselben Liste waren zwei zu viel.
 class _MatchdayFixtures extends ConsumerWidget {
   const _MatchdayFixtures({required this.league});
 
   final FantasyLeague league;
 
-  static const _weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     final round = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final all = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
     if (round == null || all == null) return const SizedBox.shrink();
     final fx = [
       for (final f in all)
-        if (f.round == round) f
+        if (f.round == round) f,
     ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
     if (fx.isEmpty) return const SizedBox.shrink();
 
+    final liga = Leagues.byId(fx.first.leagueId);
+    final umgewandelt = [
+      for (final f in fx)
+        TeamFixture(
+          id: f.id,
+          kickoff: f.kickoff,
+          status: f.status,
+          leagueName: liga.name,
+          round: f.round,
+          home: f.home,
+          away: f.away,
+          homeScore: f.homeScore,
+          awayScore: f.awayScore,
+        ),
+    ];
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Icon(Icons.stadium_outlined, size: 18, color: scheme.primary),
-            const SizedBox(width: 6),
-            Text('Spieltag $round',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            children: [
-              for (final (i, f) in fx.indexed) ...[
-                if (i > 0)
-                  Divider(
-                      height: 1,
-                      color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                _row(context, f),
-              ],
-            ],
-          ),
-        ),
+        _Abschnittsmarke('$round. Spieltag'),
+        ...fixturesWithDateHeaders(umgewandelt),
       ],
-    );
-  }
-
-  Widget _row(BuildContext context, Fixture f) {
-    final scheme = Theme.of(context).colorScheme;
-    final hasScore = f.hasScore;
-    final live = f.status == FixtureStatus.live;
-
-    Widget mid;
-    if (hasScore) {
-      mid = Text('${f.homeScore} : ${f.awayScore}',
-          style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-              color: live ? scheme.error : scheme.onSurface));
-    } else {
-      final k = f.kickoff.toLocal();
-      final wd = _weekdays[k.weekday - 1];
-      final dd = k.day.toString().padLeft(2, '0');
-      final mo = k.month.toString().padLeft(2, '0');
-      final hh = k.hour.toString().padLeft(2, '0');
-      final mm = k.minute.toString().padLeft(2, '0');
-      // Wochentag + Datum oben, Uhrzeit darunter.
-      mid = Text('$wd $dd.$mo.\n$hh:$mm',
-          textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .labelSmall
-              ?.copyWith(color: scheme.onSurfaceVariant, height: 1.25));
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Flexible(
-                  child: Text(f.home.shortName,
-                      textAlign: TextAlign.end,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(width: 6),
-                ClubBadge(
-                    club: f.home.name, iconUrl: f.home.iconUrl, size: 22),
-              ],
-            ),
-          ),
-          SizedBox(width: 66, child: Center(child: mid)),
-          Expanded(
-            child: Row(
-              children: [
-                ClubBadge(
-                    club: f.away.name, iconUrl: f.away.iconUrl, size: 22),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(f.away.shortName,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

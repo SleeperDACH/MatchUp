@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><script src="./support.js"></script></head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
+    .marke { display: flex; align-items: center; gap: 10px; padding: 20px 14px 6px 14px; }
+    .marke .t { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #A6ACBA; }
+    .marke .l { flex-grow: 1; height: 0.8px; background: rgba(237,239,244,0.12); }
+    .z { display: flex; align-items: center; gap: 11px; padding: 10px 14px; }
+    .n { flex: 1; font-size: 15px; font-weight: 600; }
+    .lin { height: 0.8px; background: #22252F; margin: 0 14px; }
+  </style>
+</helmet>
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+  <div style="display: flex; align-items: center; padding: 14px 14px 0 14px;">
+    <div style="font-size: 22px;">‹</div>
+    <div style="flex-grow: 1; text-align: center;">
+      <div style="font-size: 20px; font-weight: 800;">MatchUp! #1</div>
+      <div style="font-size: 11px; color: #A6ACBA;">Redraft</div>
+    </div>
+    <div style="width: 22px; height: 22px; border: 2px solid #A6ACBA; border-radius: 11px;"></div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 18px; padding: 16px 14px 0 14px;">
+    <div style="font-size: 14px; font-weight: 700; padding-bottom: 7px; border-bottom: 2px solid #EDEFF4;">Übersicht</div>
+    <div style="font-size: 14px; font-weight: 600; color: #6E7482; padding-bottom: 7px;">MatchUp</div>
+    <div style="font-size: 14px; font-weight: 600; color: #6E7482; padding-bottom: 7px;">Kader</div>
+    <div style="font-size: 14px; font-weight: 600; color: #6E7482; padding-bottom: 7px;">Tabelle</div>
+  </div>
+  <div style="height: 0.8px; background: #22252F; margin: -0.8px 14px 0 14px;"></div>
+
+  <!-- Kein Hero. Der Zustand ist eine Fortschrittszeile. -->
+  <div style="padding: 18px 14px 0 14px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between;">
+      <div style="font-size: 15px; font-weight: 700;">Aufbau</div>
+      <div class="num" style="font-size: 13px; color: #A6ACBA;">3 von 10 Teams</div>
+    </div>
+    <div style="display: flex; gap: 4px; margin-top: 9px;">
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #4ADE6A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #4ADE6A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #4ADE6A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #2A2E3A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #2A2E3A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #2A2E3A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #2A2E3A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #2A2E3A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #2A2E3A;"></div>
+      <div style="flex: 1; height: 5px; border-radius: 3px; background: #2A2E3A;"></div>
+    </div>
+  </div>
+
+  <!-- Die Teilnehmer selbst sind der Inhalt -->
+  <div class="marke"><div class="t">TEILNEHMER</div><div class="l"></div><div style="font-size: 12px; font-weight: 600; color: #A6ACBA;">Einladen ›</div></div>
+  <div class="z">
+    <div style="width: 30px; height: 30px; border-radius: 15px; background: #4B3FE4;"></div>
+    <div class="n">SFV03 <span style="font-size: 11px; color: #6E7482; font-weight: 500;">· du</span></div>
+  </div>
+  <div class="z">
+    <div style="width: 30px; height: 30px; border-radius: 15px; background: #1D9053;"></div>
+    <div class="n">Jonas</div>
+  </div>
+  <div class="z">
+    <div style="width: 30px; height: 30px; border-radius: 15px; background: #B4478E;"></div>
+    <div class="n">Marie</div>
+  </div>
+  <div class="z" style="opacity: 0.45;">
+    <div style="width: 30px; height: 30px; border-radius: 15px; border: 0.8px dashed #3A3F4D;"></div>
+    <div class="n" style="font-weight: 500; color: #6E7482;">Platz 4 — frei</div>
+  </div>
+
+  <div class="marke"><div class="t">LIGA</div><div class="l"></div></div>
+  <div class="z"><div style="width: 20px; color: #A6ACBA;">◻</div><div class="n">Draft-Raum</div><div style="color: #6E7482;">›</div></div>
+  <div class="lin"></div>
+  <div class="z"><div style="width: 20px; color: #A6ACBA;">◻</div><div class="n">Liga-Chat</div><div style="width: 8px; height: 8px; border-radius: 4px; background: #F23030;"></div><div style="color: #6E7482;">›</div></div>
+
+  <div style="flex-grow: 1;"></div>
+  <!-- Die Aktion sitzt fest am unteren Rand, wo der Daumen ist -->
+  <div style="padding: 0 14px 18px 14px;">
+    <div style="text-align: center; padding: 14px 0; border-radius: 13px; background: #FFC83D; color: #12141C; font-size: 15px; font-weight: 700;">Spieler einladen</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -854,6 +854,41 @@ bringt niemandem etwas außer der Gewohnheit, ihn zu übergehen. Die Bilder sind
 zum Ansehen da; was gehalten werden muss, steht als **Messung** daneben (etwa
 die Zeilenhöhe der Kartennamen) und läuft bei jedem `flutter test`.
 
+## Liga-Übersicht — „C, das Duell führt"
+
+Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
+**Besonderheit:** Dieser Screen sieht in drei Phasen verschieden aus — Aufbau,
+Draft, Saison. Richtung C beschreibt nur die Saison; für die beiden anderen
+Phasen ist Richtung A umgesetzt, sonst hätte der Schirm in zwei von drei
+Zuständen keinen Kopf.
+
+- **In der Saison führt das eigene Duell** (`MatchupHero`, gab es schon). Im
+  Aufbau und im Draft steht dort `_NaechsterSchritt`: **ein** Auftrag, groß,
+  mit dem Knopf dazu — „Noch 7 Plätze frei · Spieler einladen / Draft
+  starten", „Der Draft läuft · Zum Draft". Vorher stand dort eine 165 Punkte
+  hohe Zustandskarte („Setup") mit halbtransparentem Dekor-Chevron, die nicht
+  antippbar war; was zu tun ist, steckte hinter einer Kachel weiter unten. Ein
+  Zustand ist kein Auftrag.
+- **„Schnellzugriff" ist weg** — die Rubrik über zwei gefüllten Kacheln. Es
+  sind zwei Zeilengruppen geworden: **Mein Team** (Aufstellung, Free Agency,
+  Trades) und **Liga** (Draft-Raum, Tippspiel, Chat, Einladen), jeweils unter
+  einer Kapitelmarke, mit leisem Zusatz rechts („läuft", „3 dabei") und rotem
+  Zähler nur da, wo etwas wartet.
+- **Der grüne Reiterbalken ist weg.** `SegmentedTabBar` steckt an acht Stellen
+  in der App und bleibt dort; hier steht `LeiseReiter`
+  (`app/widgets/leise_reiter.dart`), gemeinsam mit dem Favoriten-Tab. Die
+  Reiter-Symbole sind mit entfallen — vier Wörter nebeneinander brauchen keine
+  Piktogramme.
+- **Der Spieltag benutzt die gemeinsame Zeilenform** (`fixturesWithDateHeaders`).
+  Er kam als `Fixture` und wird dafür auf `TeamFixture` gedreht — dieselben
+  Felder, anderer Einstiegspunkt in dieselben Daten. Drei Darstellungen
+  derselben Liste waren zwei zu viel.
+
+Für diesen Schirm gibt es **keine** Golden-Vorschau: Er hängt an einem Dutzend
+Provider (Kader, Aufstellungen, Spielerpool, Saison-Fixtures, Trades, Manager),
+und die Diagnose stand auf einem Gerätebild. Wer ihn ändert, sieht ihn sich am
+Gerät an.
+
 ## Seitenmenü — „B, das Menü trägt Inhalt"
 
 Vierter Schirm nach demselben Verfahren (`design/seitenmenue/`), gewählt wurde

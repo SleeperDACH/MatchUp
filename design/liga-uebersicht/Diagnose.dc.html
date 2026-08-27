@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><script src="./support.js"></script></head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #4ADE6A; } a:hover { color: #6BE887; }
+    .mu { font-family: 'Barlow Condensed', 'Helvetica Neue', sans-serif; }
+    .num { font-variant-numeric: tabular-nums; }
+    .sp { display: flex; align-items: center; padding: 9px 12px; gap: 8px; }
+    .n { flex: 1; font-size: 13px; }
+  </style>
+</helmet>
+<div class="mu" style="width: 402px; height: 874px; background: #12141C; color: #EDEFF4; display: flex; flex-direction: column; overflow: hidden;">
+  <div style="display: flex; align-items: center; padding: 14px 14px 0 14px;">
+    <div style="font-size: 22px; color: #EDEFF4;">‹</div>
+    <div style="flex-grow: 1; text-align: center;">
+      <div style="font-size: 20px; font-weight: 800;">MatchUp! #1</div>
+      <div style="font-size: 11px; color: #4ADE6A;">Redraft</div>
+    </div>
+    <div style="width: 22px; height: 22px; border: 2px solid #A6ACBA; border-radius: 11px;"></div>
+  </div>
+
+  <!-- Reiterleiste: vier Segmente, aktives in grüner Fläche -->
+  <div style="display: flex; gap: 6px; padding: 14px 10px 0 10px;">
+    <div style="flex: 1; text-align: center; padding: 10px 0; border-radius: 12px; background: rgba(74,222,106,0.16);">
+      <div style="width: 18px; height: 18px; border: 2px solid #4ADE6A; border-radius: 3px; margin: 0 auto 5px auto;"></div>
+      <div style="font-size: 11px; font-weight: 700; color: #4ADE6A;">Übersicht</div>
+    </div>
+    <div style="flex: 1; text-align: center; padding: 10px 0;">
+      <div style="width: 18px; height: 18px; border: 2px solid #4ADE6A; border-radius: 3px; margin: 0 auto 5px auto;"></div>
+      <div style="font-size: 11px; color: #A6ACBA;">MatchUp</div>
+    </div>
+    <div style="flex: 1; text-align: center; padding: 10px 0;">
+      <div style="width: 18px; height: 18px; border: 2px solid #A6ACBA; border-radius: 3px; margin: 0 auto 5px auto;"></div>
+      <div style="font-size: 11px; color: #A6ACBA;">Kader</div>
+    </div>
+    <div style="flex: 1; text-align: center; padding: 10px 0;">
+      <div style="width: 18px; height: 18px; border: 2px solid #A6ACBA; border-radius: 3px; margin: 0 auto 5px auto;"></div>
+      <div style="font-size: 11px; color: #A6ACBA;">Tabelle</div>
+    </div>
+  </div>
+
+  <!-- Riesige Setup-Karte mit Dekor-Chevron -->
+  <div style="margin: 16px 16px 0 16px; height: 165px; border-radius: 16px; background: linear-gradient(120deg, #8A6A0E, #6B5A18); position: relative; overflow: hidden; padding: 18px;">
+    <div style="position: absolute; right: 20px; top: 30px; opacity: 0.16;">
+      <svg width="190" height="150" viewBox="0 0 24 24" fill="none"><path d="M4 14 L12 7 L20 14M4 20 L12 13 L20 20" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 44px; height: 44px; border-radius: 22px; background: #FFC83D;"></div>
+      <div>
+        <div style="font-size: 24px; font-weight: 800;">Setup</div>
+        <div style="font-size: 13px; color: rgba(255,255,255,0.75);">Lade Freunde ein und starte den Draft.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin: 14px 16px 0 16px; border-radius: 14px; background: rgba(74,222,106,0.08); border: 0.8px solid rgba(74,222,106,0.22); padding: 13px 14px; display: flex; align-items: center; gap: 11px;">
+    <div style="width: 26px; height: 26px; border-radius: 13px; background: rgba(74,222,106,0.25);"></div>
+    <div style="flex-grow: 1;"><div style="font-size: 15px; font-weight: 700;">Spieler einladen</div><div style="font-size: 11.5px; color: #A6ACBA;">Über deine Chats &amp; Freunde zur Liga einladen</div></div>
+    <div style="color: #6E7482;">›</div>
+  </div>
+
+  <div style="font-size: 13px; font-weight: 700; color: #A6ACBA; padding: 20px 16px 0 16px;">Schnellzugriff</div>
+  <div style="display: flex; gap: 10px; padding: 12px 16px 0 16px;">
+    <div style="flex: 1; border-radius: 14px; background: rgba(46,107,230,0.10); border: 0.8px solid rgba(46,107,230,0.35); padding: 16px 0; text-align: center;">
+      <div style="width: 44px; height: 44px; border-radius: 22px; background: #2E6BE6; margin: 0 auto 9px auto;"></div>
+      <div style="font-size: 12.5px; font-weight: 700;">Draft-Raum</div>
+    </div>
+    <div style="flex: 1; border-radius: 14px; background: rgba(74,222,106,0.10); border: 0.8px solid rgba(74,222,106,0.35); padding: 16px 0; text-align: center;">
+      <div style="width: 44px; height: 44px; border-radius: 22px; background: #4ADE6A; margin: 0 auto 9px auto;"></div>
+      <div style="font-size: 12.5px; font-weight: 700;">Liga-Chat</div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 8px; padding: 20px 16px 8px 16px;">
+    <div style="width: 16px; height: 16px; border: 2px solid #4ADE6A; border-radius: 3px;"></div>
+    <div style="font-size: 15px; font-weight: 700;">Spieltag 1</div>
+  </div>
+  <div style="margin: 0 16px; border-radius: 14px; background: rgba(26,29,39,0.72); border: 0.8px solid rgba(255,255,255,0.08); overflow: hidden;">
+    <div class="sp"><div class="n" style="text-align: right;">Bayern</div><div style="width:20px;height:20px;border-radius:10px;background:#DC052D;"></div><div class="num" style="width: 58px; text-align: center; font-size: 11px; color: #A6ACBA;">Fr 28.08.<br>20:30</div><div style="width:20px;height:20px;border-radius:10px;background:#EDEFF4;"></div><div class="n">Stuttgart</div></div>
+    <div class="sp"><div class="n" style="text-align: right;">Leipzig</div><div style="width:20px;height:20px;border-radius:10px;background:#DD0741;"></div><div class="num" style="width: 58px; text-align: center; font-size: 11px; color: #A6ACBA;">Sa 29.08.<br>15:30</div><div style="width:20px;height:20px;border-radius:10px;background:#252937;"></div><div class="n">Gladbach</div></div>
+    <div class="sp"><div class="n" style="text-align: right;">Mainz</div><div style="width:20px;height:20px;border-radius:10px;background:#C3141E;"></div><div class="num" style="width: 58px; text-align: center; font-size: 11px; color: #A6ACBA;">Sa 29.08.<br>15:30</div><div style="width:20px;height:20px;border-radius:10px;background:#004E9E;"></div><div class="n">Paderborn</div></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
