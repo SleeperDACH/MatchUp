@@ -315,11 +315,35 @@ Zeile, scheitert jeder Liga-Beitritt mit
 „Willkommen" statt mit dem Namen. Gemessen am 27.08.2026: **drei von
 fünfundzwanzig** Konten waren in diesem Zustand, alle per E-Mail angelegt.
 
-Der Weg dorthin: `signUp` legt Konto und Profil in **zwei** Schritten an. Geht
-der zweite schief — etwa weil der Nutzername vergeben ist (23505) —, bleibt
-das Konto stehen. Ein zweiter Versuch mit anderem Namen scheitert dann an
-„Für diese E-Mail existiert bereits ein Konto", und der Betroffene sitzt fest.
-Zwei Änderungen halten das ab:
+Der Weg dorthin war: `signUp` legte Konto und Profil in **zwei** Schritten an.
+Ging der zweite schief — etwa weil der Nutzername vergeben ist (23505) —,
+blieb das Konto stehen. Ein zweiter Versuch mit anderem Namen scheiterte an
+„Für diese E-Mail existiert bereits ein Konto", und der Betroffene saß fest.
+
+**Seit Migration 0078 entsteht das Profil in der Datenbank**, per Trigger auf
+`auth.users` (`profil_fuer_neues_konto`). Damit hängt die Garantie nicht mehr
+an App-Version, Anmeldeweg oder daran, ob der Client seinen zweiten Schritt
+schafft. Drei Dinge folgen daraus:
+
+* **`signUp` macht jetzt ein `update`, kein `insert`.** Die Zeile gibt es
+  schon; ein `insert` liefe gegen den Primärschlüssel. Misslingt das Update,
+  steht trotzdem ein gültiges Profil da — der Nutzer kommt in seine Ligen und
+  ändert den Namen im Profil.
+* **Die Namensregel steht zweimal** — in `username_vorschlag.dart` und als
+  `public.profil_namensbasis`. Das ist dieselbe Sorte bewusster Doppelung wie
+  bei `tip_scoring.dart` ↔ SQL-View: Der Client braucht sie für seinen
+  Vorschlag im laufenden Betrieb, die Datenbank für die Garantie. **Wer eine
+  ändert, ändert die andere mit.**
+* Der Trigger verschluckt seinen eigenen Fehler (`exception when others`):
+  Lieber ein Konto, das der Client nachheilt, als eine Registrierung, die an
+  einem Profil scheitert.
+
+Nachgemessen am 27.08.2026 über den echten Weg (`POST /auth/v1/signup` plus
+`PATCH /rest/v1/profiles`): Der Trigger legt aus `probelauf0078@…` das Profil
+`probelauf0078` an, der Client setzt danach den Wunschnamen; bei zwei Konten
+mit gleicher Namensbasis zählt der Trigger auf `…2` hoch.
+
+Zwei weitere Änderungen fangen ab, was trotzdem durchrutscht:
 
 * **`currentProfileProvider` legt das Profil nach**, wenn keins da ist. Dort
   kommt jeder Weg vorbei (Kaltstart, E-Mail-Login, Google, Apple), und die

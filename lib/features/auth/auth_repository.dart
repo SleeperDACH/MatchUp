@@ -49,26 +49,29 @@ class AuthRepository {
     if (user == null) {
       throw const AuthFailure('Registrierung fehlgeschlagen.');
     }
+    // **Das Profil gibt es hier schon.** Seit Migration 0078 legt ein Trigger
+    // auf `auth.users` es beim Anlegen des Kontos an, mit einem abgeleiteten
+    // Namen. Hier wird deshalb der **gewünschte** Name eingetragen, nicht die
+    // Zeile — ein `insert` liefe jetzt gegen den Primärschlüssel.
+    //
+    // Der Umweg ist der Punkt der ganzen Übung: Vorher entschied dieser eine
+    // Schritt darüber, ob das Konto brauchbar ist. Misslingt er jetzt, steht
+    // trotzdem ein gültiges Profil da — der Nutzer kommt in seine Ligen und
+    // kann den Namen im Profil ändern.
     try {
-      await _client.from('profiles').insert({'id': user.id, 'username': trimmed});
+      await _client
+          .from('profiles')
+          .update({'username': trimmed})
+          .eq('id', user.id);
     } on PostgrestException catch (e) {
-      // Hier ist das **Konto schon angelegt** — nur das Profil fehlt. Die
-      // Meldung muss das sagen, sonst läuft der Betroffene in eine Sackgasse:
-      // Ein zweiter Versuch mit anderem Namen scheitert an
-      // „Für diese E-Mail existiert bereits ein Konto", und was er hat, ist
-      // ein Konto ohne Profil — damit heißt er überall „Willkommen" und
-      // kommt in keine Liga (Fremdschlüssel auf `profiles`). Genau so sind
-      // drei von fünfundzwanzig Registrierungen gestrandet.
-      //
-      // Das Profil holt `currentProfileProvider` beim nächsten Anmelden
-      // selbst nach; der Name kommt dann aus `nutzernameVorschlag` und lässt
-      // sich im Profil ändern.
-      throw AuthFailure(e.code == '23505'
-          ? 'Der Nutzername „$trimmed" ist schon vergeben. Dein Konto ist '
-                'angelegt — melde dich an und wähle im Profil einen anderen '
-                'Namen.'
-          : 'Dein Konto ist angelegt, das Profil noch nicht '
-                '(${e.message}). Melde dich an, dann holen wir es nach.');
+      throw AuthFailure(
+        e.code == '23505'
+            ? 'Der Nutzername „$trimmed" ist schon vergeben. Dein Konto ist '
+                  'fertig — melde dich an und wähle im Profil einen anderen '
+                  'Namen.'
+            : 'Dein Konto ist fertig, nur der Name ließ sich nicht setzen '
+                  '(${e.message}). Du kannst ihn im Profil ändern.',
+      );
     }
   }
 
