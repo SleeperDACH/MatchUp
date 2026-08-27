@@ -88,12 +88,14 @@ class FantasyLeagueScreen extends ConsumerWidget {
 // Übersicht
 // ---------------------------------------------------------------------------
 
-// Akzentfarben der Liga-Ansicht. `_cTeal` und `_cBlue` gehörten zu den
-// „Schnellzugriff"-Kacheln und sind mit ihnen entfallen; die übrigen tragen
-// noch Kader- und Tippspiel-Teile.
+// Akzentfarben der Liga-Ansicht. Sie sitzen in den 36er-Symbolkacheln der
+// Aktionszeilen — nicht mehr in gefüllten Karten, die den halben Schirm
+// einnahmen.
 const _cGreen = MatchUpColors.green;
+const _cTeal = Color(0xFF4FC3A1);
 const _cAmber = Color(0xFFFFC83D);
 const _cRed = MatchUpColors.red;
+const _cBlue = Color(0xFF5B9DF9);
 const _cBase = MatchUpColors.base;
 
 /// Übersicht der Fantasy-Liga.
@@ -167,16 +169,22 @@ class _OverviewTab extends ConsumerWidget {
           const _Abschnittsmarke('Mein Team'),
           _LigaZeile(
             label: 'Aufstellung',
+            icon: Icons.sports_soccer,
+            farbe: _cTeal,
             onTap: () => go(LineupScreen(league: league)),
           ),
           const _Trenner(),
           _LigaZeile(
             label: 'Free Agency',
+            icon: Icons.person_add_alt,
+            farbe: _cAmber,
             onTap: () => go(FreeAgencyScreen(league: league)),
           ),
           const _Trenner(),
           _LigaZeile(
             label: 'Trades',
+            icon: Icons.swap_horiz,
+            farbe: _cRed,
             zahl: openTrades,
             onTap: () => go(TradeScreen(league: league)),
           ),
@@ -187,6 +195,8 @@ class _OverviewTab extends ConsumerWidget {
         if (!draftFullyDone) ...[
           _LigaZeile(
             label: 'Draft-Raum',
+            icon: Icons.meeting_room_outlined,
+            farbe: _cBlue,
             hinweis: switch (league.draftStatus) {
               DraftStatus.setup => 'noch nicht gestartet',
               DraftStatus.drafting => 'läuft',
@@ -205,12 +215,16 @@ class _OverviewTab extends ConsumerWidget {
         ],
         _LigaZeile(
           label: 'Liga-Chat',
+          icon: Icons.forum_outlined,
+          farbe: _cGreen,
           onTap: () => go(FantasyChatScreen(league: league)),
         ),
         if (!draftFullyDone) ...[
           const _Trenner(),
           _LigaZeile(
             label: 'Spieler einladen',
+            icon: Icons.person_add_alt_1,
+            farbe: _cAmber,
             hinweis: managers == null ? null : '${managers.length} dabei',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -415,16 +429,28 @@ class _Trenner extends StatelessWidget {
   );
 }
 
-/// Eine Zeile der Übersicht — ersetzt die gefüllten „Schnellzugriff"-Kacheln.
+/// Eine Aktion der Übersicht: farbiges Symbol, Beschriftung, optional ein
+/// leiser Zusatz und ein roter Zähler.
+///
+/// Zwischenstand war die reine Textzeile — sie ersetzte die gefüllten
+/// „Schnellzugriff"-Kacheln und war dann zu leise: Draft-Raum, Liga-Chat und
+/// „Spieler einladen" lasen sich nicht mehr als Knöpfe. Das Symbol in seiner
+/// getönten Kachel gibt ihnen das Gewicht zurück, ohne dass die Fläche wieder
+/// den halben Schirm einnimmt: 36 Punkte statt eines 44er-Kreises auf einer
+/// 100 Punkte hohen Karte. Die Farbe trägt das Symbol, nicht der Text.
 class _LigaZeile extends StatelessWidget {
   const _LigaZeile({
     required this.label,
+    required this.icon,
+    required this.farbe,
     required this.onTap,
     this.hinweis,
     this.zahl = 0,
   });
 
   final String label;
+  final IconData icon;
+  final Color farbe;
   final VoidCallback onTap;
 
   /// Leiser Zusatz rechts („läuft", „3 dabei").
@@ -444,14 +470,28 @@ class _LigaZeile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: Row(
             children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: farbe.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: farbe.withValues(alpha: 0.30),
+                    width: 0.8,
+                  ),
+                ),
+                child: Icon(icon, size: 19, color: farbe),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   label,
                   style: const TextStyle(
-                    fontSize: 15.5,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
