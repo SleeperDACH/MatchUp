@@ -308,6 +308,28 @@ Drei Dinge, die beim Nachbauen Zeit kosten:
   den SHA-256-Abdruck, Supabase das Original. Wer beiden denselben Wert gibt,
   bekommt „Nonce mismatch".
 
+**Ein Konto ohne Profil ist ein toter Account.** `fantasy_league_members`,
+Chats und Freundschaften zeigen per Fremdschlüssel auf `profiles`; fehlt die
+Zeile, scheitert jeder Liga-Beitritt mit
+`fantasy_league_members_user_id_fkey` (23503), und der Homescreen grüßt mit
+„Willkommen" statt mit dem Namen. Gemessen am 27.08.2026: **drei von
+fünfundzwanzig** Konten waren in diesem Zustand, alle per E-Mail angelegt.
+
+Der Weg dorthin: `signUp` legt Konto und Profil in **zwei** Schritten an. Geht
+der zweite schief — etwa weil der Nutzername vergeben ist (23505) —, bleibt
+das Konto stehen. Ein zweiter Versuch mit anderem Namen scheitert dann an
+„Für diese E-Mail existiert bereits ein Konto", und der Betroffene sitzt fest.
+Zwei Änderungen halten das ab:
+
+* **`currentProfileProvider` legt das Profil nach**, wenn keins da ist. Dort
+  kommt jeder Weg vorbei (Kaltstart, E-Mail-Login, Google, Apple), und die
+  Heilung schluckt ihren Fehler — ein Profil, das sich nicht anlegen lässt,
+  darf nicht auch noch den Start blockieren. Vorher lief
+  `ensureProfileFromIdentity` **nur** hinter Google/Apple; E-Mail-Konten
+  hatten keinen Weg zurück.
+* **Die Fehlermeldung bei der Registrierung sagt, dass das Konto existiert.**
+  „Der Nutzername ist bereits vergeben" allein schickte in die Sackgasse.
+
 **Profile entstehen hier nicht von selbst.** `signUp` legt die `profiles`-Zeile
 mit dem selbst gewählten Namen an — über Google oder Apple läuft dieser Weg
 nie. `AuthRepository.ensureProfileFromIdentity` holt das nach und leitet den

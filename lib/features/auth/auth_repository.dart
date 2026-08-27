@@ -52,11 +52,23 @@ class AuthRepository {
     try {
       await _client.from('profiles').insert({'id': user.id, 'username': trimmed});
     } on PostgrestException catch (e) {
-      // 23505 = unique_violation (Nutzername vergeben). Konto existiert
-      // dann schon; beim nächsten Login kann das Profil nachgeholt werden.
+      // Hier ist das **Konto schon angelegt** — nur das Profil fehlt. Die
+      // Meldung muss das sagen, sonst läuft der Betroffene in eine Sackgasse:
+      // Ein zweiter Versuch mit anderem Namen scheitert an
+      // „Für diese E-Mail existiert bereits ein Konto", und was er hat, ist
+      // ein Konto ohne Profil — damit heißt er überall „Willkommen" und
+      // kommt in keine Liga (Fremdschlüssel auf `profiles`). Genau so sind
+      // drei von fünfundzwanzig Registrierungen gestrandet.
+      //
+      // Das Profil holt `currentProfileProvider` beim nächsten Anmelden
+      // selbst nach; der Name kommt dann aus `nutzernameVorschlag` und lässt
+      // sich im Profil ändern.
       throw AuthFailure(e.code == '23505'
-          ? 'Der Nutzername "$trimmed" ist bereits vergeben.'
-          : 'Profil konnte nicht angelegt werden: ${e.message}');
+          ? 'Der Nutzername „$trimmed" ist schon vergeben. Dein Konto ist '
+                'angelegt — melde dich an und wähle im Profil einen anderen '
+                'Namen.'
+          : 'Dein Konto ist angelegt, das Profil noch nicht '
+                '(${e.message}). Melde dich an, dann holen wir es nach.');
     }
   }
 

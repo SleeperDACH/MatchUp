@@ -81,8 +81,32 @@ final currentUsernameProvider = FutureProvider<String?>((ref) async {
 });
 
 /// Eigenes Profil inkl. Avatar (Bild oder Emoji+Farbe).
+/// Profil des angemeldeten Nutzers — **und legt es an, wenn es fehlt.**
+///
+/// Ein Konto ohne `profiles`-Zeile ist kein theoretischer Fall: Von 25
+/// Registrierungen hatten drei keine. Beim Anlegen kann der Einfügeversuch
+/// scheitern (etwa weil der Nutzername schon vergeben ist), das Auth-Konto
+/// bleibt aber bestehen — und danach gab es **keinen Weg zurück**:
+/// `ensureProfileFromIdentity` lief nur nach Google/Apple, nie nach einer
+/// E-Mail-Anmeldung. Betroffene sahen oben „Willkommen" statt ihres Namens,
+/// und jeder Liga-Beitritt scheiterte an
+/// `fantasy_league_members_user_id_fkey`, weil der Fremdschlüssel auf
+/// `profiles` zeigt.
+///
+/// Die Heilung sitzt hier, weil hier jeder Weg vorbeikommt — Kaltstart,
+/// E-Mail-Login, Google, Apple. Sie läuft nur, wenn wirklich kein Profil da
+/// ist, und schluckt ihren Fehler: Ein Profil, das sich nicht anlegen lässt,
+/// darf nicht auch noch den Start blockieren.
 final currentProfileProvider = FutureProvider<UserProfile?>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
-  return ref.watch(authRepositoryProvider).fetchProfile();
+  final repo = ref.watch(authRepositoryProvider);
+  final vorhanden = await repo.fetchProfile();
+  if (vorhanden != null) return vorhanden;
+  try {
+    await repo.ensureProfileFromIdentity();
+  } catch (_) {
+    return null;
+  }
+  return repo.fetchProfile();
 });
