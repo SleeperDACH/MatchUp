@@ -937,6 +937,37 @@ Bildvergleich, der Schirm zeigt kein Datum). Der Test braucht einen echten
 `Supabase.instance` zu, die es im Test nicht gibt, und die ID muss `createdBy`
 treffen, sonst fehlen Admin-Bereich und Gefahrenzone.
 
+### Punktevergabe — nach Position, nicht nach Kategorie
+
+Die Wertung stand als eine lange Liste da, nach Kategorien sortiert, mit
+hartkodierten Zahlen im Text. Wer wissen wollte, was sein Innenverteidiger für
+eine Null hinten bekommt, musste sich das aus „Zu Null: TW/ABW 12, MF/ST 0"
+selbst heraussuchen — und für Positionen mitlesen, die ihn nichts angingen.
+
+Jetzt wählt oben ein `PillSelector` die Position (Torwart, Abwehr, Mittelfeld,
+Sturm), und darunter steht **nur, was für diese Position gilt**. Drei Regeln
+halten das ehrlich:
+
+- **Jede Zahl kommt aus `FantasyScoringRules`**, keine steht als Text im
+  Schirm. Die Wertung liegt ohnehin schon doppelt vor (`scoring.config.json` ↔
+  `fantasy_scoring_rules.dart`); eine dritte Kopie in Anzeigetexten hätte
+  niemand mitgepflegt.
+- **Was für die Position 0 ist, fehlt ganz.** Eine Zeile „Zu Null: 0" beim
+  Stürmer ist keine Auskunft, sondern eine Falle — sie liest sich, als gäbe es
+  die Wertung und sie sei nur gerade wertlos. Beim Torwart stehen dafür Parade
+  und gehaltener Elfmeter, beim Stürmer nicht.
+- **Der Einleitungssatz nennt keine Zahl und keine Rangfolge.** Beides ging
+  schon schief: „Defensivaktionen bringen ab acht einen Bonus" stand über einer
+  Tabelle, die dieselbe Acht aus `defensiveMilestones` rechnet (beim Mittelfeld
+  wäre es die Zehn gewesen), und „für die Abwehr zählt die Null hinten am
+  meisten" ist schlicht falsch — ein Tor bringt jeder Position 16, die Null 12.
+  Der Satz ordnet ein, die Tabelle beziffert.
+
+Angesehen über `test/punktevergabe_vorschau_test.dart`, und zwar mit **zwei**
+Bildern: Der Schirm lebt genau davon, dass Torwart und Stürmer verschieden
+aussehen — ein Bild allein hätte den halben Zweck nicht gezeigt. Der
+Bildvergleich ist fest, der Schirm zeigt kein Datum.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
