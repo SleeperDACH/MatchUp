@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/favorites/ui/favorites_tab.dart';
 import 'home_screen.dart';
 import 'live_screen.dart';
 import 'theme.dart';
+import 'wiedereinstieg.dart';
 import 'widgets/liquid_glass.dart';
 
 /// Maße der schwebenden Navi-Kapsel.
@@ -23,15 +25,41 @@ const double navBarBottomInset = 10;
 /// Profil ist über den Avatar oben links im Home-Tab erreichbar (kein eigener
 /// Tab mehr). Die Tabs liegen im IndexedStack, behalten also ihren Zustand
 /// beim Wechseln (Scrollposition, geladene Daten).
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell>
+    with WidgetsBindingObserver {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Beim Zurückkommen aus dem Hintergrund den Serverstand neu holen.
+  ///
+  /// Die App hatte vorher gar keinen Lebenszyklus-Beobachter — wer sie
+  /// weglegte und wiederholte, sah den Stand von vorher, und es half nur, sie
+  /// wirklich zu beenden. Der Beobachter sitzt in der Hülle, damit es für alle
+  /// Tabs gilt und nicht je Schirm nachgebaut werden muss.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      beimZurueckkommenAktualisieren(ref);
+    }
+  }
 
   static const _tabs = [
     HomeScreen(),

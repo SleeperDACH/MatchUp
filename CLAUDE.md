@@ -1110,6 +1110,58 @@ die der Knopf gab. Dann muss die Statuszeile *jeden* Zustand sagen können —
 besonders „ich habe nichts gespeichert". Eine Zeile, die immer dasselbe
 verspricht, ist schlimmer als keine.
 
+### „Man muss die App komplett schließen" war kein Performance-Problem
+
+So wurde es gemeldet, und es klang nach Langsamkeit. Es war das Gegenteil: Die
+App fragte gar nicht mehr nach. Drei Schichten, die alle in dieselbe Richtung
+versagten — deshalb half nur der harte Neustart.
+
+- **`fantasy_league_members` stand nicht in der Realtime-Publication.** Zehn
+  andere Fantasy-Tabellen schon (`fantasy_rosters`, `draft_picks`,
+  `fantasy_leagues`, `fantasy_lineups` …) — ausgerechnet die Mitgliederliste
+  nicht. Ein Beitritt **konnte** nicht ankommen, egal wie der Client fragte.
+  Migration 0082 nimmt sie auf, dazu `tip_rounds` und `tip_round_members`, wo
+  „jemand tritt bei" derselbe Vorgang ist.
+- **Die beiden wichtigsten Listen waren `FutureProvider`.**
+  `myFantasyLeaguesProvider` (die Ligen auf dem Startbildschirm) und
+  `fantasyManagersProvider` (die Teilnehmer) luden genau einmal. Ein
+  gestarteter Draft und ein neuer Mitspieler kamen deshalb nie an. Beide sind
+  jetzt `StreamProvider`.
+  Bei den Mitgliedern geht das nur über eine **Klingel**: `managers()` braucht
+  den eingebetteten Join auf `profiles` (Name, Avatar), und ein Supabase-
+  `.stream()` kann keine Joins. Der Stream meldet deshalb nur, *dass* sich
+  etwas geändert hat (`memberChanges`), und `asyncMap` holt die vollständige
+  Abfrage nach. Die erste Ausgabe ist der Snapshot, das Erstladen läuft also
+  über denselben Weg.
+- **Es gab keinen einzigen `AppLifecycleState`-Beobachter.** Nichts wurde beim
+  Zurückholen aus dem Hintergrund aufgefrischt — und genau deshalb reichte es
+  nicht, die App wegzulegen und wiederzuholen. `MainShell` beobachtet den
+  Lebenszyklus jetzt und ruft `beimZurueckkommenAktualisieren`
+  (`app/wiedereinstieg.dart`); dort steht als Liste, was neu geholt wird, mit
+  dem Grund. Er sitzt in der Hülle, damit es für alle Tabs gilt.
+  Auch Streams stehen in der Liste: Eine Realtime-Verbindung überlebt eine
+  lange Pause nicht zwangsläufig; sie verbindet sich neu, hat die Ereignisse
+  der Auszeit aber nicht gesehen. Ein frischer Schnappschuss ist billiger als
+  ein falscher Stand.
+  **Nicht in der Liste:** rein Lokales (Favoriten, Lesemarken) und alles, was
+  gerade bearbeitet wird — ein Neuladen unter den Händen wäre schlimmer als
+  ein Wert von vor zehn Minuten.
+
+**Mit hinausgeflogen ist eine Notlösung**, die das Problem verdeckte und dabei
+Last erzeugte: Der Draft-Raum rief alle zwei Sekunden
+`ref.invalidate(fantasyManagersProvider)` — der Kommentar dort sagte den Grund
+offen („Mitglieder kommen nicht per Realtime"). Das hielt die Liste nur *im
+Draft-Raum* aktuell und fragte dafür im Sekundentakt ab.
+
+**Die Regel daraus:** Eine Tabelle, deren Änderungen jemand sehen soll, braucht
+**beides** — den Eintrag in `supabase_realtime` und einen Provider, der zuhört.
+Fehlt eins von beidem, sieht es wie Trägheit aus. Prüfen lässt es sich in einer
+Zeile:
+
+```sql
+select tablename from pg_publication_tables where pubname = 'supabase_realtime';
+```
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

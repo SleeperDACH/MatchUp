@@ -39,15 +39,31 @@ final fantasyDataProvider = Provider<FantasyDataProvider>((ref) =>
 final fantasySeasonProvider =
     Provider<int>((ref) => Leagues.bundesliga.seasonFor(DateTime.now()));
 
-final myFantasyLeaguesProvider = FutureProvider<List<FantasyLeague>>((ref) {
+/// Die eigenen Fantasy-Ligen — **live**.
+///
+/// War ein `FutureProvider` und lud damit genau einmal. Ein gestarteter Draft
+/// oder eine neu beigetretene Liga erschien erst nach einem vollständigen
+/// App-Neustart; gemeldet wurde das als Performance-Problem.
+final myFantasyLeaguesProvider = StreamProvider<List<FantasyLeague>>((ref) {
   final user = ref.watch(currentUserProvider);
-  if (user == null) return Future.value(const <FantasyLeague>[]);
-  return ref.watch(fantasyLeagueRepositoryProvider).myLeagues();
+  if (user == null) return Stream.value(const <FantasyLeague>[]);
+  return ref.watch(fantasyLeagueRepositoryProvider).myLeaguesStream();
 });
 
+/// Die Mitglieder einer Liga — **live**.
+///
+/// Ebenfalls vorher ein `FutureProvider`. Der Draft-Raum hat das mit einem
+/// `ref.invalidate` alle zwei Sekunden überdeckt — eine Notlösung, die die
+/// Liste nur *dort* aktuell hielt und dafür im Sekundentakt abfragte. Die ist
+/// mit dieser Umstellung entfallen.
+///
+/// `asyncMap` statt `map`: Der Stream ist nur die Klingel (siehe
+/// [FantasyLeagueRepository.memberChanges]), die Liste mit Namen und Avataren
+/// kommt aus der vollständigen Abfrage.
 final fantasyManagersProvider =
-    FutureProvider.family<List<FantasyManager>, String>((ref, leagueId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).managers(leagueId);
+    StreamProvider.family<List<FantasyManager>, String>((ref, leagueId) {
+  final repo = ref.watch(fantasyLeagueRepositoryProvider);
+  return repo.memberChanges(leagueId).asyncMap((_) => repo.managers(leagueId));
 });
 
 /// Verwaiste Teams einer Liga (für die Admin-Zuweisung).

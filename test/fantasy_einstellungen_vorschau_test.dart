@@ -67,7 +67,9 @@ void main() {
             ),
           ),
           draftLeagueProvider.overrideWith((ref, id) => Stream.value(liga)),
-          fantasyManagersProvider.overrideWith((ref, id) async => const []),
+          fantasyManagersProvider.overrideWith(
+            (ref, id) => Stream.value(const []),
+          ),
           fantasyTipRoundProvider.overrideWith((ref, id) async => null),
         ],
         child: MaterialApp(

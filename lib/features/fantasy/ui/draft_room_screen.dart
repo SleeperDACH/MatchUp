@@ -80,8 +80,6 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     super.dispose();
   }
 
-  int _tick = 0;
-
   void _onTick() {
     final league = ref.read(draftLeagueProvider(_leagueId)).valueOrNull;
     // Jede Sekunde prüfen: der Server pickt automatisch, wenn der Timer
@@ -97,12 +95,10 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
             )
             .whenComplete(() => _autopickInFlight = false);
       }
-      // Auto-Pick-Status live halten: Mitglieder (auto_pick) kommen nicht per
-      // Realtime, daher während des Drafts alle 2 s neu laden. Riverpod behält
-      // den alten Wert beim Nachladen → kein Flackern.
-      if (++_tick % 2 == 0) {
-        ref.invalidate(fantasyManagersProvider(_leagueId));
-      }
+      // Hier stand ein `ref.invalidate(fantasyManagersProvider)` alle zwei
+      // Sekunden, weil `fantasy_league_members` nicht in der
+      // Realtime-Publication stand. Seit Migration 0082 steht sie drin und der
+      // Provider ist ein Stream — die Abfrage im Sekundentakt ist weg.
     }
     _poolNachladenFallsUnbekannt();
     if (mounted) setState(() {}); // Countdown aktualisieren

@@ -178,10 +178,12 @@ Future<void> _bauen(WidgetTester tester) async {
         currentUserProvider.overrideWith((ref) => null),
         currentUsernameProvider.overrideWith((ref) async => 'SFV03'),
         unreadDmCountProvider.overrideWith((ref) => 18),
-        myFantasyLeaguesProvider.overrideWith((ref) async => ligen),
+        myFantasyLeaguesProvider.overrideWith((ref) => Stream.value(ligen)),
         myRoundsProvider.overrideWith((ref) async => runden),
         favoritenSpieleProvider.overrideWith((ref) async => [spiel]),
-        fantasyManagersProvider.overrideWith((ref, id) async => const []),
+        fantasyManagersProvider.overrideWith(
+          (ref, id) => Stream.value(const []),
+        ),
         fantasyJoinRequestsProvider.overrideWith(
           (ref, id) => Stream.value(const []),
         ),

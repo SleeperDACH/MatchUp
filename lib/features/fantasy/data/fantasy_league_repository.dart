@@ -34,6 +34,22 @@ class FantasyLeagueRepository {
     return rows.map(FantasyLeague.fromJson).toList();
   }
 
+  /// Dieselbe Liste **live**.
+  ///
+  /// Die Ligaliste war ein `FutureProvider`: einmal geladen, nie wieder. Ein
+  /// gestarteter Draft, ein neuer Beitritt, eine neue Liga — nichts davon kam
+  /// an, bis jemand die App komplett schloss und neu öffnete. Genau das war
+  /// als „Performance-Problem" gemeldet.
+  ///
+  /// Die Auswahl übernimmt weiter die RLS (`is_fantasy_member(id) or
+  /// created_by = auth.uid()`), für den Stream genauso wie für die Abfrage —
+  /// die Liste bleibt also dieselbe, sie steht jetzt nur nicht mehr still.
+  Stream<List<FantasyLeague>> myLeaguesStream() => _client
+      .from('fantasy_leagues')
+      .stream(primaryKey: ['id'])
+      .order('created_at', ascending: false)
+      .map((rows) => rows.map(FantasyLeague.fromJson).toList());
+
   Future<FantasyLeague> createLeague({
     required String name,
     required FantasyMode mode,
@@ -332,6 +348,18 @@ class FantasyLeagueRepository {
         .order('joined_at');
     return rows.map(FantasyManager.fromJson).toList();
   }
+
+  /// Klingel für Änderungen an der Mitgliederliste einer Liga.
+  ///
+  /// [managers] braucht den eingebetteten Join auf `profiles` (Name, Avatar),
+  /// und ein Supabase-`.stream()` kann keine Joins. Deshalb meldet dieser
+  /// Stream nur, **dass** sich etwas geändert hat; die vollständige Abfrage
+  /// wird darauf neu geholt. Die erste Ausgabe kommt sofort (Snapshot), das
+  /// Erstladen läuft also über denselben Weg.
+  Stream<List<Map<String, dynamic>>> memberChanges(String leagueId) => _client
+      .from('fantasy_league_members')
+      .stream(primaryKey: ['league_id', 'user_id'])
+      .eq('league_id', leagueId);
 
   /// Verwaiste Teams (verlassen/gekickt) — der Admin kann sie neu zuweisen.
   Future<List<FantasyManager>> vacantTeams(String leagueId) async {
