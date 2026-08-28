@@ -1241,9 +1241,31 @@ und hängt ein `select()` an: Ein `update`, das null Zeilen trifft, ist für
 PostgREST kein Fehler, und die Oberfläche hätte „Gespeichert" gemeldet — genau
 die stille Variante, die die Teilnehmerzahl schon einmal hatte.
 
-Angesehen über `test/kaderlimits_vorschau_test.dart` (eingeschaltet, mit einem
-Kader, der ein Limit schon reißt). Gerechnet wird in
+**Jede Position steht für sich.** Man kann die Torhüter deckeln und Abwehr,
+Mittelfeld und Sturm offen lassen — ein fehlender `max…`-Schlüssel heißt für
+Trigger und Auto-Pick „unbegrenzt", und zwar je Position einzeln. Modell und
+SQL konnten das von Anfang an; eingeschränkt hatte nur die erste Fassung der
+Oberfläche, die einen einzigen Schalter für alle vier hatte.
+
+Drei Dinge, die dabei zu beachten waren:
+
+- **„Ohne Limit" ist ein Knopf, keine Null.** Eine 0 im Stepper hieße *keiner
+  erlaubt* — das genaue Gegenteil von *unbegrenzt*.
+- **Die Summenprüfung gilt nur, wenn alle vier gesetzt sind.** Bleibt eine
+  Position offen, nimmt sie jede Restmenge auf; „zusammen 12 von 16" wäre dann
+  eine Warnung vor einem Problem, das es nicht gibt (`_alleGesetzt`).
+- **Eigene Zeile statt `_SettingRow`.** Dessen `ListTile` gibt dem `trailing`
+  nur begrenzt Platz, und dort stehen bis zu drei Bedienelemente (Stepper plus
+  Aufheben-Knopf). Die Breiten kontrolliert `_LimitZeile` selbst.
+
+Angesehen über `test/kaderlimits_vorschau_test.dart` — bewusst der **gemischte**
+Fall (Torhüter und Sturm begrenzt, Abwehr und Mittelfeld offen), weil genau
+dieser Unterschied auf einen Blick lesbar sein muss. Gerechnet wird in
 `test/kaderlimits_test.dart`.
+
+Gegen die Produktions-DB nachgemessen (mit Rollback): Mit nur `maxFwd` gesetzt
+wird ein Stürmer blockiert („höchstens 1 Stürmer in dieser Liga") und ein
+Abwehrspieler durchgelassen.
 
 ### Die Aufstellung sperrt je Spieler, nicht je Spieltag
 

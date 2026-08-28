@@ -35,6 +35,21 @@ void main() {
       expect(r.limitsReichenFuerKader(), isTrue);
     });
 
+    test('einzelne Positionen begrenzen, andere offen lassen', () {
+      // Der Normalfall: Nur der Sturm ist gedeckelt, der Rest frei.
+      const r = RosterConfig(maxFwd: 5);
+      expect(r.limitFor(PlayerPosition.fwd), 5);
+      expect(r.limitFor(PlayerPosition.gk), isNull);
+      expect(r.limitFor(PlayerPosition.def), isNull);
+      expect(r.limitFor(PlayerPosition.mid), isNull);
+      // In der JSONB steht nur, was gesetzt ist — ein fehlender Schlüssel
+      // heißt für die SQL „unbegrenzt".
+      expect(r.toJson().keys.where((k) => k.startsWith('max')), ['maxFwd']);
+      // Und die Summenprüfung darf hier nicht meckern: Die offenen Positionen
+      // nehmen jede Restmenge auf.
+      expect(r.limitsReichenFuerKader(), isTrue);
+    });
+
     test('withRounds nimmt die Limits mit', () {
       const r = RosterConfig(maxFwd: 5);
       expect(r.withRounds(20).maxFwd, 5);

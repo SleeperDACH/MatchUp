@@ -1477,11 +1477,9 @@ class KaderLimitsPage extends ConsumerStatefulWidget {
 }
 
 class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
-  late bool _an;
-  late int _gk;
-  late int _def;
-  late int _mid;
-  late int _fwd;
+  /// Limit je Position, `null` = keine Einschränkung. Jede Position steht für
+  /// sich: Man kann die Torhüter deckeln und Mittelfeld und Sturm offen lassen.
+  final _limit = <PlayerPosition, int?>{};
   bool _saving = false;
 
   RosterConfig get _r => widget.league.roster;
@@ -1490,17 +1488,9 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
   void initState() {
     super.initState();
     final r = _r;
-    _an = r.maxGk != null ||
-        r.maxDef != null ||
-        r.maxMid != null ||
-        r.maxFwd != null;
-    // Vorbelegung, wenn noch nichts gesetzt ist: die Startelf-Obergrenze plus
-    // eine Reserve. Das erlaubt jede gültige Formation und verhindert trotzdem
-    // das Horten.
-    _gk = r.maxGk ?? (r.gk + 1);
-    _def = r.maxDef ?? (r.defMax + 1);
-    _mid = r.maxMid ?? (r.midMax + 1);
-    _fwd = r.maxFwd ?? (r.fwdMax + 1);
+    for (final pos in PlayerPosition.values) {
+      _limit[pos] = r.limitFor(pos);
+    }
   }
 
   /// Untergrenze je Position: Unter der Startelf-Mindestzahl wäre keine
@@ -1512,7 +1502,38 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
         PlayerPosition.fwd => _r.fwdMin,
       };
 
-  int get _summe => _gk + _def + _mid + _fwd;
+  /// Vorschlag beim Einschalten: die Startelf-Obergrenze plus eine Reserve.
+  /// Erlaubt jede gültige Formation und verhindert trotzdem das Horten.
+  int _vorschlag(PlayerPosition pos) => switch (pos) {
+        PlayerPosition.gk => _r.gk + 1,
+        PlayerPosition.def => _r.defMax + 1,
+        PlayerPosition.mid => _r.midMax + 1,
+        PlayerPosition.fwd => _r.fwdMax + 1,
+      };
+
+  static const _bezeichnung = {
+    PlayerPosition.gk: 'Torhüter',
+    PlayerPosition.def: 'Abwehr',
+    PlayerPosition.mid: 'Mittelfeld',
+    PlayerPosition.fwd: 'Sturm',
+  };
+
+  static const _symbol = {
+    PlayerPosition.gk: Icons.sports_handball,
+    PlayerPosition.def: Icons.shield_outlined,
+    PlayerPosition.mid: Icons.hub_outlined,
+    PlayerPosition.fwd: Icons.sports_soccer,
+  };
+
+  bool get _irgendeins => _limit.values.any((v) => v != null);
+
+  /// Bleibt eine Position offen, kann sie jede Restmenge aufnehmen — dann geht
+  /// die Rechnung immer auf. Erst wenn **alle vier** gedeckelt sind, muss ihre
+  /// Summe den Kader tragen.
+  bool get _alleGesetzt => _limit.values.every((v) => v != null);
+
+  int get _summe =>
+      _limit.values.fold(0, (a, v) => a + (v ?? 0));
 
   RosterConfig get _neu => RosterConfig(
         gk: _r.gk,
@@ -1526,13 +1547,37 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
         midMax: _r.midMax,
         fwdMin: _r.fwdMin,
         fwdMax: _r.fwdMax,
-        maxGk: _an ? _gk : null,
-        maxDef: _an ? _def : null,
-        maxMid: _an ? _mid : null,
-        maxFwd: _an ? _fwd : null,
+        maxGk: _limit[PlayerPosition.gk],
+        maxDef: _limit[PlayerPosition.def],
+        maxMid: _limit[PlayerPosition.mid],
+        maxFwd: _limit[PlayerPosition.fwd],
       );
 
-  bool get _reichtFuerKader => !_an || _summe >= _r.squadSize;
+  bool get _reichtFuerKader => !_alleGesetzt || _summe >= _r.squadSize;
+
+  /// Was unter den Zeilen steht — drei Lagen, nicht eine.
+  ///
+  /// Die Summenrechnung gilt nur, wenn **alle vier** Positionen gedeckelt sind.
+  /// Bleibt eine offen, kann sie jede Restmenge aufnehmen; „zusammen 12 von 16"
+  /// wäre dann eine Warnung vor einem Problem, das es nicht gibt.
+  String _hinweisText() {
+    if (!_irgendeins) {
+      return 'Keine Position ist begrenzt — es gilt keine Obergrenze.';
+    }
+    if (!_alleGesetzt) {
+      final offen = [
+        for (final pos in PlayerPosition.values)
+          if (_limit[pos] == null) _bezeichnung[pos]!,
+      ];
+      return 'Ohne Limit: ${offen.join(', ')}. Dort passt beliebig viel in den '
+          'Kader, die Rechnung geht also immer auf.';
+    }
+    return _reichtFuerKader
+        ? 'Zusammen $_summe Plätze bei ${_r.squadSize} Kaderplätzen.'
+        : 'Zusammen nur $_summe Plätze, der Kader hat aber ${_r.squadSize}. '
+            'So findet der Draft irgendwann keinen erlaubten Spieler mehr und '
+            'bricht ab.';
+  }
 
   Future<void> _speichern() async {
     setState(() => _saving = true);
@@ -1559,7 +1604,7 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
   /// Sie brechen nicht — der Trigger prüft nur beim Hinzufügen. Aber wer ein
   /// Limit setzt, sollte wissen, dass es für manche sofort greift.
   int _schonDarueber() {
-    if (!_an) return 0;
+    if (!_irgendeins) return 0;
     final pool = ref.watch(playerPoolProvider).valueOrNull;
     final roster = ref.watch(leagueRosterProvider(widget.league.id)).valueOrNull;
     if (pool == null || roster == null) return 0;
@@ -1571,14 +1616,11 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
       final m = proManager.putIfAbsent(e.managerId, () => {});
       m[pos] = (m[pos] ?? 0) + 1;
     }
-    final limits = {
-      PlayerPosition.gk: _gk,
-      PlayerPosition.def: _def,
-      PlayerPosition.mid: _mid,
-      PlayerPosition.fwd: _fwd,
-    };
+    // Offene Positionen (`null`) zählen nicht mit — dort gibt es nichts zu
+    // reißen.
     return proManager.values
-        .where((m) => limits.entries.any((l) => (m[l.key] ?? 0) > l.value))
+        .where((m) => _limit.entries.any(
+            (l) => l.value != null && (m[l.key] ?? 0) > l.value!))
         .length;
   }
 
@@ -1604,67 +1646,103 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
             ),
           ),
           _CardColumn([
-            SwitchListTile(
-              value: _an,
-              onChanged: (v) => setState(() => _an = v),
-              title: const Text('Kader-Limits verwenden'),
-              subtitle: Text(_an ? 'Aktiv' : 'Aus — keine Obergrenze'),
-              contentPadding: EdgeInsets.zero,
-            ),
+            // Jede Position steht für sich: Man kann die Torhüter deckeln und
+            // Mittelfeld und Sturm offen lassen. Eine Position ohne Limit ist
+            // kein halb eingeschalteter Zustand, sondern der Normalfall.
+            for (final pos in PlayerPosition.values)
+              _LimitZeile(
+                icon: _symbol[pos]!,
+                label: _bezeichnung[pos]!,
+                wert: _limit[pos],
+                min: _min(pos),
+                onEin: () => setState(() => _limit[pos] = _vorschlag(pos)),
+                onAus: () => setState(() => _limit[pos] = null),
+                onWert: (v) => setState(() => _limit[pos] = v),
+              ),
           ]),
           const SizedBox(height: 12),
-          if (_an) ...[
-            _CardColumn([
-              // Je Position ein eigenes Zeichen — viermal dasselbe Symbol
-              // untereinander unterscheidet nichts und kostet trotzdem Platz.
-              for (final (pos, label, icon, wert, setz) in [
-                (PlayerPosition.gk, 'Torhüter', Icons.sports_handball, _gk,
-                    (int v) => setState(() => _gk = v)),
-                (PlayerPosition.def, 'Abwehr', Icons.shield_outlined, _def,
-                    (int v) => setState(() => _def = v)),
-                (PlayerPosition.mid, 'Mittelfeld', Icons.hub_outlined, _mid,
-                    (int v) => setState(() => _mid = v)),
-                (PlayerPosition.fwd, 'Sturm', Icons.sports_soccer, _fwd,
-                    (int v) => setState(() => _fwd = v)),
-              ])
-                _SettingRow(
-                  icon: icon,
-                  label: label,
-                  child: _Stepper(
-                    label: label,
-                    value: wert,
-                    min: _min(pos),
-                    max: 15,
-                    onChanged: setz,
-                  ),
-                ),
-            ]),
-            const SizedBox(height: 12),
+          _Hinweis(gut: _reichtFuerKader, text: _hinweisText()),
+          if (darueber > 0) ...[
+            const SizedBox(height: 8),
             _Hinweis(
-              gut: _reichtFuerKader,
-              text: _reichtFuerKader
-                  ? 'Zusammen $_summe Plätze bei ${_r.squadSize} Kaderplätzen.'
-                  : 'Zusammen nur $_summe Plätze, der Kader hat aber '
-                      '${_r.squadSize}. So findet der Draft irgendwann keinen '
-                      'erlaubten Spieler mehr und bricht ab.',
+              gut: true,
+              text: darueber == 1
+                  ? 'Ein Kader liegt schon über einem Limit. Er behält seine '
+                      'Spieler — es kommen nur keine mehr dazu.'
+                  : '$darueber Kader liegen schon über einem Limit. Sie '
+                      'behalten ihre Spieler — es kommen nur keine mehr dazu.',
             ),
-            if (darueber > 0) ...[
-              const SizedBox(height: 8),
-              _Hinweis(
-                gut: true,
-                text: darueber == 1
-                    ? 'Ein Kader liegt schon über einem Limit. Er behält seine '
-                        'Spieler — es kommen nur keine mehr dazu.'
-                    : '$darueber Kader liegen schon über einem Limit. Sie '
-                        'behalten ihre Spieler — es kommen nur keine mehr dazu.',
-              ),
-            ],
           ],
           const SizedBox(height: 20),
           FilledButton(
             onPressed: (_saving || !_reichtFuerKader) ? null : _speichern,
             child: Text(_saving ? 'Speichere …' : 'Speichern'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Eine Positionszeile der Kader-Limits.
+///
+/// Eigene Zeile statt [_SettingRow]: Dessen `ListTile` gibt dem `trailing` nur
+/// begrenzt Platz, und hier stehen dort bis zu drei Bedienelemente. Die
+/// Breiten kontrolliere ich lieber selbst, als sie zu schätzen.
+///
+/// Ohne Limit steht rechts ein Knopf statt einer Null — „0" hieße *keiner
+/// erlaubt*, das Gegenteil von *unbegrenzt*.
+class _LimitZeile extends StatelessWidget {
+  const _LimitZeile({
+    required this.icon,
+    required this.label,
+    required this.wert,
+    required this.min,
+    required this.onEin,
+    required this.onAus,
+    required this.onWert,
+  });
+
+  final IconData icon;
+  final String label;
+
+  /// `null` = diese Position ist nicht begrenzt.
+  final int? wert;
+  final int min;
+  final VoidCallback onEin;
+  final VoidCallback onAus;
+  final ValueChanged<int> onWert;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(icon, color: scheme.primary),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label)),
+          if (wert == null)
+            TextButton(
+              onPressed: onEin,
+              child: const Text('ohne Limit'),
+            )
+          else ...[
+            _Stepper(
+              label: label,
+              value: wert!,
+              min: min,
+              max: 15,
+              onChanged: onWert,
+            ),
+            IconButton(
+              tooltip: 'Limit für $label aufheben',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: onAus,
+            ),
+          ],
         ],
       ),
     );

@@ -13,9 +13,11 @@ import 'support/schrift.dart';
 /// Vorschau der **Kader-Limits** — kein Regressionstest:
 ///   flutter test --update-goldens test/kaderlimits_vorschau_test.dart
 ///
-/// Gezeigt wird der eingeschaltete Fall mit einem Kader, der ein Limit schon
-/// reißt (acht Stürmer) — genau die Lage, aus der die Funktion entstand. Der
-/// Hinweis darunter muss sagen, dass dieser Kader seine Spieler behält.
+/// Gezeigt wird der **gemischte** Fall: Torhüter und Sturm sind begrenzt,
+/// Abwehr und Mittelfeld nicht. Genau das muss man auf einen Blick
+/// unterscheiden können — eine Zahl heißt begrenzt, „ohne Limit" heißt offen.
+/// Dazu ein Kader, der ein Limit schon reißt (acht Stürmer): Der Hinweis muss
+/// sagen, dass er seine Spieler behält.
 void main() {
   setUpAll(ladeSchrift);
 
@@ -35,7 +37,7 @@ void main() {
       season: 2026,
       pickTime: DraftPickTime.h2,
       scoring: const FantasyScoringRules(),
-      roster: const RosterConfig(maxGk: 2, maxDef: 6, maxMid: 6, maxFwd: 5),
+      roster: const RosterConfig(maxGk: 2, maxFwd: 5),
       inviteCode: 'ABC123',
       draftStatus: DraftStatus.done,
       createdBy: 'ich',
