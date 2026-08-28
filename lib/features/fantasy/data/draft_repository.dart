@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/data/stream_dubletten.dart';
 import '../models/fantasy_models.dart';
 
 /// Draft-Operationen und Realtime-Streams. Alle schreibenden Aktionen
@@ -82,7 +83,10 @@ class DraftRepository {
       .from('draft_picks')
       .stream(primaryKey: ['league_id', 'phase', 'pick_number'])
       .eq('league_id', leagueId)
-      .map((rows) => (rows.map(DraftPick.fromJson).toList())
+      .map((rows) =>
+          (ohneDubletten(rows, ['league_id', 'phase', 'pick_number'])
+              .map(DraftPick.fromJson)
+              .toList())
         ..sort((a, b) => a.phase == b.phase
             ? a.pickNumber.compareTo(b.pickNumber)
             : a.phase.index.compareTo(b.phase.index)));

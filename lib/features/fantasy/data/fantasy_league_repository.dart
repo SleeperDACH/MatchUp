@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/models/chat_message.dart';
 import '../../leagues/models/join_request.dart';
+import '../../../core/data/stream_dubletten.dart';
 import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 import '../logic/fantasy_scoring_rules.dart';
@@ -48,7 +49,9 @@ class FantasyLeagueRepository {
       .from('fantasy_leagues')
       .stream(primaryKey: ['id'])
       .order('created_at', ascending: false)
-      .map((rows) => rows.map(FantasyLeague.fromJson).toList());
+      .map((rows) => ohneDubletten(rows, ['id'])
+          .map(FantasyLeague.fromJson)
+          .toList());
 
   Future<FantasyLeague> createLeague({
     required String name,
@@ -130,14 +133,18 @@ class FantasyLeagueRepository {
       .stream(primaryKey: ['id'])
       .eq('league_id', leagueId)
       .order('created_at')
-      .map((rows) => rows.map(TradeOffer.fromJson).toList());
+      .map((rows) => ohneDubletten(rows, ['id'])
+          .map(TradeOffer.fromJson)
+          .toList());
 
   /// Alle Positionen der eigenen Trades in Echtzeit (RLS-gefiltert), im
   /// Client per `trade_id` gruppiert.
   Stream<List<TradeItem>> tradeItemsStream() => _client
       .from('fantasy_trade_items')
       .stream(primaryKey: ['trade_id', 'player_id'])
-      .map((rows) => rows.map(TradeItem.fromJson).toList());
+      .map((rows) => ohneDubletten(rows, ['trade_id', 'player_id'])
+          .map(TradeItem.fromJson)
+          .toList());
 
   /// Erstellt ein Angebot und gibt dessen ID zurück (für die Chat-Verknüpfung).
   Future<String> proposeTrade(
@@ -317,7 +324,9 @@ class FantasyLeagueRepository {
       .from('fantasy_join_requests')
       .stream(primaryKey: ['league_id', 'user_id'])
       .eq('league_id', leagueId)
-      .map((rows) => rows.map(JoinRequest.fromJson).toList());
+      .map((rows) => ohneDubletten(rows, ['league_id', 'user_id'])
+          .map(JoinRequest.fromJson)
+          .toList());
 
   /// Anfrage annehmen (`accept: true`) oder ablehnen — nur Admin.
   Future<void> respondRequest(
@@ -472,7 +481,9 @@ class FantasyLeagueRepository {
       .from('fantasy_rosters')
       .stream(primaryKey: ['league_id', 'player_id'])
       .eq('league_id', leagueId)
-      .map((rows) => rows.map(RosterEntry.fromJson).toList());
+      .map((rows) => ohneDubletten(rows, ['league_id', 'player_id'])
+          .map(RosterEntry.fromJson)
+          .toList());
 
   /// Live-Stream des ligainternen Chats (älteste zuerst, neue unten).
   Stream<List<ChatMessage>> messageStream(String leagueId) => _client
@@ -480,7 +491,9 @@ class FantasyLeagueRepository {
       .stream(primaryKey: ['id'])
       .eq('league_id', leagueId)
       .order('created_at', ascending: true)
-      .map((rows) => rows.map(ChatMessage.fromJson).toList());
+      .map((rows) => ohneDubletten(rows, ['id'])
+          .map(ChatMessage.fromJson)
+          .toList());
 
   Future<void> sendMessage(String leagueId, String body,
       {String? replyTo}) async {
@@ -576,7 +589,10 @@ class FantasyLeagueRepository {
       .from('fantasy_lineups')
       .stream(primaryKey: ['league_id', 'manager_id', 'season', 'round'])
       .eq('league_id', leagueId)
-      .map((rows) => rows.map(FantasyLineup.fromJson).toList());
+      .map((rows) => ohneDubletten(
+          rows, ['league_id', 'manager_id', 'season', 'round'])
+          .map(FantasyLineup.fromJson)
+          .toList());
 
   /// Aufstellungs-Deadline (erster Anstoß des Spieltags); null, wenn der
   /// Spieltag (noch) nicht in den gespiegelten Fixtures liegt.

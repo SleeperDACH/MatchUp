@@ -1445,6 +1445,41 @@ Gehalten wird der Stand von `test/formationen_test.dart`: vollständige Liste,
 die Kopplungsregel einzeln, und die Zusicherung, dass gegenüber dem
 FPL-Zuschnitt **nichts wegfällt**.
 
+### „Kader voll" nach einem 1:1-Tausch — und ein doppelter Lemke
+
+Zwei Meldungen, eine Ursache, und sie lag **nicht** dort, wo sie klang.
+
+Gemeldet als „Kaderlimit ist voll, obwohl ich 1 zu 1 getauscht habe" — der
+Verdacht fiel sofort auf den Kader-Limit-Trigger aus 0083. Nachgemessen: **In
+keiner Liga ist überhaupt ein Positionslimit gesetzt** (alle `max…`-Schlüssel
+`null`), der Trigger kann also gar nicht feuern. Die Meldung stammt von
+`myPlayers.length >= league.roster.squadSize` in `player_action_buttons.dart`,
+also von einer **clientseitigen** Zählung.
+
+Und die zählte falsch, weil `rosterStream` Dubletten durchließ. `.stream()`
+führt einen ersten Schnappschuss und die laufenden Realtime-Ereignisse
+zusammen; dabei kann dieselbe Zeile kurzzeitig zweimal in der Liste stehen. Aus
+16 Kaderplätzen wurden scheinbar 17 → „Kader voll". Und im Aufstellungs-Editor
+landete derselbe Spieler beim Formationswechsel auf **zwei Plätzen** (gemeldet
+als „hat Lemke dupliziert") — die Elf hatte damit nur zehn verschiedene Spieler
+und ließ sich nicht mehr speichern.
+
+**Der Quirk war im Projekt längst bekannt**: `DraftRepository.queueStream`
+entdoppelt seit jeher von Hand und sagt im Kommentar auch warum. Nur stand das
+an genau einer Stelle. Jetzt gibt es `ohneDubletten`
+(`core/data/stream_dubletten.dart`), und alle Streams mit dem einfachen Muster
+laufen hindurch — Kader, Aufstellungen, Trades, Beitrittsanfragen, Chat, Ligen
+und Draft-Picks.
+
+**Die Lehre:** Ein `.stream()` liefert **keine** garantiert dublettenfreie
+Liste. Wer aus so einer Liste eine **Anzahl** ableitet (Kadergröße, „voll?",
+Zähler) oder sie **positionsweise verteilt**, muss vorher entdoppeln. Wer sie
+nur anzeigt, merkt es nie — deshalb fiel es erst auf, als daran eine Regel hing.
+
+Nicht angefasst sind die Streams mit eigenem Rechenweg (`leagueStream` nimmt
+ohnehin `rows.first`, `waiverPlayersStream` baut ein `Set`) — dort richtet eine
+Dublette nichts an.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
