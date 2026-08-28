@@ -471,7 +471,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
               child: TabBarView(
                 controller: _tabs,
                 children: [
-                  _BoardTab(
+                  DraftBoard(
                     picks: phasePicks,
                     playerById: playerById,
                     managers: managers,
@@ -1436,8 +1436,14 @@ class _BoardHeaderCell extends StatelessWidget {
 /// Platzhalter-Teams bis zur Teilnehmerzahl), Zeilen = Runden. Jede Zelle zeigt
 /// den Pick-Code (1.01, 1.02 …) und – falls schon gepickt – den Spieler. Der
 /// aktuelle Pick ist hervorgehoben.
-class _BoardTab extends StatelessWidget {
-  const _BoardTab({
+/// Das Draft-Board: Runden als Zeilen, Teams als Spalten.
+///
+/// Öffentlich, weil es nach dem Draft ein zweites Zuhause hat: Über die
+/// Liga-Einstellungen lässt es sich als [DraftBoardScreen] wieder aufmachen,
+/// ohne den ganzen Draft-Raum samt Sekunden-Ticker und Auto-Pick hochzufahren.
+class DraftBoard extends StatelessWidget {
+  const DraftBoard({
+    super.key,
     required this.picks,
     required this.playerById,
     required this.managers,

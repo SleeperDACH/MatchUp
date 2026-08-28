@@ -1162,6 +1162,36 @@ Zeile:
 select tablename from pg_publication_tables where pubname = 'supabase_realtime';
 ```
 
+### Das Draft-Board bleibt erreichbar
+
+Nach dem letzten Pick verschwand der Draft-Raum aus der Liga-Übersicht
+(`if (!draftFullyDone)`), und damit war das Board weg — wer nachsehen wollte,
+wer wen gezogen hat, hatte keinen Weg mehr dorthin. In den
+Fantasy-Einstellungen steht jetzt unter der Marke **Draft** die Zeile
+*Draft-Board*, für **alle** Mitglieder (der Liga-Block darüber ist
+`if (isOwner)`; das Board ist keine Verwaltung, sondern Nachschau).
+
+**Nicht der Draft-Raum wird wieder geöffnet, sondern nur das Board.**
+`DraftBoardScreen` ist bewusst ein eigener Schirm: Der Raum bringt einen
+Sekunden-Ticker, den Auto-Pick-Umschalter, die Wunschliste und den
+Verfügbar-Tab mit — nach dem letzten Pick tut davon nichts mehr etwas, aber
+der Ticker baut weiter jede Sekunde das ganze Brett neu auf (bei 18 Teams über
+250 Zellen, nicht lazy). Das Nachschau-Board steht still.
+
+Zwei Details, die beim Bauen aufkamen:
+
+- **`_BoardTab` heißt jetzt `DraftBoard`** und ist öffentlich — es hat mit dem
+  neuen Schirm ein zweites Zuhause. Der Rest des Draft-Raums bleibt privat.
+- **Gezeichnet werden nur die Runden, die es gibt** (`max(round)` aus den
+  Picks), nicht `roundsThisPhase`. Unter einem abgebrochenen Draft hingen
+  sonst leere Zeilen. Und im Dynasty-Modus erscheint ein `PillSelector` für
+  die Phase — aber nur, wenn wirklich in mehr als einer gedraftet wurde.
+
+Angesehen über `test/draft_board_vorschau_test.dart` (fester Bildvergleich,
+kein Datum im Bild). Die Vorschau baut vier Runden Snake mit vier Teams: Genau
+daran sieht man, ob die Umkehr stimmt — R1 läuft 1.01→1.04, R2 zurück
+2.01→2.04 auf der anderen Seite.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

@@ -15,6 +15,7 @@ import '../../tippspiel/providers.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'draft_board_screen.dart';
 import 'fantasy_admin_screen.dart';
 import 'scoring_info_screen.dart';
 
@@ -151,6 +152,25 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                     )),
               ),
             ], farbe: _grpLiga),
+          ],
+
+          // Der Draft — für alle, nicht nur den Ersteller. Nach dem letzten
+          // Pick verschwindet der Draft-Raum aus der Liga-Übersicht
+          // (`if (!draftFullyDone)`), und damit war das Board nicht mehr
+          // erreichbar. Hier kommt man wieder heran.
+          if (l.draftStatus != DraftStatus.setup) ...[
+            _Section('Draft', farbe: _grpAdmin),
+            _settingsGroup(context, [
+              ListTile(
+                leading: const Icon(Icons.grid_on_outlined),
+                title: const Text('Draft-Board'),
+                subtitle: Text(l.draftStatus == DraftStatus.done
+                    ? 'Nachschauen, wer wen gezogen hat'
+                    : 'Der Draft läuft gerade'),
+                trailing: const _Chevron(),
+                onTap: () => open(DraftBoardScreen(league: l)),
+              ),
+            ], farbe: _grpAdmin),
           ],
 
           // Persönliches.
