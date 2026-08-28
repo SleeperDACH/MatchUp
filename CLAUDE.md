@@ -1245,6 +1245,53 @@ Angesehen über `test/kaderlimits_vorschau_test.dart` (eingeschaltet, mit einem
 Kader, der ein Limit schon reißt). Gerechnet wird in
 `test/kaderlimits_test.dart`.
 
+### Die Aufstellung sperrt je Spieler, nicht je Spieltag
+
+Vorher galt **ein** Riegel für alles: `fantasy_round_deadline` liefert den
+frühesten Anpfiff der Runde, und ab dem nahm `fantasy_set_lineup` gar nichts
+mehr an. Wer am Freitagabend das Eröffnungsspiel verpasst hatte, konnte auch
+seinen Sonntagsspieler nicht mehr tauschen — zwei Tage Sperre für null
+Informationsvorsprung.
+
+Seit Migration 0084 zählt der Anpfiff **des jeweiligen Spielers**. Drei Punkte,
+die man dabei richtig treffen muss:
+
+- **Geprüft wird nur die Änderung, nicht die Aufstellung.** Jeder Spieler, der
+  dazukommt oder herausfällt, muss noch spielfrei sein; wer **drin bleibt**,
+  wird nicht geprüft. Sonst wäre nach dem ersten Anpfiff wieder jede
+  Speicherung blockiert — die unveränderten Spieler stehen ja weiter in der
+  Liste, und wir hätten die alte Sperre zurück, nur umständlicher.
+- **Beide Richtungen sperren.** Nicht nur das Hereinnehmen: Wer schon spielt,
+  darf auch nicht *heraus*, sonst setzt man den Verteidiger nach seiner Roten
+  Karte nachträglich auf die Bank.
+- **Kein Spiel gefunden heißt nicht gesperrt.** Der Kader kann Spieler
+  enthalten, deren Verein an dem Spieltag nicht spielt oder gar nicht mehr in
+  der Liga ist — gemessen: von 19 Vereinen im Pool trifft genau einer keinen
+  Spielplan („AS Monaco", ein abgewanderter, noch gerosterter Spieler). Sie zu
+  bewegen bringt niemandem einen Vorteil; sie punkten ohnehin nicht.
+
+Die Zuordnung läuft über `players.club` = `fixtures.home_name`/`away_name` —
+derselbe kanonische OpenLigaDB-Name, auf dem auch das Stats-Matching steht.
+**Nachgemessen: 18 von 19 Vereinen treffen exakt.** `min(kickoff)`, weil
+derselbe Spieltag doppelt gespiegelt sein kann (`openligadb:` und
+`sportmonks:`) — die Anstoßzeit ist dann dieselbe.
+
+**Der Client muss dieselbe Regel meinen wie der Server**, sonst zeigt die App
+ein Feld als bedienbar, das der Server dann ablehnt. Sie steht deshalb als
+reine Funktion in `logic/aufstellung_sperre.dart` (`anpfiffJeVerein`,
+`spielerGesperrt`) mit Tests, und die Oberfläche zieht daraus:
+
+- Gesperrte Spieler tragen ein **Schloss** am Wappen und „läuft" statt der
+  Positions-Pille — sie reagieren nicht mehr stumm nicht, sondern sagen warum.
+- Sie lassen sich weder ziehen noch überschreiben, und der Spielerwahl-Dialog
+  **bietet sie gar nicht erst an**.
+- Die **Formations-Chips** verschwinden, sobald *irgendein* aufgestellter
+  Spieler gesperrt ist: Ein Formationswechsel schiebt die ganze Elf durch, das
+  ginge nicht teilweise.
+- Die Kopfzeile sagt die Zahl („3 Spieler sind gesperrt, ihre Spiele laufen")
+  statt pauschal „Aufstellung gesperrt" — das wäre ab dem Freitagsspiel schlicht
+  falsch.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

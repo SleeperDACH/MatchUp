@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
+import '../logic/aufstellung_sperre.dart';
 import '../logic/lineup_autosave.dart';
 import '../data/fantasy_league_repository.dart';
 import '../models/fantasy_models.dart';
@@ -87,6 +88,11 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   /// Für den Flush in [dispose] festgehalten: `ref` ist dann nicht mehr
   /// verlässlich zu benutzen.
   FantasyLeagueRepository? _repo;
+
+  /// Spieler, deren Spiel schon läuft — im `build` gesetzt, damit der
+  /// Spielerwahl-Dialog sie nicht anbietet. Ein gesperrter Spieler im Dialog
+  /// wäre ein Angebot, das der Server anschließend ablehnt.
+  Set<String> _gesperrt = const {};
   Map<String, String?> _clubIcons = const {};
 
   RosterConfig get _roster => widget.league.roster;
@@ -229,12 +235,18 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
         const <FantasyLineup>[];
     final statsAsync = ref.watch(roundStatsProvider(round));
-    final deadline = ref.watch(roundDeadlineProvider(round)).valueOrNull;
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
 
-    final locked = deadline != null && !DateTime.now().isBefore(deadline);
+    // Anpfiff je Verein für diesen Spieltag — daraus ergibt sich die Sperre
+    // **je Spieler** (Migration 0084). `deadline` bleibt für die Auskunft
+    // „ab wann geht gar nichts mehr" in der Fußzeile.
+    final anpfiff = anpfiffJeVerein(
+      ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const [],
+      round,
+    );
+    final jetzt = DateTime.now();
 
     return poolAsync.when(
       loading: () => const SizedBox(
@@ -277,6 +289,16 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               .where((l) => l.round == round && l.managerId == myId)
               .map((l) => l.playerIds)
               .firstOrNull;
+          // Wer schon spielt, ist festgenagelt.
+          final gesperrt = {
+            for (final p in myPlayers)
+              if (spielerGesperrt(p, anpfiff, jetzt)) p.id
+          };
+          // Alles zu: Für den Rest des Spieltags gibt es nichts mehr zu tun.
+          final allesZu =
+              myPlayers.isNotEmpty && gesperrt.length == myPlayers.length;
+          _gesperrt = gesperrt;
+
           final seedIds = existing != null && existing.isNotEmpty
               ? {
                   for (final id in existing)
@@ -328,7 +350,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (locked)
+              // Die Sperre gilt je Spieler, also sagt die Zeile auch, wie
+              // viele. „Aufstellung gesperrt" wäre ab dem Freitagsspiel
+              // falsch — der Sonntagsspieler ist ja noch frei.
+              if (gesperrt.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: Row(
@@ -338,11 +363,22 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                           size: 16,
                           color: Theme.of(context).colorScheme.onSurfaceVariant),
                       const SizedBox(width: 6),
-                      Text('Aufstellung gesperrt — der Spieltag läuft.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant)),
+                      Flexible(
+                        child: Text(
+                            allesZu
+                                ? 'Alle Spiele laufen — die Aufstellung steht.'
+                                : gesperrt.length == 1
+                                    ? 'Ein Spieler ist gesperrt, sein Spiel läuft.'
+                                    : '${gesperrt.length} Spieler sind gesperrt, '
+                                        'ihre Spiele laufen.',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant)),
+                      ),
                     ],
                   ),
                 ),
@@ -352,16 +388,17 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                 points: points,
                 clubIcons: clubIcons,
                 onOpenProfile: _openProfile,
-                onTapSlot: locked
+                gesperrt: gesperrt,
+                onTapSlot: allesZu
                     ? null
                     : (pos, i) =>
                         _openPicker(pos, i, slots, byPos, points, stats),
-                onDrop: locked
+                onDrop: allesZu
                     ? null
                     : (data, pos, i) => _applyDrop(slots, data, pos, i),
               ),
               // Formationen unter dem Spielfeld.
-              if (!locked)
+              if (!assigned.any(gesperrt.contains))
                 _FormationChips(
                   roster: _roster,
                   byPos: byPos,
@@ -379,9 +416,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                 onOpenProfile: _openProfile,
                 onOpenFreeAgency: _openFreeAgency,
                 onDropToBench:
-                    locked ? null : (data) => _benchDrop(slots, data),
+                    allesZu ? null : (data) => _benchDrop(slots, data),
               ),
-              if (!locked)
+              if (!allesZu)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                   child: Row(
@@ -481,7 +518,8 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     // Verfügbar: Spieler dieser Position, die nicht schon aufgestellt sind.
     final candidates = [
       for (final p in byPos[pos] ?? const <FantasyPlayer>[])
-        if (!samePosAssigned.contains(p.id)) p
+        // Gesperrte gar nicht erst anbieten — ihr Spiel läuft schon.
+        if (!samePosAssigned.contains(p.id) && !_gesperrt.contains(p.id)) p
     ];
     final occupied = slots[pos]![slotIndex] != null;
 
@@ -608,7 +646,11 @@ class _Pitch extends StatelessWidget {
     required this.onOpenProfile,
     required this.onTapSlot,
     required this.onDrop,
+    required this.gesperrt,
   });
+
+  /// IDs der Spieler, deren Spiel schon läuft — festgenagelt (Migration 0084).
+  final Set<String> gesperrt;
 
   final Map<PlayerPosition, List<String?>> slots;
   final Map<String, FantasyPlayer> playerById;
@@ -653,9 +695,17 @@ class _Pitch extends StatelessWidget {
   Widget _slotTarget(PlayerPosition pos, int i) {
     final player = playerById[slots[pos]![i]];
     final pts = player == null ? null : points[player];
+    // Ein Platz ist zu, wenn der Spieler darauf schon spielt. Er anzunehmen
+    // wäre genauso falsch wie ihn wegzuziehen: Beides änderte die Elf
+    // rückwirkend für ein laufendes Spiel.
+    final platzZu = player != null && gesperrt.contains(player.id);
     return DragTarget<_DragData>(
       onWillAcceptWithDetails: (d) =>
-          onDrop != null && d.data.pos == pos && d.data.from != (pos, i),
+          onDrop != null &&
+          d.data.pos == pos &&
+          d.data.from != (pos, i) &&
+          !platzZu &&
+          !gesperrt.contains(d.data.playerId),
       onAcceptWithDetails: (d) => onDrop!(d.data, pos, i),
       builder: (context, candidate, rejected) {
         final slot = _Slot(
@@ -666,10 +716,12 @@ class _Pitch extends StatelessWidget {
           highlight: candidate.isNotEmpty,
           // Spieler antippen → Profil; Positions-Pille → Aufstellung bearbeiten.
           onProfile: player == null ? null : () => onOpenProfile(player),
-          onEditPosition:
-              onTapSlot == null ? null : () => onTapSlot!(pos, i),
+          gesperrt: platzZu,
+          onEditPosition: (onTapSlot == null || platzZu)
+              ? null
+              : () => onTapSlot!(pos, i),
         );
-        if (player == null || onDrop == null) return slot;
+        if (player == null || onDrop == null || platzZu) return slot;
         final data = _DragData(playerId: player.id, pos: pos, from: (pos, i));
         return LongPressDraggable<_DragData>(
           data: data,
@@ -692,7 +744,12 @@ class _Slot extends StatelessWidget {
     required this.onProfile,
     required this.onEditPosition,
     this.highlight = false,
+    this.gesperrt = false,
   });
+
+  /// Sein Spiel läuft — der Platz ist zu. Wird als Schloss gezeigt, statt nur
+  /// stumm nicht zu reagieren.
+  final bool gesperrt;
 
   final FantasyPlayer? player;
   final PlayerPosition pos;
@@ -751,7 +808,27 @@ class _Slot extends StatelessWidget {
                   Stack(
                     alignment: Alignment.bottomRight,
                     children: [
-                      ClubBadge(club: p.club, iconUrl: iconUrl, size: 42),
+                      // Gesperrt: gedimmt, damit der Platz nicht nur stumm
+                      // nicht reagiert, sondern erkennbar zu ist.
+                      Opacity(
+                        opacity: gesperrt ? 0.55 : 1,
+                        child:
+                            ClubBadge(club: p.club, iconUrl: iconUrl, size: 42),
+                      ),
+                      if (gesperrt)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.black87,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.lock,
+                                size: 11, color: Colors.white),
+                          ),
+                        ),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 4, vertical: 1),
@@ -786,8 +863,20 @@ class _Slot extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          // Positions-Pille = Bearbeiten-Button (Spieler tauschen).
-          _posPill(context),
+          // Positions-Pille = Bearbeiten-Button (Spieler tauschen). Läuft sein
+          // Spiel schon, steht dort „läuft" statt eines Knopfes, der nichts tut.
+          if (gesperrt)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.black45,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text('läuft',
+                  style: TextStyle(color: Colors.white70, fontSize: 9.5)),
+            )
+          else
+            _posPill(context),
         ],
       ),
     );
