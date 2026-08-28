@@ -15,7 +15,7 @@ void main() {
   setUpAll(ladeSchrift);
 
   testWidgets('Vorschau: MatchUp-Banner', (tester) async {
-    tester.view.physicalSize = const Size(402 * 3, 900 * 3);
+    tester.view.physicalSize = const Size(402 * 3, 1180 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
@@ -87,6 +87,33 @@ void main() {
                   started: true,
                   mine: true,
                   onTap: () {},
+                ),
+              ),
+              // Der Fall, der auf dem Gerät den schwarz-gelben Balken zeigte:
+              // Im MatchUp-Tab steckt der Kasten in einem PageView **fester**
+              // Höhe. Hier steht er in genau derselben, mit demselben Rand und
+              // den längsten Inhalten — wächst er wieder über sie hinaus,
+              // wirft dieser Test statt des Simulators.
+              banner(
+                'IN KARUSSELL-HÖHE (${kMatchupBannerHoehe.toInt()} px)',
+                SizedBox(
+                  height: kMatchupBannerHoehe,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 6),
+                    child: MatchupBanner(
+                      round: 34,
+                      homeName: 'lennartruepke',
+                      awayName: 'Spitzenreiter04',
+                      homePoints: 128.4,
+                      awayPoints: 99.5,
+                      homeMe: true,
+                      awayMe: false,
+                      live: true,
+                      started: true,
+                      mine: true,
+                      onTap: () {},
+                    ),
+                  ),
                 ),
               ),
               banner(

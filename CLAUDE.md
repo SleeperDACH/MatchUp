@@ -1361,10 +1361,27 @@ Beide Beschriftungen sitzen jetzt in `Flexible`. Ohne
 sieht man immer nur den einen Zustand, den die eigene Liga gerade hat, und der
 Überlauf trat nur bei langem Namen **und** angepfiffenem Spieltag auf.
 
-Die Vorschau zeigt deshalb alle vier Zustände untereinander (vor dem Spieltag,
-live, beendet, spielfrei). `MatchupBanner` bekommt seine Daten explizit — der
-Provider-Teil steckt in `MatchupHero` —, deshalb braucht sie keinen einzigen
-Provider.
+**Und dann kam der Überlauf zurück, den ich selbst gebaut hatte:** Die neue
+Punktestand-Zeile macht den Kasten höher, und im MatchUp-Tab steckt er in einem
+`PageView` **fester** Höhe — dort stand eine nackte `224`, und das Gerät zeigte
+4 px Überlauf nach unten. Eine Zahl, die dem Inhalt hinterherlaufen muss, gehört
+nicht an zwei Stellen: Sie steht jetzt als `kMatchupBannerHoehe` beim Banner,
+das Karussell liest sie, und die Vorschau rendert einen Kasten **genau in dieser
+Höhe** mit den längsten Namen und vierstelligen Punktzahlen. Wächst der Inhalt
+wieder darüber hinaus, wird der Test rot statt das Gerät.
+
+Die Vorschau zeigt deshalb fünf Fälle untereinander (vor dem Spieltag, live,
+beendet, in Karussell-Höhe, spielfrei). `MatchupBanner` bekommt seine Daten
+explizit — der Provider-Teil steckt in `MatchupHero` —, deshalb braucht sie
+keinen einzigen Provider.
+
+**Beim Prüfen selbst danebengegriffen, zweimal:** Ein `grep` auf
+`^flutter: .*overflowed` findet Flutters Fehlerblöcke **nicht** — die stehen
+ohne `flutter:`-Präfix im Log, und die Meldung „keine Ausgabe = sauber" war
+schlicht falsch. Und `tail -n "+$(wc -l < datei)"` scheitert an den führenden
+Leerzeichen von `wc`. Wer im Log nach Layoutfehlern sucht: auf `overflowed`
+suchen, ohne Präfix, und den Bereich ab der letzten Zeile `Restarted
+application` nehmen — sonst zählt man Fehler aus dem Code von vor dem Neustart.
 
 ## Liga-Übersicht — „C, das Duell führt"
 

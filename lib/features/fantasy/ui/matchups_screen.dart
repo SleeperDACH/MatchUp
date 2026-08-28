@@ -266,7 +266,9 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                     const LinearProgressIndicator(minHeight: 2),
                   // Wischbares Banner-Karussell: eigene Paarung auf Platz 1.
                   SizedBox(
-                    height: 224,
+                    // Feste Höhe, weil der PageView eine braucht — die Zahl
+                    // gehört aber zum Banner und steht deshalb dort.
+                    height: kMatchupBannerHoehe,
                     child: PageView.builder(
                       controller: _pageController,
                       onPageChanged: (i) => setState(() => _bannerPage =

@@ -13,6 +13,18 @@ import 'matchup_detail_screen.dart';
 const _cGreen = Color(0xFF4ADE6A);
 const _cRed = Color(0xFFF23030);
 
+/// Höhe, die ein [MatchupBanner] mitsamt Rändern braucht.
+///
+/// Das Karussell im MatchUp-Tab steckt seine Seiten in einen `PageView`, und
+/// der braucht eine feste Höhe. Sie stand dort als nackte `224` — als der
+/// Punktestand eine eigene Zeile bekam, lief der Kasten um 4 px über und das
+/// Gerät zeigte den schwarz-gelben Balken. Eine Zahl, die dem Inhalt
+/// hinterherlaufen muss, gehört nicht an zwei Stellen: Sie steht hier, das
+/// Karussell liest sie, und `test/matchup_banner_vorschau_test.dart` rendert
+/// einen Kasten genau in dieser Höhe — wächst der Inhalt wieder, wird der Test
+/// rot statt das Gerät.
+const double kMatchupBannerHoehe = 236;
+
 // Das große Chevron als halbtransparentes Wasserzeichen hinter dem Inhalt ist
 // **entfernt**. Es lag mit 45 % Deckung quer über Namen und Punktestand und
 // machte den Kasten genau das, was er nicht sein soll: undurchsichtig. Auf der
