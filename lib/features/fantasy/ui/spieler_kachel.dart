@@ -24,6 +24,7 @@ class SpielerKachel extends StatelessWidget {
     this.hervor = false,
     this.mitHaken = true,
     this.hoehe = 110,
+    this.breite,
     this.onTap,
   });
 
@@ -37,6 +38,14 @@ class SpielerKachel extends StatelessWidget {
   final bool mitHaken;
 
   final double hoehe;
+
+  /// Feste Breite; ohne Angabe nimmt die Karte, was sie bekommt.
+  ///
+  /// In der Auswahlspalte füllt sie die Spalte — dort ist sie das einzige
+  /// Element. Im Angebot stehen mehrere nebeneinander: Über die volle Breite
+  /// gezogen wirkten sie viel zu groß für das bisschen Inhalt, den sie tragen.
+  final double? breite;
+
   final VoidCallback? onTap;
 
   /// Vorname auf einen Buchstaben kürzen: „Jonas Urbig" → „J. Urbig".
@@ -79,11 +88,16 @@ class SpielerKachel extends StatelessWidget {
     // Wappen und Schrift folgen der Kartenhöhe, damit die kompakte Fassung im
     // Angebot nicht wie die große mit abgeschnittenem Rand aussieht.
     final wappen = hoehe * 0.98;
-    final namensgroesse = hoehe < 80 ? 13.5 : 15.0;
+    final namensgroesse = hoehe < 80 ? 13.0 : 15.0;
+    // Der Platz, den das überstehende Wappen rechts wegnimmt — mit der
+    // Kartenhöhe skaliert, nicht fest. Bei 60 px fest blieb auf einer schmalen
+    // Karte für den Namen fast nichts übrig.
+    final rechterRand = wappen * 0.55;
 
     final karte = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       height: hoehe,
+      width: breite,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: gradient,
@@ -111,7 +125,7 @@ class SpielerKachel extends StatelessWidget {
           ),
           Positioned(
             left: hervor && mitHaken ? 10 : 12,
-            right: 60,
+            right: rechterRand,
             top: 0,
             bottom: 0,
             child: Column(

@@ -1500,8 +1500,16 @@ des Trade-Wegs:
 | Bestätigung vor dem Senden | Pillen mit Namen | dieselbe Karte, 58 px |
 | Angebotskarte | Komma-Satz | dieselbe Karte, 58 px |
 
-Zwei Parameter tragen den Unterschied: `hervor` (kräftige Positionsfarbe statt
-gedämpfter Fläche) und `mitHaken`. In der Auswahl heißt kräftig „ausgewählt"
+**Kompakt heißt auch schmal.** Der erste Wurf zog die Kacheln über die volle
+Kartenbreite — für Name und Position wirkte das viel zu groß, und drei Spieler
+machten die Angebotskarte doppelt so hoch wie nötig. Jetzt haben sie eine feste
+Breite (152 × 46) und laufen in einem `Wrap` nebeneinander. Damit skaliert auch
+der Platz, den das überstehende Wappen rechts wegnimmt, mit der Kartenhöhe
+statt fest bei 60 px zu stehen — sonst bliebe auf einer schmalen Karte für den
+Namen fast nichts übrig.
+
+Drei Parameter tragen den Unterschied: `hervor` (kräftige Positionsfarbe statt
+gedämpfter Fläche), `breite` und `mitHaken`. In der Auswahl heißt kräftig „ausgewählt"
 und bekommt ein Häkchen; im Angebot heißt es schlicht „das ist der Inhalt" —
 ein Haken wäre dort eine Behauptung über eine Entscheidung, die niemand
 getroffen hat. Wappengröße und Schriftgrad folgen der Kartenhöhe, sonst sähe

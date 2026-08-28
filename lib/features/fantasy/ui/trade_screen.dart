@@ -607,17 +607,21 @@ class _ConfirmOfferSheet extends StatelessWidget {
             // Dieselbe Karte wie in der Auswahl und in der Angebotskarte.
             // Vorher standen hier Pillen mit Namen — damit sah derselbe Trade
             // auf drei Schirmen dreimal anders aus.
-            for (final p in players)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: SpielerKachel(
-                  spieler: p,
-                  iconUrl: clubIcons[p.club],
-                  hervor: true,
-                  mitHaken: false,
-                  hoehe: 58,
-                ),
-              ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final p in players)
+                  SpielerKachel(
+                    spieler: p,
+                    iconUrl: clubIcons[p.club],
+                    hervor: true,
+                    mitHaken: false,
+                    hoehe: 46,
+                    breite: 152,
+                  ),
+              ],
+            ),
         ],
       ),
     );
@@ -1167,25 +1171,33 @@ class TradeCard extends ConsumerWidget {
                 style: TextStyle(color: scheme.onSurfaceVariant)),
           )
         else
-          for (final (id, p) in spieler)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: p == null
+          // Nebeneinander statt untereinander, mit fester Breite: Über die
+          // volle Kartenbreite gezogen wirkten die Kacheln viel zu groß für
+          // das bisschen, was sie tragen (Name und Position).
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final (id, p) in spieler)
+                if (p == null)
                   // Unbekannter Spieler: Der lokale Pool kennt ihn nicht (der
                   // Zugang kam per sync-squads nach dem App-Start). Ihn
                   // wegzulassen hieße, ein Angebot falsch darzustellen.
-                  ? Text(id,
+                  Text(id,
                       style: TextStyle(
                           color: scheme.onSurfaceVariant,
                           fontStyle: FontStyle.italic))
-                  : SpielerKachel(
-                      spieler: p,
-                      iconUrl: clubIcons[p.club],
-                      hervor: true,
-                      mitHaken: false,
-                      hoehe: 58,
-                    ),
-            ),
+                else
+                  SpielerKachel(
+                    spieler: p,
+                    iconUrl: clubIcons[p.club],
+                    hervor: true,
+                    mitHaken: false,
+                    hoehe: 46,
+                    breite: 152,
+                  ),
+            ],
+          ),
       ],
     );
   }
