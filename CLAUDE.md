@@ -260,7 +260,23 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   für die App). Gerechnet wird in `fantasy_scoring_engine.dart`
   (`scorePlayerDetailed` liefert Summe + Aufschlüsselung).
   **Punkte sind `double`**, nicht `int` — die Wertung kennt 1,5 je Key Pass
-  und −0,4 je Foul. Für die Anzeige `formatPoints()` benutzen.
+  und −0,4 je Foul. Für die Anzeige `formatPoints()` benutzen, **immer**.
+  `0.4` ist binär nicht exakt darstellbar; dreißig Klärungen à 0,4 ergeben
+  `12.100000000000001`, und genau das stand im „Team der Woche" auf dem
+  Schirm. Gefunden an einer Stelle, gefixt an **fünfzehn**: Der Fehler steckte
+  quer durch den Fantasy-Bereich (Recap, Duell-Kopf, Playoff-Baum,
+  Aufstellungen, Manager-Profil, Tabelle, Spielfeld und Bank) — überall
+  dieselbe Zeile `Text('$points')`.
+  Gehalten wird das von `test/punkte_formatierung_test.dart`: Der Test liest
+  `lib/features/fantasy/ui/` und lässt keine String-Interpolation durch, die
+  „points" enthält und nicht durch `formatPoints()` läuft. Ausnahmen stehen
+  dort namentlich mit Grund — `record.points` in der Fantasy-Tabelle ist ein
+  `int` (Ligapunkte aus Siegen), kein Score. Diese Unterscheidung hat übrigens
+  der Analyzer erzwungen: `formatPoints(int)` kompiliert nicht, der eine
+  falsche Treffer fiel beim ersten Durchlauf sofort auf.
+  Eine Nachkommastelle genügt und ist **exakt**: Alle Werte der Wertung sind
+  Vielfache von 0,1, und angezeigt werden ausschließlich Summen, keine
+  Durchschnitte.
   Ligen, die vor der Umstellung angelegt wurden, tragen in
   `fantasy_leagues.scoring` noch das alte 6-Kategorien-Objekt ohne `version`;
   `FantasyScoringRules.fromJson` gibt für die bewusst die Standardwertung

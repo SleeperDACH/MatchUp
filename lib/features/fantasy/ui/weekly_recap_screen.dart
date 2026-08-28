@@ -179,7 +179,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
         title: title,
         primary: name(managerId),
         secondary: suffix,
-        value: '$points',
+        value: formatPoints(points),
         valueLabel: 'Pkt',
         highlight: managerId == myId,
         onTap: () => onManager(managerId),
@@ -199,7 +199,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
         title: title,
         primary: p?.name ?? '?',
         secondary: 'Kader: ${name(award.managerId)}',
-        value: '${award.points}',
+        value: formatPoints(award.points),
         valueLabel: 'Pkt',
         highlight: award.managerId == myId,
         badge: p == null
@@ -243,7 +243,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
         title: 'Nervenkrimi',
         primary: name(m.winnerId),
         secondary: 'schlägt ${name(m.loserId)} · +${m.margin}',
-        value: '${m.winnerPoints}:${m.loserPoints}',
+        value: '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
         highlight: m.winnerId == myId || m.loserId == myId,
         onTap: () => onManager(m.winnerId),
       ));
@@ -256,7 +256,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
         title: 'Klatsche',
         primary: name(m.winnerId),
         secondary: 'deklassiert ${name(m.loserId)} · +${m.margin}',
-        value: '${m.winnerPoints}:${m.loserPoints}',
+        value: '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
         highlight: m.winnerId == myId || m.loserId == myId,
         onTap: () => onManager(m.winnerId),
       ));
@@ -527,14 +527,14 @@ class WeeklyRecapCard extends ConsumerWidget {
                 _MiniLine(
                   label: 'Team der Woche',
                   value: nameOf[top.managerId] ?? '?',
-                  trailing: '${top.points} Pkt',
+                  trailing: '${formatPoints(top.points)} Pkt',
                 ),
               if (mvp != null) ...[
                 const SizedBox(height: 4),
                 _MiniLine(
                   label: 'MVP',
                   value: playerById[mvp.playerId]?.name ?? '?',
-                  trailing: '${mvp.points} Pkt',
+                  trailing: '${formatPoints(mvp.points)} Pkt',
                 ),
               ],
             ],

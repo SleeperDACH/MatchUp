@@ -836,7 +836,7 @@ class _Slot extends StatelessWidget {
                           color: Colors.black87,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('${points ?? 0}',
+                        child: Text(formatPoints(points ?? 0),
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -1090,7 +1090,7 @@ class _Bench extends StatelessWidget {
     final chip = Chip(
       avatar: ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 22),
       side: BorderSide(color: color.withValues(alpha: 0.6)),
-      label: Text('${_short(p.name)} · ${points[p] ?? 0}'),
+      label: Text('${_short(p.name)} · ${formatPoints(points[p] ?? 0)}'),
     );
     // Tippen → Profil; langes Drücken → auf/vom Feld ziehen.
     final tappable = GestureDetector(
@@ -1208,7 +1208,7 @@ class _PlayerPicker extends StatelessWidget {
                       leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                       title: Text(p.name),
                       subtitle: Text(detail),
-                      trailing: Text('${points[p] ?? 0}',
+                      trailing: Text(formatPoints(points[p] ?? 0),
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium

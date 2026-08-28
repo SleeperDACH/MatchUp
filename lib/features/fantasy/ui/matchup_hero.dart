@@ -290,7 +290,7 @@ class MatchupBanner extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('$homePoints',
+              Text(formatPoints(homePoints),
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 11,
@@ -305,7 +305,7 @@ class MatchupBanner extends StatelessWidget {
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 1.5)),
-              Text('$awayPoints',
+              Text(formatPoints(awayPoints),
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 11,

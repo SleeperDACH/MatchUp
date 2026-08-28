@@ -294,7 +294,7 @@ class _RecordRow extends StatelessWidget {
                           color: scheme.onSurfaceVariant, fontSize: 12)),
                 ],
               ),
-              Text('${record.pointsFor} erzielt',
+              Text('${formatPoints(record.pointsFor)} erzielt',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: scheme.onSurfaceVariant)),
             ],

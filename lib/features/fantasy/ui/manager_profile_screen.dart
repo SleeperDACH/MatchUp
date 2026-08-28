@@ -408,7 +408,7 @@ class ManagerProfileScreen extends ConsumerWidget {
                                 color: positionColor(p.position)
                                     .withValues(alpha: 0.6)),
                             label:
-                                Text('${_short(p.name)} · ${points[p] ?? 0}'),
+                                Text('${_short(p.name)} · ${formatPoints(points[p] ?? 0)}'),
                           ),
                         ),
                   ],

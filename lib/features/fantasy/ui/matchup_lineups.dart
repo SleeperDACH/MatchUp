@@ -470,7 +470,7 @@ class _BenchSection extends StatelessWidget {
                             maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                       const SizedBox(width: 4),
-                      Text('${points[p.id] ?? 0}',
+                      Text(formatPoints(points[p.id] ?? 0),
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),

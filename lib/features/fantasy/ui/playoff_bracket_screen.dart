@@ -418,7 +418,7 @@ class _SideRow extends StatelessWidget {
             child: Icon(Icons.check_circle, size: 16, color: Color(0xFF4ADE6A)),
           ),
         if (slot.managerId != null)
-          Text('$points',
+          Text(formatPoints(points),
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
