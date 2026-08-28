@@ -1330,6 +1330,42 @@ reine Funktion in `logic/aufstellung_sperre.dart` (`anpfiffJeVerein`,
   statt pauschal „Aufstellung gesperrt" — das wäre ab dem Freitagsspiel schlicht
   falsch.
 
+### Der MatchUp-Kasten war buchstäblich undurchsichtig
+
+So kam die Meldung, und sie traf es wörtlich. Vier Ursachen, alle im selben
+Kasten (`MatchupBanner`/`HeroShell` in `matchup_hero.dart`):
+
+- **Ein Chevron lag als Wasserzeichen mit 45 % Deckung quer über dem Inhalt.**
+  Genau so ein „halbtransparenter Dekor-Chevron" ist auf der Liga-Übersicht
+  schon einmal geflogen (siehe oben) — hier war er stehen geblieben. Er kostet
+  Lesbarkeit an der einzigen Stelle des Schirms, an der eine Zahl zählt.
+  Ersatzlos entfernt.
+- **Die Akzentfarbe füllte die ganze Fläche**, auch vor dem Anpfiff. Grün heißt
+  in dieser App „hier läuft etwas"; ein grüner Kasten für einen Spieltag, der
+  erst Samstag beginnt, sagt das Falsche. Jetzt trägt er den Kartengrund und
+  nur einen **Hauch aus der Ecke** — kräftig solange live, leiser wenn beendet,
+  gar nicht davor. Dasselbe Muster wie bei den Ligakarten (`_kartenFlaeche`).
+- **Der Punktestand stand zwischen den Namen** und nahm ihnen die Breite:
+  „lennartruepke" schrumpfte auf Winzgröße, aus „FÜHRT" wurde „F…", und bei
+  „92 : 78,5" blieb links „SF…" statt SFV03. Er steht jetzt **mittig auf einer
+  eigenen Zeile**; jede Seite bekommt die halbe Kastenbreite. Der Name schrumpft
+  außerdem statt zu kappen (`FittedBox`), dieselbe Regel wie im Live-Tab.
+- **Unter dem Momentum-Balken standen dieselben zwei Zahlen** wie zwei Zeilen
+  darüber im Punktestand — dieselbe Auskunft dreimal in einem Kasten, der
+  ohnehin zu voll war. Nur die Beschriftung ist geblieben.
+
+**Der Überlauf, den erst die Vorschau zeigte:** `RenderFlex overflowed by 14
+pixels` in der „FÜHRT"/„SIEG"-Zeile — auf dem Gerät der schwarz-gelbe Balken.
+Beide Beschriftungen sitzen jetzt in `Flexible`. Ohne
+`test/matchup_banner_vorschau_test.dart` wäre der nie aufgefallen: Auf dem Gerät
+sieht man immer nur den einen Zustand, den die eigene Liga gerade hat, und der
+Überlauf trat nur bei langem Namen **und** angepfiffenem Spieltag auf.
+
+Die Vorschau zeigt deshalb alle vier Zustände untereinander (vor dem Spieltag,
+live, beendet, spielfrei). `MatchupBanner` bekommt seine Daten explizit — der
+Provider-Teil steckt in `MatchupHero` —, deshalb braucht sie keinen einzigen
+Provider.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

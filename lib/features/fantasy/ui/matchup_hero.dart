@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/widgets/matchup_chevron.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -13,34 +12,14 @@ import 'matchup_detail_screen.dart';
 // MatchUp-Palette (wie in der Übersicht): grün normal, rot solange live.
 const _cGreen = Color(0xFF4ADE6A);
 const _cRed = Color(0xFFF23030);
-const _cBase = Color(0xFF12141C);
 
-// Einheitlicher Grauton fürs ausgegraute Banner-Wasserzeichen.
-const _watermarkGray = Color(0xFF9AA0AA);
-
-/// MatchUp-Chevron als Marken-Emblem mittig hinter dem Kopf-Banner: groß,
-/// ausgegraut und dezent, der Text liegt deckend darüber. `BlendMode.srcIn`
-/// überschreibt beide Markenfarben (grün|rot) mit **einem** Grauton, sodass
-/// das Logo einheitlich grau erscheint. `BoxFit.contain` hält das
-/// Seitenverhältnis; das ClipRRect des Banners beschneidet überstehende
-/// Ränder. Nimmt keine Tap-Events entgegen.
-Widget heroWatermark() => Positioned.fill(
-      child: IgnorePointer(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: FittedBox(
-              fit: BoxFit.contain,
-              // Direkt ausgegraut gezeichnet (Alpha in der Farbe) — spart die
-              // teuren saveLayer von Opacity + ColorFiltered.
-              child: MatchUpChevron(
-                  size: 240,
-                  color: _watermarkGray.withValues(alpha: 0.45)),
-            ),
-          ),
-        ),
-      ),
-    );
+// Das große Chevron als halbtransparentes Wasserzeichen hinter dem Inhalt ist
+// **entfernt**. Es lag mit 45 % Deckung quer über Namen und Punktestand und
+// machte den Kasten genau das, was er nicht sein soll: undurchsichtig. Auf der
+// Liga-Übersicht ist derselbe „halbtransparente Dekor-Chevron" aus demselben
+// Grund schon einmal geflogen (siehe CLAUDE.md) — hier war er stehen geblieben.
+// Wer ihn zurückholen will, sollte wissen: Er kostet Lesbarkeit an der einzigen
+// Stelle des Schirms, an der eine Zahl zählt.
 
 /// Live-MatchUp-Kopf: zeigt die eigene Head-to-Head-Paarung eines Spieltags.
 /// Hintergrund grün; solange der Spieltag läuft (erster Anpfiff bis letzter
@@ -203,6 +182,7 @@ class MatchupBanner extends StatelessWidget {
         round: round,
         status: status,
         live: live,
+        started: started,
         onTap: onTap,
         child: Row(
           children: [
@@ -235,6 +215,7 @@ class MatchupBanner extends StatelessWidget {
       round: round,
       status: status,
       live: live,
+      started: started,
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -256,13 +237,7 @@ class MatchupBanner extends StatelessWidget {
                     subline: homeSub,
                     align: CrossAxisAlignment.start),
               ),
-              ScoreBadge(
-                left: homePoints,
-                right: awayPoints,
-                leftWin: homeWin,
-                rightWin: awayWin,
-                accent: accent,
-              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: HeroTeam(
                     name: awayName!,
@@ -281,36 +256,40 @@ class MatchupBanner extends StatelessWidget {
                   name: awayName!, accent: _cRed, dim: started && !awayWin),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          // **Der Punktestand steht mittig auf eigener Zeile, nicht zwischen
+          // den Namen.** Dort nahm er genau die Breite weg, die die Namen
+          // brauchen: „lennartruepke" schrumpfte auf Winzgröße, und aus
+          // „FÜHRT" wurde „F…". Jetzt bekommt jede Seite die halbe Kastenbreite
+          // und die Namen stehen in voller Größe.
+          Center(
+            child: ScoreBadge(
+              left: homePoints,
+              right: awayPoints,
+              leftWin: homeWin,
+              rightWin: awayWin,
+              accent: accent,
+            ),
+          ),
+          const SizedBox(height: 10),
           // „Momentum": Punkteanteil beider Seiten (vor Anpfiff 50/50) mit
           // Label je nach Status — füllt den Banner und gibt Kontext.
           _MomentumBar(
               left: homePoints, right: awayPoints, leftColor: accent),
           const SizedBox(height: 5),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(formatPoints(homePoints),
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800)),
-              Text(
-                  (live
-                          ? 'Live-Punkte'
-                          : (started ? 'Endpunkte' : 'Punkteanteil'))
-                      .toUpperCase(),
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.5)),
-              Text(formatPoints(awayPoints),
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800)),
-            ],
+          // Nur noch die Beschriftung. Links und rechts standen hier dieselben
+          // zwei Zahlen, die zwei Zeilen darüber schon groß im Punktestand
+          // stehen — dreimal dieselbe Auskunft in einem Kasten, der ohnehin zu
+          // voll war.
+          Center(
+            child: Text(
+                (live ? 'Live-Punkte' : (started ? 'Endpunkte' : 'Punkteanteil'))
+                    .toUpperCase(),
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.5)),
           ),
         ],
       ),
@@ -327,6 +306,7 @@ class HeroShell extends StatelessWidget {
     required this.round,
     required this.status,
     required this.live,
+    required this.started,
     required this.onTap,
     required this.child,
   });
@@ -335,12 +315,27 @@ class HeroShell extends StatelessWidget {
   final int round;
   final String status;
   final bool live;
+
+  /// Ist der Spieltag angepfiffen? Steuert, wie viel Farbe der Kasten trägt.
+  final bool started;
   final VoidCallback onTap;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final isGreen = accent == _cGreen;
+    final grund = Theme.of(context).cardColor;
+    // **Farbe nur, wo etwas ansteht.** Vorher füllte der Akzent die ganze
+    // Fläche — auch vor dem Anpfiff, wo nichts läuft. Grün heißt in dieser App
+    // „hier läuft etwas"; ein grüner Kasten für einen Spieltag, der erst
+    // Samstag beginnt, sagt das Falsche. Jetzt trägt der Kasten den Kartengrund
+    // und nur einen Hauch aus der Ecke: kräftig, solange live, leiser wenn
+    // beendet, gar nicht davor. Dasselbe Muster wie bei den Ligakarten auf dem
+    // Startbildschirm (`_kartenFlaeche`).
+    final hauch = live
+        ? accent.withValues(alpha: 0.22)
+        : started
+            ? accent.withValues(alpha: 0.10)
+            : null;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(18),
@@ -348,31 +343,28 @@ class HeroShell extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 170),
+          constraints: const BoxConstraints(minHeight: 150),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              // Der Grün-Banner soll klar nach dem MatchUp-Logo-Grün aussehen;
-              // dafür startet er kräftiger und hält den Grünton länger.
-              stops: isGreen ? const [0.0, 0.55, 1.0] : const [0.0, 1.0],
-              colors: isGreen
-                  ? [
-                      accent.withValues(alpha: 0.78),
-                      accent.withValues(alpha: 0.34),
-                      _cBase,
-                    ]
-                  : [accent.withValues(alpha: 0.42), _cBase],
-            ),
+            color: grund,
+            gradient: hauch == null
+                ? null
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    stops: const [0.0, 0.75],
+                    colors: [Color.alphaBlend(hauch, grund), grund],
+                  ),
             border: Border.all(
-                color: accent.withValues(alpha: isGreen ? 0.62 : 0.5)),
+              color: live
+                  ? accent.withValues(alpha: 0.45)
+                  : Theme.of(context).dividerColor,
+            ),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
             child: Stack(
               children: [
-                heroWatermark(),
                 Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(
@@ -501,18 +493,26 @@ class HeroTeam extends StatelessWidget {
     return Column(
       crossAxisAlignment: align,
       children: [
-        Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: end ? TextAlign.end : TextAlign.start,
-          style: TextStyle(
-              color: started && !win
-                  ? Colors.white.withValues(alpha: 0.72)
-                  : Colors.white,
-              fontSize: 18,
-              letterSpacing: 0.2,
-              fontWeight: win || me ? FontWeight.w800 : FontWeight.w600),
+        // **Der Name schrumpft, er wird nicht gekappt.** Dieselbe Regel wie
+        // auf der Ergebnistafel im Live-Tab: Der Verein bzw. Manager *ist* der
+        // Inhalt, und „lennartr…" ist keiner. Vorher fraß der Punktestand in
+        // der Mitte die Seiten auf — bei „92 : 78,5" blieb links „SF…" stehen,
+        // obwohl der Name fünf Zeichen hat.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: end ? Alignment.centerRight : Alignment.centerLeft,
+          child: Text(
+            name,
+            maxLines: 1,
+            textAlign: end ? TextAlign.end : TextAlign.start,
+            style: TextStyle(
+                color: started && !win
+                    ? Colors.white.withValues(alpha: 0.72)
+                    : Colors.white,
+                fontSize: 18,
+                letterSpacing: 0.2,
+                fontWeight: win || me ? FontWeight.w800 : FontWeight.w600),
+          ),
         ),
         const SizedBox(height: 3),
         Row(
@@ -522,19 +522,31 @@ class HeroTeam extends StatelessWidget {
               Icon(live ? Icons.arrow_drop_up : Icons.emoji_events,
                   size: live ? 16 : 13, color: _cGreen),
               const SizedBox(width: 1),
-              Text(live ? 'FÜHRT' : 'SIEG',
-                  style: const TextStyle(
-                      color: _cGreen,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2)),
+              // Beide Beschriftungen müssen schrumpfen können: Die Seite
+              // bekommt nur, was Avatare und Punktestand übrig lassen, und bei
+              // „92 : 78,5" ist das wenig. Ohne Flexible lief die Zeile über
+              // (gemessen: 14 px) — auf dem Gerät der schwarz-gelbe Balken.
+              Flexible(
+                child: Text(live ? 'FÜHRT' : 'SIEG',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: _cGreen,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2)),
+              ),
             ] else if (showRole)
-              Text((me ? 'Du' : 'Gegner').toUpperCase(),
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.4))
+              Flexible(
+                child: Text((me ? 'Du' : 'Gegner').toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.4)),
+              )
             else
               const SizedBox(height: 14),
           ],
