@@ -168,6 +168,10 @@ class RosterConfig {
     this.midMax = 5,
     this.fwdMin = 1,
     this.fwdMax = 3,
+    this.maxGk,
+    this.maxDef,
+    this.maxMid,
+    this.maxFwd,
   });
 
   /// Kader-Zusammensetzung (Anzahl der gedrafteten Spieler je „Basis"-Slot
@@ -188,7 +192,47 @@ class RosterConfig {
   final int fwdMin;
   final int fwdMax;
 
+  /// **Kader-Limits**: höchstens so viele Spieler dieser Position im Kader.
+  /// `null` heißt unbegrenzt — und das ist die Vorgabe.
+  ///
+  /// Nicht zu verwechseln mit [defMax] und Geschwistern: Die begrenzen die
+  /// **Startelf** (Formation), diese hier den **Kader**. Anlass war ein
+  /// Manager mit acht Stürmern und drei Abwehrspielern; ihm blieb genau eine
+  /// mögliche Aufstellung, und fiel ein Verteidiger aus, keine mehr.
+  ///
+  /// Erzwungen wird das serverseitig durch einen Trigger auf
+  /// `fantasy_rosters` (Migration 0083) — er greift auf jedem Weg in den
+  /// Kader (Draft, Auto-Pick, Free Agency, Waiver, Trade, Admin).
+  final int? maxGk;
+  final int? maxDef;
+  final int? maxMid;
+  final int? maxFwd;
+
   static const standard = RosterConfig();
+
+  /// Limit für eine Position, `null` = unbegrenzt.
+  int? limitFor(PlayerPosition pos) => switch (pos) {
+        PlayerPosition.gk => maxGk,
+        PlayerPosition.def => maxDef,
+        PlayerPosition.mid => maxMid,
+        PlayerPosition.fwd => maxFwd,
+      };
+
+  /// Sind die Limits zusammen groß genug für einen vollen Kader?
+  ///
+  /// Eine Liga mit 16 Runden und Limits, die zusammen 12 ergeben, wäre nicht
+  /// streng, sondern kaputt: Der Draft fände irgendwann keinen wählbaren
+  /// Spieler mehr und beendete sich selbst.
+  bool limitsReichenFuerKader() {
+    if (maxGk == null && maxDef == null && maxMid == null && maxFwd == null) {
+      return true;
+    }
+    // Eine offene Position kann beliebig viele aufnehmen.
+    if (maxGk == null || maxDef == null || maxMid == null || maxFwd == null) {
+      return true;
+    }
+    return maxGk! + maxDef! + maxMid! + maxFwd! >= squadSize;
+  }
 
   /// Gesamtzahl Spieler im Kader = Anzahl der Draft-Runden.
   int get squadSize => gk + def + mid + fwd + bench;
@@ -208,6 +252,10 @@ class RosterConfig {
         midMax: midMax,
         fwdMin: fwdMin,
         fwdMax: fwdMax,
+        maxGk: maxGk,
+        maxDef: maxDef,
+        maxMid: maxMid,
+        maxFwd: maxFwd,
       );
 
   int minFor(PlayerPosition pos) => switch (pos) {
@@ -277,6 +325,10 @@ class RosterConfig {
         midMax: json['midMax'] as int? ?? 5,
         fwdMin: json['fwdMin'] as int? ?? 1,
         fwdMax: json['fwdMax'] as int? ?? 3,
+        maxGk: (json['maxGk'] as num?)?.toInt(),
+        maxDef: (json['maxDef'] as num?)?.toInt(),
+        maxMid: (json['maxMid'] as num?)?.toInt(),
+        maxFwd: (json['maxFwd'] as num?)?.toInt(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -291,6 +343,13 @@ class RosterConfig {
         'midMax': midMax,
         'fwdMin': fwdMin,
         'fwdMax': fwdMax,
+        // Nur schreiben, was gesetzt ist: Ein `null` in der JSONB und ein
+        // fehlender Schlüssel bedeuten für die SQL dasselbe (unbegrenzt),
+        // aber der fehlende Schlüssel sagt es klarer.
+        if (maxGk != null) 'maxGk': maxGk,
+        if (maxDef != null) 'maxDef': maxDef,
+        if (maxMid != null) 'maxMid': maxMid,
+        if (maxFwd != null) 'maxFwd': maxFwd,
       };
 }
 

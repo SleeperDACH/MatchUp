@@ -1192,6 +1192,59 @@ kein Datum im Bild). Die Vorschau baut vier Runden Snake mit vier Teams: Genau
 daran sieht man, ob die Umkehr stimmt — R1 läuft 1.01→1.04, R2 zurück
 2.01→2.04 auf der anderen Seite.
 
+### Kader-Limits je Position — und warum ein Trigger, keine sechs Funktionen
+
+Anlass aus der laufenden Liga: Ein Manager hatte **acht Stürmer und drei
+Abwehrspieler**. Mit der Formationsspanne (ABW 3–5, ST 1–3) blieb ihm genau
+eine mögliche Aufstellung, 1-3-4-3; fällt einer der drei Verteidiger aus,
+bekommt er *gar keine* gültige Elf mehr zusammen. Fünf Kaderplätze waren tot.
+
+**Zwei Sorten Grenzen, und sie werden leicht verwechselt:**
+
+| | Was sie begrenzen | Wo sie stehen | Seit |
+|---|---|---|---|
+| `defMin`/`defMax`, `midMin`/… | die **Startelf** (Formation) | `roster`-JSONB | schon immer |
+| `maxGk`/`maxDef`/`maxMid`/`maxFwd` | den **Kader** (Besitz) | `roster`-JSONB | 0083 |
+
+- **Fehlt ein `max…`-Schlüssel, gilt kein Limit.** Absicht: Als das entstand,
+  liefen zwei Drafts, und eine stillschweigend eingeführte Obergrenze hätte sie
+  mitten im Lauf blockiert. Wer Limits will, setzt sie unter *Regeln & Format →
+  Kader-Limits*.
+- **Bestehende Kader brechen nicht.** Der Trigger prüft nur beim *Hinzufügen*;
+  wer schon darüber liegt, behält seine Spieler und kann auf dieser Position
+  nur nichts mehr dazunehmen. Die Seite sagt das auch hin („Ein Kader liegt
+  schon über einem Limit"). Rückwirkend Spieler wegzunehmen wäre keine Regel,
+  sondern eine Enteignung.
+- **Ein Trigger auf `fantasy_rosters`, keine sechs Funktionen.** Spieler kommen
+  über `fantasy_make_pick`, den Auto-Pick (`fantasy_advance`),
+  `fantasy_add_free_agent`, `fantasy_process_waivers`, `fantasy_admin_add` und
+  `fantasy_respond_trade` in einen Kader. Sechs Stellen sind sechs
+  Gelegenheiten, eine zu vergessen — und der siebte Weg, den jemand nächstes
+  Jahr baut, wäre von vornherein außen vor. **Trades laufen über ein `update`
+  von `manager_id`**, nicht über Delete+Insert; der Trigger hängt deshalb an
+  `insert or update`.
+- **Der Auto-Pick musste mit.** Zöge er nach seiner Rangliste einen Stürmer auf
+  eine volle Position, würfe der Trigger — und der Draft stünde, exakt der
+  Zustand, den 0079 gerade beseitigt hat. Der Filter sitzt deshalb **in der
+  Auswahl** (auch in der Wunschliste), nicht als nachträgliche Prüfung.
+- **Die Summe der Limits muss die Kadergröße erreichen.** 16 Runden mit Limits,
+  die zusammen 12 ergeben, wären nicht streng, sondern kaputt: Der Draft fände
+  keinen erlaubten Spieler mehr und beendete sich selbst. Die Seite sperrt das
+  Speichern (`limitsReichenFuerKader`, getestet), und eine offene Position
+  (`null`) rettet immer.
+
+**Die Limit-Seite hat bewusst ihre eigene Repository-Methode.**
+`updateDraftSettings` filtert auf `.eq('draft_status','setup')` — richtig für
+Rundenzahl und Pickzeit, falsch hier: Limits regeln auch Free Agency, Waiver
+und Trades, also die ganze Saison. `updateRosterLimits` lässt den Filter weg
+und hängt ein `select()` an: Ein `update`, das null Zeilen trifft, ist für
+PostgREST kein Fehler, und die Oberfläche hätte „Gespeichert" gemeldet — genau
+die stille Variante, die die Teilnehmerzahl schon einmal hatte.
+
+Angesehen über `test/kaderlimits_vorschau_test.dart` (eingeschaltet, mit einem
+Kader, der ein Limit schon reißt). Gerechnet wird in
+`test/kaderlimits_test.dart`.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

@@ -222,6 +222,16 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const _Chevron(),
               onTap: () => open(DraftSettingsPage(league: l)),
             ),
+            // Kader-Limits je Position. Nur der Ersteller darf sie ändern
+            // (das erzwingt die RLS ohnehin); anzeigen tun wir sie allen,
+            // damit jeder die Regel kennt, nach der er draftet.
+            ListTile(
+              leading: const Icon(Icons.groups_outlined),
+              title: const Text('Kader-Limits'),
+              subtitle: Text(_kaderLimitText(l.roster)),
+              trailing: const _Chevron(),
+              onTap: () => open(KaderLimitsPage(league: l)),
+            ),
             ListTile(
               leading: Icon(Icons.emoji_events_outlined),
               title: const Text('Playoff-Einstellungen'),
@@ -1425,6 +1435,270 @@ const _grpTeam = Color(0xFF4FC3A1);
 const _grpRegeln = Color(0xFFFFC83D);
 const _grpAdmin = Color(0xFF5B9DF9);
 const _grpGefahr = MatchUpColors.red;
+
+
+/// **Kader-Limits je Position.**
+///
+/// Nicht die Formation (wie viele in der *Elf* stehen dürfen — das sind
+/// `defMin`/`defMax` und Geschwister), sondern der **Kader**: wie viele
+/// Spieler einer Position man überhaupt besitzen darf.
+///
+/// Anlass war ein Manager mit acht Stürmern und drei Abwehrspielern. Ihm blieb
+/// bei ABW 3–5 genau eine mögliche Aufstellung; fällt ein Verteidiger aus,
+/// keine mehr. Fünf Kaderplätze waren tot.
+///
+/// Zwei Entscheidungen, die man sehen können muss:
+///  * **Vorgabe ist „aus".** Als das entstand, liefen zwei Drafts. Eine
+///    stillschweigend eingeführte Obergrenze hätte sie mitten im Lauf
+///    blockiert.
+///  * **Änderbar auch nach dem Draft** — anders als Rundenzahl und Pickzeit.
+///    Limits regeln Free Agency, Waiver und Trades, also die ganze Saison.
+/// Untertitel der Kader-Limit-Zeile: „TW 2 · ABW 6 · MF 6 · ST 5" oder der
+/// Hinweis, dass keine Grenze gilt.
+String _kaderLimitText(RosterConfig r) {
+  if (r.maxGk == null &&
+      r.maxDef == null &&
+      r.maxMid == null &&
+      r.maxFwd == null) {
+    return 'Keine Obergrenze je Position';
+  }
+  String t(String k, int? v) => '$k ${v ?? '∞'}';
+  return '${t('TW', r.maxGk)} · ${t('ABW', r.maxDef)} · '
+      '${t('MF', r.maxMid)} · ${t('ST', r.maxFwd)}';
+}
+
+class KaderLimitsPage extends ConsumerStatefulWidget {
+  const KaderLimitsPage({super.key, required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  ConsumerState<KaderLimitsPage> createState() => _KaderLimitsPageState();
+}
+
+class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
+  late bool _an;
+  late int _gk;
+  late int _def;
+  late int _mid;
+  late int _fwd;
+  bool _saving = false;
+
+  RosterConfig get _r => widget.league.roster;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = _r;
+    _an = r.maxGk != null ||
+        r.maxDef != null ||
+        r.maxMid != null ||
+        r.maxFwd != null;
+    // Vorbelegung, wenn noch nichts gesetzt ist: die Startelf-Obergrenze plus
+    // eine Reserve. Das erlaubt jede gültige Formation und verhindert trotzdem
+    // das Horten.
+    _gk = r.maxGk ?? (r.gk + 1);
+    _def = r.maxDef ?? (r.defMax + 1);
+    _mid = r.maxMid ?? (r.midMax + 1);
+    _fwd = r.maxFwd ?? (r.fwdMax + 1);
+  }
+
+  /// Untergrenze je Position: Unter der Startelf-Mindestzahl wäre keine
+  /// gültige Aufstellung mehr möglich.
+  int _min(PlayerPosition pos) => switch (pos) {
+        PlayerPosition.gk => _r.gk,
+        PlayerPosition.def => _r.defMin,
+        PlayerPosition.mid => _r.midMin,
+        PlayerPosition.fwd => _r.fwdMin,
+      };
+
+  int get _summe => _gk + _def + _mid + _fwd;
+
+  RosterConfig get _neu => RosterConfig(
+        gk: _r.gk,
+        def: _r.def,
+        mid: _r.mid,
+        fwd: _r.fwd,
+        bench: _r.bench,
+        defMin: _r.defMin,
+        defMax: _r.defMax,
+        midMin: _r.midMin,
+        midMax: _r.midMax,
+        fwdMin: _r.fwdMin,
+        fwdMax: _r.fwdMax,
+        maxGk: _an ? _gk : null,
+        maxDef: _an ? _def : null,
+        maxMid: _an ? _mid : null,
+        maxFwd: _an ? _fwd : null,
+      );
+
+  bool get _reichtFuerKader => !_an || _summe >= _r.squadSize;
+
+  Future<void> _speichern() async {
+    setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .updateRosterLimits(widget.league.id, _neu);
+      ref.invalidate(draftLeagueProvider(widget.league.id));
+      ref.invalidate(myFantasyLeaguesProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Gespeichert')));
+      navigator.pop();
+    } catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Wie viele Kader liegen mit den neuen Limits schon darüber?
+  ///
+  /// Sie brechen nicht — der Trigger prüft nur beim Hinzufügen. Aber wer ein
+  /// Limit setzt, sollte wissen, dass es für manche sofort greift.
+  int _schonDarueber() {
+    if (!_an) return 0;
+    final pool = ref.watch(playerPoolProvider).valueOrNull;
+    final roster = ref.watch(leagueRosterProvider(widget.league.id)).valueOrNull;
+    if (pool == null || roster == null) return 0;
+    final posOf = {for (final p in pool) p.id: p.position};
+    final proManager = <String, Map<PlayerPosition, int>>{};
+    for (final e in roster) {
+      final pos = posOf[e.playerId];
+      if (pos == null) continue;
+      final m = proManager.putIfAbsent(e.managerId, () => {});
+      m[pos] = (m[pos] ?? 0) + 1;
+    }
+    final limits = {
+      PlayerPosition.gk: _gk,
+      PlayerPosition.def: _def,
+      PlayerPosition.mid: _mid,
+      PlayerPosition.fwd: _fwd,
+    };
+    return proManager.values
+        .where((m) => limits.entries.any((l) => (m[l.key] ?? 0) > l.value))
+        .length;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final darueber = _schonDarueber();
+    return Scaffold(
+      appBar: AppBar(title: const Text('Kader-Limits')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Höchstens so viele Spieler einer Position im Kader. Gilt beim '
+              'Draften, in der Free Agency, bei Waivern und Trades — nicht für '
+              'die Aufstellung, die regelt die Formation.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+          _CardColumn([
+            SwitchListTile(
+              value: _an,
+              onChanged: (v) => setState(() => _an = v),
+              title: const Text('Kader-Limits verwenden'),
+              subtitle: Text(_an ? 'Aktiv' : 'Aus — keine Obergrenze'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ]),
+          const SizedBox(height: 12),
+          if (_an) ...[
+            _CardColumn([
+              // Je Position ein eigenes Zeichen — viermal dasselbe Symbol
+              // untereinander unterscheidet nichts und kostet trotzdem Platz.
+              for (final (pos, label, icon, wert, setz) in [
+                (PlayerPosition.gk, 'Torhüter', Icons.sports_handball, _gk,
+                    (int v) => setState(() => _gk = v)),
+                (PlayerPosition.def, 'Abwehr', Icons.shield_outlined, _def,
+                    (int v) => setState(() => _def = v)),
+                (PlayerPosition.mid, 'Mittelfeld', Icons.hub_outlined, _mid,
+                    (int v) => setState(() => _mid = v)),
+                (PlayerPosition.fwd, 'Sturm', Icons.sports_soccer, _fwd,
+                    (int v) => setState(() => _fwd = v)),
+              ])
+                _SettingRow(
+                  icon: icon,
+                  label: label,
+                  child: _Stepper(
+                    label: label,
+                    value: wert,
+                    min: _min(pos),
+                    max: 15,
+                    onChanged: setz,
+                  ),
+                ),
+            ]),
+            const SizedBox(height: 12),
+            _Hinweis(
+              gut: _reichtFuerKader,
+              text: _reichtFuerKader
+                  ? 'Zusammen $_summe Plätze bei ${_r.squadSize} Kaderplätzen.'
+                  : 'Zusammen nur $_summe Plätze, der Kader hat aber '
+                      '${_r.squadSize}. So findet der Draft irgendwann keinen '
+                      'erlaubten Spieler mehr und bricht ab.',
+            ),
+            if (darueber > 0) ...[
+              const SizedBox(height: 8),
+              _Hinweis(
+                gut: true,
+                text: darueber == 1
+                    ? 'Ein Kader liegt schon über einem Limit. Er behält seine '
+                        'Spieler — es kommen nur keine mehr dazu.'
+                    : '$darueber Kader liegen schon über einem Limit. Sie '
+                        'behalten ihre Spieler — es kommen nur keine mehr dazu.',
+              ),
+            ],
+          ],
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: (_saving || !_reichtFuerKader) ? null : _speichern,
+            child: Text(_saving ? 'Speichere …' : 'Speichern'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kurzer Hinweis unter den Steppern; rot, wenn die Einstellung nicht aufgeht.
+class _Hinweis extends StatelessWidget {
+  const _Hinweis({required this.gut, required this.text});
+
+  final bool gut;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final farbe = gut ? scheme.onSurfaceVariant : scheme.error;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(gut ? Icons.info_outline : Icons.error_outline,
+            size: 16, color: farbe),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: farbe)),
+        ),
+      ],
+    );
+  }
+}
 
 class _CardColumn extends StatelessWidget {
   const _CardColumn(this.children);

@@ -220,6 +220,30 @@ class FantasyLeagueRepository {
           .eq('id', leagueId)
           .eq('draft_status', 'setup');
 
+  /// Nur die Kader-Konfiguration schreiben — **ohne** den Setup-Filter.
+  ///
+  /// [updateDraftSettings] filtert auf `draft_status = 'setup'`, weil sich
+  /// Rundenzahl und Pickzeit nach dem Start nicht mehr ändern dürfen. Für die
+  /// Kader-Limits gilt das Gegenteil: Sie regeln auch Free Agency, Waiver und
+  /// Trades, also die ganze Saison über.
+  ///
+  /// `select()` am Ende ist Absicht. PostgREST meldet ein `update`, das **null
+  /// Zeilen** trifft, nicht als Fehler — die Oberfläche hätte „Gespeichert"
+  /// gesagt, während nichts geschah. Genau diese stille Variante hatte die
+  /// Teilnehmerzahl schon einmal (siehe CLAUDE.md). Kommt nichts zurück, war
+  /// es die RLS: Nur der Ersteller darf seine Liga verwalten.
+  Future<void> updateRosterLimits(String leagueId, RosterConfig roster) async {
+    final rows = await _client
+        .from('fantasy_leagues')
+        .update({'roster': roster.toJson()})
+        .eq('id', leagueId)
+        .select('id');
+    if (rows.isEmpty) {
+      throw Exception('Nicht gespeichert — nur der Ersteller darf die '
+          'Kader-Limits ändern.');
+    }
+  }
+
   /// Manuelle Draft-Reihenfolge setzen (Ersteller, nur im Setup). Die
   /// Positionen ergeben sich aus der Reihenfolge von [orderedUserIds].
   Future<void> setDraftOrder(String leagueId, List<String> orderedUserIds) =>
