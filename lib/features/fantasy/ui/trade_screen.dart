@@ -10,6 +10,7 @@ import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'spieler_kachel.dart';
 import '../../../app/widgets/segmented_tab_bar.dart';
 
 /// Trade-Zentrale einer Liga: neue Angebote erstellen (Kader nebeneinander)
@@ -394,6 +395,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
     BuildContext context,
     List<FantasyPlayer> offer,
     List<FantasyPlayer> request,
+    Map<String, String?> clubIcons,
   ) async {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
@@ -404,6 +406,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
         offer: offer,
         request: request,
         messageController: _msgCtrl,
+        clubIcons: clubIcons,
       ),
     );
     if (confirmed == true) await _send();
@@ -485,7 +488,8 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                     width: double.infinity,
                     child: FilledButton.icon(
                       onPressed: canSend
-                          ? () => _confirmAndSend(context, offerSel, requestSel)
+                          ? () => _confirmAndSend(
+                              context, offerSel, requestSel, clubIcons)
                           : null,
                       icon: _sending
                           ? const SizedBox(
@@ -516,12 +520,14 @@ class _ConfirmOfferSheet extends StatelessWidget {
     required this.offer,
     required this.request,
     required this.messageController,
+    required this.clubIcons,
   });
 
   final String partnerName;
   final List<FantasyPlayer> offer;
   final List<FantasyPlayer> request;
   final TextEditingController messageController;
+  final Map<String, String?> clubIcons;
 
   @override
   Widget build(BuildContext context) {
@@ -598,29 +604,20 @@ class _ConfirmOfferSheet extends StatelessWidget {
           if (players.isEmpty)
             Text('—', style: TextStyle(color: scheme.onSurfaceVariant))
           else
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final p in players)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        PositionPill(pos: p.position),
-                        const SizedBox(width: 6),
-                        Text(p.name, style: const TextStyle(fontSize: 13)),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+            // Dieselbe Karte wie in der Auswahl und in der Angebotskarte.
+            // Vorher standen hier Pillen mit Namen — damit sah derselbe Trade
+            // auf drei Schirmen dreimal anders aus.
+            for (final p in players)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: SpielerKachel(
+                  spieler: p,
+                  iconUrl: clubIcons[p.club],
+                  hervor: true,
+                  mitHaken: false,
+                  hoehe: 58,
+                ),
+              ),
         ],
       ),
     );
@@ -724,147 +721,19 @@ class _RosterColumn extends StatelessWidget {
   }
 
   Widget _tile(BuildContext context, FantasyPlayer p, bool sel) {
-    final base = positionColor(p.position);
-    // Gewählt: kräftige Positionsfarbe (Sticker-Optik), Text lesbar (auf Gelb
-    // schwarz). Nicht gewählt: direkt dunkel gezeichnet — kein aufgesetztes
-    // Overlay, damit die Ränder nicht mehr „durchleuchten".
-    final fg = sel
-        ? (p.position == PlayerPosition.def ? Colors.black : Colors.white)
-        : Colors.white.withValues(alpha: 0.82);
-    final gradient = sel
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(base, Colors.white, 0.14)!,
-              base,
-              Color.lerp(base, Colors.black, 0.36)!,
-            ],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(base, const Color(0xFF12141C), 0.70)!,
-              Color.lerp(base, const Color(0xFF12141C), 0.85)!,
-            ],
-          );
+    // Dieselbe Karte wie in der Angebotsansicht — herausgeloest nach
+    // spieler_kachel.dart, damit beide Stellen nicht auseinanderlaufen.
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-      child: Material(
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => onToggle(p.id),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            height: 110,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: gradient,
-              border: Border.all(
-                color: sel
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.05),
-                width: sel ? 3 : 1,
-              ),
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Wappen groß, ragt zur Hälfte über den rechten Kartenrand;
-                // bei nicht gewählten Karten dezent gedimmt.
-                Positioned(
-                  right: -52,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: Opacity(
-                      opacity: sel ? 1 : 0.6,
-                      child: ClubBadge(
-                          club: p.club, iconUrl: clubIcons[p.club], size: 108),
-                    ),
-                  ),
-                ),
-                // Name (groß) + Position links, linksbündig.
-                Positioned(
-                  left: 10,
-                  right: 60,
-                  top: 0,
-                  bottom: 0,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Lange Namen schrumpfen, statt abgeschnitten zu werden.
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _shortName(p.name),
-                          maxLines: 1,
-                          softWrap: false,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            height: 1.05,
-                            color: fg,
-                            shadows: sel && p.position == PlayerPosition.def
-                                ? null
-                                : const [
-                                    Shadow(color: Colors.black38, blurRadius: 3)
-                                  ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        p.position.label,
-                        textAlign: TextAlign.start,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                          color: fg.withValues(alpha: 0.9),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Gewählt: klares Häkchen-Badge oben links.
-                if (sel)
-                  Positioned(
-                    left: 8,
-                    top: 8,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 4),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(3),
-                      child: Icon(Icons.check_rounded,
-                          size: 18, color: base, weight: 900),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      child: SpielerKachel(
+        spieler: p,
+        iconUrl: clubIcons[p.club],
+        hervor: sel,
+        onTap: () => onToggle(p.id),
       ),
     );
   }
 
-  /// Vorname auf einen Buchstaben kürzen: „Jonas Urbig" → „J. Urbig".
-  static String _shortName(String full) {
-    final parts = full.trim().split(RegExp(r'\s+'));
-    if (parts.length < 2 || parts.first.isEmpty) return full;
-    return '${parts.first[0]}. ${parts.sublist(1).join(' ')}';
-  }
 }
 
 /// Offene Angebote einer Richtung: [incoming] true = an mich gerichtet
@@ -1097,7 +966,9 @@ class TradeCard extends ConsumerWidget {
     final detailAsync = ref.watch(tradeDetailProvider(tradeId));
     final pool =
         ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
-    final nameById = {for (final p in pool) p.id: p.name};
+    final playerById = {for (final p in pool) p.id: p};
+    final clubIcons =
+        ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
 
     return detailAsync.when(
       loading: () => const SizedBox.shrink(),
@@ -1109,15 +980,19 @@ class TradeCard extends ConsumerWidget {
                   style: TextStyle(color: scheme.onSurfaceVariant)));
         }
         final trade = d.trade;
+        // Die Positionen als Paar (ID, Spieler) — der Spieler kann fehlen,
+        // wenn der lokale Pool ihn nicht kennt. Dann zeigt die Karte die ID
+        // statt ihn wegzulassen: „nicht gefunden" ist ein eigener Zustand,
+        // nicht dasselbe wie „nichts dabei".
         final offered = [
           for (final it in d.items)
             if (it.giver == trade.fromManager)
-              nameById[it.playerId] ?? it.playerId
+              (it.playerId, playerById[it.playerId])
         ];
         final requested = [
           for (final it in d.items)
             if (it.giver == trade.toManager)
-              nameById[it.playerId] ?? it.playerId
+              (it.playerId, playerById[it.playerId])
         ];
         final incoming = trade.toManager == myId;
         // Liga (Name + fürs Kontern) & Manager laden.
@@ -1157,11 +1032,11 @@ class TradeCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              _line(context, 'Du bekommst',
-                  incoming ? offered : requested, scheme.primary),
-              const SizedBox(height: 2),
-              _line(context, 'Du gibst',
-                  incoming ? requested : offered, scheme.tertiary),
+              _seite(context, 'Du bekommst',
+                  incoming ? offered : requested, clubIcons, scheme.primary),
+              const SizedBox(height: 8),
+              _seite(context, 'Du gibst',
+                  incoming ? requested : offered, clubIcons, scheme.tertiary),
               if (trade.message != null && trade.message!.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text('„${trade.message}"',
@@ -1251,21 +1126,66 @@ class TradeCard extends ConsumerWidget {
     );
   }
 
-  Widget _line(
-      BuildContext context, String label, List<String> players, Color color) {
-    return Row(
+  /// Eine Seite des Angebots: Marke plus die Spielerkarten darunter.
+  ///
+  /// Vorher stand hier eine Komma-Liste von Namen („J. Urbig, S. Kolo Muani").
+  /// Dieselbe Auskunft, aber ohne Verein, ohne Position und ohne
+  /// Wiedererkennung — wer ein Angebot beurteilen soll, schaut auf Spieler,
+  /// nicht auf einen Satz. Jetzt dieselbe [SpielerKachel] wie in der Auswahl,
+  /// nur kompakter und ohne Häkchen: Im Angebot ist die Karte der Inhalt, kein
+  /// getroffener Haken.
+  Widget _seite(
+    BuildContext context,
+    String label,
+    List<(String, FantasyPlayer?)> spieler,
+    Map<String, String?> clubIcons,
+    Color farbe,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 82,
-          child: Text(label,
+        Row(
+          children: [
+            Container(width: 3, height: 11, color: farbe),
+            const SizedBox(width: 6),
+            Text(
+              label.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+            ),
+          ],
         ),
-        Expanded(
-          child: Text(players.isEmpty ? '—' : players.join(', '),
-              style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-        ),
+        const SizedBox(height: 6),
+        if (spieler.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 9),
+            child: Text('—',
+                style: TextStyle(color: scheme.onSurfaceVariant)),
+          )
+        else
+          for (final (id, p) in spieler)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: p == null
+                  // Unbekannter Spieler: Der lokale Pool kennt ihn nicht (der
+                  // Zugang kam per sync-squads nach dem App-Start). Ihn
+                  // wegzulassen hieße, ein Angebot falsch darzustellen.
+                  ? Text(id,
+                      style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic))
+                  : SpielerKachel(
+                      spieler: p,
+                      iconUrl: clubIcons[p.club],
+                      hervor: true,
+                      mitHaken: false,
+                      hoehe: 58,
+                    ),
+            ),
       ],
     );
   }

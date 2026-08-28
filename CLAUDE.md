@@ -1480,6 +1480,41 @@ Nicht angefasst sind die Streams mit eigenem Rechenweg (`leagueStream` nimmt
 ohnehin `rows.first`, `waiverPlayersStream` baut ein `Set`) — dort richtet eine
 Dublette nichts an.
 
+### Trade: derselbe Spieler sieht überall gleich aus
+
+Gemeldet: „Die Trade-Angebot-Boxen sind nur Schrift." Stimmte — die
+Angebotskarte listete die Spieler als Komma-Satz („J. Urbig, S. Kolo Muani").
+Dieselbe Auskunft wie eine Spielerkarte, aber ohne Verein, ohne Position und
+ohne Wiedererkennung. Wer ein Angebot beurteilen soll, schaut auf Spieler,
+nicht auf einen Satz.
+
+Die reiche Karte gab es längst — als private `_tile` in der Auswahlspalte des
+Trade-Screens: Positionsfarbe als Fläche, das Wappen groß und halb über den
+rechten Rand hinaus, Name und Position links. Sie ist jetzt
+`SpielerKachel` (`ui/spieler_kachel.dart`) und steht an **allen drei** Stellen
+des Trade-Wegs:
+
+| Schirm | vorher | jetzt |
+|---|---|---|
+| Auswahl | die Karte (110 px) | dieselbe Karte |
+| Bestätigung vor dem Senden | Pillen mit Namen | dieselbe Karte, 58 px |
+| Angebotskarte | Komma-Satz | dieselbe Karte, 58 px |
+
+Zwei Parameter tragen den Unterschied: `hervor` (kräftige Positionsfarbe statt
+gedämpfter Fläche) und `mitHaken`. In der Auswahl heißt kräftig „ausgewählt"
+und bekommt ein Häkchen; im Angebot heißt es schlicht „das ist der Inhalt" —
+ein Haken wäre dort eine Behauptung über eine Entscheidung, die niemand
+getroffen hat. Wappengröße und Schriftgrad folgen der Kartenhöhe, sonst sähe
+die kompakte Fassung aus wie die große mit abgeschnittenem Rand.
+
+**Ein unbekannter Spieler verschwindet nicht.** Kennt der lokale Pool die ID
+nicht (Zugang aus `sync-squads` nach dem App-Start), steht sie kursiv da statt
+ausgelassen zu werden — dieselbe Regel wie beim Draft-Brett: „nicht gefunden"
+ist ein eigener Zustand, nicht dasselbe wie „nichts dabei". Die Vorschau
+`test/trade_angebot_vorschau_test.dart` enthält genau diesen Fall, dazu ein
+eingehendes Angebot (mit Annehmen/Ablehnen) neben einem selbst gestellten —
+auf dem Gerät sieht man immer nur eins von beiden.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
