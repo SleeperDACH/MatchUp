@@ -187,6 +187,41 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   Edge Function einplant, die länger als fünf Sekunden läuft, prüft das
   Ergebnis in `net._http_response` (`status_code`, `timed_out`) — nicht in
   `cron.job_run_details`.
+- **Live-Punkte hängen an drei Gliedern, und alle drei müssen laufen.** Am
+  28.08.2026, während des ersten Saisonspiels, zeigte die App keine Punkte —
+  weil `player_match_stats` **komplett leer** war. Die Kette und ihre Fallen:
+  * **Die Function muss deployed sein.** `sync-stats` lief seit Juni alle 15
+    Minuten, 7545-mal „succeeded" — und schrieb nie eine Zeile. In
+    `net._http_response` stand `{"season":2026,"rounds":[],"upserted":0}`, eine
+    Antwortform, die es im Repo gar nicht gibt (dort `{fixtures, upserted}`).
+    Deployed war eine **ältere** Fassung, die über „Runden" lief; die
+    fixture-basierte im Repo war nie ausgespielt worden. Exakt dieselbe Falle
+    wie bei `sync-squads`. **`supabase functions list` zeigt, was wirklich
+    draußen ist — die Datei im Repo beweist gar nichts.**
+  * **Der Takt muss zum Wort passen.** Alle 15 Minuten ist für ein laufendes
+    Spiel keine Anzeige, sondern ein Archiv. Migration 0080 stellt auf
+    Minutentakt; das ist billig, weil die Function zuerst die eigene
+    `fixtures`-Spiegelung fragt und **ohne einen einzigen Sportmonks-Request**
+    umkehrt, wenn nichts läuft. Kosten entstehen nur im Spielfenster (~90
+    Requests je Spieltag von 2000).
+  * **Der Client muss hinsehen.** `roundStatsProvider` war ein einfacher
+    `FutureProvider`: einmal geladen, nie wieder. Die Punkte standen auf dem
+    Stand beim Öffnen des Schirms. Er lädt jetzt alle 30 s nach, **solange der
+    Spieltag läuft** (`roundIsLiveProvider`), und stellt außerhalb der
+    Spielfenster gar keinen Timer. Ein einmaliger `Timer` statt
+    `Timer.periodic` — nach dem Neuladen baut der Provider sich ohnehin neu auf
+    und stellt den nächsten. Die Spielpläne werden mit aufgefrischt, sonst
+    bliebe die Runde nach dem Abpfiff für immer „live".
+  Dass der Server schreibt, heißt nicht, dass die App es zeigt; dass ein Cron
+  „succeeded" meldet, heißt nicht, dass etwas ankam.
+- **Jeder `net.http_post`-Cron braucht `timeout_milliseconds`.** Der
+  pg_net-Standard ist 5000 ms, und `cron.job_run_details` meldet trotzdem
+  „succeeded" — der Fehlschlag steht nur in `net._http_response`
+  (`timed_out`, `status_code`). `sync-fixtures` lief deshalb in **jedem**
+  Durchgang ins Limit (37 von 37 Läufen in sechs Stunden), ohne dass es
+  irgendwo aufgefallen wäre; Migration 0081 setzt Zeitlimit und Vault nach.
+  Prüfregel bei jedem neuen Job: `select jobname, command like '%timeout%',
+  command like '%vault%' from cron.job` — beides muss wahr sein.
 - Stats-Sync: Edge Function `supabase/functions/sync-stats/` (gleiche
   Schutz-/Deploy-Konvention) füllt `player_match_stats` mit dem **vollen
   Roh-Stat-Satz aus Sportmonks** (Migration 0074: ~25 Zähler plus Rating).

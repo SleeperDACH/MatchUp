@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -276,14 +278,53 @@ bool roundIsLive(List<Fixture> roundFixtures, DateTime now) {
   return !allFinished;
 }
 
+/// Takt, in dem die Punkte eines laufenden Spieltags nachgeladen werden.
+///
+/// Serverseitig holt `sync-stats` im Minutentakt (Migration 0080); häufiger
+/// nachzufragen brächte nichts als Last. Etwas darunter zu bleiben sorgt
+/// dafür, dass ein neuer Serverstand im Schnitt nach einer halben Minute auf
+/// dem Schirm steht.
+const _liveStatsTakt = Duration(seconds: 30);
+
+/// Läuft dieser Spieltag gerade? (Erster Anpfiff bis letzter Abpfiff.)
+final roundIsLiveProvider = Provider.family<bool, int>((ref, round) {
+  final fixtures = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
+  if (fixtures == null) return false;
+  return roundIsLive(
+    fixtures.where((f) => f.round == round).toList(),
+    DateTime.now(),
+  );
+});
+
 /// Roh-Leistungsdaten aller Poolspieler für einen Spieltag.
+///
+/// **Lädt nach, solange der Spieltag läuft.** Vorher war das ein einfacher
+/// `FutureProvider`: einmal geladen, nie wieder — die Punkte standen also auf
+/// dem Stand, den der Schirm beim Öffnen vorfand, und bewegten sich während
+/// des Spiels nicht. Für „Live-Punkte" reicht es nicht, dass der Server sie
+/// schreibt; der Client muss auch hinsehen.
+///
+/// Ein einmaliger `Timer` statt `Timer.periodic`: Nach dem Neuladen baut sich
+/// der Provider ohnehin neu auf und stellt den nächsten. Läuft nichts, wird
+/// kein Timer gestellt — außerhalb der Spielfenster fragt die App also nicht.
 final roundStatsProvider =
     FutureProvider.family<Map<String, PlayerMatchStats>, int>((ref, round) async {
   final pool = await ref.watch(playerPoolProvider.future);
   final season = ref.watch(fantasySeasonProvider);
-  return ref
+  final stats = await ref
       .watch(fantasyStatsSourceProvider)
       .roundStats(pool: pool, season: season, round: round);
+
+  if (ref.watch(roundIsLiveProvider(round))) {
+    final timer = Timer(_liveStatsTakt, () {
+      // Die Spielpläne mit auffrischen: Ohne sie bliebe der Spieltag nach dem
+      // Abpfiff für immer „live", und die App fragte bis zum Neustart weiter.
+      ref.invalidate(fantasySeasonFixturesProvider);
+      ref.invalidateSelf();
+    });
+    ref.onDispose(timer.cancel);
+  }
+  return stats;
 });
 
 /// Alle gespielten Spieltage der Saison (Spieltag → Spieler-ID → Stats);
