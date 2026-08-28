@@ -1231,6 +1231,22 @@ bekommt er *gar keine* gültige Elf mehr zusammen. Fünf Kaderplätze waren tot.
   nur nichts mehr dazunehmen. Die Seite sagt das auch hin („Ein Kader liegt
   schon über einem Limit"). Rückwirkend Spieler wegzunehmen wäre keine Regel,
   sondern eine Enteignung.
+- **Geprüft wird am Ende der Transaktion, nicht zwischen zwei Zeilen.** Der
+  Trigger lief zuerst als `before insert or update` — und ein **1:1-Tausch
+  scheiterte daran**, obwohl er nichts ändert. `fantasy_respond_trade` bewegt
+  die Spieler einzeln, als Schleife über `fantasy_trade_items`; zwischen zwei
+  Durchläufen hat die empfangende Seite den neuen Spieler schon und den eigenen
+  noch, also einen zu viel. Zwei Teilnehmer sind darüber gestolpert.
+  Seit 0087 ist es ein `constraint trigger ... deferrable initially deferred`:
+  Er läuft beim Commit, wenn alle Bewegungen erledigt sind. Zwei Eigenheiten
+  gehören dazu — Constraint-Trigger müssen `after` sein (Rückgabewert wird
+  ignoriert), und sie feuern auch für Zeilen, die in derselben Transaktion
+  wieder verschwunden sind; deshalb steigt die Funktion aus, wenn es die Zeile
+  beim Commit nicht mehr gibt.
+  **Die Lehre allgemein:** Eine Mengenregel („höchstens N davon") darf nicht
+  auf eine Momentaufnahme mitten in einer mehrschrittigen Operation schauen.
+  Wer so eine Regel als Row-Trigger schreibt, muss sie aufschieben — sonst
+  verbietet sie Vorgänge, die am Ende völlig regelkonform sind.
 - **Ein Trigger auf `fantasy_rosters`, keine sechs Funktionen.** Spieler kommen
   über `fantasy_make_pick`, den Auto-Pick (`fantasy_advance`),
   `fantasy_add_free_agent`, `fantasy_process_waivers`, `fantasy_admin_add` und
@@ -1281,7 +1297,10 @@ dieser Unterschied auf einen Blick lesbar sein muss. Gerechnet wird in
 
 Gegen die Produktions-DB nachgemessen (mit Rollback): Mit nur `maxFwd` gesetzt
 wird ein Stürmer blockiert („höchstens 1 Stürmer in dieser Liga") und ein
-Abwehrspieler durchgelassen.
+Abwehrspieler durchgelassen. Nach 0087 ebenso nachgestellt: Ein 1:1-Tausch bei
+vollem Limit geht durch, ein echter Zugang auf dieselbe Position nicht.
+**Aufgeschobene Trigger prüft man mit `set constraints <name> immediate`** —
+sonst feuern sie erst beim Commit, den ein Probelauf mit Rollback nie erreicht.
 
 ### Die Aufstellung sperrt je Spieler, nicht je Spieltag
 
