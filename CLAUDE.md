@@ -1383,41 +1383,48 @@ Leerzeichen von `wc`. Wer im Log nach Layoutfehlern sucht: auf `overflowed`
 suchen, ohne Präfix, und den Bereich ab der letzten Zeile `Restarted
 application` nehmen — sonst zählt man Fehler aus dem Code von vor dem Neustart.
 
-### Mehr Aufstellungen: von acht auf elf
+### Mehr Aufstellungen: von acht auf neun — und warum es nicht elf wurden
 
-Die Spannen standen im FPL-Zuschnitt (ABW 3–5, MF 2–5, ST 1–3). Daraus ergaben
-sich genau **acht** Formationen — und drei gängige fehlten:
+Die Spannen standen im FPL-Zuschnitt (ABW 3–5, MF 2–5, ST 1–3) und ließen genau
+**acht** Formationen zu. Geweitet auf MF 6 und ST 4 (Migration 0085) waren es
+elf — neu: 3-3-4, 4-2-4, 3-6-1. Zwei davon sind auf ausdrücklichen Wunsch
+wieder weg (0086), 4-2-4 ist geblieben. Stand: **neun**.
 
-| fehlte | blockiert durch |
-|---|---|
-| 3-3-4, 4-2-4 | `fwdMax` 3 |
-| 3-6-1 | `midMax` 5 |
+**Dabei kam die Grenze des Modells zum Vorschein.** 3-6-1 ließ sich sauber über
+die Spanne entfernen — `midMax` zurück auf 5, es ist die einzige Formation mit
+sechs Mittelfeldspielern. 3-3-4 nicht: Es braucht dasselbe `fwdMax` 4 wie
+4-2-4 und unterscheidet sich nur in der Abwehr. **Reine Min/Max-Spannen können
+das eine nicht ohne das andere entfernen.** Dafür gibt es jetzt eine Regel, die
+zwei Positionen zugleich anschaut:
 
-Mit **MF bis 6 und ST bis 4** sind es elf. Mindestens ein Stürmer bleibt Pflicht
-(`fwdMin` 1): Eine Elf ohne Sturm wäre keine Formationslücke, sondern eine
-Regeländerung.
+> Vier Stürmer nur mit mindestens vier Abwehrspielern.
 
-**Warum das eine Migration brauchte und nicht nur neue Vorgabewerte:** Alle
-bestehenden Ligen tragen die Spannen **ausgeschrieben** in
-`fantasy_leagues.roster` — `RosterConfig.toJson` schreibt sie immer. Ein
-geänderter Default in Dart hätte dort nichts bewirkt. Migration 0085 weitet sie
-mit `greatest`, also **nur nach oben und nur wo nötig**: Eine Liga, die ihre
-Spanne bewusst weiter gesetzt hat, behält sie. Mitten in der Saison ist das
-unbedenklich — eine weitere Spanne kann keine gespeicherte Aufstellung ungültig
-machen, sie fügt Möglichkeiten hinzu.
+`RosterConfig.vierStuermerBrauchenVierAbwehr` — und **dieselbe Regel ein zweites
+Mal in SQL** (`fantasy_set_lineup`), bewusste Doppelung wie bei
+`tip_scoring.dart` ↔ SQL-View. Laufen die beiden auseinander, bietet die App
+eine Formation an, die der Server ablehnt.
+
+**Zur Migration:** Alle bestehenden Ligen tragen die Spannen ausgeschrieben in
+`fantasy_leagues.roster` (`RosterConfig.toJson` schreibt sie immer) — ein
+geänderter Default in Dart bewirkt dort nichts. 0085 weitete mit `greatest`
+(nur nach oben), 0086 nimmt `midMax` mit `least` zurück. **Verengen ist die
+heikle Richtung**, deshalb vorher nachgemessen: keine einzige gespeicherte
+Aufstellung nutzte sechs Mittelfeldspieler oder vier Stürmer bei drei
+Abwehrspielern.
 
 Zwei Dinge, die dabei mit hochkamen:
 
 - **Die Formationsleiste benutzte `ChoiceChip`** — genau das Material-Element,
   das diese Datei verbietet (stumpfes Oliv aus `secondaryContainer`). Jetzt
-  `PillChip`. Mit elf Einträgen fiel es mehr auf als mit acht; gescrollt wurde
-  schon vorher.
+  `PillChip`.
 - **Ein bestehender Test hing an der alten Grenze**, ohne es zu sagen:
-  `weekly_recap_test` baute „vier treffende Stürmer, einer muss auf die Bank"
-  — mit `fwdMax` 4 starten alle vier, und der Bank-Held wurde ein Verteidiger.
-  Das Szenario ist um einen Stürmer verschoben und benennt die Abhängigkeit
-  jetzt im Kommentar. `test/formationen_test.dart` hält zusätzlich die
-  vollständige Liste fest und prüft, dass die Weitung **nichts** wegnimmt.
+  `weekly_recap_test` baute „vier treffende Stürmer, einer muss auf die Bank" —
+  mit `fwdMax` 4 starten alle vier. Das Szenario ist um einen Stürmer verschoben
+  und benennt die Abhängigkeit jetzt im Kommentar.
+
+Gehalten wird der Stand von `test/formationen_test.dart`: vollständige Liste,
+die Kopplungsregel einzeln, und die Zusicherung, dass gegenüber dem
+FPL-Zuschnitt **nichts wegfällt**.
 
 ## Liga-Übersicht — „C, das Duell führt"
 

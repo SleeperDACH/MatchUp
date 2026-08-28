@@ -114,10 +114,13 @@ void main() {
       expect(
           r.isValidFormation(gkCount: 1, defCount: 2, midCount: 5, fwdCount: 3),
           isFalse);
-      // Seit Migration 0085 erlaubt: vier Stürmer.
+      // Vier Stürmer gehen — aber nur mit vier Abwehrspielern (0086).
+      expect(
+          r.isValidFormation(gkCount: 1, defCount: 4, midCount: 2, fwdCount: 4),
+          isTrue);
       expect(
           r.isValidFormation(gkCount: 1, defCount: 3, midCount: 3, fwdCount: 4),
-          isTrue);
+          isFalse);
       // Fünf sind weiterhin zu viele.
       expect(
           r.isValidFormation(gkCount: 1, defCount: 3, midCount: 2, fwdCount: 5),
@@ -138,7 +141,7 @@ void main() {
       for (final (d, m, f) in fms) {
         expect(1 + d + m + f, 11);
         expect(d, inInclusiveRange(3, 5));
-        expect(m, inInclusiveRange(2, 6));
+        expect(m, inInclusiveRange(2, 5));
         expect(f, inInclusiveRange(1, 4));
       }
       expect(fms, contains((4, 4, 2)));
@@ -152,7 +155,7 @@ void main() {
       expect(r.defMin, 3);
       expect(r.defMax, 5);
       expect(r.midMin, 2);
-      expect(r.midMax, 6);
+      expect(r.midMax, 5);
       expect(r.fwdMin, 1);
       expect(r.fwdMax, 4);
     });

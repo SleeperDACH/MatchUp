@@ -165,7 +165,7 @@ class RosterConfig {
     this.defMin = 3,
     this.defMax = 5,
     this.midMin = 2,
-    this.midMax = 6,
+    this.midMax = 5,
     this.fwdMin = 1,
     this.fwdMax = 4,
     this.maxGk,
@@ -186,12 +186,12 @@ class RosterConfig {
   /// Torwart ist immer genau [gk] (= 1). Die Summe ergibt stets [starters]
   /// (= 11).
   ///
-  /// Vorgabe: **ABW 3–5, MF 2–6, ST 1–4** — das ergibt elf Formationen. Die
-  /// engere FPL-Spanne (MF bis 5, ST bis 3) ließ nur acht zu und schloss dabei
-  /// gängige Aufstellungen aus: 3-3-4, 4-2-4 und 3-6-1 waren nicht wählbar.
-  /// Migration 0085 weitet die Spannen auch in bestehenden Ligen — **nur nach
-  /// oben**: Eine weitere Spanne kann keine gespeicherte Elf ungültig machen,
-  /// sie fügt nur Möglichkeiten hinzu.
+  /// Vorgabe: **ABW 3–5, MF 2–5, ST 1–4**, dazu die Kopplung aus
+  /// [vierStuermerBrauchenVierAbwehr]. Das ergibt **neun** Formationen.
+  ///
+  /// Die ursprüngliche FPL-Spanne (ST bis 3) ließ acht zu; geweitet auf MF 6
+  /// und ST 4 waren es elf. Von den drei neuen sind 3-3-4 und 3-6-1 auf
+  /// ausdrücklichen Wunsch wieder weg, 4-2-4 ist geblieben.
   ///
   /// Mindestens ein Stürmer bleibt Pflicht ([fwdMin] 1). Eine Elf ohne Sturm
   /// (5-5-0) wäre keine Formationslücke, sondern eine Regeländerung.
@@ -282,6 +282,21 @@ class RosterConfig {
         PlayerPosition.fwd => fwdMax,
       };
 
+  /// **Vier Stürmer nur mit mindestens vier Abwehrspielern.**
+  ///
+  /// Reine Min/Max-Spannen können das nicht ausdrücken: 3-3-4 und 4-2-4
+  /// brauchen beide `fwdMax` 4 und unterscheiden sich nur in der Abwehr. Wer
+  /// 3-3-4 loswerden und 4-2-4 behalten will, braucht deshalb eine Regel, die
+  /// zwei Positionen zugleich anschaut.
+  ///
+  /// **Diese Regel steht ein zweites Mal in SQL** (`fantasy_set_lineup`,
+  /// Migration 0086) — dieselbe Sorte bewusster Doppelung wie bei
+  /// `tip_scoring.dart` ↔ SQL-View. Wer sie hier ändert, ändert sie dort mit,
+  /// sonst bietet die App eine Formation an, die der Server ablehnt (oder
+  /// verschweigt eine, die er nähme).
+  static bool vierStuermerBrauchenVierAbwehr(int defCount, int fwdCount) =>
+      fwdCount < 4 || defCount >= 4;
+
   /// Prüft, ob eine Positionsverteilung eine gültige Startelf-Formation ist:
   /// Torwart exakt, Feldspieler in ihrer Spanne, Summe = [starters].
   bool isValidFormation({
@@ -297,6 +312,7 @@ class RosterConfig {
       midCount <= midMax &&
       fwdCount >= fwdMin &&
       fwdCount <= fwdMax &&
+      vierStuermerBrauchenVierAbwehr(defCount, fwdCount) &&
       gkCount + defCount + midCount + fwdCount == starters;
 
   /// Kurzschreibweise der Feldspieler-Formation, z. B. „4-4-2".
@@ -316,6 +332,7 @@ class RosterConfig {
       for (var m = midMin; m <= midMax; m++) {
         final f = outfield - d - m;
         if (f < fwdMin || f > fwdMax) continue;
+        if (!vierStuermerBrauchenVierAbwehr(d, f)) continue;
         out.add((d, m, f));
       }
     }
