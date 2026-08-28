@@ -286,8 +286,7 @@ class MatchupBanner extends StatelessWidget {
           const SizedBox(height: 10),
           // „Momentum": Punkteanteil beider Seiten (vor Anpfiff 50/50) mit
           // Label je nach Status — füllt den Banner und gibt Kontext.
-          _MomentumBar(
-              left: homePoints, right: awayPoints, leftColor: accent),
+          _MomentumBar(left: homePoints, right: awayPoints),
           const SizedBox(height: 5),
           // Nur noch die Beschriftung. Links und rechts standen hier dieselben
           // zwei Zahlen, die zwei Zeilen darüber schon groß im Punktestand
@@ -715,14 +714,15 @@ class HeroAvatar extends StatelessWidget {
 /// „Momentum"-Balken: zeigt den Punkteanteil beider Seiten als Tauziehen —
 /// meine Seite hell, der Gegner gedimmt. Rein visuell (kein Tap).
 class _MomentumBar extends StatelessWidget {
-  const _MomentumBar(
-      {required this.left, required this.right, this.leftColor = _cGreen});
+  const _MomentumBar({required this.left, required this.right});
 
   final double left;
   final double right;
 
-  /// Farbe der Heim-Seite (Banner-Akzent: grün, bzw. rot solange live).
-  final Color leftColor;
+  /// Unentschieden und vor dem Anpfiff: **keine** Seite bekommt eine Wertung.
+  /// Vorher stand hier grün gegen rot, auch bei 0:0 — das behauptete einen
+  /// Führenden, den es nicht gab.
+  static const _neutral = Color(0xFF9AA0AA);
 
   @override
   Widget build(BuildContext context) {
@@ -731,6 +731,18 @@ class _MomentumBar extends StatelessWidget {
     // die Balkenbreite ohne Belang.
     final l = left < 1 ? 1 : left.round();
     final r = right < 1 ? 1 : right.round();
+
+    // **Grün heißt „führt", nicht „Heim".** Vorher trug die linke Seite den
+    // Banner-Akzent — und der ist solange live rot, genau wie die rechte
+    // Seite. Im laufenden Spieltag, also dann, wenn man am genauesten
+    // hinsieht, waren beide Hälften rot und die Grenze verschwand.
+    final linksVorn = left > right;
+    final rechtsVorn = right > left;
+    final linksFarbe =
+        linksVorn ? _cGreen : (rechtsVorn ? _cRed : _neutral);
+    final rechtsFarbe =
+        rechtsVorn ? _cGreen : (linksVorn ? _cRed : _neutral);
+
     return Row(
       children: [
         Expanded(
@@ -739,8 +751,8 @@ class _MomentumBar extends StatelessWidget {
             height: 8,
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [
-                leftColor.withValues(alpha: 0.95),
-                leftColor.withValues(alpha: 0.7),
+                linksFarbe.withValues(alpha: 0.95),
+                linksFarbe.withValues(alpha: 0.7),
               ]),
               borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(4), right: Radius.circular(1)),
@@ -754,8 +766,8 @@ class _MomentumBar extends StatelessWidget {
             height: 8,
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [
-                _cRed.withValues(alpha: 0.55),
-                _cRed.withValues(alpha: 0.85),
+                rechtsFarbe.withValues(alpha: 0.7),
+                rechtsFarbe.withValues(alpha: 0.95),
               ]),
               borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(1), right: Radius.circular(4)),
