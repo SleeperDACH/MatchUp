@@ -1512,6 +1512,24 @@ Zuständen keinen Kopf.
   (`app/widgets/leise_reiter.dart`), gemeinsam mit dem Favoriten-Tab. Die
   Reiter-Symbole sind mit entfallen — vier Wörter nebeneinander brauchen keine
   Piktogramme.
+  **Die erste Fassung war dafür zu leise** und hatte einen Platzierungsfehler:
+  ein 2 px breiter Rahmenstrich über die volle Wortbreite, hart auf der
+  Unterkante der Leiste — und weil sie im `AppBar.bottom` sitzt, begann direkt
+  darunter die erste Karte. Der Strich sah aus, als gehöre er zu ihr
+  („klebt an der MatchUp-Box"). Jetzt: eine **kurze gerundete Marke** statt
+  eines Unterstrichs, sie **wächst hinein** statt umzuspringen, und darunter
+  liegen Luft und eine Haarlinie über die volle Breite — dieselbe Trennung wie
+  bei den Kapitelmarken. Die Höhe ist von 44 auf 52 gegangen.
+  **Falle dabei, dieselbe wie in den Fantasy-Einstellungen:**
+  `AnimatedDefaultTextStyle` *ersetzt* den Stil, es ergänzt ihn nicht. Ein
+  blankes `TextStyle` verliert damit die `fontFamily` — in der Vorschau wurden
+  die Reiter zu leeren Kästchen, auf dem Gerät wäre es stumm Roboto statt
+  Barlow Condensed gewesen. Der Stil leitet sich deshalb per `copyWith` aus
+  `Theme.of(context).textTheme` ab. Ohne
+  `test/leise_reiter_vorschau_test.dart` wäre das durchgegangen; die Vorschau
+  zeigt beide Einbauorte (vier Wörter im `AppBar.bottom`, zwei mitten im
+  Schirm) und **unter jeder Leiste eine angedeutete Karte** — ohne die ließe
+  sich der Abstand, um den es ging, gar nicht beurteilen.
 - **Der Spieltag benutzt die gemeinsame Zeilenform** (`fixturesWithDateHeaders`).
   Er kam als `Fixture` und wird dafür auf `TeamFixture` gedreht — dieselben
   Felder, anderer Einstiegspunkt in dieselben Daten. Drei Darstellungen
