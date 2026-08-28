@@ -28,6 +28,7 @@ import 'player_pool_screen.dart';
 import 'trade_screen.dart';
 import 'weekly_recap_screen.dart';
 import '../../../app/widgets/leise_reiter.dart';
+import '../../../app/widgets/matchup_chevron.dart';
 
 /// Vollwertiger Fantasy-Liga-Screen mit Tabs. Zeigt schon vor dem Draft
 /// Tabelle, Teilnehmer und (leeren) Kader an; die Übersicht führt durch
@@ -67,9 +68,17 @@ class FantasyLeagueScreen extends ConsumerWidget {
           // lauteste Element des Schirms und sagte nur, welcher Reiter offen
           // ist. Die Symbole sind mit weggefallen — vier Wörter nebeneinander
           // brauchen keine Piktogramme, um unterscheidbar zu sein.
-          bottom: const LeiseReiter(
-            titel: ['Übersicht', 'MatchUp', 'Kader', 'Tabelle'],
+          bottom: LeiseReiter(
+            titel: const ['Übersicht', 'MatchUp', 'Kader', 'Tabelle'],
             horizontal: 12,
+            // Der MatchUp-Reiter trägt das Markenzeichen statt des Wortes.
+            // Aktiv in den Markenfarben (grün|rot), ruhend einfarbig
+            // mitgedämpft wie die Nachbarwörter — sonst riefe das Logo als
+            // einziges Element dauerhaft laut.
+            zeichen: {
+              1: (aktiv, farbe) =>
+                  MatchUpChevron(size: 17, color: aktiv ? null : farbe),
+            },
           ),
         ),
         body: TabBarView(

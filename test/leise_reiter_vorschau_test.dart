@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/app/widgets/leise_reiter.dart';
+import 'package:matchup/app/widgets/matchup_chevron.dart';
 
 import 'support/schrift.dart';
 
@@ -29,7 +30,15 @@ void main() {
             style: const TextStyle(color: Colors.white54, fontSize: 12)),
       );
 
-  Widget fall(String titel, List<String> reiter, int aktiv) => Padding(
+  // Der MatchUp-Reiter trägt das Markenzeichen statt des Wortes.
+  final zeichen = {
+    1: (bool aktiv, Color farbe) =>
+        MatchUpChevron(size: 17, color: aktiv ? null : farbe),
+  };
+
+  Widget fall(String titel, List<String> reiter, int aktiv,
+          {bool mitLogo = false}) =>
+      Padding(
         padding: const EdgeInsets.only(bottom: 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +52,11 @@ void main() {
             DefaultTabController(
               length: reiter.length,
               initialIndex: aktiv,
-              child: LeiseReiter(titel: reiter, horizontal: 12),
+              child: LeiseReiter(
+                titel: reiter,
+                horizontal: 12,
+                zeichen: mitLogo ? zeichen : const {},
+              ),
             ),
             karte('Inhalt beginnt hier'),
           ],
@@ -51,7 +64,7 @@ void main() {
       );
 
   testWidgets('Vorschau: Reiterleiste', (tester) async {
-    tester.view.physicalSize = const Size(402 * 3, 620 * 3);
+    tester.view.physicalSize = const Size(402 * 3, 800 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
@@ -67,13 +80,19 @@ void main() {
                 'MatchUp',
                 'Kader',
                 'Tabelle',
-              ], 0),
+              ], 0, mitLogo: true),
               fall('FANTASY-LIGA · DRITTER REITER', const [
                 'Übersicht',
                 'MatchUp',
                 'Kader',
                 'Tabelle',
-              ], 2),
+              ], 2, mitLogo: true),
+              fall('FANTASY-LIGA · LOGO AKTIV', const [
+                'Übersicht',
+                'MatchUp',
+                'Kader',
+                'Tabelle',
+              ], 1, mitLogo: true),
               fall('FAVORITEN-TAB', const ['Spielplan', 'News'], 0),
             ],
           ),

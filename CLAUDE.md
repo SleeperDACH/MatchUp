@@ -1512,6 +1512,18 @@ Zuständen keinen Kopf.
   (`app/widgets/leise_reiter.dart`), gemeinsam mit dem Favoriten-Tab. Die
   Reiter-Symbole sind mit entfallen — vier Wörter nebeneinander brauchen keine
   Piktogramme.
+  **Die Leiste nimmt die volle Breite ein**, jeder Reiter denselben Anteil.
+  Vorher standen die Wörter links zusammengedrängt in einer waagerecht
+  scrollbaren Zeile, und rechts blieb Leere — die Leiste sah aus wie ein
+  angefangener Satz. Damit ist auch das Scrollen weg: Passt ein Wort nicht,
+  schrumpft es (`FittedBox`), wie überall sonst.
+  **Der MatchUp-Reiter trägt das Markenzeichen statt des Wortes** — aktiv in
+  den Markenfarben (grün|rot), ruhend einfarbig mitgedämpft wie die
+  Nachbarwörter; sonst riefe das Logo als einziges Element dauerhaft laut. Die
+  Zeile hat dafür eine **feste Höhe**, damit ein Zeichen die Marke nicht gegen
+  die Wörter der Nachbarreiter verschiebt. Der Text aus `titel` bleibt
+  trotzdem stehen: als Beschriftung für die Vorlesehilfe — ein Logo ohne Namen
+  ist für VoiceOver eine stumme Schaltfläche.
   **Die erste Fassung war dafür zu leise** und hatte einen Platzierungsfehler:
   ein 2 px breiter Rahmenstrich über die volle Wortbreite, hart auf der
   Unterkante der Leiste — und weil sie im `AppBar.bottom` sitzt, begann direkt

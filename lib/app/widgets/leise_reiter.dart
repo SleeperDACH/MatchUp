@@ -9,19 +9,17 @@ import 'package:flutter/material.dart';
 /// steht deshalb diese Fassung; wo eine echte Auswahl getroffen wird, bleibt
 /// die gefüllte Pille sinnvoll.
 ///
-/// **Die erste Fassung war dafür zu leise**: ein 2 px breiter Rahmenstrich
-/// unter dem Wort, über die ganze Wortbreite, hart auf der Unterkante. Drei
-/// Dinge sind daraus geworden:
+/// **Die Leiste nimmt die volle Breite ein**, jeder Reiter denselben Anteil.
+/// Vorher standen die Wörter links zusammengedrängt in einer waagerecht
+/// scrollbaren Zeile, und rechts blieb Leere — die Leiste sah aus wie ein
+/// angefangener Satz. Damit ist auch das Scrollen weg: Passt ein Wort nicht,
+/// schrumpft es (`FittedBox`), wie überall sonst in dieser App.
 ///
-///  * **Eine kurze, gerundete Marke** statt eines Rahmens über die volle
-///    Wortbreite — sie liest sich als gesetztes Zeichen, nicht als Unterstrich.
-///  * **Sie wächst hinein** (`AnimatedContainer`), statt beim Wechsel
-///    umzuspringen. Das ist die ganze Bewegung, die die Leiste braucht.
-///  * **Sie klebt nicht mehr am Inhalt.** Vorher saß der Strich auf der
-///    Unterkante der Leiste, und im `AppBar.bottom` begann direkt darunter die
-///    erste Karte — der Strich sah aus, als gehöre er zu ihr. Jetzt liegt
-///    darunter Luft und eine Haarlinie über die volle Breite, dieselbe
-///    Trennung wie bei den Kapitelmarken im Live- und Favoriten-Tab.
+/// **Die Marke unter dem aktiven Wort** ist kurz und gerundet, kein Rahmen über
+/// die volle Wortbreite, und sie wächst hinein statt umzuspringen. Darunter
+/// liegen Luft und eine Haarlinie über die volle Breite — dieselbe Trennung wie
+/// bei den Kapitelmarken. Ohne die klebte der Strich im `AppBar.bottom` an der
+/// ersten Karte darunter und sah aus, als gehöre er zu ihr.
 ///
 /// Braucht einen [DefaultTabController] darüber — wie eine `TabBar` auch.
 class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
@@ -30,6 +28,7 @@ class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
     required this.titel,
     this.horizontal = 14,
     this.mitLinie = true,
+    this.zeichen = const {},
   });
 
   final List<String> titel;
@@ -41,7 +40,18 @@ class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
   /// Haarlinie am unteren Rand — trennt die Leiste vom Inhalt darunter.
   final bool mitLinie;
 
-  /// Breite der Marke unter dem aktiven Wort.
+  /// Reiter, die statt des Wortes ein **Zeichen** tragen: Index → Bauplan.
+  ///
+  /// Der Bauplan bekommt gesagt, ob sein Reiter aktiv ist und welche Farbe der
+  /// Text an dieser Stelle hätte — so kann ein Logo im Ruhezustand mitgedämpft
+  /// werden, ohne dass die Leiste die Marke kennen muss.
+  ///
+  /// **Der Text aus [titel] bleibt trotzdem stehen** — als Beschriftung für die
+  /// Vorlesehilfe. Ein Logo ohne Namen ist für VoiceOver eine stumme
+  /// Schaltfläche.
+  final Map<int, Widget Function(bool aktiv, Color farbe)> zeichen;
+
+  /// Breite der Marke unter dem aktiven Reiter.
   static const _markeBreite = 20.0;
 
   static const _hoehe = 52.0;
@@ -61,25 +71,22 @@ class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(horizontal: horizontal),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      for (var i = 0; i < titel.length; i++) ...[
-                        _Reiter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontal),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < titel.length; i++)
+                      Expanded(
+                        child: _Reiter(
                           text: titel[i],
+                          zeichen: zeichen[i],
                           aktiv: controller.index == i,
                           onTap: () => controller.animateTo(i),
                           scheme: scheme,
                         ),
-                        if (i < titel.length - 1) const SizedBox(width: 20),
-                      ],
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -101,15 +108,20 @@ class _Reiter extends StatelessWidget {
     required this.aktiv,
     required this.onTap,
     required this.scheme,
+    this.zeichen,
   });
 
   final String text;
   final bool aktiv;
   final VoidCallback onTap;
   final ColorScheme scheme;
+  final Widget Function(bool aktiv, Color farbe)? zeichen;
 
   @override
   Widget build(BuildContext context) {
+    final farbe = aktiv
+        ? scheme.onSurface
+        : scheme.onSurfaceVariant.withValues(alpha: 0.65);
     return Semantics(
       button: true,
       selected: aktiv,
@@ -121,30 +133,39 @@ class _Reiter extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 160),
-              curve: Curves.easeOut,
-              // **Aus dem Theme abgeleitet, nicht neu gebaut.**
-              // `AnimatedDefaultTextStyle` *ersetzt* den Stil, es ergänzt ihn
-              // nicht — ein blankes `TextStyle` verliert damit die
-              // `fontFamily`, und die Reiter fielen auf Roboto zurück statt
-              // Barlow Condensed zu benutzen. In der Vorschau sind sie dabei
-              // zu leeren Kästchen geworden; auf dem Gerät wäre es die
-              // falsche Schrift gewesen — leiser und schwerer zu bemerken.
-              // Dieselbe Falle wie bei `ListTileThemeData` in den
-              // Fantasy-Einstellungen.
-              style: (Theme.of(context).textTheme.titleSmall ??
-                      const TextStyle())
-                  .copyWith(
-                fontSize: 15,
-                // Der Abstand zwischen aktiv und ruhend trägt die Auskunft
-                // mit; die Marke allein wäre bei vier Wörtern zu wenig.
-                fontWeight: aktiv ? FontWeight.w800 : FontWeight.w600,
-                color: aktiv
-                    ? scheme.onSurface
-                    : scheme.onSurfaceVariant.withValues(alpha: 0.65),
+            SizedBox(
+              // Feste Zeilenhöhe, damit ein Zeichen die Marke nicht gegen die
+              // Wörter der Nachbarreiter verschiebt.
+              height: 22,
+              child: Center(
+                child: zeichen != null
+                    ? zeichen!(aktiv, farbe)
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 160),
+                          curve: Curves.easeOut,
+                          // **Aus dem Theme abgeleitet, nicht neu gebaut.**
+                          // `AnimatedDefaultTextStyle` *ersetzt* den Stil, es
+                          // ergänzt ihn nicht — ein blankes `TextStyle`
+                          // verliert damit die `fontFamily`, und die Reiter
+                          // fielen stumm auf Roboto zurück statt Barlow
+                          // Condensed zu benutzen. Dieselbe Falle wie bei
+                          // `ListTileThemeData` in den Fantasy-Einstellungen.
+                          style: (Theme.of(context).textTheme.titleSmall ??
+                                  const TextStyle())
+                              .copyWith(
+                            fontSize: 15,
+                            // Das Gewicht trägt die Auskunft mit; die Marke
+                            // allein wäre bei vier Reitern zu wenig.
+                            fontWeight:
+                                aktiv ? FontWeight.w800 : FontWeight.w600,
+                            color: farbe,
+                          ),
+                          child: Text(text, maxLines: 1),
+                        ),
+                      ),
               ),
-              child: Text(text),
             ),
             const SizedBox(height: 6),
             AnimatedContainer(
