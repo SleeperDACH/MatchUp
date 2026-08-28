@@ -165,9 +165,9 @@ class RosterConfig {
     this.defMin = 3,
     this.defMax = 5,
     this.midMin = 2,
-    this.midMax = 5,
+    this.midMax = 6,
     this.fwdMin = 1,
-    this.fwdMax = 3,
+    this.fwdMax = 4,
     this.maxGk,
     this.maxDef,
     this.maxMid,
@@ -184,7 +184,17 @@ class RosterConfig {
 
   /// Flexible Formation: erlaubte Spanne je Position in der Startelf.
   /// Torwart ist immer genau [gk] (= 1). Die Summe ergibt stets [starters]
-  /// (= 11). Defaults im FPL-Stil: ABW 3–5, MF 2–5, ST 1–3.
+  /// (= 11).
+  ///
+  /// Vorgabe: **ABW 3–5, MF 2–6, ST 1–4** — das ergibt elf Formationen. Die
+  /// engere FPL-Spanne (MF bis 5, ST bis 3) ließ nur acht zu und schloss dabei
+  /// gängige Aufstellungen aus: 3-3-4, 4-2-4 und 3-6-1 waren nicht wählbar.
+  /// Migration 0085 weitet die Spannen auch in bestehenden Ligen — **nur nach
+  /// oben**: Eine weitere Spanne kann keine gespeicherte Elf ungültig machen,
+  /// sie fügt nur Möglichkeiten hinzu.
+  ///
+  /// Mindestens ein Stürmer bleibt Pflicht ([fwdMin] 1). Eine Elf ohne Sturm
+  /// (5-5-0) wäre keine Formationslücke, sondern eine Regeländerung.
   final int defMin;
   final int defMax;
   final int midMin;

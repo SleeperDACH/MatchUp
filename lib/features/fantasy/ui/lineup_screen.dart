@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widgets/pill_selector.dart';
+
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../logic/aufstellung_sperre.dart';
@@ -625,10 +627,15 @@ class _FormationChips extends StatelessWidget {
           for (final fm in formations)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text('${fm.$1}-${fm.$2}-${fm.$3}'),
+              // `PillChip` statt `ChoiceChip`: Material-Auswahlelemente ziehen
+              // ihre Auswahlfarbe aus `secondaryContainer`, und aus dem grünen
+              // Seed wird das ein stumpfes Oliv, das zu nichts sonst in der
+              // App passt (siehe CLAUDE.md). Fällt mit elf Formationen noch
+              // mehr auf als mit acht.
+              child: PillChip(
+                label: '${fm.$1}-${fm.$2}-${fm.$3}',
                 selected: fm == current,
-                onSelected: (_) => onSelected(fm),
+                onTap: () => onSelected(fm),
               ),
             ),
         ],

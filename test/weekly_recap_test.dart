@@ -94,10 +94,15 @@ void main() {
   group('MVP & Bank-Held', () {
     test('MVP ist der punktbeste Starter, Bank-Held der beste Nicht-Starter',
         () {
-      // b hat vier treffende Stürmer: fwd0..2 je 3 Tore (58 Pkt, Startelf),
-      // fwd3 mit 2 Toren (42 Pkt). Da max. 3 Stürmer starten, fällt fwd3 in
-      // der besten Elf auf die Bank -> Bank-Held. MVP ist mit 58 Pkt bei
-      // Gleichstand der kleinste Spieler-ID: a-fwd0.
+      // b hat fünf treffende Stürmer: fwd0..3 je 3 Tore (58 Pkt, Startelf),
+      // fwd4 mit 2 Toren (42 Pkt). Da seit Migration 0085 höchstens **vier**
+      // Stürmer starten (3-3-4), fällt fwd4 in der besten Elf auf die Bank ->
+      // Bank-Held. MVP ist mit 58 Pkt bei Gleichstand der kleinste
+      // Spieler-ID: a-fwd0.
+      //
+      // Vorher stand hier ein Stürmer weniger, weil die Grenze bei drei lag.
+      // Der Test hängt also bewusst an der Formationsspanne — wer sie wieder
+      // anfasst, muss hier vorbeikommen.
       final recap = computeWeeklyRecap(
         round: 1,
         ids: ['a', 'b'],
@@ -105,7 +110,8 @@ void main() {
         playerById: playerById,
         lineups: const [],
         stats: statsWithGoals(
-            {'a-fwd0': 3, 'b-fwd0': 3, 'b-fwd1': 3, 'b-fwd2': 3, 'b-fwd3': 2}),
+            {'a-fwd0': 3, 'b-fwd0': 3, 'b-fwd1': 3, 'b-fwd2': 3, 'b-fwd3': 3,
+              'b-fwd4': 2}),
         scoring: scoring,
         rosterConfig: roster,
       );
@@ -114,8 +120,8 @@ void main() {
       // 10 (Einsatz 90 Min) + 3*16 (Tore) = 58
       expect(recap.mvp!.points, 58);
 
-      // fwd3: 10 (Einsatz) + 2*16 = 42 -> bester Bankspieler der Liga.
-      expect(recap.benchHero!.playerId, 'b-fwd3');
+      // fwd4: 10 (Einsatz) + 2*16 = 42 -> bester Bankspieler der Liga.
+      expect(recap.benchHero!.playerId, 'b-fwd4');
       expect(recap.benchHero!.managerId, 'b');
       expect(recap.benchHero!.points, 42);
     });

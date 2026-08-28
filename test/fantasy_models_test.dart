@@ -98,7 +98,7 @@ void main() {
       expect(r.starters, 11);
     });
 
-    test('RosterConfig: flexible Formation (FPL-Grenzen)', () {
+    test('RosterConfig: flexible Formation (Spannen der Vorgabe)', () {
       const r = RosterConfig();
       // gültige Formationen
       expect(
@@ -114,9 +114,13 @@ void main() {
       expect(
           r.isValidFormation(gkCount: 1, defCount: 2, midCount: 5, fwdCount: 3),
           isFalse);
-      // zu viele Stürmer
+      // Seit Migration 0085 erlaubt: vier Stürmer.
       expect(
           r.isValidFormation(gkCount: 1, defCount: 3, midCount: 3, fwdCount: 4),
+          isTrue);
+      // Fünf sind weiterhin zu viele.
+      expect(
+          r.isValidFormation(gkCount: 1, defCount: 3, midCount: 2, fwdCount: 5),
           isFalse);
       // falsche Gesamtzahl
       expect(
@@ -134,8 +138,8 @@ void main() {
       for (final (d, m, f) in fms) {
         expect(1 + d + m + f, 11);
         expect(d, inInclusiveRange(3, 5));
-        expect(m, inInclusiveRange(2, 5));
-        expect(f, inInclusiveRange(1, 3));
+        expect(m, inInclusiveRange(2, 6));
+        expect(f, inInclusiveRange(1, 4));
       }
       expect(fms, contains((4, 4, 2)));
       expect(fms, contains((3, 5, 2)));
@@ -148,7 +152,9 @@ void main() {
       expect(r.defMin, 3);
       expect(r.defMax, 5);
       expect(r.midMin, 2);
-      expect(r.fwdMax, 3);
+      expect(r.midMax, 6);
+      expect(r.fwdMin, 1);
+      expect(r.fwdMax, 4);
     });
 
     test('FantasyMode fromId Fallback', () {

@@ -1383,6 +1383,42 @@ Leerzeichen von `wc`. Wer im Log nach Layoutfehlern sucht: auf `overflowed`
 suchen, ohne Präfix, und den Bereich ab der letzten Zeile `Restarted
 application` nehmen — sonst zählt man Fehler aus dem Code von vor dem Neustart.
 
+### Mehr Aufstellungen: von acht auf elf
+
+Die Spannen standen im FPL-Zuschnitt (ABW 3–5, MF 2–5, ST 1–3). Daraus ergaben
+sich genau **acht** Formationen — und drei gängige fehlten:
+
+| fehlte | blockiert durch |
+|---|---|
+| 3-3-4, 4-2-4 | `fwdMax` 3 |
+| 3-6-1 | `midMax` 5 |
+
+Mit **MF bis 6 und ST bis 4** sind es elf. Mindestens ein Stürmer bleibt Pflicht
+(`fwdMin` 1): Eine Elf ohne Sturm wäre keine Formationslücke, sondern eine
+Regeländerung.
+
+**Warum das eine Migration brauchte und nicht nur neue Vorgabewerte:** Alle
+bestehenden Ligen tragen die Spannen **ausgeschrieben** in
+`fantasy_leagues.roster` — `RosterConfig.toJson` schreibt sie immer. Ein
+geänderter Default in Dart hätte dort nichts bewirkt. Migration 0085 weitet sie
+mit `greatest`, also **nur nach oben und nur wo nötig**: Eine Liga, die ihre
+Spanne bewusst weiter gesetzt hat, behält sie. Mitten in der Saison ist das
+unbedenklich — eine weitere Spanne kann keine gespeicherte Aufstellung ungültig
+machen, sie fügt Möglichkeiten hinzu.
+
+Zwei Dinge, die dabei mit hochkamen:
+
+- **Die Formationsleiste benutzte `ChoiceChip`** — genau das Material-Element,
+  das diese Datei verbietet (stumpfes Oliv aus `secondaryContainer`). Jetzt
+  `PillChip`. Mit elf Einträgen fiel es mehr auf als mit acht; gescrollt wurde
+  schon vorher.
+- **Ein bestehender Test hing an der alten Grenze**, ohne es zu sagen:
+  `weekly_recap_test` baute „vier treffende Stürmer, einer muss auf die Bank"
+  — mit `fwdMax` 4 starten alle vier, und der Bank-Held wurde ein Verteidiger.
+  Das Szenario ist um einen Stürmer verschoben und benennt die Abhängigkeit
+  jetzt im Kommentar. `test/formationen_test.dart` hält zusätzlich die
+  vollständige Liste fest und prüft, dass die Weitung **nichts** wegnimmt.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
