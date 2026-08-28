@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
+import '../logic/lineup_autosave.dart';
+import '../data/fantasy_league_repository.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
@@ -62,25 +64,88 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
 
   List<String> _lastIds = const [];
   bool _valid = false;
-  int _effRound = 34;
+  /// Spieltag, für den gespeichert wird — `null`, solange er noch lädt.
+  ///
+  /// Vorher war das ein `int` und bekam im `build` den Wert `round`, der
+  /// seinerseits aus `current ?? 34` kam. Wer seine Elf zog, bevor
+  /// `fantasyCurrentRoundProvider` geantwortet hatte, speicherte sie damit auf
+  /// **Spieltag 34** — angenommen vom Server, unsichtbar für Spieltag 1, keine
+  /// Fehlermeldung. In `fantasy_lineups` steht genau so eine Zeile (07.07.).
+  /// Der Schirm rendert nämlich, sobald der *Pool* da ist; auf den Spieltag
+  /// wartet er nicht.
+  int? _effRound;
   Timer? _saveTimer;
+
+  /// Es gibt eine Änderung, die noch nicht beim Server angekommen ist.
+  ///
+  /// Ohne diese Merkung log die Fußzeile: Sie zeigte „automatisch
+  /// gespeichert", während in Wahrheit noch ein Timer lief, ein Speichern
+  /// unterwegs war — oder gar nichts passieren konnte, weil die Elf
+  /// unvollständig war.
+  bool _dirty = false;
+
+  /// Für den Flush in [dispose] festgehalten: `ref` ist dann nicht mehr
+  /// verlässlich zu benutzen.
+  FantasyLeagueRepository? _repo;
   Map<String, String?> _clubIcons = const {};
 
   RosterConfig get _roster => widget.league.roster;
 
   @override
+  void initState() {
+    super.initState();
+    _repo = ref.read(fantasyLeagueRepositoryProvider);
+  }
+
+  @override
   void dispose() {
     _saveTimer?.cancel();
+    // Offene Änderung noch abschicken. Vorher hat `cancel()` sie verworfen:
+    // Wer den letzten Spieler zog und innerhalb der 700 ms Verzögerung
+    // zurücktippte, verlor die Aufstellung wortlos — und die Fußzeile hatte
+    // ihm gerade versprochen, dass automatisch gespeichert wird. Ohne await
+    // und ohne Rückmeldung; der Schirm ist weg, aber der Aufruf läuft.
+    if (_dirty && _valid && _effRound != null) {
+      unawaited(_repo!
+          .setLineup(widget.league.id, _effRound!, _lastIds)
+          .catchError((Object e) => debugPrint('[AUFSTELLUNG] Flush: $e')));
+    }
     super.dispose();
   }
 
   /// Änderungen automatisch (leicht verzögert) speichern, sobald die
   /// Aufstellung gültig ist — kein extra Speichern-Button nötig.
   void _autoSave() {
+    _dirty = true;
     _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted && _valid && !_saving) _save(_effRound, _lastIds);
-    });
+    _saveTimer = Timer(const Duration(milliseconds: 700), _versuchenZuSpeichern);
+  }
+
+  /// Ein Speicherversuch, der sich selbst noch einmal einbestellt, statt
+  /// aufzugeben.
+  ///
+  /// Beide Abbrüche hier waren vorher endgültig und stumm:
+  ///  * **Läuft schon ein Speichern**, wurde die *neuere* Änderung fallen
+  ///    gelassen. Zwei Züge kurz hintereinander — der zweite kam nie an.
+  ///  * **Ist die Elf unvollständig**, passiert nichts. Das ist richtig (der
+  ///    Server nähme sie ohnehin nicht), aber es muss drüberstehen; sonst
+  ///    füllt jemand zehn von elf Plätzen, liest „wird automatisch
+  ///    gespeichert" und geht.
+  void _versuchenZuSpeichern() {
+    if (!mounted) return;
+    switch (naechsterSpeicherSchritt(
+      gueltig: _valid,
+      laeuftGerade: _saving,
+      spieltag: _effRound,
+    )) {
+      case SpeicherSchritt.spaeterErneut:
+        _saveTimer =
+            Timer(const Duration(milliseconds: 400), _versuchenZuSpeichern);
+      case SpeicherSchritt.unvollstaendig:
+        setState(() {}); // Fußzeile sagt, dass nichts gespeichert ist.
+      case SpeicherSchritt.speichern:
+        _save(_effRound!, _lastIds);
+    }
   }
 
   /// Spielerprofil (Leistungstabelle + Droppen) öffnen.
@@ -139,6 +204,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       await ref
           .read(fantasyLeagueRepositoryProvider)
           .setLineup(widget.league.id, round, ids);
+      // Nur bei Erfolg: Ein Fehlschlag lässt die Änderung offen, damit der
+      // Flush in dispose sie noch mitnimmt.
+      _dirty = false;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -242,7 +310,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                   slots[PlayerPosition.fwd]?.whereType<String>().length ?? 0);
           _lastIds = assigned.toList();
           _valid = valid;
-          _effRound = round;
+          _effRound = current; // nur der echte Wert, nie der 34er-Notnagel
           _clubIcons = clubIcons;
 
           // Bank: Kaderspieler, die nicht aufgestellt sind.
@@ -319,18 +387,41 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(_saving ? Icons.sync : Icons.cloud_done_outlined,
+                      // Drei Zustände, nicht einer. Vorher stand hier auch
+                      // dann „wird automatisch gespeichert", wenn gar nichts
+                      // gespeichert werden konnte — die Zeile war der Grund,
+                      // warum ein verlorener Stand niemandem auffiel.
+                      Icon(
+                          !_valid
+                              ? Icons.error_outline
+                              : (_saving || _dirty)
+                                  ? Icons.sync
+                                  : Icons.cloud_done_outlined,
                           size: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 6),
-                      Text(
-                          _saving
-                              ? 'Speichere …'
-                              : 'Änderungen werden automatisch gespeichert',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
+                          color: !_valid
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context)
                                   .colorScheme
-                                  .onSurfaceVariant)),
+                                  .onSurfaceVariant),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                            !_valid
+                                ? 'Nicht gespeichert – die Elf ist noch nicht '
+                                    'vollständig'
+                                : (_saving || _dirty)
+                                    ? 'Speichere …'
+                                    : 'Gespeichert',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                    color: !_valid
+                                        ? Theme.of(context).colorScheme.error
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant)),
+                      ),
                     ],
                   ),
                 )

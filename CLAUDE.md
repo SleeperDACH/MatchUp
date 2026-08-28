@@ -1064,6 +1064,52 @@ gecachten Katalog auflöst, ist „nicht gefunden" ein eigener Zustand.** Ihn au
 denselben Pixel zu rendern wie „leer" macht aus einem Ladeproblem einen
 Datenverlust — für den, der draufschaut.
 
+### Die Aufstellung speicherte automatisch — und verlor dabei vier Wege lang
+
+Gemeldet als „die Aufstellungsbearbeitung hat nicht gespeichert". Der Speichern-
+Pfad hatte **keinen Knopf**, sondern einen Timer mit 700 ms Verzögerung und
+darunter die Zeile *„Änderungen werden automatisch gespeichert"*. Diese Zeile
+war der eigentliche Fehler: Sie stand da auch dann, wenn gar nichts gespeichert
+werden konnte.
+
+Vier Wege, auf denen eine Änderung wortlos verschwand:
+
+- **`dispose()` verwarf den offenen Speichervorgang.** `_saveTimer?.cancel()`
+  und sonst nichts. Wer den letzten Spieler zog und innerhalb der 700 ms
+  zurücktippte, verlor die Elf. Jetzt wird eine offene, gültige Änderung im
+  `dispose` noch abgeschickt (ohne `await`, der Schirm ist ja weg) — dafür hält
+  der State das Repository seit `initState` selbst, weil `ref` dann nicht mehr
+  verlässlich ist.
+- **Lief schon ein Speichern, fiel die neuere Änderung weg.** Die Bedingung
+  `!_saving` brach ab, ohne einen neuen Versuch zu planen. Zwei Züge kurz
+  hintereinander — der zweite kam nie an. Jetzt bestellt sich der Versuch neu
+  ein.
+- **Bei unvollständiger Elf passierte nichts, und niemand sagte es.** Das
+  Nichtsenden ist richtig (der Server nähme sie ohnehin nicht), das Schweigen
+  nicht: Wer zehn von elf Plätzen füllt und „wird automatisch gespeichert"
+  liest, geht beruhigt weg.
+- **Der Notnagel `?? 34` schrieb auf den falschen Spieltag.** `round` kam aus
+  `current ?? 34`, und der Schirm rendert, sobald der *Pool* geladen ist — auf
+  `fantasyCurrentRoundProvider` wartet er nicht. Wer schnell genug zog, sicherte
+  seine Elf für **Spieltag 34**: vom Server angenommen, für Spieltag 1
+  unsichtbar, ohne Fehlermeldung. In `fantasy_lineups` steht genau so eine
+  Zeile (07.07.2026). `_effRound` ist jetzt `int?` und wird nur mit dem echten
+  Wert belegt; ohne Spieltag wird gewartet, nicht geraten.
+
+Die Fußzeile kennt jetzt **drei** Zustände statt einem: „Nicht gespeichert – die
+Elf ist noch nicht vollständig" (rot), „Speichere …", „Gespeichert".
+
+Gehalten wird das von `test/aufstellung_autospeichern_test.dart`. Die
+Entscheidung lag als Bedingung in einem Timer-Rückruf und war damit nicht
+prüfbar; sie steht jetzt als reine Funktion in
+`logic/lineup_autosave.dart` (`naechsterSpeicherSchritt`). Jeder Testfall dort
+war einmal eine Änderung, die verschwand.
+
+**Die Lehre:** Ein Auto-Speicher ohne Knopf nimmt dem Nutzer die Rückmeldung,
+die der Knopf gab. Dann muss die Statuszeile *jeden* Zustand sagen können —
+besonders „ich habe nichts gespeichert". Eine Zeile, die immer dasselbe
+verspricht, ist schlimmer als keine.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
