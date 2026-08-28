@@ -39,6 +39,10 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
 
   /// Letzter Fehler des Auto-Picks, `null` solange er durchläuft.
   String? _autopickFehler;
+
+  /// Spieler-IDs, für die schon ein Nachladen des Pools ausgelöst wurde —
+  /// sonst liefe das Nachladen im Sekundentakt des Tickers.
+  final _poolNachgeladen = <String>{};
   late final DraftRepository _repo;
 
   /// Chat ist der 4. Tab (Index 3).
@@ -100,7 +104,37 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
         ref.invalidate(fantasyManagersProvider(_leagueId));
       }
     }
+    _poolNachladenFallsUnbekannt();
     if (mounted) setState(() {}); // Countdown aktualisieren
+  }
+
+  /// Lädt den Spielerpool nach, sobald ein Pick auf einen Spieler zeigt, den
+  /// dieser Client nicht kennt.
+  ///
+  /// `playerPoolProvider` lädt einmal je App-Sitzung; `sync-squads` spielt
+  /// täglich Zugänge ein, und der Auto-Pick zieht serverseitig aus der vollen
+  /// `players`-Tabelle. Wer die App vor dem Sync geöffnet hatte, hatte den
+  /// Spieler nicht im Cache — im Brett blieb das Feld leer, und aus dem
+  /// eigenen Kader fiel er wortlos heraus. Genau deshalb trat es nur „bei
+  /// manchen Accounts" auf: Es hing daran, wann wer die App gestartet hat.
+  ///
+  /// Nicht im `build` aufrufen — `ref.invalidate` während des Aufbaus ist
+  /// verboten; der Ticker ist die passende Stelle.
+  void _poolNachladenFallsUnbekannt() {
+    final pool = ref.read(playerPoolProvider).valueOrNull;
+    if (pool == null) return;
+    final bekannt = {for (final p in pool) p.id};
+    final picks =
+        ref.read(draftPicksProvider(_leagueId)).valueOrNull ?? const <DraftPick>[];
+    final fehlend = <String>{
+      for (final p in picks)
+        if (!bekannt.contains(p.playerId)) p.playerId,
+    }..removeAll(_poolNachgeladen);
+    if (fehlend.isEmpty) return;
+    _poolNachgeladen.addAll(fehlend);
+    debugPrint('[DRAFT] Pool kennt ${fehlend.length} gedraftete Spieler nicht '
+        '— lade nach');
+    ref.invalidate(playerPoolProvider);
   }
 
   /// Macht einen fehlschlagenden Auto-Pick im Raum sichtbar.
@@ -1555,6 +1589,13 @@ class _BoardTab extends StatelessWidget {
     final pickInRound = round0.isEven ? slot + 1 : n - slot;
     final code = '$round.${pickInRound.toString().padLeft(2, '0')}';
     final player = pick == null ? null : playerById[pick.playerId];
+    // Gedraftet, aber der lokale Pool kennt den Spieler nicht: Der Pool wird
+    // einmal je App-Sitzung geladen, `sync-squads` spielt aber täglich Zugänge
+    // ein, und der Auto-Pick zieht serverseitig aus der vollen Tabelle. Die
+    // Zelle zeigte dann nur ihren Pick-Code — also exakt das Bild eines freien
+    // Feldes, obwohl gedraftet wurde. Sie bekommt jetzt Fläche und Text; der
+    // Pool lädt parallel nach (siehe _poolNachladenFallsUnbekannt).
+    final unbekannt = pick != null && player == null;
     final mine = col.mine;
     final placeholder = col.userId == null;
     // Gedraftete Karte in ihrer Positionsfarbe (TW blau, ABW gelb, MF grün,
@@ -1569,8 +1610,8 @@ class _BoardTab extends StatelessWidget {
       decoration: BoxDecoration(
         color: player != null
             ? positionColor(player.position)
-            : scheme.surfaceContainerHighest
-                .withValues(alpha: placeholder ? 0.15 : 0.3),
+            : scheme.surfaceContainerHighest.withValues(
+                alpha: unbekannt ? 0.75 : (placeholder ? 0.15 : 0.3)),
         borderRadius: BorderRadius.circular(8),
         border: isCurrent
             ? Border.all(color: scheme.primary, width: 1.6)
@@ -1605,15 +1646,17 @@ class _BoardTab extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            player?.name ?? '',
+            player?.name ?? (unbekannt ? 'Wird geladen …' : ''),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
+              fontStyle: unbekannt ? FontStyle.italic : FontStyle.normal,
               color: player != null
                   ? _cBoardInk
-                  : scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  : scheme.onSurfaceVariant
+                      .withValues(alpha: unbekannt ? 0.9 : 0.5),
             ),
           ),
         ],

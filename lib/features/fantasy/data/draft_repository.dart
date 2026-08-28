@@ -73,9 +73,14 @@ class DraftRepository {
       .map((rows) => rows.isEmpty ? null : FantasyLeague.fromJson(rows.first));
 
   /// Alle Picks der Liga in Echtzeit, nach Pick-Nummer sortiert.
+  /// Der Schlüssel muss dem echten Primärschlüssel entsprechen
+  /// (`league_id, phase, pick_number`). Ohne `phase` hält der Supabase-Stream
+  /// Pick 1 des Aufbau-Drafts und Pick 1 des U20-Drafts für dieselbe Zeile und
+  /// überschreibt die eine mit der anderen — im Dynasty-Modus fängt die
+  /// Nummerierung je Phase wieder bei 1 an.
   Stream<List<DraftPick>> picksStream(String leagueId) => _client
       .from('draft_picks')
-      .stream(primaryKey: ['league_id', 'pick_number'])
+      .stream(primaryKey: ['league_id', 'phase', 'pick_number'])
       .eq('league_id', leagueId)
       .map((rows) => (rows.map(DraftPick.fromJson).toList())
         ..sort((a, b) => a.phase == b.phase

@@ -991,6 +991,44 @@ Bildern: Der Schirm lebt genau davon, dass Torwart und Stürmer verschieden
 aussehen — ein Bild allein hätte den halben Zweck nicht gezeigt. Der
 Bildvergleich ist fest, der Schirm zeigt kein Datum.
 
+### Ein leeres Feld im Draft-Brett heißt nicht „nicht gedraftet"
+
+Symptom: Ein Spieler war gepickt, aber **bei manchen Accounts** blieb die Zelle
+im Brett leer. Die Serverdaten waren dabei einwandfrei — kein Pick ohne
+Manager, keiner ohne Runde, keine Dublette, jeder Pick zeigte auf eine echte
+`players`-Zeile, und die RLS auf `players` ist `true` für alle.
+
+Die Ursache war der **lokale Spielerpool**. `playerPoolProvider` lädt einmal je
+App-Sitzung; `sync-squads` spielt aber täglich Zugänge ein, und der Auto-Pick
+zieht serverseitig aus der vollen Tabelle. Wer die App vor dem Sync geöffnet
+hatte, kannte den Spieler nicht. Genau deshalb traf es nur *manche* Accounts:
+Es hing daran, wann wer die App gestartet hat.
+
+Sichtbar wurde daraus nichts, weil das Brett `playerById[pick.playerId]`
+nachschlägt und bei `null` dieselbe Zelle zeichnet wie für ein freies Feld —
+nur den Pick-Code, sonst nichts. **Ein Zustand „ich weiß es nicht" wurde als
+Zustand „da ist nichts" gerendert.** Derselbe Fehler traf den eigenen Kader,
+wo `if (p != null)` den Spieler wortlos aus der Aufstellung fallen ließ.
+
+Drei Änderungen:
+
+- **Ein Pick sieht nie aus wie ein freies Feld.** Kennt der Pool den Spieler
+  nicht, bekommt die Zelle Fläche und „Wird geladen …" statt Leere.
+- **Der Pool lädt nach**, sobald ein Pick auf eine unbekannte ID zeigt
+  (`_poolNachladenFallsUnbekannt`, einmal je ID, aus dem Ticker — `ref.invalidate`
+  im `build` ist verboten).
+- **`picksStream` trägt den vollständigen Primärschlüssel.** Er lautet
+  `league_id, phase, pick_number`; der Client meldete nur zwei Spalten. Im
+  Dynasty-Modus fängt die Pick-Nummerierung je Phase wieder bei 1 an — der
+  Supabase-Stream hätte Pick 1 des Aufbau-Drafts und Pick 1 des U20-Drafts für
+  dieselbe Zeile gehalten und die eine mit der anderen überschrieben. Bisher
+  unentdeckt, weil noch keine Liga eine zweite Phase erreicht hat.
+
+Die Lehre über den Draft hinaus: **Wo ein Client eine Server-ID gegen einen
+gecachten Katalog auflöst, ist „nicht gefunden" ein eigener Zustand.** Ihn auf
+denselben Pixel zu rendern wie „leer" macht aus einem Ladeproblem einen
+Datenverlust — für den, der draufschaut.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
