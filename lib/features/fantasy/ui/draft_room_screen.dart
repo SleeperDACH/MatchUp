@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../../../app/widgets/pill_selector.dart';
 import '../../../core/ui/league_chat.dart';
@@ -35,6 +36,9 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     with SingleTickerProviderStateMixin {
   Timer? _ticker;
   bool _autopickInFlight = false;
+
+  /// Letzter Fehler des Auto-Picks, `null` solange er durchläuft.
+  String? _autopickFehler;
   late final DraftRepository _repo;
 
   /// Chat ist der 4. Tab (Index 3).
@@ -83,6 +87,10 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
         _autopickInFlight = true;
         _repo
             .autopickIfExpired(_leagueId)
+            .then<void>(
+              (_) => _autopickMeldung(null),
+              onError: (Object e) => _autopickMeldung(_kurzeUrsache(e)),
+            )
             .whenComplete(() => _autopickInFlight = false);
       }
       // Auto-Pick-Status live halten: Mitglieder (auto_pick) kommen nicht per
@@ -94,6 +102,25 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     }
     if (mounted) setState(() {}); // Countdown aktualisieren
   }
+
+  /// Macht einen fehlschlagenden Auto-Pick im Raum sichtbar.
+  ///
+  /// Der Aufruf lief lange als Future ohne Zuhörer: Warf der RPC, verschwand
+  /// der Fehler wortlos, und zu sehen war nur, dass die Uhr abläuft und nichts
+  /// passiert. Genau so stand ein Draft siebzehneinhalb Stunden, weil die
+  /// Rangliste die v2-Wertung mit `::int` castete (Migration 0079). Der
+  /// Auto-Pick ist die Notbremse des Drafts — klemmt sie, gehört das in den
+  /// Raum und nicht in ein Log, das niemand liest.
+  void _autopickMeldung(String? ursache) {
+    if (!mounted || _autopickFehler == ursache) return;
+    if (ursache != null) debugPrint('[DRAFT] Auto-Pick scheitert: $ursache');
+    setState(() => _autopickFehler = ursache);
+  }
+
+  /// `PostgrestException.toString()` ist für eine Zeile im Raum zu lang; die
+  /// Meldung allein sagt das Nötige.
+  static String _kurzeUrsache(Object e) =>
+      e is PostgrestException ? e.message : e.toString();
 
   Future<void> _pick(FantasyPlayer player) async {
     final confirmed = await showDialog<bool>(
@@ -369,6 +396,10 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
               total: total,
               round: round,
             ),
+            // Klemmt der Auto-Pick, steht das hier — sonst sieht der Raum bei
+            // einem serverseitigen Fehler exakt so aus wie bei Ruhe.
+            if (_autopickFehler != null)
+              _AutopickWarnung(ursache: _autopickFehler!),
             // Auto-Pick-Umschalter während des Drafts: wer die Uhr hat auslaufen
             // lassen, wird serverseitig auf Auto gesetzt — hier wieder abstellen.
             if (league.draftStatus == DraftStatus.drafting && myManager != null)
@@ -522,6 +553,58 @@ class _DraftChatTab extends ConsumerWidget {
 /// Auto-Pick-Umschalter für den eigenen Kader während des Drafts. Ist Auto an
 /// (z. B. weil man die Uhr hat auslaufen lassen), zeigt eine deutliche Leiste
 /// mit „Selbst picken"; ist es aus, ein dezenter Button zum Aktivieren.
+/// „Der Auto-Pick kommt nicht durch" — eine Zeile, kein Dialog: Der Draft
+/// läuft für die anderen weiter, und ein Dialog im Sekundentakt wäre nicht zu
+/// bedienen. Rot, weil hier wirklich etwas hängt.
+class _AutopickWarnung extends StatelessWidget {
+  const _AutopickWarnung({required this.ursache});
+
+  final String ursache;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.error.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: scheme.error.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 18, color: scheme.error),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Der Auto-Pick kommt nicht durch',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  ursache,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AutoPickBar extends StatelessWidget {
   const _AutoPickBar({required this.on, required this.onChanged});
 

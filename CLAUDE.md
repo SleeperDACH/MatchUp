@@ -230,6 +230,29 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   `fantasy_leagues.scoring` noch das alte 6-Kategorien-Objekt ohne `version`;
   `FantasyScoringRules.fromJson` gibt für die bewusst die Standardwertung
   zurück, statt alte Zahlen in die neue Wertung zu übernehmen.
+  **Es sind in Wahrheit drei Stellen**, und die dritte hat gebissen: Die
+  Draft-Rangliste in `fantasy_autopick_if_expired` liest dieselbe JSONB in SQL.
+  Sie castete die Werte mit `::int` — und `'12.0'::int` ist in Postgres kein
+  Rundungsfehler, sondern `22P02 invalid input syntax for type integer`. Seit
+  v2 stehen dort Kommazahlen (`assist: 12.0`), also warf die Funktion in jeder
+  v2-Liga bei jedem Aufruf. Alte Ligen (`version: null`, Werte `3`/`-1`/`-3`)
+  liefen weiter — deshalb fiel es monatelang nicht auf. Migration 0079 rechnet
+  in `numeric`, liest die v2-Schlüssel (die alten `appearance`, `goalGk…` und
+  `cleanSheetGkDef` gibt es in v2 gar nicht mehr, die Rangliste sortierte für
+  neue Ligen still nach den Gewichten des alten Modells) und holt jede Zahl
+  über `public.fantasy_num`, das bei unlesbaren Werten den Vorgabewert liefert
+  statt zu werfen. Zwei Werte stehen dabei fest in der SQL, weil `toJson()` sie
+  nicht serialisiert: Einsatz 10 und Zu Null 12. **Wer sie in der Wertung
+  ändert, ändert sie dort mit.**
+  Unsichtbar blieb der Fehler zehn Minuten lang wegen der Client-Seite: Der
+  Draft-Raum rief den RPC im Sekundentakt und hängte nur ein `whenComplete`
+  an — ein **Future ohne Zuhörer**. Der Fehler landete nirgends, und der Raum
+  sah bei einem kaputten Server exakt so aus wie bei Ruhe: Uhr läuft ab, nichts
+  passiert. Der Aufruf trägt jetzt ein `onError`, und klemmt der Auto-Pick,
+  steht die Ursache als rote Zeile im Raum (`_AutopickWarnung`). Für alles,
+  was **automatisch im Hintergrund** läuft, gilt dasselbe: Wenn es die
+  Notbremse einer Sache ist, darf sein Fehlschlag nicht stiller sein als sein
+  Erfolg.
 - Wettquoten (`lib/core/data/odds/`, Quelle the-odds-api.com, Gratis-Tier):
   Der **Key bleibt serverseitig** — die Edge Function `odds` (Proxy + Cache
   `odds_cache`) liefert sie; im Client holt `SupabaseOddsProvider` nur die
