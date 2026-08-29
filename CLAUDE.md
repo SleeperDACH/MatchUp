@@ -1515,6 +1515,15 @@ ein Haken wäre dort eine Behauptung über eine Entscheidung, die niemand
 getroffen hat. Wappengröße und Schriftgrad folgen der Kartenhöhe, sonst sähe
 die kompakte Fassung aus wie die große mit abgeschnittenem Rand.
 
+**Die Fläche drumherum hatte denselben Fehler wie der MatchUp-Kasten:**
+`surfaceContainerHighest` auf 60 % Deckung — eine milchige Schicht, die weder
+Fläche noch nichts war — und ein **grüner Rahmen auf jeder Karte**, auch bei
+einem Angebot, das nur auf Antwort wartet. Grün heißt „hier läuft etwas"; auf
+jeder Karte gesetzt sagt es gar nichts mehr. Jetzt: voller Kartengrund,
+Haarlinie, und Farbe **nur da, wo etwas von mir gewollt wird** — ein
+eingehendes, offenes Angebot trägt einen Hauch aus der Ecke und eine getönte
+Kante. Ein selbst gestelltes, das auf Antwort wartet, ist neutral.
+
 **Ein unbekannter Spieler verschwindet nicht.** Kennt der lokale Pool die ID
 nicht (Zugang aus `sync-squads` nach dem App-Start), steht sie kursiv da statt
 ausgelassen zu werden — dieselbe Regel wie beim Draft-Brett: „nicht gefunden"

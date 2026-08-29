@@ -1006,6 +1006,8 @@ class TradeCard extends ConsumerWidget {
 
         return _shell(
           context,
+          // Nur ein eingehendes, offenes Angebot will etwas von mir.
+          betont: incoming && trade.status.isPending,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1105,14 +1107,44 @@ class TradeCard extends ConsumerWidget {
     );
   }
 
-  Widget _shell(BuildContext context, {required Widget child}) {
+  /// Die Fläche um das Angebot.
+  ///
+  /// Vorher: `surfaceContainerHighest` auf 60 % Deckung — eine milchige
+  /// Schicht, die weder Fläche noch nichts war — und ein **grüner Rahmen auf
+  /// jeder Karte**, auch bei einem Angebot, das nur auf Antwort wartet. Grün
+  /// heißt in dieser App „hier läuft etwas"; auf jeder Karte gesetzt sagt es
+  /// gar nichts mehr.
+  ///
+  /// Jetzt der volle Kartengrund und eine Haarlinie. Farbe bekommt nur, was
+  /// **von mir etwas will**: Ein eingehendes, offenes Angebot trägt einen
+  /// Hauch aus der Ecke und eine getönte Kante ([betont]) — dasselbe Muster
+  /// wie bei den Ligakarten und im MatchUp-Kasten.
+  Widget _shell(BuildContext context,
+      {required Widget child, bool betont = false}) {
     final scheme = Theme.of(context).colorScheme;
+    final grund = Theme.of(context).cardColor;
     final card = Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.25)),
+        color: grund,
+        gradient: betont
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                stops: const [0.0, 0.75],
+                colors: [
+                  Color.alphaBlend(
+                      scheme.primary.withValues(alpha: 0.12), grund),
+                  grund,
+                ],
+              )
+            : null,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: betont
+              ? scheme.primary.withValues(alpha: 0.45)
+              : Theme.of(context).dividerColor,
+        ),
       ),
       child: child,
     );
