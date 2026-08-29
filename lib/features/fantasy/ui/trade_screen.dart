@@ -423,7 +423,26 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
 
     return Scaffold(
-      appBar: AppBar(title: Text('Trade mit ${widget.partner.display}')),
+      appBar: AppBar(
+        centerTitle: true,
+        // Zweizeilig wie in den Fantasy-Einstellungen: oben, was der Schirm
+        // ist, darunter, worauf er sich bezieht.
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Neuer Trade'),
+            Text(
+              'mit ${widget.partner.display}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
       body: poolAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Fehler: $e')),
@@ -447,15 +466,33 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
 
           return Column(
             children: [
-              const SizedBox(height: 4),
+              // Was ist der Tausch? Steht jetzt oben und bleibt stehen.
+              _Geschaeft(
+                  gebe: offerSel, bekomme: requestSel, clubIcons: clubIcons),
+              // Kapitelmarken statt farbiger Kopfkästen — dieselbe Gliederung
+              // wie auf dem Startbildschirm.
+              Row(
+                children: [
+                  Expanded(
+                    child: _Spaltenmarke(
+                        wort: 'Du gibst',
+                        anzahl: _offer.length,
+                        farbe: scheme.primary),
+                  ),
+                  Expanded(
+                    child: _Spaltenmarke(
+                        wort: widget.partner.display,
+                        anzahl: _request.length,
+                        farbe: scheme.tertiary),
+                  ),
+                ],
+              ),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: _RosterColumn(
-                        title: 'Du gibst',
-                        accent: scheme.primary,
                         players: mine,
                         selected: _offer,
                         clubIcons: clubIcons,
@@ -463,11 +500,9 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                             _offer.contains(id) ? _offer.remove(id) : _offer.add(id)),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: _RosterColumn(
-                        title: '${widget.partner.display} gibt',
-                        accent: scheme.tertiary,
                         players: theirs,
                         selected: _request,
                         clubIcons: clubIcons,
@@ -497,9 +532,9 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.arrow_forward),
-                      label: Text(_sending
-                          ? 'Sende …'
-                          : 'Angebot senden (${_offer.length} ↔ ${_request.length})'),
+                      // Die Zahlen standen hier, weil der Tausch sonst
+                      // nirgends zusammengefasst war. Das tut jetzt der Kopf.
+                      label: Text(_sending ? 'Sende …' : 'Angebot senden'),
                     ),
                   ),
                 ),
@@ -628,18 +663,170 @@ class _ConfirmOfferSheet extends StatelessWidget {
   }
 }
 
+/// Kapitelmarke über einer Kaderspalte: farbiger Strich, Wort, Haarlinie bis
+/// an den Rand — dieselbe Gliederung wie auf dem Startbildschirm und im
+/// Live-Tab. Rechts steht die Anzahl, aber **nur wenn etwas gewählt ist**:
+/// „0 gewählt" ist eine Meldung über nichts.
+class _Spaltenmarke extends StatelessWidget {
+  const _Spaltenmarke(
+      {required this.wort, required this.anzahl, required this.farbe});
+
+  final String wort;
+  final int anzahl;
+  final Color farbe;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+      child: Row(
+        children: [
+          Container(width: 3, height: 12, color: farbe),
+          const SizedBox(width: 6),
+          Flexible(
+            flex: 0,
+            child: Text(
+              wort.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.1,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+          if (anzahl > 0) ...[
+            const SizedBox(width: 6),
+            Text('$anzahl',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: farbe)),
+          ],
+          const SizedBox(width: 8),
+          Expanded(child: Container(height: 1, color: scheme.outlineVariant)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Der Kopf, der sagt, **was der Tausch ist**.
+///
+/// Vorher stand das nirgends: Die Auswahl lag verstreut in zwei scrollenden
+/// Spalten, und zusammengefasst wurde sie einzig als Zahlenpaar im
+/// Absende-Knopf („1 ↔ 2"). Wer zwei Bildschirmhöhen weit gescrollt hatte,
+/// wusste nicht mehr, was er eigentlich anbietet.
+///
+/// Bleibt oben stehen, zeigt beide Seiten mit denselben Wappen wie die
+/// Kacheln, und sagt bei leerer Auswahl, was zu tun ist — statt leer zu sein.
+class _Geschaeft extends StatelessWidget {
+  const _Geschaeft({
+    required this.gebe,
+    required this.bekomme,
+    required this.clubIcons,
+  });
+
+  final List<FantasyPlayer> gebe;
+  final List<FantasyPlayer> bekomme;
+  final Map<String, String?> clubIcons;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (gebe.isEmpty && bekomme.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
+        child: Row(
+          children: [
+            Icon(Icons.touch_app_outlined,
+                size: 16, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Spieler antippen — aus deinem Kader und aus seinem.',
+                style: TextStyle(
+                    fontSize: 12.5, color: scheme.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(child: _seite(context, gebe, scheme.primary, links: true)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Icon(Icons.swap_horiz,
+                size: 18, color: scheme.onSurfaceVariant),
+          ),
+          Expanded(
+              child: _seite(context, bekomme, scheme.tertiary, links: false)),
+        ],
+      ),
+    );
+  }
+
+  Widget _seite(BuildContext context, List<FantasyPlayer> spieler, Color farbe,
+      {required bool links}) {
+    final scheme = Theme.of(context).colorScheme;
+    if (spieler.isEmpty) {
+      return Text('nichts',
+          textAlign: links ? TextAlign.start : TextAlign.end,
+          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant));
+    }
+    return Wrap(
+      alignment: links ? WrapAlignment.start : WrapAlignment.end,
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        for (final p in spieler)
+          Container(
+            padding: const EdgeInsets.fromLTRB(3, 2, 7, 2),
+            decoration: BoxDecoration(
+              color: positionColor(p.position).withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClubBadge(
+                    club: p.club, iconUrl: clubIcons[p.club], size: 16),
+                const SizedBox(width: 5),
+                Text(SpielerKachel.kurzerName(p.name),
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _RosterColumn extends StatelessWidget {
   const _RosterColumn({
-    required this.title,
-    required this.accent,
     required this.players,
     required this.selected,
     required this.clubIcons,
     required this.onToggle,
   });
 
-  final String title;
-  final Color accent;
   final List<FantasyPlayer> players;
   final Set<String> selected;
   final Map<String, String?> clubIcons;
@@ -647,80 +834,28 @@ class _RosterColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selCount = players.where((p) => selected.contains(p.id)).length;
-    final onAccent =
-        accent.computeLuminance() > 0.5 ? Colors.black : Colors.white;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  accent.withValues(alpha: 0.24),
-                  accent.withValues(alpha: 0.10),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: accent.withValues(alpha: 0.55)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      color: accent),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: selCount > 0
-                        ? accent
-                        : accent.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$selCount ausgewählt',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: selCount > 0 ? onAccent : accent,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    final scheme = Theme.of(context).colorScheme;
+    if (players.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text('Kein Kader',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.onSurfaceVariant)),
         ),
-        Expanded(
-          child: players.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('Kein Kader', textAlign: TextAlign.center),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  itemCount: players.length,
-                  itemBuilder: (context, i) =>
-                      _tile(context, players[i], selected.contains(players[i].id)),
-                ),
-        ),
-      ],
+      );
+    }
+    // Der farbige Kopfkasten ist raus — er steht jetzt als Kapitelmarke über
+    // beiden Spalten (siehe `_Spaltenmarke`). Zwei getönte Kästen mit Rahmen
+    // und Zähler darin waren das Lauteste auf einem Schirm, dessen Inhalt die
+    // Spielerkarten sind.
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 2, bottom: 8),
+      itemCount: players.length,
+      itemBuilder: (context, i) {
+        final p = players[i];
+        return _tile(context, p, selected.contains(p.id));
+      },
     );
   }
 

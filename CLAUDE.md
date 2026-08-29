@@ -1540,6 +1540,31 @@ ist ein eigener Zustand, nicht dasselbe wie „nichts dabei". Die Vorschau
 eingehendes Angebot (mit Annehmen/Ablehnen) neben einem selbst gestellten —
 auf dem Gerät sieht man immer nur eins von beiden.
 
+### „Neuer Trade" — der Tausch steht jetzt oben
+
+Der Schirm zeigte zwei scrollende Kaderspalten und sonst nichts. Drei Befunde:
+
+- **Nirgends stand, was der Tausch eigentlich ist.** Die Auswahl lag verstreut
+  in zwei Listen, und zusammengefasst wurde sie einzig als Zahlenpaar im
+  Absende-Knopf („Angebot senden (1 ↔ 2)"). Wer zwei Bildschirmhöhen weit
+  gescrollt hatte, wusste nicht mehr, was er anbietet. Jetzt steht der Tausch
+  als **fester Kopf** ganz oben — beide Seiten als Chips mit Wappen, ein
+  Tauschpfeil dazwischen. Bei leerer Auswahl sagt er, was zu tun ist, statt
+  leer zu sein. Die Zahlen im Knopf sind dafür weg; sie sagten dasselbe
+  schlechter.
+- **Die Spaltenköpfe waren farbige Kästen** mit Rahmen und einem Zähler-Chip
+  darin — auf einem Schirm, dessen Inhalt die Spielerkarten sind, das
+  Lauteste. Jetzt zwei **Kapitelmarken** (Strich, Wort, Haarlinie bis an den
+  Rand), die Anzahl rechts daneben und **nur wenn etwas gewählt ist**:
+  „0 gewählt" ist eine Meldung über nichts.
+- **Der Titel nannte den Partner, nicht den Schirm.** Jetzt zweizeilig wie in
+  den Fantasy-Einstellungen: oben „Neuer Trade", darunter „mit …".
+
+Die Spielerkarten selbst sind unangetastet — sie sind der Inhalt und
+funktionieren. Angesehen über `test/trade_neu_vorschau_test.dart`, mit
+Vorauswahl auf **beiden** Seiten: Nur dann sieht man, was die Auswahl mit dem
+Schirm macht.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
