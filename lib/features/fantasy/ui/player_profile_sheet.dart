@@ -138,7 +138,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
                           ),
                           data: (season) => _table(context, season),
                         ),
-                        _Prognose(player: player, clubIcon: clubIcon),
+                        _Prognose(player: player),
                         _Spielplan(club: player.club),
                         _Vereinskader(
                             league: league, club: player.club, aktiv: player.id),
@@ -773,10 +773,9 @@ class _Leer extends StatelessWidget {
 /// unter einer Liste. Die restlichen zehn sind Zusammenhang, kein Ersatz
 /// dafür.
 class _Prognose extends ConsumerWidget {
-  const _Prognose({required this.player, required this.clubIcon});
+  const _Prognose({required this.player});
 
   final FantasyPlayer player;
-  final String? clubIcon;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -799,7 +798,7 @@ class _Prognose extends ConsumerWidget {
       data: (elf) => ListView(
         padding: const EdgeInsets.only(top: 8, bottom: 16),
         children: [
-          _PrognoseKopf(spiel: spiel, elf: elf, clubIcon: clubIcon),
+          _PrognoseKopf(spiel: spiel, elf: elf),
           if (elf == null)
             _NochKeinePrognose(player: player, spiel: spiel)
           else ...[
@@ -869,12 +868,10 @@ class _Prognose extends ConsumerWidget {
 
 /// Kopf des Reiters: welches Spiel, welche Formation, wie frisch.
 class _PrognoseKopf extends StatelessWidget {
-  const _PrognoseKopf(
-      {required this.spiel, required this.elf, required this.clubIcon});
+  const _PrognoseKopf({required this.spiel, required this.elf});
 
   final Fixture spiel;
   final PrognoseElf? elf;
-  final String? clubIcon;
 
   @override
   Widget build(BuildContext context) {
