@@ -121,6 +121,28 @@ final incomingTradeOffersProvider =
       .length;
 });
 
+/// Meine **vorgemerkten** Trades: angenommen, aber die Spieler haben den Kader
+/// noch nicht gewechselt.
+///
+/// Seit Migration 0088 greift ein Tausch erst 12 Stunden nach dem letzten
+/// Spiel der Runde — sonst nähme er einem Manager mitten in der Wertung einen
+/// Spieler aus der Elf. Dazwischen liegt ein Zustand, den es vorher nicht gab
+/// und den der Kader-Tab zeigen muss: „abgemacht, aber noch nicht vollzogen".
+final vorgemerkteTradesProvider =
+    Provider.family<List<TradeOffer>, String>((ref, leagueId) {
+  final myId = ref.watch(currentUserProvider)?.id;
+  if (myId == null) return const [];
+  final trades =
+      ref.watch(leagueTradesProvider(leagueId)).valueOrNull ?? const [];
+  return [
+    for (final t in trades)
+      if (t.wartetAufAusfuehrung &&
+          (t.fromManager == myId || t.toManager == myId))
+        t
+  ]..sort((a, b) => (a.executeAfter ?? a.createdAt)
+      .compareTo(b.executeAfter ?? b.createdAt));
+});
+
 /// Einzelnes Trade-Angebot samt Positionen (für die Chat-Karte).
 final tradeDetailProvider = FutureProvider.family<
     ({TradeOffer trade, List<TradeItem> items})?, String>((ref, tradeId) {

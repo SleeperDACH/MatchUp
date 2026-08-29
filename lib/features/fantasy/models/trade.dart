@@ -27,6 +27,8 @@ class TradeOffer {
     required this.status,
     required this.createdAt,
     this.message,
+    this.executeAfter,
+    this.executedAt,
   });
 
   final String id;
@@ -37,6 +39,25 @@ class TradeOffer {
   final String? message;
   final DateTime createdAt;
 
+  /// Frühester Ausführungszeitpunkt eines angenommenen Trades.
+  ///
+  /// Ein Tausch mitten im Spieltag nimmt einem Manager rückwirkend einen
+  /// Spieler aus der laufenden Elf — genau so stand einmal jemand mit zehn
+  /// Spielern da. Angenommene Trades werden deshalb vorgemerkt und erst
+  /// 12 Stunden nach dem letzten Spiel der Runde ausgeführt (Migration 0088).
+  final DateTime? executeAfter;
+
+  /// Wann die Spieler tatsächlich gewechselt sind.
+  ///
+  /// **`status == accepted` heißt nicht mehr „vollzogen"** — es heißt „beide
+  /// sind sich einig". Ob die Kader schon getauscht sind, sagt allein dieses
+  /// Feld.
+  final DateTime? executedAt;
+
+  /// Angenommen, aber die Spieler haben den Kader noch nicht gewechselt.
+  bool get wartetAufAusfuehrung =>
+      status == TradeStatus.accepted && executedAt == null;
+
   factory TradeOffer.fromJson(Map<String, dynamic> json) => TradeOffer(
         id: json['id'] as String,
         leagueId: json['league_id'] as String,
@@ -45,6 +66,12 @@ class TradeOffer {
         status: TradeStatus.fromId(json['status'] as String? ?? 'pending'),
         message: json['message'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
+        executeAfter: json['execute_after'] == null
+            ? null
+            : DateTime.parse(json['execute_after'] as String).toLocal(),
+        executedAt: json['executed_at'] == null
+            ? null
+            : DateTime.parse(json['executed_at'] as String).toLocal(),
       );
 }
 

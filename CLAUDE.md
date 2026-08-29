@@ -1565,6 +1565,51 @@ funktionieren. Angesehen über `test/trade_neu_vorschau_test.dart`, mit
 Vorauswahl auf **beiden** Seiten: Nur dann sieht man, was die Auswahl mit dem
 Schirm macht.
 
+### Trades greifen erst nach dem Spieltag
+
+Vorfall: Ein Trade wurde **während** des Spieltags angenommen. Der abgegebene
+Spieler verließ sofort den Kader — und damit stand die Aufstellung des
+Betroffenen für den laufenden Spieltag nur noch mit **zehn** Spielern da. Der
+elfte Platz war weg, die Punkte dafür auch.
+
+Der Fehler ist nicht der Tausch, sondern sein **Zeitpunkt**. Seit Migration
+0088 wird ein angenommener Trade **vorgemerkt** und erst ausgeführt:
+
+    letzter Anpfiff der laufenden Runde + 2 h (Spieldauer) + 12 h
+
+**Läuft gerade kein Spieltag, greift der Tausch sofort.** Die Verzögerung soll
+die Wertung schützen, nicht Wartezeit erfinden; zwischen zwei Spieltagen liegt
+der berechnete Zeitpunkt ohnehin in der Vergangenheit, und `fantasy_trade_frei_ab`
+gibt dann `now()` zurück.
+
+Vier Dinge, die dabei zu beachten waren:
+
+- **`status = 'accepted'` heißt nicht mehr „vollzogen".** Es heißt „beide sind
+  sich einig"; ob die Spieler gewechselt sind, sagt allein `executed_at`. Wer
+  den Status auswertet, muss das trennen — in Dart dafür
+  `TradeOffer.wartetAufAusfuehrung`.
+- **Zwischen Zusage und Ausführung kann sich der Kader ändern** (Free Agency,
+  ein zweiter Trade, ein Drop). `fantasy_trade_ausfuehren` prüft deshalb
+  erneut, ob jeder Spieler noch beim Abgebenden liegt, und bricht sonst den
+  ganzen Trade ab (`cancelled` plus Systemnachricht). **Ein halber Tausch wäre
+  schlimmer als keiner.**
+- **Sofort und später nehmen denselben Weg.** Die Bewegung steht einmal in
+  `fantasy_trade_ausfuehren`; `fantasy_respond_trade` ruft sie bei freiem
+  Fenster direkt auf, sonst der Zeitplan (`fantasy-trades`, alle 10 Minuten).
+- **Die Chat-Nachricht darf nicht lügen.** „Trade angenommen" allein ließe
+  jemanden einen Spieler suchen, der noch beim anderen steht; hängt eine
+  Ausführung aus, steht „⏳ Die Kader wechseln erst nach dem Spieltag" darunter.
+
+**Im Kader-Tab** steht über dem Aufstellungs-Editor eine ruhige Zeile „N offene
+Trades — beschlossen, die Kader wechseln erst nach dem Spieltag", die zu
+`VorgemerkteTradesScreen` führt. Bewusst **über** dem Editor: Wer seine Elf
+stellt, muss wissen, dass sich der Kader danach noch ändert. Und bewusst keine
+der farbigen Aktionskacheln daneben — hier ist nichts zu tun, es ist eine
+Auskunft.
+
+Nachgemessen gegen die Produktions-DB (mit Rollback): Ein fälliger Trade wird
+ausgeführt und die Spieler wechseln, ein noch nicht fälliger bleibt unangetastet.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

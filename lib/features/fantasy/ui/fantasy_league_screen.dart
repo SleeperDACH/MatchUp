@@ -715,6 +715,7 @@ class _RostersTab extends ConsumerWidget {
     final myCount =
         myId == null ? 0 : rosterCountOf(myId, roster);
     final openTrades = ref.watch(incomingTradeOffersProvider(league.id));
+    final vorgemerkt = ref.watch(vorgemerkteTradesProvider(league.id));
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
@@ -754,8 +755,84 @@ class _RostersTab extends ConsumerWidget {
             ],
           ),
         ),
+        // Beschlossene, aber noch nicht vollzogene Trades. Nur da, wenn es
+        // welche gibt — eine Zeile „0 offene Trades" wäre eine Meldung über
+        // nichts. Sie steht **über** dem Aufstellungs-Editor: Wer seine Elf
+        // stellt, muss wissen, dass sich der Kader nach dem Spieltag noch
+        // ändert.
+        if (vorgemerkt.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            child: _VorgemerkteTradesZeile(
+              anzahl: vorgemerkt.length,
+              onTap: () => open(VorgemerkteTradesScreen(league: league)),
+            ),
+          ),
         LineupEditor(league: league),
       ],
+    );
+  }
+}
+
+/// Hinweiszeile im Kader-Tab: Es sind Trades abgemacht, die erst nach dem
+/// Spieltag greifen.
+///
+/// Bewusst eine ruhige Zeile und keine der farbigen Aktions-Kacheln daneben:
+/// Hier ist nichts zu tun, es ist eine **Auskunft**. Antippbar ist sie
+/// trotzdem, weil die Frage „welche denn?" unmittelbar folgt.
+class _VorgemerkteTradesZeile extends StatelessWidget {
+  const _VorgemerkteTradesZeile({required this.anzahl, required this.onTap});
+
+  final int anzahl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: scheme.primary.withValues(alpha: 0.28)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.schedule, size: 18, color: scheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      anzahl == 1
+                          ? 'Ein offener Trade'
+                          : '$anzahl offene Trades',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 14),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      'Beschlossen — die Kader wechseln erst nach dem Spieltag.',
+                      style: TextStyle(
+                          fontSize: 12, color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right,
+                  size: 20, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

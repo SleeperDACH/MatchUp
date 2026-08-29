@@ -663,6 +663,126 @@ class _ConfirmOfferSheet extends StatelessWidget {
   }
 }
 
+/// Die eigenen **vorgemerkten** Trades: angenommen, aber noch nicht vollzogen.
+///
+/// Erreichbar über den Kader-Tab. Der Schirm existiert, weil es zwischen
+/// „abgemacht" und „vollzogen" seit Migration 0088 eine Lücke von bis zu
+/// eineinhalb Tagen gibt — und wer in dieser Zeit auf seinen Kader schaut,
+/// muss wissen, warum der Spieler noch da ist.
+class VorgemerkteTradesScreen extends ConsumerWidget {
+  const VorgemerkteTradesScreen({super.key, required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final trades = ref.watch(vorgemerkteTradesProvider(league.id));
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Offene Trades'),
+            Text(
+              league.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+      body: trades.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Kein Trade wartet auf Ausführung.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.only(top: 8, bottom: 24),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                  child: Text(
+                    'Diese Trades sind beschlossen. Damit ein Tausch niemandem '
+                    'mitten in der Wertung einen Spieler aus der Elf nimmt, '
+                    'wechseln die Kader erst 12 Stunden nach dem letzten Spiel '
+                    'des Spieltags.',
+                    style: TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: scheme.onSurfaceVariant),
+                  ),
+                ),
+                for (final t in trades) TradeCard(tradeId: t.id, inList: true),
+              ],
+            ),
+    );
+  }
+}
+
+/// „Der Tausch ist beschlossen, greift aber erst nach dem Spieltag."
+///
+/// Ein Trade mitten in der Wertung nimmt einem Manager rückwirkend einen
+/// Spieler aus der laufenden Elf — genau so stand einmal jemand mit zehn
+/// Spielern da. Seit Migration 0088 wird ein angenommener Trade deshalb
+/// vorgemerkt. Dieser Zustand muss stehen, sonst sieht der Kader schlicht
+/// falsch aus: Der Spieler ist noch da, obwohl er weg sein sollte.
+class _VorgemerktHinweis extends StatelessWidget {
+  const _VorgemerktHinweis({required this.freiAb});
+
+  final DateTime? freiAb;
+
+  static const _tage = ['Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.', 'So.'];
+
+  String _zeitpunkt() {
+    final t = freiAb;
+    if (t == null) return 'nach dem Spieltag';
+    final zz = t.hour.toString().padLeft(2, '0');
+    final mm = t.minute.toString().padLeft(2, '0');
+    return 'ab ${_tage[t.weekday - 1]} $zz:$mm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.schedule, size: 16, color: scheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Angenommen — die Spieler wechseln erst nach dem Spieltag '
+              '(${_zeitpunkt()}). Bis dahin zählen sie für ihre bisherigen '
+              'Teams.',
+              style: TextStyle(
+                  fontSize: 12.5, color: scheme.onSurfaceVariant, height: 1.3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Kapitelmarke über einer Kaderspalte: farbiger Strich, Wort, Haarlinie bis
 /// an den Rand — dieselbe Gliederung wie auf dem Startbildschirm und im
 /// Live-Tab. Rechts steht die Anzahl, aber **nur wenn etwas gewählt ist**:
@@ -1019,9 +1139,20 @@ class TradeCard extends ConsumerWidget {
         ];
     final fromGives = givenBy(trade.fromManager);
     final toGives = givenBy(trade.toManager);
+    // Seit Migration 0088 heißt „angenommen" nicht mehr „vollzogen": Läuft
+    // gerade ein Spieltag, wechseln die Kader erst danach. Die Nachricht darf
+    // das nicht verschweigen — sonst sucht jemand einen Spieler, der noch
+    // beim anderen steht.
+    final nachher = ref
+            .read(leagueTradesProvider(trade.leagueId))
+            .valueOrNull
+            ?.firstWhere((t) => t.id == trade.id, orElse: () => trade) ??
+        trade;
+    final schwebt = nachher.wartetAufAusfuehrung;
     final msg = '🔄 Trade angenommen: $fromName ⇄ $toName\n'
         '$fromName gibt ab: ${fromGives.isEmpty ? '–' : fromGives.join(', ')}\n'
-        '$toName gibt ab: ${toGives.isEmpty ? '–' : toGives.join(', ')}';
+        '$toName gibt ab: ${toGives.isEmpty ? '–' : toGives.join(', ')}'
+        '${schwebt ? '\n⏳ Die Kader wechseln erst nach dem Spieltag.' : ''}';
     try {
       await ref
           .read(fantasyLeagueRepositoryProvider)
@@ -1218,6 +1349,12 @@ class TradeCard extends ConsumerWidget {
                     label: const Text('Kontern'),
                   ),
                 ),
+              ] else if (trade.wartetAufAusfuehrung) ...[
+                const SizedBox(height: 10),
+                // Abgemacht, aber noch nicht vollzogen. Ohne diesen Hinweis
+                // wirkt der Kader falsch: Der Spieler steht noch da, obwohl
+                // der Tausch beschlossen ist.
+                _VorgemerktHinweis(freiAb: trade.executeAfter),
               ] else if (trade.status.isPending) ...[
                 const SizedBox(height: 8),
                 Row(

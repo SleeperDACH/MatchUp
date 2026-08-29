@@ -36,7 +36,7 @@ void main() {
     AppConfig.supabaseInitialized = true;
     addTearDown(() => AppConfig.supabaseInitialized = vorher);
 
-    tester.view.physicalSize = const Size(402 * 3, 1000 * 3);
+    tester.view.physicalSize = const Size(402 * 3, 1180 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
@@ -67,6 +67,24 @@ void main() {
           const TradeItem(tradeId: 't1', giver: 'gegner', playerId: 'p3'),
           const TradeItem(tradeId: 't1', giver: 'gegner', playerId: 'p2'),
           const TradeItem(tradeId: 't1', giver: 'ich', playerId: 'p4'),
+        ],
+      ),
+      // Angenommen, aber noch nicht vollzogen — der Zustand, den es seit
+      // Migration 0088 gibt: Waehrend eines laufenden Spieltags wechseln die
+      // Kader erst danach.
+      't3': (
+        trade: TradeOffer(
+          id: 't3',
+          leagueId: 'l1',
+          fromManager: 'ich',
+          toManager: 'gegner',
+          status: TradeStatus.accepted,
+          createdAt: DateTime(2026, 8, 29, 9),
+          executeAfter: DateTime(2026, 8, 31, 5, 30),
+        ),
+        items: [
+          const TradeItem(tradeId: 't3', giver: 'ich', playerId: 'p2'),
+          const TradeItem(tradeId: 't3', giver: 'gegner', playerId: 'p4'),
         ],
       ),
       // Selbst gestellt: einer gegen einen, dazu ein Spieler, den der
@@ -112,6 +130,11 @@ void main() {
                     style: TextStyle(color: Colors.white38, fontSize: 10)),
                 SizedBox(height: 4),
                 TradeCard(tradeId: 't2'),
+                SizedBox(height: 16),
+                Text('ANGENOMMEN, WARTET AUF DEN SPIELTAG',
+                    style: TextStyle(color: Colors.white38, fontSize: 10)),
+                SizedBox(height: 4),
+                TradeCard(tradeId: 't3'),
               ],
             ),
           ),
