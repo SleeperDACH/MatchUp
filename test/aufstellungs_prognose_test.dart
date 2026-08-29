@@ -44,14 +44,24 @@ void main() {
     expect(spielFuerPrognose(s, bvb)?.round, 1);
   });
 
-  test('eigenes Spiel gelaufen, Spieltag laeuft noch: bleibt bei Spieltag 1',
-      () {
-    // **Der Kern der Regel.** „Naechstes Spiel des Vereins" wuerde hier schon
-    // auf Spieltag 2 zeigen — fuer den es noch gar keine Prognose gibt, und
-    // waehrend der Spieltag noch laeuft.
+  test('eigenes Spiel gelaufen, Spieltag laeuft noch: das naechste Spiel', () {
+    // Bayern spielt freitags, der Spieltag endet sonntags. Fuer die bereits
+    // gespielte Partie ist nichts mehr zu entscheiden — sie hier stehen zu
+    // lassen hiesse, ein Spiel von gestern mit „Aufstellung kommt noch" zu
+    // beschriften.
     final s = saison(
         bvbSpiel1: FixtureStatus.finished,
         letztesSpiel1: FixtureStatus.scheduled);
+    expect(spielFuerPrognose(s, bvb)?.round, 2);
+  });
+
+  test('eigenes Spiel steht noch aus: nicht auf den naechsten Spieltag', () {
+    // **Der Kern der Regel.** Solange das eigene Spiel des laufenden
+    // Spieltags noch aussteht, darf nichts vorgreifen — auch nicht, wenn
+    // andere Partien der Runde schon gelaufen sind.
+    final s = saison(
+        bvbSpiel1: FixtureStatus.scheduled,
+        letztesSpiel1: FixtureStatus.finished);
     expect(spielFuerPrognose(s, bvb)?.round, 1);
   });
 

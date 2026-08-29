@@ -19,7 +19,14 @@ Fixture? spielFuerPrognose(List<Fixture> spiele, String verein) {
   // verlegte Partie, ein Spieler aus einem Verein ohne Ansetzung). Dann gilt
   // sein nächstes Spiel — sonst stünde das Profil ohne Auskunft da, obwohl es
   // eine gibt.
-  final inRunde = _fuerVerein(spiele, verein).where((f) => f.round == runde);
+  //
+  // **Und er kann sein Spiel des laufenden Spieltags schon hinter sich
+  // haben.** Bayern spielt freitags, der Spieltag endet sonntags: Von Freitag
+  // 22 Uhr bis Sonntagabend stünde hier sonst eine bereits gespielte Partie
+  // mit dem Hinweis, die Aufstellung komme noch. Fuer dieses Spiel ist nichts
+  // mehr zu entscheiden — dann gilt das nächste.
+  final inRunde = _fuerVerein(spiele, verein).where(
+      (f) => f.round == runde && f.status != FixtureStatus.finished);
   if (inRunde.isNotEmpty) return _frueheste(inRunde.toList());
 
   final offen = _fuerVerein(spiele, verein)
