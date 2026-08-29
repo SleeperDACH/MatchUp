@@ -1678,6 +1678,46 @@ Angesehen über `test/fantasy_tabelle_vorschau_test.dart`. Wichtig darin: **ohne
 Fixtures kein Rückblick** — welche Spieltage abgepfiffen sind, entscheidet der
 Spielplan, und mit leerer Liste fehlt der halbe Schirm.
 
+### Das Wappen führt zum Spieler, nicht zum Verein
+
+**In der Fantasy-Liga öffnet ein Tipp auf einen Spieler sein Profil — Wappen
+eingeschlossen.** `ClubBadge` hat sich vorher selbst in einen `ClubLink`
+gewickelt und damit den Tipp geschluckt, der dem Spieler galt: Wer im Kader auf
+den Namen tippte, bekam das Spielerprofil; wer zwei Millimeter daneben aufs
+Wappen traf, die Vereinsseite. Zwei Ziele in einer Zeile, ohne sichtbare
+Grenze.
+
+Alle zwanzig Verwendungen von `ClubBadge` liegen in `features/fantasy/ui/` —
+die Regel fällt damit vollständig, und das Wappen ist wieder Bild statt
+Schaltfläche; was ein Tipp tut, entscheidet die umgebende Zeile. Außerhalb der
+Fantasy-Welt führt `ClubLink` weiter auf die Vereinsseite (Live-Tab,
+Favoriten, Spieldetail).
+
+**Damit muss das Profil hergeben, wofür man auf die Vereinsseite ging.** Es hat
+jetzt drei Reiter:
+
+| Reiter | Inhalt |
+|---|---|
+| Leistung | Punkte je Spieltag, **antippbar** |
+| Spielplan | die Partien des Vereins, in der geteilten Zeilenform |
+| Kader | alle Poolspieler des Vereins, nach Position — Tipp öffnet deren Profil |
+
+**Ein Tipp auf einen Spieltag zeigt die Aufschlüsselung.** Eine Punktzahl
+allein sagt nicht, woher sie kommt: −10 können ein halbes Spiel plus drei
+Gegentore plus Gelb sein. Die Zeilen kommen aus `scorePlayerDetailed` — also
+aus **derselben** Funktion, die auch wertet; eine zweite Rechnung fürs Anzeigen
+wäre eine zweite Wahrheit.
+
+Die Leistungstabelle ist dafür von `Table` auf Zeilen umgebaut (eine
+`TableRow` lässt sich nicht als Ganzes antippen) und zeigt „–" statt „0", wo
+nicht gespielt wurde — dieselbe Regel wie im MatchUp.
+
+**Dritter Anlauf beim Wächtertest:** Die Tabelle interpolierte ihre Punkte als
+`'${scorePlayer(...)}'` — weder „points" noch „pts" im Ausdruck, also wieder
+durchgerutscht. `test/punkte_formatierung_test.dart` kennt jetzt auch
+`scorePlayer(`. Wer so einen Wächter schreibt, sollte über seine Namensannahme
+dreimal nachdenken.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

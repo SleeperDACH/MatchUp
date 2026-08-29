@@ -63,9 +63,15 @@ void main() {
           // Auch die Kurzform: In `matchup_lineups.dart` hieß die Variable
           // `pts`, und genau deshalb ist dort eine rohe Interpolation
           // monatelang durchgerutscht.
+          // Drei Schreibweisen, drei Anläufe: „points" fing die erste Runde,
+          // „pts" die Zelle im MatchUp — und `scorePlayer(...)` die
+          // Leistungstabelle im Spielerprofil, die ihre Punkte direkt aus der
+          // Wertungsfunktion interpolierte. Wer so einen Wächter schreibt,
+          // sollte über seine Namensannahme dreimal nachdenken.
           final klein = ausdruck.toLowerCase();
           if (!klein.contains('points') &&
-              !RegExp(r'\bpts\b').hasMatch(klein)) {
+              !RegExp(r'\bpts\b').hasMatch(klein) &&
+              !klein.contains('scoreplayer(')) {
             continue;
           }
           if (ausdruck.contains('formatPoints(')) continue;

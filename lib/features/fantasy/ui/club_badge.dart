@@ -1,10 +1,8 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../app/club_screen.dart';
 import '../../../core/util/club_logos.dart';
 import '../models/fantasy_models.dart';
 
@@ -101,11 +99,18 @@ class PositionPill extends StatelessWidget {
 /// [iconUrl] ist die vom Feed gelieferte Team-Icon-URL (aus der Tabelle
 /// aufgelöst, siehe `clubIconsProvider`); ohne Treffer greifen die Overrides
 /// aus [clubLogoUrl], sonst die Vereinsinitialen.
-/// Antippen öffnet die Vereinsseite (Spielplan, Tabelle, Kader, News). Die
-/// Fantasy-Seite kennt nur den Vereinsnamen, die Vereinsseite braucht eine
-/// Sportmonks-Team-ID — die Zuordnung macht [clubTeamRefProvider]. Lässt sie
-/// sich nicht eindeutig auflösen, bleibt das Wappen einfach nicht antippbar.
-class ClubBadge extends ConsumerWidget {
+/// **Das Wappen ist hier kein Link.** Es hat sich früher selbst auf die
+/// Vereinsseite verlinkt — und schluckte damit den Tipp, der eigentlich dem
+/// Spieler galt: Wer im Kader auf den Namen tippte, bekam das Spielerprofil,
+/// wer zwei Millimeter daneben aufs Wappen traf, die Vereinsseite. Zwei Ziele
+/// in einer Zeile, ohne dass man sieht, wo die Grenze verläuft.
+///
+/// Innerhalb der Fantasy-Liga gilt deshalb: **Ein Tipp auf einen Spieler
+/// öffnet sein Profil**, Wappen eingeschlossen. Das Wappen ist Bild, nicht
+/// Schaltfläche; die umgebende Zeile entscheidet, was passiert. (Alle
+/// Verwendungen dieses Widgets liegen in `features/fantasy/ui/` — außerhalb
+/// führt weiterhin `ClubLink` auf die Vereinsseite, etwa im Live-Tab.)
+class ClubBadge extends StatelessWidget {
   const ClubBadge({
     super.key,
     required this.club,
@@ -118,12 +123,7 @@ class ClubBadge extends ConsumerWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final team = ref.watch(clubTeamRefProvider(club));
-    final badge = _badge(context);
-    if (team == null) return badge;
-    return ClubLink(team: team, leagueId: 'bundesliga', child: badge);
-  }
+  Widget build(BuildContext context) => _badge(context);
 
   Widget _badge(BuildContext context) {
     final url = clubLogoUrl(club, iconUrl);
