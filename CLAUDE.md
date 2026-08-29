@@ -846,10 +846,33 @@ seitdem gilt:
   ganze Karte gezogen war es falsch: Bayern gegen Stuttgart sind zwei rote
   Vereine, das ergab eine durchgehend rote Fläche. Die Farbe klebt am Verein,
   nicht an der Karte, und die Mitte bleibt neutral, weil dort die Uhrzeit
-  steht. `vereinsTon()` weicht dabei auf `secondary` aus, wenn die Grundfarbe
-  fast weiß oder fast schwarz ist (Stuttgart, Gladbach, Frankfurt) — und gibt
-  `null` für unbekannte Vereine zurück: eine erfundene Farbe für einen
-  Pokalgegner aus der Oberliga sähe aus wie eine Auskunft.
+  steht. `vereinsTon()` sucht dafür die erste Trikotfarbe mit echtem
+  **Farbton** und hebt nur deren Helligkeit in einen sichtbaren Bereich —
+  und gibt `null` für unbekannte Vereine zurück: eine erfundene Farbe für
+  einen Pokalgegner aus der Oberliga sähe aus wie eine Auskunft.
+
+  **Die Regel prüfte zuerst die Helligkeit, und das war die falsche Frage.**
+  Sie trat bei zu heller oder zu dunkler Grundfarbe an `secondary` ab, *ohne
+  zu prüfen, ob die etwas taugt*. Dortmund fiel genau dadurch heraus: Gelb ist
+  zu hell, also Ausweichen auf Schwarz — `#15171E`, Helligkeit 0,009, faktisch
+  die Hintergrundfarbe der App. Hof und Seitentönung waren unsichtbar, obwohl
+  eine Farbe zurückkam; gemeldet als „bei Dortmund fehlt komplett die Farbe".
+  Weiß und Schwarz taugen nicht, weil sie **keinen Farbton tragen**, nicht
+  weil sie hell oder dunkel sind — Gelb sagt „Dortmund", auch wenn es hell ist.
+
+  **Gemessen wird die Buntheit, nicht die HSL-Sättigung.** Die ist an den
+  Rändern der Helligkeit nicht aussagekräftig: Das Trikotweiß von Stuttgart,
+  Gladbach, Köln, HSV und Leipzig ist minimal blaustichig und rechnet sich auf
+  eine Sättigung von 0,3 hoch — alle fünf bekamen im ersten Anlauf denselben
+  blaugrauen Ton. Der Abstand zwischen stärkstem und schwächstem Kanal bleibt
+  bei fast-Weiß wie bei fast-Schwarz klein und trennt sie sauber ab.
+
+  Gehalten von `test/vereinston_test.dart`: alle 25 Vereinsnamen aus
+  `fixtures`, und geprüft wird nicht nur „kommt eine Farbe zurück", sondern
+  dass sie bunt ist **und sich vom Grund abhebt** — der Hof wird gegen
+  `MatchUpColors.base` gerechnet. Genau die Lücke dazwischen war der Fehler.
+  Die Kopfkarten-Vorschau steht deshalb auf **Dortmund gegen HSV**: helle
+  Grundfarbe auf der einen Seite, weiße auf der anderen.
 - **Fünf gleiche graue Versalköpfe geben keinen Takt** (Punkt 5 der
   Diagnose, zuerst übersehen). Jeder Abschnittskopf trägt jetzt einen 3 px
   breiten Strich in der Farbe seines Bereichs: Grün für die Ligen, Gold fürs

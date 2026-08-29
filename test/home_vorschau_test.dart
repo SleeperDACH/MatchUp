@@ -89,8 +89,13 @@ TeamFixture _spiel(DateTime anstoss) => TeamFixture(
   status: FixtureStatus.scheduled,
   leagueName: 'Bundesliga',
   round: 3,
-  home: const TeamRef(id: 'h', name: 'FC Bayern München', shortName: 'FCB'),
-  away: const TeamRef(id: 'a', name: 'VfB Stuttgart', shortName: 'VfB'),
+  // **Dortmund gegen HSV** ist mit Bedacht gewählt: Genau an dieser Paarung
+  // fiel auf, dass die Kopfkarte ohne Vereinsfarbe dastand. Dortmunds Gelb ist
+  // zu hell für die Grundfarbe und das Trikotweiß des HSV trägt keinen
+  // Farbton — die beiden Fälle, an denen `vereinsTon` scheiterte. Wer hier
+  // eine ruhigere Paarung einsetzt, verliert die Probe.
+  home: const TeamRef(id: 'h', name: 'Borussia Dortmund', shortName: 'BVB'),
+  away: const TeamRef(id: 'a', name: 'Hamburger SV', shortName: 'HSV'),
 );
 
 void main() {

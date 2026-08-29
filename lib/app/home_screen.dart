@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -763,18 +765,65 @@ Color _heroGrund(ColorScheme scheme, bool dark, Color? verein) {
 /// [clubColors] liefert die Trikotfarben, und deren `primary` ist oft Weiß
 /// (Stuttgart, Gladbach, Köln, HSV) oder Schwarz (Frankfurt, Freiburg). Beides
 /// verschwindet auf dem fast schwarzen Grund oder überstrahlt ihn; erkennbar
-/// ist dann die Farbe des Kragens. Deshalb hier die Ausweichregel: zu helle
-/// oder zu dunkle Grundfarben treten an `secondary` ab.
+/// ist dann die Farbe des Kragens.
 ///
-/// `null` heißt **unbekannter Verein** — und dann bleibt die Karte an dieser
-/// Seite grau. Eine erfundene Farbe für einen Pokalgegner aus der Oberliga
-/// wäre schlimmer als keine: sie sähe aus wie eine Auskunft.
+/// **Die frühere Regel prüfte dafür die Helligkeit — und das war die falsche
+/// Frage.** Sie trat bei zu heller oder zu dunkler Grundfarbe an `secondary`
+/// ab, *ohne zu prüfen, ob die etwas taugt*. Dortmund fiel genau dadurch
+/// heraus: Gelb ist zu hell, also Ausweichen auf Schwarz — und das ergab
+/// `#15171E` mit einer Helligkeit von 0,009, praktisch die Hintergrundfarbe
+/// der App. Der Hof am Wappen und die Tönung an der Seite waren damit
+/// unsichtbar, obwohl eine Farbe zurückkam.
+///
+/// Maßgeblich ist deshalb der **Farbton**, nicht die Helligkeit: Weiß und
+/// Schwarz sagen nichts über einen Verein, Gelb sagt „Dortmund". Gesucht wird
+/// die erste Trikotfarbe mit echtem Farbton; sie wird nur in der Helligkeit in
+/// einen sichtbaren Bereich gehoben, der Ton bleibt.
+///
+/// `null` heißt **unbekannter Verein** (oder ein rein schwarz-weißer) — und
+/// dann bleibt die Karte an dieser Seite grau. Eine erfundene Farbe für einen
+/// Pokalgegner aus der Oberliga wäre schlimmer als keine: sie sähe aus wie
+/// eine Auskunft.
 Color? vereinsTon(String teamName) {
   const unbekannt = ClubColors(Color(0x00000000), Color(0x00000000));
   final farben = clubColors(teamName, fallback: unbekannt);
   if (farben.primary.a == 0) return null;
-  final l = farben.primary.computeLuminance();
-  return (l > 0.55 || l < 0.05) ? farben.secondary : farben.primary;
+  for (final c in [farben.primary, farben.secondary]) {
+    if (_traegtFarbton(c)) return _aufDunklemGrundSichtbar(c);
+  }
+  // Rein schwarz-weißer Verein: lieber grau als eine erfundene Farbe.
+  return null;
+}
+
+/// Trägt die Farbe überhaupt einen **Farbton**?
+///
+/// Das ist die eigentliche Frage — nicht, ob sie hell oder dunkel ist. Weiß
+/// und Schwarz sagen nichts über einen Verein; Gelb sagt „Dortmund", auch wenn
+/// es hell ist.
+///
+/// Gemessen wird die **Buntheit**: der Abstand zwischen stärkstem und
+/// schwächstem Kanal. Die HSL-Sättigung taugt dafür nicht — sie ist an den
+/// Rändern der Helligkeit nicht aussagekräftig. Das Trikotweiß von Stuttgart,
+/// Gladbach, Köln, HSV und Leipzig ist kein reines Weiß, sondern minimal
+/// blaustichig, und rechnete sich damit auf eine Sättigung von 0,3 hoch,
+/// obwohl das Auge dort nichts als Weiß sieht: alle fünf bekamen denselben
+/// blaugrauen Ton. Die Buntheit bleibt bei fast-Weiß wie bei fast-Schwarz
+/// klein und trennt sie sauber ab.
+bool _traegtFarbton(Color c) {
+  if (c.a == 0) return false;
+  final kanaele = [c.r, c.g, c.b];
+  return kanaele.reduce(math.max) - kanaele.reduce(math.min) >= 0.20;
+}
+
+/// Hebt eine Farbe in den Bereich, in dem sie auf dem fast schwarzen Grund
+/// **erkennbar** ist — ohne ihren Farbton anzutasten.
+///
+/// Farben, die ohnehin im Bereich liegen, kommen unverändert zurück; die
+/// bestehenden Vereinstöne ändern sich dadurch nicht.
+Color _aufDunklemGrundSichtbar(Color c) {
+  final hsl = HSLColor.fromColor(c);
+  if (hsl.lightness >= 0.30 && hsl.lightness <= 0.62) return c;
+  return hsl.withLightness(hsl.lightness.clamp(0.30, 0.62)).toColor();
 }
 
 /// Fällt der Anstoß auf den heutigen Tag?
