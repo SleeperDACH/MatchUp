@@ -306,7 +306,7 @@ class ManagerProfileScreen extends ConsumerWidget {
                   color: Colors.black87,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('$pts',
+                child: Text(formatPoints(pts),
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,

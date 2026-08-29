@@ -1610,6 +1610,35 @@ Auskunft.
 Nachgemessen gegen die Produktions-DB (mit Rollback): Ein fälliger Trade wird
 ausgeführt und die Spieler wechseln, ein noch nicht fälliger bleibt unangetastet.
 
+### Wer noch nicht gespielt hat, führt nicht
+
+Gemeldet: Im MatchUp hatte ein Spieler eine Umrahmung, der **noch gar nicht
+gespielt** hatte — und sein Gegenüber, das schon gespielt hatte, keine.
+
+Die Umrahmung heißt „führt in dieser Paarung", und sie verglich allein die
+Punktzahl. Ein Spieler ohne Anpfiff steht bei **0**, und 0 ist mehr als die
+rund **−10** eines Verteidigers mit drei Gegentoren und Gelber Karte
+(nachgerechnet an echten Werten: Chabot, 74 Minuten, 3 Gegentore, Gelb).
+Formal richtig, als Aussage falsch: Wer noch nicht angefangen hat, führt nicht.
+
+Zwei Änderungen, beide an derselben Wurzel — **eine 0 war doppeldeutig**:
+
+- **`MatchupSideData` trägt jetzt `gespielt`**, die Menge der Spieler mit
+  einem Eintrag in den Stats. Die Hervorhebung setzt voraus, dass der
+  Führende auch gespielt hat.
+- **Nicht gespielt zeigt „–", nicht „0".** Vorher stand in beiden Fällen eine
+  Null; man konnte nicht unterscheiden, ob jemand gespielt und nichts geholt
+  hat oder noch gar nicht dran war.
+
+**Nebenbefund, den erst der geweitete Wächtertest fand:** Dieselbe Zelle gab
+ihre Punkte als rohe Interpolation aus (`Text('${pts ?? 0}')`) — der
+Fließkomma-Rattenschwanz, den `formatPoints` verhindern soll. Er war
+durchgerutscht, weil `test/punkte_formatierung_test.dart` nur nach „points"
+suchte und die Variable hier `pts` heißt. Der Test kennt jetzt beide
+Schreibweisen und fand damit **sofort eine weitere** Stelle im
+Manager-Profil. Wer so einen Wächter schreibt, sollte über seine
+Namensannahme zweimal nachdenken.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

@@ -60,7 +60,14 @@ void main() {
           ...einfach.allMatches(zeile),
         ]) {
           final ausdruck = m.group(0)!;
-          if (!ausdruck.toLowerCase().contains('points')) continue;
+          // Auch die Kurzform: In `matchup_lineups.dart` hieß die Variable
+          // `pts`, und genau deshalb ist dort eine rohe Interpolation
+          // monatelang durchgerutscht.
+          final klein = ausdruck.toLowerCase();
+          if (!klein.contains('points') &&
+              !RegExp(r'\bpts\b').hasMatch(klein)) {
+            continue;
+          }
           if (ausdruck.contains('formatPoints(')) continue;
           if (erlaubt.any(ausdruck.contains)) continue;
           treffer.add('${f.path}:${i + 1}  $ausdruck');

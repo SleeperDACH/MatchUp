@@ -18,12 +18,21 @@ const _order = [
 
 /// Aufbereitete Startelf/Bank einer Seite für einen Spieltag.
 class MatchupSideData {
-  MatchupSideData(this.starters, this.bench, this.points, this.total);
+  MatchupSideData(
+      this.starters, this.bench, this.points, this.total, this.gespielt);
 
   final List<FantasyPlayer> starters;
   final List<FantasyPlayer> bench;
   final Map<String, double> points;
   final double total;
+
+  /// Wer an diesem Spieltag **schon gespielt hat**.
+  ///
+  /// Ohne diese Auskunft ist eine 0 doppeldeutig: „hat gespielt und nichts
+  /// geholt" sieht aus wie „ist noch gar nicht dran gewesen". Genau daran
+  /// hing die Hervorhebung — ein Spieler ohne Anpfiff „führte" gegen einen mit
+  /// drei Gegentoren und Gelb, weil 0 größer ist als −10.
+  final Set<String> gespielt;
 
   List<FantasyPlayer> startersAt(PlayerPosition pos) =>
       [for (final p in starters) if (p.position == pos) p]
@@ -71,7 +80,11 @@ MatchupSideData computeSideData({
   final points = {for (final e in pointsByPlayer.entries) e.key.id: e.value};
   final total = [for (final p in starters) points[p.id] ?? 0.0]
       .fold<double>(0, (a, b) => a + b);
-  return MatchupSideData(starters, bench, points, total);
+  final gespielt = {
+    for (final p in rosterPlayers)
+      if (stats[p.id]?.hasContribution ?? false) p.id
+  };
+  return MatchupSideData(starters, bench, points, total, gespielt);
 }
 
 /// Spieler-Gegenüberstellung einer Head-to-Head-Paarung: beide Aufstellungen
@@ -170,6 +183,8 @@ class MatchupLineups extends ConsumerWidget {
         away: a,
         homePts: hp,
         awayPts: ap,
+        homeGespielt: h != null && home.gespielt.contains(h.id),
+        awayGespielt: a != null && (away?.gespielt.contains(a.id) ?? false),
         homeMine: homeMine,
         awayMine: awayMine,
         clubIcons: clubIcons,
@@ -207,6 +222,8 @@ class _PlayerRow extends StatelessWidget {
     required this.away,
     required this.homePts,
     required this.awayPts,
+    required this.homeGespielt,
+    required this.awayGespielt,
     required this.homeMine,
     required this.awayMine,
     required this.clubIcons,
@@ -217,6 +234,11 @@ class _PlayerRow extends StatelessWidget {
   final FantasyPlayer? away;
   final double? homePts;
   final double? awayPts;
+
+  /// Hat der Spieler an diesem Spieltag schon gespielt?
+  final bool homeGespielt;
+  final bool awayGespielt;
+
   final bool homeMine;
   final bool awayMine;
   final Map<String, String?> clubIcons;
@@ -224,10 +246,16 @@ class _PlayerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lead = homePts != null && awayPts != null
-        ? (homePts! > awayPts!
+    // **Die Hervorhebung heißt „führt in dieser Paarung" — und das darf nur
+    // sagen, wer auch gespielt hat.** Vorher zählte allein die Punktzahl:
+    // Ein Spieler ohne Anpfiff steht bei 0, und 0 ist mehr als die −10 eines
+    // Verteidigers mit drei Gegentoren und Gelb. Also bekam der Umrahmung, der
+    // noch gar nicht dran war, und der, der gespielt hatte, keine. Wer noch
+    // nicht gespielt hat, führt nicht — er hat noch nicht angefangen.
+    final lead = (homePts != null && awayPts != null)
+        ? (homePts! > awayPts! && homeGespielt
             ? 1
-            : awayPts! > homePts!
+            : awayPts! > homePts! && awayGespielt
                 ? -1
                 : 0)
         : 0;
@@ -241,6 +269,7 @@ class _PlayerRow extends StatelessWidget {
                 pts: homePts,
                 mine: homeMine,
                 highlight: lead > 0,
+                gespielt: homeGespielt,
                 start: true),
           ),
           const SizedBox(width: 8),
@@ -250,6 +279,7 @@ class _PlayerRow extends StatelessWidget {
                 pts: awayPts,
                 mine: awayMine,
                 highlight: lead < 0,
+                gespielt: awayGespielt,
                 start: false),
           ),
         ],
@@ -262,6 +292,7 @@ class _PlayerRow extends StatelessWidget {
       required double? pts,
       required bool mine,
       required bool highlight,
+      required bool gespielt,
       required bool start}) {
     final scheme = Theme.of(context).colorScheme;
     if (player == null) {
@@ -277,12 +308,21 @@ class _PlayerRow extends StatelessWidget {
             : scheme.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text('${pts ?? 0}',
+      // **Noch nicht gespielt ist kein Nullpunktespiel.** Vorher stand hier
+      // in beiden Fällen „0" — man konnte nicht unterscheiden, ob jemand
+      // gespielt und nichts geholt hat oder noch gar nicht dran war.
+      //
+      // `formatPoints` statt roher Interpolation: Die Wertung kennt −0,4 je
+      // Foul, und `0.4`-Summen tragen sonst einen Fließkomma-Rattenschwanz
+      // hinter sich her.
+      child: Text(gespielt ? formatPoints(pts ?? 0) : '–',
           textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
-              color: highlight ? scheme.primary : scheme.onSurface)),
+              color: !gespielt
+                  ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
+                  : (highlight ? scheme.primary : scheme.onSurface))),
     );
     final badge =
         ClubBadge(club: player.club, iconUrl: clubIcons[player.club], size: 34);
