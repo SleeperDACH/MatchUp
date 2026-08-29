@@ -1706,10 +1706,38 @@ Zuständen keinen Kopf.
   Felder, anderer Einstiegspunkt in dieselben Daten. Drei Darstellungen
   derselben Liste waren zwei zu viel.
 
-Für diesen Schirm gibt es **keine** Golden-Vorschau: Er hängt an einem Dutzend
-Provider (Kader, Aufstellungen, Spielerpool, Saison-Fixtures, Trades, Manager),
-und die Diagnose stand auf einem Gerätebild. Wer ihn ändert, sieht ihn sich am
-Gerät an.
+**Die Zeilen waren „trostlos" — und das lag nicht an den Zeilen, sondern an
+dem, was sie nicht sagten.** Zwischen dem Duell-Kasten oben und dem Spieltag
+unten, beides Bereiche mit Fläche und Inhalt, lagen fünf nackte Zeilen mit je
+**einem Wort**. Man konnte nicht erkennen, ob die eigene Elf steht, ob ein
+Trade wartet oder ob im Chat etwas Neues liegt. Drei Änderungen:
+
+- **Der Hinweis steht unter dem Wort, nicht daneben.** Rechtsbündig war er ein
+  Zusatz, den man übersah; als zweite Zeile gibt er der Zeile Inhalt.
+- **Die Zeilen sagen jetzt etwas.** „Aufstellung · Noch nicht gestellt" bzw.
+  „Steht · 4-4-2" (`meineFormationProvider`), „N Trades warten auf den
+  Spieltag", „Neue Nachrichten". Wo es nichts zu sagen gibt (Free Agency),
+  bleibt die Zeile einzeilig — ein erfundener Untertitel wäre Füllmaterial.
+- **Jede Gruppe steht auf eigener Fläche** (`_Zeilengruppe`: Kartengrund,
+  Haarlinie, runde Ecken) — dieselbe Sprache wie die Karten auf dem
+  Startbildschirm. **Keine gefüllten Kacheln**: Die gab es hier schon einmal
+  als „Schnellzugriff", und sie nahmen den halben Schirm ein.
+
+Dabei ist aufgefallen, dass `_TipTile` seine Zeile **selbst** zeichnete —
+blankes Symbol statt getönter Kachel, andere Abstände, andere Schriftgröße. In
+der Gruppe fiel das sofort auf; sie benutzt jetzt dieselbe `_LigaZeile`. Deren
+`onTap` darf dafür `null` sein (gesperrtes Tippspiel) und bekommt dann **kein**
+`InkWell` — eine Zeile, die auf Tippen reagiert und nichts tut, verspricht
+etwas, das es nicht gibt.
+
+**Seit dieser Überarbeitung gibt es doch eine Vorschau**
+(`test/liga_uebersicht_vorschau_test.dart`). Sie war der Grund, den Schirm
+überhaupt beurteilen zu können: Auf dem Gerät sieht man ihn nur in dem Zustand,
+in dem die eigene Liga zufällig gerade ist. Drei Dinge braucht sie —
+`initializeDateFormatting('de_DE')` für den Spieltags-Block,
+`SharedPreferences.setMockInitialValues({})` für den Ungelesen-Hinweis am
+Liga-Chat, und **echte Fixtures**: Ohne sie ist die untere Bildschirmhälfte
+leer, und man diagnostiziert einen Schirm, den es so nicht gibt.
 
 ## Seitenmenü — „B, das Menü trägt Inhalt"
 

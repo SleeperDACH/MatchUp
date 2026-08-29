@@ -102,6 +102,42 @@ final fantasyUnreadChatProvider = Provider.family<bool, String>((ref, leagueId) 
       m.userId != myId && (lastRead == null || m.createdAt.isAfter(lastRead)));
 });
 
+/// Die eigene Formation für den aktuellen Spieltag — `null`, wenn keine
+/// Aufstellung gespeichert ist.
+///
+/// Damit die Zeile „Aufstellung" auf der Liga-Übersicht **etwas sagen kann**.
+/// Sie trug vorher nur ihr Wort, und damit war die wöchentlich wichtigste
+/// Aufgabe der Liga von „Liga-Chat" nicht zu unterscheiden.
+final meineFormationProvider =
+    Provider.family<String?, String>((ref, leagueId) {
+  final myId = ref.watch(currentUserProvider)?.id;
+  final runde = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
+  if (myId == null || runde == null) return null;
+  final ids = (ref.watch(leagueLineupsProvider(leagueId)).valueOrNull ??
+          const <FantasyLineup>[])
+      .where((l) => l.managerId == myId && l.round == runde)
+      .map((l) => l.playerIds)
+      .firstOrNull;
+  if (ids == null || ids.isEmpty) return null;
+  final pool = ref.watch(playerPoolProvider).valueOrNull;
+  if (pool == null) return null;
+  final byId = {for (final p in pool) p.id: p};
+  var d = 0, m = 0, f = 0;
+  for (final id in ids) {
+    switch (byId[id]?.position) {
+      case PlayerPosition.def:
+        d++;
+      case PlayerPosition.mid:
+        m++;
+      case PlayerPosition.fwd:
+        f++;
+      default:
+        break;
+    }
+  }
+  return '$d-$m-$f';
+});
+
 /// Trade-Angebote einer Liga (RLS: nur eigene Beteiligung) in Echtzeit.
 final leagueTradesProvider =
     StreamProvider.family<List<TradeOffer>, String>((ref, leagueId) {

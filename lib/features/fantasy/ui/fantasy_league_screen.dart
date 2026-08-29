@@ -135,6 +135,9 @@ class _OverviewTab extends ConsumerWidget {
     final currentRound = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final openTrades = ref.watch(incomingTradeOffersProvider(league.id));
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
+    final formation = ref.watch(meineFormationProvider(league.id));
+    final vorgemerkt = ref.watch(vorgemerkteTradesProvider(league.id)).length;
+    final chatNeu = ref.watch(fantasyUnreadChatProvider(league.id));
 
     void go(Widget screen) => Navigator.of(
       context,
@@ -177,72 +180,81 @@ class _OverviewTab extends ConsumerWidget {
         // --- Mein Team -----------------------------------------------------
         if (drafted) ...[
           const _Abschnittsmarke('Mein Team'),
+          _Zeilengruppe([
           _LigaZeile(
             label: 'Aufstellung',
             icon: Icons.sports_soccer,
             farbe: _cTeal,
+            // Die wöchentlich wichtigste Aufgabe der Liga — sie muss sagen,
+            // ob sie erledigt ist.
+            hinweis: formation != null
+                ? 'Steht · $formation'
+                : 'Noch nicht gestellt',
             onTap: () => go(LineupScreen(league: league)),
           ),
-          const _Trenner(),
           _LigaZeile(
             label: 'Free Agency',
             icon: Icons.person_add_alt,
             farbe: _cAmber,
             onTap: () => go(FreeAgencyScreen(league: league)),
           ),
-          const _Trenner(),
           _LigaZeile(
             label: 'Trades',
             icon: Icons.swap_horiz,
             farbe: _cRed,
+            // Der rote Zähler sagt „etwas wartet auf dich"; die zweite Zeile
+            // sagt, was sonst noch offen ist — ein vorgemerkter Trade wartet
+            // auf niemanden, er wartet auf den Spieltag.
+            hinweis: vorgemerkt > 0
+                ? (vorgemerkt == 1
+                    ? 'Ein Trade wartet auf den Spieltag'
+                    : '$vorgemerkt Trades warten auf den Spieltag')
+                : null,
             zahl: openTrades,
             onTap: () => go(TradeScreen(league: league)),
           ),
+          ]),
         ],
 
         // --- Liga ----------------------------------------------------------
         const _Abschnittsmarke('Liga'),
-        if (!draftFullyDone) ...[
+        _Zeilengruppe([
+          if (!draftFullyDone)
+            _LigaZeile(
+              label: 'Draft-Raum',
+              icon: Icons.meeting_room_outlined,
+              farbe: _cBlue,
+              hinweis: switch (league.draftStatus) {
+                DraftStatus.setup => 'noch nicht gestartet',
+                DraftStatus.drafting => 'läuft',
+                DraftStatus.done => null,
+              },
+              onTap: () => go(DraftRoomScreen(league: league)),
+            ),
+          // Ligainternes Tippspiel — nur wenn die Liga eines anbietet.
+          if (league.tipEnabled ||
+              ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull != null)
+            _LeagueTipspielButton(league: league, isAdmin: isAdmin),
           _LigaZeile(
-            label: 'Draft-Raum',
-            icon: Icons.meeting_room_outlined,
-            farbe: _cBlue,
-            hinweis: switch (league.draftStatus) {
-              DraftStatus.setup => 'noch nicht gestartet',
-              DraftStatus.drafting => 'läuft',
-              DraftStatus.done => null,
-            },
-            onTap: () => go(DraftRoomScreen(league: league)),
+            label: 'Liga-Chat',
+            icon: Icons.forum_outlined,
+            farbe: _cGreen,
+            hinweis: chatNeu ? 'Neue Nachrichten' : null,
+            onTap: () => go(FantasyChatScreen(league: league)),
           ),
-          const _Trenner(),
-        ],
-        // Ligainternes Tippspiel — nur wenn die Liga eines anbietet.
-        if (league.tipEnabled ||
-            ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull !=
-                null) ...[
-          _LeagueTipspielButton(league: league, isAdmin: isAdmin),
-          const _Trenner(),
-        ],
-        _LigaZeile(
-          label: 'Liga-Chat',
-          icon: Icons.forum_outlined,
-          farbe: _cGreen,
-          onTap: () => go(FantasyChatScreen(league: league)),
-        ),
-        if (!draftFullyDone) ...[
-          const _Trenner(),
-          _LigaZeile(
-            label: 'Spieler einladen',
-            icon: Icons.person_add_alt_1,
-            farbe: _cAmber,
-            hinweis: managers == null ? null : '${managers.length} dabei',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => InvitePlayersScreen(league: league),
+          if (!draftFullyDone)
+            _LigaZeile(
+              label: 'Spieler einladen',
+              icon: Icons.person_add_alt_1,
+              farbe: _cAmber,
+              hinweis: managers == null ? null : '${managers.length} dabei',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => InvitePlayersScreen(league: league),
+                ),
               ),
             ),
-          ),
-        ],
+        ]),
 
         // --- Spieltag ------------------------------------------------------
         _MatchdayFixtures(league: league),
@@ -437,19 +449,6 @@ class _Abschnittsmarke extends StatelessWidget {
   }
 }
 
-class _Trenner extends StatelessWidget {
-  const _Trenner();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 14),
-    child: Container(
-      height: 0.8,
-      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.07),
-    ),
-  );
-}
-
 /// Eine Aktion der Übersicht: farbiges Symbol, Beschriftung, optional ein
 /// leiser Zusatz und ein roter Zähler.
 ///
@@ -459,6 +458,55 @@ class _Trenner extends StatelessWidget {
 /// getönten Kachel gibt ihnen das Gewicht zurück, ohne dass die Fläche wieder
 /// den halben Schirm einnimmt: 36 Punkte statt eines 44er-Kreises auf einer
 /// 100 Punkte hohen Karte. Die Farbe trägt das Symbol, nicht der Text.
+/// Eine Gruppe von [_LigaZeile] auf **eigener Fläche**.
+///
+/// Vorher lagen die Zeilen nackt auf dem Grund des Schirms, nur durch
+/// Haarlinien getrennt. Zwischen dem Duell-Kasten oben und dem Spieltag unten —
+/// beides Bereiche mit Fläche und Inhalt — war die Mitte damit das Flachste,
+/// was es gibt: fünf Wörter untereinander. „Trostlos" war die Rückmeldung, und
+/// sie war berechtigt.
+///
+/// Dieselbe Sprache wie die Karten auf dem Startbildschirm: Kartengrund,
+/// Haarlinie, runde Ecken. **Keine gefüllten Kacheln** — die gab es hier
+/// schon einmal als „Schnellzugriff" und sie nahmen den halben Schirm ein.
+class _Zeilengruppe extends StatelessWidget {
+  const _Zeilengruppe(this.zeilen);
+
+  final List<Widget> zeilen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < zeilen.length; i++) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  indent: 62,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.07),
+                ),
+              zeilen[i],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LigaZeile extends StatelessWidget {
   const _LigaZeile({
     required this.label,
@@ -472,7 +520,11 @@ class _LigaZeile extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color farbe;
-  final VoidCallback onTap;
+
+  /// `null` = die Zeile ist da, aber (noch) nicht bedienbar. Sie bekommt dann
+  /// **kein** `InkWell`: Eine Zeile, die auf Tippen reagiert und nichts tut,
+  /// verspricht etwas, das es nicht gibt.
+  final VoidCallback? onTap;
 
   /// Leiser Zusatz rechts („läuft", „3 dabei").
   final String? hinweis;
@@ -488,43 +540,61 @@ class _LigaZeile extends StatelessWidget {
       label: [label, ?hinweis, if (zahl > 0) '$zahl offen'].join(', '),
       onTap: onTap,
       excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
+      child: Opacity(
+        opacity: onTap == null ? 0.55 : 1,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: farbe.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(11),
+                  color: farbe.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: farbe.withValues(alpha: 0.30),
+                    color: farbe.withValues(alpha: 0.38),
                     width: 0.8,
                   ),
                 ),
-                child: Icon(icon, size: 19, color: farbe),
+                child: Icon(icon, size: 20, color: farbe),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                // **Der Hinweis steht jetzt unter dem Wort, nicht daneben.**
+                // Rechtsbündig war er ein Zusatz, den man übersah; als zweite
+                // Zeile gibt er der Zeile Inhalt. Fünf Zeilen, die alle nur
+                // ein Wort trugen, waren zwischen dem Duell-Kasten oben und
+                // dem Spieltag unten das Flachste auf dem Schirm.
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                    ),
+                    if (hinweis != null) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        hinweis!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (hinweis != null)
-                Text(
-                  hinweis!,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
               if (zahl > 0) ...[
                 const SizedBox(width: 8),
                 Container(
@@ -555,6 +625,7 @@ class _LigaZeile extends StatelessWidget {
                 color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -609,29 +680,15 @@ class _TipTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final enabled = onTap != null;
-    final tile = InkWell(
-      borderRadius: BorderRadius.circular(10),
+    // Benutzt dieselbe Zeile wie die Nachbarn. Vorher zeichnete sie sich
+    // selbst — blankes Symbol statt getönter Kachel, andere Abstände, andere
+    // Schriftgröße. In der Zeilengruppe fiel das sofort auf.
+    return _LigaZeile(
+      label: title,
+      icon: Icons.emoji_events_outlined,
+      farbe: _cAmber,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-        child: Row(
-          children: [
-            Icon(Icons.emoji_events_outlined, color: _cAmber),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15)),
-            ),
-            if (enabled)
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-          ],
-        ),
-      ),
     );
-    return enabled ? tile : Opacity(opacity: 0.55, child: tile);
   }
 }
 
