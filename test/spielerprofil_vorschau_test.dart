@@ -6,6 +6,7 @@ import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/auth/providers.dart';
+import 'package:matchup/features/fantasy/logic/aufstellungs_prognose.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
@@ -96,8 +97,39 @@ void main() {
       ),
   ];
 
-  Widget rahmen(Widget kind) => ProviderScope(
+  // Die voraussichtliche Elf fuer Spieltag 3 — der Held steht mit drin.
+  final prognose = PrognoseElf(
+    club: club,
+    formation: '4-2-3-1',
+    stand: DateTime(2026, 8, 29, 11, 20),
+    elf: [
+      const PrognoseSpieler(
+          playerId: 'p2', name: 'Gregor Kobel', nummer: 1, formationsPosition: 1),
+      const PrognoseSpieler(
+          playerId: 'p1',
+          name: 'Nico Schlotterbeck',
+          nummer: 4,
+          formationsPosition: 3),
+      const PrognoseSpieler(
+          playerId: 'p3', name: 'Julian Brandt', nummer: 19, formationsPosition: 8),
+      const PrognoseSpieler(
+          playerId: 'p4',
+          name: 'Serhou Guirassy',
+          nummer: 9,
+          formationsPosition: 11),
+      // Ein Spieler, den der lokale Pool nicht kennt — Zugang nach dem letzten
+      // Kader-Sync. Er darf nicht verschwinden.
+      const PrognoseSpieler(
+          playerId: 'sportmonks:99999',
+          name: 'Neuzugang Nachname',
+          nummer: 27,
+          formationsPosition: 10),
+    ],
+  );
+
+  Widget rahmen(Widget kind, {PrognoseElf? elf}) => ProviderScope(
         overrides: [
+          prognoseElfProvider.overrideWith((ref, k) async => elf),
           currentUserProvider.overrideWith((ref) => User(
                 id: 'ich',
                 appMetadata: const {},
@@ -131,6 +163,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(rahmen(
+      elf: prognose,
       Scaffold(
         body: Builder(
           builder: (context) => TextButton(
@@ -154,6 +187,17 @@ void main() {
     await expectLater(
       find.byType(BottomSheet),
       matchesGoldenFile('goldens/spielerprofil_leistung.png'),
+    );
+
+    // **Die voraussichtliche Aufstellung.** Der Reiter, wegen dem man das
+    // Profil vor dem Aufstellen ueberhaupt oeffnet.
+    await tester.tap(find.text('Aufstellung'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/spielerprofil_aufstellung.png'),
     );
 
     // Spielplan und Kader — die beiden Reiter, die es ohne den Wegfall der
@@ -190,6 +234,101 @@ void main() {
     await expectLater(
       find.byType(BottomSheet).last,
       matchesGoldenFile('goldens/spielerprofil_aufschluesselung.png'),
+    );
+  });
+
+  testWidgets('Vorschau: Spielerprofil ohne Prognose', (tester) async {
+    // **Der Zustand, den es die meiste Woche gibt.** Sportmonks liefert die
+    // Elf erst ein bis zwei Tage vor Anpfiff; zwischen Abpfiff und naechster
+    // Prognose liegen mehrere Tage. Eine leere Liste saehe hier aus wie
+    // „keiner spielt" — deshalb hat der Zustand ein eigenes Bild.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 780 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(rahmen(
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showPlayerProfile(
+              context,
+              league: liga,
+              player: held,
+              clubIcon: null,
+              isMine: true,
+            ),
+            child: const Text('öffnen'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('öffnen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.tap(find.text('Aufstellung'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/spielerprofil_ohne_prognose.png'),
+    );
+  });
+
+  testWidgets('Vorschau: Spielerprofil nicht in der Elf', (tester) async {
+    // **Der Fall, der etwas von einem will.** Steht der eigene Spieler nicht
+    // in der voraussichtlichen Elf, muss die Aufstellung geaendert werden —
+    // deshalb traegt nur dieser Zustand Farbe, nicht der ruhige Normalfall.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 780 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final ohneIhn = PrognoseElf(
+      club: club,
+      formation: '4-2-3-1',
+      elf: [
+        for (final s in prognose.elf)
+          if (s.playerId != held.id) s
+      ],
+    );
+
+    await tester.pumpWidget(rahmen(
+      elf: ohneIhn,
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showPlayerProfile(
+              context,
+              league: liga,
+              player: held,
+              clubIcon: null,
+              isMine: true,
+            ),
+            child: const Text('öffnen'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('öffnen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.tap(find.text('Aufstellung'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/spielerprofil_nicht_in_elf.png'),
     );
   });
 }

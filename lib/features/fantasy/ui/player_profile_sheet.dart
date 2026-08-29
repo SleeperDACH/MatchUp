@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/team_fixture_list.dart';
@@ -8,6 +9,7 @@ import '../../../core/models/team_fixture.dart';
 
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
+import '../logic/aufstellungs_prognose.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
@@ -100,18 +102,25 @@ class _PlayerProfileSheet extends ConsumerWidget {
               ],
             ),
           ),
-          // **Drei Reiter statt einer Tabelle.** Seit das Wappen kein Link
+          // **Vier Reiter statt einer Tabelle.** Seit das Wappen kein Link
           // mehr auf die Vereinsseite ist, muss das Profil hergeben, wofür man
           // dorthin ging: Spielplan und Kader des Vereins — plus die Leistung,
-          // die es schon zeigte.
+          // die es schon zeigte. Dazu die **voraussichtliche Aufstellung**:
+          // Vor dem Aufstellen ist „spielt er überhaupt?" die erste Frage, und
+          // sie stand vorher nirgends in der App.
           DefaultTabController(
-            length: 3,
+            length: 4,
             child: Flexible(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const LeiseReiter(
-                      titel: ['Leistung', 'Spielplan', 'Kader'],
+                      titel: [
+                        'Leistung',
+                        'Aufstellung',
+                        'Spielplan',
+                        'Kader'
+                      ],
                       horizontal: 12),
                   Flexible(
                     child: TabBarView(
@@ -129,6 +138,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
                           ),
                           data: (season) => _table(context, season),
                         ),
+                        _Prognose(player: player, clubIcon: clubIcon),
                         _Spielplan(club: player.club),
                         _Vereinskader(
                             league: league, club: player.club, aktiv: player.id),
@@ -755,3 +765,282 @@ class _Leer extends StatelessWidget {
         ),
       );
 }
+
+/// **Die voraussichtliche Aufstellung** des Vereins für das nächste Spiel.
+///
+/// Die Frage, für die dieser Reiter da ist, hat genau eine Zeile: *Steht mein
+/// Spieler in der Elf?* Sie steht deshalb ganz oben und nicht als Fußnote
+/// unter einer Liste. Die restlichen zehn sind Zusammenhang, kein Ersatz
+/// dafür.
+class _Prognose extends ConsumerWidget {
+  const _Prognose({required this.player, required this.clubIcon});
+
+  final FantasyPlayer player;
+  final String? clubIcon;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spiele = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
+    if (spiele == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final spiel = spielFuerPrognose(spiele, player.club);
+    if (spiel == null) {
+      return const _Leer('Für diese Saison steht kein Spiel mehr an.');
+    }
+
+    final elfAsync =
+        ref.watch(prognoseElfProvider((club: player.club, runde: spiel.round)));
+
+    return elfAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) =>
+          _Leer('Die Aufstellung konnte nicht geladen werden.\n$e'),
+      data: (elf) => ListView(
+        padding: const EdgeInsets.only(top: 8, bottom: 16),
+        children: [
+          _PrognoseKopf(spiel: spiel, elf: elf, clubIcon: clubIcon),
+          if (elf == null)
+            _NochKeinePrognose(player: player, spiel: spiel)
+          else ...[
+            _Urteil(drin: elf.enthaelt(player.id)),
+            const SizedBox(height: 4),
+            ..._elfZeilen(context, ref, elf),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _elfZeilen(
+      BuildContext context, WidgetRef ref, PrognoseElf elf) {
+    final scheme = Theme.of(context).colorScheme;
+    final pool = ref.watch(playerPoolProvider).valueOrNull ?? const [];
+    final nachId = {for (final p in pool) p.id: p};
+
+    return [
+      for (final s in elf.elf)
+        Builder(builder: (context) {
+          final ich = s.playerId == player.id;
+          // Die Position kommt aus **unserem** Pool, nicht von Sportmonks:
+          // deren `position_id` mischt grobe und feine Positionen (24 Torwart,
+          // aber 148 Innenverteidiger), und für die Wertung zählt ohnehin
+          // unsere Einteilung.
+          final imPool = nachId[s.playerId];
+          return Container(
+            color: ich ? scheme.primary.withValues(alpha: 0.10) : null,
+            child: ListTile(
+              dense: true,
+              leading: SizedBox(
+                width: 28,
+                child: Text(
+                  s.nummer?.toString() ?? '–',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    fontWeight: FontWeight.w700,
+                    color: ich ? scheme.primary : scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              title: Text(
+                // Kennt der Pool den Spieler nicht (Zugang nach dem letzten
+                // Kader-Sync), steht der Name aus der Prognose da — „nicht
+                // gefunden" ist ein eigener Zustand, kein leeres Feld.
+                imPool?.name ?? s.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontWeight: ich ? FontWeight.w800 : FontWeight.w600),
+              ),
+              subtitle: imPool == null
+                  ? null
+                  : Text(imPool.position.label,
+                      style: TextStyle(color: scheme.onSurfaceVariant)),
+              trailing: ich
+                  ? Icon(Icons.person, size: 18, color: scheme.primary)
+                  : null,
+            ),
+          );
+        }),
+    ];
+  }
+}
+
+/// Kopf des Reiters: welches Spiel, welche Formation, wie frisch.
+class _PrognoseKopf extends StatelessWidget {
+  const _PrognoseKopf(
+      {required this.spiel, required this.elf, required this.clubIcon});
+
+  final Fixture spiel;
+  final PrognoseElf? elf;
+  final String? clubIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${spiel.home.name} – ${spiel.away.name}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            [
+              '${spiel.roundName} · ${_wannKurz(spiel.kickoff.toLocal())}',
+              if (elf?.formation != null) elf!.formation!,
+            ].join(' · '),
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Die eine Zeile, für die es den Reiter gibt.
+///
+/// Farbe trägt nur der Fall, in dem etwas zu tun ist: Steht der Spieler
+/// **nicht** in der Elf, muss der Manager seine Aufstellung ändern. Steht er
+/// drin, ist nichts zu tun — dann bleibt es beim ruhigen Haken.
+class _Urteil extends StatelessWidget {
+  const _Urteil({required this.drin});
+
+  final bool drin;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final farbe = drin ? scheme.primary : const Color(0xFFFFC83D);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: drin ? null : farbe.withValues(alpha: 0.10),
+        border: Border.all(
+          color: farbe.withValues(alpha: drin ? 0.35 : 0.55),
+          width: drin ? 0.8 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(drin ? Icons.check_circle_outline : Icons.event_seat_outlined,
+              size: 18, color: farbe),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              drin
+                  ? 'Voraussichtlich in der Startelf'
+                  : 'Nicht in der voraussichtlichen Elf',
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, color: farbe, fontSize: 13.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Der Zustand, den es die meiste Zeit der Woche gibt.
+///
+/// **Gemessen am 29.08.2026:** Sportmonks liefert die Prognose erst ein bis
+/// zwei Tage vor Anpfiff — für Partien desselben und des nächsten Tages lagen
+/// je 22 Einträge vor, für den vierten und siebten Tag keiner. Zwischen
+/// Abpfiff und nächster Prognose liegen also mehrere Tage.
+///
+/// Eine leere Liste wäre hier der schlimmste Ausgang: Sie sähe aus wie „keiner
+/// spielt" — derselbe Fehler wie das leere Feld im Draft-Brett. Deshalb sagt
+/// der Zustand, *warum* nichts dasteht, und trägt mit der letzten
+/// tatsächlichen Einsatzzeit die einzige belastbare Auskunft nach, die es zu
+/// diesem Zeitpunkt gibt.
+class _NochKeinePrognose extends ConsumerWidget {
+  const _NochKeinePrognose({required this.player, required this.spiel});
+
+  final FantasyPlayer player;
+  final Fixture spiel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final spiele = ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? [];
+    final zuletzt = letztesGespieltes(spiele, player.club);
+    final saison = ref.watch(seasonStatsProvider).valueOrNull;
+    final stats = (zuletzt == null || saison == null)
+        ? null
+        : saison[zuletzt.round]?[player.id];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.schedule, size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Noch keine Aufstellung',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Die voraussichtliche Elf steht in der Regel ein bis zwei Tage '
+            'vor Anpfiff.',
+            style: TextStyle(color: scheme.onSurfaceVariant, height: 1.35),
+          ),
+          if (stats != null && zuletzt != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: scheme.onSurface.withValues(alpha: 0.12),
+                    width: 0.8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Zuletzt',
+                      style: TextStyle(
+                          fontSize: 11,
+                          letterSpacing: 0.6,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurfaceVariant)),
+                  const SizedBox(height: 4),
+                  Text(
+                    stats.minutes > 0
+                        ? '${stats.minutes} Minuten · ${zuletzt.roundName}'
+                        : 'Ohne Einsatz · ${zuletzt.roundName}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String _wannKurz(DateTime d) =>
+    DateFormat('E, d. MMM, HH:mm', 'de_DE').format(d);

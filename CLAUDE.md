@@ -1779,6 +1779,74 @@ durchgerutscht. `test/punkte_formatierung_test.dart` kennt jetzt auch
 `scorePlayer(`. Wer so einen Wächter schreibt, sollte über seine Namensannahme
 dreimal nachdenken.
 
+### Die voraussichtliche Aufstellung
+
+Vor dem Aufstellen ist „spielt er überhaupt?" die erste Frage, und sie stand
+nirgends in der App. Das Spielerprofil hat dafür einen vierten Reiter
+**Aufstellung**: die voraussichtliche Elf des Vereins für das nächste Spiel,
+der eigene Spieler hervorgehoben.
+
+**Quelle ist Sportmonks, nicht kicker** — obwohl kicker vorgeschlagen war. Der
+Include `predictedLineups` steht im gebuchten Plan („Access Predicted
+Lineups"), liefert elf Spieler je Mannschaft samt Rückennummer und
+Formationsposition, und trägt **dieselben Spieler-IDs wie unser Pool**
+(`sportmonks:<id>` = `players.id`). Nachgemessen: alle elf vorhergesagten
+Dortmunder trafen exakt auf eine Pool-Zeile. Kicker gäbe dasselbe nur als HTML,
+mit Namensabgleich statt IDs und brechend bei jeder Layoutänderung — dazu eine
+ToS-Frage, die man sich für nichts einhandelt.
+
+**Gemessen, nicht geschätzt: die Prognose steht erst ein bis zwei Tage vor
+Anpfiff.** Am 29.08.2026 lagen für Partien desselben und des nächsten Tages je
+22 Einträge samt Formation vor, für den 02.09. (vier Tage) und den 05.09.
+(sieben Tage) kein einziger. Daraus folgt beides:
+
+- Der Sync fragt nur das Fenster `VORLAUF_TAGE` (3) ab. Alles darüber hinaus
+  wäre ein Request für eine garantiert leere Antwort. Ein voller Lauf ist
+  **ein** Sportmonks-Request (der multi-Endpunkt nimmt 25 Spiele).
+- **Die Tage ohne Prognose sind ein eigener Zustand.** Eine leere Liste sähe
+  aus wie „keiner spielt" — derselbe Fehler wie das leere Feld im Draft-Brett.
+  Der Reiter sagt stattdessen, dass die Elf ein bis zwei Tage vor Anpfiff
+  kommt, und trägt mit der letzten tatsächlichen Einsatzzeit („74 Minuten ·
+  Spieltag 2") die einzige belastbare Auskunft nach, die es dann gibt.
+
+**Der Umschaltzeitpunkt ist der Spieltag, nicht der Verein.** „Das nächste
+Spiel des Vereins" wäre die naheliegende und falsche Antwort: Spielt Dortmund
+freitags und der Spieltag endet sonntags, stünde ab Freitagabend die Prognose
+für den *nächsten* Spieltag da — für den es noch keine gibt, und sie
+verdrängte die Elf, die gerade auf dem Platz steht. Maßgeblich ist deshalb die
+**niedrigste noch nicht vollständig abgepfiffene Runde**
+(`aktiveRunde`/`spielFuerPrognose` in `logic/aufstellungs_prognose.dart`, rein
+und getestet). Ist der Verein in dieser Runde spielfrei, gilt sein nächstes
+Spiel — sonst stünde das Profil ohne Auskunft da, obwohl es eine gibt.
+
+**Verbunden wird über Verein und Spieltag, nicht über die Fixture-ID.** Das
+ist beim Anschluss der Oberfläche aufgefallen: `predicted_lineups.fixture_id`
+trägt die **Sportmonks**-ID, die App holt ihre Spielpläne aber von OpenLigaDB
+(`fantasySeasonFixturesProvider`) — dieselbe Partie steht in `fixtures` unter
+zwei IDs. In `fixtures` gibt es keine Sportmonks-Team-ID, also löst der Sync
+den Verein über den **eigenen Pool** auf: Von elf vorhergesagten Spielern
+stehen praktisch immer mehrere in `players`, und deren `club` ist der
+kanonische Name, auf dem auch das Stats-Matching steht. Entschieden wird per
+**Mehrheit** je Mannschaft — ein einzelner Spieler mit veraltetem
+Vereinseintrag (Wechsel zwischen zwei Kader-Syncs) soll die ganze Elf nicht in
+den falschen Verein schieben. Gelesen wird über die Sicht
+`predicted_lineups_v` (`security_invoker`, damit die RLS der Basistabellen
+gilt und nicht die Rechte des Eigentümers).
+
+**Eine leere Antwort löscht nichts.** Der Sync ersetzt den Stand nur für
+Spiele, für die tatsächlich eine Prognose kommt. Sonst räumte ein Lauf vor dem
+Prognosefenster eine vorhandene Elf weg, und das sähe in der App aus wie
+„Prognose zurückgezogen".
+
+Farbe trägt nur der Fall, der etwas will: Steht der Spieler **nicht** in der
+Elf, muss der Manager seine Aufstellung ändern — gold getönt. Steht er drin,
+ist nichts zu tun, und es bleibt beim ruhigen Haken.
+
+Angesehen über `test/spielerprofil_vorschau_test.dart` mit **drei** Bildern —
+in der Elf, nicht in der Elf, noch keine Prognose. Das letzte ist der Zustand,
+den es die meiste Zeit der Woche gibt; ohne eigenes Bild fiele genau der durch.
+Gerechnet wird in `test/aufstellungs_prognose_test.dart`.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

@@ -17,6 +17,7 @@ import 'data/fantasy_league_repository.dart';
 import 'data/fantasy_stats_source.dart';
 import 'data/round_scoring_service.dart';
 import 'data/seed_player_pool.dart';
+import 'logic/aufstellungs_prognose.dart';
 import 'logic/draft_ranking.dart';
 import 'logic/fantasy_scoring_engine.dart';
 import 'models/fantasy_models.dart';
@@ -303,6 +304,55 @@ final lastSeasonTotalsProvider =
     for (final r in rows)
       r['player_id'] as String: SeasonTotals.fromJson(r),
   };
+});
+
+/// **Die voraussichtliche Elf** eines Vereins für einen Spieltag.
+///
+/// Quelle ist Sportmonks (`predictedLineups`, im gebuchten Plan enthalten),
+/// gespiegelt von der Edge Function `sync-predicted-lineups`. Gelesen wird
+/// über Verein und Spieltag, nicht über die Fixture-ID: Die Prognose hängt an
+/// der Sportmonks-Spiegelung, die App an der von OpenLigaDB — dieselbe Partie
+/// steht in `fixtures` unter zwei IDs.
+///
+/// `null` heißt **noch keine Prognose**, nicht „keiner spielt". Sportmonks
+/// stellt sie erst ein bis zwei Tage vor Anpfiff bereit (gemessen 29.08.2026);
+/// die Oberfläche muss diesen Zustand eigens zeigen.
+final prognoseElfProvider =
+    FutureProvider.family<PrognoseElf?, ({String club, int runde})>(
+        (ref, k) async {
+  if (!AppConfig.isSupabaseConfigured) return null;
+  final season = ref.watch(fantasySeasonProvider);
+  final rows = await Supabase.instance.client
+      .from('predicted_lineups_v')
+      .select()
+      .eq('season', season)
+      .eq('round', k.runde)
+      .eq('club', k.club);
+  if (rows.isEmpty) return null;
+
+  final elf = [
+    for (final r in rows)
+      PrognoseSpieler(
+        playerId: r['player_id'] as String,
+        name: (r['player_name'] as String?) ?? '',
+        nummer: r['jersey_number'] as int?,
+        formationsPosition: r['formation_position'] as int?,
+      )
+  ]..sort((a, b) =>
+      (a.formationsPosition ?? 99).compareTo(b.formationsPosition ?? 99));
+
+  DateTime? neuster;
+  for (final r in rows) {
+    final t = DateTime.tryParse((r['updated_at'] as String?) ?? '');
+    if (t != null && (neuster == null || t.isAfter(neuster))) neuster = t;
+  }
+
+  return PrognoseElf(
+    club: k.club,
+    elf: elf,
+    formation: rows.first['formation'] as String?,
+    stand: neuster?.toLocal(),
+  );
 });
 
 /// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).
