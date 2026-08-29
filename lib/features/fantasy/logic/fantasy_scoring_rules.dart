@@ -80,6 +80,12 @@ class FantasyScoringRules {
     this.interception = const ByPosition.flat(1),
     this.clearance = const ByPosition.flat(0.4),
     this.blockedShot = const ByPosition.flat(1),
+    this.passMilestones = const {
+      PlayerPosition.gk: [Milestone(25, 3), Milestone(35, 3)],
+      PlayerPosition.def: [Milestone(45, 3), Milestone(70, 3)],
+      PlayerPosition.mid: [Milestone(40, 3), Milestone(60, 3)],
+      PlayerPosition.fwd: [Milestone(20, 3), Milestone(30, 3)],
+    },
     this.saveMilestones = const [Milestone(5, 8), Milestone(8, 12)],
     this.defensiveMilestones = const {
       PlayerPosition.gk: [Milestone(9, 6), Milestone(14, 6), Milestone(19, 6)],
@@ -130,6 +136,22 @@ class FantasyScoringRules {
   final ByPosition blockedShot;
 
   // Meilensteine
+
+  /// **Genaue Pässe**, positionsabhängig — der teuerste Teil dieser Wertung,
+  /// wenn man ihn falsch baut.
+  ///
+  /// Ein Wert *je Pass* schied aus: Ein Mittelfeldspieler kommt auf Dutzende,
+  /// ein Stürmer auf eine Handvoll. Der Einzelwert müsste so klein sein, dass
+  /// er in der Anzeige verschwindet — und er belohnte die Position, nicht die
+  /// Leistung.
+  ///
+  /// Die Schwellen sind an echten Daten gemessen (vier Partien, nur Spieler ab
+  /// 60 Minuten): Median/oberes Viertel lagen bei TW 25/29, ABW 34/53,
+  /// MF 28/37, ST 14/15. Sie liegen deshalb je Position anders — 30 genaue
+  /// Pässe sind für einen Stürmer herausragend und für einen Verteidiger
+  /// unterdurchschnittlich.
+  final Map<PlayerPosition, List<Milestone>> passMilestones;
+
   final List<Milestone> saveMilestones;
   final Map<PlayerPosition, List<Milestone>> defensiveMilestones;
 

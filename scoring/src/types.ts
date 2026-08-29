@@ -11,6 +11,7 @@ export interface PlayerEvents {
   assists: number;
   bigChancesCreated: number;
   keyPasses: number;        // gesamt (inkl. der zu Großchancen führenden)
+  accuratePasses: number;  // Sportmonks `accurate-passes`
   shotsOnTarget: number;
   successfulDribbles: number;
   goalsConceded: number;    // Gegentore während der eigenen Einsatzzeit
@@ -55,7 +56,8 @@ export interface ScoreResult {
 export function emptyEvents(): PlayerEvents {
   return {
     minutes: 0, goals: 0, penaltyGoals: 0, assists: 0, bigChancesCreated: 0,
-    keyPasses: 0, shotsOnTarget: 0, successfulDribbles: 0, goalsConceded: 0,
+    keyPasses: 0, accuratePasses: 0, shotsOnTarget: 0, successfulDribbles: 0,
+    goalsConceded: 0,
     saves: 0, penaltiesSaved: 0, tacklesWon: 0, interceptions: 0, clearances: 0,
     blockedShots: 0, yellowCards: 0, secondYellowCards: 0, redCards: 0,
     ownGoals: 0, penaltiesMissed: 0, errorsLeadToGoal: 0, bigChancesMissed: 0,

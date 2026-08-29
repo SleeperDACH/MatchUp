@@ -249,6 +249,26 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   `topscorerTypes` wird **stillschweigend ignoriert**, und ohne Filter mischt
   die Antwort Karten, Tore und Vorlagen nach Typ gruppiert; die Tore fangen
   erst auf Seite 2 an, `per_page=25` sieht also nur Karten.
+  **Genaue Pässe heißen `accurate-passes`** — und das ist keine Kleinigkeit:
+  Der Katalog kennt auch `successful-passes` (Typ 81), aber in den
+  Fixture-Details kommt der **nie** an. Gemessen an vier Partien des ersten
+  Spieltags liegt `accurate-passes` für **alle 32** Spieler vor,
+  `successful-passes` in null Datensätzen. Wer hier den Namen rät, holt sich
+  eine Spalte, die für immer 0 bleibt (Migration 0089).
+  Gewertet wird über **positionsabhängige Schwellen**, nicht je Pass: Ein Wert
+  je Pass müsste so klein sein, dass er in der Anzeige verschwindet — und er
+  belohnte die Position statt der Leistung. Die Schwellen sind gemessen, nicht
+  gesetzt (nur Spieler ab 60 Minuten):
+
+  | | Median | oberes Viertel | max | Schwellen |
+  |---|---|---|---|---|
+  | TW | 25 | 29 | 30 | 25 / 35 |
+  | ABW | 34 | 53 | 110 | 45 / 70 |
+  | MF | 28 | 37 | 65 | 40 / 60 |
+  | ST | 14 | 15 | 30 | 20 / 30 |
+
+  Dreißig genaue Pässe sind damit für einen Stürmer beide Boni wert und für
+  einen Verteidiger keinen — was der Wirklichkeit entspricht.
   `RoundScoringService.computeStats` ist nur noch **Notfallpfad** (OpenLigaDB,
   Tore/Zu-Null); solche Zeilen tragen `source='openligadb'` bzw.
   `fullStats: false` und sind nicht mit dem vollen Satz vergleichbar.

@@ -124,12 +124,18 @@ class _ScoringInfoScreenState extends State<ScoringInfoScreen> {
                         'Ab ${m.atLeast} Defensivaktionen im Spiel',
                         m.bonus,
                       ),
+                    for (final m
+                        in _regeln.passMilestones[p] ?? const <Milestone>[])
+                      _Zeile('Ab ${m.atLeast} genauen Pässen im Spiel', m.bonus),
                   ],
                   fussnote:
                       'Die Boni zählen zusammen: Wer die zweite Schwelle '
                       'erreicht, hat den ersten Bonus schon bekommen. '
                       'Defensivaktionen sind Zweikämpfe, Balleroberungen, '
-                      'Klärungen und geblockte Schüsse zusammengezählt.',
+                      'Klärungen und geblockte Schüsse zusammengezählt. Die '
+                      'Pass-Schwellen liegen je Position anders — ein Stürmer '
+                      'kommt selten über zwanzig genaue Pässe, ein '
+                      'Verteidiger fast immer.',
                 ),
                 _Gruppe('Abzüge', farbe, [
                   _Zeile('Gelbe Karte', _regeln.yellowCard),

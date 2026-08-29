@@ -76,6 +76,10 @@ const STAT_CODE_MAP: Record<string, string> = {
   "big-chances-created": "bigChancesCreated",
   "big-chances-missed": "bigChancesMissed",
   "key-passes": "keyPasses",
+  // Gemessen an echten Partien: dieser Code liegt fuer jeden Spieler vor.
+  // "successful-passes" (Typ 81) existiert im Katalog, kommt in den
+  // Fixture-Details aber nicht an.
+  "accurate-passes": "accuratePasses",
   "shots-on-target": "shotsOnTarget",
   "successful-dribbles": "successfulDribbles",
   "goals-conceded": "goalsConceded",
@@ -102,6 +106,7 @@ function emptyEvents(): Events {
     assists: 0,
     bigChancesCreated: 0,
     keyPasses: 0,
+    accuratePasses: 0,
     shotsOnTarget: 0,
     successfulDribbles: 0,
     goalsConceded: 0,
@@ -325,6 +330,7 @@ Deno.serve(async (req) => {
           penalty_goals: ev.penaltyGoals,
           big_chances_created: ev.bigChancesCreated,
           key_passes: ev.keyPasses,
+          accurate_passes: ev.accuratePasses,
           shots_on_target: ev.shotsOnTarget,
           successful_dribbles: ev.successfulDribbles,
           goals_conceded: ev.goalsConceded,

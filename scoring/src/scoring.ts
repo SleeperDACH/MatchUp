@@ -90,6 +90,11 @@ export function calculateScore(
   for (const r of milestoneBonus(defCount, defThresholds).reached) {
     lines.push({ label: `${cfg.milestones.defensiveActions.label} (≥${r.atLeast})`, count: 1, pointsEach: r.bonus, subtotal: r.bonus });
   }
+  // Genaue Paesse — Schwellen je Position (siehe fantasy_scoring_rules.dart).
+  const passThresholds = cfg.milestones.accuratePasses.byPosition[position];
+  for (const r of milestoneBonus(events.accuratePasses, passThresholds).reached) {
+    lines.push({ label: `${cfg.milestones.accuratePasses.label} (≥${r.atLeast})`, count: 1, pointsEach: r.bonus, subtotal: r.bonus });
+  }
 
   // Negativ
   push(cfg.negative.yellowCard.label, events.yellowCards, cfg.negative.yellowCard.points);

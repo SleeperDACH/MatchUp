@@ -16,6 +16,7 @@ class PlayerMatchStats {
     this.assists = 0,
     this.bigChancesCreated = 0,
     this.keyPasses = 0,
+    this.accuratePasses = 0,
     this.shotsOnTarget = 0,
     this.successfulDribbles = 0,
     this.goalsConceded = 0,
@@ -51,6 +52,9 @@ class PlayerMatchStats {
 
   /// Gesamt, inklusive der zu Großchancen führenden.
   final int keyPasses;
+
+  /// Genaue Pässe (Sportmonks `accurate-passes`). Basis der Pass-Boni.
+  final int accuratePasses;
   final int shotsOnTarget;
   final int successfulDribbles;
   final int goalsConceded;
@@ -102,6 +106,7 @@ class PlayerMatchStats {
       assists: i('assists'),
       bigChancesCreated: i('big_chances_created'),
       keyPasses: i('key_passes'),
+      accuratePasses: i('accurate_passes'),
       shotsOnTarget: i('shots_on_target'),
       successfulDribbles: i('successful_dribbles'),
       goalsConceded: i('goals_conceded'),
@@ -215,6 +220,11 @@ PlayerScore scorePlayerDetailed(
   for (final m in reachedMilestones(
       defCount, rules.defensiveMilestones[position] ?? const [])) {
     lines.add(ScoreLine('Defensiv-Meilenstein (≥${m.atLeast})', 1, m.bonus));
+  }
+  // Genaue Pässe — Schwellen je Position, siehe `passMilestones`.
+  for (final m in reachedMilestones(
+      s.accuratePasses, rules.passMilestones[position] ?? const [])) {
+    lines.add(ScoreLine('Pass-Meilenstein (≥${m.atLeast})', 1, m.bonus));
   }
 
   // Negativ

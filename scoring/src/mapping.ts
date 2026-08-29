@@ -21,6 +21,10 @@ export const STAT_CODE_MAP: Record<string, keyof PlayerEvents> = {
   'big-chances-created': 'bigChancesCreated',
   'big-chances-missed': 'bigChancesMissed',
   'key-passes': 'keyPasses',
+  // Gemessen an echten Partien: dieser Code liegt fuer jeden Spieler vor.
+  // 'successful-passes' (Typ 81) existiert im Katalog, kommt in den
+  // Fixture-Details aber nicht an.
+  'accurate-passes': 'accuratePasses',
   'shots-on-target': 'shotsOnTarget',
   'successful-dribbles': 'successfulDribbles',
   'goals-conceded': 'goalsConceded',
