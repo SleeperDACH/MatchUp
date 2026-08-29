@@ -78,6 +78,7 @@ class FantasyScoringRules {
     this.penaltySaved = 12,
     this.tackleWon = const ByPosition.flat(1),
     this.interception = const ByPosition.flat(1),
+    this.ballRecovery = const ByPosition.flat(0.4),
     this.clearance = const ByPosition.flat(0.4),
     this.blockedShot = const ByPosition.flat(1),
     this.passMilestones = const {
@@ -131,7 +132,18 @@ class FantasyScoringRules {
   final double save;
   final double penaltySaved;
   final ByPosition tackleWon;
+  /// Abgefangener Ball (`interceptions`).
   final ByPosition interception;
+
+  /// **Balleroberung** (`ball-recovery`) — ein anderes Feld als
+  /// [interception] und rund viermal häufiger (Schnitt 2,9 gegen 0,8
+  /// je Spieler ab 60 Minuten). Deshalb der Wert einer Klärung, nicht
+  /// der eines Zweikampfs.
+  ///
+  /// Zählt **nicht** in [defensiveMilestones]: Deren Schwellen sind ohne
+  /// dieses Feld geeicht, und mit ihm spränge der Median beim Torwart
+  /// von 0 auf 8 — direkt an die erste Schwelle.
+  final ByPosition ballRecovery;
   final ByPosition clearance;
   final ByPosition blockedShot;
 

@@ -249,6 +249,24 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   `topscorerTypes` wird **stillschweigend ignoriert**, und ohne Filter mischt
   die Antwort Karten, Tore und Vorlagen nach Typ gruppiert; die Tore fangen
   erst auf Seite 2 an, `per_page=25` sieht also nur Karten.
+  **`interceptions` ist nicht „Balleroberung".** Die App nannte es jahrelang
+  so; Sportmonks führt beides getrennt, und die Felder sind weit auseinander:
+
+  | | Summe | Schnitt | max | verschieden |
+  |---|---|---|---|---|
+  | `interceptions` | 67 | 0,8 | 4 | bei **56 von 84** Spielern |
+  | `ball-recovery` | 245 | 2,9 | 14 | |
+
+  (84 Spieler ab 60 Minuten, vier Partien.) Aufgefallen ist es an einer
+  Rückfrage zu einem Spieler, bei dem **beide zufällig 1** waren — die Zahl
+  stimmte, der Name nicht. `interceptions` heißt jetzt „Abgefangener Ball",
+  `ball-recovery` kommt als „Balleroberung" dazu (Migration 0090, 0,4 je Stück
+  wie eine Klärung: häufig, einzeln wenig wert).
+  **Balleroberungen zählen bewusst nicht in die Defensiv-Meilensteine.** Deren
+  Schwellen sind ohne dieses Feld geeicht; gemessen verschöbe es die Summe je
+  Spieler von 0 auf 8 (TW), 5 auf 8 (ABW), 1 auf 6 (MF) — beim Torwart also
+  direkt an die erste Schwelle von 9. Ein bestehender Bonus wäre stillschweigend
+  zum Selbstläufer geworden. Gehalten von `test/balleroberung_test.dart`.
   **Genaue Pässe heißen `accurate-passes`** — und das ist keine Kleinigkeit:
   Der Katalog kennt auch `successful-passes` (Typ 81), aber in den
   Fixture-Details kommt der **nie** an. Gemessen an vier Partien des ersten

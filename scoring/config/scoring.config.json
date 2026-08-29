@@ -97,12 +97,21 @@
       }
     },
     "interception": {
-      "label": "Balleroberung",
+      "label": "Abgefangener Ball",
       "points": {
         "GK": 1,
         "DEF": 1,
         "MID": 1,
         "FWD": 1
+      }
+    },
+    "ballRecovery": {
+      "label": "Balleroberung",
+      "points": {
+        "GK": 0.4,
+        "DEF": 0.4,
+        "MID": 0.4,
+        "FWD": 0.4
       }
     },
     "clearance": {

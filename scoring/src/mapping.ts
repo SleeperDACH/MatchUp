@@ -32,6 +32,8 @@ export const STAT_CODE_MAP: Record<string, keyof PlayerEvents> = {
   'saves': 'saves',
   'tackles-won': 'tacklesWon',
   'interceptions': 'interceptions',
+  // Nicht dasselbe: ball-recovery ist rund viermal haeufiger.
+  'ball-recovery': 'ballRecovery',
   'clearances': 'clearances',
   'blocked-shots': 'blockedShots',
   'yellowcards': 'yellowCards',

@@ -24,6 +24,7 @@ class PlayerMatchStats {
     this.penaltiesSaved = 0,
     this.tacklesWon = 0,
     this.interceptions = 0,
+    this.ballRecovery = 0,
     this.clearances = 0,
     this.blockedShots = 0,
     this.yellow = 0,
@@ -61,7 +62,12 @@ class PlayerMatchStats {
   final int saves;
   final int penaltiesSaved;
   final int tacklesWon;
+  /// Abgefangene Bälle. **Nicht** dasselbe wie [ballRecovery] —
+  /// Interceptions sind rund viermal seltener.
   final int interceptions;
+
+  /// Balleroberungen (Sportmonks `ball-recovery`).
+  final int ballRecovery;
   final int clearances;
   final int blockedShots;
   final int yellow;
@@ -114,6 +120,7 @@ class PlayerMatchStats {
       penaltiesSaved: i('penalties_saved'),
       tacklesWon: i('tackles_won'),
       interceptions: i('interceptions'),
+      ballRecovery: i('ball_recovery'),
       clearances: i('clearances'),
       blockedShots: i('blocked_shots'),
       yellow: i('yellow'),
@@ -205,7 +212,11 @@ PlayerScore scorePlayerDetailed(
   push('Parade', s.saves, rules.save);
   push('Gehaltener Elfmeter', s.penaltiesSaved, rules.penaltySaved);
   push('Tackling gewonnen', s.tacklesWon, rules.tackleWon.of(position));
-  push('Balleroberung', s.interceptions, rules.interception.of(position));
+  // **„Balleroberung" hieß früher diese Zeile** — sie zählt aber
+  // abgefangene Bälle. Der Name gehört zum Feld darunter.
+  push('Abgefangener Ball', s.interceptions,
+      rules.interception.of(position));
+  push('Balleroberung', s.ballRecovery, rules.ballRecovery.of(position));
   push('Klärung', s.clearances, rules.clearance.of(position));
   push('Geblockter Schuss', s.blockedShots, rules.blockedShot.of(position));
 

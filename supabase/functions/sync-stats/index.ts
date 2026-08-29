@@ -87,6 +87,9 @@ const STAT_CODE_MAP: Record<string, string> = {
   "saves": "saves",
   "tackles-won": "tacklesWon",
   "interceptions": "interceptions",
+  // Nicht dasselbe wie interceptions: ball-recovery ist rund viermal
+  // haeufiger (Schnitt 2,9 gegen 0,8 je Spieler ab 60 Minuten).
+  "ball-recovery": "ballRecovery",
   "clearances": "clearances",
   "blocked-shots": "blockedShots",
   "fouls": "fouls",
@@ -114,6 +117,7 @@ function emptyEvents(): Events {
     penaltiesSaved: 0,
     tacklesWon: 0,
     interceptions: 0,
+    ballRecovery: 0,
     clearances: 0,
     blockedShots: 0,
     yellowCards: 0,
@@ -338,6 +342,7 @@ Deno.serve(async (req) => {
           penalties_saved: ev.penaltiesSaved,
           tackles_won: ev.tacklesWon,
           interceptions: ev.interceptions,
+          ball_recovery: ev.ballRecovery,
           clearances: ev.clearances,
           blocked_shots: ev.blockedShots,
           second_yellow: ev.secondYellowCards,

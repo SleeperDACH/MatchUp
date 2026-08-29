@@ -107,7 +107,8 @@ class _ScoringInfoScreenState extends State<ScoringInfoScreen> {
                     _Zeile('Gehaltener Elfmeter', _regeln.penaltySaved),
                   ],
                   _Zeile('Gewonnener Zweikampf', _regeln.tackleWon.of(p)),
-                  _Zeile('Balleroberung', _regeln.interception.of(p)),
+                  _Zeile('Abgefangener Ball', _regeln.interception.of(p)),
+                  _Zeile('Balleroberung', _regeln.ballRecovery.of(p)),
                   _Zeile('Klärung', _regeln.clearance.of(p)),
                   _Zeile('Geblockter Schuss', _regeln.blockedShot.of(p)),
                 ]),
@@ -131,8 +132,9 @@ class _ScoringInfoScreenState extends State<ScoringInfoScreen> {
                   fussnote:
                       'Die Boni zählen zusammen: Wer die zweite Schwelle '
                       'erreicht, hat den ersten Bonus schon bekommen. '
-                      'Defensivaktionen sind Zweikämpfe, Balleroberungen, '
-                      'Klärungen und geblockte Schüsse zusammengezählt. Die '
+                      'Defensivaktionen sind Zweikämpfe, abgefangene Bälle, '
+                      'Klärungen und geblockte Schüsse zusammengezählt — '
+                      'Balleroberungen zählen einzeln, nicht hier mit. Die '
                       'Pass-Schwellen liegen je Position anders — ein Stürmer '
                       'kommt selten über zwanzig genaue Pässe, ein '
                       'Verteidiger fast immer.',

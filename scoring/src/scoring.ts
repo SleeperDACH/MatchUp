@@ -75,6 +75,10 @@ export function calculateScore(
   push(cfg.goalkeeper.penaltySaved.label, events.penaltiesSaved, cfg.goalkeeper.penaltySaved.points);
   push(cfg.defensiveActions.tackleWon.label, events.tacklesWon, cfg.defensiveActions.tackleWon.points[position]);
   push(cfg.defensiveActions.interception.label, events.interceptions, cfg.defensiveActions.interception.points[position]);
+  // Balleroberung ist ein eigenes Feld — nicht dasselbe wie interceptions
+  // und rund viermal haeufiger. Zaehlt bewusst nicht in den
+  // Defensiv-Meilenstein: dessen Schwellen sind ohne dieses Feld geeicht.
+  push(cfg.defensiveActions.ballRecovery.label, events.ballRecovery, cfg.defensiveActions.ballRecovery.points[position]);
   push(cfg.defensiveActions.clearance.label, events.clearances, cfg.defensiveActions.clearance.points[position]);
   push(cfg.defensiveActions.blockedShot.label, events.blockedShots, cfg.defensiveActions.blockedShot.points[position]);
 
