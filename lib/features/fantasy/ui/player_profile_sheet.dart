@@ -311,7 +311,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
             // Signalgrün und war damit das Lauteste im Reiter.
             _summary(context, formatPoints(total), 'Punkte', scheme.onSurface),
             const SizedBox(width: 10),
-            _summary(context, '$games', 'Spiele', scheme.tertiary),
+            _summary(context, '$games', 'Spiele', scheme.onSurfaceVariant),
           ],
         ),
         const SizedBox(height: 12),
