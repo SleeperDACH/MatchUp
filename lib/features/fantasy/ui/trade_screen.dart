@@ -1234,22 +1234,38 @@ class TradeCard extends ConsumerWidget {
     );
   }
 
+  /// Der Zustand als Chip.
+  ///
+  /// **„Offen" ist farblos.** Es ist kein Ergebnis, sondern der Normalfall —
+  /// jedes Angebot, das man sieht, ist erst einmal offen. Vorher zog es
+  /// `secondaryContainer`, und genau daraus wird beim grünen Seed dieser App
+  /// das stumpfe Oliv, wegen dem hier auch keine `ChoiceChip`s stehen
+  /// (siehe CLAUDE.md). Farbe tragen nur die **Ausgänge**: angenommen grün,
+  /// abgelehnt rot, gekontert gold. Zurückgezogen bleibt ebenfalls neutral —
+  /// auch das ist kein Ergebnis, sondern ein Abbruch.
   Widget _statusChip(BuildContext context, TradeStatus status) {
     final scheme = Theme.of(context).colorScheme;
-    final (Color bg, Color fg) = switch (status) {
-      TradeStatus.pending => (scheme.secondaryContainer, scheme.onSecondaryContainer),
-      TradeStatus.accepted => (scheme.primaryContainer, scheme.onPrimaryContainer),
-      TradeStatus.rejected => (scheme.errorContainer, scheme.onErrorContainer),
-      TradeStatus.cancelled => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
-      TradeStatus.countered => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
+    final Color? ton = switch (status) {
+      TradeStatus.pending => null,
+      TradeStatus.cancelled => null,
+      TradeStatus.accepted => scheme.primary,
+      TradeStatus.rejected => scheme.error,
+      TradeStatus.countered => scheme.tertiary,
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: ton?.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: ton == null
+            ? Border.all(color: Theme.of(context).dividerColor)
+            : null,
+      ),
       child: Text(status.label,
-          style:
-              TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
+          style: TextStyle(
+              color: ton ?? scheme.onSurfaceVariant,
+              fontSize: 11,
+              fontWeight: FontWeight.w700)),
     );
   }
 }

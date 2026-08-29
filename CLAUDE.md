@@ -1524,6 +1524,14 @@ Haarlinie, und Farbe **nur da, wo etwas von mir gewollt wird** — ein
 eingehendes, offenes Angebot trägt einen Hauch aus der Ecke und eine getönte
 Kante. Ein selbst gestelltes, das auf Antwort wartet, ist neutral.
 
+**„Offen" ist farblos**, und zwar aus demselben Grund. Es ist kein Ergebnis,
+sondern der Normalfall — jedes Angebot, das man sieht, ist erst einmal offen.
+Der Chip zog vorher `secondaryContainer`, und genau daraus wird beim grünen
+Seed dieser App das stumpfe Oliv, wegen dem hier auch keine `ChoiceChip`s
+stehen. Farbe tragen jetzt nur die **Ausgänge**: angenommen grün, abgelehnt
+rot, gekontert gold. „Zurückgezogen" bleibt ebenfalls neutral — auch das ist
+kein Ergebnis, sondern ein Abbruch.
+
 **Ein unbekannter Spieler verschwindet nicht.** Kennt der lokale Pool die ID
 nicht (Zugang aus `sync-squads` nach dem App-Start), steht sie kursiv da statt
 ausgelassen zu werden — dieselbe Regel wie beim Draft-Brett: „nicht gefunden"
