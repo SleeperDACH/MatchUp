@@ -14,6 +14,7 @@ import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'pitch_painter.dart';
 import 'trade_screen.dart';
 
 /// Öffnet das Spielerprofil (Kopf + Leistungstabelle je Spieltag; für eigene
@@ -306,7 +307,9 @@ class _PlayerProfileSheet extends ConsumerWidget {
       children: [
         Row(
           children: [
-            _summary(context, formatPoints(total), 'Punkte', scheme.primary),
+            // Die Punktzahl ist der Inhalt, kein Signal — sie stand hier in
+            // Signalgrün und war damit das Lauteste im Reiter.
+            _summary(context, formatPoints(total), 'Punkte', scheme.onSurface),
             const SizedBox(width: 10),
             _summary(context, '$games', 'Spiele', scheme.tertiary),
           ],
@@ -594,9 +597,11 @@ class _Aufschluesselung extends StatelessWidget {
                                   fontFeatures: const [
                                     FontFeature.tabularFigures()
                                   ],
+                                  // Rot markiert den Abzug — die Ausnahme.
+                                  // Der Normalfall braucht keine Farbe.
                                   color: l.subtotal < 0
                                       ? scheme.error
-                                      : scheme.primary,
+                                      : scheme.onSurface,
                                 ),
                               ),
                             ),
@@ -616,7 +621,7 @@ class _Aufschluesselung extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                               color: score.total < 0
                                   ? scheme.error
-                                  : scheme.primary,
+                                  : scheme.onSurface,
                             )),
                       ],
                     ),
@@ -727,8 +732,9 @@ class _Vereinskader extends ConsumerWidget {
                   fontWeight: ich ? FontWeight.w800 : FontWeight.w600)),
           subtitle: Text(p.position.label,
               style: TextStyle(color: scheme.onSurfaceVariant)),
+          // Kein Grün für „du bist hier" — das ist kein laufender Vorgang.
           trailing: ich
-              ? Icon(Icons.person, size: 18, color: scheme.primary)
+              ? Icon(Icons.person, size: 18, color: scheme.onSurfaceVariant)
               : const Icon(Icons.chevron_right, size: 18),
           onTap: ich
               ? null
@@ -803,67 +809,141 @@ class _Prognose extends ConsumerWidget {
             _NochKeinePrognose(player: player, spiel: spiel)
           else ...[
             _Urteil(drin: elf.enthaelt(player.id)),
-            const SizedBox(height: 4),
-            ..._elfZeilen(context, ref, elf),
+            _Formationsfeld(elf: elf, ich: player.id),
           ],
         ],
       ),
     );
   }
+}
 
-  List<Widget> _elfZeilen(
-      BuildContext context, WidgetRef ref, PrognoseElf elf) {
-    final scheme = Theme.of(context).colorScheme;
-    final pool = ref.watch(playerPoolProvider).valueOrNull ?? const [];
-    final nachId = {for (final p in pool) p.id: p};
+/// **Die Elf, wie sie auf dem Platz steht.**
+///
+/// Eine Liste beantwortet „wer spielt", aber nicht „wo" — und genau das ist
+/// die Frage, wenn man eine Aufstellung liest. Gezeichnet wird auf demselben
+/// Feld wie der Aufstellungs-Editor, der Draft-Raum und das Manager-Profil
+/// (`pitchGradient` + [PitchLinesPainter]); ein eigener Feldlook an einer
+/// fünften Stelle wäre nur ein weiterer Dialekt.
+///
+/// Die Reihen kommen aus dem Raster von Sportmonks, nicht aus einer eigenen
+/// Rechnung — [PrognoseElf.reihen]. Torwart unten, Angriff oben, wie überall
+/// sonst in der App.
+class _Formationsfeld extends StatelessWidget {
+  const _Formationsfeld({required this.elf, required this.ich});
 
-    return [
-      for (final s in elf.elf)
-        Builder(builder: (context) {
-          final ich = s.playerId == player.id;
-          // Die Position kommt aus **unserem** Pool, nicht von Sportmonks:
-          // deren `position_id` mischt grobe und feine Positionen (24 Torwart,
-          // aber 148 Innenverteidiger), und für die Wertung zählt ohnehin
-          // unsere Einteilung.
-          final imPool = nachId[s.playerId];
-          return Container(
-            color: ich ? scheme.primary.withValues(alpha: 0.10) : null,
-            child: ListTile(
-              dense: true,
-              leading: SizedBox(
-                width: 28,
-                child: Text(
-                  s.nummer?.toString() ?? '–',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                    fontWeight: FontWeight.w700,
-                    color: ich ? scheme.primary : scheme.onSurfaceVariant,
+  final PrognoseElf elf;
+
+  /// Der Spieler, dessen Profil offen ist.
+  final String ich;
+
+  @override
+  Widget build(BuildContext context) {
+    final reihen = elf.reihen;
+    // Von hinten nach vorn gerechnet, von vorn nach hinten gezeichnet.
+    final vonVorn = reihen.reversed.toList();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      height: 340,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: pitchGradient,
+      ),
+      child: CustomPaint(
+        painter: const PitchLinesPainter(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+          child: Column(
+            children: [
+              for (final reihe in vonVorn)
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      for (final s in reihe)
+                        Flexible(
+                          child: _Feldspieler(
+                              spieler: s, hervor: s.playerId == ich),
+                        ),
+                    ],
                   ),
                 ),
-              ),
-              title: Text(
-                // Kennt der Pool den Spieler nicht (Zugang nach dem letzten
-                // Kader-Sync), steht der Name aus der Prognose da — „nicht
-                // gefunden" ist ein eigener Zustand, kein leeres Feld.
-                imPool?.name ?? s.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontWeight: ich ? FontWeight.w800 : FontWeight.w600),
-              ),
-              subtitle: imPool == null
-                  ? null
-                  : Text(imPool.position.label,
-                      style: TextStyle(color: scheme.onSurfaceVariant)),
-              trailing: ich
-                  ? Icon(Icons.person, size: 18, color: scheme.primary)
-                  : null,
-            ),
-          );
-        }),
-    ];
+            ],
+          ),
+        ),
+      ),
+    );
   }
+}
+
+/// Ein Spieler auf dem Feld: Rückennummer im Kreis, Name darunter.
+///
+/// Hervorgehoben wird **hell**, nicht grün: Grün heißt in dieser App „hier
+/// läuft etwas", und dass man gerade das eigene Profil ansieht, läuft nicht.
+class _Feldspieler extends StatelessWidget {
+  const _Feldspieler({required this.spieler, required this.hervor});
+
+  final PrognoseSpieler spieler;
+  final bool hervor;
+
+  @override
+  Widget build(BuildContext context) {
+    const schnee = Color(0xFFEDEFF4);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: hervor ? schnee : Colors.black.withValues(alpha: 0.42),
+            border: Border.all(
+              color: schnee.withValues(alpha: hervor ? 1 : 0.45),
+              width: hervor ? 2 : 1,
+            ),
+          ),
+          child: Text(
+            spieler.nummer?.toString() ?? '–',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: hervor ? const Color(0xFF12141C) : schnee,
+            ),
+          ),
+        ),
+        const SizedBox(height: 3),
+        // Der Name schrumpft, statt zu kappen — dieselbe Regel wie im
+        // Live-Tab: „Schlotterb…" sagt nichts.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              _kurzerName(spieler.name),
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 10.5,
+                height: 1.15,
+                fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
+                color: schnee.withValues(alpha: hervor ? 1 : 0.85),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// „Nico Schlotterbeck" → „N. Schlotterbeck". Auf einem Feld mit fünf Spielern
+/// nebeneinander ist der Nachname das, was zählt.
+String _kurzerName(String voll) {
+  final teile = voll.trim().split(RegExp(r'\s+'));
+  if (teile.length < 2) return voll;
+  return '${teile.first.characters.first}. ${teile.sublist(1).join(' ')}';
 }
 
 /// Kopf des Reiters: welches Spiel, welche Formation, wie frisch.
@@ -917,18 +997,22 @@ class _Urteil extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final farbe = drin ? scheme.primary : const Color(0xFFFFC83D);
+    // **Farbe trägt nur der Fall, der etwas will.** Steht der Spieler nicht in
+    // der Elf, muss die Aufstellung geändert werden — Gold. Steht er drin, ist
+    // nichts zu tun, und die Zeile bleibt still. Grün wäre hier doppelt
+    // falsch: Es heißt in dieser App „hier läuft etwas", und es lief schon
+    // einmal als Dauerfarbe durch dieses Profil.
+    final farbe = drin ? scheme.onSurfaceVariant : const Color(0xFFFFC83D);
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: drin ? null : farbe.withValues(alpha: 0.10),
-        border: Border.all(
-          color: farbe.withValues(alpha: drin ? 0.35 : 0.55),
-          width: drin ? 0.8 : 1,
-        ),
-      ),
+      margin: EdgeInsets.fromLTRB(12, 0, 12, drin ? 2 : 8),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: drin ? 6 : 10),
+      decoration: drin
+          ? null
+          : BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: farbe.withValues(alpha: 0.10),
+              border: Border.all(color: farbe.withValues(alpha: 0.55)),
+            ),
       child: Row(
         children: [
           Icon(drin ? Icons.check_circle_outline : Icons.event_seat_outlined,
@@ -940,7 +1024,9 @@ class _Urteil extends StatelessWidget {
                   ? 'Voraussichtlich in der Startelf'
                   : 'Nicht in der voraussichtlichen Elf',
               style: TextStyle(
-                  fontWeight: FontWeight.w700, color: farbe, fontSize: 13.5),
+                  fontWeight: drin ? FontWeight.w600 : FontWeight.w700,
+                  color: farbe,
+                  fontSize: 13.5),
             ),
           ),
         ],

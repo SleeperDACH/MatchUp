@@ -80,6 +80,8 @@ class PrognoseSpieler {
     required this.name,
     this.nummer,
     this.formationsPosition,
+    this.reihe,
+    this.spalte,
   });
 
   final String playerId;
@@ -87,9 +89,15 @@ class PrognoseSpieler {
   final int? nummer;
 
   /// 1 bis 11, von hinten nach vorn — die Reihenfolge, in der Sportmonks die
-  /// Elf aufstellt. Sie ersetzt keine Formationsgrafik, gibt der Liste aber
-  /// eine Ordnung, die dem Platz entspricht statt dem Alphabet.
+  /// Elf aufstellt.
   final int? formationsPosition;
+
+  /// Der Platz im Formationsraster, aus `formation_field` („Reihe:Spalte").
+  /// Reihe 1 ist der Torwart, dann nach vorn. Gemessen an Dortmund gegen HSV:
+  /// Felix Nmecha steht auf „3:3" — dritte Reihe der 3-4-2-1, dritter von
+  /// links. Damit lässt sich die Elf hinstellen, statt sie zu raten.
+  final int? reihe;
+  final int? spalte;
 }
 
 /// Die voraussichtliche Elf eines Vereins für ein bestimmtes Spiel.
@@ -114,6 +122,43 @@ class PrognoseElf {
   bool enthaelt(String playerId) =>
       elf.any((s) => s.playerId == playerId);
 
+  /// Die Elf in **Reihen**, von hinten nach vorn — Reihe 0 ist der Torwart.
+  ///
+  /// Grundlage ist das Raster aus `formation_field`. Fehlt es (ältere Zeilen,
+  /// unvollständige Antwort), wird nach `formationsPosition` in Blöcke
+  /// geschnitten, die der Formationszeichenkette entsprechen; fehlt auch die,
+  /// bleibt eine einzige Reihe. **Kein Fall darf Spieler verlieren** — eine
+  /// unvollständige Formation ist besser als eine, in der jemand fehlt.
+  List<List<PrognoseSpieler>> get reihen {
+    if (elf.any((s) => s.reihe != null)) {
+      final nach = <int, List<PrognoseSpieler>>{};
+      for (final s in elf) {
+        (nach[s.reihe ?? 99] ??= []).add(s);
+      }
+      final schluessel = nach.keys.toList()..sort();
+      return [
+        for (final k in schluessel)
+          nach[k]!
+            ..sort((a, b) => (a.spalte ?? 99).compareTo(b.spalte ?? 99))
+      ];
+    }
+
+    final bloecke = _formationsBloecke(formation);
+    if (bloecke == null) return [elf];
+    final sortiert = [...elf]..sort((a, b) =>
+        (a.formationsPosition ?? 99).compareTo(b.formationsPosition ?? 99));
+    final out = <List<PrognoseSpieler>>[];
+    var i = 0;
+    for (final n in bloecke) {
+      if (i >= sortiert.length) break;
+      out.add(sortiert.sublist(i, (i + n).clamp(0, sortiert.length)));
+      i += n;
+    }
+    // Was das Raster nicht aufnimmt, kommt trotzdem mit.
+    if (i < sortiert.length) out.add(sortiert.sublist(i));
+    return out;
+  }
+
   /// Baut die Elf aus den Zeilen der Sicht `predicted_lineups_v`.
   ///
   /// Steht hier und nicht im Provider, damit es prüfbar ist: Das Lesen einer
@@ -129,6 +174,8 @@ class PrognoseElf {
           name: (r['player_name'] as String?) ?? '',
           nummer: (r['jersey_number'] as num?)?.toInt(),
           formationsPosition: (r['formation_position'] as num?)?.toInt(),
+          reihe: _rasterTeil(r['formation_field'], 0),
+          spalte: _rasterTeil(r['formation_field'], 1),
         )
     ]..sort((a, b) =>
         (a.formationsPosition ?? 99).compareTo(b.formationsPosition ?? 99));
@@ -148,4 +195,22 @@ class PrognoseElf {
       stand: neuster?.toLocal(),
     );
   }
+}
+
+/// Liest „Reihe:Spalte" aus `formation_field`. [teil] 0 = Reihe, 1 = Spalte.
+int? _rasterTeil(Object? feld, int teil) {
+  if (feld is! String) return null;
+  final stuecke = feld.split(':');
+  if (stuecke.length <= teil) return null;
+  return int.tryParse(stuecke[teil].trim());
+}
+
+/// „3-4-2-1" → [1, 3, 4, 2, 1] — der Torwart kommt vorn dazu.
+List<int>? _formationsBloecke(String? formation) {
+  if (formation == null || formation.isEmpty) return null;
+  final zahlen = [
+    for (final t in formation.split('-')) int.tryParse(t.trim())
+  ];
+  if (zahlen.isEmpty || zahlen.any((z) => z == null)) return null;
+  return [1, ...zahlen.cast<int>()];
 }

@@ -1846,14 +1846,37 @@ Spiele, für die tatsächlich eine Prognose kommt. Sonst räumte ein Lauf vor de
 Prognosefenster eine vorhandene Elf weg, und das sähe in der App aus wie
 „Prognose zurückgezogen".
 
-Farbe trägt nur der Fall, der etwas will: Steht der Spieler **nicht** in der
-Elf, muss der Manager seine Aufstellung ändern — gold getönt. Steht er drin,
-ist nichts zu tun, und es bleibt beim ruhigen Haken.
+**Gezeigt wird die Formation, nicht eine Liste.** Eine Liste beantwortet „wer
+spielt", aber nicht „wo" — und das ist die Frage, wenn man eine Aufstellung
+liest. Gezeichnet wird auf demselben Feld wie der Aufstellungs-Editor, der
+Draft-Raum und das Manager-Profil (`pitchGradient` + `PitchLinesPainter`); ein
+eigener Feldlook an einer fünften Stelle wäre nur ein weiterer Dialekt.
+
+Die Reihen kommen aus **Sportmonks' Raster**, nicht aus einer eigenen Rechnung:
+`formation_field` steht im Format „Reihe:Spalte" (Felix Nmecha auf „3:3" — drei
+Reihen hinter der Spitze der 3-4-2-1, dritter von links), und alle 176
+gemessenen Zeilen tragen es. Fehlt es doch einmal, wird nach
+`formationsPosition` in Blöcke geschnitten, die der Formationszeichenkette
+entsprechen; fehlt auch die, bleibt eine einzige Reihe. **Kein Fall darf
+Spieler verlieren** — eine schiefe Formation ist besser als eine, in der jemand
+fehlt, und genau das steht als eigener Test da (`4-4-1` auf elf Spielern).
+
+**Kein Signalgrün im Spielerprofil.** Es hatte sich an vier Stellen wieder
+eingeschlichen: die Punktekachel im Leistungsreiter, jeder positive Wert in der
+Aufschlüsselung, das „du bist hier"-Personensymbol im Kader und das Urteil im
+Aufstellungsreiter. Grün heißt in dieser App „hier läuft etwas", und nichts
+davon läuft. Farbe trägt jetzt nur, was etwas will: Steht der Spieler **nicht**
+in der Elf, muss die Aufstellung geändert werden — gold. Steht er drin, bleibt
+die Zeile still. In der Aufschlüsselung markiert Rot den Abzug, den Normalfall
+schmückt nichts. Der eigene Spieler auf dem Feld wird **hell** hervorgehoben,
+nicht farbig.
 
 Angesehen über `test/spielerprofil_vorschau_test.dart` mit **drei** Bildern —
 in der Elf, nicht in der Elf, noch keine Prognose. Das letzte ist der Zustand,
 den es die meiste Zeit der Woche gibt; ohne eigenes Bild fiele genau der durch.
-Gerechnet wird in `test/aufstellungs_prognose_test.dart`.
+Die Vorschau zeigt eine **vollständige** 4-2-3-1: An vier Spielern lässt sich
+nicht beurteilen, ob eine Formation steht. Gerechnet wird in
+`test/aufstellungs_prognose_test.dart`.
 
 ## Liga-Übersicht — „C, das Duell führt"
 

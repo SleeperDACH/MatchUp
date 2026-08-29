@@ -97,6 +97,55 @@ void main() {
 
   _parsen();
 
+  group('Die Elf in Reihen', () {
+    PrognoseSpieler sp(String id, int fp, {int? r, int? c}) => PrognoseSpieler(
+        playerId: id,
+        name: id,
+        formationsPosition: fp,
+        reihe: r,
+        spalte: c);
+
+    test('aus dem Raster von Sportmonks', () {
+      // 4-2-3-1: Reihe 1 Torwart, dann 4, 2, 3, 1.
+      final elf = PrognoseElf(club: 'x', formation: '4-2-3-1', elf: [
+        sp('tw', 1, r: 1, c: 1),
+        for (var i = 0; i < 4; i++) sp('abw$i', 2 + i, r: 2, c: i + 1),
+        for (var i = 0; i < 2; i++) sp('sechs$i', 6 + i, r: 3, c: i + 1),
+        for (var i = 0; i < 3; i++) sp('zehn$i', 8 + i, r: 4, c: i + 1),
+        sp('st', 11, r: 5, c: 1),
+      ]);
+      expect(elf.reihen.map((r) => r.length).toList(), [1, 4, 2, 3, 1]);
+      // Innerhalb der Reihe nach Spalte, nicht nach Eingangsreihenfolge.
+      expect(elf.reihen[1].map((s) => s.playerId).toList(),
+          ['abw0', 'abw1', 'abw2', 'abw3']);
+    });
+
+    test('ohne Raster: nach der Formationszeichenkette geschnitten', () {
+      final elf = PrognoseElf(club: 'x', formation: '3-4-3', elf: [
+        for (var i = 1; i <= 11; i++) sp('p$i', i)
+      ]);
+      expect(elf.reihen.map((r) => r.length).toList(), [1, 3, 4, 3]);
+    });
+
+    test('ohne Raster und ohne Formation: eine Reihe, keiner faellt weg', () {
+      final elf = PrognoseElf(
+          club: 'x', elf: [for (var i = 1; i <= 11; i++) sp('p$i', i)]);
+      expect(elf.reihen.length, 1);
+      expect(elf.reihen.first.length, 11);
+    });
+
+    test('eine Formation, die nicht aufgeht, verliert niemanden', () {
+      // Sportmonks meldet eine Formation, die nicht zu elf Spielern passt —
+      // dann ist die Darstellung schief, aber niemand verschwindet.
+      final elf = PrognoseElf(club: 'x', formation: '4-4-1', elf: [
+        for (var i = 1; i <= 11; i++) sp('p$i', i)
+      ]);
+      final gesamt =
+          elf.reihen.fold<int>(0, (n, r) => n + r.length);
+      expect(gesamt, 11);
+    });
+  });
+
   test('letztes gespieltes Spiel ist das juengste beendete', () {
     final s = [
       _f(1, bvb, hsv, FixtureStatus.finished, DateTime(2026, 8, 28, 20, 30)),

@@ -97,33 +97,91 @@ void main() {
       ),
   ];
 
-  // Die voraussichtliche Elf fuer Spieltag 3 — der Held steht mit drin.
+  // Die voraussichtliche Elf fuer Spieltag 3 — eine vollstaendige 4-2-3-1 mit
+  // Rasterplaetzen, denn erst an elf Spielern sieht man, ob die Formation
+  // steht. Der Held (p1) ist ein Innenverteidiger und wird hervorgehoben.
   final prognose = PrognoseElf(
     club: club,
     formation: '4-2-3-1',
     stand: DateTime(2026, 8, 29, 11, 20),
     elf: [
       const PrognoseSpieler(
-          playerId: 'p2', name: 'Gregor Kobel', nummer: 1, formationsPosition: 1),
+          playerId: 'p2',
+          name: 'Gregor Kobel',
+          nummer: 1,
+          formationsPosition: 1,
+          reihe: 1,
+          spalte: 1),
+      const PrognoseSpieler(
+          playerId: 'sm:d1',
+          name: 'Julian Ryerson',
+          nummer: 26,
+          formationsPosition: 2,
+          reihe: 2,
+          spalte: 1),
       const PrognoseSpieler(
           playerId: 'p1',
           name: 'Nico Schlotterbeck',
           nummer: 4,
-          formationsPosition: 3),
+          formationsPosition: 3,
+          reihe: 2,
+          spalte: 2),
       const PrognoseSpieler(
-          playerId: 'p3', name: 'Julian Brandt', nummer: 19, formationsPosition: 8),
+          playerId: 'sm:d3',
+          name: 'Waldemar Anton',
+          nummer: 3,
+          formationsPosition: 4,
+          reihe: 2,
+          spalte: 3),
+      const PrognoseSpieler(
+          playerId: 'sm:d4',
+          name: 'Daniel Svensson',
+          nummer: 24,
+          formationsPosition: 5,
+          reihe: 2,
+          spalte: 4),
+      const PrognoseSpieler(
+          playerId: 'sm:m1',
+          name: 'Jobe Bellingham',
+          nummer: 7,
+          formationsPosition: 6,
+          reihe: 3,
+          spalte: 1),
+      const PrognoseSpieler(
+          playerId: 'sm:m2',
+          name: 'Felix Nmecha',
+          nummer: 8,
+          formationsPosition: 7,
+          reihe: 3,
+          spalte: 2),
+      const PrognoseSpieler(
+          playerId: 'p3',
+          name: 'Julian Brandt',
+          nummer: 19,
+          formationsPosition: 8,
+          reihe: 4,
+          spalte: 1),
+      const PrognoseSpieler(
+          playerId: 'sm:m4',
+          name: 'Karim Adeyemi',
+          nummer: 27,
+          formationsPosition: 9,
+          reihe: 4,
+          spalte: 2),
+      const PrognoseSpieler(
+          playerId: 'sm:m5',
+          name: 'Maximilian Beier',
+          nummer: 14,
+          formationsPosition: 10,
+          reihe: 4,
+          spalte: 3),
       const PrognoseSpieler(
           playerId: 'p4',
           name: 'Serhou Guirassy',
           nummer: 9,
-          formationsPosition: 11),
-      // Ein Spieler, den der lokale Pool nicht kennt — Zugang nach dem letzten
-      // Kader-Sync. Er darf nicht verschwinden.
-      const PrognoseSpieler(
-          playerId: 'sportmonks:99999',
-          name: 'Neuzugang Nachname',
-          nummer: 27,
-          formationsPosition: 10),
+          formationsPosition: 11,
+          reihe: 5,
+          spalte: 1),
     ],
   );
 
