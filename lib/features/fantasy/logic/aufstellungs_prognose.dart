@@ -106,4 +106,39 @@ class PrognoseElf {
 
   bool enthaelt(String playerId) =>
       elf.any((s) => s.playerId == playerId);
+
+  /// Baut die Elf aus den Zeilen der Sicht `predicted_lineups_v`.
+  ///
+  /// Steht hier und nicht im Provider, damit es prüfbar ist: Das Lesen einer
+  /// Serverantwort ist die Stelle, an der ein falscher Typ erst auf dem Gerät
+  /// auffällt — und dort als leerer Reiter, nicht als Fehler.
+  static PrognoseElf? ausZeilen(String club, List<Map<String, dynamic>> rows) {
+    if (rows.isEmpty) return null;
+
+    final elf = [
+      for (final r in rows)
+        PrognoseSpieler(
+          playerId: r['player_id'] as String,
+          name: (r['player_name'] as String?) ?? '',
+          nummer: (r['jersey_number'] as num?)?.toInt(),
+          formationsPosition: (r['formation_position'] as num?)?.toInt(),
+        )
+    ]..sort((a, b) =>
+        (a.formationsPosition ?? 99).compareTo(b.formationsPosition ?? 99));
+
+    DateTime? neuster;
+    String? formation;
+    for (final r in rows) {
+      formation ??= r['formation'] as String?;
+      final t = DateTime.tryParse((r['updated_at'] as String?) ?? '');
+      if (t != null && (neuster == null || t.isAfter(neuster))) neuster = t;
+    }
+
+    return PrognoseElf(
+      club: club,
+      elf: elf,
+      formation: formation,
+      stand: neuster?.toLocal(),
+    );
+  }
 }

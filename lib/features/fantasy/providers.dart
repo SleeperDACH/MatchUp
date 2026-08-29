@@ -328,31 +328,8 @@ final prognoseElfProvider =
       .eq('season', season)
       .eq('round', k.runde)
       .eq('club', k.club);
-  if (rows.isEmpty) return null;
-
-  final elf = [
-    for (final r in rows)
-      PrognoseSpieler(
-        playerId: r['player_id'] as String,
-        name: (r['player_name'] as String?) ?? '',
-        nummer: r['jersey_number'] as int?,
-        formationsPosition: r['formation_position'] as int?,
-      )
-  ]..sort((a, b) =>
-      (a.formationsPosition ?? 99).compareTo(b.formationsPosition ?? 99));
-
-  DateTime? neuster;
-  for (final r in rows) {
-    final t = DateTime.tryParse((r['updated_at'] as String?) ?? '');
-    if (t != null && (neuster == null || t.isAfter(neuster))) neuster = t;
-  }
-
-  return PrognoseElf(
-    club: k.club,
-    elf: elf,
-    formation: rows.first['formation'] as String?,
-    stand: neuster?.toLocal(),
-  );
+  return PrognoseElf.ausZeilen(
+      k.club, List<Map<String, dynamic>>.from(rows));
 });
 
 /// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).
