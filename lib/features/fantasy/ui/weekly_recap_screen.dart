@@ -448,18 +448,31 @@ class _AwardCard extends StatelessWidget {
   }
 }
 
-/// Kompakte Recap-Kachel für die Übersicht: zeigt das aktuelle Team der
-/// Woche + MVP und öffnet auf Tippen das volle Recap. Rendert nichts, solange
-/// es für den aktuellen Spieltag keine gewerteten Punkte gibt.
+/// Kompakte Recap-Kachel: zeigt Team der Woche + MVP eines Spieltags und
+/// öffnet auf Tippen das volle Recap.
+///
+/// **Erst nach dem Abpfiff des letzten Spiels.** Ein Recap ist eine Bilanz —
+/// „Team der Woche" mitten im Spieltag benennt den, der zufällig schon
+/// gespielt hat, und ändert sich mit jedem Anpfiff wieder. Ohne [runde] nimmt
+/// die Kachel den aktuellen Spieltag; die Tabelle reicht dagegen einen
+/// **ausgewählten** durch, damit man zurückblättern kann.
 class WeeklyRecapCard extends ConsumerWidget {
-  const WeeklyRecapCard({super.key, required this.league});
+  const WeeklyRecapCard({super.key, required this.league, this.runde});
 
   final FantasyLeague league;
 
+  /// Fester Spieltag; `null` = der aktuelle.
+  final int? runde;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final current = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
+    final current =
+        runde ?? ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     if (current == null) return const SizedBox.shrink();
+    // Kein Recap über einen laufenden Spieltag.
+    if (!ref.watch(rundeAbgepfiffenProvider(current))) {
+      return const SizedBox.shrink();
+    }
 
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
     final pool = ref.watch(playerPoolProvider).valueOrNull;

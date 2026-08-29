@@ -1639,6 +1639,45 @@ Schreibweisen und fand damit **sofort eine weitere** Stelle im
 Manager-Profil. Wer so einen Wächter schreibt, sollte über seine
 Namensannahme zweimal nachdenken.
 
+### Tabelle: eine Tabelle, kein Stapel Kästen — und der Rückblick wohnt hier
+
+Der Tabellen-Tab zeigte **vier gefüllte Kästen** mit eigenen Rändern und Ecken.
+Vier gleich laute Objekte untereinander lesen sich nicht als Rangfolge. Einen
+Spaltenkopf gab es nicht; stattdessen stand **unter** der Tabelle ein
+fünfzeiliger Absatz, der erklärte, wofür S, U, N und „erzielt" stehen — an der
+Stelle, an der ihn niemand liest. Und die untere Bildschirmhälfte war leer.
+
+- **Kopfzeile statt Erklärabsatz** (`# · TEAM · S·U·N · PUNKTE`). Die
+  Spaltenbreiten stehen als Konstanten in `_TabellenKopf` und werden von
+  `_RecordRow` gelesen — zwei Zahlen an zwei Stellen wären beim nächsten
+  Feinschliff auseinandergelaufen.
+- **Die Bilanz bekommt eine eigene Spalte.** Sie stand als Kleintext unter dem
+  Namen und fluchtete mit nichts.
+- **Alle Zeilen auf einer Fläche**, hairline-getrennt. Die eigene Zeile ist nur
+  getönt, nicht gerahmt: In einer Tabelle, die als eine Fläche steht, wäre ein
+  Rahmen um eine Zeile ein Kasten im Kasten.
+- **Zahlen mit Tabellenziffern**, damit die Spalten über die Zeilen fluchten.
+
+**Der Wochen-Recap ist umgezogen — und zeigt sich erst nach dem Abpfiff.**
+
+Er hing an `fantasyCurrentRoundProvider` und erschien, sobald es *irgendwelche*
+gewerteten Punkte gab. Ein Recap ist aber eine **Bilanz**: „Team der Woche"
+mitten im Spieltag benennt den, der zufällig schon gespielt hat, und wechselt
+mit jedem weiteren Anpfiff. `WeeklyRecapCard` prüft deshalb
+`rundeAbgepfiffenProvider` — jede Partie der Runde beendet. (Nicht zu
+verwechseln mit `roundIsLiveProvider`: „nicht live" ist auch **vor** dem ersten
+Anpfiff wahr.)
+
+Dazu nimmt die Kachel jetzt einen **optionalen Spieltag** entgegen. Auf der
+Übersicht steht weiter der aktuelle; im Tabellen-Tab gibt es unter der Marke
+**Rückblick** eine Spieltagswahl über alle abgepfiffenen Runden
+(`abgepfiffeneRundenProvider`). Vorher gab es keinen Weg zu einer früheren
+Woche.
+
+Angesehen über `test/fantasy_tabelle_vorschau_test.dart`. Wichtig darin: **ohne
+Fixtures kein Rückblick** — welche Spieltage abgepfiffen sind, entscheidet der
+Spielplan, und mit leerer Liste fehlt der halbe Schirm.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

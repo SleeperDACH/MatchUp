@@ -370,6 +370,38 @@ final roundIsLiveProvider = Provider.family<bool, int>((ref, round) {
   );
 });
 
+/// Ist der Spieltag **abgepfiffen** — also jede Partie beendet?
+///
+/// Anders als [roundIsLiveProvider]: „nicht live" heißt auch vor dem ersten
+/// Anpfiff, „abgepfiffen" nur danach. Der Wochen-Recap hängt daran — er ist
+/// eine Bilanz, und eine Bilanz über einen halb gespielten Spieltag ist keine.
+final rundeAbgepfiffenProvider = Provider.family<bool, int>((ref, round) {
+  final fixtures = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
+  if (fixtures == null) return false;
+  final spiele = [
+    for (final f in fixtures)
+      if (f.round == round) f
+  ];
+  return spiele.isNotEmpty &&
+      spiele.every((f) => f.status == FixtureStatus.finished);
+});
+
+/// Alle **abgepfiffenen** Spieltage der Saison, aufsteigend — die Spieltage,
+/// für die es einen Recap zum Nachschlagen gibt.
+final abgepfiffeneRundenProvider = Provider<List<int>>((ref) {
+  final fixtures =
+      ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
+  final proRunde = <int, List<Fixture>>{};
+  for (final f in fixtures) {
+    (proRunde[f.round] ??= []).add(f);
+  }
+  final fertig = [
+    for (final e in proRunde.entries)
+      if (e.value.every((f) => f.status == FixtureStatus.finished)) e.key
+  ]..sort();
+  return fertig;
+});
+
 /// Roh-Leistungsdaten aller Poolspieler für einen Spieltag.
 ///
 /// **Lädt nach, solange der Spieltag läuft.** Vorher war das ein einfacher
