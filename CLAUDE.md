@@ -2560,6 +2560,46 @@ Gehalten von `test/aufstellungs_runde_test.dart`, das beide Regeln am selben
 Zeitpunkt gegeneinander prüft: Sonntag 20:00 ist `currentFantasyRound` noch 1
 und `aufstellungsRunde` schon 2.
 
+### Die Elf der Vorwoche wird übernommen (0110)
+
+Ausdrücklich verlangt, und beim Nachzählen war klar, warum: Es gab **zwölf**
+Aufstellungen für Spieltag 1 und **eine** für Spieltag 2. Elf Manager wären leer
+in den nächsten Spieltag gegangen — ohne Elf keine Punkte, und nichts hätte sie
+gewarnt.
+
+Der Grund war eine stille Halbheit: Einen Aufstellungs-Autopick gibt es nicht
+(`fantasy_autopick_all` gehört dem Draft), und die Oberfläche zeigte die beste
+Elf nur als **Vorschlag** — gespeichert wurde erst, wenn jemand etwas anfasste.
+Wer den Schirm öffnete und wieder zumachte, weil ihm die Elf gefiel, hatte
+trotzdem nichts stehen. **Ein Vorschlag, der aussieht wie ein Zustand.**
+
+Die Regel steht jetzt zweimal, und beide Fassungen müssen dasselbe meinen:
+
+- **Server** `fantasy_aufstellung_uebernehmen()` (alle 10 Minuten): legt für
+  jeden aktiven Manager ohne Aufstellung für die laufende Runde eine an.
+- **App** `logic/aufstellung_uebernahme.dart`: dieselbe Saat für den Schirm in
+  der Zeit dazwischen. Sonst sähe man einen fremden Vorschlag, der beim
+  nächsten Lauf umspringt.
+
+Drei Feinheiten, die beide teilen:
+
+- **Die jüngste Aufstellung vor dieser Runde**, nicht stur die der Vorrunde:
+  Wer einen Spieltag ausgesetzt hat, fiele sonst für immer aus der Übernahme.
+- **Gefiltert auf den aktuellen Kader.** Wer inzwischen weg ist (Trade, Waiver,
+  Drop), hinterlässt einen leeren Platz — besser als eine Elf, die der Server
+  beim nächsten Speichern ablehnt.
+- **Nur wenn nichts dasteht.** Eine vorhandene Aufstellung wird nie
+  überschrieben, auch keine unvollständige. Eine *leere* Zeile gilt dabei nicht
+  als gestellt, sonst verdrängte sie die Vorwoche.
+
+Beim ersten Lauf gegen die Produktion: **9 Aufstellungen übernommen**, Spieltag
+2 von 1 auf 10. Der zweite Lauf tut nichts — die Funktion ist idempotent, und
+genau das prüft der Rollback-Probelauf mit.
+
+**Was sie nicht kann:** Acht der achtzehn Manager in MatchUp! #1 haben *nie*
+eine Elf gestellt. Aus nichts lässt sich nichts übernehmen; sie starten weiter
+leer. Das wäre ein Autopick — eine andere Entscheidung als diese hier.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;

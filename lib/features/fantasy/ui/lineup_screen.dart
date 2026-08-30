@@ -9,6 +9,7 @@ import '../../../app/widgets/pill_selector.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../logic/aufstellung_sperre.dart';
+import '../logic/aufstellung_uebernahme.dart';
 import '../logic/lineup_autosave.dart';
 import '../data/fantasy_league_repository.dart';
 import '../models/fantasy_models.dart';
@@ -68,6 +69,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
 
   List<String> _lastIds = const [];
   bool _valid = false;
+
   /// Spieltag, für den gespeichert wird — `null`, solange er noch lädt.
   ///
   /// Vorher war das ein `int` und bekam im `build` den Wert `round`, der
@@ -115,9 +117,11 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     // ihm gerade versprochen, dass automatisch gespeichert wird. Ohne await
     // und ohne Rückmeldung; der Schirm ist weg, aber der Aufruf läuft.
     if (_dirty && _valid && _effRound != null) {
-      unawaited(_repo!
-          .setLineup(widget.league.id, _effRound!, _lastIds)
-          .catchError((Object e) => debugPrint('[AUFSTELLUNG] Flush: $e')));
+      unawaited(
+        _repo!
+            .setLineup(widget.league.id, _effRound!, _lastIds)
+            .catchError((Object e) => debugPrint('[AUFSTELLUNG] Flush: $e')),
+      );
     }
     super.dispose();
   }
@@ -127,7 +131,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   void _autoSave() {
     _dirty = true;
     _saveTimer?.cancel();
-    _saveTimer = Timer(const Duration(milliseconds: 700), _versuchenZuSpeichern);
+    _saveTimer = Timer(
+      const Duration(milliseconds: 700),
+      _versuchenZuSpeichern,
+    );
   }
 
   /// Ein Speicherversuch, der sich selbst noch einmal einbestellt, statt
@@ -148,8 +155,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       spieltag: _effRound,
     )) {
       case SpeicherSchritt.spaeterErneut:
-        _saveTimer =
-            Timer(const Duration(milliseconds: 400), _versuchenZuSpeichern);
+        _saveTimer = Timer(
+          const Duration(milliseconds: 400),
+          _versuchenZuSpeichern,
+        );
       case SpeicherSchritt.unvollstaendig:
         setState(() {}); // Fußzeile sagt, dass nichts gespeichert ist.
       case SpeicherSchritt.speichern:
@@ -159,23 +168,23 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
 
   /// Spielerprofil (Leistungstabelle + Droppen) öffnen.
   void _openProfile(FantasyPlayer p) => showPlayerProfile(
-        context,
-        league: widget.league,
-        player: p,
-        clubIcon: _clubIcons[p.club],
-        isMine: true,
-      );
+    context,
+    league: widget.league,
+    player: p,
+    clubIcon: _clubIcons[p.club],
+    isMine: true,
+  );
 
   /// Leeren Kaderplatz füllen → Free Agency.
-  void _openFreeAgency() => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => FreeAgencyScreen(league: widget.league),
-      ));
+  void _openFreeAgency() => Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => FreeAgencyScreen(league: widget.league)),
+  );
 
   /// Alle aktuell aufgestellten Spieler-IDs (über alle Positionen).
   Set<String> _assignedIds(Map<PlayerPosition, List<String?>> slots) => {
-        for (final list in slots.values)
-          for (final id in list) ?id
-      };
+    for (final list in slots.values)
+      for (final id in list) ?id,
+  };
 
   /// Slots für eine Formation bauen; bevorzugt Spieler aus [prefer]
   /// (bestehende Auswahl / gespeicherte Elf), füllt sonst die punktbesten.
@@ -193,8 +202,14 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     final res = <PlayerPosition, List<String?>>{};
     counts.forEach((pos, n) {
       final ordered = byPos[pos] ?? const <FantasyPlayer>[];
-      final preferred = [for (final p in ordered) if (prefer.contains(p.id)) p.id];
-      final rest = [for (final p in ordered) if (!prefer.contains(p.id)) p.id];
+      final preferred = [
+        for (final p in ordered)
+          if (prefer.contains(p.id)) p.id,
+      ];
+      final rest = [
+        for (final p in ordered)
+          if (!prefer.contains(p.id)) p.id,
+      ];
       final pick = [...preferred, ...rest].take(n).toList();
       res[pos] = [for (var i = 0; i < n; i++) i < pick.length ? pick[i] : null];
     });
@@ -202,10 +217,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   }
 
   (int, int, int) _formationOf(Map<PlayerPosition, List<String?>> slots) => (
-        slots[PlayerPosition.def]?.length ?? 0,
-        slots[PlayerPosition.mid]?.length ?? 0,
-        slots[PlayerPosition.fwd]?.length ?? 0,
-      );
+    slots[PlayerPosition.def]?.length ?? 0,
+    slots[PlayerPosition.mid]?.length ?? 0,
+    slots[PlayerPosition.fwd]?.length ?? 0,
+  );
 
   Future<void> _save(int round, List<String> ids) async {
     setState(() => _saving = true);
@@ -218,8 +233,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       _dirty = false;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -236,9 +252,11 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     final round = current ?? 34;
 
     final poolAsync = ref.watch(playerPoolProvider);
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
-    final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
+    final lineups =
+        ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
         const <FantasyLineup>[];
     final statsAsync = ref.watch(roundStatsProvider(round));
     final clubIcons =
@@ -256,224 +274,226 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
 
     return poolAsync.when(
       loading: () => const SizedBox(
-          height: 320, child: Center(child: CircularProgressIndicator())),
+        height: 320,
+        child: Center(child: CircularProgressIndicator()),
+      ),
       error: (e, _) =>
           SizedBox(height: 320, child: Center(child: Text('Fehler: $e'))),
       data: (pool) {
-          final playerById = {for (final p in pool) p.id: p};
-          final myPlayers = [
-            for (final r in roster)
-              if (r.managerId == myId && playerById[r.playerId] != null)
-                playerById[r.playerId]!
-          ];
-          final stats =
-              statsAsync.valueOrNull ?? const <String, PlayerMatchStats>{};
-          final points = {
-            for (final p in myPlayers)
-              p: scorePlayer(stats[p.id] ?? const PlayerMatchStats(),
-                  p.position, league.scoring)
-          };
-          // Spieler je Position, nach Punkten absteigend (für Auto-Fill/Listen).
-          final byPos = <PlayerPosition, List<FantasyPlayer>>{};
-          for (final p in myPlayers) {
-            byPos.putIfAbsent(p.position, () => []).add(p);
-          }
-          for (final list in byPos.values) {
-            list.sort((a, b) => (points[b] ?? 0).compareTo(points[a] ?? 0));
-          }
+        final playerById = {for (final p in pool) p.id: p};
+        final myPlayers = [
+          for (final r in roster)
+            if (r.managerId == myId && playerById[r.playerId] != null)
+              playerById[r.playerId]!,
+        ];
+        final stats =
+            statsAsync.valueOrNull ?? const <String, PlayerMatchStats>{};
+        final points = {
+          for (final p in myPlayers)
+            p: scorePlayer(
+              stats[p.id] ?? const PlayerMatchStats(),
+              p.position,
+              league.scoring,
+            ),
+        };
+        // Spieler je Position, nach Punkten absteigend (für Auto-Fill/Listen).
+        final byPos = <PlayerPosition, List<FantasyPlayer>>{};
+        for (final p in myPlayers) {
+          byPos.putIfAbsent(p.position, () => []).add(p);
+        }
+        for (final list in byPos.values) {
+          list.sort((a, b) => (points[b] ?? 0).compareTo(points[a] ?? 0));
+        }
 
-          if (myPlayers.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('Noch kein Kader — der Draft muss erst laufen.',
-                  textAlign: TextAlign.center),
-            );
-          }
+        if (myPlayers.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Noch kein Kader — der Draft muss erst laufen.',
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
 
-          // Saat: gespeicherte Aufstellung dieses Spieltags, sonst beste Elf.
-          final existing = lineups
-              .where((l) => l.round == round && l.managerId == myId)
-              .map((l) => l.playerIds)
-              .firstOrNull;
-          // Wer schon spielt, ist festgenagelt.
-          final gesperrt = {
-            for (final p in myPlayers)
-              if (spielerGesperrt(p, anpfiff, jetzt)) p.id
-          };
-          // Alles zu: Für den Rest des Spieltags gibt es nichts mehr zu tun.
-          final allesZu =
-              myPlayers.isNotEmpty && gesperrt.length == myPlayers.length;
-          _gesperrt = gesperrt;
+        // Wer schon spielt, ist festgenagelt.
+        final gesperrt = {
+          for (final p in myPlayers)
+            if (spielerGesperrt(p, anpfiff, jetzt)) p.id,
+        };
+        // Alles zu: Für den Rest des Spieltags gibt es nichts mehr zu tun.
+        final allesZu =
+            myPlayers.isNotEmpty && gesperrt.length == myPlayers.length;
+        _gesperrt = gesperrt;
 
-          final seedIds = existing != null && existing.isNotEmpty
-              ? {
-                  for (final id in existing)
-                    if (myPlayers.any((p) => p.id == id)) id
-                }
-              : bestEleven(points, _roster).starterIds;
+        // **Saat: dieser Spieltag, sonst der letzte gestellte, sonst die
+        // beste Elf.** Die Regel steht in `logic/aufstellung_uebernahme.dart`
+        // und spiegelt die des Servers (0110) — beide müssen dasselbe meinen,
+        // sonst springt die Aufstellung um, sobald dessen Lauf durch ist.
+        final seedIds =
+            uebernommeneElf(lineups.where((l) => l.managerId == myId), round, {
+              for (final p in myPlayers) p.id,
+            }) ??
+            bestEleven(points, _roster).starterIds;
 
-          // Slots auflösen: Nutzer-Auswahl oder Saat (in gültiger Formation).
-          // Slots gegen den aktuellen Kader bereinigen: gedroppte Spieler
-          // (nicht mehr im Roster) werden zu leeren „frei"-Plätzen.
-          final rosterIds = {for (final p in myPlayers) p.id};
-          final slots = _slots == null
-              ? _seedSlots(seedIds, byPos)
-              : {
-                  for (final entry in _slots!.entries)
-                    entry.key: [
-                      for (final id in entry.value)
-                        (id != null && rosterIds.contains(id)) ? id : null
-                    ]
-                };
+        // Slots auflösen: Nutzer-Auswahl oder Saat (in gültiger Formation).
+        // Slots gegen den aktuellen Kader bereinigen: gedroppte Spieler
+        // (nicht mehr im Roster) werden zu leeren „frei"-Plätzen.
+        final rosterIds = {for (final p in myPlayers) p.id};
+        final slots = _slots == null
+            ? _seedSlots(seedIds, byPos)
+            : {
+                for (final entry in _slots!.entries)
+                  entry.key: [
+                    for (final id in entry.value)
+                      (id != null && rosterIds.contains(id)) ? id : null,
+                  ],
+              };
 
-          final assigned = _assignedIds(slots);
-          final (d, m, f) = _formationOf(slots);
-          final valid = _roster.isValidFormation(
-              gkCount: slots[PlayerPosition.gk]?.whereType<String>().length ?? 0,
-              defCount:
-                  slots[PlayerPosition.def]?.whereType<String>().length ?? 0,
-              midCount:
-                  slots[PlayerPosition.mid]?.whereType<String>().length ?? 0,
-              fwdCount:
-                  slots[PlayerPosition.fwd]?.whereType<String>().length ?? 0);
-          _lastIds = assigned.toList();
-          _valid = valid;
-          _effRound = current; // nur der echte Wert, nie der 34er-Notnagel
-          _clubIcons = clubIcons;
+        final assigned = _assignedIds(slots);
+        final (d, m, f) = _formationOf(slots);
+        final valid = _roster.isValidFormation(
+          gkCount: slots[PlayerPosition.gk]?.whereType<String>().length ?? 0,
+          defCount: slots[PlayerPosition.def]?.whereType<String>().length ?? 0,
+          midCount: slots[PlayerPosition.mid]?.whereType<String>().length ?? 0,
+          fwdCount: slots[PlayerPosition.fwd]?.whereType<String>().length ?? 0,
+        );
+        _lastIds = assigned.toList();
+        _valid = valid;
+        _effRound = current; // nur der echte Wert, nie der 34er-Notnagel
+        _clubIcons = clubIcons;
 
-          // Bank: Kaderspieler, die nicht aufgestellt sind.
-          final bench = [
-            for (final p in myPlayers)
-              if (!assigned.contains(p.id)) p
-          ]..sort((a, b) {
+        // Bank: Kaderspieler, die nicht aufgestellt sind.
+        final bench =
+            [
+              for (final p in myPlayers)
+                if (!assigned.contains(p.id)) p,
+            ]..sort((a, b) {
               final cmp = a.position.index.compareTo(b.position.index);
-              return cmp != 0 ? cmp : (points[b] ?? 0).compareTo(points[a] ?? 0);
+              return cmp != 0
+                  ? cmp
+                  : (points[b] ?? 0).compareTo(points[a] ?? 0);
             });
-          // Freie Kaderplätze (durch Drops entstanden).
-          final emptySlots =
-              (league.roster.squadSize - myPlayers.length).clamp(0, 99);
+        // Freie Kaderplätze (durch Drops entstanden).
+        final emptySlots = (league.roster.squadSize - myPlayers.length).clamp(
+          0,
+          99,
+        );
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Die Sperre gilt je Spieler, also sagt die Zeile auch, wie
-              // viele. „Aufstellung gesperrt" wäre ab dem Freitagsspiel
-              // falsch — der Sonntagsspieler ist ja noch frei.
-              if (gesperrt.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.lock_outline,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                            allesZu
-                                ? 'Alle Spiele laufen — die Aufstellung steht.'
-                                : gesperrt.length == 1
-                                    ? 'Ein Spieler ist gesperrt, sein Spiel läuft.'
-                                    : '${gesperrt.length} Spieler sind gesperrt, '
-                                        'ihre Spiele laufen.',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant)),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Die Sperre gilt je Spieler, also sagt die Zeile auch, wie
+            // viele. „Aufstellung gesperrt" wäre ab dem Freitagsspiel
+            // falsch — der Sonntagsspieler ist ja noch frei.
+            if (gesperrt.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.lock_outline,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        allesZu
+                            ? 'Alle Spiele laufen — die Aufstellung steht.'
+                            : gesperrt.length == 1
+                            ? 'Ein Spieler ist gesperrt, sein Spiel läuft.'
+                            : '${gesperrt.length} Spieler sind gesperrt, '
+                                  'ihre Spiele laufen.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              _Pitch(
-                slots: slots,
-                playerById: playerById,
-                points: points,
-                clubIcons: clubIcons,
-                onOpenProfile: _openProfile,
-                gesperrt: gesperrt,
-                onTapSlot: allesZu
-                    ? null
-                    : (pos, i) =>
+              ),
+            _Pitch(
+              slots: slots,
+              playerById: playerById,
+              points: points,
+              clubIcons: clubIcons,
+              onOpenProfile: _openProfile,
+              gesperrt: gesperrt,
+              onTapSlot: allesZu
+                  ? null
+                  : (pos, i) =>
                         _openPicker(pos, i, slots, byPos, points, stats),
-                onDrop: allesZu
-                    ? null
-                    : (data, pos, i) => _applyDrop(slots, data, pos, i),
+              onDrop: allesZu
+                  ? null
+                  : (data, pos, i) => _applyDrop(slots, data, pos, i),
+            ),
+            // Formationen unter dem Spielfeld.
+            if (!assigned.any(gesperrt.contains))
+              _FormationChips(
+                roster: _roster,
+                byPos: byPos,
+                current: (d, m, f),
+                onSelected: (fm) {
+                  setState(() => _slots = _buildSlots(fm, assigned, byPos));
+                  _autoSave();
+                },
               ),
-              // Formationen unter dem Spielfeld.
-              if (!assigned.any(gesperrt.contains))
-                _FormationChips(
-                  roster: _roster,
-                  byPos: byPos,
-                  current: (d, m, f),
-                  onSelected: (fm) {
-                    setState(() => _slots = _buildSlots(fm, assigned, byPos));
-                    _autoSave();
-                  },
-                ),
-              _Bench(
-                bench: bench,
-                points: points,
-                clubIcons: clubIcons,
-                emptySlots: emptySlots,
-                onOpenProfile: _openProfile,
-                onOpenFreeAgency: _openFreeAgency,
-                onDropToBench:
-                    allesZu ? null : (data) => _benchDrop(slots, data),
-              ),
-              if (!allesZu)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Drei Zustände, nicht einer. Vorher stand hier auch
-                      // dann „wird automatisch gespeichert", wenn gar nichts
-                      // gespeichert werden konnte — die Zeile war der Grund,
-                      // warum ein verlorener Stand niemandem auffiel.
-                      Icon(
-                          !_valid
-                              ? Icons.error_outline
-                              : (_saving || _dirty)
-                                  ? Icons.sync
-                                  : Icons.cloud_done_outlined,
-                          size: 14,
+            _Bench(
+              bench: bench,
+              points: points,
+              clubIcons: clubIcons,
+              emptySlots: emptySlots,
+              onOpenProfile: _openProfile,
+              onOpenFreeAgency: _openFreeAgency,
+              onDropToBench: allesZu ? null : (data) => _benchDrop(slots, data),
+            ),
+            if (!allesZu)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Drei Zustände, nicht einer. Vorher stand hier auch
+                    // dann „wird automatisch gespeichert", wenn gar nichts
+                    // gespeichert werden konnte — die Zeile war der Grund,
+                    // warum ein verlorener Stand niemandem auffiel.
+                    Icon(
+                      !_valid
+                          ? Icons.error_outline
+                          : (_saving || _dirty)
+                          ? Icons.sync
+                          : Icons.cloud_done_outlined,
+                      size: 14,
+                      color: !_valid
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        !_valid
+                            ? 'Nicht gespeichert – die Elf ist noch nicht '
+                                  'vollständig'
+                            : (_saving || _dirty)
+                            ? 'Speichere …'
+                            : 'Gespeichert',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: !_valid
                               ? Theme.of(context).colorScheme.error
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                            !_valid
-                                ? 'Nicht gespeichert – die Elf ist noch nicht '
-                                    'vollständig'
-                                : (_saving || _dirty)
-                                    ? 'Speichere …'
-                                    : 'Gespeichert',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                    color: !_valid
-                                        ? Theme.of(context).colorScheme.error
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant)),
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ],
-                  ),
-                )
-              else
-                const SizedBox(height: 16),
-            ],
-          );
-        },
-      );
+                    ),
+                  ],
+                ),
+              )
+            else
+              const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
   }
 
   /// Saat-Slots aus einer Startelf-Menge; nimmt deren Formation, fällt bei
@@ -484,13 +504,17 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   ) {
     int cnt(PlayerPosition pos) =>
         (byPos[pos] ?? const []).where((p) => seedIds.contains(p.id)).length;
-    var formation =
-        (cnt(PlayerPosition.def), cnt(PlayerPosition.mid), cnt(PlayerPosition.fwd));
+    var formation = (
+      cnt(PlayerPosition.def),
+      cnt(PlayerPosition.mid),
+      cnt(PlayerPosition.fwd),
+    );
     final isValid = _roster.isValidFormation(
-        gkCount: _roster.gk,
-        defCount: formation.$1,
-        midCount: formation.$2,
-        fwdCount: formation.$3);
+      gkCount: _roster.gk,
+      defCount: formation.$1,
+      midCount: formation.$2,
+      fwdCount: formation.$3,
+    );
     if (!isValid) {
       final feasible = _feasibleFormations(byPos);
       if (feasible.isNotEmpty) formation = feasible.first;
@@ -500,7 +524,8 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
 
   /// Gültige Formationen, die der Kader auch besetzen kann.
   List<(int, int, int)> _feasibleFormations(
-      Map<PlayerPosition, List<FantasyPlayer>> byPos) {
+    Map<PlayerPosition, List<FantasyPlayer>> byPos,
+  ) {
     int avail(PlayerPosition pos) => (byPos[pos] ?? const []).length;
     return [
       for (final fm in _roster.validFormations())
@@ -508,7 +533,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
             fm.$2 <= avail(PlayerPosition.mid) &&
             fm.$3 <= avail(PlayerPosition.fwd) &&
             _roster.gk <= avail(PlayerPosition.gk))
-          fm
+          fm,
     ];
   }
 
@@ -525,7 +550,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     final candidates = [
       for (final p in byPos[pos] ?? const <FantasyPlayer>[])
         // Gesperrte gar nicht erst anbieten — ihr Spiel läuft schon.
-        if (!samePosAssigned.contains(p.id) && !_gesperrt.contains(p.id)) p
+        if (!samePosAssigned.contains(p.id) && !_gesperrt.contains(p.id)) p,
     ];
     final occupied = slots[pos]![slotIndex] != null;
 
@@ -544,7 +569,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     if (picked == null) return;
     setState(() {
       final next = {
-        for (final e in slots.entries) e.key: [...e.value]
+        for (final e in slots.entries) e.key: [...e.value],
       };
       next[pos]![slotIndex] = picked == _clearSentinel ? null : picked;
       _slots = next;
@@ -553,8 +578,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   }
 
   Map<PlayerPosition, List<String?>> _copy(
-          Map<PlayerPosition, List<String?>> s) =>
-      {for (final e in s.entries) e.key: [...e.value]};
+    Map<PlayerPosition, List<String?>> s,
+  ) => {
+    for (final e in s.entries) e.key: [...e.value],
+  };
 
   /// Spieler per Drag & Drop auf einen Platz ziehen. Gleiche Position ist
   /// durch das DragTarget garantiert: vom Feld → Tausch der beiden Plätze,
@@ -619,7 +646,7 @@ class _FormationChips extends StatelessWidget {
         if (fm.$1 <= avail(PlayerPosition.def) &&
             fm.$2 <= avail(PlayerPosition.mid) &&
             fm.$3 <= avail(PlayerPosition.fwd))
-          fm
+          fm,
     ];
     if (formations.length < 2) return const SizedBox.shrink();
     return SizedBox(
@@ -737,7 +764,10 @@ class _Pitch extends StatelessWidget {
         return LongPressDraggable<_DragData>(
           data: data,
           dragAnchorStrategy: pointerDragAnchorStrategy,
-          feedback: _DragFeedback(player: player, iconUrl: clubIcons[player.club]),
+          feedback: _DragFeedback(
+            player: player,
+            iconUrl: clubIcons[player.club],
+          ),
           childWhenDragging: Opacity(opacity: 0.3, child: slot),
           child: slot,
         );
@@ -814,8 +844,9 @@ class _Slot extends ConsumerWidget {
                       shape: BoxShape.circle,
                       color: Colors.white24,
                       border: Border.all(
-                          color: positionColor(pos).withValues(alpha: 0.9),
-                          width: 2),
+                        color: positionColor(pos).withValues(alpha: 0.9),
+                        width: 2,
+                      ),
                     ),
                     child: const Icon(Icons.add, color: Colors.white, size: 22),
                   )
@@ -827,8 +858,11 @@ class _Slot extends ConsumerWidget {
                       // nicht reagiert, sondern erkennbar zu ist.
                       Opacity(
                         opacity: gesperrt ? 0.55 : 1,
-                        child:
-                            ClubBadge(club: p.club, iconUrl: iconUrl, size: 42),
+                        child: ClubBadge(
+                          club: p.club,
+                          iconUrl: iconUrl,
+                          size: 42,
+                        ),
                       ),
                       // **Ausfall unten links, Spielsperre oben links.**
                       // Zwei verschiedene Aussagen: „sein Spiel läuft schon"
@@ -847,11 +881,12 @@ class _Slot extends ConsumerWidget {
                                   : const Color(0xFFFFC83D),
                             ),
                             child: Icon(
-                                _ausfall(ref, p)!.gesperrt
-                                    ? Icons.block
-                                    : Icons.medical_services_outlined,
-                                size: 10,
-                                color: Colors.black),
+                              _ausfall(ref, p)!.gesperrt
+                                  ? Icons.block
+                                  : Icons.medical_services_outlined,
+                              size: 10,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       if (gesperrt)
@@ -864,29 +899,39 @@ class _Slot extends ConsumerWidget {
                               color: Colors.black87,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.lock,
-                                size: 11, color: Colors.white),
+                            child: const Icon(
+                              Icons.lock,
+                              size: 11,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 1),
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black87,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(formatPoints(points ?? 0),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold)),
+                        child: Text(
+                          formatPoints(points ?? 0),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 const SizedBox(height: 2),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black38,
                     borderRadius: BorderRadius.circular(6),
@@ -911,8 +956,10 @@ class _Slot extends ConsumerWidget {
                 color: Colors.black45,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text('läuft',
-                  style: TextStyle(color: Colors.white70, fontSize: 9)),
+              child: const Text(
+                'läuft',
+                style: TextStyle(color: Colors.white70, fontSize: 9),
+              ),
             )
           else
             _posPill(context),
@@ -948,7 +995,10 @@ class _Slot extends ConsumerWidget {
           shape: BoxShape.circle,
           border: Border.all(color: color, width: 1.4),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 2),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 2,
+            ),
           ],
         ),
         child: Icon(Icons.swap_horiz, size: 15, color: color),
@@ -983,9 +1033,10 @@ class _DragFeedback extends StatelessWidget {
             color: Colors.white,
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3)),
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
             ],
           ),
           padding: const EdgeInsets.all(3),
@@ -1044,21 +1095,22 @@ class _Bench extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Bank (${bench.length})',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelLarge
-                        ?.copyWith(color: scheme.onSurfaceVariant)),
+                Text(
+                  'Bank (${bench.length})',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 if (bench.isEmpty && emptySlots == 0)
                   Text(
-                      hot
-                          ? 'Hier ablegen, um auf die Bank zu setzen.'
-                          : 'Alle Spieler stehen in der Startelf.',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant))
+                    hot
+                        ? 'Hier ablegen, um auf die Bank zu setzen.'
+                        : 'Alle Spieler stehen in der Startelf.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  )
                 else ...[
                   // Nach Position gruppiert (TW → ABW → MF → ST), farbig.
                   for (final pos in PlayerPosition.values)
@@ -1071,17 +1123,19 @@ class _Bench extends StatelessWidget {
                               width: 10,
                               height: 10,
                               decoration: BoxDecoration(
-                                  color: positionColor(pos),
-                                  shape: BoxShape.circle),
+                                color: positionColor(pos),
+                                shape: BoxShape.circle,
+                              ),
                             ),
                             const SizedBox(width: 6),
-                            Text(pos.label,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelMedium
-                                    ?.copyWith(
-                                        color: positionColor(pos),
-                                        fontWeight: FontWeight.bold)),
+                            Text(
+                              pos.label,
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: positionColor(pos),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
                           ],
                         ),
                       ),
@@ -1098,13 +1152,14 @@ class _Bench extends StatelessWidget {
                   if (emptySlots > 0) ...[
                     Padding(
                       padding: const EdgeInsets.only(top: 8, bottom: 4),
-                      child: Text('Freie Plätze ($emptySlots)',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelMedium
-                              ?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Freie Plätze ($emptySlots)',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
                     ),
                     Wrap(
                       spacing: 8,
@@ -1159,15 +1214,19 @@ class _Bench extends StatelessWidget {
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: scheme.outline.withValues(alpha: 0.6), width: 1),
+            color: scheme.outline.withValues(alpha: 0.6),
+            width: 1,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.add, size: 18, color: scheme.primary),
             const SizedBox(width: 6),
-            Text('Freier Platz — holen',
-                style: TextStyle(color: scheme.primary, fontSize: 13)),
+            Text(
+              'Freier Platz — holen',
+              style: TextStyle(color: scheme.primary, fontSize: 13),
+            ),
           ],
         ),
       ),
@@ -1203,8 +1262,9 @@ class _PlayerPicker extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       child: ConstrainedBox(
-        constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1212,12 +1272,15 @@ class _PlayerPicker extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 12, 8),
               child: Row(
                 children: [
-                  Text('${position.label} wählen',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    '${position.label} wählen',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const Spacer(),
                   if (canClear)
                     TextButton.icon(
-                      onPressed: () => Navigator.of(context).pop(_clearSentinel),
+                      onPressed: () =>
+                          Navigator.of(context).pop(_clearSentinel),
                       icon: const Icon(Icons.remove_circle_outline, size: 18),
                       label: const Text('Slot leeren'),
                     ),
@@ -1227,8 +1290,10 @@ class _PlayerPicker extends StatelessWidget {
             if (candidates.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text('Keine weiteren ${position.label}-Spieler im Kader.',
-                    style: TextStyle(color: scheme.onSurfaceVariant)),
+                child: Text(
+                  'Keine weiteren ${position.label}-Spieler im Kader.',
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
               )
             else
               Flexible(
@@ -1244,16 +1309,20 @@ class _PlayerPicker extends StatelessWidget {
                       if (s?.cleanSheet ?? false) 'Zu Null',
                     ].join(' · ');
                     return ListTile(
-                      leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
+                      leading: ClubBadge(
+                        club: p.club,
+                        iconUrl: clubIcons[p.club],
+                      ),
                       title: Text(p.name),
                       subtitle: Text(detail),
-                      trailing: Text(formatPoints(points[p] ?? 0),
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: scheme.primary)),
+                      trailing: Text(
+                        formatPoints(points[p] ?? 0),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: scheme.primary,
+                            ),
+                      ),
                       onTap: () => Navigator.of(context).pop(p.id),
                     );
                   },
