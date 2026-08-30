@@ -2632,6 +2632,49 @@ deutlich schlechter lesbar als vorher.
 Eingesetzt in MatchUp-Karte, Detailkopf, Aufstellungen und Free Agency. Die
 Tabelle trug die gleichbreiten Ziffern schon.
 
+### Torhüter bekommen keinen Einsatzbonus
+
+Nach Spieltag 1 gemessen, über alle 284 eingesetzten Spieler und mit der echten
+Wertung der Liga gerechnet (nicht mit einer in SQL nachgebauten):
+
+| | TW | ABW | MF | ST |
+|---|---|---|---|---|
+| vorher | **27,7** | 13,7 | 15,0 | 14,4 |
+| ohne Einsatzbonus für TW | **17,7** | 13,7 | 15,0 | 14,4 |
+
+**Warum ausgerechnet dieser Hebel.** Alle achtzehn Torhüter spielten 90
+Minuten — min 90, max 90, ausnahmslos. Der Sockel war für sie also eine
+**Konstante von 10 Punkten, die kein Spiel vom anderen unterschied**. Ihn zu
+streichen ändert die Reihenfolge unter den Torhütern nicht um einen Platz; es
+fällt Rauschen weg, kein Signal. Bei Feldspielern trägt derselbe Bonus sehr
+wohl etwas bei — er trennt den Durchspieler vom Einwechsler — und bleibt
+deshalb dort.
+
+Vorher durchgerechnet und verworfen: **Parade 3 → 2** allein bringt nur 27,7 →
+24,0, weil die Torhüter im Schnitt bloß 3,7 Paraden hatten. Beides zusammen
+läge bei 14,0. Entschieden wurde: nur der Einsatzbonus.
+
+`FantasyScoringRules.appearance` gilt jetzt für Feldspieler, `appearanceGk`
+(leer) für Torhüter, und `einsatz(position)` wählt aus. **Eine Migration
+braucht es nicht:** `fromJson` liest nur die flachen Zahlen, die Einsatzstufen
+kommen immer aus `standard` — die Änderung im Code greift damit sofort für
+jede Liga.
+
+**Die Wertung ist rückwirkend**, weil Punkte nirgends gespeichert, sondern bei
+jedem Aufruf gerechnet werden. Vorher geprüft, was das an Spieltag 1 ändert:
+Es gab drei Duelle mit beidseitiger Aufstellung, und **keines dreht** — die
+Abstände (163,8:171,8 · 138,7:28,2 · 263,9:162,3) sind größer als der Effekt.
+
+**Was man wissen muss:** Ohne Sockel rutschen schlechte Torwart-Tage ins Minus
+(an Spieltag 1: Raab −10,0, Hein −6,4). Der Einsatzbonus war für Torhüter
+faktisch ein Mindestlohn. Und ein eingewechselter Ersatztorwart bekommt gar
+nichts mehr fürs Mitspielen — bei achtzehn Neunzig-Minuten-Einsätzen ein
+theoretischer Fall, aber einer.
+
+Im Punktevergabe-Schirm steht für den Torwart-Reiter deshalb **ein Satz statt
+einer leeren Rubrik**: „Kein Einsatzbonus" ist eine Auskunft, eine fehlende
+Gruppe sähe aus wie ein Fehler.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;

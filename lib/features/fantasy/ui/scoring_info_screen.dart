@@ -75,10 +75,23 @@ class _ScoringInfoScreenState extends State<ScoringInfoScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 28),
               children: [
-                _Gruppe('Einsatz', farbe, [
-                  for (final t in _regeln.appearance.reversed)
-                    _Zeile(_einsatzText(t), t.points),
-                ]),
+                // **Für Torhüter steht hier keine leere Gruppe, sondern der
+                // Grund.** „Kein Einsatzbonus" ist eine Auskunft; eine Rubrik,
+                // die einfach fehlt, sieht aus wie ein Fehler.
+                if (_regeln.einsatz(p).isEmpty)
+                  _Gruppe('Einsatz', farbe, const [
+                    _Hinweis(
+                      'Torhüter bekommen keine Punkte fürs Mitspielen '
+                      '— sie stehen ohnehin die vollen 90 Minuten. Ihre '
+                      'Punkte kommen aus Paraden, weißer Weste und dem, was '
+                      'sie hinten halten.',
+                    ),
+                  ])
+                else
+                  _Gruppe('Einsatz', farbe, [
+                    for (final t in _regeln.einsatz(p).reversed)
+                      _Zeile(_einsatzText(t), t.points),
+                  ]),
                 _Gruppe('Offensive', farbe, [
                   _Zeile('Tor', _regeln.goal),
                   _Zeile('Tor per Elfmeter', _regeln.penaltyGoal),
@@ -120,14 +133,18 @@ class _ScoringInfoScreenState extends State<ScoringInfoScreen> {
                       for (final m in _regeln.saveMilestones)
                         _Zeile('Ab ${m.atLeast} Paraden im Spiel', m.bonus),
                     for (final m
-                        in _regeln.defensiveMilestones[p] ?? const <Milestone>[])
+                        in _regeln.defensiveMilestones[p] ??
+                            const <Milestone>[])
                       _Zeile(
                         'Ab ${m.atLeast} Defensivaktionen im Spiel',
                         m.bonus,
                       ),
                     for (final m
                         in _regeln.passMilestones[p] ?? const <Milestone>[])
-                      _Zeile('Ab ${m.atLeast} genauen Pässen im Spiel', m.bonus),
+                      _Zeile(
+                        'Ab ${m.atLeast} genauen Pässen im Spiel',
+                        m.bonus,
+                      ),
                   ],
                   fussnote:
                       'Die Boni zählen zusammen: Wer die zweite Schwelle '
@@ -198,11 +215,12 @@ class _ScoringInfoScreenState extends State<ScoringInfoScreen> {
       PlayerPosition.def =>
         'Die Abwehr punktet über die Null hinten, und jedes Gegentor kostet. '
             'Zweikämpfe und Klärungen bringen dazu stetig kleine Punkte.',
-      PlayerPosition.mid => zuNull
-          ? 'Das Mittelfeld punktet über Tore, Vorlagen und Defensivarbeit.'
-          : 'Das Mittelfeld bekommt nichts für die Null hinten'
-                '${gegentor ? '' : ' und verliert nichts durch Gegentore'}. '
-                'Punkte kommen aus Toren, Vorlagen und der Defensivarbeit.',
+      PlayerPosition.mid =>
+        zuNull
+            ? 'Das Mittelfeld punktet über Tore, Vorlagen und Defensivarbeit.'
+            : 'Das Mittelfeld bekommt nichts für die Null hinten'
+                  '${gegentor ? '' : ' und verliert nichts durch Gegentore'}. '
+                  'Punkte kommen aus Toren, Vorlagen und der Defensivarbeit.',
       PlayerPosition.fwd =>
         'Der Sturm lebt von Toren und Vorlagen. Die Null hinten spielt keine '
             'Rolle; Defensivarbeit zählt trotzdem mit.',
@@ -342,6 +360,29 @@ class _Zeile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Eine Zeile ohne Zahl — für den Fall, dass eine Rubrik für diese Position
+/// nichts vergibt und das *gesagt* werden muss.
+class _Hinweis extends StatelessWidget {
+  const _Hinweis(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: scheme.onSurfaceVariant,
+          height: 1.35,
+        ),
       ),
     );
   }

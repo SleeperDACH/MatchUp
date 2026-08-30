@@ -178,8 +178,10 @@ PlayerScore scorePlayerDetailed(
     lines.add(ScoreLine(label, count, each));
   }
 
-  // Einsatz — höchste erreichte Stufe.
-  for (final tier in rules.appearance) {
+  // Einsatz — höchste erreichte Stufe. **Je Position:** Torhüter haben keine
+  // Stufen, weil der Sockel bei ihnen eine Konstante wäre (sie spielen
+  // praktisch immer 90 Minuten).
+  for (final tier in rules.einsatz(position)) {
     if (s.minutes >= tier.atLeastMinutes) {
       lines.add(ScoreLine(tier.label, 1, tier.points));
       break;

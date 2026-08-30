@@ -49,15 +49,22 @@ void main() {
       expect(scorePlayer(s, PlayerPosition.mid), 14, reason: '10 + 4');
       expect(scorePlayer(s, PlayerPosition.def), 22, reason: '10 + 12');
       expect(scorePlayer(s, PlayerPosition.fwd), 10, reason: 'nichts');
+      expect(scorePlayer(s, PlayerPosition.gk), 12,
+          reason: 'nur die weiße Weste — kein Einsatzbonus');
     });
 
-    test('GK: 90 Min, 3 Paraden, 1 Gegentor, Rating 6.8 = 15', () {
+    test('GK: 90 Min, 3 Paraden, 1 Gegentor, Rating 6.8 = 5', () {
+      // **Waren 15, sind 5** — der Einsatzbonus fällt für Torhüter weg.
+      // Gemessen an Spieltag 1: Alle achtzehn spielten 90 Minuten, der Sockel
+      // war für sie also eine Konstante von 10 Punkten und hob ihren Schnitt
+      // auf 27,7 gegen 13,7–15,0 bei den Feldspielern. Die Differenz zur
+      // alten Zahl ist **genau** der Sockel; alles andere ist unverändert.
       expect(
           scorePlayer(
               const PlayerMatchStats(
                   minutes: 90, saves: 3, goalsConceded: 1, rating: 6.8),
               PlayerPosition.gk),
-          15);
+          5);
     });
 
     test('FWD: 60 Min + 1 Tor + Rating 6.5 = 21', () {
@@ -369,6 +376,48 @@ void main() {
         rosterConfig: roster,
       );
       expect(totals['u1'], greaterThan(0));
+    });
+  });
+
+  group('Einsatzbonus', () {
+    const regeln = FantasyScoringRules();
+    const neunzig = PlayerMatchStats(minutes: 90, played: true);
+
+    test('Feldspieler bekommen den Sockel fürs Mitspielen', () {
+      for (final p in [
+        PlayerPosition.def,
+        PlayerPosition.mid,
+        PlayerPosition.fwd,
+      ]) {
+        final zeilen = scorePlayerDetailed(neunzig, p, regeln).breakdown;
+        expect(zeilen.where((l) => l.label.startsWith('Einsatz')), hasLength(1),
+            reason: '$p muss eine Einsatzzeile haben');
+      }
+    });
+
+    test('Torhüter bekommen ihn nicht', () {
+      // **Gemessen an Spieltag 1:** Alle achtzehn Torhüter spielten 90
+      // Minuten. Der Sockel war für sie eine Konstante, die kein Spiel vom
+      // anderen unterschied — und hob ihren Schnitt auf 27,7 gegen 13,7–15,0
+      // bei den Feldspielern.
+      final zeilen =
+          scorePlayerDetailed(neunzig, PlayerPosition.gk, regeln).breakdown;
+      expect(zeilen.where((l) => l.label.startsWith('Einsatz')), isEmpty);
+    });
+
+    test('genau zehn Punkte Unterschied, sonst nichts', () {
+      // Derselbe Datensatz, einmal als Abwehrspieler und einmal als Torhüter
+      // gewertet, unterscheidet sich **nur** um den Sockel. Wäre versehentlich
+      // mehr weggefallen, stünde hier eine andere Zahl.
+      const stats = PlayerMatchStats(
+          minutes: 90, played: true, saves: 4, goalsConceded: 1);
+      final tw = scorePlayer(stats, PlayerPosition.gk, regeln);
+      final ohne = scorePlayerDetailed(stats, PlayerPosition.gk, regeln)
+          .breakdown
+          .where((l) => l.label.startsWith('Einsatz'))
+          .fold<double>(0, (a, l) => a + l.subtotal);
+      expect(ohne, 0);
+      expect(tw, greaterThan(0), reason: 'Paraden zählen weiter');
     });
   });
 }

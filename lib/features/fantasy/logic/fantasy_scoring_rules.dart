@@ -64,6 +64,16 @@ class FantasyScoringRules {
       AppearanceTier(30, 4, 'Einsatz (30–59 Min)'),
       AppearanceTier(1, 2, 'Einsatz (1–29 Min)'),
     ],
+    // **Torhüter bekommen keinen Einsatzbonus.** Gemessen an Spieltag 1:
+    // Alle achtzehn spielten 90 Minuten, ausnahmslos — der Sockel war für sie
+    // eine Konstante von 10 Punkten, die kein Spiel vom anderen unterschied,
+    // und hob ihren Schnitt auf 27,7 gegen 13,7–15,0 bei den Feldspielern.
+    // Ohne ihn stehen sie bei 17,7, und **die Reihenfolge unter den Torhütern
+    // ändert sich dabei nicht** — es fällt nur Rauschen weg, kein Signal.
+    //
+    // Bei Feldspielern trägt derselbe Bonus sehr wohl etwas bei: Er trennt
+    // den Durchspieler vom Einwechsler. Deshalb bleibt er dort.
+    this.appearanceGk = const [],
     this.goal = 15,
     this.penaltyGoal = 12,
     this.assist = 10,
@@ -123,7 +133,15 @@ class FantasyScoringRules {
     ],
   });
 
+  /// Einsatzstufen der **Feldspieler**.
   final List<AppearanceTier> appearance;
+
+  /// Einsatzstufen der **Torhüter** — leer heißt: kein Sockel fürs Mitspielen.
+  final List<AppearanceTier> appearanceGk;
+
+  /// Die Einsatzstufen, die für [p] gelten.
+  List<AppearanceTier> einsatz(PlayerPosition p) =>
+      p == PlayerPosition.gk ? appearanceGk : appearance;
 
   // Offensive
   final double goal;
