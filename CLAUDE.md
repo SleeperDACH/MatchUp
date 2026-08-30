@@ -2110,6 +2110,30 @@ nicht eine; genau dafür trägt der Schlüssel die Mikrosekunde.
 Was danach fehlt, fehlt wirklich: Drops aus der Zeit vor den Systemnachrichten
 und Admin-Korrekturen. Die bleiben aus, statt sie zu erfinden.
 
+**Und die Trade-Rückfüllung war trotzdem falsch — sie wartete auf den zweiten
+Tausch.** Gemeldet an einem konkreten Fall: Nicolas Kristof ging erst von
+hollmannleonard zu SFV03 (28.08. 17:58:47) und dann von SFV03 zu julius_eggy
+(18:34:33). Im Protokoll stand hollmanns Abgang auf **18:34:33**, und SFV03s
+Zugang um 17:58 fehlte ganz.
+
+Die Ursache: 0097 hängte jede Trade-Position an die vorhandene Zugangszeile
+desselben Spielers — und die stammt aus `fantasy_rosters` und kennt nur den
+**aktuellen** Besitzer. Wer zweimal getauscht wurde, hat dort genau einen
+Eintrag, den letzten. Der erste Trade bekam damit den Zeitstempel des zweiten,
+und der Zwischenbesitzer verschwand. Solange ein Spieler nur einmal getauscht
+wird, fällt das nicht auf: Dann ist die einzige Zugangszeile zufällig die
+richtige. Von 27 Trade-Positionen betraf es genau einen Spieler.
+
+Migration 0098 baut alle Trade-Bewegungen deshalb aus `fantasy_trades` und
+`fantasy_trade_items` neu auf — dort steht jeder Tausch vollständig, mit
+eigenem `executed_at` (nachgezählt: alle sechs angenommenen Trades tragen es).
+Die anderen Wege (Draft, Free Agency, Waiver, Drops) bleiben unberührt.
+
+**Die Lehre:** Ein abgeleiteter Bestand ist keine Quelle für Geschichte. Wer
+Vergangenes rekonstruiert, nimmt die Tabelle, die das Ereignis festhält — nicht
+die, die den Zustand danach zeigt. Gehalten von einem Test, der genau diesen
+Fall nachstellt (`derselbe Spieler zweimal getradet bleibt zwei Ereignisse`).
+
 **Die Lehre:** „Es ist nirgends festgehalten" ist eine Behauptung, die man
 prüft, bevor man sie zur Begründung macht. Hier stand es an drei Stellen.
 

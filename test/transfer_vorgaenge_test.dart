@@ -153,6 +153,35 @@ void _ereignisse() {
       }
     });
 
+    test('derselbe Spieler zweimal getradet bleibt zwei Ereignisse', () {
+      // **Der Fall aus der Praxis** (Nicolas Kristof, 28.08.2026): erst von
+      // hollmann zu SFV03, gut eine halbe Stunde spaeter von SFV03 zu julius.
+      // Die Rueckfuellung hatte beide Traden an die eine vorhandene
+      // Kaderzeile gehaengt und damit den ersten Tausch auf die Zeit des
+      // zweiten gelegt; der Zwischenbesitzer verschwand.
+      final frueh = DateTime(2026, 8, 28, 17, 58, 47, 63);
+      final spaet = DateTime(2026, 8, 28, 18, 34, 33, 863);
+      final e = ereignisseAus([
+        m(1, 'hollmann', 'kristof', false, frueh),
+        m(2, 'sfv', 'kristof', true, frueh),
+        m(3, 'sfv', 'zentner', false, frueh),
+        m(4, 'hollmann', 'zentner', true, frueh),
+        m(5, 'sfv', 'kristof', false, spaet),
+        m(6, 'julius', 'kristof', true, spaet),
+        m(7, 'julius', 'schwolow', false, spaet),
+        m(8, 'sfv', 'schwolow', true, spaet),
+      ]);
+      expect(e.length, 2, reason: 'zwei Tausche, zwei Ereignisse');
+      // Juengster zuerst: SFV03 gibt Kristof an julius.
+      expect(e.first.passiertAm, spaet);
+      expect(e.first.seiten.map((s) => s.managerId).toSet(),
+          {'sfv', 'julius'});
+      // Und der aeltere behaelt seinen eigenen Zeitpunkt samt Beteiligten.
+      expect(e.last.passiertAm, frueh);
+      expect(e.last.seiten.map((s) => s.managerId).toSet(),
+          {'sfv', 'hollmann'});
+    });
+
     test('eine Seite ohne Gegenstueck bleibt allein stehen', () {
       // Kommt vor, wenn die Gegenseite aus der Rueckfuellung nicht
       // rekonstruiert werden konnte — dann lieber halb als falsch.
