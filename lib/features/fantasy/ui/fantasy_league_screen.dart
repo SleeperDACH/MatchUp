@@ -29,6 +29,7 @@ import 'player_pool_screen.dart';
 import 'trade_screen.dart';
 import 'transfers_screen.dart';
 import 'weekly_recap_screen.dart';
+import '../../../app/widgets/karte.dart';
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/matchup_chevron.dart';
 
@@ -507,13 +508,13 @@ class _Zeilengruppe extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).dividerColor),
-        ),
-        clipBehavior: Clip.antiAlias,
+      // Dieselbe Hülle wie der Rückblick und der MatchUp-Kasten: eine Kante
+      // für alle. Die Zeilen bringen ihren eigenen Innenabstand mit, deshalb
+      // hat die Karte hier keinen.
+      child: Karte(
+        padding: EdgeInsets.zero,
+        child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -530,6 +531,7 @@ class _Zeilengruppe extends StatelessWidget {
               zeilen[i],
             ],
           ],
+        ),
         ),
       ),
     );

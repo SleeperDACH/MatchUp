@@ -2290,6 +2290,44 @@ bei jedem Durchlauf: dass Angebote und Anträge auf der eigenen Seite landen,
 dass der Draft aus der Liga-Liste fällt, und dass Zu- **und** Abgang darin
 vorkommen.
 
+### Eine Kante für alle Karten
+
+Gemeldet als Design-Kritik, und sie stimmte: Auf der Liga-Übersicht standen
+drei Sorten Karten untereinander, und jede fasste ihre Kante anders.
+
+| Karte | Rand | Fläche |
+|---|---|---|
+| MatchUp-Kasten | Akzentfarbe bei 45 % — **rot, solange live** | Kartengrund + Hauch |
+| Rückblick | Gold bei 40 % | **Gold bei 10 %** |
+| Mein Team / Liga | graue Haarlinie | Kartengrund |
+
+Drei Behandlungen für dieselbe Sorte Objekt — und die beiden lauten sahen aus,
+als sei dort etwas zu tun, wo nur etwas zu lesen war. Der Rückblick war der
+schlimmste Fall: eine **goldene Fläche** für eine Bilanz der vergangenen Woche,
+bei der nichts ansteht.
+
+**Auf dunklem Grund entsteht Tiefe über die Fläche, nicht über die Kante.**
+Deshalb gilt jetzt: eine Haarlinie (`dividerColor`) für alle, und der
+Unterschied liegt in der Flächenstufe. Farbe trägt eine Karte nur als **Hauch
+aus der Ecke** — derselbe Schimmer wie bei den Ligakarten auf dem
+Startbildschirm, bei drei Vierteln der Diagonale verklungen. Er sagt „das
+gehört zu diesem Bereich", nicht „hier musst du hin".
+
+Damit das nicht wieder auseinanderläuft, steht die Hülle als `Karte`
+(`app/widgets/karte.dart`) an einer Stelle: Kartengrund oder eine Stufe höher
+(`KartenStufe`), Haarlinie, optionaler Hauch, optionales `onTap`. Rückblick und
+Zeilengruppen benutzen sie; der MatchUp-Kasten baut seine Fläche wegen des
+`Stack` darin noch selbst, trägt aber dieselbe Kante.
+
+**Auch „live" bekommt keinen farbigen Rand mehr.** Dass ein Spieltag läuft,
+sagen der kräftigere Hauch, der rote Punkt und das Wort „LIVE" — nachgesehen in
+`test/goldens/matchup_banner_vorschau.png`: Der Zustand liest sich unverändert
+klar, nur ohne den lautesten Strich des Schirms.
+
+**Voraussetzung dafür war das Aufräumen der Flächenleiter** (siehe „Verboten:
+grün gestochene Flächen"). Solange `surfaceContainer*` grün gestochen war,
+hätte „Tiefe über die Fläche" nur mehr Grün bedeutet.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

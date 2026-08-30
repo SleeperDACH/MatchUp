@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../app/widgets/karte.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
@@ -504,20 +506,17 @@ class WeeklyRecapCard extends ConsumerWidget {
     final top = recap.topScore;
     final mvp = recap.mvp;
 
+    // **Dieselbe Hülle wie jede andere Karte.** Vorher lag sie auf einer
+    // goldenen Fläche mit goldenem Rand — für einen Rückblick, bei dem nichts
+    // zu tun ist. Das Gold trägt jetzt nur noch der Hauch aus der Ecke und
+    // die Marke im Inhalt.
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
-      child: Material(
-      color: _cGold.withValues(alpha: 0.10),
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
+      child: Karte(
+        hauch: _cGold,
+        radius: 18,
+        padding: const EdgeInsets.all(16),
         onTap: () => showWeeklyRecap(context, league: league, round: current),
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _cGold.withValues(alpha: 0.4)),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -552,9 +551,7 @@ class WeeklyRecapCard extends ConsumerWidget {
               ],
             ],
           ),
-        ),
       ),
-    ),
     );
   }
 }

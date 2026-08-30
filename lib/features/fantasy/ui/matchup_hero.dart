@@ -366,11 +366,13 @@ class HeroShell extends StatelessWidget {
                     stops: const [0.0, 0.75],
                     colors: [Color.alphaBlend(hauch, grund), grund],
                   ),
-            border: Border.all(
-              color: live
-                  ? accent.withValues(alpha: 0.45)
-                  : Theme.of(context).dividerColor,
-            ),
+            // **Eine Kante für alle Karten**, auch während des Spieltags.
+            // Der farbige Rand bei „live" war der lauteste Strich des
+            // Schirms und stand neben zwei Karten mit Haarlinie — drei
+            // Behandlungen für dieselbe Sorte Objekt. Dass etwas läuft,
+            // sagen der kräftigere Hauch aus der Ecke, der rote Punkt und
+            // das Wort „LIVE"; eine Linie sagt es nicht besser.
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
