@@ -424,6 +424,38 @@ gilt das Raster ab sofort.
   (+8) und ≥8 (+12) machen den achten Save 15 Punkte wert. Das ist eine eigene
   Entscheidung.
 
+  **Die Quelle kann falsch liegen — und dann hilft nur eine Korrektur daneben.**
+  Giannis Konstantelias erzielte gegen den HSV das 2:0 (45.+1). Sportmonks
+  verbucht dieses Tor als **Eigentor von Sebastiaan Bornauw** und schreibt
+  Bornauw zusätzlich `goals: 1` gut — die Quelle widerspricht sich also intern.
+  Bei uns stand damit ein HSV-Innenverteidiger mit einem Tor da, obwohl der HSV
+  keins erzielt hat, und dem Torschützen fehlten 15 Punkte.
+
+  Unsere Spiegelung war dabei einwandfrei: 1640 Einzelwerte über sieben Partien
+  stimmen exakt mit der Quelle überein. **Der Fehler liegt vor unserer Tür**,
+  und das ist ein anderer Fall als ein Zuordnungsfehler im eigenen Code.
+
+  Daraus zwei Werkzeuge (Migration 0104):
+
+  - **`stats_widersprueche`** — eine Sicht mit einer harten, allgemeinen Regel:
+    Ein Spieler kann nicht mehr Tore erzielt haben als seine Mannschaft im
+    selben Spiel. Auf den Bestand angewandt traf sie **genau eine** Zeile, und
+    zwar die richtige. Wichtig dabei: Geprüft wird gegen die **Teamtore**, nicht
+    gegen `own_goals` — Josha Vagnoman hat am selben Spieltag ein reguläres Tor
+    *und* ein Eigentor erzielt, seine `goals: 1` ist korrekt. Eine Regel „Tore
+    minus Eigentore" hätte ihn fälschlich getroffen.
+  - **`stat_overrides`** plus ein `before`-Trigger auf `player_match_stats`.
+    `sync-stats` schreibt per Upsert und läuft jede Minute; eine von Hand
+    geänderte Zeile wäre binnen sechzig Sekunden überschrieben. Die Korrektur
+    steht deshalb **neben** den Daten und wird bei jedem Schreiben neu
+    angewandt — nachgemessen: Ein voller Sync über 252 Zeilen lässt sie stehen.
+    Der Trigger arbeitet über `to_jsonb`/`jsonb_populate_record`, damit er
+    beliebige Spalten trifft, ohne sie einzeln aufzuzählen; sonst wäre er beim
+    nächsten neuen Zähler still unvollständig.
+
+  Jede Korrektur trägt einen **Grund im Klartext**. Eine Zahl ohne Begründung
+  wäre in einem Jahr nicht mehr von einem Fehler zu unterscheiden.
+
   **`goals-conceded` und `goalkeeper-goals-conceded` sind zwei Zahlen, nicht
   eine.** Beide standen in `STAT_CODE_MAP` auf `goalsConceded`, und die
   Zuordnungsschleife **addiert** alles, was sie findet — aus zwei Codes auf
