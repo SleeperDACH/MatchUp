@@ -19,6 +19,12 @@ class MatchUpColors {
   // Abgestufte Flächen über [base] für Tiefe (Karten, Leisten, Kopfzeilen).
   static const _surfaceCard = Color(0xFF1A1D27);
   static const _surfaceHigh = Color(0xFF252937);
+  // Die übrigen Stufen der Material-3-Flächenleiter, **neutral gehalten**.
+  // Siehe die Erklärung am Farbschema: Ohne sie mischt Material 3 die grüne
+  // Seed-Farbe hinein.
+  static const _surfaceLowest = Color(0xFF0E1016);
+  static const _surfaceLow = Color(0xFF161822);
+  static const _surfaceMid = Color(0xFF1F2330);
   static const _divider = Color(0xFF2A2E3A);
 
   /// Gedämpftes Snow für Sekundärtext.
@@ -53,8 +59,33 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
     surface: bg,
     onSurface: dark ? MatchUpColors.snow : MatchUpColors.base,
     onSurfaceVariant: dark ? MatchUpColors._mutedText : MatchUpColors._lightMuted,
+    // **Die ganze Flächenleiter neutral halten, nicht nur die oberste Stufe.**
+    //
+    // `ColorScheme.fromSeed` mischt die Seed-Farbe in *jede*
+    // `surfaceContainer*`-Stufe. Überschrieben war nur `surfaceContainerHighest`
+    // — die übrigen vier kamen grün gestochen heraus, gemessen:
+    // `surfaceContainerLow` = `#181D18` (Grünkanal am höchsten), während der
+    // App-Grund `#12141C` blaustichig ist.
+    //
+    // Sichtbar wurde das an den **Spielerprofilen**: `showModalBottomSheet`
+    // nimmt in Material 3 `surfaceContainerLow`, also lag das halbe Blatt auf
+    // einer grünen Fläche. Der Drawer hatte denselben Fehler und bekam damals
+    // eine eigene Fläche verpasst; das war die Behandlung eines Symptoms —
+    // hier steht die Ursache.
+    surfaceContainerLowest:
+        dark ? MatchUpColors._surfaceLowest : MatchUpColors._lightCard,
+    surfaceContainerLow:
+        dark ? MatchUpColors._surfaceLow : MatchUpColors._lightCard,
+    surfaceContainer:
+        dark ? MatchUpColors._surfaceCard : MatchUpColors._lightCard,
+    surfaceContainerHigh:
+        dark ? MatchUpColors._surfaceMid : MatchUpColors._lightHigh,
     surfaceContainerHighest:
         dark ? MatchUpColors._surfaceHigh : MatchUpColors._lightHigh,
+    // `surfaceDim` und `surfaceBright` gehören zur selben Leiter und wurden
+    // beim ersten Anlauf übersehen — der Wächtertest hat sie gefunden.
+    surfaceDim: dark ? MatchUpColors._surfaceLowest : MatchUpColors._lightHigh,
+    surfaceBright: dark ? MatchUpColors._surfaceMid : MatchUpColors._lightCard,
     error: MatchUpColors.red,
     onError: dark ? MatchUpColors.snow : Colors.white,
     outlineVariant: dark ? MatchUpColors._divider : MatchUpColors._lightDivider,

@@ -119,6 +119,59 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   Supabase erzwungen (Fixtures werden dafür serverseitig gespiegelt);
   die Client-Sperre ist nur UX.
 
+## Verboten: grün gestochene Flächen
+
+**Keine Fläche dieser App trägt einen Grünstich. Das ist keine Vorliebe,
+sondern eine Regel.** Sie ist dreimal gebrochen worden — beim Seitenmenü, bei
+den Auswahl-Chips und zuletzt bei den Spielerprofilen —, und jedes Mal hat sie
+jemand gemeldet, statt dass sie jemand gesehen hätte.
+
+Die Ursache ist immer dieselbe: **`ColorScheme.fromSeed` mischt die Seed-Farbe
+in jede erzeugte Fläche.** Der Seed dieser App ist Grün, also kommt aus jeder
+nicht ausdrücklich überschriebenen `surfaceContainer*`-Stufe ein olivgrüner Ton
+heraus. Gemessen am 30.08.2026:
+
+| Ton | erzeugt | Grundfarbe der App |
+|---|---|---|
+| `surfaceContainerLowest` | `#0B0F0B` | `#12141C` |
+| `surfaceContainerLow` | `#181D18` | (blaustichig) |
+| `surfaceContainer` | `#1C211B` | |
+| `surfaceContainerHigh` | `#272B26` | |
+| `surfaceDim` | `#101510` | |
+
+Bei allen ist der **Grünkanal der stärkste**, beim App-Grund der blaue.
+
+**Sichtbar wurde es an den Spielerprofilen:** `showModalBottomSheet` nimmt in
+Material 3 `surfaceContainerLow` — das halbe Blatt lag also auf einer grünen
+Fläche, samt der Kacheln darauf. Der Drawer hatte denselben Fehler und bekam
+2026 eine eigene Fläche verpasst; das war die Behandlung eines Symptoms. Seit
+`theme.dart` die **ganze Leiter** überschreibt, ist die Ursache weg.
+
+Daraus die Regeln:
+
+- **Jede `surfaceContainer*`-Stufe wird ausdrücklich gesetzt**, dazu
+  `surfaceDim` und `surfaceBright`. Wer eine neue Stufe von Material bekommt,
+  setzt sie mit.
+- **Kein `surfaceContainer`, `secondaryContainer` oder `primaryContainer` als
+  Fläche verwenden, ohne die Farbe zu prüfen.** `secondaryContainer` ist die
+  bekannteste Falle: Daraus wird das stumpfe Oliv, und genau deshalb sind
+  `ChoiceChip`, `FilterChip` und `SegmentedButton` in dieser App verboten
+  (siehe „Keine Material-Auswahlelemente").
+- **Grün ist ein Signal, keine Fläche.** Es heißt „hier läuft etwas" — ein
+  laufendes Spiel, ein laufender Draft, ein führendes Team. Ein Hintergrund
+  läuft nie. Wo Grün auf einer Fläche auftaucht, ist es entweder ein Versehen
+  von `fromSeed` oder eine Fehlnutzung des Signals.
+
+Gehalten von `test/flaechen_neutral_test.dart`: Der Test prüft nicht einzelne
+Werte, sondern die **Eigenschaft** — auf keiner Fläche darf der Grünkanal der
+stärkste sein, in beiden Helligkeiten. Er hat beim ersten Durchlauf sofort
+`surfaceDim` gefunden, das ich übersehen hatte. Ein Test auf feste Hexwerte
+hätte das nicht getan.
+
+**Ausdrücklich nicht gemeint** sind das Spielfeld (`pitchGradient`, ein
+dunkles Rasengrün an vier Stellen) und die Marken- und Signalfarben selbst.
+Verboten ist der **Stich** in Flächen, die neutral sein sollen.
+
 ## Stack & Konventionen
 
 - State: Riverpod (klassische Provider, kein Codegen). Models: manuelles
