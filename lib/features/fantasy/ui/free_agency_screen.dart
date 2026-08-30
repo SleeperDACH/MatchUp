@@ -4,10 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/widgets/pill_selector.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
-import '../logic/aufstellung_sperre.dart';
-import '../logic/aufstellungs_prognose.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../logic/saison_punkte.dart';
+import '../logic/waiver_fenster.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
@@ -32,9 +31,16 @@ import 'waiver_claims_screen.dart';
 /// (`saisonPunkte`). Die Gruppen bleiben getrennt, weil sie verschiedene
 /// Handlungen tragen: oben holen, unten fragen.
 class FreeAgencyScreen extends ConsumerStatefulWidget {
-  const FreeAgencyScreen({super.key, required this.league});
+  const FreeAgencyScreen({super.key, required this.league, this.jetzt});
 
   final FantasyLeague league;
+
+  /// **Nur für Vorschauen.** Der Schirm rechnet sonst mit `DateTime.now()`,
+  /// und damit hinge sein Bild am Wochentag des Testlaufs: „Waiver bis Mo,
+  /// 15:00" wird in einer englischen Woche zu „Do, 15:00". Ein fest
+  /// eingecheckter Vergleich wäre dann nicht erst am nächsten Tag rot, sondern
+  /// an einem beliebigen — und niemand wüsste, warum.
+  final DateTime? jetzt;
 
   @override
   ConsumerState<FreeAgencyScreen> createState() => _FreeAgencyScreenState();
@@ -67,11 +73,13 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
     final spiele =
         ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
         const <Fixture>[];
-    final laufendeRunde = aktiveRunde(spiele);
-    final anpfiff = laufendeRunde == null
-        ? const <String, DateTime>{}
-        : anpfiffJeVerein(spiele, laufendeRunde);
-    final jetzt = DateTime.now();
+    final jetzt = widget.jetzt ?? DateTime.now();
+    // **Die Waiver-Regel, nicht die Anpfiff-Regel.** Ein Spieler bleibt nach
+    // dem Anpfiff seines Vereins bis zur Frist auf dem Waiver — nicht nur, bis
+    // der Spieltag durch ist. `wireRunde` liefert `null`, sobald die Frist
+    // vorbei ist; dann ist wieder alles direkt zu holen.
+    final wireR = wireRunde(spiele, jetzt);
+    final frist = wireR == null ? null : waiverFrist(spiele, wireR);
     final ausfaelle =
         ref.watch(absencesProvider).valueOrNull ?? const <String, dynamic>{};
 
@@ -147,7 +155,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
 
           return Column(
             children: [
-              const _WaiverBanner(),
+              _WaiverBanner(frist: frist),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                 child: TextField(
@@ -186,7 +194,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                     final imKader = rosteredIds.contains(p.id);
                     final waiver = onWaivers.contains(p.id);
                     final claimed = claimedPlayerIds.contains(p.id);
-                    final laeuft = vereinSpieltGerade(p.club, anpfiff, jetzt);
+                    final aufWire = vereinAufWire(p.club, spiele, jetzt);
                     final zeile = ListTile(
                       // **Der Name führt ins Profil.** Wer entscheiden soll,
                       // ob er einen Spieler holt, braucht mehr als Verein und
@@ -238,10 +246,10 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                                 p.club,
                                 if (imKader)
                                   teamName[ownerByPlayer[p.id]] ?? 'vergeben'
-                                else if (waiver)
-                                  'Waiver-Wire'
-                                else if (laeuft)
-                                  'Spiel läuft',
+                                else if (waiver || aufWire)
+                                  frist == null
+                                      ? 'Waiver'
+                                      : 'Waiver bis ${fristKurz(frist)}',
                                 // **Wer ausfällt, gehört hier genannt.**
                                 // Einen verletzten Spieler zu holen ist der
                                 // teuerste Fehler in der Free Agency.
@@ -264,7 +272,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                         ],
                       ),
                       trailing: PlayerActionButton(
-                        spieltGerade: laeuft,
+                        aufWire: aufWire,
                         league: league,
                         player: p,
                         ownerId: ownerByPlayer[p.id],
@@ -333,9 +341,16 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
   );
 }
 
-/// Hinweis auf die Waiver-Regel (24 Stunden je gedropptem Spieler).
+/// Hinweis auf die Waiver-Regel — **und darauf, welche Phase gerade läuft.**
+///
+/// Die beiden Zustände sind verschiedene Spiele: Im Fenster wird beantragt und
+/// zur Frist nach Priorität vergeben; danach zählt, wer zuerst tippt. Ein
+/// Balken, der immer dasselbe sagt, verschweigt genau den Unterschied.
 class _WaiverBanner extends StatelessWidget {
-  const _WaiverBanner();
+  const _WaiverBanner({required this.frist});
+
+  /// Ende des laufenden Waivers — `null` in der freien Phase.
+  final DateTime? frist;
 
   @override
   Widget build(BuildContext context) {
@@ -355,8 +370,12 @@ class _WaiverBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Gedroppte Spieler sind 24 Stunden nur per Antrag holbar '
-              '(Waiver, rollende Priorität) — danach frei.',
+              frist == null
+                  ? 'Freie Bahn: Wer frei ist, wird direkt geholt. Ab dem '
+                        'Anpfiff seines Vereins liegt er auf dem Waiver.'
+                  : 'Waiver bis ${fristKurz(frist!)} — dann werden die Anträge '
+                        'nach Priorität vergeben. Gedroppte Spieler liegen '
+                        'außerhalb 24 Stunden auf dem Waiver.',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),

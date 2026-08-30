@@ -2378,6 +2378,89 @@ Angesehen über `test/free_agency_vorschau_test.dart`: die drei Zustände einer
 Zeile nebeneinander (Waiver, Spiel läuft, frei), die es auf dem Gerät nie
 gleichzeitig gibt. Gerechnet wird in `test/free_agent_sperre_test.dart`.
 
+### Der Waiver hat eine Frist: Montag 15:00 (0107)
+
+Vorgegeben: *„Ab Anpfiff der jeweiligen Vereine auf dem Waiver. Bis Montag
+15 Uhr sind alle freien Spieler im Waiver Wire, dann werden die Anträge
+bearbeitet. Bei englischen Wochen Donnerstag 15 Uhr (wenn Dienstag und Mittwoch
+Spiele sind). Gedroppte Spieler außerhalb der Frist haben 24 Stunden
+Waiver-Sperre."*
+
+| Phase | Wann | Was gilt |
+|---|---|---|
+| frei | Frist → nächster Anpfiff | direkt holen, first come first served |
+| Waiver | Anpfiff **seines Vereins** → Frist | nur Antrag, Vergabe nach Priorität |
+| Frist | Mo 15:00, englische Woche Do 15:00 | alle Anträge werden abgearbeitet |
+
+**Je Verein, nicht je Spieltag.** Wer sonntags spielt, ist bis Sonntag 15:30
+direkt zu holen, auch wenn der Spieltag freitags begonnen hat.
+
+Zwei Befunde aus der Produktion standen davor, und der erste ist der
+lehrreichere.
+
+**`fixtures` trug die Bundesliga-Saison doppelt.** 306 Zeilen von OpenLigaDB
+und 306 von Sportmonks. `sync-fixtures` holt OpenLigaDB seit der Umstellung nur
+noch für die WM (`OL_LEAGUES` enthält bloß `wm2026`) — die Bundesliga-Zeilen
+waren Altbestand und standen deshalb **für immer auf `scheduled`**.
+`fantasy_laufende_runde` ist „die niedrigste nicht beendete Runde" und lieferte
+darum 1 statt 2. Gemessene Folge: **231 von 232 freien Spielern** galten als
+„Spiel läuft", niemand war direkt holbar, jeder Zugang wurde zum Antrag.
+
+Die Zeilen sind weg (nichts verwies darauf: `tips`, `fixture_odds`,
+`predicted_lineups`, `predicted_formations` tragen für die Bundesliga nur
+Sportmonks-IDs; die 98 OpenLigaDB-Quoten gehören zur WM). **Zusätzlich** filtern
+die Runden-Funktionen auf `sportmonks:` — ein Altbestand darf die Rechnung nie
+wieder kippen. Das Löschen allein hätte gereicht; der Filter ist der Teil, der
+beim nächsten Mal hilft.
+
+**Und Anträge auf laufende Spieler wurden nie abgearbeitet.** Der einzige Cron
+rief `fantasy_process_due_waivers`, und die läuft über `fantasy_waiver_players`
+— also nur über ausdrücklich gedroppte Spieler. Ein Antrag auf einen freien
+Spieler, dessen Partie lief, stand dort nicht drin und blieb `pending`, für
+immer. Zwei solche Anträge hingen seit dem 30.08.
+
+Jetzt rechnet `fantasy_waivers_faellig()` alle fünf Minuten nach, **ob eine
+Frist verstrichen ist, für die noch nicht abgerechnet wurde** — festgehalten in
+`fantasy_waiver_laeufe (league_id, round)`. Ein Cron auf „Montag 15:00" wäre
+zweimal falsch gewesen: pg_cron rechnet in UTC (im Winter also 14 Uhr), und ein
+Lauf, der in genau dieser Minute ausfällt, wäre verloren. Ein Protokoll holt
+einen verpassten Termin von selbst nach.
+
+**Die Frist rechnet in Europe/Berlin**, nicht in UTC — „Montag 15 Uhr" ist eine
+Uhrzeit für Menschen und darf im Winter nicht auf 16 Uhr rutschen.
+Nachgemessen: 30.11.2026 → `2026-11-30 14:00+00`, also 15:00 Ortszeit.
+
+Maßgeblich ist der letzte Anpfiff der Runde, nicht der erste: Der Waiver soll
+erst schließen, wenn alle gespielt haben.
+
+**Server und App müssen dieselbe Regel meinen**, sonst zeigt die App ein grünes
+Plus, das der Server ablehnt — genau der Fehler, der als „man kann ihn
+aufnehmen, es passiert überhaupt nichts" gemeldet wurde. Serverseitig
+`fantasy_auf_dem_wire`, in der App `logic/waiver_fenster.dart`
+(`wireRunde`, `waiverFrist`, `vereinAufWire`). Der Knopf heißt jetzt `aufWire`
+statt `spieltGerade`: Das Spiel kann längst vorbei sein, der Waiver läuft
+trotzdem noch.
+
+Gegen die Produktion nachgemessen (mit Rollback): laufende Runde 2 statt 1,
+Wire-Runde 1 mit Frist Mo 31.08. 15:00; ein Leverkusener ist **jetzt** auf dem
+Wire, **vor** seinem Anpfiff nicht und **nach** der Frist nicht mehr; „Holen"
+wird abgelehnt (*„Er liegt auf dem Waiver"*), der Antrag angenommen; die
+englische Woche über zwei eingefügte Di/Mi-Ansetzungen → Donnerstag 15:00.
+
+**Die App liest den Spielplan weiter direkt bei OpenLigaDB** (`OpenLigaDbProvider`
+in `fantasySeasonFixturesProvider`), nicht aus unserer Tabelle. Das war der
+Grund, warum im Simulator alles normal aussah, während der Server blockierte:
+Die API-Daten sind aktuell, die gespiegelten Zeilen waren es nicht. Umgestellt
+ist das **nicht** — es wäre ein eigener Umbau.
+
+**Und der Vorschau-Golden hing plötzlich am Wochentag.** „Waiver bis Mo, 15:00"
+wird in einer englischen Woche zu „Do, 15:00", und die Vorschau baute ihre
+Anpfiffe relativ zu `DateTime.now()` — irgendwann wäre der Spieltag zufällig auf
+Dienstag und Mittwoch gefallen und das Bild ohne Anlass rot geworden.
+`FreeAgencyScreen` nimmt deshalb ein optionales `jetzt`, und die Vorschau setzt
+einen festen Samstag. Eine Uhr, die man stellen kann, ist die einzige Art, ein
+zeitabhängiges Bild fest einzuchecken.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;

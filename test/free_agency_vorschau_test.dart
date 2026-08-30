@@ -100,12 +100,20 @@ void main() {
           away: TeamRef(id: a, name: a, shortName: a),
           status: st,
         );
-    // Der Spieltag läuft noch: Mainz ist durch, Augsburg kommt erst.
+    // **Fester Zeitpunkt statt `DateTime.now()`.** Der Schirm schreibt die
+    // Waiver-Frist hin („Waiver bis Mo, 15:00"), und die hängt am Wochentag:
+    // Lägen die Anpfiffe relativ zu heute, fiele der Spieltag irgendwann
+    // zufällig auf Dienstag und Mittwoch — englische Woche, Frist Donnerstag,
+    // Bild rot ohne Anlass.
+    //
+    // Samstag, 29.08.2026, 18:00: Mainz hat um 15:30 gespielt (Waiver),
+    // Augsburg spielt erst Sonntag (noch direkt zu holen).
+    final jetzt = DateTime(2026, 8, 29, 18);
     final spiele = [
       f(gespielt, 'Paderborn', FixtureStatus.finished,
-          DateTime.now().subtract(const Duration(days: 1))),
+          DateTime(2026, 8, 29, 15, 30)),
       f(spaeter, 'FC Schalke 04', FixtureStatus.scheduled,
-          DateTime.now().add(const Duration(hours: 8))),
+          DateTime(2026, 8, 30, 17, 30)),
     ];
 
     await tester.pumpWidget(
@@ -153,7 +161,7 @@ void main() {
         ],
         child: MaterialApp(
           theme: buildAppTheme(),
-          home: FreeAgencyScreen(league: liga),
+          home: FreeAgencyScreen(league: liga, jetzt: jetzt),
         ),
       ),
     );

@@ -178,7 +178,10 @@ class _AntragKarte extends ConsumerWidget {
                 ),
                 if (fenster?.deadline != null)
                   Text(
-                    'ab ${DateFormat('E, d. MMM, HH:mm', 'de_DE').format(fenster!.deadline!)}',
+                    // **„Vergabe", nicht „ab".** Der Zeitpunkt ist keine
+                    // Frist, ab der etwas möglich wird, sondern der, zu dem
+                    // dieser Antrag entschieden wird.
+                    'Vergabe ${DateFormat('E, d. MMM, HH:mm', 'de_DE').format(fenster!.deadline!)}',
                     style: TextStyle(
                         fontSize: 11, color: scheme.onSurfaceVariant),
                   ),

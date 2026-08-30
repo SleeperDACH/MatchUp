@@ -21,7 +21,7 @@ class PlayerActionButton extends ConsumerWidget {
     required this.player,
     required this.ownerId,
     required this.onWaiver,
-    this.spieltGerade = false,
+    this.aufWire = false,
     required this.claimed,
     required this.myPlayers,
     required this.nextRank,
@@ -36,16 +36,15 @@ class PlayerActionButton extends ConsumerWidget {
   final bool onWaiver;
   final bool claimed;
 
-  /// **Sein Spiel läuft bereits.** Dann ist er nicht *direkt* holbar — der
-  /// Server lehnt das ab (Migration 0094), und es brächte auch nichts: Die
-  /// Aufstellung ist für ihn diesen Spieltag ohnehin gesperrt (0084), er käme
-  /// gar nicht in die Elf. Genau das war die Meldung „man kann ihn aufnehmen,
-  /// es passiert aber überhaupt nichts".
+  /// **Er liegt auf dem Waiver**, weil sein Verein angepfiffen hat und die
+  /// Frist (Montag 15:00, in englischen Wochen Donnerstag) noch nicht erreicht
+  /// ist. Dann ist er nicht *direkt* holbar — der Server lehnt das ab
+  /// (`fantasy_auf_dem_wire`, Migration 0107), und es brächte auch nichts: Die
+  /// Aufstellung ist für ihn diesen Spieltag ohnehin gesperrt (0084).
   ///
-  /// **Beantragen geht trotzdem** (0095), und das ist der Punkt: Der Antrag
-  /// sagt „ich will ihn ab nächster Woche". Ihn zu verweigern hieße, den
-  /// Nutzer zwei Tage warten zu lassen, um dann dasselbe zu tun.
-  final bool spieltGerade;
+  /// **Beantragen geht** (0095): Der Antrag sagt „ich will ihn ab nächster
+  /// Woche", und zur Frist wird er in Prioritätsreihenfolge eingelöst.
+  final bool aufWire;
   final List<FantasyPlayer> myPlayers;
   final int nextRank;
   final String? myId;
@@ -68,15 +67,13 @@ class PlayerActionButton extends ConsumerWidget {
     // ist gefahrlos, weil das Waiver-Fenster zwei Tage vor dem nächsten
     // Spieltag liegt (`fantasy_next_waiver_window`): Er wird nie mitten in
     // einer laufenden Runde abgearbeitet.
-    if (onWaiver || spieltGerade) {
+    if (onWaiver || aufWire) {
       if (claimed) return const _MiniChip(text: 'Beantragt');
       return _RoundBtn(
         color: _cWaiver,
         fg: Colors.black,
         icon: Icons.schedule,
-        tooltip: spieltGerade && !onWaiver
-            ? 'Sein Spiel läuft – Antrag stellen'
-            : 'Waiver beantragen',
+        tooltip: 'Waiver – Antrag stellen',
         onTap: () => _claim(context, ref),
       );
     }
