@@ -375,10 +375,17 @@ class _EventRow extends StatelessWidget {
     final e = event;
     final t = _typ(e.type);
     final isGoal = t.contains('goal') || t == 'penalty';
+    // **Ein Eigentor ist kein Treffer für die eigene Mannschaft**, und die
+    // Zeile darf es nicht so aussehen lassen: Der Ball ist rot statt grün,
+    // darunter steht das Wort, und ein Vorlagengeber wird nicht genannt.
+    // Sportmonks führt dort naemlich trotzdem einen `related`-Spieler — beim
+    // Eigentor waere das eine Vorlage zum eigenen Tor.
+    final eigentor = t == 'owngoal';
     final color = switch (t) {
       'yellowcard' => const Color(0xFFFFC83D),
       'redcard' || 'yellowredcard' => MatchUpColors.red,
-      'goal' || 'owngoal' || 'penalty' => MatchUpColors.green,
+      'owngoal' => MatchUpColors.red,
+      'goal' || 'penalty' => MatchUpColors.green,
       _ => scheme.onSurfaceVariant,
     };
     // Wechsel: grüner Pfeil rein, roter Pfeil raus.
@@ -396,7 +403,12 @@ class _EventRow extends StatelessWidget {
         Text(e.player ?? e.type,
             style: const TextStyle(fontWeight: FontWeight.w600),
             textAlign: e.forHomeTeam ? TextAlign.start : TextAlign.end),
-        if (e.related != null)
+        // Beim Eigentor steht hier das Wort statt eines Vorlagengebers.
+        if (eigentor)
+          Text('Eigentor',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: MatchUpColors.red, fontWeight: FontWeight.w700))
+        else if (e.related != null)
           Text(
               t == 'substitution' ? 'für ${e.related}' : e.related!,
               style: Theme.of(context)

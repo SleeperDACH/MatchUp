@@ -438,43 +438,59 @@ gilt das Raster ab sofort.
   die tatsächlich gelieferten Schreibweisen prüft — gegengeprüft: ohne die
   Normalisierung ist es sofort rot.
 
+  **Sichtbar war danach der zweite Fehler:** Das Eigentor stand da wie ein
+  Treffer — grüner Ball, und darunter der `related`-Spieler, als wäre er der
+  Vorlagengeber. Sportmonks liefert dort nämlich trotzdem einen Namen. Ein
+  Eigentor ist aber kein Treffer für die eigene Mannschaft: Es trägt jetzt
+  einen **roten** Ball, darunter das Wort **„Eigentor"**, und **keinen**
+  Vorlagengeber. Angesehen über `test/spielverlauf_vorschau_test.dart`, das
+  einen regulären Treffer und ein Eigentor nebeneinander stellt und
+  ausdrücklich prüft, dass der `related`-Name beim Eigentor **nicht**
+  erscheint.
+
   **Zwei verschiedene Wege, dieselbe Partie:** Die Fantasy-Stats kommen aus
   unserer Spiegelung (`player_match_stats`, per `sync-stats`), der Spielverlauf
   dagegen **live** über die Edge Function `sportmonks`. Eine Korrektur in
   `stat_overrides` wirkt deshalb auf die Punkte, **nicht** auf die Zeitleiste.
   Wer beides gerade rücken will, braucht zwei Eingriffe.
 
-  **Die Quelle kann falsch liegen — und dann hilft nur eine Korrektur daneben.**
-  Giannis Konstantelias erzielte gegen den HSV das 2:0 (45.+1). Sportmonks
-  verbucht dieses Tor als **Eigentor von Sebastiaan Bornauw** und schreibt
-  Bornauw zusätzlich `goals: 1` gut — die Quelle widerspricht sich also intern.
-  Bei uns stand damit ein HSV-Innenverteidiger mit einem Tor da, obwohl der HSV
-  keins erzielt hat, und dem Torschützen fehlten 15 Punkte.
+  **Ein Spielbericht in Prosa ist keine Wertungsquelle.** Beim 2:0 im Spiel
+  Dortmund gegen HSV meldete ein Nutzer, das Tor von Giannis Konstantelias
+  fehle. Der Spielbericht schrieb „Konstantelias erzielte das 2:0", Sportmonks
+  verbuchte ein **Eigentor von Sebastiaan Bornauw** — und ich habe daraufhin
+  die Zahlen „korrigiert". **Das war falsch:** Der Treffer ist offiziell als
+  Eigentor gewertet, die Quelle lag richtig, und die Korrektur musste wieder
+  raus (Migration 0105).
 
-  Unsere Spiegelung war dabei einwandfrei: 1640 Einzelwerte über sieben Partien
-  stimmen exakt mit der Quelle überein. **Der Fehler liegt vor unserer Tür**,
-  und das ist ein anderer Fall als ein Zuordnungsfehler im eigenen Code.
+  Der Bericht beschreibt, wer den Ball ins Tor gebracht hat — nicht, wem die
+  Statistik ihn zuschreibt. Das sind zwei verschiedene Fragen, und für eine
+  Korrektur an Zahlen braucht es eine Quelle, die dieselbe beantwortet wie
+  die, die korrigiert werden soll.
 
-  Daraus zwei Werkzeuge (Migration 0104):
+  **Die Werkzeuge aus 0104 bleiben**, sie sind richtig und nachgewiesen
+  wirksam:
 
-  - **`stats_widersprueche`** — eine Sicht mit einer harten, allgemeinen Regel:
-    Ein Spieler kann nicht mehr Tore erzielt haben als seine Mannschaft im
-    selben Spiel. Auf den Bestand angewandt traf sie **genau eine** Zeile, und
-    zwar die richtige. Wichtig dabei: Geprüft wird gegen die **Teamtore**, nicht
-    gegen `own_goals` — Josha Vagnoman hat am selben Spieltag ein reguläres Tor
-    *und* ein Eigentor erzielt, seine `goals: 1` ist korrekt. Eine Regel „Tore
-    minus Eigentore" hätte ihn fälschlich getroffen.
   - **`stat_overrides`** plus ein `before`-Trigger auf `player_match_stats`.
     `sync-stats` schreibt per Upsert und läuft jede Minute; eine von Hand
     geänderte Zeile wäre binnen sechzig Sekunden überschrieben. Die Korrektur
     steht deshalb **neben** den Daten und wird bei jedem Schreiben neu
-    angewandt — nachgemessen: Ein voller Sync über 252 Zeilen lässt sie stehen.
-    Der Trigger arbeitet über `to_jsonb`/`jsonb_populate_record`, damit er
-    beliebige Spalten trifft, ohne sie einzeln aufzuzählen; sonst wäre er beim
-    nächsten neuen Zähler still unvollständig.
+    angewandt — nachgemessen: Ein voller Sync über 252 Zeilen lässt sie
+    stehen. Der Trigger arbeitet über `to_jsonb`/`jsonb_populate_record`, damit
+    er beliebige Spalten trifft, ohne sie einzeln aufzuzählen. Jede Korrektur
+    trägt einen **Grund im Klartext** — eine Zahl ohne Begründung wäre in einem
+    Jahr nicht mehr von einem Fehler zu unterscheiden.
+  - **`stats_widersprueche`** — eine harte, allgemeine Regel: Ein Spieler kann
+    nicht mehr Tore erzielt haben als seine Mannschaft im selben Spiel.
+    Wichtig: Geprüft wird gegen die **Teamtore**, nicht gegen `own_goals` —
+    Josha Vagnoman hat am selben Spieltag ein reguläres Tor *und* ein Eigentor
+    erzielt, seine `goals: 1` ist korrekt. Eine Regel „Tore minus Eigentore"
+    hätte ihn fälschlich getroffen.
 
-  Jede Korrektur trägt einen **Grund im Klartext**. Eine Zahl ohne Begründung
-  wäre in einem Jahr nicht mehr von einem Fehler zu unterscheiden.
+  **Diese Sicht meldet weiterhin einen Fall, und zu Recht:** Sportmonks führt
+  Bornauw mit `goals: 1` **und** `own-goals: 1`, obwohl der HSV kein Tor
+  erzielt hat. In der Wertung bekommt er damit die vollen Torpunkte für ein
+  Eigentor. Offen — die Entscheidung, ob `goals` an den Teamtoren gedeckelt
+  wird, steht aus.
 
   **`goals-conceded` und `goalkeeper-goals-conceded` sind zwei Zahlen, nicht
   eine.** Beide standen in `STAT_CODE_MAP` auf `goalsConceded`, und die
