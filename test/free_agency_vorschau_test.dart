@@ -248,4 +248,83 @@ void main() {
     expect(knopf.onPressed, isNotNull,
         reason: 'Mit gewähltem Abgang muss abgeschickt werden können');
   });
+
+  testWidgets('Ein Tipp auf den Namen öffnet das Spielerprofil',
+      (tester) async {
+    // Vorher reagierte die Zeile gar nicht — nur der Knopf rechts tat etwas.
+    // Wer entscheiden soll, ob er einen Spieler holt, braucht aber Leistung,
+    // Spielplan und die voraussichtliche Aufstellung.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final held = _p('x', 'Andreas Hanche-Olsen', PlayerPosition.def,
+        '1. FSV Mainz 05');
+    final liga = FantasyLeague(
+      id: 'l1',
+      name: 'MatchUp! #1',
+      mode: FantasyMode.liga,
+      season: 2026,
+      pickTime: DraftPickTime.h2,
+      scoring: const FantasyScoringRules(),
+      roster: RosterConfig.standard,
+      inviteCode: 'ABC',
+      draftStatus: DraftStatus.done,
+      createdBy: 'ich',
+      maxTeams: 10,
+      tipEnabled: true,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserProvider.overrideWith((ref) => User(
+                id: 'ich',
+                appMetadata: const {},
+                userMetadata: const {},
+                aud: 'authenticated',
+                createdAt: DateTime(2026).toIso8601String(),
+              )),
+          playerPoolProvider.overrideWith((ref) async => [held]),
+          clubIconsProvider.overrideWith((ref) async => const {}),
+          leagueRosterProvider.overrideWith((ref, id) => Stream.value(const [])),
+          leagueLineupsProvider
+              .overrideWith((ref, id) => Stream.value(const [])),
+          fantasyManagersProvider
+              .overrideWith((ref, id) => Stream.value(const [])),
+          waiverPlayersProvider
+              .overrideWith((ref, id) => Stream.value(const <String>{})),
+          myWaiverClaimsProvider
+              .overrideWith((ref, id) => Stream.value(const [])),
+          seasonStatsProvider.overrideWith((ref) async => const {}),
+          prognoseElfProvider.overrideWith((ref, k) async => null),
+          fantasySeasonFixturesProvider.overrideWith((ref) async => const []),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(),
+          home: FreeAgencyScreen(league: liga),
+        ),
+      ),
+    );
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    expect(find.byType(BottomSheet), findsNothing);
+    await tester.tap(find.text('Andreas Hanche-Olsen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    expect(find.byType(BottomSheet), findsOneWidget,
+        reason: 'Der Name muss das Profil öffnen');
+    // Die Reiter des Profils belegen, dass wirklich das Profil offen ist und
+    // nicht irgendein Blatt.
+    expect(find.text('Aufstellung'), findsOneWidget);
+    expect(find.text('Spielplan'), findsOneWidget);
+  });
 }

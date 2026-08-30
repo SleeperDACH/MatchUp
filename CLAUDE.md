@@ -1999,6 +1999,25 @@ ist von einem Erfolg nicht zu unterscheiden. Wo ein Blatt etwas abschicken
 soll, muss der Abschicken-Knopf immer sichtbar sein — und wenn er nicht kann,
 muss er sagen, warum.
 
+### Der Name führt überall ins Profil
+
+In der Free Agency und in der Spielersuche reagierte die Zeile **gar nicht** —
+etwas tat nur der Knopf am rechten Rand. Wer entscheiden soll, ob er einen
+Spieler holt, braucht aber mehr als Verein und Position: Leistung, Spielplan,
+Vereinskader und die voraussichtliche Aufstellung stehen im Profil. Beide
+Listen öffnen es jetzt beim Tippen auf die Zeile, mit `isMine` aus dem
+Besitzverhältnis — dieselbe Regel wie im Kader und in der Liga-Übersicht.
+
+Gehalten von `test/free_agency_vorschau_test.dart`: Der Test tippt auf den
+Namen und prüft, dass ein Blatt mit den Profil-Reitern aufgeht. Eine Zusicherung
+statt eines Bildes — ob sich etwas *öffnet*, zeigt ein Golden nicht.
+
+**Dabei mit hochgekommen:** Die Spielersuche benutzte für ihre Positionsfilter
+ebenfalls noch `ChoiceChip` (`_FilterChip`) — derselbe Fund wie in der Free
+Agency, dieselbe Ursache: Sie zieht `secondaryContainer` (das stumpfe Oliv) und
+ihre Beschriftung erbt die App-Schrift nicht. Ersetzt durch `PillChip`. Damit
+ist das verbotene Element aus beiden Spielerlisten raus.
+
 Gegen die Produktion nachgemessen (mit Rollback): Mainz-Spieler holen →
 abgelehnt; Augsburg-Spieler (Anpfiff später) → läuft bis zum Kaderlimit durch;
 Tietz droppen (in der Elf, hat gespielt) → abgelehnt; Karius droppen (Anpfiff

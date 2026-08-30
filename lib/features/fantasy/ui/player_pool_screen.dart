@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widgets/pill_selector.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
@@ -9,6 +10,7 @@ import '../logic/aufstellungs_prognose.dart';
 import '../providers.dart';
 import 'club_badge.dart';
 import 'player_action_buttons.dart';
+import 'player_profile_sheet.dart';
 
 /// Spielersuche: durchsuchbarer Spielerpool mit Direktaktion je Spieler —
 /// grün „Holen" (frei), gelb „Waiver" (auf dem Wire) oder rot „Trade"
@@ -126,6 +128,16 @@ class _PlayerPoolScreenState extends ConsumerState<PlayerPoolScreen> {
                       if (p.isForeignNewcomer) 'Ausland',
                     ].join(' · ');
                     return ListTile(
+                      // Dieselbe Regel wie in der Free Agency: Der Name führt
+                      // ins Profil. Zwei Listen derselben Spieler dürfen sich
+                      // nicht darin unterscheiden, was ein Tipp bewirkt.
+                      onTap: () => showPlayerProfile(
+                        context,
+                        league: league,
+                        player: p,
+                        clubIcon: clubIcons[p.club],
+                        isMine: ownerByPlayer[p.id] == myId,
+                      ),
                       leading:
                           ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                       title: Text(p.name),
@@ -176,13 +188,13 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // **Kein `ChoiceChip`** — dieselbe Regel und derselbe Fund wie in der
+    // Free Agency: Es zieht seine Auswahlfarbe aus `secondaryContainer` (aus
+    // dem grünen Seed ein stumpfes Oliv), und seine Beschriftung erbt die
+    // App-Schrift nicht.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-      ),
+      child: PillChip(label: label, selected: selected, onTap: onTap),
     );
   }
 }

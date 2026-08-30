@@ -10,6 +10,7 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
 import 'player_action_buttons.dart';
+import 'player_profile_sheet.dart';
 import 'waiver_claims_screen.dart';
 
 /// Free Agency & Waiver-Wire.
@@ -140,6 +141,19 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                     final laeuft =
                         vereinSpieltGerade(p.club, anpfiff, jetzt);
                     return ListTile(
+                      // **Der Name führt ins Profil.** Wer entscheiden soll,
+                      // ob er einen Spieler holt, braucht mehr als Verein und
+                      // Position — Leistung, Spielplan und die
+                      // voraussichtliche Aufstellung stehen dort. Die Zeile
+                      // reagierte vorher gar nicht; nur der Knopf rechts tat
+                      // etwas.
+                      onTap: () => showPlayerProfile(
+                        context,
+                        league: league,
+                        player: p,
+                        clubIcon: clubIcons[p.club],
+                        isMine: false,
+                      ),
                       leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                       title: Text(p.name),
                       subtitle: Row(
