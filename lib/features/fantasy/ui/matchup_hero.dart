@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/typografie.dart';
+import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
@@ -627,9 +628,8 @@ class ScoreBadge extends StatelessWidget {
     Color numColor(bool win, bool otherWin) => win
         ? _cGreen
         : (otherWin ? _cRed : Colors.white);
-    Widget number(double v, bool win, bool otherWin) =>
-        Text(formatPoints(v),
-        style: TextStyle(
+    Widget number(double v, bool win, bool otherWin) => Punktzahl(v,
+        stil: TextStyle(
             color: numColor(win, otherWin),
             fontSize: 32,
             height: 1,

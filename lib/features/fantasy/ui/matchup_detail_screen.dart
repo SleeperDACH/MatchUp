@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
@@ -233,13 +234,28 @@ class _Scoreboard extends StatelessWidget {
                         align: CrossAxisAlignment.start)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
-                  // **Durch `formatPoints`.** Roh interpoliert stand hier
+                  // **Durch `Punktzahl`.** Roh interpoliert stand hier
                   // `221.10000000000002` — der Fließkomma-Rest aus lauter
-                  // Werten à 0,4.
-                  child: Text(
-                      '${formatPoints(homeTotal)} : ${formatPoints(awayTotal)}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.white, fontWeight: FontWeight.w800)),
+                  // Werten à 0,4. Und die Zehntel stehen kleiner als die
+                  // Zahl, damit der Stand auf einen Blick lesbar ist.
+                  child: Builder(builder: (context) {
+                    final stil = Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w800);
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Punktzahl(homeTotal, stil: stil),
+                        Text(' : ',
+                            style: stil?.copyWith(color: Colors.white54)),
+                        Punktzahl(awayTotal, stil: stil),
+                      ],
+                    );
+                  }),
                 ),
                 Expanded(
                     child: _teamName(awayName!,

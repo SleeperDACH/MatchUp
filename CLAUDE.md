@@ -2600,6 +2600,38 @@ genau das prüft der Rollback-Probelauf mit.
 eine Elf gestellt. Aus nichts lässt sich nichts übernehmen; sie starten weiter
 leer. Das wäre ein Autopick — eine andere Entscheidung als diese hier.
 
+### Punktstände lesbar hinschreiben
+
+Gemeldet: *„Die Zahlen der Punktstände sind doof zu lesen."* Zwei Ursachen, und
+beide liegen an der Zahl selbst.
+
+**Die Nachkommastelle rief so laut wie die Zahl.** „128,4 : 99,5" zwingt das
+Auge, vier Zeichen zu lesen, bevor es die Größenordnung hat — dabei entscheidet
+die Zehntelstelle so gut wie nie etwas. Sie steht jetzt kleiner (60 %) und
+leiser (72 % Deckkraft) hinter der Zahl: **128**,4 : **99**,5. **Weg ist sie
+nicht** — bei 0,4 Punkten Vorsprung wäre „128 : 99" gelogen, und in einer Liga,
+in der ein Foul −0,4 gibt, kommt das vor.
+
+**Die Ziffern waren verschieden breit.** In einem laufenden Spiel wandert der
+Doppelpunkt dann bei jeder Aktualisierung hin und her.
+`FontFeature.tabularFigures` gibt jeder Ziffer dieselbe Breite; damit stehen
+auch Spalten untereinander ruhig (Free Agency, Aufstellung).
+
+`app/widgets/punktzahl.dart` macht beides an einer Stelle. Eine Feinheit steckt
+darin: **Erst ab 20 Punkt Schriftgröße lohnt die Zweiteilung.** In einer
+Listenzeile (14–16 Punkt) würde aus dem Bruchteil ein 9-Punkt-Krümel — schwerer
+zu lesen als vorher, nicht leichter. Dort bleibt die Zahl, wie sie ist, bekommt
+aber die gleichbreiten Ziffern, weil sie in einer Spalte steht.
+
+Angesehen über `test/punktzahl_vorschau_test.dart`: alte und neue Schreibweise
+nebeneinander, in den Größen, in denen sie wirklich vorkommen (32 auf der
+MatchUp-Karte, 28 im Detailkopf, 16 in der Liste). Genau dieses Bild hat die
+20-Punkt-Grenze erzwungen — im ersten Entwurf war die Zeile mit 16 Punkt
+deutlich schlechter lesbar als vorher.
+
+Eingesetzt in MatchUp-Karte, Detailkopf, Aufstellungen und Free Agency. Die
+Tabelle trug die gleichbreiten Ziffern schon.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;

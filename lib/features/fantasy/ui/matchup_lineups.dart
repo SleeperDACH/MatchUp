@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers.dart';
@@ -19,7 +20,12 @@ const _order = [
 /// Aufbereitete Startelf/Bank einer Seite für einen Spieltag.
 class MatchupSideData {
   MatchupSideData(
-      this.starters, this.bench, this.points, this.total, this.gespielt);
+    this.starters,
+    this.bench,
+    this.points,
+    this.total,
+    this.gespielt,
+  );
 
   final List<FantasyPlayer> starters;
   final List<FantasyPlayer> bench;
@@ -34,9 +40,10 @@ class MatchupSideData {
   /// drei Gegentoren und Gelb, weil 0 größer ist als −10.
   final Set<String> gespielt;
 
-  List<FantasyPlayer> startersAt(PlayerPosition pos) =>
-      [for (final p in starters) if (p.position == pos) p]
-        ..sort((a, b) => (points[b.id] ?? 0).compareTo(points[a.id] ?? 0));
+  List<FantasyPlayer> startersAt(PlayerPosition pos) => [
+    for (final p in starters)
+      if (p.position == pos) p,
+  ]..sort((a, b) => (points[b.id] ?? 0).compareTo(points[a.id] ?? 0));
 }
 
 /// Startelf + Bank + Punkte einer Seite (gespeicherte Aufstellung, sonst
@@ -53,36 +60,48 @@ MatchupSideData computeSideData({
   final rosterPlayers = [
     for (final r in roster)
       if (r.managerId == managerId && byId[r.playerId] != null)
-        byId[r.playerId]!
+        byId[r.playerId]!,
   ];
   final pointsByPlayer = {
     for (final p in rosterPlayers)
       p: scorePlayer(
-          stats[p.id] ?? const PlayerMatchStats(), p.position, league.scoring)
+        stats[p.id] ?? const PlayerMatchStats(),
+        p.position,
+        league.scoring,
+      ),
   };
   final saved = lineups
       .where((l) => l.managerId == managerId && l.round == round)
       .map((l) => l.playerIds)
       .firstOrNull;
   final starterIds = (saved != null && saved.isNotEmpty)
-      ? {for (final id in saved) if (byId.containsKey(id)) id}
+      ? {
+          for (final id in saved)
+            if (byId.containsKey(id)) id,
+        }
       : bestEleven(pointsByPlayer, league.roster).starterIds;
 
   final starters = [
-    for (final p in rosterPlayers) if (starterIds.contains(p.id)) p
+    for (final p in rosterPlayers)
+      if (starterIds.contains(p.id)) p,
   ];
-  final bench = [
-    for (final p in rosterPlayers) if (!starterIds.contains(p.id)) p
-  ]..sort((a, b) => a.position.index != b.position.index
-      ? a.position.index.compareTo(b.position.index)
-      : (pointsByPlayer[b] ?? 0).compareTo(pointsByPlayer[a] ?? 0));
+  final bench =
+      [
+        for (final p in rosterPlayers)
+          if (!starterIds.contains(p.id)) p,
+      ]..sort(
+        (a, b) => a.position.index != b.position.index
+            ? a.position.index.compareTo(b.position.index)
+            : (pointsByPlayer[b] ?? 0).compareTo(pointsByPlayer[a] ?? 0),
+      );
 
   final points = {for (final e in pointsByPlayer.entries) e.key.id: e.value};
-  final total = [for (final p in starters) points[p.id] ?? 0.0]
-      .fold<double>(0, (a, b) => a + b);
+  final total = [
+    for (final p in starters) points[p.id] ?? 0.0,
+  ].fold<double>(0, (a, b) => a + b);
   final gespielt = {
     for (final p in rosterPlayers)
-      if (stats[p.id]?.hasContribution ?? false) p.id
+      if (stats[p.id]?.hasContribution ?? false) p.id,
   };
   return MatchupSideData(starters, bench, points, total, gespielt);
 }
@@ -120,12 +139,12 @@ class MatchupLineups extends ConsumerWidget {
     final awayMine = awayId != null && awayId == myId;
 
     void openPlayer(FantasyPlayer p, bool mine) => showPlayerProfile(
-          context,
-          league: league,
-          player: p,
-          clubIcon: clubIcons[p.club],
-          isMine: mine,
-        );
+      context,
+      league: league,
+      player: p,
+      clubIcon: clubIcons[p.club],
+      isMine: mine,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -178,18 +197,20 @@ class MatchupLineups extends ConsumerWidget {
       final a = i < as.length ? as[i] : null;
       final hp = h == null ? null : (home.points[h.id] ?? 0.0);
       final ap = a == null ? null : (away?.points[a.id] ?? 0.0);
-      rows.add(_PlayerRow(
-        home: h,
-        away: a,
-        homePts: hp,
-        awayPts: ap,
-        homeGespielt: h != null && home.gespielt.contains(h.id),
-        awayGespielt: a != null && (away?.gespielt.contains(a.id) ?? false),
-        homeMine: homeMine,
-        awayMine: awayMine,
-        clubIcons: clubIcons,
-        onTap: onTap,
-      ));
+      rows.add(
+        _PlayerRow(
+          home: h,
+          away: a,
+          homePts: hp,
+          awayPts: ap,
+          homeGespielt: h != null && home.gespielt.contains(h.id),
+          awayGespielt: a != null && (away?.gespielt.contains(a.id) ?? false),
+          homeMine: homeMine,
+          awayMine: awayMine,
+          clubIcons: clubIcons,
+          onTap: onTap,
+        ),
+      );
     }
     return [
       Padding(
@@ -200,12 +221,18 @@ class MatchupLineups extends ConsumerWidget {
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                  color: positionColor(pos), shape: BoxShape.circle),
+                color: positionColor(pos),
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 6),
-            Text(pos.label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: positionColor(pos), fontWeight: FontWeight.bold)),
+            Text(
+              pos.label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: positionColor(pos),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -254,46 +281,52 @@ class _PlayerRow extends StatelessWidget {
     // nicht gespielt hat, führt nicht — er hat noch nicht angefangen.
     final lead = (homePts != null && awayPts != null)
         ? (homePts! > awayPts! && homeGespielt
-            ? 1
-            : awayPts! > homePts! && awayGespielt
-                ? -1
-                : 0)
+              ? 1
+              : awayPts! > homePts! && awayGespielt
+              ? -1
+              : 0)
         : 0;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Row(
         children: [
           Expanded(
-            child: _cell(context,
-                player: home,
-                pts: homePts,
-                mine: homeMine,
-                highlight: lead > 0,
-                gespielt: homeGespielt,
-                start: true),
+            child: _cell(
+              context,
+              player: home,
+              pts: homePts,
+              mine: homeMine,
+              highlight: lead > 0,
+              gespielt: homeGespielt,
+              start: true,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _cell(context,
-                player: away,
-                pts: awayPts,
-                mine: awayMine,
-                highlight: lead < 0,
-                gespielt: awayGespielt,
-                start: false),
+            child: _cell(
+              context,
+              player: away,
+              pts: awayPts,
+              mine: awayMine,
+              highlight: lead < 0,
+              gespielt: awayGespielt,
+              start: false,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _cell(BuildContext context,
-      {required FantasyPlayer? player,
-      required double? pts,
-      required bool mine,
-      required bool highlight,
-      required bool gespielt,
-      required bool start}) {
+  Widget _cell(
+    BuildContext context, {
+    required FantasyPlayer? player,
+    required double? pts,
+    required bool mine,
+    required bool highlight,
+    required bool gespielt,
+    required bool start,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     if (player == null) {
       return const SizedBox(height: 60);
@@ -315,36 +348,50 @@ class _PlayerRow extends StatelessWidget {
       // `formatPoints` statt roher Interpolation: Die Wertung kennt −0,4 je
       // Foul, und `0.4`-Summen tragen sonst einen Fließkomma-Rattenschwanz
       // hinter sich her.
-      child: Text(gespielt ? formatPoints(pts ?? 0) : '–',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: !gespielt
-                  ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
-                  : (highlight ? scheme.primary : scheme.onSurface))),
+      child: _punkte(
+        gespielt,
+        pts,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: !gespielt
+              ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
+              : (highlight ? scheme.primary : scheme.onSurface),
+        ),
+      ),
     );
-    final badge =
-        ClubBadge(club: player.club, iconUrl: clubIcons[player.club], size: 34);
+    final badge = ClubBadge(
+      club: player.club,
+      iconUrl: clubIcons[player.club],
+      size: 34,
+    );
     final info = Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment:
-          start ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      crossAxisAlignment: start
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
       children: [
-        Text(shortPlayerName(player.name),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: start ? TextAlign.start : TextAlign.end,
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: mine ? FontWeight.w800 : FontWeight.w600)),
+        Text(
+          shortPlayerName(player.name),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: start ? TextAlign.start : TextAlign.end,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: mine ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(player.position.label,
-            style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.3,
-                color: pos)),
+        Text(
+          player.position.label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+            color: pos,
+          ),
+        ),
       ],
     );
 
@@ -393,9 +440,10 @@ class _PlayerRow extends StatelessWidget {
             boxShadow: highlight
                 ? [
                     BoxShadow(
-                        color: scheme.primary.withValues(alpha: 0.18),
-                        blurRadius: 8,
-                        spreadRadius: -2),
+                      color: scheme.primary.withValues(alpha: 0.18),
+                      blurRadius: 8,
+                      spreadRadius: -2,
+                    ),
                   ]
                 : null,
           ),
@@ -441,22 +489,35 @@ class _BenchSection extends StatelessWidget {
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-        title: Text('Bank',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(color: scheme.onSurfaceVariant)),
+        title: Text(
+          'Bank',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                  child: _column(
-                      context, homeName, home.bench, home.points, homeMine)),
+                child: _column(
+                  context,
+                  homeName,
+                  home.bench,
+                  home.points,
+                  homeMine,
+                ),
+              ),
               if (awayName != null && away != null)
                 Expanded(
-                    child: _column(context, awayName!, away!.bench,
-                        away!.points, awayMine)),
+                  child: _column(
+                    context,
+                    awayName!,
+                    away!.bench,
+                    away!.points,
+                    awayMine,
+                  ),
+                ),
             ],
           ),
         ],
@@ -464,28 +525,35 @@ class _BenchSection extends StatelessWidget {
     );
   }
 
-  Widget _column(BuildContext context, String title, List<FantasyPlayer> bench,
-      Map<String, double> points, bool mine) {
+  Widget _column(
+    BuildContext context,
+    String title,
+    List<FantasyPlayer> bench,
+    Map<String, double> points,
+    bool mine,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant)),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
           const SizedBox(height: 6),
           if (bench.isEmpty)
-            Text('—',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant))
+            Text(
+              '—',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            )
           else
             for (final p in bench)
               InkWell(
@@ -498,20 +566,29 @@ class _BenchSection extends StatelessWidget {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                            color: positionColor(p.position),
-                            shape: BoxShape.circle),
+                          color: positionColor(p.position),
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       const SizedBox(width: 6),
                       ClubBadge(
-                          club: p.club, iconUrl: clubIcons[p.club], size: 20),
+                        club: p.club,
+                        iconUrl: clubIcons[p.club],
+                        size: 20,
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
-                        child: Text(shortPlayerName(p.name),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          shortPlayerName(p.name),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      Text(formatPoints(points[p.id] ?? 0),
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Punktzahl(
+                        points[p.id] ?? 0,
+                        stil: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                 ),
@@ -520,4 +597,26 @@ class _BenchSection extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Punkte einer Zeile — oder ein Strich, wenn noch nicht gespielt wurde.
+///
+/// **Noch nicht gespielt ist kein Nullpunktespiel.** Vorher stand in beiden
+/// Fällen „0"; man konnte nicht unterscheiden, ob jemand gespielt und nichts
+/// geholt hat oder noch gar nicht dran war.
+Widget _punkte(
+  bool gespielt,
+  double? pts, {
+  required TextStyle style,
+  TextAlign? textAlign,
+}) {
+  if (!gespielt) {
+    return Text('–', textAlign: textAlign, style: style);
+  }
+  return Align(
+    alignment: textAlign == TextAlign.center
+        ? Alignment.center
+        : Alignment.centerLeft,
+    child: Punktzahl(pts ?? 0, stil: style),
+  );
 }

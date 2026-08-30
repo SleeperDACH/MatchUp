@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widgets/pill_selector.dart';
@@ -223,9 +224,9 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                           Expanded(child: Text(p.name)),
                           if (punkte[p.id] != null) ...[
                             const SizedBox(width: 8),
-                            Text(
-                              formatPoints(punkte[p.id]!),
-                              style: Theme.of(context).textTheme.labelMedium
+                            Punktzahl(
+                              punkte[p.id]!,
+                              stil: Theme.of(context).textTheme.labelMedium
                                   ?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: Theme.of(
