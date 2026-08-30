@@ -39,8 +39,17 @@ void main() {
   test('kein roher double landet in einem Text', () {
     // Ausnahmen mit Grund — beides sind `int`, keine Fantasy-Scores.
     const erlaubt = {
-      // Ligapunkte aus Siegen und Unentschieden.
+      // Ligapunkte aus Siegen und Unentschieden — ein `int`.
       'record.points',
+      // Die Summe der Kader-Limits: Plätze, keine Punkte.
+      r'$summe',
+      // Anzahl Spieltage der regulären Saison.
+      'plan.totalMatchdays',
+      // Gesamtzahl der Draft-Picks (`managers.length * roundsThisPhase`) —
+      // ein `int`, kein Score. Der erweiterte Wächter hat sie beim ersten
+      // Durchlauf gefunden; sie steht hier, damit die Empfindlichkeit nicht
+      // wieder zurückgedreht wird.
+      r'$total',
     };
 
     final klammer = RegExp(r'\$\{[^}]*\}');
@@ -68,12 +77,23 @@ void main() {
           // Leistungstabelle im Spielerprofil, die ihre Punkte direkt aus der
           // Wertungsfunktion interpolierte. Wer so einen Wächter schreibt,
           // sollte über seine Namensannahme dreimal nachdenken.
+          // **Vierter Anlauf, und diesmal nicht wieder ein Name mehr.**
+          // Nacheinander sind durchgerutscht: `points` (Team der Woche),
+          // `pts` (Zelle im MatchUp), `scorePlayer(...)` (Leistungstabelle im
+          // Profil) — und zuletzt `homeTotal`/`awayTotal` im
+          // MatchUp-Detailkopf, wo `221.10000000000002` stand.
+          //
+          // Die Namensannahme war jedes Mal das Problem. Deshalb prüft der
+          // Wächter jetzt auf eine **Wortfamilie** statt auf drei Wörter:
+          // alles, was nach einer Punktzahl klingt. Er wird dadurch
+          // empfindlicher — und das ist der Punkt. Wer eine Zahl so nennt und
+          // sie roh interpoliert, soll erklären müssen, warum sie kein
+          // `double` ist; dafür steht die Ausnahmeliste oben.
           final klein = ausdruck.toLowerCase();
-          if (!klein.contains('points') &&
-              !RegExp(r'\bpts\b').hasMatch(klein) &&
-              !klein.contains('scoreplayer(')) {
-            continue;
-          }
+          final klingtNachPunkten = RegExp(
+                  r'points?\b|\bpts\b|punkte|\bpkt|total|score(?!board)|summe')
+              .hasMatch(klein);
+          if (!klingtNachPunkten) continue;
           if (ausdruck.contains('formatPoints(')) continue;
           if (erlaubt.any(ausdruck.contains)) continue;
           treffer.add('${f.path}:${i + 1}  $ausdruck');

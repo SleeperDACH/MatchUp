@@ -233,7 +233,11 @@ class _Scoreboard extends StatelessWidget {
                         align: CrossAxisAlignment.start)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text('$homeTotal : $awayTotal',
+                  // **Durch `formatPoints`.** Roh interpoliert stand hier
+                  // `221.10000000000002` — der Fließkomma-Rest aus lauter
+                  // Werten à 0,4.
+                  child: Text(
+                      '${formatPoints(homeTotal)} : ${formatPoints(awayTotal)}',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: Colors.white, fontWeight: FontWeight.w800)),
                 ),

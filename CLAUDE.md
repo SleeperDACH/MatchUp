@@ -588,9 +588,32 @@ gilt das Raster ab sofort.
   dieselbe Zeile `Text('$points')`.
   Gehalten wird das von `test/punkte_formatierung_test.dart`: Der Test liest
   `lib/features/fantasy/ui/` und lässt keine String-Interpolation durch, die
-  „points" enthält und nicht durch `formatPoints()` läuft. Ausnahmen stehen
-  dort namentlich mit Grund — `record.points` in der Fantasy-Tabelle ist ein
-  `int` (Ligapunkte aus Siegen), kein Score. Diese Unterscheidung hat übrigens
+  nach einer Punktzahl klingt und nicht durch `formatPoints()` läuft. Ausnahmen
+  stehen dort namentlich mit Grund — `record.points` in der Fantasy-Tabelle ist
+  ein `int` (Ligapunkte aus Siegen), kein Score.
+
+  **Der Wächter ist viermal umgangen worden, und jedes Mal am Namen.** Die
+  Reihenfolge lohnt sich zu kennen, weil sie dieselbe Lehre viermal erzählt:
+
+  | Stelle | Variable | gefunden durch |
+  |---|---|---|
+  | Team der Woche | `points` | die erste Meldung |
+  | Zelle im MatchUp | `pts` | Erweiterung um „pts" |
+  | Leistungstabelle im Profil | `scorePlayer(…)` | Erweiterung um den Aufruf |
+  | **MatchUp-Detailkopf** | `homeTotal` | eine Meldung: `221.10000000000002` |
+
+  Dreimal wurde ein Wort ergänzt, dreimal fand die Erweiterung sofort die
+  nächste Stelle — und beim vierten Mal war wieder ein Name schuld. Der Test
+  prüft deshalb jetzt auf eine **Wortfamilie** (`points`, `pts`, `punkte`,
+  `pkt`, `total`, `score`, `summe`) statt auf drei Wörter. Er wird dadurch
+  empfindlicher, und das ist Absicht: Wer eine Zahl so nennt und roh
+  interpoliert, soll begründen müssen, warum sie kein `double` ist. Beim ersten
+  Durchlauf hat die Erweiterung prompt `$total` im Draft-Raum gemeldet — ein
+  `int`, jetzt mit Grund in der Ausnahmeliste.
+
+  **Die Lehre:** Ein Wächter, der auf Namen prüft, ist nur so gut wie die
+  Fantasie dessen, der die Namensliste schreibt. Lieber zu empfindlich mit
+  einer begründeten Ausnahmeliste als zu eng mit einer stillen Lücke. Diese Unterscheidung hat übrigens
   der Analyzer erzwungen: `formatPoints(int)` kompiliert nicht, der eine
   falsche Treffer fiel beim ersten Durchlauf sofort auf.
   Eine Nachkommastelle genügt und ist **exakt**: Alle Werte der Wertung sind
