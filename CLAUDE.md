@@ -2672,6 +2672,37 @@ Inhalt am größten — fiel der Zwischenraum auf null zusammen; der LIVE-Chip
 klebte an der Oberkante des Avatars darunter. Die Kopfzeile hat jetzt einen
 garantierten Fuß von `Abstand.s`.
 
+
+**Und der dritte Weg, gemeldet nach dem zweiten:** *„Wenn man den Tab wechselt
+und zurück auf den MatchUp-Tab geht, landet man wieder beim ersten MatchUp."*
+
+Diesmal saß der Fehler nicht am `PageView`, sondern **daneben**. Es gab zwei
+Merker für eine Sache:
+
+| Was | Woher | Überlebt einen Reiterwechsel |
+|---|---|---|
+| Die Karte oben | Scroll-Position des `PageView` (`PageStorage`) | ja |
+| Die Aufstellungen darunter, die Punkte | `_bannerPage` im State | **nein** |
+
+`TabBarView` baut den Reiter ab, sobald man weit genug weg ist — nachgemessen
+gilt das **auch für den direkten Nachbarn**: Sowohl der Weg über „Kader" als
+auch über „Tabelle" ließ den Teilbaum sterben. Damit stand `_bannerPage` wieder
+auf 0, die Karte oben aber weiter auf dem dritten MatchUp. Unten stand deshalb
+wieder die eigene Paarung — und weil die eigene immer auf Platz 1 einsortiert
+wird, las sich das als „es zeigt mir wieder SFV03 gegen JojoAcz".
+
+Behoben, indem die Zahl aus dem State verschwindet:
+`matchupKarussellSeiteProvider` (`StateProvider.family<int, String>`, Schlüssel
+ist die Liga). Der Controller startet daraus (`initialPage`), die Punkte und
+die Aufstellungen lesen daraus — **ein Merker, nicht zwei**, und er überlebt
+sowohl den Abbau des Reiters als auch das Wegscrollen.
+
+**Was der Test vorher nicht sah.** Die erste Fassung des Reiter-Tests prüfte
+nur `controller.page` — und die war ja richtig. Sie lief grün, während das
+Gerät den Fehler zeigte. Erst die Zusicherung auf das, was **unter** dem
+Karussell steht (`MatchupLineups.homeName`), hat ihn eingefangen. Dieselbe
+Lehre wie beim zweiten Anlauf, nur andersherum: Wer nur die Hälfte des Paares
+misst, misst an der Meldung vorbei. Alle vier Fälle prüfen jetzt beides.
 ### Eine Kante für alle Karten
 
 Gemeldet als Design-Kritik, und sie stimmte: Auf der Liga-Übersicht standen

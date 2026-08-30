@@ -33,6 +33,21 @@ class MatchupsScreen extends StatelessWidget {
 /// Saison-Bilanztabelle (Siege-Niederlagen-Unentschieden). Der Spielplan
 /// ist deterministisch aus der Manager-Reihenfolge (Round-Robin).
 /// Body ohne Scaffold, damit er als Tab einsetzbar ist.
+/// **Auf welchem MatchUp der Nutzer steht** — je Liga, ausserhalb des Widgets.
+///
+/// Vorher stand die Zahl als `_bannerPage` im State. Das reichte nicht: Wer
+/// vom MatchUp-Reiter auf Kader oder Tabelle wechselt, laesst den Teilbaum
+/// abbauen — `TabBarView` haelt nur die Nachbarn am Leben —, und mit ihm stirbt
+/// der State. Beim Zurueckkommen stand die Karte oben zwar noch richtig (ihre
+/// Position liegt im `PageStorage`), die **Aufstellungen darunter** aber
+/// wieder auf der eigenen Paarung. Gemeldet wurde genau das: „wird mir wieder
+/// SFV03 gegen JojoAcz angezeigt".
+///
+/// Zwei Merker fuer eine Sache waren der Fehler. Jetzt gibt es einen, und der
+/// ueberlebt auch einen Reiterwechsel.
+final matchupKarussellSeiteProvider =
+    StateProvider.family<int, String>((ref, ligaId) => 0);
+
 class MatchupsBody extends ConsumerStatefulWidget {
   const MatchupsBody({super.key, required this.league});
 
@@ -48,13 +63,11 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
   static const _loopBase = 100000;
 
   int? _round;
-  int _bannerPage = 0;
 
   /// **Der Controller startet auf der gemerkten Seite**, nicht stur auf der
-  /// ersten. Der Fall tritt ein, wenn der Teilbaum doch einmal neu entsteht —
-  /// dann liegt hier noch, wo der Nutzer war, und die Wischposition überlebt.
-  late final _pageController =
-      PageController(initialPage: _loopBase + _bannerPage);
+  /// ersten — und die liegt im Provider, nicht im State.
+  late final _pageController = PageController(
+      initialPage: _loopBase + ref.read(matchupKarussellSeiteProvider(widget.league.id)));
 
   @override
   void dispose() {
@@ -265,8 +278,10 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                   r.managerId: 'P${i + 1} · ${r.wins}-${r.losses}-${r.ties}',
               };
 
+              final gemerkt =
+                  ref.watch(matchupKarussellSeiteProvider(league.id));
               final page =
-                  ordered.isEmpty ? 0 : _bannerPage.clamp(0, ordered.length - 1);
+                  ordered.isEmpty ? 0 : gemerkt.clamp(0, ordered.length - 1);
 
               return ListView(
                 children: [
@@ -280,10 +295,10 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                       if (_pageController.hasClients) {
                         _pageController.jumpToPage(_loopBase);
                       }
-                      setState(() {
-                        _round = r;
-                        _bannerPage = 0;
-                      });
+                      ref
+                          .read(matchupKarussellSeiteProvider(league.id).notifier)
+                          .state = 0;
+                      setState(() => _round = r);
                     },
                   ),
                   if (ref.watch(roundStatsProvider(round)).isLoading)
@@ -314,9 +329,12 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                       // zweiten statt zum vierten.
                       key: const PageStorageKey('matchup-karussell'),
                       controller: _pageController,
-                      onPageChanged: (i) => setState(() => _bannerPage =
+                      onPageChanged: (i) => ref
+                              .read(matchupKarussellSeiteProvider(league.id)
+                                  .notifier)
+                              .state =
                           ((i - _loopBase) % ordered.length + ordered.length) %
-                              ordered.length),
+                              ordered.length,
                       // itemCount offen lassen -> zyklisch in beide Richtungen.
                       itemBuilder: (context, i) {
                         final logical =
