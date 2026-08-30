@@ -418,7 +418,7 @@ class _OddChip extends StatelessWidget {
           TextSpan(
             text: value.toStringAsFixed(2),
             style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 height: 1.1,
                 fontWeight: FontWeight.w600,
                 color: scheme.onSurface),

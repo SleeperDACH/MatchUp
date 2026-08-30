@@ -1639,7 +1639,7 @@ class DraftBoard extends StatelessWidget {
                 const SizedBox(width: 3),
                 Text('AUTO',
                     style: TextStyle(
-                        fontSize: 8,
+                        fontSize: 9,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3,
                         color: onCard.withValues(alpha: 0.7))),

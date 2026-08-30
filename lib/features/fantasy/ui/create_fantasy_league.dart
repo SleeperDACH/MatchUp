@@ -214,7 +214,7 @@ class _CreateFantasyLeagueScreenState
               Text(
                 KaderLimitsEditor.hinweisText(RosterConfig.standard, _limits),
                 style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     color: _limitsTragenDenKader
                         ? scheme.onSurfaceVariant
                         : scheme.error),
@@ -241,7 +241,7 @@ class _CreateFantasyLeagueScreenState
             child: Text(
               'Draft- und Playoff-Einstellungen legst du später in den '
               'Liga-Einstellungen fest.',
-              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5),
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
             ),
           ),
           if (_error != null) ...[

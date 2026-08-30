@@ -257,7 +257,7 @@ class _SettingTile extends StatelessWidget {
       leading: Icon(icon, color: color ?? scheme.primary, size: 22),
       title: Text(label,
           style: TextStyle(
-              color: color, fontWeight: FontWeight.w600, fontSize: 14.5)),
+              color: color, fontWeight: FontWeight.w600, fontSize: 14)),
       subtitle: hasSub
           ? Text(subtitle!.trim(),
               maxLines: 1,
@@ -383,7 +383,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             Text(_error!,
                 style: TextStyle(
                     color: Theme.of(context).colorScheme.error,
-                    fontSize: 12.5)),
+                    fontSize: 12)),
           ],
         ],
       ),

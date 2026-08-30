@@ -564,7 +564,7 @@ class _Zeile extends StatelessWidget {
         untertitel,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5),
+        style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
       ),
       trailing:
           trailing ??

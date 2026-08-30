@@ -180,7 +180,7 @@ class _AntragKarte extends ConsumerWidget {
                   Text(
                     'ab ${DateFormat('E, d. MMM, HH:mm', 'de_DE').format(fenster!.deadline!)}',
                     style: TextStyle(
-                        fontSize: 11.5, color: scheme.onSurfaceVariant),
+                        fontSize: 11, color: scheme.onSurfaceVariant),
                   ),
               ],
             ),
@@ -232,7 +232,7 @@ class _AntragKarte extends ConsumerWidget {
                         ? 'Ohne Abgang — bei vollem Kader wird er ungültig.'
                         : 'Wird beim nächsten Waiver-Fenster entschieden.',
                     style: TextStyle(
-                        fontSize: 11.5, color: scheme.onSurfaceVariant),
+                        fontSize: 11, color: scheme.onSurfaceVariant),
                   ),
                 ),
                 TextButton(
@@ -421,12 +421,12 @@ class _VorgangsKarte extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 12.5, fontWeight: FontWeight.w700)),
+                          fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
                 Text(
                   DateFormat('HH:mm', 'de_DE').format(ereignis.passiertAm),
                   style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 11,
                       color: scheme.onSurfaceVariant,
                       fontFeatures: const [FontFeature.tabularFigures()]),
                 ),
@@ -449,7 +449,7 @@ class _VorgangsKarte extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 color: scheme.onSurfaceVariant)),
                       ),
                       Icon(Icons.south_west, size: 13, color: _kGruen),
@@ -521,7 +521,7 @@ class _Marke extends StatelessWidget {
                   color: f, borderRadius: BorderRadius.circular(8)),
               child: Text('$zahl',
                   style: const TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: Colors.white)),
             ),

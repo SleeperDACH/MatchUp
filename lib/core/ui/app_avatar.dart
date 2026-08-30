@@ -302,7 +302,7 @@ class _AvatarEditorSheetState extends State<_AvatarEditorSheet> {
                           width: 2,
                         ),
                       ),
-                      child: Text(e, style: const TextStyle(fontSize: 22)),
+                      child: Text(e, style: const TextStyle(fontSize: 20)),
                     ),
                   ),
               ],

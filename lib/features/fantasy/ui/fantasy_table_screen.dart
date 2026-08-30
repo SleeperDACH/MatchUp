@@ -438,7 +438,7 @@ class _RecordRow extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: 15.5,
+                    fontSize: 16,
                     fontWeight: me ? FontWeight.w800 : FontWeight.w600)),
           ),
           // Bilanz in ihrer eigenen Spalte — sie stand vorher als Kleintext

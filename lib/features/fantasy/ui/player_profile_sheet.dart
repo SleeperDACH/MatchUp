@@ -925,7 +925,7 @@ class _Feldspieler extends StatelessWidget {
               _kurzerName(spieler.name),
               maxLines: 1,
               style: TextStyle(
-                fontSize: 10.5,
+                fontSize: 10,
                 height: 1.15,
                 fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
                 color: schnee.withValues(alpha: hervor ? 1 : 0.85),
@@ -976,7 +976,7 @@ class _PrognoseKopf extends StatelessWidget {
               '${spiel.roundName} · ${_wannKurz(spiel.kickoff.toLocal())}',
               if (elf?.formation != null) elf!.formation!,
             ].join(' · '),
-            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5),
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
           ),
         ],
       ),
@@ -1026,7 +1026,7 @@ class _Urteil extends StatelessWidget {
               style: TextStyle(
                   fontWeight: drin ? FontWeight.w600 : FontWeight.w700,
                   color: farbe,
-                  fontSize: 13.5),
+                  fontSize: 13),
             ),
           ),
         ],

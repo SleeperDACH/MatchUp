@@ -74,7 +74,7 @@ class _AnbieterKnopf extends StatelessWidget {
           textStyle: Theme.of(context)
               .textTheme
               .labelLarge
-              ?.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
+              ?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
         child: Row(

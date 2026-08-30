@@ -774,7 +774,7 @@ class _VorgemerktHinweis extends StatelessWidget {
               '(${_zeitpunkt()}). Bis dahin zählen sie für ihre bisherigen '
               'Teams.',
               style: TextStyle(
-                  fontSize: 12.5, color: scheme.onSurfaceVariant, height: 1.3),
+                  fontSize: 12, color: scheme.onSurfaceVariant, height: 1.3),
             ),
           ),
         ],
@@ -869,7 +869,7 @@ class _Geschaeft extends StatelessWidget {
               child: Text(
                 'Spieler antippen — aus deinem Kader und aus seinem.',
                 style: TextStyle(
-                    fontSize: 12.5, color: scheme.onSurfaceVariant),
+                    fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ),
           ],
@@ -928,7 +928,7 @@ class _Geschaeft extends StatelessWidget {
                 const SizedBox(width: 5),
                 Text(SpielerKachel.kurzerName(p.name),
                     style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: scheme.onSurface)),
               ],

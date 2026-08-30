@@ -880,7 +880,7 @@ class _Slot extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Text('läuft',
-                  style: TextStyle(color: Colors.white70, fontSize: 9.5)),
+                  style: TextStyle(color: Colors.white70, fontSize: 9)),
             )
           else
             _posPill(context),

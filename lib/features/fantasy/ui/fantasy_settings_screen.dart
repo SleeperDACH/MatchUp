@@ -1400,7 +1400,7 @@ Widget _settingsGroup(
           color: scheme.onSurface,
         ),
         subtitleTextStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontSize: 12.5,
+          fontSize: 12,
           height: 1.25,
           color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
         ),

@@ -275,7 +275,7 @@ class _GruppenKopf extends StatelessWidget {
           children: [
             Text(titel,
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 15)),
+                    fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(width: 8),
             Text('$anzahl',
                 style: TextStyle(

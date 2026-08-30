@@ -477,7 +477,7 @@ class _VereinsKopf extends ConsumerWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 23,
+              fontSize: 24,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.3,
             ),

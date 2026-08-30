@@ -525,7 +525,7 @@ class _FixtureHeader extends StatelessWidget {
                   fontWeight: FontWeight.bold, color: _liveColor)),
           const Text('● LIVE',
               style: TextStyle(
-                  fontSize: 8, fontWeight: FontWeight.bold, color: _liveColor)),
+                  fontSize: 9, fontWeight: FontWeight.bold, color: _liveColor)),
         ] else
           Text(
             fixture.hasResult

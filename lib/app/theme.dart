@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'typografie.dart';
+
 /// MatchUp-Markenfarben.
 class MatchUpColors {
   const MatchUpColors._();
@@ -95,6 +97,14 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
     colorScheme: scheme,
     brightness: brightness,
     fontFamily: 'BarlowCondensed',
+    // **Eine Schriftskala statt Materials Vorgaben.** Ohne `textTheme` kommen
+    // die Größen aus Material (bodyMedium 14, titleLarge 22 …) — eine Leiter,
+    // die für eine normale Grotesk gedacht ist, nicht für eine schmale.
+    // `Schrift` in `typografie.dart` trägt die Stufen; jeder Stil dort nennt
+    // die Familie ausdrücklich, weil ein Theme-Stil den aufgelösten *ersetzt*.
+    textTheme: matchUpTextTheme(
+        dark ? MatchUpColors.snow : MatchUpColors.base,
+        dark ? MatchUpColors._mutedText : MatchUpColors._lightMuted),
     scaffoldBackgroundColor: bg,
     dividerColor: scheme.outlineVariant,
     appBarTheme: AppBarTheme(
@@ -108,7 +118,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       titleTextStyle: TextStyle(
         fontFamily: 'BarlowCondensed',
         fontWeight: FontWeight.w800,
-        fontSize: 24,
+        fontSize: Schrift.h1,
         letterSpacing: -0.4,
         color: scheme.onSurface,
       ),
@@ -152,12 +162,20 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       checkmarkColor: MatchUpColors.base,
       backgroundColor: Colors.transparent,
       side: BorderSide(color: scheme.outlineVariant),
-      labelStyle: TextStyle(
-          color: scheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14),
+      // **Die Familie muss hier stehen.** Ein Stil in einem Theme-Feld ersetzt
+      // den aufgelösten Stil, er ergänzt ihn nicht — ohne `fontFamily` stand
+      // jeder Material-Chip in der Systemschrift, mitten in einer App aus
+      // Barlow Condensed. Dritter Fall derselben Falle nach den
+      // Fantasy-Einstellungen und den Reitern.
+      labelStyle: const TextStyle(
+          fontFamily: 'BarlowCondensed',
+          fontWeight: FontWeight.w600,
+          fontSize: Schrift.koerper),
       secondaryLabelStyle: const TextStyle(
+          fontFamily: 'BarlowCondensed',
           color: MatchUpColors.base,
           fontWeight: FontWeight.w700,
-          fontSize: 14),
+          fontSize: Schrift.koerper),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
     inputDecorationTheme: InputDecorationTheme(

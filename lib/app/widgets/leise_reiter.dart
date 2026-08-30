@@ -155,7 +155,7 @@ class _Reiter extends StatelessWidget {
                           style: (Theme.of(context).textTheme.titleSmall ??
                                   const TextStyle())
                               .copyWith(
-                            fontSize: 15,
+                            fontSize: 14,
                             // Das Gewicht trägt die Auskunft mit; die Marke
                             // allein wäre bei vier Reitern zu wenig.
                             fontWeight:

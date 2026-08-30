@@ -59,11 +59,11 @@ class OptionTile extends StatelessWidget {
                   children: [
                     Text(titel,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15)),
+                            fontWeight: FontWeight.w700, fontSize: 14)),
                     Text(untertitel,
                         style: TextStyle(
                             color: scheme.onSurfaceVariant,
-                            fontSize: 12.5,
+                            fontSize: 12,
                             height: 1.25)),
                   ],
                 ),

@@ -172,6 +172,83 @@ hätte das nicht getan.
 dunkles Rasengrün an vier Stellen) und die Marken- und Signalfarben selbst.
 Verboten ist der **Stich** in Flächen, die neutral sein sollen.
 
+## Typografie: eine Leiter statt Einzelentscheidungen
+
+Gemeldet als „im Detail noch etwas unpoliert". Nachgezählt war es mehr als ein
+Detail: **224 hartkodierte `fontSize`-Werte in über zwanzig Größen**, darunter
+Halbschritte wie 12,5 · 11,5 · 15,5 · 13,5 · 10,5 · 14,5. Es gab keine
+Hierarchie, die man wiedererkennt, sondern an jeder Stelle eine neue Zahl.
+
+**Und es gab keinen `textTheme`.** Ohne ihn kommen alle Größen aus Materials
+Vorgaben — eine Leiter, die für eine normale Grotesk gedacht ist. Barlow
+Condensed ist schmal; was bei Inter zwischen 14 und 16 deutlich wirkt,
+unterscheidet sich hier kaum. Die Leiter steht jetzt in `app/typografie.dart`
+und ist im Theme verdrahtet:
+
+| Stufe | Größe | wofür |
+|---|---|---|
+| `anzeige` | 34 | große Zahlen, die für sich stehen |
+| `h1` | 24 | Schirm-Überschrift (AppBar) |
+| `h2` | 20 | Abschnitt, Blattüberschrift |
+| `h3` | 18 | Überschrift in einer Karte |
+| `titel` | 16 | betonter Text, Zeilenüberschrift |
+| `koerper` | 14 | Fließtext |
+| `koerperKlein` | 13 | leiser Fließtext, Untertitel |
+| `marke` | 12 | Pillen, Knöpfe, Tabellenköpfe |
+| `klein` | 11 | Zusätze, Zeiten, Hinweise |
+| `winzig` | 10 | Versal-Marken, Zähler |
+| `mikro` | 9 | **Zeichen, kein Text** |
+
+Zwei Entscheidungen darin sind wichtig, weil die naheliegende Alternative
+schlechter gewesen wäre:
+
+- **`mikro` (9) ist eine echte Stufe, keine Schlamperei.** Wappen-Initialen,
+  Länderkürzel und der Pick-Code in einer Draft-Zelle stehen in Kreisen von 26
+  Punkten — dort passt nichts Größeres. Sie auf 10 zu heben hätte enge Kreise
+  gesprengt.
+- **Anzeigezahlen folgen keiner Leiter.** Die Anstoßzeit auf der Kopfkarte
+  (38), der Punktestand im Duell (32), die Wortmarke beim Start (40): Davon
+  gibt es je Stelle genau eine, und ihre Größe kommt aus dem Platz, den sie
+  füllen soll. Sie stehen als `Schrift.anzeigen` daneben.
+
+**62 frei erfundene Zwischenwerte sind begradigt** (nächste Stufe, Gleichstand
+nach unten). Kein einziger Überlauf dabei — geprüft über alle Vorschauen und
+die Messung „Kartennamen werden nicht auf eine halbe Zeile gestaucht".
+
+### Ein Textstil im Theme nennt immer die Schriftfamilie
+
+**Dritter Fall derselben Falle**, und der erste, der von außen gemeldet wurde:
+`chipTheme.labelStyle` war ein blankes `TextStyle` ohne `fontFamily` — jeder
+Material-Chip stand damit in der Systemschrift, mitten in einer App aus Barlow
+Condensed. Vorher hatte es die Fantasy-Einstellungen erwischt (Zeilen in
+Roboto) und die Reiter (leere Kästchen in der Vorschau).
+
+Der Grund ist immer derselbe: **Ein Stil in einem Theme-Feld ersetzt den
+aufgelösten Stil, er ergänzt ihn nicht.** In normalem Widget-Code ist ein
+blankes `TextStyle` harmlos — dort mischt sich der Stil in den umgebenden
+`DefaultTextStyle`. In einem Theme-Feld nicht.
+
+Gehalten von `test/typografie_test.dart`, zwei Prüfungen: jede Schriftgröße
+kommt aus der Leiter, und in `theme.dart` nennt jedes `TextStyle` die Familie.
+
+### Abstände: 8er-Raster mit halber Stufe
+
+`Abstand` (4 · 8 · 16 · 24 · 32) steht neben der Schriftleiter. Die halbe
+Stufe bleibt, weil zwischen einem Symbol und seiner Beschriftung acht Punkte
+zu viel sind.
+
+**Der Bestand ist noch nicht umgestellt, und das ist Absicht.** Gemessen: 716
+von 1789 Abstandswerten liegen neben dem Raster, am häufigsten 10 (137×), 6
+(129×), 14 (66×) und 20 (53×). Sie mechanisch zu runden hieße, jedes Layout
+der App gleichzeitig zu verschieben — und die Kartenhöhen dieser App sind auf
+ihre Inhalte geeicht. Wie still so etwas schiefgeht, steht unter „Tinntest":
+Dort fehlten **fünf Punkte**, und ein Name verlor seine Unterlängen, ohne dass
+Flutter etwas meldete.
+
+Vorschauen decken neunzehn Schirme ab, aber nicht alle. Deshalb: **Schirm für
+Schirm mit Bild davor und danach**, nicht in einem Durchgang. Für neue Arbeit
+gilt das Raster ab sofort.
+
 ## Stack & Konventionen
 
 - State: Riverpod (klassische Provider, kein Codegen). Models: manuelles

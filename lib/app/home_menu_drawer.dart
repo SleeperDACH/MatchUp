@@ -308,7 +308,7 @@ class _PersonZeile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -395,7 +395,7 @@ class _SchlichteZeile extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 14.5,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -509,7 +509,7 @@ class _DrawerKopf extends StatelessWidget {
                       Text(
                         'Profil & Einstellungen',
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 12,
                           height: 1.1,
                           color: scheme.onSurfaceVariant,
                         ),

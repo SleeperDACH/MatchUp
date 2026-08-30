@@ -394,7 +394,7 @@ class _NaechsterSchritt extends ConsumerWidget {
           const SizedBox(height: 6),
           Text(
             titel,
-            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 2),
           Text(
@@ -622,7 +622,7 @@ class _LigaZeile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 12,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),
@@ -1004,7 +1004,7 @@ class _MiniAction extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontSize: 11.5, fontWeight: FontWeight.w600)),
+                      fontSize: 11, fontWeight: FontWeight.w600)),
             ],
           ),
         ),

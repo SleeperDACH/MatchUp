@@ -556,7 +556,7 @@ class HeroTeam extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 10.5,
+                        fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.4)),
               )
@@ -579,7 +579,7 @@ class HeroTeam extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 10.5,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600)),
               ),
             ],
@@ -654,7 +654,7 @@ class ScoreBadge extends StatelessWidget {
             child: Text(':',
                 style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800)),
           ),
           number(right, rightWin, leftWin),
@@ -708,7 +708,7 @@ class HeroAvatar extends StatelessWidget {
           style: TextStyle(
               color: Colors.white.withValues(alpha: dim ? 0.7 : 1),
               fontWeight: FontWeight.w900,
-              fontSize: 19)),
+              fontSize: 18)),
     );
   }
 }

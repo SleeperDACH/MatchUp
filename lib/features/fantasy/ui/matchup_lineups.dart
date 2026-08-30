@@ -318,7 +318,7 @@ class _PlayerRow extends StatelessWidget {
       child: Text(gespielt ? formatPoints(pts ?? 0) : '–',
           textAlign: TextAlign.center,
           style: TextStyle(
-              fontSize: 17,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
               color: !gespielt
                   ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
@@ -336,7 +336,7 @@ class _PlayerRow extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: start ? TextAlign.start : TextAlign.end,
             style: TextStyle(
-                fontSize: 14.5,
+                fontSize: 14,
                 fontWeight: mine ? FontWeight.w800 : FontWeight.w600)),
         const SizedBox(height: 2),
         Text(player.position.label,

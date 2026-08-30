@@ -32,7 +32,7 @@ class VibrantLeagueTitle extends StatelessWidget {
       style: const TextStyle(
         // BarlowCondensed (App-Font) in maximaler Fettung → „dick" & sportlich.
         fontWeight: FontWeight.w800,
-        fontSize: 25,
+        fontSize: 24,
         letterSpacing: -0.4,
         height: 1.0,
         color: Colors.white,

@@ -1279,7 +1279,7 @@ class _GreetingBar extends ConsumerWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
                 color: scheme.onSurfaceVariant,
@@ -1442,7 +1442,7 @@ class _CreateRow extends ConsumerWidget {
                       Text(
                         text,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -2446,7 +2446,7 @@ class _BeitretenKarte extends StatelessWidget {
                       const Text(
                         'Einer Runde beitreten',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

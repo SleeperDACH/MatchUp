@@ -57,7 +57,7 @@ class FormSection extends StatelessWidget {
             titel.toUpperCase(),
             style: TextStyle(
               color: farbe,
-              fontSize: 11.5,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.3,
             ),
@@ -68,7 +68,7 @@ class FormSection extends StatelessWidget {
               hinweis!,
               style: TextStyle(
                   color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-                  fontSize: 12.5,
+                  fontSize: 12,
                   height: 1.3),
             ),
           ],

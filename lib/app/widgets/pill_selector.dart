@@ -79,7 +79,7 @@ class PillChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                     color: selected
                         ? MatchUpColors.green

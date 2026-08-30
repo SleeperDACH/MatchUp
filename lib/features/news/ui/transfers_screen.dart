@@ -286,7 +286,7 @@ class _DealTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
+                        fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 3),
                 Row(
                   children: [

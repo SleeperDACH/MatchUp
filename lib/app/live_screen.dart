@@ -300,7 +300,7 @@ class _Kopf extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 21,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,
               ),
@@ -457,7 +457,7 @@ class _SpielZeile extends StatelessWidget {
                     f.home.name,
                     maxLines: 1,
                     style: const TextStyle(
-                      fontSize: 15.5,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -481,7 +481,7 @@ class _SpielZeile extends StatelessWidget {
                           '${f.homeScore}:${f.awayScore}',
                           key: ValueKey('${f.homeScore}:${f.awayScore}'),
                           style: TextStyle(
-                            fontSize: 19,
+                            fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: live
                                 ? MatchUpColors.red
@@ -519,7 +519,7 @@ class _SpielZeile extends StatelessWidget {
                     maxLines: 1,
                     textAlign: TextAlign.end,
                     style: const TextStyle(
-                      fontSize: 15.5,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -764,7 +764,7 @@ class _DateStrip extends StatelessWidget {
                     Text(
                       '${d.day}',
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: sel
                             ? scheme.surface

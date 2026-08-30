@@ -200,7 +200,7 @@ class TeamFixtureCard extends StatelessWidget {
                     f.home.name,
                     maxLines: 1,
                     style: const TextStyle(
-                      fontSize: 15.5,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -215,7 +215,7 @@ class TeamFixtureCard extends StatelessWidget {
                       Text(
                         '${f.homeScore}:${f.awayScore}',
                         style: TextStyle(
-                          fontSize: 19,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: live
                               ? MatchUpColors.red
@@ -252,7 +252,7 @@ class TeamFixtureCard extends StatelessWidget {
                     maxLines: 1,
                     textAlign: TextAlign.end,
                     style: const TextStyle(
-                      fontSize: 15.5,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

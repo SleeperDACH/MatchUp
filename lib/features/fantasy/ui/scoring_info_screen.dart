@@ -326,14 +326,14 @@ class _Zeile extends StatelessWidget {
           Expanded(
             child: Text(
               was,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ),
           const SizedBox(width: 12),
           Text(
             text,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: punkte == 0
                   ? scheme.onSurfaceVariant
