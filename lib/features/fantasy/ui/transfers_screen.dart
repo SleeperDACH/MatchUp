@@ -125,8 +125,8 @@ class _MeineSeite extends ConsumerWidget {
         ],
         if (meineBewegungen.isNotEmpty) ...[
           const _Marke('Meine Wechsel'),
-          for (final v in vorgaengeAus(meineBewegungen))
-            _VorgangsKarte(league: league, vorgang: v, mitManager: false),
+          for (final v in ereignisseAus(meineBewegungen))
+            _VorgangsKarte(league: league, ereignis: v, mitManager: false),
         ],
       ],
     );
@@ -282,7 +282,7 @@ class _LigaSeite extends ConsumerWidget {
         // sechzehn Teams Hunderte Zeilen und würde jede Free-Agency-Meldung
         // darunter begraben; wer den Draft sehen will, hat dafür das Board.
         final vorgaenge = [
-          for (final v in vorgaengeAus(moves))
+          for (final v in ereignisseAus(moves))
             if (v.weg != 'draft') v
         ];
         if (vorgaenge.isEmpty) {
@@ -302,7 +302,7 @@ class _LigaSeite extends ConsumerWidget {
               children: [
                 if (neuerTag) _Marke(_tag(v.passiertAm)),
                 _VorgangsKarte(
-                    league: league, vorgang: v, mitManager: true),
+                    league: league, ereignis: v, mitManager: true),
               ],
             );
           },
@@ -333,12 +333,12 @@ class _LigaSeite extends ConsumerWidget {
 class _VorgangsKarte extends ConsumerWidget {
   const _VorgangsKarte({
     required this.league,
-    required this.vorgang,
+    required this.ereignis,
     required this.mitManager,
   });
 
   final FantasyLeague league;
-  final TransferVorgang vorgang;
+  final TransferEreignis ereignis;
 
   /// Auf der Liga-Seite steht dabei, wer es war; auf der eigenen nicht.
   final bool mitManager;
@@ -353,8 +353,7 @@ class _VorgangsKarte extends ConsumerWidget {
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final manager =
         ref.watch(fantasyManagersProvider(league.id)).valueOrNull ?? const [];
-    final name =
-        {for (final m in manager) m.userId: m.display}[vorgang.managerId];
+    final namen = {for (final m in manager) m.userId: m.display};
 
     Widget kachel(RosterMove m) {
       final p = nachId[m.playerId];
@@ -375,6 +374,23 @@ class _VorgangsKarte extends ConsumerWidget {
       );
     }
 
+    final erste = ereignis.seiten.first;
+
+    // **Ein Trade steht als ein Tausch da, nicht als zwei Meldungen.** Er
+    // erzeugt je Manager einen Vorgang; nebeneinander gestellt wären das
+    // dieselbe Auskunft zweimal, spiegelverkehrt.
+    // **Kein „↔" im Text.** Barlow Condensed hat das Zeichen nicht; in der
+    // Vorschau stand dort ein leeres Kästchen, und auf dem Gerät hinge es an
+    // einer Schrift-Ersatzkette. Der Tauschpfeil ist ein Symbol (links im
+    // Kopf), kein Buchstabe — dieselbe Regel wie im Trade-Schirm.
+    final kopf = ereignis.istTrade
+        ? 'Trade · ${ereignis.seiten.map((v) => namen[v.managerId] ?? '?').join(' und ')}'
+        : [
+            erste.bezeichnung,
+            if (mitManager && namen[erste.managerId] != null)
+              namen[erste.managerId]!,
+          ].join(' · ');
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
       child: Container(
@@ -389,24 +405,26 @@ class _VorgangsKarte extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(vorgang.nurAbgang ? Icons.north_east : Icons.south_west,
+                Icon(
+                    ereignis.istTrade
+                        ? Icons.swap_horiz
+                        : (erste.nurAbgang
+                            ? Icons.north_east
+                            : Icons.south_west),
                     size: 15,
-                    color: vorgang.nurAbgang ? _kRot : _kGruen),
+                    color: ereignis.istTrade
+                        ? scheme.onSurfaceVariant
+                        : (erste.nurAbgang ? _kRot : _kGruen)),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(
-                    [
-                      vorgang.bezeichnung,
-                      if (mitManager && name != null) name,
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 12.5, fontWeight: FontWeight.w700),
-                  ),
+                  child: Text(kopf,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w700)),
                 ),
                 Text(
-                  DateFormat('HH:mm', 'de_DE').format(vorgang.passiertAm),
+                  DateFormat('HH:mm', 'de_DE').format(ereignis.passiertAm),
                   style: TextStyle(
                       fontSize: 11.5,
                       color: scheme.onSurfaceVariant,
@@ -415,18 +433,48 @@ class _VorgangsKarte extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                for (final m in vorgang.rein) kachel(m),
-                if (vorgang.rein.isNotEmpty && vorgang.raus.isNotEmpty)
-                  Icon(Icons.swap_horiz,
-                      size: 18, color: scheme.onSurfaceVariant),
-                for (final m in vorgang.raus) kachel(m),
-              ],
-            ),
+            if (ereignis.istTrade)
+              // Je Seite eine Zeile: wer bekommt was. Der Abgang der einen ist
+              // der Zugang der anderen — ihn zweimal hinzuschreiben wäre
+              // dasselbe Doppelte in klein.
+              for (final v in ereignis.seiten)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 92,
+                        child: Text(namen[v.managerId] ?? '?',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                color: scheme.onSurfaceVariant)),
+                      ),
+                      Icon(Icons.south_west, size: 13, color: _kGruen),
+                      const SizedBox(width: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [for (final m in v.rein) kachel(m)],
+                      ),
+                    ],
+                  ),
+                )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  for (final m in erste.rein) kachel(m),
+                  if (erste.rein.isNotEmpty && erste.raus.isNotEmpty)
+                    Icon(Icons.swap_horiz,
+                        size: 18, color: scheme.onSurfaceVariant),
+                  for (final m in erste.raus) kachel(m),
+                ],
+              ),
           ],
         ),
       ),

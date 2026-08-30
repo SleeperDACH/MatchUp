@@ -103,3 +103,67 @@ Marktlage marktlage(
   if (aufWaiver.contains(playerId)) return Marktlage.aufDemWaiver;
   return Marktlage.frei;
 }
+
+
+/// **Ein Trade ist ein Ereignis, nicht zwei.**
+///
+/// [vorgaengeAus] hält die Seiten bewusst getrennt — für „Meine Wechsel" ist
+/// die eigene Sicht die richtige. In der Liga-Liste standen dadurch aber zwei
+/// Karten für denselben Tausch, spiegelverkehrt: „Eric +Guirassy −Amiri" über
+/// „Majusch +Amiri −Guirassy". Dieselbe Auskunft zweimal.
+class TransferEreignis {
+  const TransferEreignis(this.seiten);
+
+  /// Eine Seite bei Free Agency, Waiver und Drop; zwei bei einem Trade.
+  final List<TransferVorgang> seiten;
+
+  DateTime get passiertAm => seiten.first.passiertAm;
+  String? get weg => seiten.first.weg;
+  bool get istTrade => seiten.length > 1;
+}
+
+/// Fasst die Vorgänge zu Ereignissen zusammen, jüngste zuerst.
+///
+/// **Zusammengeführt wird über den tatsächlichen Tausch, nicht über die Zeit
+/// allein.** Das ist der Punkt, an dem eine naheliegende Lösung falsch wäre:
+/// `fantasy_faellige_trades_ausfuehren` (Migration 0088) arbeitet **alle**
+/// fälligen Trades in einer Transaktion ab — sie tragen damit denselben
+/// Zeitstempel. Wer nur nach Zeit gruppiert, klebt fremde Tausche aneinander
+/// und zeigt Manager als Partner, die nie miteinander gehandelt haben.
+///
+/// Maßgeblich ist deshalb: Die Gegenseite ist die, deren **Zugänge genau meine
+/// Abgänge** sind und umgekehrt.
+List<TransferEreignis> ereignisseAus(List<RosterMove> moves) {
+  final vorgaenge = vorgaengeAus(moves);
+  final offen = [...vorgaenge];
+  final out = <TransferEreignis>[];
+
+  Set<String> ids(List<RosterMove> xs) => {for (final m in xs) m.playerId};
+
+  while (offen.isNotEmpty) {
+    final a = offen.removeAt(0);
+    if (a.weg != 'trade') {
+      out.add(TransferEreignis([a]));
+      continue;
+    }
+    final passt = offen.indexWhere((b) =>
+        b.weg == 'trade' &&
+        b.passiertAm == a.passiertAm &&
+        b.managerId != a.managerId &&
+        _gleich(ids(b.rein), ids(a.raus)) &&
+        _gleich(ids(b.raus), ids(a.rein)));
+    if (passt == -1) {
+      // Die Gegenseite fehlt — etwa weil sie aus der Rückfüllung nicht
+      // rekonstruiert werden konnte. Dann steht die eine Seite allein da,
+      // statt sie einer falschen zuzuschlagen.
+      out.add(TransferEreignis([a]));
+    } else {
+      out.add(TransferEreignis([a, offen.removeAt(passt)]));
+    }
+  }
+  out.sort((x, y) => y.passiertAm.compareTo(x.passiertAm));
+  return out;
+}
+
+bool _gleich(Set<String> a, Set<String> b) =>
+    a.length == b.length && a.containsAll(b);

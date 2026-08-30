@@ -159,8 +159,7 @@ void main() {
         playerId: 'p1',
         zugang: false,
         passiertAm: frueher),
-    // Ein reiner Abgang ohne Gegenwert — und der Spieler ist längst wieder
-    // vergeben.
+    // Ein reiner Abgang ohne Gegenwert.
     RosterMove(
         id: 2,
         leagueId: 'l1',
@@ -168,6 +167,41 @@ void main() {
         playerId: 'p2',
         zugang: false,
         passiertAm: gestern),
+    // **Ein Trade: vier Zeilen, die zu einer Box werden.** Beide Seiten tragen
+    // denselben Zeitstempel, und die Gegenseite wird über den tatsächlichen
+    // Tausch erkannt, nicht über die Zeit allein.
+    RosterMove(
+        id: 10,
+        leagueId: 'l1',
+        managerId: 'ich',
+        playerId: 'p2',
+        zugang: true,
+        weg: 'trade',
+        passiertAm: gestern.subtract(const Duration(hours: 1))),
+    RosterMove(
+        id: 11,
+        leagueId: 'l1',
+        managerId: 'ich',
+        playerId: 'p3',
+        zugang: false,
+        weg: 'trade',
+        passiertAm: gestern.subtract(const Duration(hours: 1))),
+    RosterMove(
+        id: 12,
+        leagueId: 'l1',
+        managerId: 'gegner',
+        playerId: 'p3',
+        zugang: true,
+        weg: 'trade',
+        passiertAm: gestern.subtract(const Duration(hours: 1))),
+    RosterMove(
+        id: 13,
+        leagueId: 'l1',
+        managerId: 'gegner',
+        playerId: 'p2',
+        zugang: false,
+        weg: 'trade',
+        passiertAm: gestern.subtract(const Duration(hours: 1))),
     // Draft-Zeilen müssen aus der Liga-Seite herausfallen — sonst begraben sie
     // bei sechzehn Teams jede Meldung darunter.
     RosterMove(
@@ -269,5 +303,9 @@ void main() {
     // Karten hoch und laut. Der Test hält fest, dass sie weg bleibt.
     expect(find.textContaining('liegt auf dem Waiver'), findsNothing);
     expect(find.textContaining('ist wieder frei'), findsNothing);
+    // **Ein Trade steht in genau einer Box**, mit beiden Managern im Kopf —
+    // nicht zweimal spiegelverkehrt untereinander.
+    expect(find.textContaining('Trade · '), findsOneWidget);
+    expect(find.text('Trade · SFV03 und lennartruepke'), findsOneWidget);
   });
 }

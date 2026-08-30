@@ -76,6 +76,8 @@ void main() {
     expect(v.first.rein.single.playerId, 'neu');
   });
 
+  _ereignisse();
+
   group('Marktlage eines abgegebenen Spielers', () {
     test('auf dem Waiver', () {
       expect(
@@ -91,6 +93,98 @@ void main() {
       // sein Wire-Eintrag noch nicht aufgeraeumt ist.
       expect(marktlage('x', aufWaiver: {'x'}, imKader: {'x'}),
           Marktlage.vergeben);
+    });
+  });
+}
+
+/// Ein Trade gehört in **eine** Box — aber nur mit der richtigen Gegenseite.
+void _ereignisse() {
+  RosterMove m(int id, String mgr, String pid, bool zugang, DateTime t) =>
+      RosterMove(
+        id: id,
+        leagueId: 'l1',
+        managerId: mgr,
+        playerId: pid,
+        zugang: zugang,
+        weg: 'trade',
+        passiertAm: t,
+      );
+
+  group('Trades zu einem Ereignis', () {
+    final t = DateTime(2026, 8, 30, 5, 47, 17, 294);
+
+    test('beide Seiten eines Tauschs werden ein Ereignis', () {
+      final e = ereignisseAus([
+        m(4, 'eric', 'guirassy', true, t),
+        m(3, 'eric', 'amiri', false, t),
+        m(2, 'majusch', 'amiri', true, t),
+        m(1, 'majusch', 'guirassy', false, t),
+      ]);
+      expect(e.length, 1);
+      expect(e.single.istTrade, isTrue);
+      expect(e.single.seiten.length, 2);
+    });
+
+    test('zwei gleichzeitige Trades werden NICHT verwechselt', () {
+      // **Der Fall, an dem eine Gruppierung nach Zeit allein scheitert.**
+      // fantasy_faellige_trades_ausfuehren arbeitet alle faelligen Trades in
+      // einer Transaktion ab — sie tragen denselben Zeitstempel.
+      final e = ereignisseAus([
+        // Trade 1: eric <-> majusch
+        m(8, 'eric', 'guirassy', true, t),
+        m(7, 'eric', 'amiri', false, t),
+        m(6, 'majusch', 'amiri', true, t),
+        m(5, 'majusch', 'guirassy', false, t),
+        // Trade 2: anna <-> bert, zur exakt gleichen Zeit
+        m(4, 'anna', 'kane', true, t),
+        m(3, 'anna', 'sane', false, t),
+        m(2, 'bert', 'sane', true, t),
+        m(1, 'bert', 'kane', false, t),
+      ]);
+      expect(e.length, 2, reason: 'zwei Trades, zwei Ereignisse');
+      for (final x in e) {
+        expect(x.seiten.length, 2);
+        final namen = x.seiten.map((s) => s.managerId).toSet();
+        // Kein Ereignis darf Manager aus verschiedenen Trades mischen.
+        expect(
+            namen.containsAll({'eric', 'majusch'}) ||
+                namen.containsAll({'anna', 'bert'}),
+            isTrue);
+      }
+    });
+
+    test('eine Seite ohne Gegenstueck bleibt allein stehen', () {
+      // Kommt vor, wenn die Gegenseite aus der Rueckfuellung nicht
+      // rekonstruiert werden konnte — dann lieber halb als falsch.
+      final e = ereignisseAus([
+        m(2, 'eric', 'guirassy', true, t),
+        m(1, 'eric', 'amiri', false, t),
+      ]);
+      expect(e.single.istTrade, isFalse);
+      expect(e.single.seiten.single.managerId, 'eric');
+    });
+
+    test('Free Agency bleibt ein Ereignis je Manager', () {
+      final e = ereignisseAus([
+        RosterMove(
+            id: 2,
+            leagueId: 'l1',
+            managerId: 'a',
+            playerId: 'x',
+            zugang: true,
+            weg: 'fa',
+            passiertAm: t),
+        RosterMove(
+            id: 1,
+            leagueId: 'l1',
+            managerId: 'b',
+            playerId: 'y',
+            zugang: true,
+            weg: 'fa',
+            passiertAm: t),
+      ]);
+      expect(e.length, 2);
+      expect(e.every((x) => !x.istTrade), isTrue);
     });
   });
 }

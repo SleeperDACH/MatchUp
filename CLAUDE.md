@@ -2124,6 +2124,25 @@ gestellt sahen sie aus wie zwei unabhängige Ereignisse: „X verpflichtet" übe
 „Y abgegeben", ohne dass etwas sagt, dass Y **für** X gehen musste. Genau das
 ist aber die Auskunft, die man sucht.
 
+**Ein Trade steht in einer Box.** Er erzeugt je Manager einen Vorgang;
+nebeneinander gestellt wären das dieselbe Auskunft zweimal, spiegelverkehrt
+(„Eric +Guirassy −Amiri" über „Majusch +Amiri −Guirassy"). `ereignisseAus`
+führt die beiden Seiten zusammen — und zwar **über den tatsächlichen Tausch,
+nicht über die Zeit allein**. Das ist die Stelle, an der die naheliegende
+Lösung falsch wäre: `fantasy_faellige_trades_ausfuehren` (0088) arbeitet
+**alle** fälligen Trades in einer Transaktion ab, sie tragen also denselben
+Zeitstempel. Wer nur nach Zeit gruppiert, klebt fremde Tausche aneinander und
+zeigt Manager als Partner, die nie miteinander gehandelt haben. Maßgeblich ist
+deshalb: Die Gegenseite ist die, deren **Zugänge genau meine Abgänge** sind und
+umgekehrt. Fehlt sie (etwa weil die Rückfüllung sie nicht rekonstruieren
+konnte), steht die eine Seite allein — lieber halb als falsch. Beides steht als
+eigener Test da.
+
+**Kein „↔" im Text.** Barlow Condensed hat das Zeichen nicht; in der Vorschau
+stand dort ein leeres Kästchen, und auf dem Gerät hinge die Anzeige an einer
+Schrift-Ersatzkette. Der Tauschpfeil ist ein Symbol, kein Buchstabe — dieselbe
+Regel wie im Trade-Schirm. Im Kopf steht „Trade · A und B".
+
 Zusammengefasst wird über **Manager und Zeitstempel** (`vorgaengeAus` in
 `logic/transfer_vorgaenge.dart`, rein und getestet). Das ist keine Schätzung:
 Beide Zeilen entstehen in derselben Transaktion, und Postgres' `now()` liefert
