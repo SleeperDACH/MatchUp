@@ -35,25 +35,28 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     final myId = ref.watch(currentUserProvider)?.id;
     final isOwner = myId == l.createdBy;
     final managerList = ref.watch(fantasyManagersProvider(l.id)).valueOrNull;
-    final myManager =
-        managerList?.where((m) => m.userId == myId).firstOrNull;
+    final myManager = managerList?.where((m) => m.userId == myId).firstOrNull;
 
-    void open(Widget page) => Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => page));
+    void open(Widget page) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
     Future<void> editTeamName() async {
       final messenger = ScaffoldMessenger.of(context);
-      final name =
-          await showTeamNameDialog(context, current: myManager?.teamName);
+      final name = await showTeamNameDialog(
+        context,
+        current: myManager?.teamName,
+      );
       if (name == null) return;
       try {
         await ref.read(fantasyLeagueRepositoryProvider).setTeamName(l.id, name);
         ref.invalidate(fantasyManagersProvider(l.id));
         messenger.showSnackBar(
-            const SnackBar(content: Text('Teamname gespeichert.')));
+          const SnackBar(content: Text('Teamname gespeichert.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+          SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+        );
       }
     }
 
@@ -62,14 +65,18 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       final newName = await showRenameLeagueDialog(context, current: l.name);
       if (newName == null || newName == l.name) return;
       try {
-        await ref.read(fantasyLeagueRepositoryProvider).renameLeague(l.id, newName);
+        await ref
+            .read(fantasyLeagueRepositoryProvider)
+            .renameLeague(l.id, newName);
         ref.invalidate(draftLeagueProvider(l.id));
         ref.invalidate(myFantasyLeaguesProvider);
         messenger.showSnackBar(
-            const SnackBar(content: Text('Liga-Name geändert.')));
+          const SnackBar(content: Text('Liga-Name geändert.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+          SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+        );
       }
     }
 
@@ -86,15 +93,23 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       );
       if (value == null) return;
       try {
-        await ref.read(fantasyLeagueRepositoryProvider).setLogo(l.id,
-            url: value.url, emoji: value.emoji, color: value.color);
+        await ref
+            .read(fantasyLeagueRepositoryProvider)
+            .setLogo(
+              l.id,
+              url: value.url,
+              emoji: value.emoji,
+              color: value.color,
+            );
         ref.invalidate(draftLeagueProvider(l.id));
         ref.invalidate(myFantasyLeaguesProvider);
         messenger.showSnackBar(
-            const SnackBar(content: Text('Liga-Logo gespeichert.')));
+          const SnackBar(content: Text('Liga-Logo gespeichert.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+          SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+        );
       }
     }
 
@@ -104,11 +119,12 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         title: Column(
           children: [
             const Text('Einstellungen'),
-            Text(l.name,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
-                    ?.copyWith(color: scheme.primary)),
+            Text(
+              l.name,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.primary),
+            ),
           ],
         ),
       ),
@@ -129,7 +145,9 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               ListTile(
                 leading: Icon(Icons.image_outlined),
                 title: const Text('Liga-Logo ändern'),
-                subtitle: const Text('Bild hochladen oder Emoji + Farbe wählen'),
+                subtitle: const Text(
+                  'Bild hochladen oder Emoji + Farbe wählen',
+                ),
                 trailing: const _Chevron(),
                 onTap: editLogo,
               ),
@@ -138,20 +156,23 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 title: const Text('Sichtbarkeit & Beitritt'),
                 subtitle: Text(visibilityLabel(l.visibility, l.joinPolicy)),
                 trailing: RequestsBadgeChevron(
-                    pending: (l.isPublic && l.isInviteOnly)
-                        ? ref
+                  pending: (l.isPublic && l.isInviteOnly)
+                      ? ref
                                 .watch(fantasyJoinRequestsProvider(l.id))
                                 .valueOrNull
                                 ?.length ??
                             0
-                        : 0),
-                onTap: () => open(VisibilitySettingsPage(
-                      kind: 'fantasy',
-                      id: l.id,
-                      name: l.name,
-                      visibility: l.visibility,
-                      joinPolicy: l.joinPolicy,
-                    )),
+                      : 0,
+                ),
+                onTap: () => open(
+                  VisibilitySettingsPage(
+                    kind: 'fantasy',
+                    id: l.id,
+                    name: l.name,
+                    visibility: l.visibility,
+                    joinPolicy: l.joinPolicy,
+                  ),
+                ),
               ),
             ], farbe: _grpLiga),
           ],
@@ -166,9 +187,11 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.grid_on_outlined),
                 title: const Text('Draft-Board'),
-                subtitle: Text(l.draftStatus == DraftStatus.done
-                    ? 'Nachschauen, wer wen gezogen hat'
-                    : 'Der Draft läuft gerade'),
+                subtitle: Text(
+                  l.draftStatus == DraftStatus.done
+                      ? 'Nachschauen, wer wen gezogen hat'
+                      : 'Der Draft läuft gerade',
+                ),
                 trailing: const _Chevron(),
                 onTap: () => open(DraftBoardScreen(league: l)),
               ),
@@ -199,8 +222,9 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               title: const Text('Punktevergabe'),
               subtitle: const Text('Wie Fantasy-Punkte vergeben werden'),
               trailing: const _Chevron(),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const ScoringInfoScreen())),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ScoringInfoScreen()),
+              ),
             ),
             // Die Teilnehmerzahl. Die Seite dahinter gab es schon, sie war nur
             // von nirgendwo zu erreichen — `LeagueSettingsPage` wurde in
@@ -210,9 +234,11 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             ListTile(
               leading: Icon(Icons.groups),
               title: const Text('Teilnehmerzahl'),
-              subtitle: Text(l.maxTeams != null
-                  ? 'Höchstens ${l.maxTeams} Teams'
-                  : 'Ohne eigenes Limit — höchstens 18'),
+              subtitle: Text(
+                l.maxTeams != null
+                    ? 'Höchstens ${l.maxTeams} Teams'
+                    : 'Ohne eigenes Limit — höchstens 18',
+              ),
               trailing: const _Chevron(),
               onTap: () => open(LeagueSettingsPage(league: l)),
             ),
@@ -220,7 +246,8 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               leading: Icon(Icons.sports),
               title: const Text('Draft-Einstellungen'),
               subtitle: Text(
-                  '${l.pickTime.label} · ${l.rounds} Runden${l.hasPause ? ' · Pause' : ''}'),
+                '${l.pickTime.label} · ${l.rounds} Runden${l.hasPause ? ' · Pause' : ''}',
+              ),
               trailing: const _Chevron(),
               onTap: () => open(DraftSettingsPage(league: l)),
             ),
@@ -237,9 +264,11 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             ListTile(
               leading: Icon(Icons.emoji_events_outlined),
               title: const Text('Playoff-Einstellungen'),
-              subtitle: Text(l.hasPlayoffs
-                  ? '${l.playoffTeams} Teams · ${l.playoffWeeks == 2 ? '2-Wochen' : '1-Wochen'}-Partien'
-                  : 'noch nicht konfiguriert'),
+              subtitle: Text(
+                l.hasPlayoffs
+                    ? '${l.playoffTeams} Teams · ${l.playoffWeeks == 2 ? '2-Wochen' : '1-Wochen'}-Partien'
+                    : 'noch nicht konfiguriert',
+              ),
               trailing: const _Chevron(),
               onTap: () => open(PlayoffSettingsPage(league: l)),
             ),
@@ -256,8 +285,9 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 leading: Icon(Icons.calendar_month),
                 title: const Text('Saison-Rollover'),
                 subtitle: Text(
-                    'Startet Saison ${l.season + 1}/${(l.season + 2) % 100}: '
-                    'Kader bleibt, danach ein neuer U20-Draft für die Rookies.'),
+                  'Startet Saison ${l.season + 1}/${(l.season + 2) % 100}: '
+                  'Kader bleibt, danach ein neuer U20-Draft für die Rookies.',
+                ),
                 trailing: const _Chevron(),
                 onTap: () => _confirmRollover(context, ref, l),
               ),
@@ -271,28 +301,61 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 leading: Icon(Icons.admin_panel_settings_outlined),
                 title: const Text('Mitglieder & Kader verwalten'),
                 subtitle: const Text(
-                    'Kicken, verwaiste Teams zuweisen, Kader bearbeiten'),
+                  'Kicken, verwaiste Teams zuweisen, Kader bearbeiten',
+                ),
                 trailing: const _Chevron(),
                 onTap: () => open(FantasyAdminScreen(league: l)),
               ),
             ], farbe: _grpAdmin),
           ],
 
-          // Ligainternes Tippspiel nachträglich einschalten (nur wenn es beim
-          // Erstellen nicht gewählt wurde und noch keines aktiviert ist).
-          if (isOwner &&
-              !l.tipEnabled &&
-              ref.watch(fantasyTipRoundProvider(l.id)).valueOrNull == null) ...[
+          // Ligainternes Tippspiel — **in beide Richtungen**, und keine
+          // Richtung ohne Rückfrage. Vorher schaltete ein Fingertipp direkt
+          // ein, und wieder aus kam man gar nicht mehr.
+          if (isOwner) ...[
             _Section('Tippspiel', farbe: _grpRegeln),
             _settingsGroup(context, [
-              ListTile(
-                leading:
-                    Icon(Icons.emoji_events_outlined),
-                title: const Text('Ligainternes Tippspiel einschalten'),
-                subtitle: const Text(
-                    'Blendet die Tippspiel-Option auf der Übersicht ein.'),
-                trailing: const _Chevron(),
-                onTap: () => _enableTip(context, ref, l),
+              Builder(
+                builder: (context) {
+                  final runde = ref
+                      .watch(fantasyTipRoundProvider(l.id))
+                      .valueOrNull;
+                  // **Steht die Runde erst, hilft der Schalter nicht mehr.** Die
+                  // Übersicht zeigt das Tippspiel, sobald es *eine Runde gibt* —
+                  // unabhängig vom Merker. Ein Schalter, der dann nichts mehr
+                  // bewirkt, wäre schlimmer als keiner; deshalb sagt die Zeile
+                  // hier, wo es wirklich endet.
+                  if (runde != null) {
+                    return ListTile(
+                      leading: const Icon(Icons.emoji_events_outlined),
+                      title: const Text('Ligainternes Tippspiel läuft'),
+                      subtitle: Text(
+                        '„${runde.name}" ist eingerichtet. Beenden '
+                        'lässt es sich nur im Tippspiel selbst, unter seinen '
+                        'Einstellungen.',
+                      ),
+                      enabled: false,
+                    );
+                  }
+                  final an = l.tipEnabled;
+                  return ListTile(
+                    leading: Icon(
+                      an ? Icons.emoji_events : Icons.emoji_events_outlined,
+                    ),
+                    title: Text(
+                      an
+                          ? 'Ligainternes Tippspiel ausschalten'
+                          : 'Ligainternes Tippspiel einschalten',
+                    ),
+                    subtitle: Text(
+                      an
+                          ? 'Die Tippspiel-Zeile steht auf der Übersicht.'
+                          : 'Blendet die Tippspiel-Option auf der Übersicht ein.',
+                    ),
+                    trailing: const _Chevron(),
+                    onTap: () => _tippspielUmschalten(context, ref, l, !an),
+                  );
+                },
               ),
             ], farbe: _grpRegeln),
           ],
@@ -303,33 +366,48 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               // Admin kann verlassen, muss dabei die Adminrechte übergeben.
               ListTile(
                 leading: Icon(Icons.logout, color: scheme.error),
-                title: Text('Liga verlassen',
-                    style: TextStyle(
-                        color: scheme.error, fontWeight: FontWeight.bold)),
+                title: Text(
+                  'Liga verlassen',
+                  style: TextStyle(
+                    color: scheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 subtitle: const Text(
-                    'Adminrechte an ein Mitglied übergeben und aussteigen — '
-                    'dein Team bleibt als verwaister Slot bestehen.'),
+                  'Adminrechte an ein Mitglied übergeben und aussteigen — '
+                  'dein Team bleibt als verwaister Slot bestehen.',
+                ),
                 onTap: () => _confirmLeaveAsOwner(context, ref, l),
               ),
               ListTile(
                 leading: Icon(Icons.delete_outline, color: scheme.error),
-                title: Text('Liga löschen',
-                    style: TextStyle(
-                        color: scheme.error, fontWeight: FontWeight.bold)),
+                title: Text(
+                  'Liga löschen',
+                  style: TextStyle(
+                    color: scheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 subtitle: const Text(
-                    'Entfernt die Liga endgültig — mit Draft, Kadern und allen '
-                    'Daten, für alle Mitglieder.'),
+                  'Entfernt die Liga endgültig — mit Draft, Kadern und allen '
+                  'Daten, für alle Mitglieder.',
+                ),
                 onTap: () => _confirmDelete(context, ref, l),
               ),
             ] else
               ListTile(
                 leading: Icon(Icons.logout, color: scheme.error),
-                title: Text('Liga verlassen',
-                    style: TextStyle(
-                        color: scheme.error, fontWeight: FontWeight.bold)),
+                title: Text(
+                  'Liga verlassen',
+                  style: TextStyle(
+                    color: scheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 subtitle: const Text(
-                    'Du steigst aus — dein Team bleibt als verwaister Slot '
-                    'bestehen und kann neu zugewiesen werden.'),
+                  'Du steigst aus — dein Team bleibt als verwaister Slot '
+                  'bestehen und kann neu zugewiesen werden.',
+                ),
                 onTap: () => _confirmLeave(context, ref, l),
               ),
           ], farbe: _grpGefahr),
@@ -343,7 +421,10 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmLeave(
-      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+    BuildContext context,
+    WidgetRef ref,
+    FantasyLeague l,
+  ) async {
     final scheme = Theme.of(context).colorScheme;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -352,9 +433,10 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Liga verlassen?'),
         content: Text(
-            'Du verlässt „${l.name}". Dein Team bleibt als verwaister Slot '
-            'bestehen — der Admin kann es einem neuen Nutzer zuweisen, der '
-            'deinen Kader übernimmt.'),
+          'Du verlässt „${l.name}". Dein Team bleibt als verwaister Slot '
+          'bestehen — der Admin kann es einem neuen Nutzer zuweisen, der '
+          'deinen Kader übernimmt.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -376,14 +458,18 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       messenger.showSnackBar(const SnackBar(content: Text('Liga verlassen.')));
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
+        SnackBar(content: Text('Verlassen fehlgeschlagen: $e')),
+      );
     }
   }
 
   /// Admin verlässt die Liga: fragt zuerst, wer die Adminrechte bekommt, und
   /// übergibt + steigt dann atomar aus.
   Future<void> _confirmLeaveAsOwner(
-      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+    BuildContext context,
+    WidgetRef ref,
+    FantasyLeague l,
+  ) async {
     final scheme = Theme.of(context).colorScheme;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -394,10 +480,15 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             .where((m) => m.userId != myId)
             .toList();
     if (others.isEmpty) {
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Kein anderes Mitglied vorhanden, dem du die '
-              'Adminrechte übergeben kannst. Du kannst die Liga stattdessen '
-              'löschen.')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Kein anderes Mitglied vorhanden, dem du die '
+            'Adminrechte übergeben kannst. Du kannst die Liga stattdessen '
+            'löschen.',
+          ),
+        ),
+      );
       return;
     }
     // Neuen Admin auswählen.
@@ -422,8 +513,11 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(m.display,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        m.display,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -437,13 +531,16 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Übergeben und verlassen?'),
-        content: Text('„${newOwner.display}" wird neuer Admin von „${l.name}". '
-            'Du verlässt die Liga; dein Team bleibt als verwaister Slot '
-            'bestehen.'),
+        content: Text(
+          '„${newOwner.display}" wird neuer Admin von „${l.name}". '
+          'Du verlässt die Liga; dein Team bleibt als verwaister Slot '
+          'bestehen.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Abbrechen')),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: scheme.error),
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -459,16 +556,23 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
           .transferAndLeaveLeague(l.id, newOwner.userId);
       ref.invalidate(myFantasyLeaguesProvider);
       navigator.popUntil((r) => r.isFirst);
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Adminrechte übergeben und Liga verlassen.')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Adminrechte übergeben und Liga verlassen.'),
+        ),
+      );
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
+        SnackBar(content: Text('Verlassen fehlgeschlagen: $e')),
+      );
     }
   }
 
   Future<void> _confirmRollover(
-      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+    BuildContext context,
+    WidgetRef ref,
+    FantasyLeague l,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final confirmed = await showDialog<bool>(
@@ -476,10 +580,11 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: Text('Saison ${l.season + 1}/${(l.season + 2) % 100} starten?'),
         content: const Text(
-            'Der komplette Kader bleibt erhalten. Der bisherige Draft-Verlauf '
-            'und offene Waiver-Anträge werden zurückgesetzt. Danach kannst du '
-            'den neuen U20-Draft starten. Das kann nicht rückgängig gemacht '
-            'werden.'),
+          'Der komplette Kader bleibt erhalten. Der bisherige Draft-Verlauf '
+          'und offene Waiver-Anträge werden zurückgesetzt. Danach kannst du '
+          'den neuen U20-Draft starten. Das kann nicht rückgängig gemacht '
+          'werden.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -498,36 +603,88 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       ref.invalidate(draftLeagueProvider(l.id));
       ref.invalidate(myFantasyLeaguesProvider);
       navigator.pop();
-      messenger.showSnackBar(SnackBar(
+      messenger.showSnackBar(
+        SnackBar(
           content: Text(
-              'Saison ${l.season + 1}/${(l.season + 2) % 100} gestartet — '
-              'jetzt den U20-Draft starten.')));
+            'Saison ${l.season + 1}/${(l.season + 2) % 100} gestartet — '
+            'jetzt den U20-Draft starten.',
+          ),
+        ),
+      );
     } catch (e) {
-      messenger
-          .showSnackBar(SnackBar(content: Text('Rollover fehlgeschlagen: $e')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Rollover fehlgeschlagen: $e')),
+      );
     }
   }
 
-  /// Schaltet das ligainterne Tippspiel ein (die eigentliche Einrichtung läuft
-  /// dann über den Button auf der Übersicht).
-  Future<void> _enableTip(
-      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+  /// Schaltet das ligainterne Tippspiel ein oder aus.
+  ///
+  /// **Beides erst nach Rückfrage.** Vorher schaltete der Fingertipp sofort
+  /// ein — an einer Zeile, die mit ihrem Pfeil rechts aussah, als führe sie
+  /// irgendwohin. Die Zeile verschwand danach, und damit war die Entscheidung
+  /// unumkehrbar, obwohl nichts daran unumkehrbar sein muss.
+  ///
+  /// Eingeschaltet wird nur die **Option**: Die eigentliche Einrichtung läuft
+  /// über die Übersicht. Das steht so im Text, sonst sucht man danach.
+  Future<void> _tippspielUmschalten(
+    BuildContext context,
+    WidgetRef ref,
+    FantasyLeague l,
+    bool an,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(an ? 'Tippspiel einschalten?' : 'Tippspiel ausschalten?'),
+        content: Text(
+          an
+              ? 'Auf der Übersicht erscheint dann eine Zeile, über die du das '
+                    'ligainterne Tippspiel einrichtest. Eingerichtet wird dabei '
+                    'noch nichts — und ausschalten kannst du es wieder, solange '
+                    'keine Runde steht.'
+              : 'Die Zeile verschwindet von der Übersicht. Es geht nichts '
+                    'verloren: Eingerichtet ist noch kein Tippspiel, und '
+                    'einschalten kannst du es jederzeit wieder.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(an ? 'Einschalten' : 'Ausschalten'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).setTipEnabled(l.id, true);
+      await ref.read(fantasyLeagueRepositoryProvider).setTipEnabled(l.id, an);
       ref.invalidate(draftLeagueProvider(l.id));
       ref.invalidate(myFantasyLeaguesProvider);
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Tippspiel eingeschaltet — auf der Übersicht kannst '
-              'du es einrichten.')));
-    } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Fehlgeschlagen: $e')));
+        SnackBar(
+          content: Text(
+            an
+                ? 'Tippspiel eingeschaltet — auf der Übersicht kannst du es '
+                      'einrichten.'
+                : 'Tippspiel ausgeschaltet.',
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, FantasyLeague l) async {
+    BuildContext context,
+    WidgetRef ref,
+    FantasyLeague l,
+  ) async {
     final scheme = Theme.of(context).colorScheme;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -541,8 +698,9 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         builder: (ctx) => AlertDialog(
           title: const Text('Liga löschen?'),
           content: Text(
-              '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
-              'gelöscht. Das kann nicht rückgängig gemacht werden.'),
+            '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
+            'gelöscht. Das kann nicht rückgängig gemacht werden.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -566,9 +724,10 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         builder: (ctx) => AlertDialog(
           title: const Text('Liga löschen?'),
           content: Text(
-              '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
-              'gelöscht.\n\nZur Liga gehört das Tippspiel „${tipRound.name}". '
-              'Behältst du es, bleibt es als eigenständige Tipprunde bestehen.'),
+            '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
+            'gelöscht.\n\nZur Liga gehört das Tippspiel „${tipRound.name}". '
+            'Behältst du es, bleibt es als eigenständige Tipprunde bestehen.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop('cancel'),
@@ -603,13 +762,17 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         ref.invalidate(myRoundsProvider);
       }
       navigator.popUntil((r) => r.isFirst);
-      messenger.showSnackBar(SnackBar(
-          content: Text(alsoDeleteTip
-              ? 'Liga und Tippspiel gelöscht.'
-              : 'Liga gelöscht.')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            alsoDeleteTip ? 'Liga und Tippspiel gelöscht.' : 'Liga gelöscht.',
+          ),
+        ),
+      );
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Löschen fehlgeschlagen: $e')));
+        SnackBar(content: Text('Löschen fehlgeschlagen: $e')),
+      );
     }
   }
 }
@@ -662,7 +825,9 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).updateDraftSettings(
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .updateDraftSettings(
             widget.league.id,
             pickTime: _pickTime,
             roster: widget.league.roster.withRounds(_rounds),
@@ -677,7 +842,8 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
       navigator.pop();
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+        SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -705,13 +871,15 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                           DropdownMenuItem(
                             value: t,
                             child: Text(
-                                '${t.label} · ${t.isLive ? 'Live' : 'Slow'}'),
+                              '${t.label} · ${t.isLive ? 'Live' : 'Slow'}',
+                            ),
                           ),
                       ],
                       onChanged: (t) => setState(() => _pickTime = t!),
                     )
                   : _ReadValue(
-                      '${_pickTime.label} · ${_pickTime.isLive ? 'Live' : 'Slow'}'),
+                      '${_pickTime.label} · ${_pickTime.isLive ? 'Live' : 'Slow'}',
+                    ),
             ),
             const Divider(height: 1),
             _SettingRow(
@@ -724,7 +892,8 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                       value: _rounds,
                       min: _minRounds,
                       max: _maxRounds,
-                      onChanged: (v) => setState(() => _rounds = v))
+                      onChanged: (v) => setState(() => _rounds = v),
+                    )
                   : _ReadValue('$_rounds'),
             ),
           ]),
@@ -743,7 +912,8 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                         value: _u20Rounds,
                         min: _minU20Rounds,
                         max: _maxU20Rounds,
-                        onChanged: (v) => setState(() => _u20Rounds = v))
+                        onChanged: (v) => setState(() => _u20Rounds = v),
+                      )
                     : _ReadValue('$_u20Rounds'),
               ),
             ]),
@@ -770,8 +940,11 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                 trailing: const _Chevron(),
                 enabled: editable,
                 onTap: editable
-                    ? () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => DraftOrderPage(league: widget.league)))
+                    ? () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DraftOrderPage(league: widget.league),
+                        ),
+                      )
                     : null,
               ),
             ],
@@ -784,21 +957,24 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
               secondary: Icon(Icons.nightlight_outlined),
               title: const Text('Slow-Draft-Pause'),
               subtitle: const Text(
-                  'In diesem Zeitfenster (z. B. nachts) wird kein Pick '
-                  'automatisch gesetzt.'),
+                'In diesem Zeitfenster (z. B. nachts) wird kein Pick '
+                'automatisch gesetzt.',
+              ),
             ),
             if (_pauseOn) ...[
               const Divider(height: 1),
               _TimeRow(
-                  label: 'Von',
-                  time: _pauseStart,
-                  enabled: editable,
-                  onPick: (t) => setState(() => _pauseStart = t)),
+                label: 'Von',
+                time: _pauseStart,
+                enabled: editable,
+                onPick: (t) => setState(() => _pauseStart = t),
+              ),
               _TimeRow(
-                  label: 'Bis',
-                  time: _pauseEnd,
-                  enabled: editable,
-                  onPick: (t) => setState(() => _pauseEnd = t)),
+                label: 'Bis',
+                time: _pauseEnd,
+                enabled: editable,
+                onPick: (t) => setState(() => _pauseEnd = t),
+              ),
             ],
           ]),
           if (editable) ...[
@@ -851,7 +1027,9 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).updateLeagueSettings(
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .updateLeagueSettings(
             widget.league.id,
             maxTeams: _limitTeams ? _maxTeams : null,
           );
@@ -861,7 +1039,8 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
       navigator.pop();
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+        SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -886,13 +1065,16 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
           _CardColumn([
             SwitchListTile(
               value: _limitTeams,
-              onChanged:
-                  editable ? (v) => setState(() => _limitTeams = v) : null,
+              onChanged: editable
+                  ? (v) => setState(() => _limitTeams = v)
+                  : null,
               secondary: Icon(Icons.groups),
               title: const Text('Teilnehmer begrenzen'),
-              subtitle: Text(_limitTeams
-                  ? 'Höchstens $_maxTeams Teilnehmer'
-                  : 'Standard: max. 18 Teilnehmer'),
+              subtitle: Text(
+                _limitTeams
+                    ? 'Höchstens $_maxTeams Teilnehmer'
+                    : 'Standard: max. 18 Teilnehmer',
+              ),
             ),
             if (_limitTeams) ...[
               const Divider(height: 1),
@@ -905,17 +1087,20 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
                         value: _maxTeams,
                         min: untergrenze,
                         max: _maxTeamsCap,
-                        onChanged: (v) => setState(() => _maxTeams = v))
+                        onChanged: (v) => setState(() => _maxTeams = v),
+                      )
                     : _ReadValue('$_maxTeams'),
               ),
               if (editable && untergrenze > _minTeams) ...[
                 const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                  child: _Note(mitglieder == 1
-                      ? 'Ein Team ist schon in der Liga — darunter geht es nicht.'
-                      : '$mitglieder Teams sind schon in der Liga — darunter '
-                          'geht es nicht.'),
+                  child: _Note(
+                    mitglieder == 1
+                        ? 'Ein Team ist schon in der Liga — darunter geht es nicht.'
+                        : '$mitglieder Teams sind schon in der Liga — darunter '
+                              'geht es nicht.',
+                  ),
                 ),
               ],
             ],
@@ -923,15 +1108,16 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
           const SizedBox(height: 8),
           _CardColumn([
             _SettingRow(
-                icon: Icons.auto_awesome,
-                label: 'Modus',
-                child: _ReadValue(l.mode.label)),
+              icon: Icons.auto_awesome,
+              label: 'Modus',
+              child: _ReadValue(l.mode.label),
+            ),
             const Divider(height: 1),
             _SettingRow(
-                icon: Icons.calendar_today,
-                label: 'Saison',
-                child:
-                    _ReadValue('${l.season}/${(l.season + 1) % 100}')),
+              icon: Icons.calendar_today,
+              label: 'Saison',
+              child: _ReadValue('${l.season}/${(l.season + 1) % 100}'),
+            ),
           ]),
           if (editable) ...[
             const SizedBox(height: 20),
@@ -974,7 +1160,10 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
     final l = widget.league;
     _teams = (l.playoffTeams ?? 4).clamp(_minTeams, _maxTeams);
     _weeks = l.playoffWeeks ?? 1;
-    _offset = (l.tradeDeadlineOffset ?? _minOffset).clamp(_minOffset, _maxOffset);
+    _offset = (l.tradeDeadlineOffset ?? _minOffset).clamp(
+      _minOffset,
+      _maxOffset,
+    );
   }
 
   Future<void> _save() async {
@@ -982,7 +1171,9 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).updatePlayoffSettings(
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .updatePlayoffSettings(
             widget.league.id,
             teams: _teams,
             weeks: _weeks,
@@ -994,7 +1185,8 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
       navigator.pop();
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+        SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1004,7 +1196,10 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
   Widget build(BuildContext context) {
     final editable = _editable(ref, widget.league);
     final plan = computePlayoffPlan(
-        teams: _teams, weeksPerRound: _weeks, tradeDeadlineOffset: _offset);
+      teams: _teams,
+      weeksPerRound: _weeks,
+      tradeDeadlineOffset: _offset,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Playoff-Einstellungen')),
@@ -1027,7 +1222,8 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
                       value: _teams,
                       min: _minTeams,
                       max: _maxTeams,
-                      onChanged: (v) => setState(() => _teams = v))
+                      onChanged: (v) => setState(() => _teams = v),
+                    )
                   : _ReadValue('$_teams'),
             ),
             const Divider(height: 1),
@@ -1053,14 +1249,17 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
                       value: _offset,
                       min: _minOffset,
                       max: _maxOffset,
-                      onChanged: (v) => setState(() => _offset = v))
+                      onChanged: (v) => setState(() => _offset = v),
+                    )
                   : _ReadValue('$_offset'),
             ),
           ]),
           if (editable) ...[
             const SizedBox(height: 20),
             _SaveButton(
-                saving: _saving, onPressed: plan.isValid ? _save : null),
+              saving: _saving,
+              onPressed: plan.isValid ? _save : null,
+            ),
           ],
         ],
       ),
@@ -1078,25 +1277,29 @@ class _PlayoffSummary extends StatelessWidget {
     const accent = Color(0xFFFFC83D); // MatchUp-Gold für Playoffs
     final scheme = Theme.of(context).colorScheme;
     if (!plan.isValid) {
-      return _Note('Diese Kombination passt nicht in die ${plan.totalMatchdays} '
-          'Spieltage — weniger Teams, kürzere Partien oder eine frühere '
-          'Deadline wählen.');
+      return _Note(
+        'Diese Kombination passt nicht in die ${plan.totalMatchdays} '
+        'Spieltage — weniger Teams, kürzere Partien oder eine frühere '
+        'Deadline wählen.',
+      );
     }
     Widget line(IconData icon, String text, {bool strong = false}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: accent),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(text,
-                    style: strong
-                        ? const TextStyle(fontWeight: FontWeight.bold)
-                        : null),
-              ),
-            ],
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: strong
+                  ? const TextStyle(fontWeight: FontWeight.bold)
+                  : null,
+            ),
           ),
-        );
+        ],
+      ),
+    );
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1107,7 +1310,9 @@ class _PlayoffSummary extends StatelessWidget {
           stops: const [0.0, 0.75],
           colors: [
             Color.alphaBlend(
-                accent.withValues(alpha: 0.12), Theme.of(context).cardColor),
+              accent.withValues(alpha: 0.12),
+              Theme.of(context).cardColor,
+            ),
             Theme.of(context).cardColor,
           ],
         ),
@@ -1116,25 +1321,38 @@ class _PlayoffSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Playoff-Plan',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'Playoff-Plan',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          line(Icons.account_tree_outlined,
-              '${plan.rounds} Runden × ${plan.weeksPerRound == 2 ? '2 Wochen' : '1 Woche'}'),
-          line(Icons.play_arrow, 'Playoffs starten an Spieltag ${plan.startRound}',
-              strong: true),
-          line(Icons.swap_horiz,
-              'Trade-Deadline: Spieltag ${plan.tradeDeadlineRound}'),
+          line(
+            Icons.account_tree_outlined,
+            '${plan.rounds} Runden × ${plan.weeksPerRound == 2 ? '2 Wochen' : '1 Woche'}',
+          ),
+          line(
+            Icons.play_arrow,
+            'Playoffs starten an Spieltag ${plan.startRound}',
+            strong: true,
+          ),
+          line(
+            Icons.swap_horiz,
+            'Trade-Deadline: Spieltag ${plan.tradeDeadlineRound}',
+          ),
           if (plan.topSeedBye)
-            line(Icons.workspace_premium_outlined,
-                'Platz 1: Freilos (Bye Week), eine Runde weiter'),
+            line(
+              Icons.workspace_premium_outlined,
+              'Platz 1: Freilos (Bye Week), eine Runde weiter',
+            ),
           const SizedBox(height: 4),
-          Text('Reguläre Saison: ${plan.totalMatchdays} Spieltage',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant)),
+          Text(
+            'Reguläre Saison: ${plan.totalMatchdays} Spieltage',
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -1166,24 +1384,29 @@ class _DraftOrderPageState extends ConsumerState<DraftOrderPage> {
     final navigator = Navigator.of(context);
     try {
       final repo = ref.read(fantasyLeagueRepositoryProvider);
-      await repo.setDraftOrder(
-          widget.league.id, [for (final m in order) m.userId]);
+      await repo.setDraftOrder(widget.league.id, [
+        for (final m in order) m.userId,
+      ]);
       // Festgelegte Reihenfolge im Liga-Chat bekanntgeben (wie beim Mischen).
       final text = [
-        for (final (i, m) in order.indexed) '${i + 1}. ${m.display}'
+        for (final (i, m) in order.indexed) '${i + 1}. ${m.display}',
       ].join('\n');
       try {
         await repo.sendMessage(
-            widget.league.id, '📋 Draft-Reihenfolge festgelegt:\n$text');
+          widget.league.id,
+          '📋 Draft-Reihenfolge festgelegt:\n$text',
+        );
       } catch (_) {}
       ref.invalidate(fantasyManagersProvider(widget.league.id));
       ref.invalidate(draftLeagueProvider(widget.league.id));
-      messenger
-          .showSnackBar(const SnackBar(content: Text('Reihenfolge gespeichert')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Reihenfolge gespeichert')),
+      );
       navigator.pop();
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+        SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1200,7 +1423,8 @@ class _DraftOrderPageState extends ConsumerState<DraftOrderPage> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (managers) {
-          _order ??= [...managers]..sort((a, b) {
+          _order ??= [...managers]
+            ..sort((a, b) {
               final pa = a.draftPosition ?? 1 << 30;
               final pb = b.draftPosition ?? 1 << 30;
               return pa != pb
@@ -1233,10 +1457,13 @@ class _DraftOrderPageState extends ConsumerState<DraftOrderPage> {
                         key: ValueKey(m.userId),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor:
-                                scheme.primary.withValues(alpha: 0.15),
-                            child: Text('${i + 1}',
-                                style: TextStyle(color: scheme.primary)),
+                            backgroundColor: scheme.primary.withValues(
+                              alpha: 0.15,
+                            ),
+                            child: Text(
+                              '${i + 1}',
+                              style: TextStyle(color: scheme.primary),
+                            ),
                           ),
                           title: Text(m.display),
                           trailing: const Icon(Icons.drag_handle),
@@ -1256,7 +1483,8 @@ class _DraftOrderPageState extends ConsumerState<DraftOrderPage> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.check),
               label: const Text('Speichern'),
             )
@@ -1281,9 +1509,11 @@ class _LockNote extends StatelessWidget {
     final isOwner = ref.watch(currentUserProvider)?.id == league.createdBy;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: _Note(isOwner
-          ? 'Der Draft ist gestartet — die Einstellungen sind jetzt fixiert.'
-          : 'Nur der Ersteller kann die Einstellungen ändern.'),
+      child: _Note(
+        isOwner
+            ? 'Der Draft ist gestartet — die Einstellungen sind jetzt fixiert.'
+            : 'Nur der Ersteller kann die Einstellungen ändern.',
+      ),
     );
   }
 }
@@ -1301,7 +1531,8 @@ class _SaveButton extends StatelessWidget {
           ? const SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2))
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : const Icon(Icons.check),
       label: const Text('Speichern'),
     );
@@ -1447,7 +1678,6 @@ const _grpRegeln = Color(0xFFFFC83D);
 const _grpAdmin = Color(0xFF5B9DF9);
 const _grpGefahr = MatchUpColors.red;
 
-
 /// **Kader-Limits je Position.**
 ///
 /// Nicht die Formation (wie viele in der *Elf* stehen dürfen — das sind
@@ -1507,26 +1737,25 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
   bool get _irgendeins => _limit.values.any((v) => v != null);
 
   RosterConfig get _neu => RosterConfig(
-        gk: _r.gk,
-        def: _r.def,
-        mid: _r.mid,
-        fwd: _r.fwd,
-        bench: _r.bench,
-        defMin: _r.defMin,
-        defMax: _r.defMax,
-        midMin: _r.midMin,
-        midMax: _r.midMax,
-        fwdMin: _r.fwdMin,
-        fwdMax: _r.fwdMax,
-        maxGk: _limit[PlayerPosition.gk],
-        maxDef: _limit[PlayerPosition.def],
-        maxMid: _limit[PlayerPosition.mid],
-        maxFwd: _limit[PlayerPosition.fwd],
-      );
+    gk: _r.gk,
+    def: _r.def,
+    mid: _r.mid,
+    fwd: _r.fwd,
+    bench: _r.bench,
+    defMin: _r.defMin,
+    defMax: _r.defMax,
+    midMin: _r.midMin,
+    midMax: _r.midMax,
+    fwdMin: _r.fwdMin,
+    fwdMax: _r.fwdMax,
+    maxGk: _limit[PlayerPosition.gk],
+    maxDef: _limit[PlayerPosition.def],
+    maxMid: _limit[PlayerPosition.mid],
+    maxFwd: _limit[PlayerPosition.fwd],
+  );
 
   /// Beides kommt aus dem Editor — er trägt die Regel, nicht dieser Schirm.
-  bool get _reichtFuerKader =>
-      KaderLimitsEditor.reichtFuerKader(_r, _limit);
+  bool get _reichtFuerKader => KaderLimitsEditor.reichtFuerKader(_r, _limit);
 
   String _hinweisText() => KaderLimitsEditor.hinweisText(_r, _limit);
 
@@ -1544,7 +1773,8 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
       navigator.pop();
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+        SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1557,7 +1787,9 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
   int _schonDarueber() {
     if (!_irgendeins) return 0;
     final pool = ref.watch(playerPoolProvider).valueOrNull;
-    final roster = ref.watch(leagueRosterProvider(widget.league.id)).valueOrNull;
+    final roster = ref
+        .watch(leagueRosterProvider(widget.league.id))
+        .valueOrNull;
     if (pool == null || roster == null) return 0;
     final posOf = {for (final p in pool) p.id: p.position};
     final proManager = <String, Map<PlayerPosition, int>>{};
@@ -1570,8 +1802,11 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
     // Offene Positionen (`null`) zählen nicht mit — dort gibt es nichts zu
     // reißen.
     return proManager.values
-        .where((m) => _limit.entries.any(
-            (l) => l.value != null && (m[l.key] ?? 0) > l.value!))
+        .where(
+          (m) => _limit.entries.any(
+            (l) => l.value != null && (m[l.key] ?? 0) > l.value!,
+          ),
+        )
         .length;
   }
 
@@ -1590,10 +1825,9 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
               'Höchstens so viele Spieler einer Position im Kader. Gilt beim '
               'Draften, in der Free Agency, bei Waivern und Trades — nicht für '
               'die Aufstellung, die regelt die Formation.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ),
           // **Derselbe Editor wie beim Erstellen der Liga.** Er trägt die
@@ -1619,9 +1853,9 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
               gut: true,
               text: darueber == 1
                   ? 'Ein Kader liegt schon über einem Limit. Er behält seine '
-                      'Spieler — es kommen nur keine mehr dazu.'
+                        'Spieler — es kommen nur keine mehr dazu.'
                   : '$darueber Kader liegen schon über einem Limit. Sie '
-                      'behalten ihre Spieler — es kommen nur keine mehr dazu.',
+                        'behalten ihre Spieler — es kommen nur keine mehr dazu.',
             ),
           ],
           const SizedBox(height: 20),
@@ -1648,15 +1882,19 @@ class _Hinweis extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(gut ? Icons.info_outline : Icons.error_outline,
-            size: 16, color: farbe),
+        Icon(
+          gut ? Icons.info_outline : Icons.error_outline,
+          size: 16,
+          color: farbe,
+        ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(text,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: farbe)),
+          child: Text(
+            text,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: farbe),
+          ),
         ),
       ],
     );
@@ -1677,11 +1915,12 @@ class _CardColumn extends StatelessWidget {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow(
-      {required this.icon,
-      required this.label,
-      required this.child,
-      this.subtitle});
+  const _SettingRow({
+    required this.icon,
+    required this.label,
+    required this.child,
+    this.subtitle,
+  });
 
   final IconData icon;
   final String label;
@@ -1710,11 +1949,12 @@ class _ReadValue extends StatelessWidget {
 }
 
 class _TimeRow extends StatelessWidget {
-  const _TimeRow(
-      {required this.label,
-      required this.time,
-      required this.enabled,
-      required this.onPick});
+  const _TimeRow({
+    required this.label,
+    required this.time,
+    required this.enabled,
+    required this.onPick,
+  });
 
   final String label;
   final TimeOfDay time;
@@ -1732,13 +1972,17 @@ class _TimeRow extends StatelessWidget {
       trailing: OutlinedButton(
         onPressed: enabled
             ? () async {
-                final picked =
-                    await showTimePicker(context: context, initialTime: time);
+                final picked = await showTimePicker(
+                  context: context,
+                  initialTime: time,
+                );
                 if (picked != null) onPick(picked);
               }
             : null,
-        child: Text(_fmt(time),
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        child: Text(
+          _fmt(time),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -1781,7 +2025,8 @@ class _InviteBanner extends StatelessWidget {
           await Clipboard.setData(ClipboardData(text: code));
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Einladungscode kopiert')));
+              const SnackBar(content: Text('Einladungscode kopiert')),
+            );
           }
         },
         child: Padding(
@@ -1794,14 +2039,20 @@ class _InviteBanner extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Einladungscode',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant)),
-                    Text(code,
-                        style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2)),
+                    Text(
+                      'Einladungscode',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      code,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
                   ],
                 ),
               ),

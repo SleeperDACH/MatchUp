@@ -2377,6 +2377,54 @@ Angesehen über `test/free_agency_vorschau_test.dart`: die drei Zustände einer
 Zeile nebeneinander (Waiver, Spiel läuft, frei), die es auf dem Gerät nie
 gleichzeitig gibt. Gerechnet wird in `test/free_agent_sperre_test.dart`.
 
+### Der Tippspiel-Schalter fragt nach — und geht in beide Richtungen
+
+Gemeldet: *„Wenn man in den Ligaeinstellungen das Tippspiel aktiviert, wird es
+direkt gemacht ohne Nachfragen. Außerdem fehlt die Option, es zu
+deaktivieren."*
+
+Beides war **derselbe Fehler**, einmal von vorn und einmal von hinten gesehen:
+Die Zeile stand unter der Bedingung `!l.tipEnabled`, schaltete beim Tippen
+sofort um — und verschwand damit. Ein Fingertipp daneben war endgültig, ohne
+dass irgendetwas daran endgültig sein müsste. Dazu trug sie ein Chevron und
+versprach damit, irgendwohin zu führen, statt zu handeln.
+
+Jetzt: Rückfrage in **beide** Richtungen, und die Zeile bleibt stehen.
+
+**Der dritte Zustand ist der interessante.** Die Übersicht zeigt das Tippspiel,
+sobald es **eine Runde gibt** — `if (league.tipEnabled || tipRound != null)`.
+Steht die Runde, bewirkt der Merker also gar nichts mehr. Ein Schalter, der
+dann noch dazustünde, wäre schlimmer als keiner: Er würde sich bedienen lassen
+und nichts ändern. Deshalb wird die Zeile dort zur **Auskunft** — gedämpft,
+ohne Chevron, mit dem Namen der Runde und dem Hinweis, dass es nur im Tippspiel
+selbst endet (dort gibt es „Tippspiel löschen" in `tip_settings_sheet.dart`).
+
+| Zustand | Zeile | Wirkung |
+|---|---|---|
+| aus | „einschalten" | Rückfrage, dann erscheint die Zeile auf der Übersicht |
+| an, keine Runde | „ausschalten" | Rückfrage, dann verschwindet sie wieder |
+| Runde steht | „läuft" (gedämpft) | keine — der Weg führt ins Tippspiel |
+
+Geprüft in `test/tippspiel_schalter_test.dart` mit einem Repository, das sich
+die Aufrufe merkt: **vor** der Antwort darf nichts geschrieben werden,
+Abbrechen schreibt gar nichts, und im dritten Zustand wird kein Schalter
+angeboten. Ohne die Korrektur fallen alle drei.
+
+Zwei Fallen, die dabei Zeit gekostet haben:
+
+- **`SupabaseClient(...)` im Test hinterlässt einen Timer** (`startAutoRefresh`)
+  und der Test scheitert am Ende an „A Timer is still pending". Mit
+  `authOptions: AuthClientOptions(autoRefreshToken: false)` ist Ruhe.
+- **`scrollUntilVisible` läuft endlos**, wenn der Text nie auftaucht — der Test
+  hängt dann, statt zu scheitern. Und die Tippspiel-Gruppe sitzt so weit unten,
+  dass sie auf einem Telefonschirm **gar nicht gebaut** ist; `find.text` findet
+  nur Gebautes. Der Test setzt deshalb einen 2400 Punkte hohen Schirm.
+
+Die beiden Vorschauen dazu zeigen die Einstellungen erstmals **vollständig**
+(`fantasy_einstellungen_tippspiel_an.png`, `…_laeuft.png`) — die ältere
+Vorschau reicht nur bis „Playoff-Einstellungen". Ein Golden von der `ListTile`
+allein war übrigens nutzlos: Sie malt keinen Grund, das Bild war weiß auf weiß.
+
 ### Transfers — was auf mich wartet, und was die Liga macht
 
 Beides lag vorher verstreut: eingehende Trade-Angebote im Trade-Schirm, eigene
