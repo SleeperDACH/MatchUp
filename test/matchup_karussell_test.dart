@@ -12,104 +12,185 @@ import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import 'support/schrift.dart';
 
-/// **Das Karussell darf beim Nachladen nicht zurückspringen.**
+/// **Das Karussell muss stehen bleiben, wo man ist.**
 ///
-/// Gemeldet: „Wenn man zwischen den MatchUps hin und her wischt und dann nach
-/// unten geht oder auf ein Spielerprofil, schmeißt es einen zurück auf das
-/// erste."
+/// Gemeldet: „Ich gehe auf das dritte MatchUp, dann runter auf ein
+/// Spielerprofil, wieder hoch — der Strich ist noch auf dem dritten, angezeigt
+/// wird aber das erste. Wische ich weiter, komme ich zum zweiten."
 ///
-/// Die Ursache war ein früher `return` auf `isLoading`: Er ersetzt den ganzen
-/// Teilbaum, der `PageView` wird abgebaut, und beim Wiederaufbau beginnt der
-/// Controller wieder bei `initialPage`. Ausgelöst hat das **jede**
-/// Auffrischung — und der Spielerpool wird nachgeladen, sobald ein Profil
-/// aufgeht.
+/// Genau diese Beschreibung nennt die Ursache: Der Punkt unter dem Karussell
+/// hängt an `_bannerPage` im State und blieb richtig, **der `PageView` selbst**
+/// begann wieder bei `initialPage`. Sein Zustand lebt nicht im State, sondern
+/// in der Scroll-Position — und die stirbt, wenn das Widget aus dem Sichtfeld
+/// scrollt und abgebaut wird.
+const _namen = [
+  'SFV03', 'JojoAcz44', 'ana', 'Majusch', 'tamara', 'Eric', 'Marc',
+  'Benni030', 'lennartruepke', 'Leonardo', 'Spitzenreiter04', 'Schulle8',
+  'julius_eggy', 'hollmannleonard', 'anhm05', 'Kevin', 'Lars', 'Tobi',
+];
+
+Widget _rahmen() {
+  final liga = FantasyLeague(
+    id: 'l1',
+    name: 'MatchUp! #1',
+    mode: FantasyMode.liga,
+    season: 2026,
+    pickTime: DraftPickTime.h2,
+    scoring: const FantasyScoringRules(),
+    roster: RosterConfig.standard,
+    inviteCode: 'ABC',
+    draftStatus: DraftStatus.done,
+    createdBy: 'm0',
+    maxTeams: 18,
+    tipEnabled: true,
+  );
+  final manager = [
+    for (var i = 0; i < _namen.length; i++)
+      FantasyManager(userId: 'm$i', username: _namen[i], draftPosition: i + 1),
+  ];
+
+  // **Echte Kader, damit die Liste echt lang wird.** Unter dem Karussell
+  // stehen die Aufstellungen der gewischten Paarung — mit leeren Kadern ist
+  // die Liste nur 33 Punkte länger als das Fenster, und das Karussell fällt
+  // gar nicht erst aus dem Vorrat des `ListView`. Genau deshalb trifft der
+  // Fehler auf dem Gerät zu: Dort stehen dort zwei mal elf Spieler.
+  final pool = <FantasyPlayer>[];
+  final roster = <RosterEntry>[];
+  for (var m = 0; m < _namen.length; m++) {
+    for (var i = 0; i < 11; i++) {
+      final pos = i == 0
+          ? PlayerPosition.gk
+          : i < 5
+              ? PlayerPosition.def
+              : i < 9
+                  ? PlayerPosition.mid
+                  : PlayerPosition.fwd;
+      final id = 'm$m-p$i';
+      pool.add(FantasyPlayer(
+        id: id,
+        name: 'Spieler $m-$i',
+        position: pos,
+        club: 'FC Test',
+        birthDate: DateTime(1999),
+        nationality: 'DE',
+      ));
+      roster.add(
+          RosterEntry(managerId: 'm$m', playerId: id, acquiredVia: 'draft'));
+    }
+  }
+  final lineups = [
+    for (var m = 0; m < _namen.length; m++)
+      FantasyLineup(
+        managerId: 'm$m',
+        round: 1,
+        playerIds: {for (var i = 0; i < 11; i++) 'm$m-p$i'},
+      ),
+  ];
+  return ProviderScope(
+    overrides: [
+      currentUserProvider.overrideWith((ref) => User(
+            id: 'm0',
+            appMetadata: const {},
+            userMetadata: const {},
+            aud: 'authenticated',
+            createdAt: DateTime(2026).toIso8601String(),
+          )),
+      fantasyManagersProvider.overrideWith((ref, id) => Stream.value(manager)),
+      playerPoolProvider.overrideWith((ref) async => pool),
+      leagueRosterProvider.overrideWith((ref, id) => Stream.value(roster)),
+      leagueLineupsProvider.overrideWith((ref, id) => Stream.value(lineups)),
+      clubIconsProvider.overrideWith((ref) async => const {}),
+      seasonStatsProvider.overrideWith((ref) async => const {}),
+      roundStatsProvider.overrideWith((ref, r) async => const {}),
+      fantasySeasonFixturesProvider.overrideWith((ref) async => const []),
+      fantasyCurrentRoundProvider.overrideWith((ref) async => 1),
+    ],
+    child: MaterialApp(
+      theme: buildAppTheme(),
+      home: Scaffold(body: MatchupsBody(league: liga)),
+    ),
+  );
+}
+
+int _seite(WidgetTester t) =>
+    (t.widget<PageView>(find.byType(PageView)).controller!.page ?? 0).round();
+
+Future<void> _aufbauen(WidgetTester tester, {required double hoehe}) async {
+  final vorher = AppConfig.supabaseInitialized;
+  AppConfig.supabaseInitialized = true;
+  addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+  tester.view.physicalSize = Size(402 * 3, hoehe * 3);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
+
+  await tester.pumpWidget(_rahmen());
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+}
+
 void main() {
   setUpAll(ladeSchrift);
 
-  testWidgets('nach einem Nachladen bleibt man auf demselben MatchUp',
+  testWidgets('nach Wegscrollen und Zurückscrollen steht dieselbe Paarung',
       (tester) async {
-    final vorher = AppConfig.supabaseInitialized;
-    AppConfig.supabaseInitialized = true;
-    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+    // **Der gemeldete Fall, echt nachgestellt.** Das Karussell sitzt in einem
+    // gewöhnlichen `ListView`; darunter stehen die Aufstellungen der
+    // gewischten Paarung. Scrollt man dorthin, verlässt das Karussell den
+    // 250-Punkte-Vorrat des `ListView` und wird abgebaut — beim
+    // Zurückscrollen entsteht eine neue Scroll-Position.
+    //
+    // Ohne `PageStorageKey` beginnt die bei `initialPage`: Der Punkt darunter
+    // blieb auf dem dritten MatchUp (er hängt an `_bannerPage` im State), die
+    // Karte sprang auf das erste, und ein Wisch nach rechts führte zum
+    // zweiten statt zum vierten.
+    await _aufbauen(tester, hoehe: 480);
 
-    tester.view.physicalSize = const Size(402 * 3, 900 * 3);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
+    final start = _seite(tester);
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.pumpAndSettle();
+    expect(_seite(tester), start + 2, reason: 'Das Wischen muss ankommen');
 
-    final liga = FantasyLeague(
-      id: 'l1',
-      name: 'MatchUp! #1',
-      mode: FantasyMode.liga,
-      season: 2026,
-      pickTime: DraftPickTime.h2,
-      scoring: const FantasyScoringRules(),
-      roster: RosterConfig.standard,
-      inviteCode: 'ABC',
-      draftStatus: DraftStatus.done,
-      createdBy: 'ich',
-      maxTeams: 4,
-      tipEnabled: true,
-    );
-
-    const manager = [
-      FantasyManager(userId: 'ich', username: 'SFV03', draftPosition: 1),
-      FantasyManager(userId: 'b', username: 'lennartruepke', draftPosition: 2),
-      FantasyManager(userId: 'c', username: 'tamara', draftPosition: 3),
-      FantasyManager(userId: 'd', username: 'Majusch', draftPosition: 4),
-    ];
-
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        currentUserProvider.overrideWith((ref) => User(
-              id: 'ich',
-              appMetadata: const {},
-              userMetadata: const {},
-              aud: 'authenticated',
-              createdAt: DateTime(2026).toIso8601String(),
-            )),
-        fantasyManagersProvider
-            .overrideWith((ref, id) => Stream.value(manager)),
-        playerPoolProvider.overrideWith((ref) async => const <FantasyPlayer>[]),
-        leagueRosterProvider.overrideWith((ref, id) => Stream.value(const [])),
-        leagueLineupsProvider.overrideWith((ref, id) => Stream.value(const [])),
-        clubIconsProvider.overrideWith((ref) async => const {}),
-        seasonStatsProvider.overrideWith((ref) async => const {}),
-        roundStatsProvider.overrideWith((ref, r) async => const {}),
-        fantasySeasonFixturesProvider.overrideWith((ref) async => const []),
-        fantasyCurrentRoundProvider.overrideWith((ref) async => 1),
-      ],
-      child: MaterialApp(
-        theme: buildAppTheme(),
-        home: Scaffold(body: MatchupsBody(league: liga)),
-      ),
-    ));
+    final liste = find.byType(ListView).first;
     for (var i = 0; i < 6; i++) {
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.drag(liste, const Offset(0, -400));
+      await tester.pumpAndSettle();
+    }
+    expect(find.byType(PageView), findsNothing,
+        reason: 'Vorbedingung: Das Karussell muss abgebaut worden sein');
+
+    for (var i = 0; i < 9; i++) {
+      await tester.drag(liste, const Offset(0, 400));
+      await tester.pumpAndSettle();
     }
 
-    final seite = find.byType(PageView);
-    expect(seite, findsOneWidget);
-    int aktuelleSeite() =>
-        (tester.widget<PageView>(seite).controller!.page ?? 0).round();
-    final start = aktuelleSeite();
+    expect(_seite(tester), start + 2,
+        reason: 'Nach dem Zurückscrollen muss dieselbe Paarung stehen');
+  });
 
-    // Einmal weiterwischen.
-    await tester.drag(seite, const Offset(-400, 0));
+  testWidgets('nach einem Nachladen bleibt man auf demselben MatchUp',
+      (tester) async {
+    // Der zweite Weg zum selben Fehler: Ein früher `return` auf `isLoading`
+    // ersetzt den ganzen Teilbaum. Der Spielerpool wird nachgeladen, sobald
+    // ein Profil aufgeht.
+    await _aufbauen(tester, hoehe: 900);
+
+    final start = _seite(tester);
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
     await tester.pumpAndSettle();
-    expect(aktuelleSeite(), start + 1,
-        reason: 'Das Wischen muss überhaupt ankommen');
+    expect(_seite(tester), start + 1);
 
-    // **Jetzt das Nachladen**, wie es ein geöffnetes Spielerprofil auslöst.
-    final container = ProviderScope.containerOf(
-        tester.element(find.byType(MatchupsBody)));
-    container.invalidate(playerPoolProvider);
+    ProviderScope.containerOf(tester.element(find.byType(MatchupsBody)))
+        .invalidate(playerPoolProvider);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     expect(find.byType(PageView), findsOneWidget,
         reason: 'Der PageView darf beim Nachladen nicht abgebaut werden');
-    expect(aktuelleSeite(), start + 1,
-        reason: 'Nach dem Nachladen muss dieselbe Paarung stehen');
+    expect(_seite(tester), start + 1);
   });
 }

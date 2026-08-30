@@ -294,6 +294,25 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                     // gehört aber zum Banner und steht deshalb dort.
                     height: kMatchupBannerHoehe,
                     child: PageView.builder(
+                      // **Ohne diesen Schlüssel merkt sich der PageView
+                      // nichts.** `PageController.keepPage` steht auf `true`,
+                      // aber `PageStorage` schreibt und liest nur, wenn im
+                      // Widget-Pfad ein `PageStorageKey` liegt — sonst ist die
+                      // Kennung leer und beide Aufrufe tun stillschweigend
+                      // nichts.
+                      //
+                      // Das Karussell sitzt in einem gewöhnlichen `ListView`.
+                      // Scrollt es weiter als dessen Vorrat (250 Punkte) aus
+                      // dem Sichtfeld, wird es abgebaut; beim Zurückscrollen
+                      // entsteht eine neue Scroll-Position, und ohne
+                      // gespeicherten Stand beginnt sie bei `initialPage`.
+                      //
+                      // Genau das war die Meldung: Der Punkt darunter blieb
+                      // auf dem dritten MatchUp (er hängt an `_bannerPage` im
+                      // State und überlebt), die Karte darüber sprang auf das
+                      // erste — und ein Wisch nach rechts führte deshalb zum
+                      // zweiten statt zum vierten.
+                      key: const PageStorageKey('matchup-karussell'),
                       controller: _pageController,
                       onPageChanged: (i) => setState(() => _bannerPage =
                           ((i - _loopBase) % ordered.length + ordered.length) %

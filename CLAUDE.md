@@ -2390,9 +2390,38 @@ beim Wiederverbinden ebenfalls kurz „lädt".
 **Maßgeblich ist, ob Daten da sind — nicht, ob gerade geladen wird.** Der
 Spinner erscheint jetzt nur beim allerersten Laden (`valueOrNull == null`);
 ein Nachladen über vorhandenen Daten sieht man gar nicht, und Riverpod liefert
-dabei den alten Stand mit (`valueOrNull` statt `requireValue`). Zusätzlich
-startet der Controller auf der gemerkten Seite, falls der Teilbaum doch einmal
-neu entsteht.
+dabei den alten Stand mit (`valueOrNull` statt `requireValue`).
+
+**Das war aber nur der halbe Fehler**, und die zweite Meldung sagte genau,
+welche Hälfte fehlte: *„Der Strich ist noch auf dem dritten MatchUp, angezeigt
+wird aber das erste, und ein Wisch nach rechts führt zum zweiten."* Ein Punkt,
+der bleibt, und eine Karte, die springt — das heißt: Der **State lebt weiter**
+(`_bannerPage` trägt den Punkt), nur die **Scroll-Position des `PageView`**
+ist neu.
+
+Die Ursache ist, wo das Karussell sitzt: in einem gewöhnlichen `ListView`,
+darunter die Aufstellungen der gewischten Paarung — zwei mal elf Spieler.
+Scrollt man dorthin, verlässt das Karussell den **250-Punkte-Vorrat**
+(`cacheExtent`) und wird abgebaut. Beim Zurückscrollen entsteht eine neue
+Scroll-Position.
+
+**`PageController.keepPage` steht auf `true` und tut trotzdem nichts** — das
+ist die Falle. `PageStorage` schreibt und liest nur, wenn im Widget-Pfad ein
+`PageStorageKey` liegt; fehlt er, ist die Kennung leer und beide Aufrufe
+kehren stillschweigend zurück. Die neue Position beginnt dann bei
+`initialPage`, also beim ersten MatchUp. Ein `PageStorageKey` am `PageView`
+behebt es.
+
+Gehalten von `test/matchup_karussell_test.dart`. Der Test brauchte drei
+Anläufe, und die ersten beiden waren **stumm grün** — ohne echte Kader ist die
+Liste nur 33 Punkte länger als das Fenster, das Karussell fällt gar nicht aus
+dem Vorrat, und der Fehler tritt nicht auf. Er stellt deshalb achtzehn
+Manager mit vollen Kadern und Aufstellungen, prüft die Vorbedingung
+ausdrücklich (`findsNothing`, das Karussell **muss** abgebaut worden sein) und
+ist gegengeprüft: **ohne den Schlüssel meldet er `100000` statt `100002`.**
+
+Die Lehre für den Testbau: Eine Vorbedingung, die man nicht prüft, ist die
+Stelle, an der ein Test grün wird, ohne etwas zu zeigen.
 
 **Die Regel darüber hinaus:** Ein `isLoading`-Zweig, der den Schirm ersetzt,
 ist nur beim Erstaufbau richtig. Danach wirft er jeden Zustand weg, den der
