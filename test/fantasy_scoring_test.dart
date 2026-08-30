@@ -18,8 +18,14 @@ void main() {
   // Implementierungen derselben Punktevergabe müssen identisch rechnen.
   group('scorePlayer (Voll-Advanced, Referenz aus dem TS-Modul)', () {
     test('Einsatzstufen: exakte Werte je Minuten', () {
-      double m(int min) =>
-          scorePlayer(PlayerMatchStats(minutes: min), PlayerPosition.mid);
+      // **`goalsConceded: 1` isoliert die Einsatzstufe.** Seit das
+      // Mittelfeld 4 Punkte für die Null hinten bekommt, bringt ein Datensatz
+      // ohne Gegentor ab 60 Minuten zusätzlich diesen Bonus — der Test würde
+      // dann nicht mehr messen, was sein Name sagt. Ein Gegentor ist für das
+      // Mittelfeld selbst mit 0 bewertet, stört also nichts.
+      double m(int min) => scorePlayer(
+          PlayerMatchStats(minutes: min, goalsConceded: 1),
+          PlayerPosition.mid);
       expect(m(0), 0);
       expect(m(10), 2);
       expect(m(45), 4);
@@ -27,11 +33,22 @@ void main() {
       expect(m(90), 10);
     });
 
-    test('MID: 90 Min + 1 Tor = 26', () {
+    test('MID: 90 Min + 1 Tor = 25', () {
       expect(
-          scorePlayer(const PlayerMatchStats(minutes: 90, goals: 1),
+          scorePlayer(
+              const PlayerMatchStats(
+                  minutes: 90, goals: 1, goalsConceded: 1),
               PlayerPosition.mid),
-          26);
+          25);
+    });
+
+    test('MID bekommt 4 für die Null hinten', () {
+      // Neu: Vorher ging das Mittelfeld leer aus, obwohl ein defensiver
+      // Sechser sie mit erarbeitet. Abwehr und Torwart bekommen weiter 12.
+      const s = PlayerMatchStats(minutes: 90, goalsConceded: 0);
+      expect(scorePlayer(s, PlayerPosition.mid), 14, reason: '10 + 4');
+      expect(scorePlayer(s, PlayerPosition.def), 22, reason: '10 + 12');
+      expect(scorePlayer(s, PlayerPosition.fwd), 10, reason: 'nichts');
     });
 
     test('GK: 90 Min, 3 Paraden, 1 Gegentor, Rating 6.8 = 15', () {
@@ -43,15 +60,15 @@ void main() {
           15);
     });
 
-    test('FWD: 60 Min + 1 Tor + Rating 6.5 = 22', () {
+    test('FWD: 60 Min + 1 Tor + Rating 6.5 = 21', () {
       expect(
           scorePlayer(
               const PlayerMatchStats(minutes: 60, goals: 1, rating: 6.5),
               PlayerPosition.fwd),
-          22);
+          21);
     });
 
-    test('Elfmetertor zählt 12, reguläres Tor 16 — nicht doppelt', () {
+    test('Elfmetertor zählt 12, reguläres Tor 15 — nicht doppelt', () {
       final r = scorePlayerDetailed(
           const PlayerMatchStats(minutes: 90, goals: 2, penaltyGoals: 1),
           PlayerPosition.fwd);
@@ -59,7 +76,7 @@ void main() {
       final elfer = r.breakdown.firstWhere((l) => l.label == 'Tor (Elfmeter)');
       expect(tor.count, 1, reason: 'nur das nicht-Elfmeter-Tor');
       expect(elfer.subtotal, 12);
-      expect(r.total, 10 + 16 + 12);
+      expect(r.total, 10 + 15 + 12);
     });
 
     test('Key Pass zählt Großchancen nicht doppelt', () {
@@ -124,8 +141,10 @@ void main() {
     });
 
     test('Bruchteile summieren korrekt (Key Pass 1,5 / Foul −0,4)', () {
+      // Gegentor gesetzt, damit die Null hinten die Rechnung nicht verdeckt.
       final pts = scorePlayer(
-          const PlayerMatchStats(minutes: 90, keyPasses: 1, fouls: 1),
+          const PlayerMatchStats(
+              minutes: 90, keyPasses: 1, fouls: 1, goalsConceded: 1),
           PlayerPosition.mid);
       expect(pts, closeTo(10 + 1.5 - 0.4, 1e-9));
     });

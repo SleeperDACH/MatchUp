@@ -117,13 +117,13 @@ void main() {
       );
       expect(recap.mvp!.playerId, 'a-fwd0');
       expect(recap.mvp!.managerId, 'a');
-      // 10 (Einsatz 90 Min) + 3*16 (Tore) = 58
-      expect(recap.mvp!.points, 58);
+      // 10 (Einsatz 90 Min) + 3*15 (Tore) = 55
+      expect(recap.mvp!.points, 55);
 
-      // fwd4: 10 (Einsatz) + 2*16 = 42 -> bester Bankspieler der Liga.
+      // fwd4: 10 (Einsatz) + 2*15 = 40 -> bester Bankspieler der Liga.
       expect(recap.benchHero!.playerId, 'b-fwd4');
       expect(recap.benchHero!.managerId, 'b');
-      expect(recap.benchHero!.points, 42);
+      expect(recap.benchHero!.points, 40);
     });
   });
 
@@ -192,7 +192,7 @@ void main() {
       // 90 Minuten ohne Gegentor haben, holen Torwart und Abwehr je 12
       // Zu-Null-Punkte. Die beste Elf stellt deshalb fünf Verteidiger auf
       // (22 statt 10 pro Kopf), die manuelle Aufstellung nur vier.
-      expect(recap.benchBlunder!.pointsLeft, 60);
+      expect(recap.benchBlunder!.pointsLeft, 57);
     });
 
     test('optimale Aufstellung -> kein Bank-Blunder', () {

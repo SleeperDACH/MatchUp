@@ -64,15 +64,20 @@ class FantasyScoringRules {
       AppearanceTier(30, 4, 'Einsatz (30–59 Min)'),
       AppearanceTier(1, 2, 'Einsatz (1–29 Min)'),
     ],
-    this.goal = 16,
+    this.goal = 15,
     this.penaltyGoal = 12,
-    this.assist = 12,
+    this.assist = 10,
     this.bigChanceCreated = 6,
     this.keyPass = 1.5,
     this.shotOnTarget = 2,
     this.successfulDribble = 1,
     this.cleanSheetMinMinutes = 60,
-    this.cleanSheet = const ByPosition(gk: 12, def: 12, mid: 0, fwd: 0),
+    // **Das Mittelfeld bekommt 4 für die Null hinten.** Vorher ging es leer
+    // aus, obwohl ein defensiver Sechser sie mit erarbeitet — gemessen kam
+    // das Mittelfeld auf 13,7 Punkte im Schnitt gegen 15,1 im Sturm, bei
+    // seltener Torbeteiligung (0,040 Tore je Einsatz gegenüber 0,069 in der
+    // Abwehr). Vier statt zwölf, weil es seine Hauptaufgabe nicht ist.
+    this.cleanSheet = const ByPosition(gk: 12, def: 12, mid: 4, fwd: 0),
     this.goalConceded = const ByPosition(gk: -4, def: -4, mid: 0, fwd: 0),
     this.save = 3,
     this.penaltySaved = 12,
@@ -84,7 +89,11 @@ class FantasyScoringRules {
     this.passMilestones = const {
       PlayerPosition.gk: [Milestone(25, 3), Milestone(35, 3)],
       PlayerPosition.def: [Milestone(45, 3), Milestone(70, 3)],
-      PlayerPosition.mid: [Milestone(40, 3), Milestone(60, 3)],
+      // **30/45 statt 40/60.** Die alten Schwellen lagen über dem, was ein
+      // Mittelfeldspieler tatsächlich spielt: gemessener Median 28 genaue
+      // Pässe, oberes Viertel 37 — die Vierzig erreichte fast niemand, der
+      // Bonus war praktisch tot.
+      PlayerPosition.mid: [Milestone(30, 3), Milestone(45, 3)],
       PlayerPosition.fwd: [Milestone(20, 3), Milestone(30, 3)],
     },
     this.saveMilestones = const [Milestone(5, 8), Milestone(8, 12)],

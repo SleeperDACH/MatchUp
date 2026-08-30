@@ -18,8 +18,8 @@ void main() {
       red: 0,
       cleanSheets: 11, // zählt für Stürmer NICHT
     );
-    // 31*10 + 36*16 + 5*12 + 1*(-4) = 310 + 576 + 60 - 4 = 942
-    expect(projectedSeasonPoints(t, PlayerPosition.fwd, scoring), 942);
+    // 31*10 + 36*15 + 5*10 + 1*(-4) = 310 + 540 + 50 - 4 = 896
+    expect(projectedSeasonPoints(t, PlayerPosition.fwd, scoring), 896);
   });
 
   test('Abwehr: Tore×6, Zu-Null zählt', () {
@@ -31,9 +31,9 @@ void main() {
       yellow: 4,
       red: 1,
     );
-    // 30*10 + 2*16 + 3*12 + 12*12 + 4*(-4) + 1*(-10)
-    // = 300 + 32 + 36 + 144 - 16 - 10 = 486
-    expect(projectedSeasonPoints(t, PlayerPosition.def, scoring), 486);
+    // 30*10 + 2*15 + 3*10 + 12*12 + 4*(-4) + 1*(-10)
+    // = 300 + 30 + 30 + 144 - 16 - 10 = 478
+    expect(projectedSeasonPoints(t, PlayerPosition.def, scoring), 478);
   });
 
   test('Torwart: Zu-Null zählt', () {
@@ -42,11 +42,13 @@ void main() {
     expect(projectedSeasonPoints(t, PlayerPosition.gk, scoring), 508);
   });
 
-  test('Mittelfeld: kein Zu-Null-Bonus', () {
+  test('Mittelfeld: Zu Null zählt jetzt mit 4', () {
+    // **Neu.** Vorher ging das Mittelfeld hier leer aus; seit der Anpassung
+    // bekommt es 4 je Null hinten (Abwehr und Torwart weiter 12).
     const t =
         SeasonTotals(goals: 4, assists: 8, appearances: 28, cleanSheets: 9);
-    // 28*10 + 4*16 + 8*12 = 280 + 64 + 96 = 440
-    expect(projectedSeasonPoints(t, PlayerPosition.mid, scoring), 440);
+    // 28*10 + 4*15 + 8*10 + 9*4 = 280 + 60 + 80 + 36 = 456
+    expect(projectedSeasonPoints(t, PlayerPosition.mid, scoring), 456);
   });
 
   test('leere Totals ⇒ 0 Punkte', () {

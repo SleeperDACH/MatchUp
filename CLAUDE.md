@@ -379,6 +379,51 @@ gilt das Raster ab sofort.
   `topscorerTypes` wird **stillschweigend ignoriert**, und ohne Filter mischt
   die Antwort Karten, Tore und Vorlagen nach Typ gruppiert; die Tore fangen
   erst auf Seite 2 an, `per_page=25` sieht also nur Karten.
+  **Wertungsanpassung vom 30.08.2026: Tor 16 → 15, Vorlage 12 → 10, Zu Null
+  fürs Mittelfeld 0 → 4, MF-Pass-Schwellen 40/60 → 30/45.**
+
+  Anlass war eine gemessene Schieflage über den ersten Spieltag (250 Einsätze):
+
+  | Position | vorher | nachher |
+  |---|---|---|
+  | Torwart | 25,4 | 25,4 |
+  | Abwehr | 13,4 | 13,2 |
+  | **Mittelfeld** | **13,7** | **14,9** |
+  | Sturm | 15,1 | 14,6 |
+
+  Zwei Dinge daran sind dokumentierenswert, weil sie beim nächsten Mal wieder
+  auftreten:
+
+  - **`goal` und `assist` sind flache Werte, keine `ByPosition`.** Sie zu
+    senken trifft jede Position — der erste Entwurf hätte den Sturm um 0,5 und
+    das Mittelfeld um 0,2 geschwächt, also genau die Position mitgezogen, die
+    gestärkt werden sollte. Das war eine bewusste Entscheidung des Nutzers
+    nach Vorlage beider Varianten, keine Unachtsamkeit.
+  - **Warum das Mittelfeld schwach war**, ließ sich messen: 0,040 Tore je
+    Einsatz gegenüber 0,069 in der Abwehr, und für die Null hinten gab es
+    nichts. Seine Punkte kamen fast nur aus Einsatz und Defensivarbeit — zu
+    denselben flachen Sätzen, die alle bekommen. Die Pass-Meilensteine lagen
+    bei 40/60 genauen Pässen, der gemessene Median liegt bei 28: Der Bonus war
+    praktisch tot.
+
+  **Geändert werden musste es an vier Stellen**, nicht an zwei:
+  `scoring/config/scoring.config.json`, `fantasy_scoring_rules.dart`, die
+  SQL-Rangliste in `fantasy_autopick_if_expired` (Migration 0103 — die Null
+  hinten steht dort **fest**, weil `toJson()` sie nicht serialisiert) und die
+  **gespeicherten Ligen**: `fantasy_leagues.scoring` trägt `goal` und `assist`
+  ausdrücklich, eine Änderung des Dart-Standards erreicht sie also nicht
+  (Migration 0102, nur v2-Ligen). `cleanSheet` und `passMilestones` stehen
+  dagegen nicht in der JSONB und greifen über den Standard von selbst.
+
+  **Punkte werden bei jeder Anzeige neu gerechnet, nicht gespeichert** — eine
+  Wertungsänderung wirkt deshalb rückwirkend auf bereits gespielte Spieltage.
+  Wer das nicht will, ändert die Wertung zwischen den Saisons.
+
+  **Der Torwart bleibt die größte Schieflage** (25,4 gegen 13–15) und ist
+  bewusst unangetastet: 3 Punkte je Parade plus kumulative Meilensteine bei ≥5
+  (+8) und ≥8 (+12) machen den achten Save 15 Punkte wert. Das ist eine eigene
+  Entscheidung.
+
   **`goals-conceded` und `goalkeeper-goals-conceded` sind zwei Zahlen, nicht
   eine.** Beide standen in `STAT_CODE_MAP` auf `goalsConceded`, und die
   Zuordnungsschleife **addiert** alles, was sie findet — aus zwei Codes auf

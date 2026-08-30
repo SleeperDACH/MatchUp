@@ -50,20 +50,21 @@ void main() {
 
     test('die Aufschlüsselung nennt den Bonus beim Namen', () {
       final s = scorePlayerDetailed(
-        const PlayerMatchStats(minutes: 90, played: true, accuratePasses: 41),
+        const PlayerMatchStats(
+            minutes: 90, played: true, accuratePasses: 41, goalsConceded: 1),
         PlayerPosition.mid,
         regeln,
       );
       expect(
         s.breakdown.map((l) => l.label),
-        contains('Pass-Meilenstein (≥40)'),
+        contains('Pass-Meilenstein (≥30)'),
       );
     });
 
     test('ohne Pässe bleibt alles wie vorher', () {
       // Damit die Ergänzung keine bestehende Wertung verschiebt.
       const ohne = PlayerMatchStats(minutes: 90, played: true, goals: 1);
-      expect(scorePlayer(ohne, PlayerPosition.fwd, regeln), 10 + 16);
+      expect(scorePlayer(ohne, PlayerPosition.fwd, regeln), 10 + 15);
     });
   });
 }

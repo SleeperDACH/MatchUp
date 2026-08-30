@@ -29,7 +29,7 @@
   ],
   "offense": {
     "goal": {
-      "points": 16,
+      "points": 15,
       "label": "Tor"
     },
     "penaltyGoal": {
@@ -37,7 +37,7 @@
       "label": "Tor (Elfmeter)"
     },
     "assist": {
-      "points": 12,
+      "points": 10,
       "label": "Vorlage"
     },
     "bigChanceCreated": {
@@ -63,7 +63,7 @@
     "points": {
       "GK": 12,
       "DEF": 12,
-      "MID": 0,
+      "MID": 4,
       "FWD": 0
     }
   },
@@ -237,11 +237,11 @@
         ],
         "MID": [
           {
-            "atLeast": 40,
+            "atLeast": 30,
             "bonus": 3
           },
           {
-            "atLeast": 60,
+            "atLeast": 45,
             "bonus": 3
           }
         ],
