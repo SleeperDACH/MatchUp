@@ -1241,9 +1241,17 @@ hätte daran nichts geändert. Drei Dinge, die dabei zu wissen sind:
 - **Kein `pumpAndSettle`.** Die Draft-Anzeige pulsiert endlos, der Aufruf
   liefe in den Timeout; stattdessen ein paar feste `pump`-Schritte.
 
-Material-Symbole werden darin zu leeren Kästchen und Wappen zu Ersatzflächen
-(nur die App-Schrift wird geladen, Netz gibt es im Test keins). Verglichen
-wird die Anordnung, nicht das Bild.
+Wappen werden darin zu Ersatzflächen (Netz gibt es im Test keins) — verglichen
+wird die Anordnung, nicht das Bild. **Material-Symbole erscheinen dagegen
+echt**, seit `ladeSchrift` (`test/support/schrift.dart`) neben Barlow Condensed
+auch `MaterialIcons-Regular.otf` aus dem Flutter-SDK nachlädt. Vorher war jedes
+Symbol ein leeres Kästchen; wer über eine Leiste aus **Symbol und Wort**
+entscheiden soll, sieht dann nur die Wörter. Die Datei liegt nicht im Projekt,
+sondern unter `bin/cache/artifacts/material_fonts/` im SDK; findet der Helfer
+sie nicht, läuft der Test trotzdem weiter (Kästchen sind besser als eine Suite,
+die auf einer fremden Maschine gar nicht startet). Das Nachladen hat einmalig
+**sechzehn Vorschau-Goldens** verschoben — die Diffs von damals sind Symbole,
+die zum ersten Mal zu sehen sind, keine Layoutfehler.
 
 ## Live-Tab — „B, Tafel"
 
@@ -2774,21 +2782,37 @@ Zuständen keinen Kopf.
   Zähler nur da, wo etwas wartet.
 - **Der grüne Reiterbalken ist weg.** `SegmentedTabBar` steckt an acht Stellen
   in der App und bleibt dort; hier steht `LeiseReiter`
-  (`app/widgets/leise_reiter.dart`), gemeinsam mit dem Favoriten-Tab. Die
-  Reiter-Symbole sind mit entfallen — vier Wörter nebeneinander brauchen keine
-  Piktogramme.
+  (`app/widgets/leise_reiter.dart`), gemeinsam mit dem Favoriten-Tab.
   **Die Leiste nimmt die volle Breite ein**, jeder Reiter denselben Anteil.
   Vorher standen die Wörter links zusammengedrängt in einer waagerecht
   scrollbaren Zeile, und rechts blieb Leere — die Leiste sah aus wie ein
   angefangener Satz. Damit ist auch das Scrollen weg: Passt ein Wort nicht,
   schrumpft es (`FittedBox`), wie überall sonst.
-  **Der MatchUp-Reiter trägt das Markenzeichen statt des Wortes** — aktiv in
-  den Markenfarben (grün|rot), ruhend einfarbig mitgedämpft wie die
-  Nachbarwörter; sonst riefe das Logo als einziges Element dauerhaft laut. Die
-  Zeile hat dafür eine **feste Höhe**, damit ein Zeichen die Marke nicht gegen
-  die Wörter der Nachbarreiter verschiebt. Der Text aus `titel` bleibt
-  trotzdem stehen: als Beschriftung für die Vorlesehilfe — ein Logo ohne Namen
-  ist für VoiceOver eine stumme Schaltfläche.
+  **Symbole trägt eine Leiste entweder überall oder nirgends** — `symbole`
+  ist ein Bauplan je Reiter, und `LeiseReiter` besteht per Zusicherung darauf,
+  dass die Karte so viele Einträge hat wie es Reiter gibt. Der Anlass: Die
+  Liga-Leiste trug an zweiter Stelle das Markenzeichen *anstelle* des Wortes,
+  ein unbeschrifteter Reiter zwischen drei beschrifteten. Das las sich nicht
+  als Marke, sondern als Bruch („Das bricht den visuellen Fluss der
+  Menüleiste"). Jetzt trägt dort **jeder Reiter Symbol und Wort**
+  (Übersicht · MatchUp · Kader · Tabelle), das Markenzeichen sitzt im
+  Symbolplatz des zweiten — aktiv in den Markenfarben (grün|rot), ruhend
+  einfarbig mitgedämpft wie die Nachbarsymbole; sonst riefe das Logo als
+  einziges Element dauerhaft laut. Die Symbole sind **ein Satz**, alle vier aus
+  derselben Strichstärke (`grid_view_outlined`, Chevron, `people_outline`,
+  `leaderboard_outlined`) — gemischt gefüllte und umrissene Symbole fielen in
+  der Vorschau sofort auseinander. Die Leiste wächst dafür von 52 auf 74; die
+  zweizeiligen Reiter haben **feste Zeilenhöhen**, damit ein Zeichen die Marke
+  nicht gegen die Nachbarreiter verschiebt. Die schmaleren Leisten (Favoriten,
+  Transfers, Spielerprofil) bleiben reine Wortleisten — der Satz gilt je
+  Leiste, nicht je App.
+  **`preferredSize` und die Höhe im Aufbau müssen dieselbe Zahl sein.** Beim
+  Umbau stand im `build` noch die alte Konstante, während `preferredSize`
+  schon 74 meldete: Die `AppBar` reservierte den Platz, die Leiste selbst
+  blieb 52 hoch und lief unten über. Beide lesen jetzt `preferredSize.height`.
+  Der Text aus `titel` bleibt in jedem Fall stehen: als Beschriftung für die
+  Vorlesehilfe — ein Logo ohne Namen ist für VoiceOver eine stumme
+  Schaltfläche.
   **Die erste Fassung war dafür zu leise** und hatte einen Platzierungsfehler:
   ein 2 px breiter Rahmenstrich über die volle Wortbreite, hart auf der
   Unterkante der Leiste — und weil sie im `AppBar.bottom` sitzt, begann direkt

@@ -69,18 +69,28 @@ class FantasyLeagueScreen extends ConsumerWidget {
           ],
           // Leise Reiter statt gefüllter Segmente: Der grüne Balken war das
           // lauteste Element des Schirms und sagte nur, welcher Reiter offen
-          // ist. Die Symbole sind mit weggefallen — vier Wörter nebeneinander
-          // brauchen keine Piktogramme, um unterscheidbar zu sein.
+          // ist.
+          //
+          // **Jeder Reiter trägt Symbol und Wort.** Davor stand an zweiter
+          // Stelle das Markenzeichen *anstelle* des Wortes — ein einzelner
+          // Reiter ohne Beschriftung zwischen drei beschrifteten, was den
+          // Fluss der Leiste brach. Entweder alle oder keiner; hier alle,
+          // damit die Marke ihren Platz behält.
           bottom: LeiseReiter(
             titel: const ['Übersicht', 'MatchUp', 'Kader', 'Tabelle'],
             horizontal: 12,
-            // Der MatchUp-Reiter trägt das Markenzeichen statt des Wortes.
-            // Aktiv in den Markenfarben (grün|rot), ruhend einfarbig
-            // mitgedämpft wie die Nachbarwörter — sonst riefe das Logo als
-            // einziges Element dauerhaft laut.
-            zeichen: {
+            symbole: {
+              0: (aktiv, farbe) =>
+                  Icon(Icons.grid_view_outlined, size: 17, color: farbe),
+              // Aktiv in den Markenfarben (grün|rot), ruhend einfarbig
+              // mitgedämpft wie die Nachbarsymbole — sonst riefe das Logo
+              // als einziges Element dauerhaft laut.
               1: (aktiv, farbe) =>
                   MatchUpChevron(size: 17, color: aktiv ? null : farbe),
+              2: (aktiv, farbe) =>
+                  Icon(Icons.people_outline, size: 19, color: farbe),
+              3: (aktiv, farbe) =>
+                  Icon(Icons.leaderboard_outlined, size: 17, color: farbe),
             },
           ),
         ),

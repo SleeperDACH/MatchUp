@@ -30,10 +30,17 @@ void main() {
             style: const TextStyle(color: Colors.white54, fontSize: 12)),
       );
 
-  // Der MatchUp-Reiter trägt das Markenzeichen statt des Wortes.
-  final zeichen = {
+  // Liga-Leiste: Symbol **und** Wort bei allen vieren. An zweiter Stelle das
+  // Markenzeichen — aktiv in den Markenfarben, ruhend mitgedämpft.
+  final symbole = {
+    0: (bool aktiv, Color farbe) =>
+        Icon(Icons.grid_view_outlined, size: 17, color: farbe),
     1: (bool aktiv, Color farbe) =>
         MatchUpChevron(size: 17, color: aktiv ? null : farbe),
+    2: (bool aktiv, Color farbe) =>
+        Icon(Icons.people_outline, size: 19, color: farbe),
+    3: (bool aktiv, Color farbe) =>
+        Icon(Icons.leaderboard_outlined, size: 17, color: farbe),
   };
 
   Widget fall(String titel, List<String> reiter, int aktiv,
@@ -55,7 +62,7 @@ void main() {
               child: LeiseReiter(
                 titel: reiter,
                 horizontal: 12,
-                zeichen: mitLogo ? zeichen : const {},
+                symbole: mitLogo ? symbole : const {},
               ),
             ),
             karte('Inhalt beginnt hier'),
@@ -64,7 +71,7 @@ void main() {
       );
 
   testWidgets('Vorschau: Reiterleiste', (tester) async {
-    tester.view.physicalSize = const Size(402 * 3, 800 * 3);
+    tester.view.physicalSize = const Size(402 * 3, 860 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
@@ -87,7 +94,7 @@ void main() {
                 'Kader',
                 'Tabelle',
               ], 2, mitLogo: true),
-              fall('FANTASY-LIGA · LOGO AKTIV', const [
+              fall('FANTASY-LIGA · MARKENREITER AKTIV', const [
                 'Übersicht',
                 'MatchUp',
                 'Kader',

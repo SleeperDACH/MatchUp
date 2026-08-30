@@ -29,6 +29,7 @@ class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
     this.horizontal = 14,
     this.mitLinie = true,
     this.zeichen = const {},
+    this.symbole = const {},
   });
 
   final List<String> titel;
@@ -51,22 +52,42 @@ class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
   /// Schaltfläche.
   final Map<int, Widget Function(bool aktiv, Color farbe)> zeichen;
 
+  /// Symbol **über** dem Wort, je Reiter: Index → Zeichen.
+  ///
+  /// **Entweder alle oder keiner** — das erzwingt die Zusicherung im
+  /// Konstruktor. Ein einzelner Reiter, der aus der Reihe tanzt, war der
+  /// Anlass: Die Liga-Leiste trug an zweiter Stelle das Markenlogo statt eines
+  /// Wortes und brach damit den Fluss der übrigen drei.
+  ///
+  /// Der Bauplan bekommt gesagt, ob sein Reiter aktiv ist und welche Farbe an
+  /// dieser Stelle gilt — so kann ein Logo im Ruhezustand mitgedämpft werden.
+  final Map<int, Widget Function(bool aktiv, Color farbe)> symbole;
+
   /// Breite der Marke unter dem aktiven Reiter.
   static const _markeBreite = 20.0;
 
   static const _hoehe = 52.0;
 
+  /// Mit Symbolen wird die Leiste höher — Zeichen, Luft, Wort.
+  static const _hoeheMitSymbol = 74.0;
+
   @override
-  Size get preferredSize => const Size.fromHeight(_hoehe);
+  Size get preferredSize =>
+      Size.fromHeight(symbole.isEmpty ? _hoehe : _hoeheMitSymbol);
 
   @override
   Widget build(BuildContext context) {
+    assert(
+      symbole.isEmpty || symbole.length == titel.length,
+      'Eine Leiste trägt Symbole entweder überall oder nirgends — gemischt '
+      'bricht sie den Rhythmus, und genau das war die Kritik am Logo-Reiter.',
+    );
     final scheme = Theme.of(context).colorScheme;
     final controller = DefaultTabController.of(context);
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) => SizedBox(
-        height: _hoehe,
+        height: preferredSize.height,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -81,6 +102,7 @@ class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
                         child: _Reiter(
                           text: titel[i],
                           zeichen: zeichen[i],
+                          symbol: symbole[i],
                           aktiv: controller.index == i,
                           onTap: () => controller.animateTo(i),
                           scheme: scheme,
@@ -109,6 +131,7 @@ class _Reiter extends StatelessWidget {
     required this.onTap,
     required this.scheme,
     this.zeichen,
+    this.symbol,
   });
 
   final String text;
@@ -116,6 +139,7 @@ class _Reiter extends StatelessWidget {
   final VoidCallback onTap;
   final ColorScheme scheme;
   final Widget Function(bool aktiv, Color farbe)? zeichen;
+  final Widget Function(bool aktiv, Color farbe)? symbol;
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +157,11 @@ class _Reiter extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Das Symbol steht **über** dem Wort, nicht an seiner Stelle.
+            if (symbol != null) ...[
+              SizedBox(height: 20, child: Center(child: symbol!(aktiv, farbe))),
+              const SizedBox(height: 3),
+            ],
             SizedBox(
               // Feste Zeilenhöhe, damit ein Zeichen die Marke nicht gegen die
               // Wörter der Nachbarreiter verschiebt.
