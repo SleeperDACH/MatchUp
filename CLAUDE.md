@@ -1964,6 +1964,41 @@ In der Oberfläche führen Wire und laufendes Spiel deshalb zum **selben**
 goldenen Antragsknopf; den Unterschied trägt der Untertitel („· Waiver-Wire"
 bzw. „· Spiel läuft").
 
+### „Ich habe einen Antrag gestellt, er wird nicht angezeigt"
+
+Er war nie gestellt: In `fantasy_waiver_claims` stand keine Zeile. Server und
+RLS waren in Ordnung — als der betroffene Nutzer nachgestellt (Rollback-Probe
+mit dessen JWT) legte die Funktion den Antrag an, und die Policy
+`manager_id = auth.uid()` zeigte ihn auch.
+
+**Die Ursache lag im Bestätigungsblatt** (`_RosterMoveSheet`). Es lag komplett
+in einem `SingleChildScrollView`, und bei vollem Kader stehen darin sechzehn
+Kaderzeilen — „Abbrechen" und „Bestätigen" landeten **unterhalb des Bildes**.
+Selbst auf 900 Punkten Höhe waren sie in der Vorschau nicht zu sehen. Wer das
+Blatt schließt, ohne sie gefunden zu haben, löst nichts aus: `confirm == null`
+kehrt stumm zurück. Also wieder ein **stiller Nichts-Passiert**, diesmal rein
+in der Anordnung.
+
+Dazu kam, dass der Knopf bis zur Wahl eines Abgangs **deaktiviert** ist und der
+Grund dafür nur ganz oben im Blatt stand — außer Sicht, sobald man zur Liste
+gescrollt hatte. Ein grauer Knopf, der nicht sagt, was fehlt.
+
+Behoben: Kopf und Aktionen stehen fest, nur die Spielerliste scrollt
+(`ConstrainedBox` auf 85 % Bildschirmhöhe, `Flexible` um den Scroller), und
+über den Knöpfen steht in Gold „Wähle oben, wer Platz macht.", solange nichts
+gewählt ist. Das trifft **beide** Wege, die dieses Blatt benutzen: den
+Waiver-Antrag und den Kader-Move beim direkten Holen.
+
+Angesehen über `test/free_agency_vorschau_test.dart` mit zwei Bildern — ohne
+und mit gewähltem Abgang. Der zweite prüft zusätzlich am Widget, dass
+`onPressed` dann wirklich gesetzt ist; ein Bild allein zeigt nicht, ob ein
+Knopf bedienbar *ist*.
+
+**Die Lehre, zum wiederholten Mal in diesem Projekt:** Ein Abbruch ohne Laut
+ist von einem Erfolg nicht zu unterscheiden. Wo ein Blatt etwas abschicken
+soll, muss der Abschicken-Knopf immer sichtbar sein — und wenn er nicht kann,
+muss er sagen, warum.
+
 Gegen die Produktion nachgemessen (mit Rollback): Mainz-Spieler holen →
 abgelehnt; Augsburg-Spieler (Anpfiff später) → läuft bis zum Kaderlimit durch;
 Tietz droppen (in der Elf, hat gespielt) → abgelehnt; Karius droppen (Anpfiff

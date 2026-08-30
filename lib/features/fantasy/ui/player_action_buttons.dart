@@ -369,27 +369,50 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
         a.position.index != b.position.index
             ? a.position.index.compareTo(b.position.index)
             : a.name.compareTo(b.name));
+    // **Der Knopf muss stehen bleiben.** Vorher lag das ganze Blatt in einem
+    // `SingleChildScrollView`, und bei vollem Kader standen „Abbrechen" und
+    // „Bestätigen" unter sechzehn Kaderzeilen — außerhalb des Bildes. Gemeldet
+    // als „ich habe einen Antrag gestellt, er wird nicht angezeigt": Das Blatt
+    // ging auf, der Abschicken-Knopf war nie zu sehen, und geschlossen wurde
+    // es ohne einen Laut (`confirm == null` kehrt stumm zurück).
+    //
+    // Jetzt: Kopf und Aktionen fest, nur die Spielerliste scrollt.
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(widget.title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge),
-            if (widget.note != null) ...[
-              const SizedBox(height: 8),
-              Text(widget.note!,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: scheme.onSurfaceVariant)),
-            ],
-            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(widget.title,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge),
+                  if (widget.note != null) ...[
+                    const SizedBox(height: 8),
+                    Text(widget.note!,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
             _block(
               context,
               icon: Icons.add,
@@ -415,26 +438,48 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Abbrechen'),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: canConfirm
-                        ? () => Navigator.of(context).pop(_MoveConfirm(_dropId))
-                        : null,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Bestätigen'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // **Ein grauer Knopf sagt nicht, was fehlt.** Der Hinweis
+                  // stand nur oben im Blatt, außer Sicht, sobald man zur Liste
+                  // gescrollt hatte.
+                  if (!canConfirm) ...[
+                    Text('Wähle oben, wer Platz macht.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: _cWaiver, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                  ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Abbrechen'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: canConfirm
+                              ? () =>
+                                  Navigator.of(context).pop(_MoveConfirm(_dropId))
+                              : null,
+                          icon: const Icon(Icons.check),
+                          label: const Text('Bestätigen'),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

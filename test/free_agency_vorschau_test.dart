@@ -123,4 +123,129 @@ void main() {
       matchesGoldenFile('goldens/free_agency_vorschau.png'),
     );
   });
+
+  testWidgets('Vorschau: Waiver-Antrag bei vollem Kader', (tester) async {
+    // **Der Zustand, in dem der Antrag scheiterte.** Bei vollem Kader verlangt
+    // das Blatt einen Abgang, und der Bestätigen-Knopf bleibt bis dahin grau.
+    // Gemeldet als „ich habe einen Antrag gestellt, er wird nicht angezeigt".
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    const gespielt = '1. FSV Mainz 05';
+    final zugang = _p('neu', 'Andreas Hanche-Olsen', PlayerPosition.def, gespielt);
+
+    // Ein voller Kader: 16 Spieler.
+    final meine = [
+      for (var i = 0; i < 16; i++)
+        _p('m$i', 'Mein Spieler $i',
+            PlayerPosition.values[i % PlayerPosition.values.length],
+            'FC Augsburg')
+    ];
+
+    final liga = FantasyLeague(
+      id: 'l1',
+      name: 'MatchUp! #1',
+      mode: FantasyMode.liga,
+      season: 2026,
+      pickTime: DraftPickTime.h2,
+      scoring: const FantasyScoringRules(),
+      roster: RosterConfig.standard,
+      inviteCode: 'ABC',
+      draftStatus: DraftStatus.done,
+      createdBy: 'ich',
+      maxTeams: 10,
+      tipEnabled: true,
+    );
+
+    final spiele = [
+      Fixture(
+        id: 'sportmonks:1',
+        leagueId: 'bundesliga',
+        season: 2026,
+        round: 1,
+        roundName: 'Spieltag 1',
+        kickoff: DateTime.now().subtract(const Duration(days: 1)),
+        home: const TeamRef(id: 'm', name: gespielt, shortName: 'M05'),
+        away: const TeamRef(id: 'p', name: 'Paderborn', shortName: 'SCP'),
+        status: FixtureStatus.finished,
+      ),
+      Fixture(
+        id: 'sportmonks:2',
+        leagueId: 'bundesliga',
+        season: 2026,
+        round: 1,
+        roundName: 'Spieltag 1',
+        kickoff: DateTime.now().add(const Duration(hours: 8)),
+        home: const TeamRef(id: 'a', name: 'FC Augsburg', shortName: 'FCA'),
+        away: const TeamRef(id: 's', name: 'FC Schalke 04', shortName: 'S04'),
+        status: FixtureStatus.scheduled,
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserProvider.overrideWith((ref) => User(
+                id: 'ich',
+                appMetadata: const {},
+                userMetadata: const {},
+                aud: 'authenticated',
+                createdAt: DateTime(2026).toIso8601String(),
+              )),
+          playerPoolProvider.overrideWith((ref) async => [zugang, ...meine]),
+          clubIconsProvider.overrideWith((ref) async => const {}),
+          leagueRosterProvider.overrideWith((ref, id) => Stream.value([
+                for (final p in meine)
+                  RosterEntry(
+                      managerId: 'ich', playerId: p.id, acquiredVia: 'draft'),
+              ])),
+          waiverPlayersProvider
+              .overrideWith((ref, id) => Stream.value(const <String>{})),
+          myWaiverClaimsProvider
+              .overrideWith((ref, id) => Stream.value(const [])),
+          fantasySeasonFixturesProvider.overrideWith((ref) async => spiele),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(),
+          home: FreeAgencyScreen(league: liga),
+        ),
+      ),
+    );
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // Den goldenen Antragsknopf des angepfiffenen Spielers drücken.
+    await tester.tap(find.byIcon(Icons.schedule).last);
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/waiver_antrag_voller_kader.png'),
+    );
+
+    // Und mit gewähltem Abgang: Der Hinweis verschwindet, „Bestätigen" wird
+    // bedienbar. Ohne diesen zweiten Blick wüsste man nicht, ob die Auswahl
+    // überhaupt ankommt — genau daran hing der gemeldete Fehler.
+    await tester.tap(find.text('Mein Spieler 0'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/waiver_antrag_abgang_gewaehlt.png'),
+    );
+
+    final knopf = tester.widget<FilledButton>(
+        find.ancestor(of: find.text('Bestätigen'), matching: find.byType(FilledButton)));
+    expect(knopf.onPressed, isNotNull,
+        reason: 'Mit gewähltem Abgang muss abgeschickt werden können');
+  });
 }
