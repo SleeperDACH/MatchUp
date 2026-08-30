@@ -2516,6 +2516,50 @@ jede Runde für „läuft noch" und schob vorgemerkte Trades unbegrenzt vor sich
 her. Jetzt steht die Freigabe auf „sofort" — offene Trades gab es zum Glück
 keine.
 
+### Aufstellen und anschauen sind zwei verschiedene Spieltage
+
+Gefragt: *„Ab wann ist die Kaderbearbeitung für den nächsten Spieltag
+verfügbar?"* — und beim Nachrechnen fiel eine Lücke auf.
+
+Für Spieltag 1 → 2 lagen drei Zeitpunkte auseinander:
+
+| Zeitpunkt | Was |
+|---|---|
+| Mo 15:00 | Waiver-Frist — Anträge vergeben, freie Spieler wieder direkt holbar |
+| Mo 17:30 | die App springt auf Spieltag 2 (24 h nach dem letzten Anpfiff) |
+| Fr 20:30 | erster Anpfiff Spieltag 2 |
+
+**Zweieinhalb Stunden lang konnte man Spieler holen und sie nirgends
+hinstellen** — der Aufstellungs-Schirm zeigte noch Spieltag 1, und der war
+komplett gesperrt. Der Server hatte damit nie etwas zu tun:
+`fantasy_set_lineup` prüft je geändertem Spieler nur dessen eigenen Anpfiff und
+nähme eine Aufstellung für den nächsten Spieltag jederzeit an. Der Riegel war
+allein die Oberfläche.
+
+Gewählt (von zwei Vorschlägen): **Der Aufstellungs-Schirm springt, sobald die
+Runde abgepfiffen ist**, während Übersicht, MatchUp-Karte und Spielplan die
+Abrechnung ihre 24 Stunden stehen lassen. Wer Sonntagabend fertig ist, plant
+sofort weiter.
+
+Dafür gibt es jetzt zwei Regeln nebeneinander, und der Unterschied ist der
+Punkt:
+
+- `currentFantasyRound` — **was man anschaut**: der erste Spieltag, dessen
+  letzter Anpfiff noch keine 24 h zurückliegt.
+- `aufstellungsRunde` — **was man stellt**: dieselbe Runde, es sei denn, sie ist
+  vollständig abgepfiffen; dann die nächste. Gibt es keine nächste, bleibt es
+  bei der letzten — eine Runde 35 wäre eine Erfindung.
+
+Die Zeile „Aufstellung · Noch nicht gestellt" auf der Übersicht
+(`meineFormationProvider`) folgt der **zweiten** Regel: Ein Auftrag muss sich
+auf den Spieltag beziehen, den der Schirm dahinter öffnet. Alles andere
+(MatchupHero, Karussell, Recap, Managerprofil, Spielplan) bleibt bei der
+ersten — das sind Ergebnisansichten.
+
+Gehalten von `test/aufstellungs_runde_test.dart`, das beide Regeln am selben
+Zeitpunkt gegeneinander prüft: Sonntag 20:00 ist `currentFantasyRound` noch 1
+und `aufstellungsRunde` schon 2.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;

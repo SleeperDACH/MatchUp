@@ -114,7 +114,10 @@ final fantasyUnreadChatProvider = Provider.family<bool, String>((ref, leagueId) 
 final meineFormationProvider =
     Provider.family<String?, String>((ref, leagueId) {
   final myId = ref.watch(currentUserProvider)?.id;
-  final runde = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
+  // **Die Runde, die man stellt.** „Noch nicht gestellt" muss sich auf den
+  // Spieltag beziehen, den der Aufstellungs-Schirm öffnet — sonst meldet die
+  // Zeile einen Auftrag für einen Spieltag, der schon gelaufen ist.
+  final runde = ref.watch(fantasyAufstellungsRundeProvider).valueOrNull;
   if (myId == null || runde == null) return null;
   final ids = (ref.watch(leagueLineupsProvider(leagueId)).valueOrNull ??
           const <FantasyLineup>[])
@@ -378,6 +381,41 @@ final fantasyCurrentRoundProvider = FutureProvider<int>((ref) async {
   final fixtures = await ref.watch(fantasySeasonFixturesProvider.future);
   return currentFantasyRound(fixtures, DateTime.now());
 });
+
+/// **Der Spieltag, den man aufstellt** — nicht der, den man anschaut.
+///
+/// Die beiden fallen einen Tag lang auseinander: Ein beendeter Spieltag bleibt
+/// nach [currentFantasyRound] noch 24 Stunden stehen, damit man die Abrechnung
+/// sieht. Für die *Aufstellung* ist das aber die falsche Antwort — sobald das
+/// letzte Spiel abgepfiffen ist, plant man den nächsten.
+///
+/// Gemeldet als handfeste Lücke: Zwischen der Waiver-Frist (Montag 15:00) und
+/// dem Spieltagswechsel (24 h nach dem letzten Anpfiff, hier Montag 17:30)
+/// konnte man Spieler holen, sie aber nirgends hinstellen — der
+/// Aufstellungs-Schirm zeigte noch den alten, komplett gesperrten Spieltag.
+///
+/// Der Server hat damit nichts zu tun: `fantasy_set_lineup` prüft je Spieler
+/// nur dessen eigenen Anpfiff und nähme eine Aufstellung für den nächsten
+/// Spieltag jederzeit an. Der Riegel war allein die Oberfläche.
+final fantasyAufstellungsRundeProvider = FutureProvider<int>((ref) async {
+  final fixtures = await ref.watch(fantasySeasonFixturesProvider.future);
+  return aufstellungsRunde(fixtures, DateTime.now());
+});
+
+/// Pure Regel für [fantasyAufstellungsRundeProvider].
+///
+/// Ist die laufende Runde **vollständig abgepfiffen**, zählt die nächste. Gibt
+/// es keine nächste, bleibt es bei der letzten — am Saisonende gibt es nichts
+/// mehr aufzustellen, und eine Runde 35 wäre eine Erfindung.
+int aufstellungsRunde(List<Fixture> fixtures, DateTime now) {
+  final aktuell = currentFantasyRound(fixtures, now);
+  final dieser = [for (final f in fixtures) if (f.round == aktuell) f];
+  if (dieser.isEmpty) return aktuell;
+  if (!dieser.every((f) => f.status == FixtureStatus.finished)) return aktuell;
+  final spaeter = [for (final f in fixtures) if (f.round > aktuell) f.round];
+  if (spaeter.isEmpty) return aktuell;
+  return spaeter.reduce((a, b) => a < b ? a : b);
+}
 
 /// Pure Regel für [fantasyCurrentRoundProvider] (24 h nach letztem Anpfiff).
 int currentFantasyRound(List<Fixture> fixtures, DateTime now) {

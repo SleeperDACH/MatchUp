@@ -229,7 +229,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   @override
   Widget build(BuildContext context) {
     final league = widget.league;
-    final current = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
+    // **Nicht der angezeigte Spieltag, sondern der aufzustellende.** Ist die
+    // Runde durch, plant man hier schon die nächste — während Übersicht und
+    // MatchUp-Tab die Abrechnung noch 24 Stunden stehen lassen.
+    final current = ref.watch(fantasyAufstellungsRundeProvider).valueOrNull;
     final round = current ?? 34;
 
     final poolAsync = ref.watch(playerPoolProvider);
