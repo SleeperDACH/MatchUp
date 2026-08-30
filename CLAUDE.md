@@ -424,6 +424,26 @@ gilt das Raster ab sofort.
   (+8) und ≥8 (+12) machen den achten Save 15 Punkte wert. Das ist eine eigene
   Entscheidung.
 
+  **Ereignistypen kommen als Klartext, nicht als Bezeichner.** Sportmonks
+  schreibt `Goal`, `Yellowcard` — und **`Own Goal`, mit Leerzeichen**. Der
+  Spielverlauf verglich nur über `toLowerCase()` gegen `'owngoal'`; aus „Own
+  Goal" wird so „own goal", das traf nie zu, `_iconFor` gab `null` zurück, und
+  der Verlauf filtert genau daran. **Jedes Eigentor fehlte damit in der
+  Zeitleiste** — gemeldet an Dortmund gegen HSV, wo das 2:0 schlicht nicht
+  dastand.
+
+  Der Typ wird jetzt normalisiert (`_typ`: alles entfernen, was zwischen den
+  Wörtern stehen kann). Das hält auch, wenn die Quelle morgen `Yellow Card`
+  statt `Yellowcard` schreibt. Gehalten von `test/spielverlauf_test.dart`, das
+  die tatsächlich gelieferten Schreibweisen prüft — gegengeprüft: ohne die
+  Normalisierung ist es sofort rot.
+
+  **Zwei verschiedene Wege, dieselbe Partie:** Die Fantasy-Stats kommen aus
+  unserer Spiegelung (`player_match_stats`, per `sync-stats`), der Spielverlauf
+  dagegen **live** über die Edge Function `sportmonks`. Eine Korrektur in
+  `stat_overrides` wirkt deshalb auf die Punkte, **nicht** auf die Zeitleiste.
+  Wer beides gerade rücken will, braucht zwei Eingriffe.
+
   **Die Quelle kann falsch liegen — und dann hilft nur eine Korrektur daneben.**
   Giannis Konstantelias erzielte gegen den HSV das 2:0 (45.+1). Sportmonks
   verbucht dieses Tor als **Eigentor von Sebastiaan Bornauw** und schreibt

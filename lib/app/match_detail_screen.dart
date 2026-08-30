@@ -308,7 +308,7 @@ class _Timeline extends StatelessWidget {
     // an den Spielern in der Aufstellung).
     final events = [
       for (final e in detail.events)
-        if (_iconFor(e.type) != null && e.type.toLowerCase() != 'yellowcard') e
+        if (_iconFor(e.type) != null && _typ(e.type) != 'yellowcard') e
     ];
     if (events.isEmpty) {
       final msg = detail.status == FixtureStatus.scheduled
@@ -324,9 +324,30 @@ class _Timeline extends StatelessWidget {
   }
 }
 
+/// **Ereignistyp auf eine vergleichbare Form bringen.**
+///
+/// Sportmonks schreibt die Typen als Klartext mit Grossbuchstaben und
+/// Leerzeichen: `Goal`, `Yellowcard`, **`Own Goal`**. Der Abgleich lief nur
+/// ueber `toLowerCase()` und verglich mit `'owngoal'` — aus „Own Goal" wird so
+/// aber „own goal" **mit Leerzeichen**, und das traf nie zu. `_iconFor` gab
+/// `null` zurueck, und der Spielverlauf filtert genau daran: **Jedes Eigentor
+/// fehlte in der Zeitleiste.** Gemeldet an Dortmund gegen HSV, wo das 2:0
+/// schlicht nicht dastand.
+///
+/// Deshalb wird jetzt alles entfernt, was zwischen den Woertern stehen kann.
+/// Das haelt auch, wenn die Quelle morgen `Yellow Card` statt `Yellowcard`
+/// schreibt — der Fehler waere sonst derselbe, nur an anderer Stelle.
+String _typ(String roh) =>
+    roh.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
+
 /// Symbol je Ereignistyp; null = nicht anzeigen.
+///
+/// Öffentlich als [matchEventIcon], damit der Test die Schreibweisen der
+/// Quelle prüfen kann, ohne den halben Schirm zu bauen.
+IconData? matchEventIcon(String type) => _iconFor(type);
+
 IconData? _iconFor(String type) {
-  switch (type.toLowerCase()) {
+  switch (_typ(type)) {
     case 'goal':
     case 'owngoal':
     case 'penalty':
@@ -352,7 +373,7 @@ class _EventRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final e = event;
-    final t = e.type.toLowerCase();
+    final t = _typ(e.type);
     final isGoal = t.contains('goal') || t == 'penalty';
     final color = switch (t) {
       'yellowcard' => const Color(0xFFFFC83D),
@@ -464,7 +485,7 @@ class Substitutions {
         if (p.playerId != null) p.name.toLowerCase().trim(): p.playerId!
     };
     for (final e in events) {
-      if (e.type.toLowerCase() != 'substitution') continue;
+      if (_typ(e.type) != 'substitution') continue;
       final inId = e.playerId;
       final outName = e.related;
       if (inId != null && outName != null && outName.isNotEmpty) {
@@ -497,7 +518,7 @@ class _LineupTab extends StatelessWidget {
     for (final e in d.events) {
       final id = e.playerId;
       if (id == null) continue;
-      final t = e.type.toLowerCase();
+      final t = _typ(e.type);
       if (t == 'yellowcard') yellow.add(id);
       if (t == 'redcard' || t == 'yellowredcard') red.add(id);
     }
