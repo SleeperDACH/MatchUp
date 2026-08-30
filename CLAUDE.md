@@ -2367,6 +2367,50 @@ bei jedem Durchlauf: dass Angebote und Anträge auf der eigenen Seite landen,
 dass der Draft aus der Liga-Liste fällt, und dass Zu- **und** Abgang darin
 vorkommen.
 
+### Das Karussell darf beim Nachladen nicht zurückspringen
+
+Gemeldet: *„Wenn man zwischen den MatchUps hin und her wischt und dann nach
+unten geht oder auf ein Spielerprofil, schmeißt es einen zurück auf das
+erste."*
+
+Die Ursache stand am Anfang von `MatchupsBody.build`:
+
+```dart
+if (managersAsync.isLoading || poolAsync.isLoading) {
+  return const Center(child: CircularProgressIndicator());
+}
+```
+
+Ein früher `return` **ersetzt den ganzen Teilbaum**. Der `PageView` wird
+abgebaut, und beim Wiederaufbau beginnt der Controller wieder bei
+`initialPage`. Ausgelöst hat das **jede** Auffrischung: Der Spielerpool wird
+nachgeladen, sobald ein Profil aufgeht, und `fantasyManagersProvider` meldet
+beim Wiederverbinden ebenfalls kurz „lädt".
+
+**Maßgeblich ist, ob Daten da sind — nicht, ob gerade geladen wird.** Der
+Spinner erscheint jetzt nur beim allerersten Laden (`valueOrNull == null`);
+ein Nachladen über vorhandenen Daten sieht man gar nicht, und Riverpod liefert
+dabei den alten Stand mit (`valueOrNull` statt `requireValue`). Zusätzlich
+startet der Controller auf der gemerkten Seite, falls der Teilbaum doch einmal
+neu entsteht.
+
+**Die Regel darüber hinaus:** Ein `isLoading`-Zweig, der den Schirm ersetzt,
+ist nur beim Erstaufbau richtig. Danach wirft er jeden Zustand weg, den der
+Nutzer aufgebaut hat — Wischposition, Scrollstand, aufgeklappte Bereiche. Das
+ist derselbe Fehler wie „man muss die App neu starten", nur andersherum: Dort
+fragte nichts nach, hier wird bei jeder Antwort alles verworfen.
+
+Gehalten von `test/matchup_karussell_test.dart`. Er wischt eine Seite weiter,
+löst ein Nachladen aus und prüft die Seite danach — **gegengeprüft: ohne den
+Fix meldet er `100000` statt `100001`**, also den Rückfall auf das erste
+MatchUp.
+
+**Nebenbei die Enge im Kopf der Karte behoben:** Kopfzeile und Inhalt sind
+Geschwister in einer `spaceBetween`-Spalte, und bei viel Inhalt — live ist der
+Inhalt am größten — fiel der Zwischenraum auf null zusammen; der LIVE-Chip
+klebte an der Oberkante des Avatars darunter. Die Kopfzeile hat jetzt einen
+garantierten Fuß von `Abstand.s`.
+
 ### Eine Kante für alle Karten
 
 Gemeldet als Design-Kritik, und sie stimmte: Auf der Liga-Übersicht standen

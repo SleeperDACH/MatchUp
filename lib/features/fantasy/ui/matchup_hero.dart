@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../app/typografie.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
@@ -384,7 +386,15 @@ class HeroShell extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
+                      // **Ein garantierter Fuß unter der Kopfzeile.**
+                      // Kopfzeile und Inhalt sind Geschwister in einer
+                      // `spaceBetween`-Spalte; bei viel Inhalt — und live ist
+                      // der Inhalt am größten — fällt der Zwischenraum auf
+                      // null zusammen, und der LIVE-Chip klebte an der
+                      // Oberkante des Avatars darunter.
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: Abstand.s),
+                        child: Row(
                         children: [
                           Icon(Icons.bolt, size: 16, color: accent),
                           const SizedBox(width: 4),
@@ -411,6 +421,7 @@ class HeroShell extends StatelessWidget {
                           HeroStatusPill(
                               accent: accent, label: status, live: live),
                         ],
+                      ),
                       ),
                       child,
                     ],

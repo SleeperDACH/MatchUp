@@ -48,8 +48,13 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
   static const _loopBase = 100000;
 
   int? _round;
-  final _pageController = PageController(initialPage: _loopBase);
   int _bannerPage = 0;
+
+  /// **Der Controller startet auf der gemerkten Seite**, nicht stur auf der
+  /// ersten. Der Fall tritt ein, wenn der Teilbaum doch einmal neu entsteht —
+  /// dann liegt hier noch, wo der Nutzer war, und die Wischposition überlebt.
+  late final _pageController =
+      PageController(initialPage: _loopBase + _bannerPage);
 
   @override
   void dispose() {
@@ -95,8 +100,24 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
         ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
-    if (managersAsync.isLoading || poolAsync.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+    // **Nur beim allerersten Laden ein Spinner, nicht bei jedem Nachladen.**
+    //
+    // Vorher stand hier `isLoading`, und das war die Ursache für „es wirft
+    // einen zurück auf das erste MatchUp": Der frühe `return` ersetzt den
+    // ganzen Teilbaum, der `PageView` wird abgebaut, und beim Wiederaufbau
+    // beginnt der Controller wieder bei `initialPage`. Ausgelöst hat das jede
+    // Auffrischung — der Spielerpool wird nachgeladen, sobald ein Profil
+    // aufgeht, und `fantasyManagersProvider` meldet beim Wiederverbinden
+    // ebenfalls kurz „lädt".
+    //
+    // Maßgeblich ist deshalb, ob **Daten da sind**, nicht ob gerade geladen
+    // wird. Ein Nachladen über vorhandenen Daten darf man nicht sehen.
+    if (managersAsync.valueOrNull == null || poolAsync.valueOrNull == null) {
+      if (managersAsync.hasError || poolAsync.hasError) {
+        // fällt unten in die Fehlerbehandlung
+      } else {
+        return const Center(child: CircularProgressIndicator());
+      }
     }
     // Fehler-State abfangen (z. B. abgebrochener Request) statt via requireValue
     // den ganzen Tab abstürzen zu lassen.
@@ -124,8 +145,11 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
       );
     }
     return Builder(builder: (context) {
-              final managers = managersAsync.requireValue;
-              final pool = poolAsync.requireValue;
+              // `valueOrNull` statt `requireValue`: Beim Nachladen über
+              // vorhandenen Daten liefert Riverpod den alten Stand mit, und
+              // genau den wollen wir weiterzeigen.
+              final managers = managersAsync.valueOrNull ?? const [];
+              final pool = poolAsync.valueOrNull ?? const <FantasyPlayer>[];
               final playerById = {for (final p in pool) p.id: p};
               final nameOf = {for (final m in managers) m.userId: m.display};
               final avatarOf = {
