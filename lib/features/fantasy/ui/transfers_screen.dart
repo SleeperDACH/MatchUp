@@ -356,23 +356,16 @@ class _VorgangsKarte extends ConsumerWidget {
     final name =
         {for (final m in manager) m.userId: m.display}[vorgang.managerId];
 
-    final aufWaiver =
-        ref.watch(waiverPlayersProvider(league.id)).valueOrNull ??
-            const <String>{};
-    final imKader = {
-      for (final r in ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
-          const <RosterEntry>[])
-        r.playerId
-    };
-
     Widget kachel(RosterMove m) {
       final p = nachId[m.playerId];
       if (p == null) return _Unbekannt(m.playerId);
       return SpielerKachel(
         spieler: p,
         iconUrl: icons[p.club],
-        hoehe: 46,
-        breite: 152,
+        // Schmaler als im Trade-Angebot: Dort steht eine Kachel je Zeile,
+        // hier stehen zwei nebeneinander plus Pfeil.
+        hoehe: 42,
+        breite: 124,
         mitHaken: false,
         onTap: () => showPlayerProfile(context,
             league: league,
@@ -434,64 +427,8 @@ class _VorgangsKarte extends ConsumerWidget {
                 for (final m in vorgang.raus) kachel(m),
               ],
             ),
-            // **Wo der Abgegebene jetzt steckt.** Ohne das endet die Auskunft
-            // genau vor der Frage, die sie auslöst.
-            for (final m in vorgang.raus)
-              _MarktZeile(
-                spieler: nachId[m.playerId],
-                lage: marktlage(m.playerId,
-                    aufWaiver: aufWaiver, imKader: imKader),
-              ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Sagt für einen abgegebenen Spieler, ob man ihn holen kann.
-class _MarktZeile extends StatelessWidget {
-  const _MarktZeile({required this.spieler, required this.lage});
-
-  final FantasyPlayer? spieler;
-  final Marktlage lage;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final wer = spieler?.name ?? 'Der Abgegebene';
-    final (text, farbe, symbol) = switch (lage) {
-      // Gold heißt hier wie überall „per Antrag" — dieselbe Farbe wie der
-      // Waiver-Knopf in der Free Agency.
-      Marktlage.aufDemWaiver => (
-          '$wer liegt auf dem Waiver — nur per Antrag',
-          _kGold,
-          Icons.schedule
-        ),
-      Marktlage.frei => (
-          '$wer ist wieder frei',
-          _kGruen,
-          Icons.person_add_alt
-        ),
-      Marktlage.vergeben => (
-          '$wer ist schon wieder vergeben',
-          scheme.onSurfaceVariant,
-          Icons.lock_outline
-        ),
-    };
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          Icon(symbol, size: 14, color: farbe),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11.5, color: farbe)),
-          ),
-        ],
       ),
     );
   }

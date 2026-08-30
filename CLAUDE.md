@@ -2134,19 +2134,18 @@ derselben Minute aneinander. Ein Trade bleibt dabei **je Manager getrennt** —
 „Eric bekommt Guirassy und gibt Amiri" und „Majusch bekommt Amiri und gibt
 Guirassy" sind zwei Auskünfte, nicht eine.
 
-**Und wo der Abgegebene jetzt steckt.** Ohne das endet die Auskunft genau vor
-der Frage, die sie auslöst: *Kann ich ihn holen?* Drei Antworten, und alle drei
-sind verschieden — sie in eine zu gießen („nicht im Kader") wäre die
-unbrauchbare:
+**Die Marktlage des Abgegebenen stand kurzzeitig darunter** („liegt auf dem
+Waiver — nur per Antrag" in Gold, „ist wieder frei" in Grün) und ist auf
+ausdrücklichen Wunsch wieder raus: Sie machte jede Karte um eine volle Zeile
+höher und brachte zwei weitere Signalfarben in eine Liste, die ohnehin schon
+Grün und Rot für die Richtung benutzt. Wer wissen will, ob ein Spieler zu haben
+ist, sieht das in der Free Agency am Knopf — dort gehört die Auskunft hin, weil
+man dort danach handelt. Die Regel dafür (`marktlage` in
+`logic/transfer_vorgaenge.dart`) bleibt samt Tests stehen; sie ist die
+Grundlage, falls die Auskunft je in leiserer Form zurückkommt.
 
-| Lage | Zeile | Farbe |
-|---|---|---|
-| liegt auf dem Waiver | „… — nur per Antrag" | Gold, wie der Waiver-Knopf |
-| wieder frei | „… ist wieder frei" | Grün |
-| schon wieder vergeben | „… ist schon wieder vergeben" | grau |
-
-„Vergeben" schlägt dabei den Waiver: Wer schon wieder in einem Kader steht, ist
-nicht holbar, auch wenn sein Wire-Eintrag noch nicht aufgeräumt ist.
+Die Kacheln sind hier **schmaler als im Trade-Angebot** (124 × 42 statt
+152 × 46): Dort steht eine je Zeile, hier stehen zwei nebeneinander plus Pfeil.
 
 **Das Design folgt den Trade-Angeboten**, weil es dieselbe Sorte Inhalt ist:
 Kartengrund, Haarlinie, `SpielerKachel` in der kompakten Fassung (46 × 152),

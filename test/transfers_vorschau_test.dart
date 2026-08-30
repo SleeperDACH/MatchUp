@@ -265,8 +265,9 @@ void main() {
     // **Der abgegebene Spieler steht mit im Vorgang** — er war der Preis für
     // den Zugang, und ohne ihn ist die Auskunft halb.
     expect(find.text('J. Brandt'), findsWidgets);
-    // Und wo er jetzt steckt: drei verschiedene Lagen, drei verschiedene Sätze.
-    expect(find.textContaining('liegt auf dem Waiver'), findsWidgets);
-    expect(find.textContaining('ist schon wieder vergeben'), findsWidgets);
+    // Die farbige Marktlage-Zeile ist auf Wunsch wieder raus — sie machte die
+    // Karten hoch und laut. Der Test hält fest, dass sie weg bleibt.
+    expect(find.textContaining('liegt auf dem Waiver'), findsNothing);
+    expect(find.textContaining('ist wieder frei'), findsNothing);
   });
 }
