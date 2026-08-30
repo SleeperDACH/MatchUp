@@ -119,7 +119,14 @@ void main() {
 
   final heute = DateTime.now();
   final gestern = heute.subtract(const Duration(days: 1));
+  // **Zugang und Abgang eines Vorgangs tragen dieselbe Zeit** — sie entstehen
+  // in derselben Transaktion, und Postgres' now() ist die Transaktionszeit.
+  // Wer hier verschiedene Zeiten einsetzt, prüft eine Lage, die es nicht gibt.
+  final vorhin = heute.subtract(const Duration(hours: 2));
+  final frueher = heute.subtract(const Duration(hours: 6));
   final moves = [
+    // lennartruepke holt Karius und gibt Brandt ab — Brandt liegt danach auf
+    // dem Waiver.
     RosterMove(
         id: 5,
         leagueId: 'l1',
@@ -127,14 +134,16 @@ void main() {
         playerId: 'p5',
         zugang: true,
         weg: 'fa',
-        passiertAm: heute.subtract(const Duration(hours: 2))),
+        passiertAm: vorhin),
     RosterMove(
         id: 4,
         leagueId: 'l1',
         managerId: 'gegner',
         playerId: 'p3',
         zugang: false,
-        passiertAm: heute.subtract(const Duration(hours: 2, minutes: 1))),
+        passiertAm: vorhin),
+    // Ich hole Guirassy über den Waiver und gebe Urbig ab — Urbig ist wieder
+    // frei.
     RosterMove(
         id: 3,
         leagueId: 'l1',
@@ -142,14 +151,22 @@ void main() {
         playerId: 'p4',
         zugang: true,
         weg: 'waiver',
-        passiertAm: heute.subtract(const Duration(hours: 6))),
+        passiertAm: frueher),
+    RosterMove(
+        id: 6,
+        leagueId: 'l1',
+        managerId: 'ich',
+        playerId: 'p1',
+        zugang: false,
+        passiertAm: frueher),
+    // Ein reiner Abgang ohne Gegenwert — und der Spieler ist längst wieder
+    // vergeben.
     RosterMove(
         id: 2,
         leagueId: 'l1',
         managerId: 'dritte',
         playerId: 'p2',
-        zugang: true,
-        weg: 'trade',
+        zugang: false,
         passiertAm: gestern),
     // Draft-Zeilen müssen aus der Liga-Seite herausfallen — sonst begraben sie
     // bei sechzehn Teams jede Meldung darunter.
@@ -181,6 +198,14 @@ void main() {
           myWaiverClaimsProvider
               .overrideWith((ref, id) => Stream.value(antraege)),
           rosterMovesProvider.overrideWith((ref, id) => Stream.value(moves)),
+          // Brandt liegt auf dem Waiver, Schlotterbeck steht wieder in einem
+          // Kader, Urbig ist frei — drei verschiedene Marktlagen in einem Bild.
+          waiverPlayersProvider
+              .overrideWith((ref, id) => Stream.value({'p3'})),
+          leagueRosterProvider.overrideWith((ref, id) => Stream.value(const [
+                RosterEntry(
+                    managerId: 'gegner', playerId: 'p2', acquiredVia: 'fa'),
+              ])),
           waiverWindowProvider.overrideWith((ref) async =>
               (round: 2, deadline: DateTime(2026, 9, 3, 15, 30))),
         ],
@@ -237,5 +262,11 @@ void main() {
     // festgehalten, und genau er ist die Hälfte, die man sucht.
     expect(find.textContaining('Verpflichtet'), findsWidgets);
     expect(find.textContaining('Abgegeben'), findsWidgets);
+    // **Der abgegebene Spieler steht mit im Vorgang** — er war der Preis für
+    // den Zugang, und ohne ihn ist die Auskunft halb.
+    expect(find.text('J. Brandt'), findsWidgets);
+    // Und wo er jetzt steckt: drei verschiedene Lagen, drei verschiedene Sätze.
+    expect(find.textContaining('liegt auf dem Waiver'), findsWidgets);
+    expect(find.textContaining('ist schon wieder vergeben'), findsWidgets);
   });
 }

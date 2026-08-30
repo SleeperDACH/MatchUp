@@ -4,10 +4,10 @@ import 'package:intl/intl.dart';
 
 import '../../../app/widgets/leise_reiter.dart';
 import '../../auth/providers.dart';
+import '../logic/transfer_vorgaenge.dart';
 import '../models/fantasy_models.dart';
 import '../models/roster_move.dart';
 import '../providers.dart';
-import 'club_badge.dart';
 import 'player_profile_sheet.dart';
 import 'spieler_kachel.dart';
 import 'trade_screen.dart';
@@ -125,8 +125,8 @@ class _MeineSeite extends ConsumerWidget {
         ],
         if (meineBewegungen.isNotEmpty) ...[
           const _Marke('Meine Wechsel'),
-          for (final m in meineBewegungen)
-            _BewegungsZeile(league: league, move: m, mitManager: false),
+          for (final v in vorgaengeAus(meineBewegungen))
+            _VorgangsKarte(league: league, vorgang: v, mitManager: false),
         ],
       ],
     );
@@ -281,27 +281,28 @@ class _LigaSeite extends ConsumerWidget {
         // **Der Draft ist keine Bewegung, die man nachliest.** Er erzeugt bei
         // sechzehn Teams Hunderte Zeilen und würde jede Free-Agency-Meldung
         // darunter begraben; wer den Draft sehen will, hat dafür das Board.
-        final ohneDraft = [
-          for (final m in moves)
-            if (m.weg != 'draft') m
+        final vorgaenge = [
+          for (final v in vorgaengeAus(moves))
+            if (v.weg != 'draft') v
         ];
-        if (ohneDraft.isEmpty) {
+        if (vorgaenge.isEmpty) {
           return const _Leer(
               'Noch keine Wechsel.\nHier stehen alle Zu- und Abgänge der Liga.');
         }
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(0, 8, 0, 20),
-          itemCount: ohneDraft.length,
+          itemCount: vorgaenge.length,
           itemBuilder: (context, i) {
-            final m = ohneDraft[i];
-            final davor = i == 0 ? null : ohneDraft[i - 1];
-            final neuerTag = davor == null ||
-                !_gleicherTag(davor.passiertAm, m.passiertAm);
+            final v = vorgaenge[i];
+            final davor = i == 0 ? null : vorgaenge[i - 1];
+            final neuerTag =
+                davor == null || !_gleicherTag(davor.passiertAm, v.passiertAm);
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (neuerTag) _Marke(_tag(m.passiertAm)),
-                _BewegungsZeile(league: league, move: m, mitManager: true),
+                if (neuerTag) _Marke(_tag(v.passiertAm)),
+                _VorgangsKarte(
+                    league: league, vorgang: v, mitManager: true),
               ],
             );
           },
@@ -323,21 +324,23 @@ class _LigaSeite extends ConsumerWidget {
   }
 }
 
-/// Eine Zeile im Bewegungsprotokoll.
+/// **Ein Vorgang: was kam, was ging, und wo der Abgegebene jetzt steckt.**
 ///
-/// Zugang und Abgang trennen sich durch **Richtung und Farbe** des Pfeils, nicht
-/// durch verschiedene Formen: Es ist dieselbe Sorte Ereignis.
-class _BewegungsZeile extends ConsumerWidget {
-  const _BewegungsZeile({
+/// Vorher standen Zugang und Abgang als zwei unabhängige Zeilen untereinander
+/// — „X verpflichtet" über „Y abgegeben", ohne dass etwas sagte, dass Y *für*
+/// X gehen musste. Und über Y stand danach nichts mehr, obwohl sich sofort die
+/// nächste Frage stellt: Kann ich ihn holen?
+class _VorgangsKarte extends ConsumerWidget {
+  const _VorgangsKarte({
     required this.league,
-    required this.move,
+    required this.vorgang,
     required this.mitManager,
   });
 
   final FantasyLeague league;
-  final RosterMove move;
+  final TransferVorgang vorgang;
 
-  /// Auf der Liga-Seite steht davor, wer es war; auf der eigenen nicht.
+  /// Auf der Liga-Seite steht dabei, wer es war; auf der eigenen nicht.
   final bool mitManager;
 
   @override
@@ -345,74 +348,150 @@ class _BewegungsZeile extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final pool =
         ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
-    final spieler = {for (final p in pool) p.id: p}[move.playerId];
+    final nachId = {for (final p in pool) p.id: p};
     final icons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final manager =
         ref.watch(fantasyManagersProvider(league.id)).valueOrNull ?? const [];
-    final name = {for (final m in manager) m.userId: m.display}[move.managerId];
+    final name =
+        {for (final m in manager) m.userId: m.display}[vorgang.managerId];
 
-    final farbe = move.zugang ? _kGruen : _kRot;
+    final aufWaiver =
+        ref.watch(waiverPlayersProvider(league.id)).valueOrNull ??
+            const <String>{};
+    final imKader = {
+      for (final r in ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+          const <RosterEntry>[])
+        r.playerId
+    };
 
-    return InkWell(
-      onTap: spieler == null
-          ? null
-          : () => showPlayerProfile(context,
-              league: league,
-              player: spieler,
-              clubIcon: icons[spieler.club],
-              isMine: false),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: Row(
+    Widget kachel(RosterMove m) {
+      final p = nachId[m.playerId];
+      if (p == null) return _Unbekannt(m.playerId);
+      return SpielerKachel(
+        spieler: p,
+        iconUrl: icons[p.club],
+        hoehe: 46,
+        breite: 152,
+        mitHaken: false,
+        onTap: () => showPlayerProfile(context,
+            league: league,
+            player: p,
+            clubIcon: icons[p.club],
+            isMine: false),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(move.zugang ? Icons.south_west : Icons.north_east,
-                size: 16, color: farbe),
-            const SizedBox(width: 10),
-            if (spieler != null) ...[
-              ClubBadge(
-                  club: spieler.club, iconUrl: icons[spieler.club], size: 26),
-              const SizedBox(width: 8),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    // „nicht gefunden" ist ein eigener Zustand, kein leeres
-                    // Feld — dieselbe Regel wie im Draft-Brett.
-                    spieler?.name ?? move.playerId,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontStyle:
-                          spieler == null ? FontStyle.italic : FontStyle.normal,
-                    ),
-                  ),
-                  Text(
+            Row(
+              children: [
+                Icon(vorgang.nurAbgang ? Icons.north_east : Icons.south_west,
+                    size: 15,
+                    color: vorgang.nurAbgang ? _kRot : _kGruen),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
                     [
-                      move.bezeichnung,
+                      vorgang.bezeichnung,
                       if (mitManager && name != null) name,
                     ].join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 12, color: scheme.onSurfaceVariant),
+                    style: const TextStyle(
+                        fontSize: 12.5, fontWeight: FontWeight.w700),
                   ),
-                ],
+                ),
+                Text(
+                  DateFormat('HH:mm', 'de_DE').format(vorgang.passiertAm),
+                  style: TextStyle(
+                      fontSize: 11.5,
+                      color: scheme.onSurfaceVariant,
+                      fontFeatures: const [FontFeature.tabularFigures()]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                for (final m in vorgang.rein) kachel(m),
+                if (vorgang.rein.isNotEmpty && vorgang.raus.isNotEmpty)
+                  Icon(Icons.swap_horiz,
+                      size: 18, color: scheme.onSurfaceVariant),
+                for (final m in vorgang.raus) kachel(m),
+              ],
+            ),
+            // **Wo der Abgegebene jetzt steckt.** Ohne das endet die Auskunft
+            // genau vor der Frage, die sie auslöst.
+            for (final m in vorgang.raus)
+              _MarktZeile(
+                spieler: nachId[m.playerId],
+                lage: marktlage(m.playerId,
+                    aufWaiver: aufWaiver, imKader: imKader),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              DateFormat('HH:mm', 'de_DE').format(move.passiertAm),
-              style: TextStyle(
-                  fontSize: 11.5,
-                  color: scheme.onSurfaceVariant,
-                  fontFeatures: const [FontFeature.tabularFigures()]),
-            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Sagt für einen abgegebenen Spieler, ob man ihn holen kann.
+class _MarktZeile extends StatelessWidget {
+  const _MarktZeile({required this.spieler, required this.lage});
+
+  final FantasyPlayer? spieler;
+  final Marktlage lage;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final wer = spieler?.name ?? 'Der Abgegebene';
+    final (text, farbe, symbol) = switch (lage) {
+      // Gold heißt hier wie überall „per Antrag" — dieselbe Farbe wie der
+      // Waiver-Knopf in der Free Agency.
+      Marktlage.aufDemWaiver => (
+          '$wer liegt auf dem Waiver — nur per Antrag',
+          _kGold,
+          Icons.schedule
+        ),
+      Marktlage.frei => (
+          '$wer ist wieder frei',
+          _kGruen,
+          Icons.person_add_alt
+        ),
+      Marktlage.vergeben => (
+          '$wer ist schon wieder vergeben',
+          scheme.onSurfaceVariant,
+          Icons.lock_outline
+        ),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Icon(symbol, size: 14, color: farbe),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11.5, color: farbe)),
+          ),
+        ],
       ),
     );
   }

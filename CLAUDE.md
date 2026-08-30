@@ -2084,6 +2084,36 @@ Hunderte Zeilen und begrübe jede Free-Agency-Meldung darunter; wer den Draft
 nachlesen will, hat dafür das Board. Er bleibt im Protokoll, damit die eigene
 Seite „woher kam dieser Spieler?" beantworten kann.
 
+**Ein Vorgang, nicht zwei Zeilen.** Wer einen Spieler holt, gibt meist im
+selben Atemzug einen ab. Im Protokoll sind das zwei Zeilen, und untereinander
+gestellt sahen sie aus wie zwei unabhängige Ereignisse: „X verpflichtet" über
+„Y abgegeben", ohne dass etwas sagt, dass Y **für** X gehen musste. Genau das
+ist aber die Auskunft, die man sucht.
+
+Zusammengefasst wird über **Manager und Zeitstempel** (`vorgaengeAus` in
+`logic/transfer_vorgaenge.dart`, rein und getestet). Das ist keine Schätzung:
+Beide Zeilen entstehen in derselben Transaktion, und Postgres' `now()` liefert
+die Transaktionszeit — die Werte sind **exakt** gleich. Nachgemessen an einem
+echten Trade: beide Zeilen auf `05:47:17.294999`. Der Schlüssel trägt die Zeit
+deshalb auf die Mikrosekunde; wer rundet, klebt zwei unabhängige Vorgänge
+derselben Minute aneinander. Ein Trade bleibt dabei **je Manager getrennt** —
+„Eric bekommt Guirassy und gibt Amiri" und „Majusch bekommt Amiri und gibt
+Guirassy" sind zwei Auskünfte, nicht eine.
+
+**Und wo der Abgegebene jetzt steckt.** Ohne das endet die Auskunft genau vor
+der Frage, die sie auslöst: *Kann ich ihn holen?* Drei Antworten, und alle drei
+sind verschieden — sie in eine zu gießen („nicht im Kader") wäre die
+unbrauchbare:
+
+| Lage | Zeile | Farbe |
+|---|---|---|
+| liegt auf dem Waiver | „… — nur per Antrag" | Gold, wie der Waiver-Knopf |
+| wieder frei | „… ist wieder frei" | Grün |
+| schon wieder vergeben | „… ist schon wieder vergeben" | grau |
+
+„Vergeben" schlägt dabei den Waiver: Wer schon wieder in einem Kader steht, ist
+nicht holbar, auch wenn sein Wire-Eintrag noch nicht aufgeräumt ist.
+
 **Das Design folgt den Trade-Angeboten**, weil es dieselbe Sorte Inhalt ist:
 Kartengrund, Haarlinie, `SpielerKachel` in der kompakten Fassung (46 × 152),
 und **Farbe nur, wo etwas ansteht** — die Marke „Wartet auf dich" trägt Rot und
