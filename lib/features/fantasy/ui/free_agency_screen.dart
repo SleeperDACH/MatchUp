@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/widgets/pill_selector.dart';
+import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
+import '../logic/aufstellung_sperre.dart';
+import '../logic/aufstellungs_prognose.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
@@ -41,6 +45,17 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
+
+    // **Welche Vereine spielen gerade?** Dieselbe Regel wie auf dem Server
+    // (`fantasy_spieler_laeuft`, Migration 0094): die niedrigste noch nicht
+    // vollständig abgepfiffene Runde, und darin der Anpfiff je Verein.
+    final spiele = ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+        const <Fixture>[];
+    final laufendeRunde = aktiveRunde(spiele);
+    final anpfiff = laufendeRunde == null
+        ? const <String, DateTime>{}
+        : anpfiffJeVerein(spiele, laufendeRunde);
+    final jetzt = DateTime.now();
 
     final pendingClaims = claims.where((c) => c.status.isPending).toList();
     final claimedPlayerIds = {for (final c in pendingClaims) c.addPlayerId};
@@ -122,6 +137,8 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                     final p = freeAgents[i];
                     final waiver = onWaivers.contains(p.id);
                     final claimed = claimedPlayerIds.contains(p.id);
+                    final laeuft =
+                        vereinSpieltGerade(p.club, anpfiff, jetzt);
                     return ListTile(
                       leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                       title: Text(p.name),
@@ -131,12 +148,17 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                                waiver ? '${p.club} · Waiver-Wire' : p.club,
+                                waiver
+                                    ? '${p.club} · Waiver-Wire'
+                                    : laeuft
+                                        ? '${p.club} · Spiel läuft'
+                                        : p.club,
                                 maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
                         ],
                       ),
                       trailing: PlayerActionButton(
+                        spieltGerade: laeuft,
                         league: league,
                         player: p,
                         ownerId: null,
@@ -157,10 +179,15 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
     );
   }
 
+  /// **Kein `ChoiceChip`.** Es zieht seine Auswahlfarbe aus
+  /// `secondaryContainer` — aus dem grünen Seed dieser App wird das ein
+  /// stumpfes Oliv, und seine Beschriftung erbt die App-Schrift nicht: In der
+  /// ersten Vorschau dieses Schirms standen dort schwarze Balken statt
+  /// „Tor", „Abwehr", „Mittelfeld", „Sturm". Die Regel steht seit langem in
+  /// CLAUDE.md; dieser Schirm hatte sie nur nie jemand angesehen.
   Widget _chip(String label, bool selected, VoidCallback onTap) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: ChoiceChip(
-            label: Text(label), selected: selected, onSelected: (_) => onTap()),
+        child: PillChip(label: label, selected: selected, onTap: onTap),
       );
 }
 
@@ -171,20 +198,25 @@ class _WaiverBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // **Nicht `secondaryContainer`.** Aus dem grünen Seed wird das ein stumpfes
+    // Oliv, und ein olivgrüner Balken über der ganzen Breite sagt nichts —
+    // hier läuft nichts, hier steht eine Regel. Die Farbe des Waivers ist
+    // Gold, und sie trägt nur den Hauch, den ein Hinweis braucht.
+    const gold = Color(0xFFFFC83D);
     return Container(
       width: double.infinity,
-      color: scheme.secondaryContainer,
+      color: gold.withValues(alpha: 0.10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          Icon(Icons.schedule, size: 18, color: scheme.onSecondaryContainer),
+          const Icon(Icons.schedule, size: 18, color: gold),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
                 'Gedroppte Spieler sind 24 Stunden nur per Antrag holbar '
                 '(Waiver, rollende Priorität) — danach frei.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSecondaryContainer)),
+                    color: scheme.onSurfaceVariant)),
           ),
         ],
       ),

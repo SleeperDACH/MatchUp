@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
+import '../logic/aufstellung_sperre.dart';
+import '../logic/aufstellungs_prognose.dart';
 import '../providers.dart';
 import 'club_badge.dart';
 import 'player_action_buttons.dart';
@@ -40,6 +43,17 @@ class _PlayerPoolScreenState extends ConsumerState<PlayerPoolScreen> {
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
+
+    // Dieselbe Regel wie in der Free Agency und auf dem Server
+    // (`fantasy_spieler_laeuft`, 0094): Wessen Partie läuft, ist nicht holbar.
+    // Zwei Listen derselben Spieler dürfen sich darin nicht widersprechen.
+    final spiele = ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+        const <Fixture>[];
+    final laufendeRunde = aktiveRunde(spiele);
+    final anpfiff = laufendeRunde == null
+        ? const <String, DateTime>{}
+        : anpfiffJeVerein(spiele, laufendeRunde);
+    final jetzt = DateTime.now();
 
     final ownerByPlayer = {for (final r in roster) r.playerId: r.managerId};
     final pendingClaims = claims.where((c) => c.status.isPending).toList();
@@ -126,6 +140,8 @@ class _PlayerPoolScreenState extends ConsumerState<PlayerPoolScreen> {
                         ],
                       ),
                       trailing: PlayerActionButton(
+                        spieltGerade:
+                            vereinSpieltGerade(p.club, anpfiff, jetzt),
                         league: league,
                         player: p,
                         ownerId: ownerByPlayer[p.id],

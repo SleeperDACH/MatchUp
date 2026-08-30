@@ -21,6 +21,7 @@ class PlayerActionButton extends ConsumerWidget {
     required this.player,
     required this.ownerId,
     required this.onWaiver,
+    this.spieltGerade = false,
     required this.claimed,
     required this.myPlayers,
     required this.nextRank,
@@ -34,6 +35,13 @@ class PlayerActionButton extends ConsumerWidget {
   final String? ownerId;
   final bool onWaiver;
   final bool claimed;
+
+  /// **Sein Spiel läuft bereits.** Dann ist er nicht holbar — der Server
+  /// lehnt es ab (Migration 0094), und es brächte auch nichts: Die
+  /// Aufstellung ist für ihn diesen Spieltag ohnehin gesperrt (0084), er käme
+  /// gar nicht in die Elf. Genau das war die Meldung „man kann ihn aufnehmen,
+  /// es passiert aber überhaupt nichts".
+  final bool spieltGerade;
   final List<FantasyPlayer> myPlayers;
   final int nextRank;
   final String? myId;
@@ -59,6 +67,21 @@ class PlayerActionButton extends ConsumerWidget {
         icon: Icons.schedule,
         tooltip: 'Waiver beantragen',
         onTap: () => _claim(context, ref),
+      );
+    }
+    // **Vor dem grünen Plus**, denn ein Spieler, dessen Partie läuft, ist
+    // kein freier Spieler mehr. Der Knopf sagt, warum — ein Symbol, das nur
+    // stumm nichts tut, war der Fehler davor.
+    if (spieltGerade) {
+      return _RoundBtn(
+        color: _cWaiver.withValues(alpha: 0.22),
+        fg: _cWaiver,
+        icon: Icons.schedule,
+        tooltip: 'Sein Spiel läuft',
+        onTap: () => _toast(
+            context,
+            'Sein Spiel läuft bereits – er ist erst nach dem Spieltag '
+            'wieder holbar.'),
       );
     }
     return _RoundBtn(

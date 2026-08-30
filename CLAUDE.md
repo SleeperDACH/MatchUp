@@ -1878,6 +1878,86 @@ Die Vorschau zeigt eine **vollständige** 4-2-3-1: An vier Spielern lässt sich
 nicht beurteilen, ob eine Formation steht. Gerechnet wird in
 `test/aufstellungs_prognose_test.dart`.
 
+### „Der Waiver funktioniert nicht" — der Drop ließ ein Phantom in der Elf
+
+Gemeldet als: *„man kann den Spieler aufnehmen und einen anderen droppen, das
+greift dann allerdings nicht — es passiert überhaupt nichts."*
+
+**Gemessen in der laufenden Liga:** Zwei Manager hatten elf Spieler in der
+Startelf, aber nur zehn davon im Kader — Eric mit Nadiem Amiri, Majusch mit
+Serhou Guirassy. Beide waren abgegeben und standen weiter in
+`fantasy_lineups.player_ids`.
+
+`player_ids` ist ein `text[]` **ohne Fremdschlüssel** auf `fantasy_rosters`.
+Ein Drop löscht die Kaderzeile und lässt das Array unberührt. Die Wertung
+schneidet dann still die Menge: `effectiveTotalsForRound` bildet die Punkte
+**aus dem Kader**, `chosenLineup` behält davon die aufgestellten — wer nicht
+mehr im Kader ist, fällt heraus, ohne Ersatz und ohne Meldung. Der Manager
+spielt mit zehn Mann und sieht es nirgends.
+
+Wieder dieselbe Sorte Fehler wie das leere Feld im Draft-Brett und das stille
+Auto-Speichern: **Ein Zustand „hier fehlt jemand" sah aus wie „alles in
+Ordnung."**
+
+**Behoben mit einem Trigger auf `fantasy_rosters`** (Migration 0094), nicht in
+den einzelnen Funktionen. Ein Spieler verlässt einen Kader über
+`fantasy_drop_player`, `fantasy_add_free_agent`, `fantasy_process_waivers`,
+`fantasy_trade_ausfuehren` und die Admin-Wege — fünf Stellen sind fünf
+Gelegenheiten, eine zu vergessen. Dieselbe Begründung wie beim Kaderlimit in
+0083. **Trades laufen über ein `update` von `manager_id`**, deshalb hängt der
+Trigger an `delete or update of manager_id` und räumt beim Update die
+Aufstellung des *abgebenden* Managers.
+
+Geräumt wird nur die **laufende und kommende** Runden. Abgepfiffene Spieltage
+sind Geschichte; eine nachträglich geänderte Aufstellung wäre eine Fälschung
+der Bilanz.
+
+### Wessen Spiel läuft, ist nicht mehr holbar
+
+Der zweite Teil derselben Meldung. Der Grund ist nicht Kosmetik: Wer während
+der Partie zusieht und dann den Spieler holt, der gerade getroffen hat, wertet
+mit Wissen, das beim Aufstellen niemand hatte. Und selbst gutgläubig bringt es
+nichts — die Aufstellung ist für ihn ohnehin gesperrt (0084), er käme diesen
+Spieltag gar nicht in die Elf. **Ein Knopf, der etwas Sinnloses tut, ist
+schlimmer als keiner**, und genau das war die Beschwerde.
+
+Maßgeblich ist die **laufende Runde**: die niedrigste, die noch nicht
+vollständig abgepfiffen ist (`fantasy_laufende_runde`). Die Sperre löst sich
+damit von selbst — nach dem letzten Abpfiff zählt die nächste Runde, und deren
+Anpfiff liegt in der Zukunft. Nichts muss zurückgesetzt werden.
+
+**Die Regel steht dreimal**, und das ist Absicht wie bei `tip_scoring.dart` ↔
+SQL-View: `fantasy_spieler_laeuft` (Server, entscheidet),
+`vereinSpieltGerade` in `logic/aufstellung_sperre.dart` (Oberfläche, zeigt) und
+`aktiveRunde` in `logic/aufstellungs_prognose.dart` (bestimmt die Runde). Laufen
+sie auseinander, zeigt die App ein grünes Plus, und der Server antwortet mit
+einer Fehlermeldung — genau der Zustand, der gemeldet wurde.
+
+Abgegeben werden darf ein laufender Spieler **nur, wenn er nicht in der Elf
+steht**. Auf der Bank hängt nichts an ihm; in der Elf wäre es eine
+nachträgliche Änderung an einem laufenden Spieltag.
+
+In der Oberfläche trägt so ein Spieler das Waiver-Symbol in **gedämpftem** Gold
+(volles Gold heißt „Antrag möglich"), im Untertitel steht „· Spiel läuft", und
+ein Tipp sagt den Grund statt stumm nichts zu tun.
+
+Gegen die Produktion nachgemessen (mit Rollback): Mainz-Spieler holen →
+abgelehnt; Augsburg-Spieler (Anpfiff später) → läuft bis zum Kaderlimit durch;
+Tietz droppen (in der Elf, hat gespielt) → abgelehnt; Karius droppen (Anpfiff
+später) → erlaubt, und der Trigger nimmt ihn aus der Elf (10 → 9).
+
+**Nebenbefund aus der ersten Vorschau dieses Schirms:** Die Positionsfilter
+waren `ChoiceChip`s — das Material-Element, das diese Datei seit langem
+verbietet. Im Bild standen dort schwarze Balken statt „Tor", „Abwehr",
+„Mittelfeld", „Sturm": Die Chip-Beschriftung erbt die App-Schrift nicht.
+Dieselbe Falle wie bei `AnimatedDefaultTextStyle` in den Reitern. Und der
+Hinweisbalken oben zog `secondaryContainer`, also das stumpfe Oliv, über die
+volle Breite. Beides ersetzt (`PillChip`, goldener Hauch). Der Schirm hatte bis
+dahin keine Vorschau — deshalb hatte es nie jemand gesehen.
+Angesehen über `test/free_agency_vorschau_test.dart`: die drei Zustände einer
+Zeile nebeneinander (Waiver, Spiel läuft, frei), die es auf dem Gerät nie
+gleichzeitig gibt. Gerechnet wird in `test/free_agent_sperre_test.dart`.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

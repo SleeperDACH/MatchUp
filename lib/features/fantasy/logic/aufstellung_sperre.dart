@@ -56,3 +56,23 @@ int nochFrei(
   DateTime jetzt,
 ) =>
     spieler.where((p) => !spielerGesperrt(p, anpfiff, jetzt)).length;
+
+/// **Läuft das Spiel dieses Vereins in der aktuell zählenden Runde schon?**
+///
+/// Die Frage entscheidet, ob ein freier Spieler geholt werden darf. Sie ist
+/// nicht dieselbe wie [spielerGesperrt]: Dort geht es um einen Spieler, der
+/// bereits im Kader steht, und die Runde ist bekannt. Hier ist die Runde erst
+/// zu bestimmen — die niedrigste, die noch nicht vollständig abgepfiffen ist.
+///
+/// **Maßgeblich ist der Server** (`fantasy_spieler_laeuft`, Migration 0094);
+/// das hier ist die Oberfläche dazu. Laufen die beiden auseinander, zeigt die
+/// App ein grünes Plus, und der Server antwortet mit einer Fehlermeldung —
+/// genau der Zustand, der als „es passiert überhaupt nichts" gemeldet wurde.
+bool vereinSpieltGerade(
+  String verein,
+  Map<String, DateTime> anpfiffDerRunde,
+  DateTime jetzt,
+) {
+  final kick = anpfiffDerRunde[verein];
+  return kick != null && !jetzt.isBefore(kick);
+}
