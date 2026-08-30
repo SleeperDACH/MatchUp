@@ -8,6 +8,7 @@ import '../../leagues/ui/visibility_picker.dart';
 import 'league_colors.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'kader_limits_editor.dart';
 import 'fantasy_league_screen.dart';
 
 /// Erstellen einer Fantasy-Liga: nur das Nötigste — Modus, Name und
@@ -36,6 +37,37 @@ class _CreateFantasyLeagueScreenState
   String _joinPolicy = 'open';
   bool _tipEnabled = false;
 
+  /// **Kader-Limits, schon beim Anlegen.** `null` = keine Einschränkung, und
+  /// das ist der Standard: Eine stillschweigend eingeführte Obergrenze wäre
+  /// eine Regel, die niemand gewählt hat. Wer sie will, schaltet sie hier ein
+  /// — oder später unter Regeln & Format.
+  final Map<PlayerPosition, int?> _limits = {
+    for (final pos in PlayerPosition.values) pos: null
+  };
+
+  /// Die Kaderform steht beim Erstellen fest; die Limits hängen daran (die
+  /// Untergrenze je Position kommt aus der Startelf).
+  RosterConfig get _rosterMitLimits => RosterConfig(
+        gk: RosterConfig.standard.gk,
+        def: RosterConfig.standard.def,
+        mid: RosterConfig.standard.mid,
+        fwd: RosterConfig.standard.fwd,
+        bench: RosterConfig.standard.bench,
+        defMin: RosterConfig.standard.defMin,
+        defMax: RosterConfig.standard.defMax,
+        midMin: RosterConfig.standard.midMin,
+        midMax: RosterConfig.standard.midMax,
+        fwdMin: RosterConfig.standard.fwdMin,
+        fwdMax: RosterConfig.standard.fwdMax,
+        maxGk: _limits[PlayerPosition.gk],
+        maxDef: _limits[PlayerPosition.def],
+        maxMid: _limits[PlayerPosition.mid],
+        maxFwd: _limits[PlayerPosition.fwd],
+      );
+
+  bool get _limitsTragenDenKader =>
+      KaderLimitsEditor.reichtFuerKader(RosterConfig.standard, _limits);
+
   bool _busy = false;
   String? _error;
 
@@ -50,6 +82,15 @@ class _CreateFantasyLeagueScreenState
       setState(() => _error = 'Bitte einen Namen mit mind. 3 Zeichen wählen.');
       return;
     }
+    // **16 Kaderplätze bei Limits, die zusammen 12 ergeben, sind nicht streng,
+    // sondern kaputt:** Der Draft fände keinen erlaubten Spieler mehr und
+    // beendete sich selbst. Dieselbe Sperre wie in den Einstellungen.
+    if (!_limitsTragenDenKader) {
+      setState(() => _error =
+          'Die Kader-Limits ergeben zusammen weniger Plätze, als der Kader '
+          'hat. So findet der Draft irgendwann keinen erlaubten Spieler mehr.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -62,7 +103,7 @@ class _CreateFantasyLeagueScreenState
                 season: ref.read(fantasySeasonProvider),
                 // Draft-Standards (später in den Einstellungen änderbar).
                 pickTime: DraftPickTime.m1,
-                roster: RosterConfig.standard,
+                roster: _rosterMitLimits,
                 maxTeams: _teams,
                 draftOrderMode: 'auto',
                 // Fantasy geht immer in die Playoffs: Standard 4 Teams ·
@@ -149,6 +190,34 @@ class _CreateFantasyLeagueScreenState
                   _visibility = v;
                   _joinPolicy = p;
                 }),
+              ),
+            ],
+          ),
+          FormSection(
+            titel: 'Kader-Limits',
+            hinweis:
+                'Höchstens so viele Spieler einer Position im Kader. Gilt beim '
+                'Draften, in der Free Agency, bei Waivern und Trades — nicht '
+                'für die Aufstellung, die regelt die Formation. Jede Position '
+                'steht für sich; ohne Limit ist der Standard.',
+            kinder: [
+              KaderLimitsEditor(
+                roster: RosterConfig.standard,
+                limits: _limits,
+                onChanged: (neu) => setState(() {
+                  _limits
+                    ..clear()
+                    ..addAll(neu);
+                }),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                KaderLimitsEditor.hinweisText(RosterConfig.standard, _limits),
+                style: TextStyle(
+                    fontSize: 12.5,
+                    color: _limitsTragenDenKader
+                        ? scheme.onSurfaceVariant
+                        : scheme.error),
               ),
             ],
           ),

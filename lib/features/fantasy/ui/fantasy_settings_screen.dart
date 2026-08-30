@@ -12,6 +12,8 @@ import '../../auth/providers.dart';
 import '../../leagues/providers.dart';
 import '../../leagues/ui/visibility_settings_page.dart';
 import '../../tippspiel/providers.dart';
+import 'kader_limits_editor.dart';
+import 'wert_stepper.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
@@ -717,7 +719,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
               label: 'Anzahl Runden',
               subtitle: '11 in der Startelf + ${_rounds - 11} auf der Bank',
               child: editable
-                  ? _Stepper(
+                  ? WertStepper(
                       label: 'Anzahl Runden',
                       value: _rounds,
                       min: _minRounds,
@@ -736,7 +738,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                 subtitle:
                     'Rookies je Manager pro Saison (nach dem Saison-Rollover)',
                 child: editable
-                    ? _Stepper(
+                    ? WertStepper(
                         label: 'U20-Draft-Runden',
                         value: _u20Rounds,
                         min: _minU20Rounds,
@@ -898,7 +900,7 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
                 icon: Icons.person,
                 label: 'Max. Teilnehmer',
                 child: editable
-                    ? _Stepper(
+                    ? WertStepper(
                         label: 'Max. Teilnehmer',
                         value: _maxTeams,
                         min: untergrenze,
@@ -1020,7 +1022,7 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
                   ? 'Ungerade — Platz 1 bekommt ein Freilos'
                   : null,
               child: editable
-                  ? _Stepper(
+                  ? WertStepper(
                       label: 'Playoff-Teams',
                       value: _teams,
                       min: _minTeams,
@@ -1046,7 +1048,7 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
               label: 'Trade-Deadline',
               subtitle: 'Spieltage vor Playoff-Start (5–10)',
               child: editable
-                  ? _Stepper(
+                  ? WertStepper(
                       label: 'Trade-Deadline',
                       value: _offset,
                       min: _minOffset,
@@ -1493,47 +1495,7 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
     }
   }
 
-  /// Untergrenze je Position: Unter der Startelf-Mindestzahl wäre keine
-  /// gültige Aufstellung mehr möglich.
-  int _min(PlayerPosition pos) => switch (pos) {
-        PlayerPosition.gk => _r.gk,
-        PlayerPosition.def => _r.defMin,
-        PlayerPosition.mid => _r.midMin,
-        PlayerPosition.fwd => _r.fwdMin,
-      };
-
-  /// Vorschlag beim Einschalten: die Startelf-Obergrenze plus eine Reserve.
-  /// Erlaubt jede gültige Formation und verhindert trotzdem das Horten.
-  int _vorschlag(PlayerPosition pos) => switch (pos) {
-        PlayerPosition.gk => _r.gk + 1,
-        PlayerPosition.def => _r.defMax + 1,
-        PlayerPosition.mid => _r.midMax + 1,
-        PlayerPosition.fwd => _r.fwdMax + 1,
-      };
-
-  static const _bezeichnung = {
-    PlayerPosition.gk: 'Torhüter',
-    PlayerPosition.def: 'Abwehr',
-    PlayerPosition.mid: 'Mittelfeld',
-    PlayerPosition.fwd: 'Sturm',
-  };
-
-  static const _symbol = {
-    PlayerPosition.gk: Icons.sports_handball,
-    PlayerPosition.def: Icons.shield_outlined,
-    PlayerPosition.mid: Icons.hub_outlined,
-    PlayerPosition.fwd: Icons.sports_soccer,
-  };
-
   bool get _irgendeins => _limit.values.any((v) => v != null);
-
-  /// Bleibt eine Position offen, kann sie jede Restmenge aufnehmen — dann geht
-  /// die Rechnung immer auf. Erst wenn **alle vier** gedeckelt sind, muss ihre
-  /// Summe den Kader tragen.
-  bool get _alleGesetzt => _limit.values.every((v) => v != null);
-
-  int get _summe =>
-      _limit.values.fold(0, (a, v) => a + (v ?? 0));
 
   RosterConfig get _neu => RosterConfig(
         gk: _r.gk,
@@ -1553,31 +1515,11 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
         maxFwd: _limit[PlayerPosition.fwd],
       );
 
-  bool get _reichtFuerKader => !_alleGesetzt || _summe >= _r.squadSize;
+  /// Beides kommt aus dem Editor — er trägt die Regel, nicht dieser Schirm.
+  bool get _reichtFuerKader =>
+      KaderLimitsEditor.reichtFuerKader(_r, _limit);
 
-  /// Was unter den Zeilen steht — drei Lagen, nicht eine.
-  ///
-  /// Die Summenrechnung gilt nur, wenn **alle vier** Positionen gedeckelt sind.
-  /// Bleibt eine offen, kann sie jede Restmenge aufnehmen; „zusammen 12 von 16"
-  /// wäre dann eine Warnung vor einem Problem, das es nicht gibt.
-  String _hinweisText() {
-    if (!_irgendeins) {
-      return 'Keine Position ist begrenzt — es gilt keine Obergrenze.';
-    }
-    if (!_alleGesetzt) {
-      final offen = [
-        for (final pos in PlayerPosition.values)
-          if (_limit[pos] == null) _bezeichnung[pos]!,
-      ];
-      return 'Ohne Limit: ${offen.join(', ')}. Dort passt beliebig viel in den '
-          'Kader, die Rechnung geht also immer auf.';
-    }
-    return _reichtFuerKader
-        ? 'Zusammen $_summe Plätze bei ${_r.squadSize} Kaderplätzen.'
-        : 'Zusammen nur $_summe Plätze, der Kader hat aber ${_r.squadSize}. '
-            'So findet der Draft irgendwann keinen erlaubten Spieler mehr und '
-            'bricht ab.';
-  }
+  String _hinweisText() => KaderLimitsEditor.hinweisText(_r, _limit);
 
   Future<void> _speichern() async {
     setState(() => _saving = true);
@@ -1645,20 +1587,20 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
                   ?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ),
+          // **Derselbe Editor wie beim Erstellen der Liga.** Er trägt die
+          // Regeln (Untergrenze je Position, Vorschlag beim Einschalten, wann
+          // die Summe reichen muss); zwei Fassungen davon liefen beim nächsten
+          // Feinschliff auseinander.
           _CardColumn([
-            // Jede Position steht für sich: Man kann die Torhüter deckeln und
-            // Mittelfeld und Sturm offen lassen. Eine Position ohne Limit ist
-            // kein halb eingeschalteter Zustand, sondern der Normalfall.
-            for (final pos in PlayerPosition.values)
-              _LimitZeile(
-                icon: _symbol[pos]!,
-                label: _bezeichnung[pos]!,
-                wert: _limit[pos],
-                min: _min(pos),
-                onEin: () => setState(() => _limit[pos] = _vorschlag(pos)),
-                onAus: () => setState(() => _limit[pos] = null),
-                onWert: (v) => setState(() => _limit[pos] = v),
-              ),
+            KaderLimitsEditor(
+              roster: _r,
+              limits: _limit,
+              onChanged: (neu) => setState(() {
+                _limit
+                  ..clear()
+                  ..addAll(neu);
+              }),
+            ),
           ]),
           const SizedBox(height: 12),
           _Hinweis(gut: _reichtFuerKader, text: _hinweisText()),
@@ -1684,72 +1626,6 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
   }
 }
 
-/// Eine Positionszeile der Kader-Limits.
-///
-/// Eigene Zeile statt [_SettingRow]: Dessen `ListTile` gibt dem `trailing` nur
-/// begrenzt Platz, und hier stehen dort bis zu drei Bedienelemente. Die
-/// Breiten kontrolliere ich lieber selbst, als sie zu schätzen.
-///
-/// Ohne Limit steht rechts ein Knopf statt einer Null — „0" hieße *keiner
-/// erlaubt*, das Gegenteil von *unbegrenzt*.
-class _LimitZeile extends StatelessWidget {
-  const _LimitZeile({
-    required this.icon,
-    required this.label,
-    required this.wert,
-    required this.min,
-    required this.onEin,
-    required this.onAus,
-    required this.onWert,
-  });
-
-  final IconData icon;
-  final String label;
-
-  /// `null` = diese Position ist nicht begrenzt.
-  final int? wert;
-  final int min;
-  final VoidCallback onEin;
-  final VoidCallback onAus;
-  final ValueChanged<int> onWert;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Icon(icon, color: scheme.primary),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label)),
-          if (wert == null)
-            TextButton(
-              onPressed: onEin,
-              child: const Text('ohne Limit'),
-            )
-          else ...[
-            _Stepper(
-              label: label,
-              value: wert!,
-              min: min,
-              max: 15,
-              onChanged: onWert,
-            ),
-            IconButton(
-              tooltip: 'Limit für $label aufheben',
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.close, size: 18),
-              onPressed: onAus,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Kurzer Hinweis unter den Steppern; rot, wenn die Einstellung nicht aufgeht.
 class _Hinweis extends StatelessWidget {
   const _Hinweis({required this.gut, required this.text});
 
@@ -1821,57 +1697,6 @@ class _ReadValue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text, style: const TextStyle(fontWeight: FontWeight.w600));
-  }
-}
-
-class _Stepper extends StatelessWidget {
-  const _Stepper(
-      {required this.label,
-      required this.value,
-      required this.min,
-      required this.max,
-      required this.onChanged});
-
-  /// Die Beschriftung der [_SettingRow], in der der Stepper sitzt. Er steht
-  /// dort rechts neben ihr und wusste selbst nicht, was er zählt — für die
-  /// Vorlesehilfe hießen beide Knöpfe „Schaltfläche", auf jeder der fünf
-  /// Zeilen dieselben zwei.
-  final String label;
-  final int value;
-  final int min;
-  final int max;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: '$label verringern',
-          visualDensity: VisualDensity.compact,
-          onPressed: value > min ? () => onChanged(value - 1) : null,
-          icon: const Icon(Icons.remove_circle_outline),
-        ),
-        // Die Zahl bleibt als eigene Station stehen: Die umgebende
-        // `_SettingRow` sagt nur ihre Beschriftung an, den Wert trägt allein
-        // dieser Text. Ein zweites „Anzahl Runden" davorzusetzen hätte die
-        // Beschriftung in einer Zeile viermal wiederholt — zwischen zwei
-        // benannten Knöpfen steht die Zahl auch so am richtigen Platz.
-        SizedBox(
-          width: 28,
-          child: Text('$value',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        ),
-        IconButton(
-          tooltip: '$label erhöhen',
-          visualDensity: VisualDensity.compact,
-          onPressed: value < max ? () => onChanged(value + 1) : null,
-          icon: const Icon(Icons.add_circle_outline),
-        ),
-      ],
-    );
   }
 }
 

@@ -1351,10 +1351,37 @@ Drei Dinge, die dabei zu beachten waren:
   nur begrenzt Platz, und dort stehen bis zu drei Bedienelemente (Stepper plus
   Aufheben-Knopf). Die Breiten kontrolliert `_LimitZeile` selbst.
 
+**Die Limits stehen auch beim Erstellen der Liga.** Vorher waren sie nur in
+den Einstellungen einer **bestehenden** Liga erreichbar: Wer beim Anlegen etwas
+festlegen wollte, musste die Liga erst erzeugen und dann nachbessern.
+
+Dafür ist der Editor aus der Einstellungsseite herausgelöst
+(`ui/kader_limits_editor.dart`). Er kennt **keine Liga**, nur die Kaderform und
+die aktuellen Limits, und meldet Änderungen nach oben — beim Erstellen gibt es
+noch keine Liga, dort wird eine `RosterConfig` im Speicher zusammengebaut und
+erst am Ende abgeschickt. Die naheliegende Alternative wäre gewesen, die vier
+Zeilen im Erstellen-Schirm ein zweites Mal zu bauen; sie tragen aber Regeln
+(Untergrenze je Position, Vorschlag beim Einschalten, wann die Summe reichen
+muss), und zwei Fassungen davon laufen beim nächsten Feinschliff auseinander.
+Diese Regeln sind jetzt statische Funktionen am Editor und werden von **beiden**
+Schirmen benutzt.
+
+Mit herausgezogen ist `WertStepper` (vorher privat in der Einstellungsseite,
+dort an fünf Stellen benutzt). Der Grund für seine Beschriftung steht in seinem
+Kopf: Ohne sie hießen für die Vorlesehilfe beide Knöpfe „Schaltfläche".
+
+**Die Summensperre gilt beim Erstellen genauso.** Sechzehn Kaderplätze bei
+Limits, die zusammen zwölf ergeben, sind nicht streng, sondern kaputt — der
+Draft fände keinen erlaubten Spieler mehr und beendete sich selbst. Der
+Erstellen-Knopf lehnt das mit derselben Begründung ab wie die
+Einstellungsseite.
+
 Angesehen über `test/kaderlimits_vorschau_test.dart` — bewusst der **gemischte**
 Fall (Torhüter und Sturm begrenzt, Abwehr und Mittelfeld offen), weil genau
-dieser Unterschied auf einen Blick lesbar sein muss. Gerechnet wird in
-`test/kaderlimits_test.dart`.
+dieser Unterschied auf einen Blick lesbar sein muss — und über
+`test/liga_erstellen_vorschau_test.dart`, das den Schirm im Grundzustand (nichts
+begrenzt) und nach dem Einschalten einer einzelnen Position zeigt. Gerechnet
+wird in `test/kaderlimits_test.dart`.
 
 Gegen die Produktions-DB nachgemessen (mit Rollback): Mit nur `maxFwd` gesetzt
 wird ein Stürmer blockiert („höchstens 1 Stürmer in dieser Liga") und ein
