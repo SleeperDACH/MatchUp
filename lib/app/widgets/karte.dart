@@ -77,7 +77,14 @@ class Karte extends StatelessWidget {
         // Zeichen im Inhalt deutlicher, als eine Linie es je könnte.
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: child,
+      // **Ein durchsichtiges `Material` um den Inhalt.** Ohne das läuft jedes
+      // `ListTile` in der Karte in eine Zusicherung: Es malt seinen Grund und
+      // seine Tinte auf das nächste `Material`, und die Kartendekoration
+      // deckte beides zu („background color or ink splashes may be
+      // invisible"). Aufgefallen, als die erste Tippspiel-Zeile in eine Karte
+      // gezogen wurde — die Karte selbst hatte das Problem schon immer, es
+      // hatte nur noch niemand eine antippbare Zeile hineingelegt.
+      child: Material(color: Colors.transparent, child: child),
     );
 
     if (onTap == null) return inhalt;

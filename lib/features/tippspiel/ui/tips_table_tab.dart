@@ -18,6 +18,7 @@ import 'bonus_tips_screen.dart';
 import 'bonus_tips_table_screen.dart';
 import 'round_selector.dart';
 import 'tip_member_profile_sheet.dart';
+import '../../../app/widgets/karte.dart';
 
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
 const Color _liveColor = Color(0xFFF23030); // MatchUp Red — Live-Spiele
@@ -55,7 +56,9 @@ class TipsTableTab extends ConsumerWidget {
         return Column(
           children: [
             RoundSelector(league: league, round: matchday),
-            Expanded(child: _TableBody(round: round, matchday: matchday)),
+            Expanded(
+              child: _TableBody(round: round, matchday: matchday),
+            ),
           ],
         );
       },
@@ -82,7 +85,10 @@ class _WeekTable extends ConsumerWidget {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: Text('Keine Spiele gefunden.', textAlign: TextAlign.center),
+              child: Text(
+                'Keine Spiele gefunden.',
+                textAlign: TextAlign.center,
+              ),
             ),
           );
         }
@@ -151,8 +157,10 @@ class _TableBodyState extends ConsumerState<_TableBody> {
   /// Spiel läuft — kein Polling, wenn alles beendet/geplant ist.
   void _syncAutoRefresh(bool hasLive) {
     if (hasLive && _liveTimer == null) {
-      _liveTimer =
-          Timer.periodic(const Duration(seconds: 60), (_) => _refresh());
+      _liveTimer = Timer.periodic(
+        const Duration(seconds: 60),
+        (_) => _refresh(),
+      );
     } else if (!hasLive && _liveTimer != null) {
       _liveTimer!.cancel();
       _liveTimer = null;
@@ -167,13 +175,14 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     final tipsAsync = ref.watch(allRoundTipsProvider(round.id));
     // Spalten-Spiele: im Wochen-Pfad die übergebenen Fixtures, sonst der
     // Spieltag des einzelnen Wettbewerbs.
-    final fixturesAsync =
-        weekMode ? null : ref.watch(roundFixturesProvider(widget.matchday));
+    final fixturesAsync = weekMode
+        ? null
+        : ref.watch(roundFixturesProvider(widget.matchday));
     // Saison-Fixtures ALLER Wettbewerbe der Runde → gemeinsame Wertung über
     // mehrere Wettbewerbe (Tipps sind fixture-basiert und liga-übergreifend).
     final seasonAsyncs = [
       for (final id in round.competitions)
-        ref.watch(leagueSeasonFixturesProvider(id))
+        ref.watch(leagueSeasonFixturesProvider(id)),
     ];
     final seasonLoading = seasonAsyncs.any((a) => a.isLoading);
     final seasonError = seasonAsyncs
@@ -186,7 +195,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         seasonLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    final error = membersAsync.error ??
+    final error =
+        membersAsync.error ??
         tipsAsync.error ??
         fixturesAsync?.error ??
         seasonError;
@@ -197,8 +207,10 @@ class _TableBodyState extends ConsumerState<_TableBody> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Tabelle konnte nicht geladen werden.\n$error',
-                  textAlign: TextAlign.center),
+              Text(
+                'Tabelle konnte nicht geladen werden.\n$error',
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: _refresh,
@@ -212,19 +224,23 @@ class _TableBodyState extends ConsumerState<_TableBody> {
 
     final members = [...membersAsync.requireValue];
     final tips = tipsAsync.requireValue;
-    final fixtures = weekMode ? widget.weekFixtures! : fixturesAsync!.requireValue;
+    final fixtures = weekMode
+        ? widget.weekFixtures!
+        : fixturesAsync!.requireValue;
     final seasonFixtures = [
-      for (final a in seasonAsyncs) ...(a.valueOrNull ?? const <Fixture>[])
+      for (final a in seasonAsyncs) ...(a.valueOrNull ?? const <Fixture>[]),
     ];
     final rules = round.scoring;
     final myUserId = ref.watch(currentUserProvider)?.id;
     // Eingefrorene Quoten für den Bonus; blockiert die Tabelle nicht,
     // wenn sie (noch) fehlen — dann gibt es schlicht keinen Bonus.
     final frozenOdds =
-        ref.watch(frozenOddsProvider).valueOrNull ?? const <String, FrozenOdds>{};
+        ref.watch(frozenOddsProvider).valueOrNull ??
+        const <String, FrozenOdds>{};
     // Wer hat (verborgen) getippt? Nur Existenz, für das Schloss-Symbol.
     final tipPresence =
-        ref.watch(tipPresenceProvider(round.id)).valueOrNull ?? const <String>{};
+        ref.watch(tipPresenceProvider(round.id)).valueOrNull ??
+        const <String>{};
 
     final totals = totalPointsByMember(
       members: members,
@@ -249,7 +265,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         if (weekMode
             ? f.kickoff.isBefore(widget.weekStart!)
             : f.round < widget.matchday)
-          f
+          f,
     ];
     final hasPrior = priorFixtures.any((f) => f.hasScore);
     final priorRanks = hasPrior
@@ -283,9 +299,9 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         padding: const EdgeInsets.fromLTRB(8, 0, 8, 24),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          if (round.scoring.bonusTips.isNotEmpty)
-            _BonusTipsEntry(round: round),
-          Card(
+          if (round.scoring.bonusTips.isNotEmpty) _BonusTipsEntry(round: round),
+          Karte(
+            padding: EdgeInsets.zero,
             // Zwei fluchtende Tabellen: links der eingefrorene Namens-/Pkt.-
             // Block (scrollt nicht mit), rechts die Ergebnis-Spalten als
             // horizontaler Scroll. Gleiche feste Zeilenhöhen halten beide
@@ -304,7 +320,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                     horizontalMargin: 6,
                     headingRowHeight: _headingHeight,
                     headingRowColor: WidgetStatePropertyAll(
-                        Theme.of(context).colorScheme.surfaceContainerHighest),
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
                     dataRowMinHeight: _rowHeight,
                     dataRowMaxHeight: _rowHeight,
                     columns: const [
@@ -315,33 +332,39 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                       for (final member in members)
                         DataRow(
                           color: WidgetStatePropertyAll(
-                              rowColor(member.userId)),
+                            rowColor(member.userId),
+                          ),
                           cells: [
                             DataCell(
                               _NameCell(
                                 rank: currentRanks[member.userId] ?? 0,
                                 movement: hasPrior
                                     ? (priorRanks[member.userId] ?? 0) -
-                                        (currentRanks[member.userId] ?? 0)
+                                          (currentRanks[member.userId] ?? 0)
                                     : null,
                                 username: member.display,
                                 isMe: member.userId == myUserId,
                                 avatar: (
                                   url: member.avatarUrl,
                                   emoji: member.avatarEmoji,
-                                  color: member.avatarColor
+                                  color: member.avatarColor,
                                 ),
                               ),
-                              onTap: () => showTipMemberProfile(context,
-                                  round: round, member: member),
+                              onTap: () => showTipMemberProfile(
+                                context,
+                                round: round,
+                                member: member,
+                              ),
                             ),
-                            DataCell(Text(
-                              '${totals[member.userId] ?? 0}',
-                              style: TextStyle(
+                            DataCell(
+                              Text(
+                                '${totals[member.userId] ?? 0}',
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color:
-                                      Theme.of(context).colorScheme.primary),
-                            )),
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                     ],
@@ -357,9 +380,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                         horizontalMargin: 6,
                         headingRowHeight: _headingHeight,
                         headingRowColor: WidgetStatePropertyAll(
-                            Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest),
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                        ),
                         dataRowMinHeight: _rowHeight,
                         dataRowMaxHeight: _rowHeight,
                         columns: [
@@ -370,18 +392,22 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                           for (final member in members)
                             DataRow(
                               color: WidgetStatePropertyAll(
-                                  rowColor(member.userId)),
+                                rowColor(member.userId),
+                              ),
                               cells: [
                                 for (final fixture in fixtures)
-                                  DataCell(_TipCell(
-                                    tip: tipByMemberAndFixture[
-                                        '${member.userId}|${fixture.id}'],
-                                    fixture: fixture,
-                                    hasHiddenTip: tipPresence.contains(
-                                        '${member.userId}|${fixture.id}'),
-                                    rules: rules,
-                                    odds: frozenOdds[fixture.id],
-                                  )),
+                                  DataCell(
+                                    _TipCell(
+                                      tip:
+                                          tipByMemberAndFixture['${member.userId}|${fixture.id}'],
+                                      fixture: fixture,
+                                      hasHiddenTip: tipPresence.contains(
+                                        '${member.userId}|${fixture.id}',
+                                      ),
+                                      rules: rules,
+                                      odds: frozenOdds[fixture.id],
+                                    ),
+                                  ),
                               ],
                             ),
                         ],
@@ -400,7 +426,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
               'fremde Tipps ab Anstoß sichtbar',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           if (round.scoring.bonusTips.isNotEmpty)
@@ -517,22 +544,36 @@ class _FixtureHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('${fixture.home.shortName} – ${fixture.away.shortName}',
-            style: small, textAlign: TextAlign.center),
+        Text(
+          '${fixture.home.shortName} – ${fixture.away.shortName}',
+          style: small,
+          textAlign: TextAlign.center,
+        ),
         if (live && fixture.hasScore) ...[
-          Text('${fixture.homeScore}:${fixture.awayScore}',
-              style: small?.copyWith(
-                  fontWeight: FontWeight.bold, color: _liveColor)),
-          const Text('● LIVE',
-              style: TextStyle(
-                  fontSize: 9, fontWeight: FontWeight.bold, color: _liveColor)),
+          Text(
+            '${fixture.homeScore}:${fixture.awayScore}',
+            style: small?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: _liveColor,
+            ),
+          ),
+          const Text(
+            '● LIVE',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: _liveColor,
+            ),
+          ),
         ] else
           Text(
             fixture.hasResult
                 ? '${fixture.homeScore}:${fixture.awayScore}'
                 : (live ? 'LIVE' : '–'),
             style: small?.copyWith(
-                fontWeight: FontWeight.bold, color: live ? _liveColor : null),
+              fontWeight: FontWeight.bold,
+              color: live ? _liveColor : null,
+            ),
           ),
       ],
     );
@@ -563,9 +604,12 @@ class _TipCell extends StatelessWidget {
     if (tip == null) {
       return hasHiddenTip
           ? Center(
-              child: Icon(Icons.lock_outline,
-                  size: 14,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant))
+              child: Icon(
+                Icons.lock_outline,
+                size: 14,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            )
           : const SizedBox.shrink();
     }
     final scheme = Theme.of(context).colorScheme;
@@ -608,7 +652,10 @@ class _TipCell extends StatelessWidget {
             // Der Quoten-Bonus wird mit einem Stern markiert (z. B. „+9 ★").
             bonus > 0 ? '+$points ★' : '+$points',
             style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.bold, color: color),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -623,23 +670,28 @@ class _InviteCodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Karte(
+      padding: EdgeInsets.zero,
       child: ListTile(
         dense: true,
         visualDensity: VisualDensity.compact,
         leading: const Icon(Icons.key, size: 18),
-        title: Text(round.inviteCode,
-            style: const TextStyle(
-                fontSize: 13,
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.w600)),
+        title: Text(
+          round.inviteCode,
+          style: const TextStyle(
+            fontSize: 13,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         subtitle: const Text('Einladungscode — antippen zum Kopieren'),
         trailing: const Icon(Icons.copy, size: 16),
         onTap: () async {
           await Clipboard.setData(ClipboardData(text: round.inviteCode));
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Einladungscode kopiert')));
+              const SnackBar(content: Text('Einladungscode kopiert')),
+            );
           }
         },
       ),
@@ -656,21 +708,27 @@ class _BonusTipsEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      color: scheme.primary.withValues(alpha: 0.10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.primary.withValues(alpha: 0.4)),
-      ),
+    // **Kein farbiger Rand auf farbiger Fläche.** Die Karte trug beides —
+    // Grün bei 10 % gefüllt und Grün bei 40 % als Rahmen — und rief damit
+    // lauter als alles andere auf dem Schirm. Tiefe entsteht auf dunklem Grund
+    // über die Fläche; die Zugehörigkeit trägt der Hauch aus der Ecke,
+    // dieselbe Behandlung wie bei den Ligakarten und im Fantasy-Bereich.
+    return Karte(
+      hauch: scheme.primary,
+      padding: EdgeInsets.zero,
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => BonusTipsScreen(round: round))),
       child: ListTile(
         leading: Icon(Icons.emoji_events_outlined, color: scheme.primary),
-        title: const Text('Bonustipps',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle:
-            const Text('Saison-Prognosen abgeben — vor dem ersten Spieltag.'),
+        title: const Text(
+          'Bonustipps',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: const Text(
+          'Saison-Prognosen abgeben — vor dem ersten Spieltag.',
+        ),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => BonusTipsScreen(round: round))),
       ),
     );
   }
@@ -685,15 +743,22 @@ class _BonusTableEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
+    return Karte(
+      padding: EdgeInsets.zero,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => BonusTipsTableScreen(round: round)),
+      ),
       child: ListTile(
-        leading: Icon(Icons.leaderboard_outlined, color: scheme.onSurfaceVariant),
-        title: const Text('Bonustipp-Tabelle',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        leading: Icon(
+          Icons.leaderboard_outlined,
+          color: scheme.onSurfaceVariant,
+        ),
+        title: const Text(
+          'Bonustipp-Tabelle',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         subtitle: const Text('Die Saison-Prognosen aller Mitglieder.'),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => BonusTipsTableScreen(round: round))),
       ),
     );
   }

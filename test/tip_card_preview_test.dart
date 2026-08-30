@@ -1,44 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:matchup/app/theme.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/core/data/odds/match_odds.dart';
 import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/tippspiel/ui/matchday_screen.dart';
 
+import 'support/schrift.dart';
+
 // Vorschau der neuen Spielkarte (kein Regressionstest):
 //   flutter test --update-goldens test/tip_card_preview_test.dart
 // -> test/goldens/tip_card_preview.png
 
-Fixture _fx(String id, String home, String away, DateTime ko,
-        {FixtureStatus status = FixtureStatus.scheduled, int? hs, int? as}) =>
-    Fixture(
-      id: id,
-      leagueId: 'bl1',
-      season: 2025,
-      round: 1,
-      roundName: 'Spieltag 1',
-      kickoff: ko,
-      home: TeamRef(id: 'h$id', name: home, shortName: home),
-      away: TeamRef(id: 'a$id', name: away, shortName: away),
-      status: status,
-      homeScore: hs,
-      awayScore: as,
-    );
+Fixture _fx(
+  String id,
+  String home,
+  String away,
+  DateTime ko, {
+  FixtureStatus status = FixtureStatus.scheduled,
+  int? hs,
+  int? as,
+}) => Fixture(
+  id: id,
+  leagueId: 'bl1',
+  season: 2025,
+  round: 1,
+  roundName: 'Spieltag 1',
+  kickoff: ko,
+  home: TeamRef(id: 'h$id', name: home, shortName: home),
+  away: TeamRef(id: 'a$id', name: away, shortName: away),
+  status: status,
+  homeScore: hs,
+  awayScore: as,
+);
 
 MatchOdds _odds(double h, double d, double a) => MatchOdds(
-      homeTeam: 'H',
-      awayTeam: 'A',
-      commenceTime: DateTime(2030),
-      homeWin: h,
-      draw: d,
-      awayWin: a,
-      bookmaker: 'test',
-    );
+  homeTeam: 'H',
+  awayTeam: 'A',
+  commenceTime: DateTime(2030),
+  homeWin: h,
+  draw: d,
+  awayWin: a,
+  bookmaker: 'test',
+);
 
 void main() {
-  testWidgets('Vorschau: neue Spielkarte (Zeit oben, Tippfelder, Quoten)',
-      (tester) async {
+  setUpAll(ladeSchrift);
+  testWidgets('Vorschau: neue Spielkarte (Zeit oben, Tippfelder, Quoten)', (
+    tester,
+  ) async {
     await initializeDateFormatting('de_DE');
     final future = DateTime(2030, 9, 13, 15, 30);
     final future2 = DateTime(2030, 9, 13, 18, 30);
@@ -47,6 +58,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
+          // **Mit dem App-Theme, sonst lügt das Bild.** Ohne das rendert
+          // Flutter das Standard-Material-Hell: weiße Karten auf dunklem
+          // Grund, in einer Schrift, die die App gar nicht benutzt. Genau so
+          // stand dieser Golden monatelang im Verzeichnis.
+          theme: buildAppTheme(),
           debugShowCheckedModeBanner: false,
           home: Scaffold(
             backgroundColor: const Color(0xFF12141C),
@@ -71,8 +87,15 @@ void main() {
                           odds: _odds(1.65, 3.90, 5.10),
                         ),
                         FixtureCard(
-                          fixture: _fx('3', 'Freiburg', 'Mainz', past,
-                              status: FixtureStatus.finished, hs: 2, as: 1),
+                          fixture: _fx(
+                            '3',
+                            'Freiburg',
+                            'Mainz',
+                            past,
+                            status: FixtureStatus.finished,
+                            hs: 2,
+                            as: 1,
+                          ),
                           dayLabel: 'Sonntag, 14. September',
                         ),
                       ],
@@ -86,7 +109,9 @@ void main() {
       ),
     );
     await tester.pump();
-    await expectLater(find.byKey(const Key('preview')),
-        matchesGoldenFile('goldens/tip_card_preview.png'));
+    await expectLater(
+      find.byKey(const Key('preview')),
+      matchesGoldenFile('goldens/tip_card_preview.png'),
+    );
   });
 }

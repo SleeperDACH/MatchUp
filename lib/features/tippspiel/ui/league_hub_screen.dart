@@ -7,18 +7,22 @@ import '../../auth/providers.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
+import '../../../app/typografie.dart';
+import '../../../app/widgets/karte.dart';
 
 /// Öffnet die Regeln-/Punkteverteilungs-Ansicht als Bottom-Sheet. Für
 /// gekoppelte Tippspiele (ohne eigenen Liga-Tab) über die Einstellungen
 /// erreichbar.
-void showTipRoundRules(BuildContext context, ScoringRules scoring,
-        LeagueInfo league) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => _RulesSheet(scoring: scoring, league: league),
-    );
+void showTipRoundRules(
+  BuildContext context,
+  ScoringRules scoring,
+  LeagueInfo league,
+) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (_) => _RulesSheet(scoring: scoring, league: league),
+);
 
 /// Liga-Tab: ligainterner Chat plus eine Aufführung der Regeln
 /// (Punkteverteilung, Tippabgabe). Ersetzt in Server-Ligen die frühere
@@ -34,7 +38,10 @@ class LeagueHubScreen extends ConsumerStatefulWidget {
 
 class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
   void _openRules() => showTipRoundRules(
-      context, widget.round.scoring, ref.read(selectedLeagueProvider));
+    context,
+    widget.round.scoring,
+    ref.read(selectedLeagueProvider),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +56,11 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
     };
     final avatars = {
       for (final m in memberList)
-        m.userId: (url: m.avatarUrl, emoji: m.avatarEmoji, color: m.avatarColor)
+        m.userId: (
+          url: m.avatarUrl,
+          emoji: m.avatarEmoji,
+          color: m.avatarColor,
+        ),
     };
 
     return Column(
@@ -82,28 +93,26 @@ class _RulesBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surfaceContainerHighest,
-      child: InkWell(
+    // **Eine Karte, kein Balken über die volle Breite.** Der Einstieg saß
+    // vorher als durchgehende Fläche über dem Chat und las sich wie eine
+    // Kopfzeile des Chats, nicht wie etwas, das man antippt. Jetzt dieselbe
+    // Behandlung wie jede andere Zeile der App: Kartengrund, Haarlinie,
+    // Chevron rechts.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, Abstand.s, 12, Abstand.s),
+      child: Karte(
+        padding: EdgeInsets.zero,
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Icon(Icons.gavel_outlined, size: 20, color: scheme.primary),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text('Regeln & Punkteverteilung'),
-              ),
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
-          ),
+        child: ListTile(
+          leading: Icon(Icons.gavel_outlined, size: 20, color: scheme.primary),
+          title: const Text('Regeln & Punkteverteilung'),
+          subtitle: const Text('Wie viele Punkte welcher Tipp bringt'),
+          trailing: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
         ),
       ),
     );
   }
 }
-
 
 /// Die Regeln-Aufführung als Bottom-Sheet: Punkteverteilung + Hinweise zur
 /// Tippabgabe. Die Punktwerte stammen aus dem Schema der Tipprunde.
@@ -133,8 +142,10 @@ class _RulesSheet extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Regeln & Wertung',
-                        style: textTheme.headlineSmall),
+                    child: Text(
+                      'Regeln & Wertung',
+                      style: textTheme.headlineSmall,
+                    ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
@@ -151,29 +162,35 @@ class _RulesSheet extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Wettbewerb: ${league.name}',
-                        style: textTheme.bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                    Text(
+                      'Wettbewerb: ${league.name}',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     Text('Punkteverteilung', style: textTheme.titleMedium),
                     const SizedBox(height: 4),
                     Text(
                       'Pro Spiel zählt nur die höchste zutreffende Stufe – '
                       'innerhalb eines Spiels addieren sich diese Punkte nicht.',
-                      style: textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     _RuleRow(
                       points: scoring.exact,
                       label: 'Exaktes Ergebnis',
-                      detail: 'Du tippst den Endstand genau richtig. '
+                      detail:
+                          'Du tippst den Endstand genau richtig. '
                           'Beispiel: Tipp 2:1, Endstand 2:1.',
                     ),
                     _RuleRow(
                       points: scoring.goalDiff,
                       label: 'Richtige Tordifferenz',
-                      detail: 'Richtiger Sieger und gleicher Tor-Abstand wie im '
+                      detail:
+                          'Richtiger Sieger und gleicher Tor-Abstand wie im '
                           'Endstand, aber anderes Ergebnis. Beispiel: Tipp 2:1, '
                           'Endstand 3:2. Bei einem Remis: du tippst '
                           'unentschieden, nur mit anderem Stand (Tipp 1:1, '
@@ -182,87 +199,121 @@ class _RulesSheet extends StatelessWidget {
                     _RuleRow(
                       points: scoring.tendency,
                       label: 'Richtige Tendenz',
-                      detail: 'Du tippst den richtigen Sieger, aber Tor-Abstand '
+                      detail:
+                          'Du tippst den richtigen Sieger, aber Tor-Abstand '
                           'und Ergebnis stimmen nicht. Beispiel: Tipp 3:0, '
                           'Endstand 1:0.',
                     ),
                     const _RuleRow(
                       points: 0,
                       label: 'Daneben',
-                      detail: 'Der getippte Ausgang (Heimsieg, Remis oder '
+                      detail:
+                          'Der getippte Ausgang (Heimsieg, Remis oder '
                           'Auswärtssieg) ist nicht eingetreten.',
                     ),
                     if (scoring.oddsBonus) ...[
                       const SizedBox(height: 24),
                       Text('Quoten-Bonus ★', style: textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      const _Bullet('Gibt es nur, wenn du die richtige Tendenz '
-                          'getippt hast (Sieger bzw. Unentschieden) – das '
-                          'exakte Ergebnis spielt keine Rolle. Der Bonus kommt '
-                          'zusätzlich zur Wertung oben.'),
-                      const _Bullet('Maßgeblich ist die zum Anstoß '
-                          'eingefrorene Quote deiner getippten Tendenz: Je '
-                          'höher die Quote, desto mehr Bonus.'),
-                      _Bullet('+${scoring.oddsPoints1} Punkte ab einer Quote '
-                          'von ${scoring.oddsOdds1.toStringAsFixed(1).replaceAll('.', ',')}.'),
-                      _Bullet('+${scoring.oddsPoints2} Punkte ab einer Quote '
-                          'von ${scoring.oddsOdds2.toStringAsFixed(1).replaceAll('.', ',')} '
-                          '(krasser Außenseiter).'),
-                      const _Bullet('Die beiden Stufen addieren sich nicht – '
-                          'pro Spiel zählt der höhere der beiden Boni.'),
+                      const _Bullet(
+                        'Gibt es nur, wenn du die richtige Tendenz '
+                        'getippt hast (Sieger bzw. Unentschieden) – das '
+                        'exakte Ergebnis spielt keine Rolle. Der Bonus kommt '
+                        'zusätzlich zur Wertung oben.',
+                      ),
+                      const _Bullet(
+                        'Maßgeblich ist die zum Anstoß '
+                        'eingefrorene Quote deiner getippten Tendenz: Je '
+                        'höher die Quote, desto mehr Bonus.',
+                      ),
+                      _Bullet(
+                        '+${scoring.oddsPoints1} Punkte ab einer Quote '
+                        'von ${scoring.oddsOdds1.toStringAsFixed(1).replaceAll('.', ',')}.',
+                      ),
+                      _Bullet(
+                        '+${scoring.oddsPoints2} Punkte ab einer Quote '
+                        'von ${scoring.oddsOdds2.toStringAsFixed(1).replaceAll('.', ',')} '
+                        '(krasser Außenseiter).',
+                      ),
+                      const _Bullet(
+                        'Die beiden Stufen addieren sich nicht – '
+                        'pro Spiel zählt der höhere der beiden Boni.',
+                      ),
                     ],
                     if (scoring.solo > 0) ...[
                       const SizedBox(height: 24),
-                      Text('Alleinstellungs-Bonus ★',
-                          style: textTheme.titleMedium),
+                      Text(
+                        'Alleinstellungs-Bonus ★',
+                        style: textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 8),
-                      _Bullet('+${scoring.solo} Punkte, wenn du als Einzige/r '
-                          'das exakte Ergebnis eines Spiels getippt hast — '
-                          'zusätzlich zur Wertung oben.'),
+                      _Bullet(
+                        '+${scoring.solo} Punkte, wenn du als Einzige/r '
+                        'das exakte Ergebnis eines Spiels getippt hast — '
+                        'zusätzlich zur Wertung oben.',
+                      ),
                     ],
                     if (scoring.headToHead) ...[
                       const SizedBox(height: 24),
                       Text('Head-to-Head', style: textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      const _Bullet('Jeder Spieltag ist zusätzlich ein Duell '
-                          'gegen ein anderes Mitglied: Wer an dem Spieltag mehr '
-                          'Punkte holt, gewinnt (Sieg/Niederlage/Unentschieden).'),
-                      const _Bullet('Die Paarungen und die Bilanz (S-N-U) '
-                          'stehen im „Duelle"-Tab.'),
+                      const _Bullet(
+                        'Jeder Spieltag ist zusätzlich ein Duell '
+                        'gegen ein anderes Mitglied: Wer an dem Spieltag mehr '
+                        'Punkte holt, gewinnt (Sieg/Niederlage/Unentschieden).',
+                      ),
+                      const _Bullet(
+                        'Die Paarungen und die Bilanz (S-N-U) '
+                        'stehen im „Duelle"-Tab.',
+                      ),
                     ],
                     if (scoring.bonusTips.isNotEmpty) ...[
                       const SizedBox(height: 24),
                       Text('Bonustipps', style: textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      _Bullet('Saison-Prognosen, die du vor dem ersten Spieltag '
-                          'abgibst: '
-                          '${scoring.bonusTips.map(bonusTipLabel).join(', ')}.'),
-                      _Bullet('Jede richtige Prognose bringt '
-                          '+${scoring.bonusPoints} Punkte. Abgabe über die '
-                          'Tabelle („Bonustipps abgeben").'),
+                      _Bullet(
+                        'Saison-Prognosen, die du vor dem ersten Spieltag '
+                        'abgibst: '
+                        '${scoring.bonusTips.map(bonusTipLabel).join(', ')}.',
+                      ),
+                      _Bullet(
+                        'Jede richtige Prognose bringt '
+                        '+${scoring.bonusPoints} Punkte. Abgabe über die '
+                        'Tabelle („Bonustipps abgeben").',
+                      ),
                     ],
                     if (league.fixedSeason != null) ...[
                       const SizedBox(height: 24),
                       Text('K.-o.-Runde', style: textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      const _Bullet('In der K.-o.-Runde zählt das Ergebnis '
-                          'nach Verlängerung (120 Minuten).'),
-                      const _Bullet('Ein Elfmeterschießen wird nicht '
-                          'mitgewertet: Maßgeblich ist der Spielstand am Ende '
-                          'der Verlängerung. Beispiel: 1:1 nach Verlängerung, '
-                          'das Team gewinnt im Elfmeterschießen – gewertet wird '
-                          'der Tipp gegen 1:1.'),
+                      const _Bullet(
+                        'In der K.-o.-Runde zählt das Ergebnis '
+                        'nach Verlängerung (120 Minuten).',
+                      ),
+                      const _Bullet(
+                        'Ein Elfmeterschießen wird nicht '
+                        'mitgewertet: Maßgeblich ist der Spielstand am Ende '
+                        'der Verlängerung. Beispiel: 1:1 nach Verlängerung, '
+                        'das Team gewinnt im Elfmeterschießen – gewertet wird '
+                        'der Tipp gegen 1:1.',
+                      ),
                     ],
                     const SizedBox(height: 24),
                     Text('Tippabgabe', style: textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    const _Bullet('Tipps lassen sich bis zum Anstoß des '
-                        'jeweiligen Spiels abgeben und beliebig ändern.'),
-                    const _Bullet('Mit dem Anstoß wird die Begegnung gesperrt; '
-                        'ab diesem Zeitpunkt sind auch die Tipps der '
-                        'Mitspieler einsehbar.'),
-                    const _Bullet('Jede Begegnung wird einzeln gewertet; die '
-                        'Summe aller Punkte ergibt den Tabellenstand.'),
+                    const _Bullet(
+                      'Tipps lassen sich bis zum Anstoß des '
+                      'jeweiligen Spiels abgeben und beliebig ändern.',
+                    ),
+                    const _Bullet(
+                      'Mit dem Anstoß wird die Begegnung gesperrt; '
+                      'ab diesem Zeitpunkt sind auch die Tipps der '
+                      'Mitspieler einsehbar.',
+                    ),
+                    const _Bullet(
+                      'Jede Begegnung wird einzeln gewertet; die '
+                      'Summe aller Punkte ergibt den Tabellenstand.',
+                    ),
                   ],
                 ),
               ),
@@ -299,9 +350,9 @@ class _RuleRow extends StatelessWidget {
               '$points',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: points > 0 ? scheme.primary : scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: points > 0 ? scheme.primary : scheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -309,14 +360,18 @@ class _RuleRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyLarge
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                Text(detail,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant)),
+                Text(
+                  label,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  detail,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),

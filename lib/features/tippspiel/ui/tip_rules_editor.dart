@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/ui/form_section.dart';
 
 import '../models/tip.dart';
+import '../../../app/widgets/karte.dart';
 
 /// Wiederverwendbares Formular für Basiswertung + kombinierbare Modi einer
 /// Tipprunde. Genutzt beim Erstellen und in den Liga-Einstellungen. Meldet
@@ -58,25 +59,25 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
   late int _bonusPoints = widget.initial.bonusPoints;
 
   ScoringRules get _rules => ScoringRules(
-        exact: _exact,
-        goalDiff: _goalDiff,
-        tendency: _tendency,
-        wrongTip: _wrongTip,
-        oddsBonus: _oddsBonus,
-        oddsOdds1: _odds1,
-        oddsPoints1: _points1,
-        oddsOdds2: _odds2,
-        oddsPoints2: _points2,
-        solo: _solo ? _soloValue : 0,
-        headToHead: _headToHead,
-        bonusTips: _bonusTips
-            ? [
-                for (final o in bonusTipQuestions)
-                  if (_bonusTipKeys.contains(o.$1)) o.$1
-              ]
-            : const [],
-        bonusPoints: _bonusPoints,
-      );
+    exact: _exact,
+    goalDiff: _goalDiff,
+    tendency: _tendency,
+    wrongTip: _wrongTip,
+    oddsBonus: _oddsBonus,
+    oddsOdds1: _odds1,
+    oddsPoints1: _points1,
+    oddsOdds2: _odds2,
+    oddsPoints2: _points2,
+    solo: _solo ? _soloValue : 0,
+    headToHead: _headToHead,
+    bonusTips: _bonusTips
+        ? [
+            for (final o in bonusTipQuestions)
+              if (_bonusTipKeys.contains(o.$1)) o.$1,
+          ]
+        : const [],
+    bonusPoints: _bonusPoints,
+  );
 
   /// setState + Änderung nach oben melden.
   void _set(VoidCallback change) {
@@ -87,90 +88,96 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final subtle = Theme.of(context)
-        .textTheme
-        .bodySmall
-        ?.copyWith(color: scheme.onSurfaceVariant);
+    final subtle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FormSection(
           titel: 'Basiswertung',
-          hinweis: 'Punkte je Tipp — exaktes Ergebnis, richtige Tordifferenz, '
+          hinweis:
+              'Punkte je Tipp — exaktes Ergebnis, richtige Tordifferenz, '
               'nur richtige Tendenz.',
           kinder: [
             _PointsStepper(
-            label: 'Exaktes Ergebnis',
-            value: _exact,
-            onChanged: (v) => _set(() => _exact = v)),
+              label: 'Exaktes Ergebnis',
+              value: _exact,
+              onChanged: (v) => _set(() => _exact = v),
+            ),
             _PointsStepper(
-                label: 'Tordifferenz',
-                value: _goalDiff,
-                onChanged: (v) => _set(() => _goalDiff = v)),
+              label: 'Tordifferenz',
+              value: _goalDiff,
+              onChanged: (v) => _set(() => _goalDiff = v),
+            ),
             _PointsStepper(
-                label: 'Tendenz',
-                value: _tendency,
-                onChanged: (v) => _set(() => _tendency = v)),
+              label: 'Tendenz',
+              value: _tendency,
+              onChanged: (v) => _set(() => _tendency = v),
+            ),
             _PointsStepper(
-                label: 'Falscher Tipp',
-                value: _wrongTip,
-                min: -5,
-                max: 0,
-                onChanged: (v) => _set(() => _wrongTip = v)),
+              label: 'Falscher Tipp',
+              value: _wrongTip,
+              min: -5,
+              max: 0,
+              onChanged: (v) => _set(() => _wrongTip = v),
+            ),
             const SizedBox(height: 4),
             Text(
-                'Strafpunkte für einen komplett falschen Tipp — Standard 0, '
-                'bis −5 einstellbar.',
-                style: subtle),
+              'Strafpunkte für einen komplett falschen Tipp — Standard 0, '
+              'bis −5 einstellbar.',
+              style: subtle,
+            ),
           ],
         ),
         FormSection(
           titel: 'Modi',
-          hinweis: 'Frei kombinierbar — beliebig viele gleichzeitig '
+          hinweis:
+              'Frei kombinierbar — beliebig viele gleichzeitig '
               'aktivieren.',
           kinder: [
-        // Quoten-Bonus nur, wenn die gewählten Wettbewerbe Quoten haben
-        // (DFB-Pokal: keine Quoten → Modus ausgeblendet).
-        if (widget.oddsAvailable) ...[
-          _ModeSwitch(
-            icon: Icons.trending_up,
-            title: 'Quoten-Bonus',
-            subtitle:
-                'Extrapunkte für richtig getippte Außenseiter — je höher die Quote, desto mehr.',
-            value: _oddsBonus,
-            onChanged: (v) => _set(() => _oddsBonus = v),
-          ),
-          if (_oddsBonus) _oddsConfig(scheme),
-        ],
-        _ModeSwitch(
-          icon: Icons.workspace_premium_outlined,
-          title: 'Alleinstellungs-Bonus',
-          subtitle:
-              'Wer als Einzige/r das exakte Ergebnis trifft, bekommt +$_soloValue Punkte.',
-          value: _solo,
-          onChanged: (v) => _set(() => _solo = v),
-        ),
-        _ModeSwitch(
-          icon: Icons.bolt_outlined,
-          title: 'Head-to-Head',
-          subtitle:
-              'Jeder Spieltag als Duell zwischen zwei Mitgliedern (Sieg/Niederlage).',
-          value: _headToHead,
-          onChanged: (v) => _set(() => _headToHead = v),
-        ),
-        _ModeSwitch(
-          icon: Icons.emoji_events_outlined,
-          title: 'Bonustipps',
-          subtitle: widget.lockedBonusTips.isEmpty
-              ? 'Saison-Prognosen zusätzlich zu den Spieltagen — auswählbar unten.'
-              : 'Aktiv — bestehende Bonustipps bleiben, weitere können ergänzt werden.',
-          value: _bonusTips,
-          // Wenn schon Bonustipps aktiv sind, lässt sich der Modus nicht
-          // mehr abschalten (nur hinzufügen).
-          onChanged: widget.lockedBonusTips.isEmpty
-              ? (v) => _set(() => _bonusTips = v)
-              : null,
-        ),
+            // Quoten-Bonus nur, wenn die gewählten Wettbewerbe Quoten haben
+            // (DFB-Pokal: keine Quoten → Modus ausgeblendet).
+            if (widget.oddsAvailable) ...[
+              _ModeSwitch(
+                icon: Icons.trending_up,
+                title: 'Quoten-Bonus',
+                subtitle:
+                    'Extrapunkte für richtig getippte Außenseiter — je höher die Quote, desto mehr.',
+                value: _oddsBonus,
+                onChanged: (v) => _set(() => _oddsBonus = v),
+              ),
+              if (_oddsBonus) _oddsConfig(scheme),
+            ],
+            _ModeSwitch(
+              icon: Icons.workspace_premium_outlined,
+              title: 'Alleinstellungs-Bonus',
+              subtitle:
+                  'Wer als Einzige/r das exakte Ergebnis trifft, bekommt +$_soloValue Punkte.',
+              value: _solo,
+              onChanged: (v) => _set(() => _solo = v),
+            ),
+            _ModeSwitch(
+              icon: Icons.bolt_outlined,
+              title: 'Head-to-Head',
+              subtitle:
+                  'Jeder Spieltag als Duell zwischen zwei Mitgliedern (Sieg/Niederlage).',
+              value: _headToHead,
+              onChanged: (v) => _set(() => _headToHead = v),
+            ),
+            _ModeSwitch(
+              icon: Icons.emoji_events_outlined,
+              title: 'Bonustipps',
+              subtitle: widget.lockedBonusTips.isEmpty
+                  ? 'Saison-Prognosen zusätzlich zu den Spieltagen — auswählbar unten.'
+                  : 'Aktiv — bestehende Bonustipps bleiben, weitere können ergänzt werden.',
+              value: _bonusTips,
+              // Wenn schon Bonustipps aktiv sind, lässt sich der Modus nicht
+              // mehr abschalten (nur hinzufügen).
+              onChanged: widget.lockedBonusTips.isEmpty
+                  ? (v) => _set(() => _bonusTips = v)
+                  : null,
+            ),
             if (_bonusTips) _bonusTipsConfig(scheme),
           ],
         ),
@@ -192,11 +199,12 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
             _OddsStepper(label: 'Ab Quote', value: odds, onChanged: onOdds),
             _PointsStepper(label: 'Punkte', value: points, onChanged: onPoints),
           ],
@@ -246,28 +254,30 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
         child: Column(
           children: [
             for (final (key, label, maxTeams) in bonusTipQuestions)
-              Builder(builder: (context) {
-                final locked = widget.lockedBonusTips.contains(key);
-                return CheckboxListTile(
-                  dense: true,
-                  value: _bonusTipKeys.contains(key),
-                  // Bereits aktive Bonustipps bleiben gesetzt und lassen sich
-                  // nicht mehr entfernen.
-                  onChanged: locked
-                      ? null
-                      : (v) => _set(() {
+              Builder(
+                builder: (context) {
+                  final locked = widget.lockedBonusTips.contains(key);
+                  return CheckboxListTile(
+                    dense: true,
+                    value: _bonusTipKeys.contains(key),
+                    // Bereits aktive Bonustipps bleiben gesetzt und lassen sich
+                    // nicht mehr entfernen.
+                    onChanged: locked
+                        ? null
+                        : (v) => _set(() {
                             if (v == true) {
                               _bonusTipKeys.add(key);
                             } else {
                               _bonusTipKeys.remove(key);
                             }
                           }),
-                  title: Text(label),
-                  subtitle: locked
-                      ? const Text('bereits aktiv')
-                      : (maxTeams > 1 ? Text('$maxTeams Teams') : null),
-                );
-              }),
+                    title: Text(label),
+                    subtitle: locked
+                        ? const Text('bereits aktiv')
+                        : (maxTeams > 1 ? Text('$maxTeams Teams') : null),
+                  );
+                },
+              ),
             const Divider(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -325,9 +335,11 @@ class _PointsStepper extends StatelessWidget {
           ExcludeSemantics(
             child: SizedBox(
               width: 28,
-              child: Text('$value',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                '$value',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
           IconButton(
@@ -377,9 +389,11 @@ class _OddsStepper extends StatelessWidget {
           ExcludeSemantics(
             child: SizedBox(
               width: 34,
-              child: Text(value.toStringAsFixed(1),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                value.toStringAsFixed(1),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
           IconButton(
@@ -412,20 +426,20 @@ class _ModeSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      color: value ? scheme.primary.withValues(alpha: 0.12) : null,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: value ? scheme.primary : Colors.transparent,
-          width: 1.5,
-        ),
-      ),
+    // **Der eingeschaltete Zustand trägt einen Hauch, keinen Rahmen.**
+    // Vorher lag eine grüne Fläche unter einem 1,5 Punkt starken grünen
+    // Rahmen — zwei Signale für dieselbe Auskunft, und der Schalter rechts
+    // sagt sie ohnehin schon.
+    return Karte(
+      hauch: value ? scheme.primary : null,
+      padding: EdgeInsets.zero,
       child: SwitchListTile(
         value: value,
         onChanged: onChanged,
-        secondary: Icon(icon,
-            color: value ? scheme.primary : scheme.onSurfaceVariant),
+        secondary: Icon(
+          icon,
+          color: value ? scheme.primary : scheme.onSurfaceVariant,
+        ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle),
       ),

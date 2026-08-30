@@ -10,6 +10,7 @@ import '../logic/round_table.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
 import 'tip_member_profile_sheet.dart';
+import '../../../app/widgets/karte.dart';
 
 /// Head-to-Head-Modus einer Tipprunde: jeder Spieltag als Duell zwischen zwei
 /// Mitgliedern. Die Punkte je Spieltag kommen aus der normalen Tipp-Wertung
@@ -33,11 +34,13 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
     final rules = round.scoring;
 
     final membersAsync = ref.watch(roundMembersProvider(round.id));
-    final fixturesAsync =
-        ref.watch(leagueSeasonFixturesProvider(round.leagueId));
+    final fixturesAsync = ref.watch(
+      leagueSeasonFixturesProvider(round.leagueId),
+    );
     final tips =
         ref.watch(allRoundTipsProvider(round.id)).valueOrNull ?? const [];
-    final frozen = ref.watch(frozenOddsProvider).valueOrNull ??
+    final frozen =
+        ref.watch(frozenOddsProvider).valueOrNull ??
         const <String, FrozenOdds>{};
     final current = ref.watch(currentRoundProvider).valueOrNull;
 
@@ -51,8 +54,10 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Text('Duelle brauchen mindestens zwei Mitglieder.',
-              textAlign: TextAlign.center),
+          child: Text(
+            'Duelle brauchen mindestens zwei Mitglieder.',
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
@@ -67,17 +72,18 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
     for (final f in fixtures) {
       byRound.putIfAbsent(f.round, () => []).add(f);
     }
-    final maxRound =
-        byRound.keys.isEmpty ? 1 : byRound.keys.reduce((a, b) => a > b ? a : b);
+    final maxRound = byRound.keys.isEmpty
+        ? 1
+        : byRound.keys.reduce((a, b) => a > b ? a : b);
     final spieltag = (_spieltag ?? current ?? 1).clamp(1, maxRound);
 
     Map<String, int> totalsFor(List<Fixture> fx) => totalPointsByMember(
-          members: members,
-          tips: tips,
-          fixtures: fx,
-          rules: rules,
-          frozenOdds: frozen,
-        );
+      members: members,
+      tips: tips,
+      fixtures: fx,
+      rules: rules,
+      frozenOdds: frozen,
+    );
 
     // Bilanz über alle Spieltage mit mindestens einem gewerteten Spiel.
     final totalsByRound = <int, Map<String, int>>{
@@ -113,15 +119,20 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
         const Divider(height: 24),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text('Bilanz (S-N-U)',
-              style: Theme.of(context).textTheme.titleMedium),
+          child: Text(
+            'Bilanz (S-N-U)',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
         ),
         if (standings.every((r) => r.played == 0))
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Noch keine gewerteten Spieltage.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            child: Text(
+              'Noch keine gewerteten Spieltage.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           )
         else
           for (final (i, r) in standings.indexed)
@@ -132,15 +143,22 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
                 final m = memberById[r.managerId];
                 return m == null
                     ? null
-                    : (url: m.avatarUrl, emoji: m.avatarEmoji, color: m.avatarColor);
+                    : (
+                        url: m.avatarUrl,
+                        emoji: m.avatarEmoji,
+                        color: m.avatarColor,
+                      );
               }(),
               record: r,
               me: r.managerId == myId,
               onTap: () {
                 final mem = memberById[r.managerId];
                 if (mem != null) {
-                  showTipMemberProfile(context,
-                      round: widget.round, member: mem);
+                  showTipMemberProfile(
+                    context,
+                    round: widget.round,
+                    member: mem,
+                  );
                 }
               },
             ),
@@ -170,16 +188,18 @@ class _Stepper extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            tooltip:
-                spieltag > 1 ? 'Zurück zu Spieltag ${spieltag - 1}' : 'Zurück',
+            tooltip: spieltag > 1
+                ? 'Zurück zu Spieltag ${spieltag - 1}'
+                : 'Zurück',
             icon: const Icon(Icons.chevron_left),
             onPressed: spieltag > 1 ? () => onChanged(spieltag - 1) : null,
           ),
-          Text('Spieltag $spieltag',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'Spieltag $spieltag',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
           IconButton(
             tooltip: spieltag < max
                 ? 'Weiter zu Spieltag ${spieltag + 1}'
@@ -216,46 +236,75 @@ class _DuelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (awayName == null) {
-      return Card(
+      return Karte(
+        padding: EdgeInsets.zero,
         child: ListTile(
-          title: Text(homeName,
-              style: homeMe ? const TextStyle(fontWeight: FontWeight.bold) : null),
-          trailing: Text('spielfrei',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          title: Text(
+            homeName,
+            style: homeMe ? const TextStyle(fontWeight: FontWeight.bold) : null,
+          ),
+          trailing: Text(
+            'spielfrei',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ),
       );
     }
     final homeWin = started && homePoints > awayPoints;
     final awayWin = started && awayPoints > homePoints;
-    return Card(
+    // **Der eigene Reiter trägt einen Hauch**, kein gefärbter Rand: Er sagt
+    // „das bist du", nicht „hier musst du hin" — dieselbe Regel wie bei den
+    // MatchUp-Karten im Fantasy-Bereich.
+    return Karte(
+      hauch: (homeMe || awayMe) ? Theme.of(context).colorScheme.primary : null,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.zero,
         child: Row(
           children: [
             Expanded(
-                child: _side(context, homeName, homeMe, homeWin,
-                    align: CrossAxisAlignment.start)),
+              child: _side(
+                context,
+                homeName,
+                homeMe,
+                homeWin,
+                align: CrossAxisAlignment.start,
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
                 started ? '$homePoints : $awayPoints' : 'vs',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary),
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ),
             Expanded(
-                child: _side(context, awayName!, awayMe, awayWin,
-                    align: CrossAxisAlignment.end)),
+              child: _side(
+                context,
+                awayName!,
+                awayMe,
+                awayWin,
+                align: CrossAxisAlignment.end,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _side(BuildContext context, String name, bool me, bool win,
-      {required CrossAxisAlignment align}) {
+  Widget _side(
+    BuildContext context,
+    String name,
+    bool me,
+    bool win, {
+    required CrossAxisAlignment align,
+  }) {
     return Column(
       crossAxisAlignment: align,
       children: [
@@ -263,17 +312,21 @@ class _DuelCard extends StatelessWidget {
           name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          textAlign:
-              align == CrossAxisAlignment.start ? TextAlign.start : TextAlign.end,
+          textAlign: align == CrossAxisAlignment.start
+              ? TextAlign.start
+              : TextAlign.end,
           style: TextStyle(
             fontWeight: me || win ? FontWeight.bold : FontWeight.normal,
             color: win ? Theme.of(context).colorScheme.primary : null,
           ),
         ),
         if (win)
-          Text('Sieg',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary)),
+          Text(
+            'Sieg',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
       ],
     );
   }
@@ -321,20 +374,21 @@ class _StandingRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Flexible(
-            child: Text(name,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    me ? const TextStyle(fontWeight: FontWeight.bold) : null),
+            child: Text(
+              name,
+              overflow: TextOverflow.ellipsis,
+              style: me ? const TextStyle(fontWeight: FontWeight.bold) : null,
+            ),
           ),
         ],
       ),
       subtitle: Text('${record.pointsFor}:${record.pointsAgainst} Pkt.'),
       trailing: Text(
         '${record.wins}-${record.losses}-${record.ties}',
-        style: Theme.of(context)
-            .textTheme
-            .titleMedium
-            ?.copyWith(color: scheme.primary, fontWeight: FontWeight.bold),
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: scheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

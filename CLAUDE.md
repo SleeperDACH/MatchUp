@@ -2675,6 +2675,55 @@ Im Punktevergabe-Schirm steht für den Torwart-Reiter deshalb **ein Satz statt
 einer leeren Rubrik**: „Kein Einsatzbonus" ist eine Auskunft, eine fehlende
 Gruppe sähe aus wie ein Fehler.
 
+### Das Tippspiel spricht dieselbe Sprache wie Fantasy (erste Hälfte)
+
+Gewünscht: *„Bitte den kompletten Tippspielbereich mit denselben Designregeln
+wie im Fantasy umbauen. Komplett modernisieren, ansprechender und schlichter
+machen."*
+
+**Zuerst ein Fund, der die Lage erklärt:** Die einzige Vorschau des Bereichs
+(`tip_card_preview_test.dart`) lief **ohne App-Theme**. Flutter rendert dann
+Standard-Material-Hell — weiße Karten auf dunklem Grund, in einer Schrift, die
+die App gar nicht benutzt. Der Golden lag monatelang so im Verzeichnis und war
+als Urteilsgrundlage wertlos. Mit `buildAppTheme()` und `ladeSchrift` zeigt er
+jetzt, was auf dem Gerät steht.
+
+Was auf die gemeinsame Sprache umgestellt ist:
+
+| Vorher | Jetzt |
+|---|---|
+| Material-`Card` (7 Stellen) | `Karte` — Kartengrund, eine Haarlinie für alle |
+| gefüllte Farbfläche **plus** farbiger Rahmen (3 Stellen) | `hauch` aus der Ecke |
+| Tagesüberschrift als Textzeile | `Kapitelmarke` mit Strich und Linie |
+| Regel-Einstieg als Balken über die volle Breite | Karte mit Chevron wie jede andere Zeile |
+| „Gespeichert" in Markengrün | grau — **Farbe nur, wo etwas ansteht** |
+
+Die drei Doppelsignale waren der auffälligste Rest: Bonustipp-Einstieg,
+Fristbalken und Regel-Schalter trugen jeweils eine Farbfläche *und* einen
+Rahmen derselben Farbe — zwei Signale für dieselbe Auskunft, und beim
+Schalter sagt der Schalter selbst es ohnehin schon.
+
+**Die Kapitelmarke stand viermal im Code** (Fantasy-Einstellungen,
+Waiver-Anträge, Freunde, Profil), jedes Mal leicht anders. Sie steht jetzt
+einmal in `app/widgets/kapitelmarke.dart`.
+
+**Latenter Fehler in `Karte`, dabei gefunden:** Ein `ListTile` in einer Karte
+löst eine Zusicherung aus — es malt Grund und Tinte auf das nächste
+`Material`, und die Kartendekoration deckte beides zu. Die Karte hatte das
+Problem seit ihrer Einführung; es hatte nur nie jemand eine antippbare Zeile
+hineingelegt. Der Inhalt sitzt jetzt in einem durchsichtigen `Material`.
+
+**Was noch nicht angefasst ist**, und warum: Tabellen-Tab, Duell-Tab, Hub,
+Einstellungsblatt und die Editoren haben **keine Vorschau** — sie hängen an
+einem halben Dutzend Providern. Die Bausteine sind umgestellt und in
+`test/goldens/tippspiel_bausteine.png` zu sehen; die Schirme als Ganzes sind
+damit noch nicht beurteilt. Wer hier weitermacht, baut zuerst die Vorschauen —
+sonst wiederholt sich genau der Fehler, den der ungethemte Golden oben zeigt.
+
+Nicht angefasst, weil schon deckungsgleich: `RoundSelector` und
+`MatchdayStepper` sind bis auf die Beschriftung derselbe Baustein (Chevrons,
+mittige Rundenbezeichnung, Ziel im Vorlese-Namen).
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;

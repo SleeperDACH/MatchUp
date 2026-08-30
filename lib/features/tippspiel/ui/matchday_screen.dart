@@ -12,6 +12,9 @@ import '../models/tip.dart';
 import '../providers.dart';
 import 'round_selector.dart';
 import 'team_badge.dart';
+import '../../../app/typografie.dart';
+import '../../../app/widgets/kapitelmarke.dart';
+import '../../../app/widgets/karte.dart';
 
 /// Tippen-Tab: In Runden mit mehreren Wettbewerben ein gemeinsamer
 /// Wochen-Feed (alle Ligen zusammen, Woche für Woche); sonst die klassische
@@ -75,7 +78,10 @@ class _WeekTipView extends ConsumerWidget {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: Text('Keine Spiele gefunden.', textAlign: TextAlign.center),
+              child: Text(
+                'Keine Spiele gefunden.',
+                textAlign: TextAlign.center,
+              ),
             ),
           );
         }
@@ -178,11 +184,14 @@ class _FixtureListBody extends ConsumerWidget {
       // Rundenwechsel (lokal ↔ Tipprunde) baut die Karten neu auf,
       // damit die Eingabefelder die Tipps der neuen Quelle zeigen.
       final activeRoundId = ref.watch(activeRoundProvider)?.id ?? 'lokal';
-      children.add(FixtureCard(
+      children.add(
+        FixtureCard(
           key: ValueKey('${fixture.id}:$activeRoundId'),
           fixture: fixture,
           odds: odds[fixture.id],
-          dayLabel: isNewDay ? day : null));
+          dayLabel: isNewDay ? day : null,
+        ),
+      );
     }
     final listView = RefreshIndicator(
       onRefresh: onRefresh,
@@ -204,8 +213,12 @@ class _FixtureListBody extends ConsumerWidget {
 }
 
 class FixtureCard extends ConsumerStatefulWidget {
-  const FixtureCard(
-      {super.key, required this.fixture, this.odds, this.dayLabel});
+  const FixtureCard({
+    super.key,
+    required this.fixture,
+    this.odds,
+    this.dayLabel,
+  });
 
   final Fixture fixture;
 
@@ -229,10 +242,12 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
   void initState() {
     super.initState();
     final tip = ref.read(tipsProvider)[widget.fixture.id];
-    _homeController =
-        TextEditingController(text: tip?.homeGoals.toString() ?? '');
-    _awayController =
-        TextEditingController(text: tip?.awayGoals.toString() ?? '');
+    _homeController = TextEditingController(
+      text: tip?.homeGoals.toString() ?? '',
+    );
+    _awayController = TextEditingController(
+      text: tip?.awayGoals.toString() ?? '',
+    );
   }
 
   @override
@@ -287,10 +302,13 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _FixtureHeaderRow(dayLabel: widget.dayLabel, fixture: fixture),
-        Card(
-          margin: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, Abstand.s),
+          child: Karte(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: Abstand.s + 2,
+            ),
             child: Column(
               children: [
                 Row(
@@ -335,33 +353,46 @@ class _FixtureHeaderRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final live = fixture.status == FixtureStatus.live;
     final Widget right = live
-        ? Text('LIVE',
+        ? Text(
+            'LIVE',
             style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: scheme.primary))
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: scheme.primary,
+            ),
+          )
         : Text(
             DateFormat('HH:mm', 'de_DE').format(fixture.kickoff.toLocal()),
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           );
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, dayLabel != null ? 14 : 6, 16, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: dayLabel == null
-                ? const SizedBox.shrink()
-                : Text(
-                    dayLabel!,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: scheme.onSurfaceVariant),
-                  ),
+    // **Der Tag ist eine Kapitelmarke wie überall sonst in der App**, die
+    // Uhrzeit bleibt in der schmalen Zeile direkt über der Karte. Vorher
+    // standen beide nebeneinander in einer Zeile, und der Tag las sich wie
+    // eine Beschriftung der Uhrzeit statt wie eine Rubrik.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (dayLabel != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Kapitelmarke(dayLabel!, farbe: scheme.primary),
           ),
-          right,
-        ],
-      ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            dayLabel != null ? 0 : Abstand.s,
+            16,
+            4,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [right],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -410,18 +441,20 @@ class _OddChip extends StatelessWidget {
           TextSpan(
             text: '$label ',
             style: TextStyle(
-                fontSize: 9,
-                height: 1.1,
-                fontWeight: FontWeight.w500,
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+              fontSize: 9,
+              height: 1.1,
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+            ),
           ),
           TextSpan(
             text: value.toStringAsFixed(2),
             style: TextStyle(
-                fontSize: 12,
-                height: 1.1,
-                fontWeight: FontWeight.w600,
-                color: scheme.onSurface),
+              fontSize: 12,
+              height: 1.1,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+            ),
           ),
         ],
       ),
@@ -514,11 +547,17 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
     });
 
     final messenger = ScaffoldMessenger.of(context)..clearSnackBars();
-    messenger.showSnackBar(SnackBar(
-      content: Text(errors.isEmpty
-          ? (saved > 0 ? 'Tipps gespeichert.' : 'Keine Änderungen zu speichern.')
-          : '${errors.length} Tipp(s) nicht gespeichert.'),
-    ));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          errors.isEmpty
+              ? (saved > 0
+                    ? 'Tipps gespeichert.'
+                    : 'Keine Änderungen zu speichern.')
+              : '${errors.length} Tipp(s) nicht gespeichert.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -576,11 +615,16 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_outline,
-                      size: 16, color: scheme.primary),
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 16,
+                    color: scheme.primary,
+                  ),
                   const SizedBox(width: 6),
-                  Text('Tipps gespeichert',
-                      style: TextStyle(color: scheme.primary)),
+                  Text(
+                    'Tipps gespeichert',
+                    style: TextStyle(color: scheme.primary),
+                  ),
                 ],
               ),
             ],
@@ -615,8 +659,9 @@ class _TeamLabel extends StatelessWidget {
     );
     final badge = TeamBadge(team: team, size: _badgeSize);
     return Row(
-      mainAxisAlignment:
-          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: alignEnd
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       children: alignEnd
           ? [name, const SizedBox(width: 7), badge]
           : [badge, const SizedBox(width: 7), name],
@@ -637,8 +682,10 @@ class _CenterInfo extends StatelessWidget {
     final style = Theme.of(context).textTheme.titleMedium;
     switch (fixture.status) {
       case FixtureStatus.finished:
-        return Text('${fixture.homeScore} : ${fixture.awayScore}',
-            style: style);
+        return Text(
+          '${fixture.homeScore} : ${fixture.awayScore}',
+          style: style,
+        );
       case FixtureStatus.live:
         final score = fixture.homeScore != null
             ? '${fixture.homeScore} : ${fixture.awayScore}'
@@ -646,11 +693,14 @@ class _CenterInfo extends StatelessWidget {
         return Column(
           children: [
             Text(score, style: style?.copyWith(color: scheme.primary)),
-            Text('LIVE',
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: scheme.primary)),
+            Text(
+              'LIVE',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: scheme.primary,
+              ),
+            ),
           ],
         );
       case FixtureStatus.scheduled:
@@ -703,22 +753,35 @@ class _SavedHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (IconData icon, Color color, String label) = dirty
+    // **Farbe nur, wo etwas ansteht.** „Gespeichert" ist ein erledigter
+    // Zustand und trug trotzdem das Markengrün — dieselbe Farbe, mit der die
+    // App sonst „hier läuft gerade etwas" meint. Sie steht jetzt grau; rot
+    // bleibt, was noch nicht abgeschickt ist.
+    final (IconData icon, Color? color, String label) = dirty
         ? (Icons.edit_outlined, const Color(0xFFF23030), 'Nicht gespeichert')
         : saved
-            ? (Icons.check_circle, const Color(0xFF4ADE6A), 'Gespeichert')
-            : (Icons.remove, Colors.transparent, '');
+        ? (Icons.check_rounded, null, 'Gespeichert')
+        : (Icons.remove, Colors.transparent, '');
     if (label.isEmpty) return const SizedBox(height: 6);
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 13, color: color),
+          Icon(
+            icon,
+            size: 13,
+            color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: Schrift.klein,
+              fontWeight: FontWeight.w600,
+              color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );
@@ -761,10 +824,9 @@ class _LockedTipRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final labelStyle = Theme.of(context)
-        .textTheme
-        .labelMedium
-        ?.copyWith(color: scheme.onSurfaceVariant);
+    final labelStyle = Theme.of(
+      context,
+    ).textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant);
 
     if (tip == null) {
       return Text('Kein Tipp abgegeben', style: labelStyle);
@@ -784,10 +846,7 @@ class _LockedTipRow extends ConsumerWidget {
         resultAway: fixture.awayScore!,
         rules: ref.watch(scoringRulesProvider),
       );
-      children.addAll([
-        const SizedBox(width: 10),
-        _PointsChip(points: points),
-      ]);
+      children.addAll([const SizedBox(width: 10), _PointsChip(points: points)]);
     }
 
     return Row(mainAxisAlignment: MainAxisAlignment.center, children: children);
@@ -812,7 +871,10 @@ class _PointsChip extends StatelessWidget {
       child: Text(
         '+$points',
         style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.bold, color: color),
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
       ),
     );
   }
