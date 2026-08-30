@@ -2424,6 +2424,10 @@ nur nicht in `fantasy_rosters` (Migration 0097 trägt sie nach):
 | `fantasy_waiver_claims.drop_player_id` | Abgang eines gewonnenen Antrags | ID-basiert |
 | Systemnachricht im Liga-Chat | Free Agency und reine Drops | Text, siehe unten |
 
+(Diese dritte Quelle gibt es seit 0106 nicht mehr — die Rückfüllung war
+einmalig, ihr Ergebnis steht im Protokoll. Siehe „Der Chat meldet keine
+Kaderbewegungen mehr".)
+
 Der dritte Weg klingt nach Raten, ist es aber nicht, und zwar aus zwei
 **nachgemessenen** Gründen: Die Nachricht entsteht in derselben Transaktion wie
 die Bewegung (`fantasy_post_system_message` wird aus `fantasy_add_free_agent`
@@ -2548,6 +2552,52 @@ nächsten Minute. Was gehalten werden muss, steht als Messung daneben und läuft
 bei jedem Durchlauf: dass Angebote und Anträge auf der eigenen Seite landen,
 dass der Draft aus der Liga-Liste fällt, und dass Zu- **und** Abgang darin
 vorkommen.
+
+### Der Chat meldet keine Kaderbewegungen mehr (0106)
+
+Gewünscht, sobald der Transfers-Bereich stand: *„Die Trade Nachrichten und
+Roster Moves im Liga Chat können entfernt werden, da ja jetzt ein Extra
+Bereich dafür existiert."* Es waren **99 automatische Systemzeilen in acht
+Wochen** plus vier Trade-Meldungen — bei 124 echten Nachrichten insgesamt also
+knapp die Hälfte des Verlaufs, und dazwischen gingen die Gespräche unter.
+
+Zwei Wege posteten, und das war beim Aufräumen der eigentliche Fund:
+
+- **Server** — `fantasy_add_free_agent`, `fantasy_drop_player`,
+  `fantasy_admin_add`, `fantasy_admin_drop` und `fantasy_process_due_waivers`
+  riefen `fantasy_post_system_message` (✅ 🔻 🛠️ 📥).
+- **App** — die Trade-Meldung (🔄) kam nicht vom Server, sondern aus
+  `trade_screen.dart` (`_postTradeToChat`) als **ganz normale Nachricht** mit
+  Absender. Wer nur nach `is_system` gesucht hätte, hätte sie stehen lassen.
+
+Die Funktionen stehen in 0106 **vollständig** drin, aus der laufenden
+Datenbank gezogen (`pg_get_functiondef`) und nur um die `perform`-Zeilen
+gekürzt; danach zurückgelesen und gegen den Stand davor verglichen — genau
+diese Zeilen fehlen, sonst nichts. Sie aus 0029/0032/0044/0088/0094/0095
+zusammenzusuchen wäre ein Rückschritt gewesen, jede dieser Migrationen hat sie
+seither angefasst.
+
+**Es geht nichts verloren.** Das Protokoll `fantasy_roster_moves` (0096) hängt
+an einem Trigger auf `fantasy_rosters` und erfasst jeden Weg — auch die
+Admin-Korrektur und den Waiver-Zuschlag. 391 Zeilen stehen dort; die
+Chat-Meldungen waren die zweite, schlechtere Kopie. **Aber:** Migration 0097
+hat die historischen Abgänge aus genau diesen Chat-Texten rekonstruiert. Das
+Ergebnis steht im Protokoll und bleibt, die Quelle ist weg — wer die
+Rückfüllung je wiederholen will, muss aus der Sicherung arbeiten
+(`~/Projekte/matchup-sicherungen/0106_geloeschte_chatmeldungen.jsonl`, 103
+Zeilen, bewusst **nicht** im Repo: öffentlich, und es ist Chatinhalt).
+
+**Eine Meldung bleibt:** die ⚠️-Warnung aus `fantasy_trade_ausfuehren`, dass
+ein vorgemerkter Trade hinfällig geworden ist. Sie meldet nicht, was geschehen
+ist, sondern dass etwas Erwartetes **nicht** geschehen ist — dafür hat der
+Transfers-Bereich keinen Platz, und wer auf den Spieler wartet, muss es
+erfahren. `fantasy_post_system_message` und `_SystemLine` bleiben dafür stehen.
+
+Vor dem Löschen geprüft: **keine** der 103 Nachrichten ist Ziel einer Antwort
+(`reply_to`), es reißt also kein Zitat auf. Der Filter für die App-Meldungen
+ist ein strenger Präfix (`'🔄 Trade angenommen: %'`), nicht eine Suche nach
+„Trade" — im Verlauf steht eine echte Nachricht, die nur aus dem Emoji 🙂‍↔️
+besteht, und die hätte eine großzügigere Regel mitgenommen.
 
 ### Das Karussell darf beim Nachladen nicht zurückspringen
 
