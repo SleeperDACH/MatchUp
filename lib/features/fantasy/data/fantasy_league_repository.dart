@@ -4,6 +4,7 @@ import '../../../core/models/chat_message.dart';
 import '../../leagues/models/join_request.dart';
 import '../../../core/data/stream_dubletten.dart';
 import '../models/fantasy_models.dart';
+import '../models/roster_move.dart';
 import '../models/trade.dart';
 import '../logic/fantasy_scoring_rules.dart';
 
@@ -522,6 +523,22 @@ class FantasyLeagueRepository {
   // ----------------------------------------------------------------
   // Waiver-Wire
   // ----------------------------------------------------------------
+
+  /// **Kaderbewegungen der Liga** in Echtzeit, jüngste zuerst.
+  ///
+  /// Quelle ist `fantasy_roster_moves` (0096) — ein Protokoll, das ein Trigger
+  /// füllt. Ohne das gäbe es keine Abgänge: Eine gelöschte Kaderzeile
+  /// hinterlässt nichts.
+  Stream<List<RosterMove>> rosterMovesStream(String leagueId) => _client
+      .from('fantasy_roster_moves')
+      .stream(primaryKey: ['id'])
+      .eq('league_id', leagueId)
+      .order('passiert_am', ascending: false)
+      .limit(300)
+      .map((rows) => [
+            for (final r in ohneDubletten(rows, const ['id']))
+              RosterMove.fromJson(r)
+          ]);
 
   /// Spieler-IDs, die aktuell auf dem Waiver-Wire liegen (claim-only).
   Stream<Set<String>> waiverPlayersStream(String leagueId) => _client

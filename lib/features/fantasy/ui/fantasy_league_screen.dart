@@ -12,6 +12,7 @@ import '../../tippspiel/providers.dart';
 import '../../tippspiel/ui/create_tip_round.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
+import '../models/roster_move.dart';
 import '../providers.dart';
 import 'roster_limit_banner.dart';
 import 'draft_room_screen.dart';
@@ -26,6 +27,7 @@ import 'matchup_hero.dart';
 import 'matchups_screen.dart';
 import 'player_pool_screen.dart';
 import 'trade_screen.dart';
+import 'transfers_screen.dart';
 import 'weekly_recap_screen.dart';
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/matchup_chevron.dart';
@@ -138,6 +140,16 @@ class _OverviewTab extends ConsumerWidget {
     final formation = ref.watch(meineFormationProvider(league.id));
     final vorgemerkt = ref.watch(vorgemerkteTradesProvider(league.id)).length;
     final chatNeu = ref.watch(fantasyUnreadChatProvider(league.id));
+    // Für die Transfers-Zeile: was auf mich wartet (eingehende Angebote plus
+    // eigene offene Anträge), und wie viele Wechsel es in der Liga gab. Der
+    // **Draft zählt dabei nicht** — er erzeugt bei sechzehn Teams Hunderte
+    // Zeilen und ist keine Bewegung, die man nachliest.
+    final offeneTransfers = ref.watch(offeneTransfersProvider(league.id));
+    final bewegungen = [
+      for (final m in ref.watch(rosterMovesProvider(league.id)).valueOrNull ??
+          const <RosterMove>[])
+        if (m.weg != 'draft') m
+    ];
 
     void go(Widget screen) => Navigator.of(
       context,
@@ -235,6 +247,23 @@ class _OverviewTab extends ConsumerWidget {
           if (league.tipEnabled ||
               ref.watch(fantasyTipRoundProvider(league.id)).valueOrNull != null)
             _LeagueTipspielButton(league: league, isAdmin: isAdmin),
+          // **Transfers steht über dem Chat**, weil es dieselbe Frage
+          // beantwortet wie der Chat sie beiläufig streift — nur vollständig:
+          // Was wartet auf mich, und was hat die Liga gemacht? Der Zähler
+          // führt beides zusammen (eingehende Angebote plus eigene offene
+          // Anträge); zwei Zahlen an einer Zeile wären eine zu viel.
+          _LigaZeile(
+            label: 'Transfers',
+            icon: Icons.compare_arrows,
+            farbe: _cBlue,
+            hinweis: bewegungen.isEmpty
+                ? null
+                : (bewegungen.length == 1
+                    ? 'Ein Wechsel in der Liga'
+                    : '${bewegungen.length} Wechsel in der Liga'),
+            zahl: offeneTransfers,
+            onTap: () => go(TransfersScreen(league: league)),
+          ),
           _LigaZeile(
             label: 'Liga-Chat',
             icon: Icons.forum_outlined,

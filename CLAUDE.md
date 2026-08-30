@@ -2038,6 +2038,72 @@ Angesehen über `test/free_agency_vorschau_test.dart`: die drei Zustände einer
 Zeile nebeneinander (Waiver, Spiel läuft, frei), die es auf dem Gerät nie
 gleichzeitig gibt. Gerechnet wird in `test/free_agent_sperre_test.dart`.
 
+### Transfers — was auf mich wartet, und was die Liga macht
+
+Beides lag vorher verstreut: eingehende Trade-Angebote im Trade-Schirm, eigene
+Waiver-Anträge hinter einem Symbol in der Free-Agency-Kopfzeile, und die
+Bewegungen der anderen **nirgends** — man erfuhr sie höchstens nebenbei im
+Liga-Chat, wenn man gerade hinsah. Im Liga-Abschnitt der Übersicht steht jetzt
+über dem Chat die Zeile **Transfers**; dahinter zwei Reiter, weil es zwei
+Fragen sind: „muss ich etwas tun?" und „was ist los?".
+
+**Für die zweite Seite gab es keine Quelle.** `fantasy_rosters` kennt nur den
+Bestand — `acquired_via` und `acquired_at` sagen, wie und wann jemand in einen
+Kader kam. Wer einen Kader *verlässt*, verschwindet spurlos: Die Zeile wird
+gelöscht. Eine Liste „Kader-Bewegungen" ließe sich daraus nur zur Hälfte bauen,
+und die fehlende Hälfte ist genau die, die man sucht („wen hat er abgegeben?").
+
+Migration 0096 legt deshalb `fantasy_roster_moves` an, gefüllt von einem
+**Trigger auf `fantasy_rosters`** — dieselbe Begründung wie beim Kaderlimit
+(0083) und beim Aufstellungs-Aufräumen (0094). Drei Fälle:
+
+| Vorgang | Was protokolliert wird |
+|---|---|
+| `insert` | Zugang, mit `weg` = `acquired_via` |
+| `delete` | Abgang, **ohne** `weg` |
+| `update` von `manager_id` | Abgang **und** Zugang, beide `weg = trade` |
+
+Zwei Entscheidungen darin sind wichtig:
+
+- **Beim Abgang bleibt `weg` leer**, und das ist Absicht. Die Datenbank sieht
+  beim Löschen einer Kaderzeile nicht, ob ein Drop, eine Waiver-Abgabe oder
+  eine Admin-Korrektur dahintersteckt. Etwas zu raten wäre schlimmer als nichts
+  zu sagen.
+- **Ein Trade ist zwei Bewegungen.** Er läuft über ein `update` von
+  `manager_id`, nicht über Delete+Insert; wer nur auf `delete` hört, sieht
+  Trades gar nicht.
+
+**Zurückgefüllt werden nur die Zugänge** (364 Zeilen aus dem Bestand, mit
+ihrem echten Zeitstempel). Abgänge werden nicht erfunden — sie sind nirgends
+festgehalten, und sie aus dem Nichts zu rekonstruieren hieße, Daten zu
+behaupten. Die Liste beginnt für Abgänge heute, und das ist ehrlicher als eine
+vollständig aussehende Liste mit geratenen Einträgen.
+
+**Der Draft steht nicht in der Liga-Liste.** Er erzeugt bei sechzehn Teams
+Hunderte Zeilen und begrübe jede Free-Agency-Meldung darunter; wer den Draft
+nachlesen will, hat dafür das Board. Er bleibt im Protokoll, damit die eigene
+Seite „woher kam dieser Spieler?" beantworten kann.
+
+**Das Design folgt den Trade-Angeboten**, weil es dieselbe Sorte Inhalt ist:
+Kartengrund, Haarlinie, `SpielerKachel` in der kompakten Fassung (46 × 152),
+und **Farbe nur, wo etwas ansteht** — die Marke „Wartet auf dich" trägt Rot und
+eine Zahl, „Offene Waiver-Anträge" Gold, alles andere bleibt grau. In der
+Liga-Liste trennen sich Zu- und Abgang durch Richtung und Farbe des Pfeils,
+nicht durch verschiedene Formen: Es ist dieselbe Sorte Ereignis.
+
+Die Zeile in der Übersicht führt beide Zahlen zusammen
+(`offeneTransfersProvider`: eingehende Angebote plus eigene offene Anträge) —
+zwei Zähler an einer Zeile wären einer zu viel.
+
+Angesehen über `test/transfers_vorschau_test.dart`. **Der Bildvergleich läuft
+nur mit `--update-goldens`**: Die Liga-Seite gruppiert nach „Heute"/„Gestern"
+und schreibt Uhrzeiten hin, beides aus `DateTime.now()` — ein fest
+eingecheckter Vergleich wäre nicht erst am nächsten Tag rot, sondern in der
+nächsten Minute. Was gehalten werden muss, steht als Messung daneben und läuft
+bei jedem Durchlauf: dass Angebote und Anträge auf der eigenen Seite landen,
+dass der Draft aus der Liga-Liste fällt, und dass Zu- **und** Abgang darin
+vorkommen.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

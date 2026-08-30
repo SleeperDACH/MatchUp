@@ -9,6 +9,7 @@ import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/auth/providers.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/models/roster_move.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/fantasy_league_screen.dart';
 import 'package:matchup/features/tippspiel/providers.dart';
@@ -125,6 +126,28 @@ void main() {
             ]),
           ),
           leagueTradesProvider.overrideWith((ref, id) => Stream.value(const [])),
+          myWaiverClaimsProvider
+              .overrideWith((ref, id) => Stream.value(const [])),
+          // Zwei Wechsel, damit die Transfers-Zeile ihren Hinweis zeigt — mit
+          // leerer Liste stünde dort nur das Wort, und genau das war der
+          // Vorwurf an die Zeilen vor der Überarbeitung.
+          rosterMovesProvider.overrideWith((ref, id) => Stream.value([
+                RosterMove(
+                    id: 2,
+                    leagueId: 'l1',
+                    managerId: 'gegner',
+                    playerId: 'a3',
+                    zugang: true,
+                    weg: 'fa',
+                    passiertAm: DateTime(2026, 9, 12, 18)),
+                RosterMove(
+                    id: 1,
+                    leagueId: 'l1',
+                    managerId: 'gegner',
+                    playerId: 'a4',
+                    zugang: false,
+                    passiertAm: DateTime(2026, 9, 12, 17, 59)),
+              ])),
           playerPoolProvider.overrideWith((ref) async => pool),
           clubIconsProvider.overrideWith((ref) async => const {}),
           leagueRosterProvider.overrideWith(

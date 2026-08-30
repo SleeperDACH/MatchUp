@@ -21,6 +21,7 @@ import 'logic/aufstellungs_prognose.dart';
 import 'logic/draft_ranking.dart';
 import 'logic/fantasy_scoring_engine.dart';
 import 'models/fantasy_models.dart';
+import 'models/roster_move.dart';
 import 'models/trade.dart';
 
 final fantasyLeagueRepositoryProvider = Provider<FantasyLeagueRepository>(
@@ -211,6 +212,24 @@ final waiverPlayersProvider =
 final myWaiverClaimsProvider =
     StreamProvider.family<List<WaiverClaim>, String>((ref, leagueId) {
   return ref.watch(fantasyLeagueRepositoryProvider).myWaiverClaimsStream(leagueId);
+});
+
+/// **Kaderbewegungen der Liga**, jüngste zuerst (Echtzeit).
+final rosterMovesProvider =
+    StreamProvider.family<List<RosterMove>, String>((ref, leagueId) {
+  return ref.watch(fantasyLeagueRepositoryProvider).rosterMovesStream(leagueId);
+});
+
+/// Was im Transfers-Bereich auf **mich** wartet: eingehende Trade-Angebote
+/// plus eigene offene Waiver-Anträge.
+///
+/// Beides zusammen, weil die Zeile in der Übersicht eine Zahl trägt und nicht
+/// zwei — und weil es dieselbe Frage beantwortet: „muss ich da hin?"
+final offeneTransfersProvider = Provider.family<int, String>((ref, leagueId) {
+  final eingehend = ref.watch(incomingTradeOffersProvider(leagueId));
+  final antraege = ref.watch(myWaiverClaimsProvider(leagueId)).valueOrNull ??
+      const <WaiverClaim>[];
+  return eingehend + antraege.where((c) => c.status.isPending).length;
 });
 
 /// Nächste Runde + Waiver-Deadline (2 Tage vor Anstoß) der Saison.
