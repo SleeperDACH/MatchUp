@@ -364,15 +364,19 @@ class _NaechsterSchritt extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
+        // Hauch aus der Ecke statt getönter Fläche, Haarlinie statt goldener
+        // Kante — dieselbe Hülle wie jede andere Karte der App.
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+          stops: const [0.0, 0.75],
           colors: [
-            Color.alphaBlend(gold.withValues(alpha: 0.18), scheme.surface),
-            Color.alphaBlend(gold.withValues(alpha: 0.05), scheme.surface),
+            Color.alphaBlend(
+                gold.withValues(alpha: 0.12), Theme.of(context).cardColor),
+            Theme.of(context).cardColor,
           ],
         ),
-        border: Border.all(color: gold.withValues(alpha: 0.40), width: 0.8),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 15),
       child: Column(
@@ -946,8 +950,12 @@ class _MiniAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Kartengrund mit Hauch aus der Ecke statt getönter Fläche, Haarlinie
+    // statt farbiger Kante. **Der rote Rahmen bleibt für den Zähler** — dort
+    // wartet wirklich etwas, und genau dafür ist Farbe an einer Kante da.
+    final grund = Theme.of(context).cardColor;
     return Material(
-      color: color.withValues(alpha: 0.14),
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -956,10 +964,17 @@ class _MiniAction extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              stops: const [0.0, 0.75],
+              colors: [
+                Color.alphaBlend(color.withValues(alpha: 0.12), grund),
+                grund,
+              ],
+            ),
             border: Border.all(
-                color: badge > 0
-                    ? _cRed
-                    : color.withValues(alpha: 0.40),
+                color: badge > 0 ? _cRed : Theme.of(context).dividerColor,
                 width: badge > 0 ? 1.5 : 1),
           ),
           child: Column(

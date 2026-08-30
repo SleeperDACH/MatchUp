@@ -2328,6 +2328,35 @@ klar, nur ohne den lautesten Strich des Schirms.
 grün gestochene Flächen"). Solange `surfaceContainer*` grün gestochen war,
 hätte „Tiefe über die Fläche" nur mehr Grün bedeutet.
 
+**Die Regel gilt für die ganze App**, nicht nur für die Liga-Übersicht.
+Nachgezogen wurden: die Ligakarten auf dem Startbildschirm (Kante war ein
+22-%-Ton der Bereichsfarbe), der Auftrags-Kopf und die Aktionskacheln der
+Liga-Übersicht, der MatchUp-Detailkopf, die Playoff-Karte und der Infokasten
+der Einstellungen. Alle trugen dasselbe Muster: **getönte Fläche bei 10–14 %
+plus farbige Kante bei 30–50 %.**
+
+**Die Trennlinie verläuft zwischen Karte und Zustand**, nicht zwischen
+„wichtig" und „unwichtig":
+
+| Farbe an der Kante | erlaubt? |
+|---|---|
+| Behälter, Karte, Abschnitt | **nein** — Haarlinie, Farbe als Hauch |
+| etwas wartet (roter Zähler) | ja |
+| etwas ist ausgewählt (Spielerkachel, Slot) | ja |
+| etwas ist kaputt (Auto-Pick-Warnung, Fehler) | ja |
+| Richtung im Inhalt (rein/raus im Bestätigungsblatt) | ja |
+| Chips, Pillen, Avatare, Ringe | ja — keine Karten |
+
+Gehalten von `test/kartenkanten_test.dart`. Er liest `lib/` und sucht
+**kartenähnliche** Ränder mit Farbe: ein `Border.all`, dessen Farbe weder
+`dividerColor` noch `outlineVariant` ist, in einer Dekoration ab Radius 14 —
+kleinere Elemente fallen heraus. Jede verbleibende Stelle steht dort
+**namentlich mit Anzahl und Grund**; kommt eine dazu, wird der Test rot, und
+wer sie einträgt, muss sagen warum. Verschwindet eine, fällt das auch auf,
+sonst wächst die Liste und niemand räumt sie. Dasselbe Muster wie bei
+`punkte_formatierung_test.dart` — es hat sich als das einzige erwiesen, das
+eine Stilregel über Monate hält.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

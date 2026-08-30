@@ -1101,8 +1101,17 @@ class _PlayoffSummary extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: accent.withValues(alpha: 0.12),
-        border: Border.all(color: accent.withValues(alpha: 0.30)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.0, 0.75],
+          colors: [
+            Color.alphaBlend(
+                accent.withValues(alpha: 0.12), Theme.of(context).cardColor),
+            Theme.of(context).cardColor,
+          ],
+        ),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

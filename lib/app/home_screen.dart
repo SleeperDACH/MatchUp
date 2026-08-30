@@ -1553,10 +1553,10 @@ BoxDecoration _kartenFlaeche(BuildContext context, Color farbe) {
         grund,
       ],
     ),
-    border: Border.all(
-      color: farbe.withValues(alpha: dark ? 0.22 : 0.18),
-      width: 0.8,
-    ),
+    // **Die Kante trägt keine Farbe mehr.** Der Hauch aus der Ecke sagt, zu
+    // welchem Bereich die Karte gehört; eine zusätzlich getönte Linie war
+    // dieselbe Auskunft ein zweites Mal, leiser und trotzdem uneinheitlich.
+    border: Border.all(color: Theme.of(context).dividerColor, width: 0.8),
   );
 }
 

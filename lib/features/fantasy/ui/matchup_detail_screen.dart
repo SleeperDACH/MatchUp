@@ -180,12 +180,18 @@ class _Scoreboard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
+        // Der Hauch verklingt bei drei Vierteln der Diagonale, die Kante ist
+        // die Haarlinie — wie auf der Übersicht, aus der man hierher kommt.
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [accent.withValues(alpha: 0.42), _cBase],
+          stops: const [0.0, 0.75],
+          colors: [
+            Color.alphaBlend(accent.withValues(alpha: 0.16), _cBase),
+            _cBase,
+          ],
         ),
-        border: Border.all(color: accent.withValues(alpha: 0.5)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [

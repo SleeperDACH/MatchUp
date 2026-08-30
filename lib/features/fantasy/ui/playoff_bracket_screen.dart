@@ -197,8 +197,18 @@ class _PlanBanner extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: gold.withValues(alpha: 0.12),
-        border: Border.all(color: gold.withValues(alpha: 0.30)),
+        // Karte wie jede andere: Hauch aus der Ecke, Haarlinie.
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.0, 0.75],
+          colors: [
+            Color.alphaBlend(
+                gold.withValues(alpha: 0.12), Theme.of(context).cardColor),
+            Theme.of(context).cardColor,
+          ],
+        ),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
