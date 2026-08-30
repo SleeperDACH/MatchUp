@@ -82,8 +82,20 @@ const STAT_CODE_MAP: Record<string, string> = {
   "accurate-passes": "accuratePasses",
   "shots-on-target": "shotsOnTarget",
   "successful-dribbles": "successfulDribbles",
+  // **`goals-conceded` und `goalkeeper-goals-conceded` sind zwei Zahlen, nicht
+  // eine.** Sie stehen deshalb NICHT beide hier — die Schleife unten addiert
+  // alles, was sie findet, und aus zwei Codes auf dasselbe Feld wurde eine
+  // Summe. Aufgefallen an Daniel Heuer Fernandes: 2 Gegentore laut Quelle,
+  // 1 laut Torwart-Zahl (das Eigentor zählt dort nicht mit) — bei uns stand 3.
+  //
+  // Betroffen war **jeder eingesetzte Torwart**: Gemessen an vier Spieltagen
+  // tragen 132 Aufstellungszeilen beide Codes, 1421 nur `goals-conceded`
+  // (Feldspieler) und 9 nur `goalkeeper-goals-conceded`. Die neun sind der
+  // Grund, warum der zweite Code nicht einfach entfallen kann.
+  //
+  // Aufgelöst wird das unten in `eventsForFixture`: `goals-conceded` gewinnt,
+  // der Torwart-Wert ist nur die Rückfallebene.
   "goals-conceded": "goalsConceded",
-  "goalkeeper-goals-conceded": "goalsConceded",
   "saves": "saves",
   "tackles-won": "tacklesWon",
   "interceptions": "interceptions",
@@ -180,15 +192,31 @@ function eventsForFixture(fixture: any): Map<number, Events> {
     const pid = lu.player_id as number | null;
     if (pid == null) continue;
     const ev = get(pid);
+    // Die beiden Gegentor-Codes werden getrennt gesammelt und erst danach
+    // aufgelöst — addieren wäre falsch, sie messen dasselbe zweimal.
+    let gegentore: number | undefined;
+    let gegentoreTw: number | undefined;
     for (const det of lu.details ?? []) {
       const code = det?.type?.code as string | undefined;
-      const field = code ? STAT_CODE_MAP[code] : undefined;
-      if (!field) continue;
       const value = det?.data?.value;
       if (typeof value !== "number") continue;
+      if (code === "goals-conceded") {
+        gegentore = value;
+        continue;
+      }
+      if (code === "goalkeeper-goals-conceded") {
+        gegentoreTw = value;
+        continue;
+      }
+      const field = code ? STAT_CODE_MAP[code] : undefined;
+      if (!field) continue;
       if (field === "rating") ev.rating = value;
       else (ev[field] as number) += value;
     }
+    // `goals-conceded` ist die vollständige Zahl (Eigentore eingeschlossen)
+    // und gewinnt. Fehlt sie, tritt der Torwart-Wert ein.
+    const konzediert = gegentore ?? gegentoreTw;
+    if (typeof konzediert === "number") ev.goalsConceded += konzediert;
     if (lu.position_id === POS_GK && ev.minutes > 0) {
       gkByTeam.set(lu.team_id as number, pid);
     }

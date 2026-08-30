@@ -379,6 +379,44 @@ gilt das Raster ab sofort.
   `topscorerTypes` wird **stillschweigend ignoriert**, und ohne Filter mischt
   die Antwort Karten, Tore und Vorlagen nach Typ gruppiert; die Tore fangen
   erst auf Seite 2 an, `per_page=25` sieht also nur Karten.
+  **`goals-conceded` und `goalkeeper-goals-conceded` sind zwei Zahlen, nicht
+  eine.** Beide standen in `STAT_CODE_MAP` auf `goalsConceded`, und die
+  Zuordnungsschleife **addiert** alles, was sie findet — aus zwei Codes auf
+  dasselbe Feld wurde eine Summe. Gemeldet an Daniel Heuer Fernandes: bei uns
+  3 Gegentore, laut Quelle 2 (`goals-conceded`) beziehungsweise 1
+  (`goalkeeper-goals-conceded` — das Eigentor von Bornauw zählt dort nicht
+  mit). Der Endstand war 2:0.
+
+  Betroffen war **jeder eingesetzte Torwart**. Gemessen an vier Spieltagen:
+
+  | Codes in der Aufstellungszeile | Vorkommen | wer |
+  |---|---|---|
+  | nur `goals-conceded` | 1421 | Feldspieler |
+  | **beide** | 132 | jeder Torwart mit Einsatz |
+  | nur `goalkeeper-goals-conceded` | 9 | — |
+
+  Die neun sind der Grund, warum der zweite Code **nicht einfach entfallen
+  kann**. Aufgelöst wird es deshalb außerhalb der Zuordnung:
+  `goals-conceded` gewinnt (es ist die vollständige Zahl, Eigentore
+  eingeschlossen), der Torwart-Wert ist die Rückfallebene. Nach der Reparatur
+  stimmen die Zahlen gegen die Endstände — Bayern 5:1 Stuttgart ergibt Neuer 1
+  und Bredlow 5, Dortmund 2:0 HSV ergibt Kobel 0 und Heuer Fernandes 2.
+
+  **Die Lehre:** Zwei Codes auf dasselbe Feld sind in einer addierenden
+  Schleife ein stiller Doppelzähler. Wer eine Zuordnung erweitert, prüft, ob
+  das Ziel schon belegt ist.
+
+  **Und daraus die Nachlese** (Migration 0099): `sync-stats` läuft jede Minute,
+  sieht aber nur Spiele, deren Anpfiff höchstens sechs Stunden zurückliegt —
+  genug für die Live-Wertung, zu wenig für Korrekturen, die Sportmonks später
+  nachreicht. Ein zweiter Cron ruft dieselbe Function stündlich mit
+  `?hours=72` auf. Das deckt ein ganzes Spieltagswochenende ab und kostet
+  fast nichts: Die Function fragt zuerst die eigene Spiegelung, und ein voller
+  Spieltag ist **ein** Sportmonks-Request. **Einen eigenen Reparaturpfad
+  braucht es nicht** — `player_match_stats` hat den Schlüssel
+  (season, round, player_id), eine korrigierte Zahl überschreibt die alte von
+  selbst.
+
   **`interceptions` ist nicht „Balleroberung".** Die App nannte es jahrelang
   so; Sportmonks führt beides getrennt, und die Felder sind weit auseinander:
 
