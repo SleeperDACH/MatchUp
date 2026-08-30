@@ -21,6 +21,7 @@ import 'logic/aufstellungs_prognose.dart';
 import 'logic/draft_ranking.dart';
 import 'logic/fantasy_scoring_engine.dart';
 import 'models/fantasy_models.dart';
+import 'models/player_absence.dart';
 import 'models/roster_move.dart';
 import 'models/trade.dart';
 
@@ -212,6 +213,17 @@ final waiverPlayersProvider =
 final myWaiverClaimsProvider =
     StreamProvider.family<List<WaiverClaim>, String>((ref, leagueId) {
   return ref.watch(fantasyLeagueRepositoryProvider).myWaiverClaimsStream(leagueId);
+});
+
+/// **Ausfälle je Spieler** — verletzt oder gesperrt (Echtzeit).
+///
+/// Leer im lokalen Modus; die Oberfläche zeigt dann schlicht kein Symbol.
+final absencesProvider =
+    StreamProvider<Map<String, PlayerAbsence>>((ref) {
+  if (!AppConfig.isSupabaseConfigured) {
+    return Stream.value(const <String, PlayerAbsence>{});
+  }
+  return ref.watch(fantasyLeagueRepositoryProvider).absencesStream();
 });
 
 /// **Kaderbewegungen der Liga**, jüngste zuerst (Echtzeit).

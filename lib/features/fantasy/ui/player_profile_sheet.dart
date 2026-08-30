@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/typografie.dart';
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/team_fixture_list.dart';
 import '../../../core/models/models.dart';
@@ -97,6 +98,10 @@ class _PlayerProfileSheet extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      // **Hier steht der genaue Grund.** Auf der Karte ist nur
+                      // Platz für ein Symbol; wer wissen will, ob es ein
+                      // Kreuzbandriss oder eine Prellung ist, kommt hierher.
+                      _Ausfallzeile(playerId: player.id),
                     ],
                   ),
                 ),
@@ -1127,3 +1132,74 @@ class _NochKeinePrognose extends ConsumerWidget {
 
 String _wannKurz(DateTime d) =>
     DateFormat('E, d. MMM, HH:mm', 'de_DE').format(d);
+
+
+/// Sagt im Profil, warum ein Spieler ausfällt — und seit wann.
+///
+/// Die Karte trägt nur ein Symbol (dort ist für „Verletzung der hinteren
+/// Oberschenkelmuskulatur" kein Platz). Der Unterschied zwischen einer
+/// Prellung und einem Kreuzbandriss entscheidet aber, ob man den Spieler hält
+/// oder abgibt — deshalb steht er hier im Wortlaut.
+class _Ausfallzeile extends ConsumerWidget {
+  const _Ausfallzeile({required this.playerId});
+
+  final String playerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final a = (ref.watch(absencesProvider).valueOrNull ?? const {})[playerId];
+    if (a == null) return const SizedBox.shrink();
+    final farbe =
+        a.gesperrt ? const Color(0xFFF23030) : const Color(0xFFFFC83D);
+
+    final teile = <String>[
+      if (a.seit != null)
+        'seit ${DateFormat('d. MMMM y', 'de_DE').format(a.seit!)}',
+      if ((a.spieleVerpasst ?? 0) > 0)
+        a.spieleVerpasst == 1
+            ? 'ein Spiel verpasst'
+            : '${a.spieleVerpasst} Spiele verpasst',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 7, 10, 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: farbe.withValues(alpha: 0.10),
+          border: Border.all(color: farbe.withValues(alpha: 0.45)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(a.gesperrt ? Icons.block : Icons.medical_services_outlined,
+                size: 15, color: farbe),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${a.gesperrt ? 'Gesperrt' : 'Verletzt'} · ${a.grund}',
+                    style: TextStyle(
+                        color: farbe,
+                        fontWeight: FontWeight.w700,
+                        fontSize: Schrift.koerperKlein),
+                  ),
+                  if (teile.isNotEmpty)
+                    Text(teile.join(' · '),
+                        style: TextStyle(
+                            fontSize: Schrift.klein,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

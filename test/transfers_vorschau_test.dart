@@ -7,6 +7,7 @@ import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/features/auth/providers.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/models/player_absence.dart';
 import 'package:matchup/features/fantasy/models/roster_move.dart';
 import 'package:matchup/features/fantasy/models/trade.dart';
 import 'package:matchup/features/fantasy/providers.dart';
@@ -240,6 +241,18 @@ void main() {
                 RosterEntry(
                     managerId: 'gegner', playerId: 'p2', acquiredVia: 'fa'),
               ])),
+          // Ein verletzter und ein gesperrter Spieler, damit das Symbol an
+          // der Kachel im Bild steht.
+          absencesProvider.overrideWith((ref) => Stream.value({
+                'p3': const PlayerAbsence(
+                    playerId: 'p3',
+                    gesperrt: false,
+                    grundQuelle: 'Ankle Injury'),
+                'p2': const PlayerAbsence(
+                    playerId: 'p2',
+                    gesperrt: true,
+                    grundQuelle: 'Red Card Suspension'),
+              })),
           waiverWindowProvider.overrideWith((ref) async =>
               (round: 2, deadline: DateTime(2026, 9, 3, 15, 30))),
         ],

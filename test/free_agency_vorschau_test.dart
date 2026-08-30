@@ -7,6 +7,7 @@ import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/auth/providers.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/models/player_absence.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/free_agency_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
@@ -107,6 +108,16 @@ void main() {
           myWaiverClaimsProvider
               .overrideWith((ref, id) => Stream.value(const [])),
           fantasySeasonFixturesProvider.overrideWith((ref) async => spiele),
+          absencesProvider.overrideWith((ref) => Stream.value({
+                'c': const PlayerAbsence(
+                    playerId: 'c',
+                    gesperrt: false,
+                    grundQuelle: 'Knee Injury'),
+                'd': const PlayerAbsence(
+                    playerId: 'd',
+                    gesperrt: true,
+                    grundQuelle: 'Red Card Suspension'),
+              })),
         ],
         child: MaterialApp(
           theme: buildAppTheme(),

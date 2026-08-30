@@ -57,6 +57,8 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
         ? const <String, DateTime>{}
         : anpfiffJeVerein(spiele, laufendeRunde);
     final jetzt = DateTime.now();
+    final ausfaelle =
+        ref.watch(absencesProvider).valueOrNull ?? const <String, dynamic>{};
 
     final pendingClaims = claims.where((c) => c.status.isPending).toList();
     final claimedPlayerIds = {for (final c in pendingClaims) c.addPlayerId};
@@ -162,12 +164,26 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                                waiver
-                                    ? '${p.club} · Waiver-Wire'
-                                    : laeuft
-                                        ? '${p.club} · Spiel läuft'
-                                        : p.club,
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                                [
+                                  p.club,
+                                  if (waiver) 'Waiver-Wire'
+                                  else if (laeuft) 'Spiel läuft',
+                                  // **Wer ausfällt, gehört hier genannt.**
+                                  // Einen verletzten Spieler zu holen ist der
+                                  // teuerste Fehler in der Free Agency.
+                                  if (ausfaelle[p.id] != null)
+                                    ausfaelle[p.id]!.gesperrt
+                                        ? 'gesperrt'
+                                        : 'verletzt',
+                                ].join(' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: ausfaelle[p.id] == null
+                                    ? null
+                                    : TextStyle(
+                                        color: ausfaelle[p.id]!.gesperrt
+                                            ? const Color(0xFFF23030)
+                                            : const Color(0xFFFFC83D))),
                           ),
                         ],
                       ),

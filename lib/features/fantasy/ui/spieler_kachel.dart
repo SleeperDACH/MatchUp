@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/fantasy_models.dart';
+import '../providers.dart';
 import 'club_badge.dart';
 
 /// Die Spielerkarte des Trade-Bereichs: Positionsfarbe als Fläche, das Wappen
@@ -16,7 +18,7 @@ import 'club_badge.dart';
 /// [hervor] steuert die Lautstärke: In der Auswahl heißt es „ausgewählt" (mit
 /// Häkchen), im Angebot heißt es schlicht „das ist der Inhalt" — deshalb ist
 /// das Häkchen über [mitHaken] abschaltbar.
-class SpielerKachel extends StatelessWidget {
+class SpielerKachel extends ConsumerWidget {
   const SpielerKachel({
     super.key,
     required this.spieler,
@@ -56,7 +58,7 @@ class SpielerKachel extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final base = positionColor(spieler.position);
     // Hervorgehoben: kräftige Positionsfarbe (Sticker-Optik), Text lesbar (auf
     // Gelb schwarz). Sonst direkt dunkel gezeichnet — kein aufgesetztes
@@ -93,6 +95,8 @@ class SpielerKachel extends StatelessWidget {
     // Kartenhöhe skaliert, nicht fest. Bei 60 px fest blieb auf einer schmalen
     // Karte für den Namen fast nichts übrig.
     final rechterRand = wappen * 0.55;
+    final ausfall =
+        (ref.watch(absencesProvider).valueOrNull ?? const {})[spieler.id];
 
     final karte = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -111,6 +115,40 @@ class SpielerKachel extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
+          // **Fällt er aus, steht es auf der Karte.** Ein Symbol, kein Text:
+          // Auf 124 Punkten Breite ist für „Muskuläre Probleme" kein Platz,
+          // und der genaue Grund gehört ohnehin ins Profil. Rot für die
+          // Sperre (eine Folge des eigenen Verhaltens), Gold für die
+          // Verletzung — dieselbe Bedeutung wie überall sonst in der App.
+          if (ausfall != null)
+            // **Oben rechts, nicht links.** Links steht der Name, und auf
+            // einer 42 Punkte hohen Kachel überlappte das Symbol ihn. Rechts
+            // liegt nur das halb durchscheinende Wappen — dort nimmt es
+            // nichts weg.
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(7, 3, 6, 4),
+                decoration: BoxDecoration(
+                  color: (ausfall.gesperrt
+                          ? const Color(0xFFF23030)
+                          : const Color(0xFFFFC83D))
+                      .withValues(alpha: 0.92),
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(15),
+                    bottomLeft: Radius.circular(10),
+                  ),
+                ),
+                child: Icon(
+                  ausfall.gesperrt
+                      ? Icons.block
+                      : Icons.medical_services_outlined,
+                  size: hoehe < 60 ? 10 : 13,
+                  color: Colors.black,
+                ),
+              ),
+            ),
           Positioned(
             right: -wappen * 0.48,
             top: 0,

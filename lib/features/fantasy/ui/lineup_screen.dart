@@ -12,6 +12,7 @@ import '../logic/aufstellung_sperre.dart';
 import '../logic/lineup_autosave.dart';
 import '../data/fantasy_league_repository.dart';
 import '../models/fantasy_models.dart';
+import '../models/player_absence.dart';
 import '../providers.dart';
 import 'club_badge.dart';
 import 'free_agency_screen.dart';
@@ -742,7 +743,11 @@ class _Pitch extends StatelessWidget {
   }
 }
 
-class _Slot extends StatelessWidget {
+PlayerAbsence? _ausfall(WidgetRef ref, FantasyPlayer? p) => p == null
+    ? null
+    : (ref.watch(absencesProvider).valueOrNull ?? const {})[p.id];
+
+class _Slot extends ConsumerWidget {
   const _Slot({
     required this.player,
     required this.pos,
@@ -773,7 +778,7 @@ class _Slot extends StatelessWidget {
   final bool highlight;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = player;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
@@ -822,6 +827,30 @@ class _Slot extends StatelessWidget {
                         child:
                             ClubBadge(club: p.club, iconUrl: iconUrl, size: 42),
                       ),
+                      // **Ausfall unten links, Spielsperre oben links.**
+                      // Zwei verschiedene Aussagen: „sein Spiel läuft schon"
+                      // ist eine Frist, „verletzt" ein Zustand. Sie dürfen
+                      // nicht dieselbe Ecke teilen.
+                      if (_ausfall(ref, p) != null)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _ausfall(ref, p)!.gesperrt
+                                  ? const Color(0xFFF23030)
+                                  : const Color(0xFFFFC83D),
+                            ),
+                            child: Icon(
+                                _ausfall(ref, p)!.gesperrt
+                                    ? Icons.block
+                                    : Icons.medical_services_outlined,
+                                size: 10,
+                                color: Colors.black),
+                          ),
+                        ),
                       if (gesperrt)
                         Positioned(
                           top: 0,

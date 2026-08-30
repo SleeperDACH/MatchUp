@@ -2545,6 +2545,70 @@ sonst wächst die Liste und niemand räumt sie. Dasselbe Muster wie bei
 `punkte_formatierung_test.dart` — es hat sich als das einzige erwiesen, das
 eine Stilregel über Monate hält.
 
+### Verletzt und gesperrt
+
+Die Daten lagen die ganze Zeit im gebuchten Plan, nur hatte sie nie jemand
+geholt: `include=sidelined` auf Verein oder Spiel. Ein Request für die ganze
+Liga liefert alle 18 Vereine samt Ausfallliste.
+
+| | |
+|---|---|
+| Vereine mit Daten | 18 von 18 |
+| offene Einträge | 105 |
+| davon in unserem Pool | 85 |
+| Verletzungen / Sperren | 81 / 4 |
+
+Zuordnung über `sportmonks:<id>` = `players.id`, also kein Namensraten. Eine
+Zeile je Ausfall, nicht je Spieler: Ein Spieler kann gleichzeitig gesperrt
+**und** verletzt sein, und genau das kommt in den Messdaten vor.
+
+**Die Quelle widerspricht sich selbst, und das musste abgefangen werden.** Von
+den 85 Einträgen betrafen **acht** Spieler, die am 1. Spieltag 74 bis 90
+Minuten auf dem Platz standen. Josha Vagnoman hat sogar getroffen und ist dort
+seit **März 2025** als „Muscular problems" geführt, Jeff Chabot seit März 2025
+als „Ill" — ihr `completed`-Feld steht auf `false`, obwohl der Ausfall
+offensichtlich vorbei ist. Ein Symbol „verletzt" an einem Spieler, der gerade
+neunzig Minuten gemacht hat, wäre schlimmer als gar keins: Es sähe aus wie eine
+Auskunft.
+
+Geprüft wird deshalb gegen **unsere eigenen Daten** (`player_absences_v`,
+Migration 0101): Liegt ein Einsatz **nach** dem Beginn des Ausfalls, ist der
+Ausfall überholt. Minuten in `player_match_stats` sind das Gegenteil von
+„fällt aus". Die Regel trennt sauber — Daiki Hashioka fällt *nicht* heraus:
+Sein Ausfall beginnt am 29.08., und am 29.08. hat er gespielt, er hat sich also
+im Spiel verletzt.
+
+**Der Klartext zum Grund kostet einmalig 35 Requests.** Es gibt keinen
+Sammelabruf für Typen, nur `/core/types/<id>`; deshalb die Tabelle
+`sideline_types`, die das Ergebnis behält. Gemessen: erster Lauf 38 Requests,
+jeder weitere **2**.
+
+**Übersetzt wird in der App, nicht in der Datenbank.** Die Liste in
+`PlayerAbsence.grund` enthält genau die 35 Gründe, die am 30.08.2026 in der
+Liga vorkamen — gemessen, nicht geraten. Ein unbekannter Grund fällt auf den
+englischen Wortlaut zurück: Eine Auskunft in der falschen Sprache ist besser
+als keine, und „Verletzung" für alles wäre der Verlust genau der Information,
+für die es den Eintrag gibt (zwischen einer Prellung und einem Kreuzbandriss
+entscheidet sich, ob man den Spieler hält).
+
+Wo es steht:
+
+- **An der Spielerkachel** ein Symbol, oben rechts über dem Wappen — rot mit
+  Verbotszeichen für die Sperre, gold mit Kreuz für die Verletzung. Zuerst saß
+  es oben links und überlappte auf einer 42 Punkte hohen Kachel den Namen;
+  rechts liegt nur das halb durchscheinende Wappen.
+- **Auf dem Spielfeld** ein Punkt unten links am Wappen. Oben links sitzt schon
+  die Spielsperre („sein Spiel läuft") — zwei verschiedene Aussagen dürfen
+  nicht dieselbe Ecke teilen.
+- **In der Free Agency** im Untertitel („FC Augsburg · verletzt"), in der Farbe
+  des Ausfalls. Einen verletzten Spieler zu holen ist dort der teuerste Fehler.
+- **Im Spielerprofil** der genaue Grund samt Beginn und verpassten Spielen:
+  „Verletzt · Verletzung der hinteren Oberschenkelmuskulatur — seit 24. August
+  2026 · 2 Spiele verpasst".
+
+Ist beides eingetragen, gewinnt die **Sperre**: Sie ist die verlässlichere
+Auskunft, weil sie an einem bekannten Tag endet.
+
 ## Liga-Übersicht — „C, das Duell führt"
 
 Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).

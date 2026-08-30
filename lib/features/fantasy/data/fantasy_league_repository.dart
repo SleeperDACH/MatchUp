@@ -4,6 +4,7 @@ import '../../../core/models/chat_message.dart';
 import '../../leagues/models/join_request.dart';
 import '../../../core/data/stream_dubletten.dart';
 import '../models/fantasy_models.dart';
+import '../models/player_absence.dart';
 import '../models/roster_move.dart';
 import '../models/trade.dart';
 import '../logic/fantasy_scoring_rules.dart';
@@ -523,6 +524,29 @@ class FantasyLeagueRepository {
   // ----------------------------------------------------------------
   // Waiver-Wire
   // ----------------------------------------------------------------
+
+  /// **Ausfälle** (verletzt oder gesperrt) je Spieler, in Echtzeit.
+  ///
+  /// Gelesen über `player_absences_v`, und **`ueberholt` fällt heraus**: Die
+  /// Quelle führt Spieler teils jahrelang als ausgefallen, obwohl sie längst
+  /// wieder spielen — gemessen waren es acht von 85. Ein „verletzt" an einem
+  /// Spieler, der gerade neunzig Minuten gemacht hat, sähe aus wie eine
+  /// Auskunft.
+  Stream<Map<String, PlayerAbsence>> absencesStream() => _client
+      .from('player_absences_v')
+      .stream(primaryKey: ['id'])
+      .map((rows) {
+        final out = <String, PlayerAbsence>{};
+        for (final r in ohneDubletten(rows, const ['id'])) {
+          if (r['ueberholt'] == true) continue;
+          final a = PlayerAbsence.fromJson(r);
+          // Ist beides eingetragen, gewinnt die Sperre: Sie ist die
+          // verlässlichere Auskunft (sie endet an einem bekannten Tag).
+          final da = out[a.playerId];
+          if (da == null || (a.gesperrt && !da.gesperrt)) out[a.playerId] = a;
+        }
+        return out;
+      });
 
   /// **Kaderbewegungen der Liga** in Echtzeit, jüngste zuerst.
   ///

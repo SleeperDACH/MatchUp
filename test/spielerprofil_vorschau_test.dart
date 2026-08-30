@@ -10,6 +10,7 @@ import 'package:matchup/features/fantasy/logic/aufstellungs_prognose.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/models/player_absence.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/player_profile_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
@@ -188,6 +189,17 @@ void main() {
   Widget rahmen(Widget kind, {PrognoseElf? elf}) => ProviderScope(
         overrides: [
           prognoseElfProvider.overrideWith((ref, k) async => elf),
+          // **Ein Ausfall im Bild.** Sonst sieht man weder das Symbol an der
+          // Kachel noch den Grund im Profil — und beides ist der Punkt.
+          absencesProvider.overrideWith((ref) => Stream.value({
+                'p1': PlayerAbsence(
+                  playerId: 'p1',
+                  gesperrt: false,
+                  grundQuelle: 'Hamstring Injury',
+                  seit: DateTime(2026, 8, 24),
+                  spieleVerpasst: 2,
+                ),
+              })),
           currentUserProvider.overrideWith((ref) => User(
                 id: 'ich',
                 appMetadata: const {},
