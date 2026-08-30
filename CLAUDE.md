@@ -1937,14 +1937,40 @@ Abgegeben werden darf ein laufender Spieler **nur, wenn er nicht in der Elf
 steht**. Auf der Bank hängt nichts an ihm; in der Elf wäre es eine
 nachträgliche Änderung an einem laufenden Spieltag.
 
-In der Oberfläche trägt so ein Spieler das Waiver-Symbol in **gedämpftem** Gold
-(volles Gold heißt „Antrag möglich"), im Untertitel steht „· Spiel läuft", und
-ein Tipp sagt den Grund statt stumm nichts zu tun.
+**Beantragen geht trotzdem** (Migration 0095) — und das war eine Korrektur am
+ersten Wurf. Der zeigte ein gedämpftes Symbol, das nur erklärte, warum nichts
+geht. Zu wenig: Der Antrag sagt „ich will ihn ab nächster Woche", und genau
+dafür gibt es ihn. Ihn zu verweigern hieße, den Nutzer zwei Tage warten zu
+lassen, um dann dasselbe zu tun.
+
+**Gefahrlos ist das, weil das Fenster zwischen den Spieltagen liegt:**
+`fantasy_next_waiver_window` setzt die Abarbeitung auf zwei Tage vor dem ersten
+Anpfiff der nächsten Runde. Ein während eines laufenden Spiels gestellter
+Antrag wird also erst nach dessen Abpfiff bearbeitet — niemand wird mitten im
+Spieltag aus einer laufenden Elf gezogen. Ohne diese Eigenschaft wäre die
+Freigabe falsch gewesen.
+
+Zwei Stellen mussten dafür weichen: `fantasy_submit_waiver_claim` verlangte,
+dass der Spieler **auf dem Wire** liegt (jetzt: auf dem Wire **oder** sein
+Spiel läuft; ein wirklich freier Spieler wird abgelehnt mit „du kannst ihn
+direkt holen"), und `fantasy_process_waivers` verlangte dasselbe **zum
+Zeitpunkt der Abarbeitung**. Letzteres wäre nie erfüllt gewesen: Zwei Tage
+später ist der Spieler kein Wire-Fall mehr, sondern schlicht frei — der Antrag
+wäre als „anderweitig vergeben" verfallen, obwohl ihn niemand hat. Maßgeblich
+ist jetzt nur noch, dass der Spieler frei ist; die Sperre gehört an den
+Eingang, nicht an die Abarbeitung.
+
+In der Oberfläche führen Wire und laufendes Spiel deshalb zum **selben**
+goldenen Antragsknopf; den Unterschied trägt der Untertitel („· Waiver-Wire"
+bzw. „· Spiel läuft").
 
 Gegen die Produktion nachgemessen (mit Rollback): Mainz-Spieler holen →
 abgelehnt; Augsburg-Spieler (Anpfiff später) → läuft bis zum Kaderlimit durch;
 Tietz droppen (in der Elf, hat gespielt) → abgelehnt; Karius droppen (Anpfiff
-später) → erlaubt, und der Trigger nimmt ihn aus der Elf (10 → 9).
+später) → erlaubt, und der Trigger nimmt ihn aus der Elf (10 → 9). Für 0095
+dazu: Antrag auf einen Mainzer, dessen Spiel gelaufen ist → angenommen; Antrag
+auf einen freien Augsburger → abgelehnt; und der Durchlauf von
+`fantasy_process_waivers` vergibt den Antrag tatsächlich (`won`), samt Abgang.
 
 **Nebenbefund aus der ersten Vorschau dieses Schirms:** Die Positionsfilter
 waren `ChoiceChip`s — das Material-Element, das diese Datei seit langem

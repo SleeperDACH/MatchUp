@@ -36,11 +36,15 @@ class PlayerActionButton extends ConsumerWidget {
   final bool onWaiver;
   final bool claimed;
 
-  /// **Sein Spiel läuft bereits.** Dann ist er nicht holbar — der Server
-  /// lehnt es ab (Migration 0094), und es brächte auch nichts: Die
+  /// **Sein Spiel läuft bereits.** Dann ist er nicht *direkt* holbar — der
+  /// Server lehnt das ab (Migration 0094), und es brächte auch nichts: Die
   /// Aufstellung ist für ihn diesen Spieltag ohnehin gesperrt (0084), er käme
   /// gar nicht in die Elf. Genau das war die Meldung „man kann ihn aufnehmen,
   /// es passiert aber überhaupt nichts".
+  ///
+  /// **Beantragen geht trotzdem** (0095), und das ist der Punkt: Der Antrag
+  /// sagt „ich will ihn ab nächster Woche". Ihn zu verweigern hieße, den
+  /// Nutzer zwei Tage warten zu lassen, um dann dasselbe zu tun.
   final bool spieltGerade;
   final List<FantasyPlayer> myPlayers;
   final int nextRank;
@@ -59,29 +63,21 @@ class PlayerActionButton extends ConsumerWidget {
       );
     }
     if (player.isLockedNow(league.season)) return const _LockedChip();
-    if (onWaiver) {
+    // **Wire und laufendes Spiel führen zum selben Knopf.** Beides heißt
+    // „jetzt nicht direkt, aber beantragen kannst du ihn" — und der Antrag
+    // ist gefahrlos, weil das Waiver-Fenster zwei Tage vor dem nächsten
+    // Spieltag liegt (`fantasy_next_waiver_window`): Er wird nie mitten in
+    // einer laufenden Runde abgearbeitet.
+    if (onWaiver || spieltGerade) {
       if (claimed) return const _MiniChip(text: 'Beantragt');
       return _RoundBtn(
         color: _cWaiver,
         fg: Colors.black,
         icon: Icons.schedule,
-        tooltip: 'Waiver beantragen',
+        tooltip: spieltGerade && !onWaiver
+            ? 'Sein Spiel läuft – Antrag stellen'
+            : 'Waiver beantragen',
         onTap: () => _claim(context, ref),
-      );
-    }
-    // **Vor dem grünen Plus**, denn ein Spieler, dessen Partie läuft, ist
-    // kein freier Spieler mehr. Der Knopf sagt, warum — ein Symbol, das nur
-    // stumm nichts tut, war der Fehler davor.
-    if (spieltGerade) {
-      return _RoundBtn(
-        color: _cWaiver.withValues(alpha: 0.22),
-        fg: _cWaiver,
-        icon: Icons.schedule,
-        tooltip: 'Sein Spiel läuft',
-        onTap: () => _toast(
-            context,
-            'Sein Spiel läuft bereits – er ist erst nach dem Spieltag '
-            'wieder holbar.'),
       );
     }
     return _RoundBtn(
