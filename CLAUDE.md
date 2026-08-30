@@ -2461,6 +2461,61 @@ Dienstag und Mittwoch gefallen und das Bild ohne Anlass rot geworden.
 einen festen Samstag. Eine Uhr, die man stellen kann, ist die einzige Art, ein
 zeitabhängiges Bild fest einzuchecken.
 
+### Zwei Quellen, zwei Schreibweisen — und der Join dazwischen (0108)
+
+**Ein Fehler, den 0107 selbst ausgelöst hat.** Gemeldet als *„es kommt eine
+Fehlermeldung, wenn ich einen Waiver-Antrag absende"*.
+
+`players.club` trägt mit Absicht die **OpenLigaDB-Schreibweise** — in
+`sync-squads` steht eine feste Karte von genau diesen Namen auf
+Sportmonks-Team-IDs, und die App braucht sie so, weil sie ihren Spielplan
+direkt bei OpenLigaDB holt. Der Sportmonks-Spielplan schreibt dieselben Vereine
+kürzer:
+
+| `players.club` | Sportmonks-Spielplan |
+|---|---|
+| 1. FC Köln | FC Köln |
+| 1. FSV Mainz 05 | FSV Mainz 05 |
+| SV Werder Bremen | Werder Bremen |
+| SV 07 Elversberg | Elversberg |
+| SC Paderborn 07 | Paderborn |
+| FC Schalke 04 | Schalke 04 |
+| 1. FC Union Berlin | FC Union Berlin |
+
+Solange **beide** Quellen in `fixtures` standen, fand `fantasy_spieler_anpfiff`
+für jeden Spieler eine Zeile — über die OpenLigaDB-Zeile. Mit deren Löschung
+riss der Join für **sieben von achtzehn** Vereinen. Die Funktion lieferte
+`null`, „kein Spiel gefunden" gilt als „nicht gesperrt", also galten die Spieler
+als frei: Der Antrag wurde mit *„Spieler ist frei – du kannst ihn direkt holen"*
+abgelehnt, während die App den Waiver-Knopf zeigte.
+
+**Wieder dieselbe Sorte:** Ein Zustand „ich finde nichts" sah aus wie „alles in
+Ordnung". Und wieder hat die Vorschau nichts gezeigt — Leverkusen, mit dem ich
+0107 geprüft hatte, schreibt sich in beiden Quellen gleich. **Eine Stichprobe
+aus einem Namensraum trifft den Namensfehler nur zufällig.**
+
+Verglichen wird jetzt die **kanonische Form** (`fantasy_verein_kanonisch`): ohne
+Ziffern, ohne Punkte, ohne Vereinsformen (FC, SV, SC, TSG, VfB, VfL, FSV, …).
+Nachgemessen an allen 19 Vereinen im Kaderbestand: 18 finden genau einen
+Spielplan-Verein, AS Monaco keinen (richtig — er spielt nicht in der Liga), und
+in keiner der beiden Mengen fallen zwei Vereine auf dieselbe Form.
+
+**Damit es beim nächsten Mal auffällt**, gibt es `vereine_ohne_spielplan`: jeder
+Verein, dessen Spieler in Kadern stehen, der aber im Spielplan nicht vorkommt.
+Heute leer. Ein Aufsteiger mit neuer Schreibweise steht dort, statt sich als
+abgelehnter Antrag zu zeigen. Dieselbe Bauart wie `stats_widersprueche`.
+
+0109 zieht die letzten beiden Fantasy-Funktionen nach (`fantasy_round_deadline`,
+`fantasy_trade_frei_ab`). Sie rechnen über ganze Runden statt über
+Vereinsnamen und waren deshalb nicht kaputt — aber ein halber Filter ist die
+Sorte Inkonsequenz, die beim nächsten Altbestand wieder eine Woche kostet.
+Nachgezählt: keine Fantasy-Funktion liest den Spielplan mehr ohne Quellenfilter.
+
+**Nebenbei mitrepariert:** `fantasy_trade_frei_ab` hielt mit den alten Zeilen
+jede Runde für „läuft noch" und schob vorgemerkte Trades unbegrenzt vor sich
+her. Jetzt steht die Freigabe auf „sofort" — offene Trades gab es zum Glück
+keine.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;
