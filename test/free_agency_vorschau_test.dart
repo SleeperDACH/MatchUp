@@ -5,6 +5,7 @@ import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/auth/providers.dart';
+import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/models/player_absence.dart';
@@ -53,7 +54,25 @@ void main() {
       _p('c', 'Young-woo Seol', PlayerPosition.def, spaeter),
       _p('d', 'Marius Wolf', PlayerPosition.mid, spaeter),
       _p('e', 'Denis Zakaria', PlayerPosition.mid, ruht),
+      // **Drei Spieler, die schon jemandem gehören.** Sie standen bis zur
+      // Zusammenlegung nur in der Spielersuche; jetzt bilden sie die zweite
+      // Gruppe dieser Liste.
+      _p('f', 'Serhou Guirassy', PlayerPosition.fwd, spaeter),
+      _p('g', 'Aleksandar Pavlovic', PlayerPosition.mid, gespielt),
+      _p('h', 'Mein Torwart', PlayerPosition.gk, ruht),
     ];
+
+    // Punkte der laufenden Saison — danach wird sortiert, und deshalb müssen
+    // sie im Bild stehen. Ohne sie wäre die Reihenfolge nicht zu beurteilen.
+    const s1 = PlayerMatchStats(
+        minutes: 90, played: true, goals: 2, assists: 1, shotsOnTarget: 4);
+    const s2 = PlayerMatchStats(
+        minutes: 90, played: true, goals: 1, assists: 2, keyPasses: 3);
+    const s3 = PlayerMatchStats(minutes: 62, played: true, assists: 1);
+    const s4 = PlayerMatchStats(minutes: 90, played: true, tacklesWon: 4);
+    final saison = {
+      1: {'f': s1, 'g': s2, 'a': s2, 'b': s3, 'd': s4},
+    };
 
     final liga = FantasyLeague(
       id: 'l1',
@@ -101,7 +120,20 @@ void main() {
               )),
           playerPoolProvider.overrideWith((ref) async => pool),
           clubIconsProvider.overrideWith((ref) async => const {}),
-          leagueRosterProvider.overrideWith((ref, id) => Stream.value(const [])),
+          leagueRosterProvider.overrideWith((ref, id) => Stream.value(const [
+                RosterEntry(
+                    managerId: 'm2', playerId: 'f', acquiredVia: 'draft'),
+                RosterEntry(
+                    managerId: 'm3', playerId: 'g', acquiredVia: 'draft'),
+                RosterEntry(
+                    managerId: 'ich', playerId: 'h', acquiredVia: 'draft'),
+              ])),
+          fantasyManagersProvider.overrideWith((ref, id) => Stream.value(const [
+                FantasyManager(userId: 'ich', username: 'SFV03'),
+                FantasyManager(userId: 'm2', username: 'JojoAcz44'),
+                FantasyManager(userId: 'm3', username: 'tamara'),
+              ])),
+          seasonStatsProvider.overrideWith((ref) async => saison),
           // Ein Spieler liegt zusätzlich auf dem Wire — damit im Bild steht,
           // wie sich „Waiver" und „Spiel läuft" unterscheiden.
           waiverPlayersProvider.overrideWith((ref, id) => Stream.value({'e'})),
@@ -128,6 +160,27 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
+
+    // **Die Reihenfolge wird mitgeprüft, nicht nur abgebildet.** Ein Golden
+    // sagt „so sah es aus", nicht „so muss es sein" — und genau die Reihenfolge
+    // ist hier die Zusage: erst die freien, dann die vergebenen, in beiden
+    // Gruppen die punktbesten oben.
+    final namen = tester
+        .widgetList<ListTile>(find.byType(ListTile))
+        .map((t) => ((t.title as Row).children.first as Expanded).child)
+        .map((w) => (w as Text).data)
+        .toList();
+    expect(namen.take(3).toList(),
+        ['Hyun-seok Hong', 'Andreas Hanche-Olsen', 'Marius Wolf'],
+        reason: '49,5 vor 28 vor 18 — freie Spieler nach Punkten');
+    expect(namen.indexOf('Serhou Guirassy'), greaterThan(namen.indexOf('Denis Zakaria')),
+        reason: 'Ein vergebener Spieler steht unter jedem freien, auch wenn '
+            'er mehr Punkte hat');
+    expect(find.text('IN KADERN'), findsOneWidget);
+    expect(find.text('JojoAcz44'), findsNothing,
+        reason: 'Der Teamname steht in der Zeile, nicht als eigener Text');
+    expect(find.textContaining('JojoAcz44'), findsOneWidget,
+        reason: 'Wem der Spieler gehört, muss dranstehen');
 
     await expectLater(
       find.byType(FreeAgencyScreen),
@@ -245,7 +298,11 @@ void main() {
     // Und mit gewähltem Abgang: Der Hinweis verschwindet, „Bestätigen" wird
     // bedienbar. Ohne diesen zweiten Blick wüsste man nicht, ob die Auswahl
     // überhaupt ankommt — genau daran hing der gemeldete Fehler.
-    await tester.tap(find.text('Mein Spieler 0'));
+    // **Im Blatt, nicht in der Liste.** Seit die Free Agency auch die Spieler
+    // in Kadern zeigt, steht derselbe Name zweimal auf dem Schirm: einmal in
+    // der Liste dahinter, einmal in der Auswahl des Abgangs.
+    await tester.tap(find.descendant(
+        of: find.byType(BottomSheet), matching: find.text('Mein Spieler 0')));
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

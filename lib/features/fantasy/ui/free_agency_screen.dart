@@ -6,6 +6,8 @@ import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../logic/aufstellung_sperre.dart';
 import '../logic/aufstellungs_prognose.dart';
+import '../logic/fantasy_scoring_engine.dart';
+import '../logic/saison_punkte.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
@@ -20,6 +22,15 @@ import 'waiver_claims_screen.dart';
 /// * Frisch gedroppte Spieler liegen 24 Stunden auf dem Waiver-Wire und sind
 ///   nur per Antrag holbar; nach Ablauf werden die Anträge in
 ///   Prioritätsreihenfolge abgearbeitet, sonst wird der Spieler frei.
+/// * **Spieler in fremden Kadern stehen mit drin** — darunter, als zweite
+///   Gruppe, mit dem Team des Besitzers und einem Trade-Knopf statt „Holen".
+///   Die Spielersuche war bis dahin ein eigener Schirm mit derselben Liste in
+///   anderer Reihenfolge; zwei Listen derselben Spieler nebeneinander zu
+///   pflegen war die eigentliche Fehlerquelle.
+///
+/// Sortiert wird in **beiden** Gruppen nach den Punkten der laufenden Saison
+/// (`saisonPunkte`). Die Gruppen bleiben getrennt, weil sie verschiedene
+/// Handlungen tragen: oben holen, unten fragen.
 class FreeAgencyScreen extends ConsumerStatefulWidget {
   const FreeAgencyScreen({super.key, required this.league});
 
@@ -37,11 +48,14 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
   Widget build(BuildContext context) {
     final league = widget.league;
     final poolAsync = ref.watch(playerPoolProvider);
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
-    final onWaivers = ref.watch(waiverPlayersProvider(league.id)).valueOrNull ??
+    final onWaivers =
+        ref.watch(waiverPlayersProvider(league.id)).valueOrNull ??
         const <String>{};
-    final claims = ref.watch(myWaiverClaimsProvider(league.id)).valueOrNull ??
+    final claims =
+        ref.watch(myWaiverClaimsProvider(league.id)).valueOrNull ??
         const <WaiverClaim>[];
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
@@ -50,7 +64,8 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
     // **Welche Vereine spielen gerade?** Dieselbe Regel wie auf dem Server
     // (`fantasy_spieler_laeuft`, Migration 0094): die niedrigste noch nicht
     // vollständig abgepfiffene Runde, und darin der Anpfiff je Verein.
-    final spiele = ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+    final spiele =
+        ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
         const <Fixture>[];
     final laufendeRunde = aktiveRunde(spiele);
     final anpfiff = laufendeRunde == null
@@ -63,6 +78,15 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
     final pendingClaims = claims.where((c) => c.status.isPending).toList();
     final claimedPlayerIds = {for (final c in pendingClaims) c.addPlayerId};
 
+    final managers =
+        ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
+        const <FantasyManager>[];
+    final teamName = {for (final m in managers) m.userId: m.display};
+    final ownerByPlayer = {for (final r in roster) r.playerId: r.managerId};
+    final saison =
+        ref.watch(seasonStatsProvider).valueOrNull ??
+        const <int, Map<String, PlayerMatchStats>>{};
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Free Agency'),
@@ -74,8 +98,11 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
               label: Text('${pendingClaims.length}'),
               child: const Icon(Icons.assignment_outlined),
             ),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => WaiverClaimsScreen(league: league))),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => WaiverClaimsScreen(league: league),
+              ),
+            ),
           ),
         ],
       ),
@@ -88,23 +115,35 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
           final myPlayers = [
             for (final r in roster)
               if (r.managerId == myId && playerById[r.playerId] != null)
-                playerById[r.playerId]!
+                playerById[r.playerId]!,
           ];
 
-          final freeAgents = pool
-              .where((p) => !rosteredIds.contains(p.id))
+          final punkte = saisonPunkte(
+            saison: saison,
+            spieler: playerById,
+            regeln: league.scoring,
+          );
+
+          // **Alle Spieler, nicht nur die freien** — gefiltert wie gehabt,
+          // sortiert nach der Regel „freie zuerst, in jeder Gruppe die besten".
+          final gefiltert = pool
               .where((p) => _position == null || p.position == _position)
-              .where((p) =>
-                  _query.isEmpty ||
-                  p.name.toLowerCase().contains(_query.toLowerCase()) ||
-                  p.club.toLowerCase().contains(_query.toLowerCase()))
-              .toList()
-            ..sort((a, b) {
-              // Wire-Spieler zuerst — die spannenden Neuzugänge.
-              final aw = onWaivers.contains(a.id) ? 0 : 1;
-              final bw = onWaivers.contains(b.id) ? 0 : 1;
-              return aw != bw ? aw - bw : a.name.compareTo(b.name);
-            });
+              .where(
+                (p) =>
+                    _query.isEmpty ||
+                    p.name.toLowerCase().contains(_query.toLowerCase()) ||
+                    p.club.toLowerCase().contains(_query.toLowerCase()),
+              )
+              .toList();
+          final liste = freieZuerst(
+            gefiltert,
+            inKadern: rosteredIds,
+            punkte: punkte,
+          );
+          // Wo die zweite Gruppe beginnt — dort steht die Kapitelmarke.
+          final ersterImKader = liste.indexWhere(
+            (p) => rosteredIds.contains(p.id),
+          );
 
           return Column(
             children: [
@@ -125,24 +164,30 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
                   children: [
-                    _chip('Alle', _position == null,
-                        () => setState(() => _position = null)),
+                    _chip(
+                      'Alle',
+                      _position == null,
+                      () => setState(() => _position = null),
+                    ),
                     for (final pos in PlayerPosition.values)
-                      _chip(pos.label, _position == pos,
-                          () => setState(() => _position = pos)),
+                      _chip(
+                        pos.label,
+                        _position == pos,
+                        () => setState(() => _position = pos),
+                      ),
                   ],
                 ),
               ),
               Expanded(
                 child: ListView.builder(
-                  itemCount: freeAgents.length,
+                  itemCount: liste.length,
                   itemBuilder: (context, i) {
-                    final p = freeAgents[i];
+                    final p = liste[i];
+                    final imKader = rosteredIds.contains(p.id);
                     final waiver = onWaivers.contains(p.id);
                     final claimed = claimedPlayerIds.contains(p.id);
-                    final laeuft =
-                        vereinSpieltGerade(p.club, anpfiff, jetzt);
-                    return ListTile(
+                    final laeuft = vereinSpieltGerade(p.club, anpfiff, jetzt);
+                    final zeile = ListTile(
                       // **Der Name führt ins Profil.** Wer entscheiden soll,
                       // ob er einen Spieler holt, braucht mehr als Verein und
                       // Position — Leistung, Spielplan und die
@@ -156,34 +201,65 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                         clubIcon: clubIcons[p.club],
                         isMine: false,
                       ),
-                      leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
-                      title: Text(p.name),
+                      leading: ClubBadge(
+                        club: p.club,
+                        iconUrl: clubIcons[p.club],
+                      ),
+                      // **Die Punkte stehen dran, weil danach sortiert
+                      // wird.** Eine Reihenfolge ohne sichtbaren Grund liest
+                      // sich wie keine. Wer keinen Einsatz hatte, bekommt
+                      // nichts hingeschrieben — „0" wäre eine Behauptung über
+                      // jemanden, der gar nicht gespielt hat.
+                      title: Row(
+                        children: [
+                          Expanded(child: Text(p.name)),
+                          if (punkte[p.id] != null) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              formatPoints(punkte[p.id]!),
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ],
+                      ),
                       subtitle: Row(
                         children: [
                           PositionPill(pos: p.position),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                                [
-                                  p.club,
-                                  if (waiver) 'Waiver-Wire'
-                                  else if (laeuft) 'Spiel läuft',
-                                  // **Wer ausfällt, gehört hier genannt.**
-                                  // Einen verletzten Spieler zu holen ist der
-                                  // teuerste Fehler in der Free Agency.
-                                  if (ausfaelle[p.id] != null)
-                                    ausfaelle[p.id]!.gesperrt
-                                        ? 'gesperrt'
-                                        : 'verletzt',
-                                ].join(' · '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: ausfaelle[p.id] == null
-                                    ? null
-                                    : TextStyle(
-                                        color: ausfaelle[p.id]!.gesperrt
-                                            ? const Color(0xFFF23030)
-                                            : const Color(0xFFFFC83D))),
+                              [
+                                p.club,
+                                if (imKader)
+                                  teamName[ownerByPlayer[p.id]] ?? 'vergeben'
+                                else if (waiver)
+                                  'Waiver-Wire'
+                                else if (laeuft)
+                                  'Spiel läuft',
+                                // **Wer ausfällt, gehört hier genannt.**
+                                // Einen verletzten Spieler zu holen ist der
+                                // teuerste Fehler in der Free Agency.
+                                if (ausfaelle[p.id] != null)
+                                  ausfaelle[p.id]!.gesperrt
+                                      ? 'gesperrt'
+                                      : 'verletzt',
+                              ].join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: ausfaelle[p.id] == null
+                                  ? null
+                                  : TextStyle(
+                                      color: ausfaelle[p.id]!.gesperrt
+                                          ? const Color(0xFFF23030)
+                                          : const Color(0xFFFFC83D),
+                                    ),
+                            ),
                           ),
                         ],
                       ),
@@ -191,13 +267,49 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                         spieltGerade: laeuft,
                         league: league,
                         player: p,
-                        ownerId: null,
+                        ownerId: ownerByPlayer[p.id],
                         onWaiver: waiver,
                         claimed: claimed,
                         myPlayers: myPlayers,
                         nextRank: pendingClaims.length + 1,
                         myId: myId,
                       ),
+                    );
+                    // Die Kapitelmarke sitzt **über** der ersten Kaderzeile,
+                    // nicht als eigener Eintrag: So bleibt `itemCount` die
+                    // Zahl der Spieler, und eine leere Gruppe erzeugt keine
+                    // Überschrift über nichts.
+                    if (i != ersterImKader || ersterImKader < 0) return zeile;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+                          child: Row(
+                            children: [
+                              Text(
+                                'IN KADERN',
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      letterSpacing: 1.2,
+                                      fontWeight: FontWeight.w700,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Divider(
+                                  height: 1,
+                                  color: Theme.of(context).dividerColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        zeile,
+                      ],
                     );
                   },
                 ),
@@ -216,9 +328,9 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
   /// „Tor", „Abwehr", „Mittelfeld", „Sturm". Die Regel steht seit langem in
   /// CLAUDE.md; dieser Schirm hatte sie nur nie jemand angesehen.
   Widget _chip(String label, bool selected, VoidCallback onTap) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: PillChip(label: label, selected: selected, onTap: onTap),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 4),
+    child: PillChip(label: label, selected: selected, onTap: onTap),
+  );
 }
 
 /// Hinweis auf die Waiver-Regel (24 Stunden je gedropptem Spieler).
@@ -243,10 +355,12 @@ class _WaiverBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-                'Gedroppte Spieler sind 24 Stunden nur per Antrag holbar '
-                '(Waiver, rollende Priorität) — danach frei.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant)),
+              'Gedroppte Spieler sind 24 Stunden nur per Antrag holbar '
+              '(Waiver, rollende Priorität) — danach frei.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
           ),
         ],
       ),

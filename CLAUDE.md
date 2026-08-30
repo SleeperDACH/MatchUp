@@ -2355,7 +2355,8 @@ statt eines Bildes — ob sich etwas *öffnet*, zeigt ein Golden nicht.
 ebenfalls noch `ChoiceChip` (`_FilterChip`) — derselbe Fund wie in der Free
 Agency, dieselbe Ursache: Sie zieht `secondaryContainer` (das stumpfe Oliv) und
 ihre Beschriftung erbt die App-Schrift nicht. Ersetzt durch `PillChip`. Damit
-ist das verbotene Element aus beiden Spielerlisten raus.
+ist das verbotene Element aus beiden Spielerlisten raus. (Die Spielersuche
+gibt es inzwischen nicht mehr — siehe „Eine Spielerliste statt zwei".)
 
 Gegen die Produktion nachgemessen (mit Rollback): Mainz-Spieler holen →
 abgelehnt; Augsburg-Spieler (Anpfiff später) → läuft bis zum Kaderlimit durch;
@@ -2376,6 +2377,66 @@ dahin keine Vorschau — deshalb hatte es nie jemand gesehen.
 Angesehen über `test/free_agency_vorschau_test.dart`: die drei Zustände einer
 Zeile nebeneinander (Waiver, Spiel läuft, frei), die es auf dem Gerät nie
 gleichzeitig gibt. Gerechnet wird in `test/free_agent_sperre_test.dart`.
+
+### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
+
+Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;
+dafür werden im Tab Free Agency auch alle Spieler angezeigt, die in Kadern
+sitzen. Oben erst die freien, dann die im Kader, sortiert nach den erzielten
+Punkten der laufenden Saison."*
+
+Der Zusammenhang ist der Punkt: Die Spielersuche (`player_pool_screen.dart`)
+zeigte **dieselbe Liste** wie die Free Agency, nur mit allen Spielern und
+alphabetisch. Zwei Listen derselben Sache nebeneinander waren eine stehende
+Fehlerquelle — mehrfach steht in dieser Datei „dieselbe Regel wie in der Free
+Agency", weil eine Korrektur an beiden Stellen nachgezogen werden musste (der
+Profil-Tipp, die `ChoiceChip`s, `vereinSpieltGerade`). Die Datei ist gelöscht,
+die Free Agency kann jetzt beides.
+
+**Die Reihung** steht in `logic/saison_punkte.dart`, nicht im Schirm:
+
+- `saisonPunkte` summiert je Spieler über alle Spieltage, mit dem Scoring
+  **dieser Liga** — zwei Ligen kommen für denselben Spieler auf verschiedene
+  Zahlen, die Reihenfolge gehört also zur Liga und nicht zum Spieler.
+- `freieZuerst` sortiert erst nach Gruppe, dann nach Punkten, dann nach Namen.
+  Die Gruppentrennung ist keine Kosmetik, sondern die Handlung: **oben holen,
+  unten fragen.** Gemischt stünde der beste Spieler der Liga ganz oben und wäre
+  nicht zu haben.
+- Der Name ist der Gleichstands-Entscheider, damit sich die Liste zwischen zwei
+  Aufbauten nicht umsortiert.
+- **Kein Eintrag ist etwas anderes als null Punkte.** Wer nie gespielt hat,
+  steht nicht in der Karte und bekommt in der Zeile keine Zahl — „0" wäre eine
+  Behauptung über jemanden, der gar nicht auf dem Platz stand. Sortiert wird er
+  wie eine Null; hingeschrieben wird nichts.
+
+Die Punkte **stehen in der Zeile**. Eine Reihenfolge ohne sichtbaren Grund
+liest sich wie keine.
+
+**Was dabei wegfällt:** Die freien Spieler waren vorher so sortiert, dass die
+frisch gedroppten vom Waiver-Wire oben standen („die spannenden Neuzugänge").
+Das schlägt die Punktregel jetzt; ein Wire-Spieler ohne Einsätze rutscht nach
+unten. Sein Zustand steht weiter in seiner Zeile, und der Waiver-Hinweisbalken
+über der Liste bleibt.
+
+Die Kapitelmarke „IN KADERN" sitzt **über** der ersten Kaderzeile statt als
+eigener Listeneintrag: So bleibt `itemCount` die Zahl der Spieler, und eine
+leere Gruppe erzeugt keine Überschrift über nichts.
+
+Im Kader-Tab steht an der Stelle der Spielersuche jetzt **Transfers** (blau,
+wie die Zeile in der Übersicht) — das ist die Frage, die der Kader-Tab sonst
+nirgends beantwortet.
+
+Geprüft in `test/saison_punkte_test.dart` (Summe über Spieltage, fremde
+Spieler in den Stats stören nicht, Gruppen vor Punkten, Eingabeliste bleibt
+unangetastet) und in `test/free_agency_vorschau_test.dart`, das die
+**Reihenfolge auf dem Schirm** zusichert statt sie nur abzubilden — ein Golden
+sagt „so sah es aus", nicht „so muss es sein".
+
+**Falle beim Umbau:** Die Waiver-Vorschau tippte auf „Mein Spieler 0", um einen
+Abgang zu wählen. Seit die Liste auch Kaderspieler zeigt, steht der Name
+zweimal auf dem Schirm — einmal dahinter in der Liste, einmal im Blatt. Der
+Test suchte plötzlich zwei Treffer und fiel über `tap()`. Er sucht jetzt
+innerhalb des `BottomSheet`.
 
 ### Der Tippspiel-Schalter fragt nach — und geht in beide Richtungen
 

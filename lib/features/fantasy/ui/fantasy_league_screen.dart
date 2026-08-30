@@ -25,7 +25,6 @@ import 'invite_players_screen.dart';
 import 'lineup_screen.dart';
 import 'matchup_hero.dart';
 import 'matchups_screen.dart';
-import 'player_pool_screen.dart';
 import 'trade_screen.dart';
 import 'transfers_screen.dart';
 import 'weekly_recap_screen.dart';
@@ -772,7 +771,7 @@ class _NotifyBadge extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 /// Kader-Tab: oben der Aufstellungs-Editor, darunter die Aktionen
-/// Free Agency (gelb), Trade (rot) und Spielersuche (grün).
+/// Free Agency (gelb), Trade (rot) und Transfers (blau).
 class _RostersTab extends ConsumerWidget {
   const _RostersTab({required this.league});
 
@@ -848,10 +847,16 @@ class _RostersTab extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _MiniAction(
-                  label: 'Spielersuche',
-                  icon: Icons.search,
-                  color: _cGreen,
-                  onTap: () => open(PlayerPoolScreen(league: league)),
+                  // **Transfers statt Spielersuche.** Die Suche zeigte
+                  // dieselbe Spielerliste wie die Free Agency, nur anders
+                  // sortiert — zwei Listen derselben Sache nebeneinander.
+                  // Sie ist in die Free Agency gewandert; hier steht jetzt,
+                  // was der Kader-Tab sonst nicht beantwortet: was die Liga
+                  // bewegt hat.
+                  label: 'Transfers',
+                  icon: Icons.compare_arrows,
+                  color: _cBlue,
+                  onTap: () => open(TransfersScreen(league: league)),
                 ),
               ),
             ],
