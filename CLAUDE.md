@@ -2073,11 +2073,45 @@ Zwei Entscheidungen darin sind wichtig:
   `manager_id`, nicht über Delete+Insert; wer nur auf `delete` hört, sieht
   Trades gar nicht.
 
-**Zurückgefüllt werden nur die Zugänge** (364 Zeilen aus dem Bestand, mit
-ihrem echten Zeitstempel). Abgänge werden nicht erfunden — sie sind nirgends
-festgehalten, und sie aus dem Nichts zu rekonstruieren hieße, Daten zu
-behaupten. Die Liste beginnt für Abgänge heute, und das ist ehrlicher als eine
-vollständig aussehende Liste mit geratenen Einträgen.
+**Zurückgefüllt wurden zuerst nur die Zugänge** (364 Zeilen aus dem Bestand,
+mit ihrem echten Zeitstempel), mit der Begründung, Abgänge seien nirgends
+festgehalten. **Der zweite Teil war falsch** — und es fiel sofort auf, weil in
+der Liga-Liste zu jedem Zugang der Preis fehlte. Abgänge stehen sehr wohl da,
+nur nicht in `fantasy_rosters` (Migration 0097 trägt sie nach):
+
+| Quelle | Was sie hergibt | Verlässlichkeit |
+|---|---|---|
+| `fantasy_trade_items.giver` | wer im Trade abgegeben hat | ID-basiert |
+| `fantasy_waiver_claims.drop_player_id` | Abgang eines gewonnenen Antrags | ID-basiert |
+| Systemnachricht im Liga-Chat | Free Agency und reine Drops | Text, siehe unten |
+
+Der dritte Weg klingt nach Raten, ist es aber nicht, und zwar aus zwei
+**nachgemessenen** Gründen: Die Nachricht entsteht in derselben Transaktion wie
+die Bewegung (`fantasy_post_system_message` wird aus `fantasy_add_free_agent`
+heraus gerufen), ihr `created_at` ist deshalb exakt der Zeitstempel des Zugangs
+— geprüft, `2026-08-29 11:54:40.781945` steht auf beiden. Und es gibt **keine
+mehrdeutigen Spielernamen** im Pool (gezählt: null Namen kommen zweimal vor),
+Name → ID ist also eindeutig.
+
+Dazu prüft sich die Rekonstruktion selbst: Bei „X verpflichtet und Y abgegeben"
+muss zu diesem Zeitstempel eine Zugangszeile für **genau diesen X** stehen.
+Passt sie nicht, wird die Zeile übersprungen statt geraten. Der Manager kommt
+aus der Zugangszeile, nicht aus dem Nutzernamen im Text — die schwächere
+Zuordnung wird nur dort benutzt, wo es keine Zugangszeile gibt (reiner Drop),
+und dann zusätzlich gegen die Mitgliederliste geprüft.
+
+Ergebnis: 24 Abgänge nachgetragen, davon **19 als vollständiger Vorgang
+gepaart**. Nachgesehen an bekannten Fällen — „tamara +Medina −Osterhage" deckt
+sich mit der Chat-Nachricht, und der Trade steht korrekt je Manager gespiegelt
+(Eric +Guirassy −Amiri ↔ Majusch +Amiri −Guirassy). Ein Zugang um 07:34 und ein
+Drop um 07:31 desselben Managers bleiben dabei **getrennt** — zwei Aktionen,
+nicht eine; genau dafür trägt der Schlüssel die Mikrosekunde.
+
+Was danach fehlt, fehlt wirklich: Drops aus der Zeit vor den Systemnachrichten
+und Admin-Korrekturen. Die bleiben aus, statt sie zu erfinden.
+
+**Die Lehre:** „Es ist nirgends festgehalten" ist eine Behauptung, die man
+prüft, bevor man sie zur Begründung macht. Hier stand es an drei Stellen.
 
 **Der Draft steht nicht in der Liga-Liste.** Er erzeugt bei sechzehn Teams
 Hunderte Zeilen und begrübe jede Free-Agency-Meldung darunter; wer den Draft
