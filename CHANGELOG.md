@@ -8,6 +8,132 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.4.0+6 — 31. August 2026
+
+89 Commits seit 1.3.0+5 (26. August) — der erste Build **während** einer
+laufenden Saison, und das merkt man ihm an: Vieles davon sind Dinge, die erst
+auffielen, als der 1. Spieltag wirklich gespielt wurde.
+
+### Neu
+
+- **Transfers.** Ein eigener Bereich in der Liga-Übersicht und im Kader-Tab:
+  auf der einen Seite deine offenen Vorgänge (eingehende Trade-Angebote,
+  eigene Waiver-Anträge), auf der anderen die Kaderbewegungen der ganzen Liga.
+  Zu- und Abgang stehen als **ein** Vorgang nebeneinander — wer jemanden
+  geholt hat, hat meist im selben Zug jemanden abgegeben, und das gehört
+  zusammen. Ein Trade steht als eine Box mit beiden Seiten.
+- **Die voraussichtliche Aufstellung im Spielerprofil.** Als Formation
+  aufgestellt, nicht als Liste, und sie wechselt nach dem letzten Abpfiff auf
+  den nächsten Spieltag. Wer nicht in der Elf steht, sieht das sofort.
+- **Verletzungen und Sperren.** Ein Symbol an der Spielerkarte, der genaue
+  Grund im Profil — in der Free Agency steht er direkt in der Zeile. Einen
+  verletzten Spieler zu holen ist der teuerste Fehler dort.
+- **Kader-Limits je Position**, einstellbar in den Einstellungen und schon
+  beim Erstellen einer Liga. Sie gelten je Position einzeln.
+- **Der Waiver hat eine Frist: Montag 15:00.** Ab dem Anpfiff seines Vereins
+  liegt ein Spieler auf dem Waiver; montags um 15 Uhr werden alle Anträge nach
+  Priorität vergeben. Bei englischen Wochen (Spiele Dienstag *und* Mittwoch)
+  Donnerstag 15 Uhr. Dazwischen gilt wieder „first come, first served".
+  Gedroppte Spieler außerhalb der Frist liegen 24 Stunden auf dem Waiver.
+- **Die Elf der Vorwoche wird übernommen.** Wer nichts tut, startet nicht mehr
+  leer in den Spieltag — die letzte gestellte Aufstellung rückt nach, gefiltert
+  auf den aktuellen Kader. Vor dem Einbau hatten elf von zwölf Managern für den
+  zweiten Spieltag noch gar nichts stehen.
+- **Die Free Agency zeigt jetzt alle Spieler**, auch die in fremden Kadern:
+  oben die freien, darunter die vergebenen mit dem Team des Besitzers und einem
+  Trade-Knopf. Sortiert nach den Punkten der laufenden Saison, die auch in der
+  Zeile stehen. Die separate Spielersuche entfällt damit.
+- **Drei neue Formationen** (von acht auf elf), darunter 4-2-4.
+- **Das Draft-Board bleibt nach dem Draft erreichbar** — wer nachsehen will,
+  wer wen wann gezogen hat, kommt wieder hin.
+
+### Wertung
+
+- **Tore zählen 15 statt 16, Vorlagen 10.** Stürmer waren zu stark.
+- **Das Mittelfeld bekommt 4 Punkte für die Null hinten**, und die
+  Pass-Schwellen liegen niedriger (30 und 45). Nach Spieltag 1 gemessen liegen
+  Abwehr, Mittelfeld und Sturm damit bei 13,7 / 15,0 / 14,4 — vorher war das
+  Mittelfeld das Schlusslicht.
+- **Torhüter bekommen keinen Einsatzbonus mehr.** Alle achtzehn spielten 90
+  Minuten; der Sockel war für sie eine Konstante, die kein Spiel vom anderen
+  unterschied, und hob ihren Schnitt auf 27,7. Jetzt 17,7. Schlechte
+  Torwart-Tage können damit ins Minus gehen.
+- **Genaue Pässe werden bepunktet**, und „abgefangene Bälle" hießen bisher
+  fälschlich „Balleroberung" — zwei verschiedene Werte, jetzt beide richtig.
+- **Torhüter bekamen ihre Gegentore doppelt gezählt.** Behoben, samt einer
+  Nachlese, die Stats nach dem Abpfiff automatisch korrigiert, wenn die Quelle
+  nachliefert.
+
+### Behoben
+
+- **Das Karussell im MatchUp-Tab bleibt stehen, wo man ist** — beim
+  Runterscrollen, beim Nachladen und beim Wechsel in einen anderen Reiter. Drei
+  verschiedene Ursachen, alle drei weg.
+- **Die Aufstellung verlor Änderungen** auf vier Wegen (unter anderem beim
+  schnellen Zurücktippen und beim Verlassen des Schirms). Alle vier geschlossen.
+- **Live-Punkte kamen nicht überall an.** Die Kette vom Sync bis zur Anzeige
+  hing an drei Stellen; alle drei angeschlossen.
+- **Der Auto-Pick stolperte über die eigene Wertung** und zog gelegentlich
+  Unsinn.
+- **Eigentore fehlten im Spielverlauf.** Sie sind jetzt drin und als solche
+  gekennzeichnet: roter Ball, kein Vorlagengeber, Hinweis „Eigentor".
+- **Ein Waiver-Antrag ließ sich für sieben Vereine nicht abschicken** — der
+  Spielplan und die Kader schreiben dieselben Vereine verschieden („1. FSV
+  Mainz 05" gegen „FSV Mainz 05").
+- **Ein 1:1-Tausch scheiterte am Kaderlimit**, obwohl er die Zahl nicht ändert.
+- **Konten ohne Profil heilen sich beim nächsten Anmelden.** Wer davon
+  betroffen war, stand in Ligen und Chats namenlos da.
+- **Beitritte und Draft-Start kommen ohne App-Neustart an.**
+- **Ein abgegebener Spieler verschwindet aus der Elf**, statt als Karteileiche
+  stehen zu bleiben.
+- Punktzahlen mit zwanzig Nachkommastellen (`221.10000000000002`) gibt es
+  nirgends mehr.
+
+### Aussehen
+
+Ein Durchgang durch die ganze App, mit drei Regeln, die ab jetzt überall gelten:
+
+- **Eine Kante für alle Karten.** Kein bunter Rand als Schmuck; Tiefe entsteht
+  auf dunklem Grund über die Fläche. Farbe trägt eine Karte nur als leiser
+  Schimmer aus der Ecke — und nur, wo etwas ansteht.
+- **Eine Schriftleiter für die ganze App.** Vorher standen 224 hartkodierte
+  Größen in über zwanzig Abstufungen im Code, darunter Halbschritte.
+- **Keine grün gestochenen Flächen mehr.** Das Grün steckte in jeder grauen
+  Fläche der App und war nirgends beabsichtigt.
+
+Sichtbar wird das unter anderem hier:
+
+- **Punktstände sind lesbarer**: Die Zehntelstelle steht kleiner und leiser
+  hinter der Zahl (**128**,4 statt 128,4), und alle Ziffern sind gleich breit,
+  damit in einem laufenden Spiel nichts hin und her wandert.
+- **Die Reiterleiste der Liga** trägt Symbol *und* Wort bei allen vieren —
+  vorher stand an zweiter Stelle ein Logo ohne Beschriftung.
+- **Die Liga-Übersicht** führt mit dem Duell, die Zeilen darunter sagen, was
+  ansteht („Noch nicht gestellt", „2 Wechsel in der Liga").
+- **Der Favoriten-Tab hat einen Kopf**, das Seitenmenü trägt Inhalt statt drei
+  Links, und die Spiele im Live-Tab sind größer.
+- **Das Tippspiel spricht dieselbe Sprache**: Karten mit einer Haarlinie statt
+  Material-Kästen, Tagesüberschriften als Kapitelmarken, und **Spiele mit
+  demselben Anpfiff stehen zusammen** — bei fünf Samstagsspielen stand vorher
+  fünfmal „15:30" untereinander.
+- **Die Tipp-Tabelle glüht nicht mehr.** Vorher trug jeder Punktgewinn
+  Markengrün; jetzt nur noch der Volltreffer. Namen brechen nicht mehr ab.
+
+### Kleinkram
+
+- **Kaderbewegungen und Trades stehen nicht mehr im Liga-Chat** — dafür gibt
+  es den Transfers-Bereich. 103 automatische Meldungen sind aus dem Verlauf
+  genommen; die Gespräche gingen zwischen ihnen unter.
+- **Das ligainterne Tippspiel lässt sich wieder ausschalten**, und beide
+  Richtungen fragen vorher nach. Vorher schaltete ein Fingertipp sofort ein —
+  und die Zeile verschwand danach.
+- **Der Aufstellungs-Schirm springt auf den nächsten Spieltag, sobald der
+  laufende abgepfiffen ist.** Vorher gab es ein Fenster, in dem man Spieler
+  holen, sie aber nirgends hinstellen konnte.
+- **Ein Tipp auf den Namen öffnet überall das Spielerprofil**, auch in der Free
+  Agency.
+- **Jeder Verein hat eine sichtbare Farbe** — bei Dortmund fehlte sie ganz.
+
 ## 1.3.0+5 — 26. August 2026
 
 20 Commits seit 1.2.0+4 (22. August). Zwei Schirme sind neu gebaut — der
