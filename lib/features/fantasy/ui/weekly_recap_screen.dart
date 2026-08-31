@@ -437,25 +437,23 @@ class _AwardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // **Eine Kante für alle Karten.** Jede Auszeichnung trug ihren Rand in
+    // ihrer eigenen Farbe — Gold, Blau, Rot, Grün untereinander, und die
+    // hervorgehobene zusätzlich eine gefüllte Fläche derselben Farbe. Ein
+    // Regenbogen aus Rändern für eine Liste, in der nichts ansteht.
+    //
+    // Die Farbe der Auszeichnung sitzt weiterhin da, wo sie hingehört: in der
+    // Symbolkachel. Der Hauch bleibt der Karte vorbehalten, in der **du**
+    // vorkommst — dasselbe Muster wie bei den Duellen im Tippspiel.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-      child: Material(
-        color: highlight
-            ? color.withValues(alpha: 0.12)
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: color.withValues(alpha: highlight ? 0.6 : 0.28),
-              ),
-            ),
-            child: Row(
+      child: Karte(
+        hauch: highlight ? color : null,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        onTap: onTap,
+        child: Builder(
+          builder: (context) {
+            return Row(
               children: [
                 Container(
                   width: 42,
@@ -521,8 +519,8 @@ class _AwardCard extends StatelessWidget {
                   ],
                 ),
               ],
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

@@ -58,7 +58,8 @@ FantasyPlayer _p(String id, PlayerPosition pos) => FantasyPlayer(
 void main() {
   setUpAll(ladeSchrift);
 
-  testWidgets('Wochenrückblick zeigt keine krummen Zahlen', (tester) async {
+  /// Baut den Rückblick mit Werten, die garantiert krumm werden.
+  Future<void> baueRueckblick(WidgetTester tester) async {
     final vorher = AppConfig.supabaseInitialized;
     AppConfig.supabaseInitialized = true;
     addTearDown(() => AppConfig.supabaseInitialized = vorher);
@@ -166,12 +167,24 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
 
-    // Vorbedingung: Es steht überhaupt etwas da. Ohne diese Zusicherung wäre
-    // der Test auf einem leeren Schirm still grün — genau der Fehler, den er
+    // Vorbedingung: Es steht überhaupt etwas da. Ohne die wäre jede Prüfung
+    // darauf auf einem leeren Schirm still grün — genau der Fehler, den sie
     // fangen soll, versteckt sich in Zahlen, die es geben muss.
     expect(find.textContaining('SFV03'), findsWidgets,
         reason: 'Der Rückblick muss Inhalt haben, sonst prüft der Test nichts');
+  }
 
+  testWidgets('Wochenrückblick zeigt keine krummen Zahlen', (tester) async {
+    await baueRueckblick(tester);
     pruefeNachkommastellen(tester);
+  });
+
+  testWidgets('Vorschau: Wochenrückblick', (tester) async {
+    // **Der Schirm hatte keine Vorschau** — und drei gemeldete Fehler in
+    // Folge: krumme Zahlen, ein falsch gerechneter Kader und farbige
+    // Kartenränder. Jetzt gibt es ein Bild.
+    await baueRueckblick(tester);
+    await expectLater(find.byType(Scaffold),
+        matchesGoldenFile('goldens/wochenrueckblick.png'));
   });
 }

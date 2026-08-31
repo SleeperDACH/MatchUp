@@ -63,10 +63,6 @@ void main() {
       1,
       'Auswahl-Hervorhebung der Spielerkachel — ein Zustand.'
     ),
-    'features/fantasy/ui/weekly_recap_screen.dart': (
-      1,
-      'Hervorgehobene Zeile im Rückblick (Team der Woche) — ein Zustand.'
-    ),
   };
 
   test('keine farbigen Kanten an Karten', () {

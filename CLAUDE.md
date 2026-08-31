@@ -2873,6 +2873,32 @@ namensbasierte Wache bleibt für Schirme ohne Vorschau bestehen (und kennt jetzt
 auch `margin`, `vorsprung`, `abstand`, `schnitt`, `delta`) — aber die
 verlässliche ist die neue.
 
+### Der Rückblick trug einen Regenbogen aus Rändern
+
+Gemeldet: *„Im Wochenrecap wurde unsere neue Regel mit den einfarbigen Rändern
+nicht beachtet."* Stimmt — und der Wachtest hatte für genau diese Datei eine
+Ausnahme stehen („Hervorgehobene Zeile im Rückblick — ein Zustand"). Die
+Ausnahme deckte aber nur eine Zeile ab; tatsächlich trug **jede**
+Auszeichnungskarte ihren Rand in ihrer eigenen Farbe: Gold, Blau, Rot, Grün,
+Violett, Grau untereinander — und die hervorgehobene zusätzlich eine gefüllte
+Fläche derselben Farbe.
+
+Jetzt `Karte`: ein Grund, eine Haarlinie. Die Farbe der Auszeichnung sitzt da,
+wo sie hingehört — in der Symbolkachel und am Wert. Der **Hauch** bleibt den
+Karten vorbehalten, in denen man selbst vorkommt; dasselbe Muster wie bei den
+Duellen im Tippspiel.
+
+**Die Ausnahme im Wachtest ist ersatzlos gestrichen.** Sie war der Grund, warum
+der Test nichts sagte: Eine Ausnahme mit Zähler 1 fängt den zweiten Verstoß
+nicht, wenn die Regex nur einen sieht — und sie lädt dazu ein, den Rest gar
+nicht mehr anzusehen.
+
+**Und der Schirm hat endlich eine Vorschau** (`goldens/wochenrueckblick.png`).
+Drei gemeldete Fehler in Folge — krumme Zahlen, ein falsch gerechneter Kader,
+farbige Ränder — auf einem Schirm, von dem es kein Bild gab. Das ist kein
+Zufall; es ist die Regel, die in dieser Datei an einem halben Dutzend Stellen
+steht.
+
 ### Der Rückblick schneidet am Abpfiff ab
 
 Gemeldet: *„SFV03 hatte keine 230 Punkte auf der Bank."* Stimmt — der Rückblick
