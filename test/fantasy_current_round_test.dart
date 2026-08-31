@@ -14,6 +14,12 @@ Fixture _fx(int round, DateTime kickoff) => Fixture(
       status: FixtureStatus.scheduled,
     );
 
+/// **Der Spieltag wechselt an der Waiver-Frist**, also Montag 15:00.
+///
+/// Vorher galten 24 Stunden nach dem letzten Anpfiff — eine Zahl, die je
+/// Spieltag woanders hinfiel: mal Montag 17:30, bei einem Sonntagabendspiel
+/// erst 19:30. Jetzt derselbe Zeitpunkt, an dem auch die Waiver-Anträge
+/// vergeben werden.
 void main() {
   // Spieltag 1: Anstöße Fr 20:30 + Sa 15:30; Spieltag 2 eine Woche später.
   final r1a = DateTime(2026, 8, 28, 20, 30);
@@ -30,12 +36,20 @@ void main() {
     expect(currentFantasyRound(fixtures, DateTime(2026, 8, 29, 16, 0)), 1);
   });
 
-  test('kurz vor 24h nach letztem Anpfiff ST1 → noch Spieltag 1', () {
-    expect(currentFantasyRound(fixtures, r1b.add(const Duration(hours: 23))), 1);
+  test('Sonntagabend nach dem Abpfiff → noch Spieltag 1', () {
+    // Der beendete Spieltag steht bis Montag 15:00; die Abrechnung soll man
+    // in Ruhe ansehen können.
+    expect(currentFantasyRound(fixtures, DateTime(2026, 8, 30, 22)), 1);
   });
 
-  test('genau 24h nach letztem Anpfiff ST1 → Spieltag 2', () {
-    expect(currentFantasyRound(fixtures, r1b.add(const Duration(hours: 24))), 2);
+  test('Montag 14:59 → noch Spieltag 1', () {
+    expect(currentFantasyRound(fixtures, DateTime(2026, 8, 31, 14, 59)), 1);
+  });
+
+  test('Montag 15:00 → Spieltag 2', () {
+    // Punktgenau zur Frist, nicht eine Sekunde später: Zu diesem Zeitpunkt
+    // werden auch die Waiver-Anträge vergeben.
+    expect(currentFantasyRound(fixtures, DateTime(2026, 8, 31, 15)), 2);
   });
 
   test('nach Saisonende → letzter Spieltag', () {

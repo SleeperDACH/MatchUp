@@ -69,4 +69,39 @@ void main() {
   test('ohne Spielplan bleibt es bei der Regel der Anzeige', () {
     expect(aufstellungsRunde(const [], DateTime(2026, 8, 30)), 1);
   });
+
+  group('recapRunde', () {
+    test('vor dem ersten Spieltag gibt es nichts zurückzublicken', () {
+      final s = _saison(runde1: FixtureStatus.scheduled);
+      expect(recapRunde(s, DateTime(2026, 8, 27)), isNull);
+    });
+
+    test('nach dem Abpfiff zeigt er den gelaufenen Spieltag', () {
+      final s = _saison(runde1: FixtureStatus.finished);
+      expect(recapRunde(s, DateTime(2026, 8, 30, 20)), 1);
+    });
+
+    test('und bleibt über die Waiver-Frist hinaus stehen', () {
+      // **Der Kern der Regel.** Der aktuelle Spieltag springt montags um
+      // 15:00 auf 2; ein Rückblick auf einen ungespielten Spieltag wäre leer.
+      final s = _saison(runde1: FixtureStatus.finished);
+      expect(currentFantasyRound(s, DateTime(2026, 8, 31, 15)), 2);
+      expect(recapRunde(s, DateTime(2026, 8, 31, 15)), 1);
+      expect(recapRunde(s, DateTime(2026, 9, 4, 20, 29)), 1,
+          reason: 'Bis kurz vor dem Anstoß des nächsten');
+    });
+
+    test('mit dem Anstoß des nächsten Spieltags ist er vorbei', () {
+      final s = _saison(runde1: FixtureStatus.finished);
+      expect(recapRunde(s, DateTime(2026, 9, 4, 20, 30)), isNull);
+    });
+
+    test('ein laufender Spieltag ist kein Rückblick', () {
+      final s = [
+        _f(1, DateTime(2026, 8, 28, 20, 30), FixtureStatus.finished),
+        _f(1, DateTime(2026, 8, 30, 17, 30), FixtureStatus.live),
+      ];
+      expect(recapRunde(s, DateTime(2026, 8, 30, 18)), isNull);
+    });
+  });
 }

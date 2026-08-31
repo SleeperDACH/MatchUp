@@ -2541,14 +2541,29 @@ Runde abgepfiffen ist**, während Übersicht, MatchUp-Karte und Spielplan die
 Abrechnung ihre 24 Stunden stehen lassen. Wer Sonntagabend fertig ist, plant
 sofort weiter.
 
-Dafür gibt es jetzt zwei Regeln nebeneinander, und der Unterschied ist der
-Punkt:
+Dafür gibt es jetzt **drei** Regeln nebeneinander, und der Unterschied ist
+jedes Mal der Punkt:
 
-- `currentFantasyRound` — **was man anschaut**: der erste Spieltag, dessen
-  letzter Anpfiff noch keine 24 h zurückliegt.
+- `currentFantasyRound` — **was man anschaut**: der Spieltag läuft bis zur
+  **Waiver-Frist**, Montag 15:00 (in englischen Wochen Donnerstag 15:00).
 - `aufstellungsRunde` — **was man stellt**: dieselbe Runde, es sei denn, sie ist
   vollständig abgepfiffen; dann die nächste. Gibt es keine nächste, bleibt es
   bei der letzten — eine Runde 35 wäre eine Erfindung.
+- `recapRunde` — **worauf man zurückblickt**: der zuletzt abgepfiffene
+  Spieltag, **bis zum Anstoß des nächsten**. `null`, wenn es nichts gibt.
+
+**Warum die Frist und nicht mehr „24 Stunden nach dem letzten Anpfiff":** Die
+alte Zahl fiel je Spieltag woanders hin — Montag 17:30, an einem Spieltag mit
+Sonntagabendspiel erst 19:30. Damit gab es drei Termine in der Woche (Frist
+15:00, Spieltagswechsel 17:30, Aufstellung schon Sonntagabend). Jetzt sind es
+zwei, und der eine ist derselbe, an dem auch die Waiver-Anträge vergeben
+werden.
+
+**Der Rückblick folgt bewusst keiner der beiden anderen.** Hinge er am
+aktuellen Spieltag, verschwände er montags um 15:00 — und ein Rückblick auf
+einen Spieltag, der noch gar nicht gespielt ist, wäre leer. Er bleibt bis
+Freitagabend stehen; bis dahin ist er das Aktuellste, was es gibt. Mit dem
+Anstoß des nächsten Spieltags führt wieder die laufende Paarung.
 
 Die Zeile „Aufstellung · Noch nicht gestellt" auf der Übersicht
 (`meineFormationProvider`) folgt der **zweiten** Regel: Ein Auftrag muss sich

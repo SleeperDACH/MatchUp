@@ -24,6 +24,7 @@ import 'models/fantasy_models.dart';
 import 'models/player_absence.dart';
 import 'models/roster_move.dart';
 import 'models/trade.dart';
+import 'logic/waiver_fenster.dart';
 
 final fantasyLeagueRepositoryProvider = Provider<FantasyLeagueRepository>(
     (ref) => FantasyLeagueRepository(Supabase.instance.client));
@@ -374,9 +375,13 @@ final fantasySeasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
   return OpenLigaDbProvider().getSeasonFixtures(Leagues.bundesliga, season);
 });
 
-/// Aktueller Fantasy-Spieltag: der erste Spieltag, dessen **letzter Anpfiff**
-/// noch keine 24 h zurückliegt. Ein beendeter Spieltag bleibt also 24 h nach
-/// dem letzten Anpfiff stehen und springt danach auf den nächsten.
+/// Aktueller Fantasy-Spieltag: er läuft bis zur **Waiver-Frist**, also Montag
+/// 15:00 (in englischen Wochen Donnerstag 15:00).
+///
+/// Vorher galten 24 Stunden nach dem letzten Anpfiff — eine Zahl, die je
+/// Spieltag woanders hinfiel: mal Montag 17:30, an einem Spieltag mit
+/// Sonntagabendspiel erst 19:30. Jetzt ist es derselbe Zeitpunkt, an dem auch
+/// die Waiver-Anträge vergeben werden: Ein Termin in der Woche, nicht drei.
 final fantasyCurrentRoundProvider = FutureProvider<int>((ref) async {
   final fixtures = await ref.watch(fantasySeasonFixturesProvider.future);
   return currentFantasyRound(fixtures, DateTime.now());
@@ -417,20 +422,48 @@ int aufstellungsRunde(List<Fixture> fixtures, DateTime now) {
   return spaeter.reduce((a, b) => a < b ? a : b);
 }
 
-/// Pure Regel für [fantasyCurrentRoundProvider] (24 h nach letztem Anpfiff).
+/// Pure Regel für [fantasyCurrentRoundProvider]: bis zur Waiver-Frist.
 int currentFantasyRound(List<Fixture> fixtures, DateTime now) {
   if (fixtures.isEmpty) return 1;
-  final lastKick = <int, DateTime>{};
-  for (final f in fixtures) {
-    final cur = lastKick[f.round];
-    if (cur == null || f.kickoff.isAfter(cur)) lastKick[f.round] = f.kickoff;
+  final runden = {for (final f in fixtures) f.round}.toList()..sort();
+  for (final r in runden) {
+    final frist = waiverFrist(fixtures, r);
+    if (frist == null || now.isBefore(frist)) return r;
   }
-  final rounds = lastKick.keys.toList()..sort();
-  for (final r in rounds) {
-    if (now.isBefore(lastKick[r]!.add(const Duration(hours: 24)))) return r;
-  }
-  return rounds.last; // Saison vorbei → letzter Spieltag.
+  return runden.last; // Saison vorbei → letzter Spieltag.
 }
+
+/// **Der Spieltag, den der Rückblick zeigt** — der zuletzt abgepfiffene, und
+/// zwar **bis zum Anstoß des nächsten**.
+///
+/// Er folgt bewusst nicht [currentFantasyRound]: Der springt montags um 15:00
+/// weiter, und ein Rückblick auf einen Spieltag, der noch gar nicht gespielt
+/// ist, wäre leer. Der Rückblick bleibt deshalb bis Freitagabend stehen — bis
+/// dahin ist er das Aktuellste, was es gibt.
+///
+/// `null` heißt: nichts zurückzublicken. Vor dem ersten Spieltag, und wieder,
+/// sobald der nächste angepfiffen hat — dann führt die laufende Paarung.
+int? recapRunde(List<Fixture> fixtures, DateTime now) {
+  final runden = {for (final f in fixtures) f.round}.toList()..sort();
+  int? beendet;
+  for (final r in runden) {
+    final dieser = [for (final f in fixtures) if (f.round == r) f];
+    if (dieser.isNotEmpty &&
+        dieser.every((f) => f.status == FixtureStatus.finished)) {
+      beendet = r;
+    }
+  }
+  if (beendet == null) return null;
+  final naechsterLaeuft = fixtures.any(
+      (f) => f.round > beendet! && !f.kickoff.toLocal().isAfter(now));
+  return naechsterLaeuft ? null : beendet;
+}
+
+/// Der Spieltag des Rückblicks — `null`, solange es keinen gibt.
+final fantasyRecapRundeProvider = FutureProvider<int?>((ref) async {
+  final fixtures = await ref.watch(fantasySeasonFixturesProvider.future);
+  return recapRunde(fixtures, DateTime.now());
+});
 
 /// Läuft der Spieltag gerade? „Live" ist das Fenster vom **ersten Anpfiff**
 /// bis zum **letzten Abpfiff**: sobald der früheste Anstoß der Runde vorbei
