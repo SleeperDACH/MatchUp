@@ -2735,6 +2735,35 @@ Nicht angefasst, weil schon deckungsgleich: `RoundSelector` und
 `MatchdayStepper` sind bis auf die Beschriftung derselbe Baustein (Chevrons,
 mittige Rundenbezeichnung, Ziel im Vorlese-Namen).
 
+### Die Tipp-Tabelle glühte
+
+Der Schirm hatte **keine Vorschau** — und war damit der einzige große des
+Tippspiels, über den sich ohne Gerätestart nichts sagen ließ. Genau davor warnt
+diese Datei an mehreren Stellen. `test/tipp_tabelle_vorschau_test.dart` baut sie
+jetzt (zwölf Provider, sechs Mitglieder, vier Spiele — gestreut so, dass jeder
+Zellzustand im Bild steht: exakt, Tordifferenz, Tendenz, daneben, offen).
+
+Was das Bild sofort zeigte:
+
+- **Alles war grün.** Die Punktespalte, jeder Gewinn („+4", „+2"), die eigene
+  Zeile. Bei sechs Mitgliedern und vier Spielen glühte die halbe Tabelle — in
+  der Farbe, mit der die App sonst „hier läuft gerade etwas" meint. Jetzt trägt
+  **nur der Volltreffer** Grün; alles andere steht ruhig, null Punkte gedämpft.
+  Der Unterschied zwischen 3 und 2 Punkten steht in der Zahl und braucht keine
+  zweite Spur.
+- **Ein hellgrauer Kopfbalken** über beiden Tabellenhälften — das einzige
+  Element des Schirms, das seine Material-Herkunft nicht verbarg. Die Trennung
+  macht jetzt die Haarlinie, die `DataTable` ohnehin zieht.
+- **Namen brachen ab**: „Spitzenr…", „lennartr…", „JojoAcz…" — in einer
+  Tabelle, in der man Leute wiedererkennen soll. Sie schrumpfen jetzt
+  (`FittedBox`), wie überall sonst in der App, und die Spalte ist von 100 auf
+  118 Punkt gewachsen, damit das selten nötig wird.
+- **Die eigene Zeile war grün hinterlegt** und trug denselben fetten Namen —
+  zweimal dieselbe Auskunft. Jetzt eine neutrale Hebung.
+- Die Gesamtpunkte stehen mit **gleichbreiten Ziffern**, damit die Spalte
+  flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
+  ist die Beschriftung, das Ergebnis die Auskunft.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;

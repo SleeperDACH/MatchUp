@@ -19,6 +19,7 @@ import 'bonus_tips_table_screen.dart';
 import 'round_selector.dart';
 import 'tip_member_profile_sheet.dart';
 import '../../../app/widgets/karte.dart';
+import '../../../app/widgets/punktzahl.dart';
 
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
 const Color _liveColor = Color(0xFFF23030); // MatchUp Red — Live-Spiele
@@ -281,8 +282,11 @@ class _TableBodyState extends ConsumerState<_TableBody> {
           )
         : const <String, int>{};
 
+    // **Die eigene Zeile wird gehoben, nicht gefärbt.** Eine grüne Fläche
+    // sagte dasselbe wie der fette Name — zweimal, und in der Farbe, die
+    // sonst „läuft gerade" heißt.
     Color? rowColor(String userId) => userId == myUserId
-        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.07)
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
         : null;
 
     final tipByMemberAndFixture = {
@@ -319,8 +323,12 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                     columnSpacing: 4,
                     horizontalMargin: 6,
                     headingRowHeight: _headingHeight,
-                    headingRowColor: WidgetStatePropertyAll(
-                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                    // **Kein gefüllter Kopfbalken.** Der hellgraue Block war
+                    // das einzige Material-Element auf dem Schirm, das seine
+                    // Herkunft nicht verbarg. Die Trennung übernimmt die
+                    // Haarlinie, die `DataTable` ohnehin zieht.
+                    headingRowColor: const WidgetStatePropertyAll(
+                      Colors.transparent,
                     ),
                     dataRowMinHeight: _rowHeight,
                     dataRowMaxHeight: _rowHeight,
@@ -357,11 +365,15 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                               ),
                             ),
                             DataCell(
+                              // Die Gesamtpunkte sind der Anker der Zeile —
+                              // sie stehen kräftig, aber nicht grün. Und mit
+                              // gleichbreiten Ziffern, damit die Spalte
+                              // untereinander flucht.
                               Text(
                                 '${totals[member.userId] ?? 0}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontFeatures: gleichbreiteZiffern,
                                 ),
                               ),
                             ),
@@ -379,8 +391,8 @@ class _TableBodyState extends ConsumerState<_TableBody> {
                         columnSpacing: 10,
                         horizontalMargin: 6,
                         headingRowHeight: _headingHeight,
-                        headingRowColor: WidgetStatePropertyAll(
-                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                        headingRowColor: const WidgetStatePropertyAll(
+                          Colors.transparent,
                         ),
                         dataRowMinHeight: _rowHeight,
                         dataRowMaxHeight: _rowHeight,
@@ -480,7 +492,7 @@ class _NameCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      width: 100,
+      width: 118,
       child: Row(
         children: [
           SizedBox(
@@ -505,10 +517,21 @@ class _NameCell extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Expanded(
-            child: Text(
-              username,
-              overflow: TextOverflow.ellipsis,
-              style: isMe ? const TextStyle(fontWeight: FontWeight.bold) : null,
+            // **Namen schrumpfen, sie brechen nicht ab.** „Spitzenreiter04"
+            // stand hier als „Spitzenr…", „lennartruepke" als „lennartr…" —
+            // in einer Tabelle, in der man Leute wiedererkennen soll. Dieselbe
+            // Regel wie im Fantasy-Bereich: lieber eine Spur kleiner als
+            // halbiert.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                username,
+                maxLines: 1,
+                style: isMe
+                    ? const TextStyle(fontWeight: FontWeight.bold)
+                    : null,
+              ),
             ),
           ),
         ],
@@ -544,9 +567,13 @@ class _FixtureHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // Die Paarung ist die **Beschriftung** der Spalte, das Ergebnis die
+        // Auskunft. Vorher standen beide gleich laut übereinander.
         Text(
           '${fixture.home.shortName} – ${fixture.away.shortName}',
-          style: small,
+          style: small?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           textAlign: TextAlign.center,
         ),
         if (live && fixture.hasScore) ...[
@@ -573,6 +600,7 @@ class _FixtureHeader extends StatelessWidget {
             style: small?.copyWith(
               fontWeight: FontWeight.bold,
               color: live ? _liveColor : null,
+              fontFeatures: gleichbreiteZiffern,
             ),
           ),
       ],
@@ -640,9 +668,20 @@ class _TipCell extends StatelessWidget {
           )
         : 0;
     final points = base + bonus;
+    // **Grün nur für den Volltreffer.** Vorher trug jede Zeile mit Punkten das
+    // Markengrün — bei sechs Mitgliedern und vier Spielen glühte die halbe
+    // Tabelle, obwohl Grün in dieser App „hier läuft gerade etwas" heißt und
+    // hier nichts läuft. Jetzt: das exakte Ergebnis grün, alles andere ruhig,
+    // null Punkte gedämpft. Der Unterschied zwischen 3 und 2 Punkten steht in
+    // der Zahl; er braucht keine zweite Spur.
+    final exakt = base >= rules.exact;
     final color = live
         ? _liveColor
-        : (points == 0 ? scheme.onSurfaceVariant : scheme.primary);
+        : points == 0
+        ? scheme.onSurfaceVariant
+        : exakt
+        ? scheme.primary
+        : scheme.onSurface;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
