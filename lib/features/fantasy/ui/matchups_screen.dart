@@ -400,6 +400,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                               stats: weekStats);
                       return MatchupLineups(
                         league: league,
+                        runde: round,
                         home: home,
                         away: away,
                         homeId: hId,

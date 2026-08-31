@@ -129,6 +129,7 @@ class MatchupDetailScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               MatchupLineups(
                 league: league,
+                runde: round,
                 home: home,
                 away: away,
                 homeId: homeId,

@@ -2764,6 +2764,57 @@ Was das Bild sofort zeigte:
   flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
   ist die Beschriftung, das Ergebnis die Auskunft.
 
+### Vor dem Anpfiff steht in der Punktebox das Spiel
+
+Gemeldet: *„Statt ‚–' möchte ich das nächste Spiel sehen: ‚FCB Sa 15:30'. Die
+Größe der Box soll so bleiben. Erst wenn das jeweilige Spiel angepfiffen wird,
+kommt die Punkteanzeige. Diesen Spieltag war es so, dass bereits zum Start des
+Spieltages schon 0,0 Punkte angezeigt wurden."*
+
+Der zweite Satz nennt die Ursache des ersten. Ob die Box Punkte oder einen
+Strich zeigte, hing an `stats[p.id]?.hasContribution` — also daran, ob eine
+**Statistikzeile** existierte. Die ist aber schon vor dem Anstoß da (der Sync
+legt sie an, sobald die Aufstellung steht), und damit stand überall 0,0.
+
+Maßgeblich ist jetzt der **Anpfiff seines Vereins**, aus dem Spielplan. Dieselbe
+Größe, die auch die Aufstellungssperre und den Waiver steuert; drei Regeln, die
+dasselbe meinen, sollten dieselbe Quelle lesen.
+
+Vor dem Anstoß steht in der Box zweizeilig **Gegner und Anstoß**:
+
+```
+ M05
+Sa 15:30
+```
+
+Zwei Zeilen, weil „M05 Sa 15:30" nebeneinander die Box auf die doppelte Breite
+zöge — und sie steht in einer Reihe mit Wappen und Namen, die ihren Platz
+brauchen. Übereinander bleibt sie so breit wie eine Punktzahl.
+
+**Gezeigt wird der Gegner, nicht der eigene Verein.** Das Wappen daneben sagt
+schon, für wen er spielt; neu ist, gegen wen.
+
+**Die Kürzel stehen in einer Tabelle** (`core/logic/vereins_kuerzel.dart`),
+nicht in einer Ableitung: Aus „FC Bayern München" käme sonst „FB" heraus, aus
+„Borussia Mönchengladbach" ein „BM". Verglichen wird die kanonische Form, damit
+beide Schreibweisen dieser App denselben Eintrag treffen („1. FSV Mainz 05" und
+„FSV Mainz 05") — genau daran hing der Waiver-Fehler aus 0108. Für unbekannte
+Vereine greift eine Ableitung aus dem **längsten** Wort: „AS Monaco" → „MON",
+nicht „AS".
+
+**Wer an dem Spieltag frei hat, bekommt weiter einen Strich.** Kein Spiel ist
+etwas anderes als „noch nicht angepfiffen", und für ihn gibt es nichts
+anzukündigen.
+
+**Zwei Funde beim Bauen der Vorschau** — der Schirm hatte keine:
+
+- Die **Bank-Rubrik erschien auch dann**, wenn auf beiden Seiten niemand auf
+  der Bank saß. Eine Rubrik über nichts; sie erscheint jetzt nur mit Inhalt.
+  (Sie warf dabei auch eine Material-Zusicherung, die nie jemand gesehen hat.)
+- Ein Golden dieses Teilbaums ist **weiß**, wenn man ihn direkt aufnimmt — er
+  malt selbst keinen Grund. Aufgenommen wird deshalb der `Scaffold`; eine
+  zusätzliche Farbfläche dazwischen löst die Zusicherung oben aus.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;

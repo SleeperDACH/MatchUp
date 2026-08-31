@@ -8,6 +8,10 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
 import 'player_profile_sheet.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
+import '../logic/naechstes_spiel.dart';
+import '../../../core/models/models.dart';
+import '../../../app/typografie.dart';
 
 // Reihenfolge der Positionsblöcke (TW zuerst).
 const _order = [
@@ -114,6 +118,7 @@ class MatchupLineups extends ConsumerWidget {
   const MatchupLineups({
     super.key,
     required this.league,
+    required this.runde,
     required this.home,
     required this.away,
     required this.homeId,
@@ -123,6 +128,9 @@ class MatchupLineups extends ConsumerWidget {
   });
 
   final FantasyLeague league;
+
+  /// Spieltag, um den es geht — für „wann spielt er als Nächstes?".
+  final int runde;
   final MatchupSideData home;
   final MatchupSideData? away;
   final String homeId;
@@ -135,6 +143,16 @@ class MatchupLineups extends ConsumerWidget {
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
+    // Der Spielplan sagt, wer wann anpfeift — nicht der Statistik-Datensatz.
+    final spiele =
+        ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+        const <Fixture>[];
+    final jetzt = DateTime.now();
+    bool angepfiffen(String verein) {
+      final s = naechstesSpiel(spiele, runde, verein);
+      return s != null && !s.anpfiff.isAfter(jetzt);
+    }
+
     final homeMine = homeId == myId;
     final awayMine = awayId != null && awayId == myId;
 
@@ -158,19 +176,25 @@ class MatchupLineups extends ConsumerWidget {
             homeMine: homeMine,
             awayMine: awayMine,
             clubIcons: clubIcons,
+            spiele: spiele,
+            angepfiffen: angepfiffen,
             onTap: openPlayer,
           ),
         const SizedBox(height: 12),
-        _BenchSection(
-          home: home,
-          away: away,
-          homeName: homeName,
-          awayName: awayName,
-          clubIcons: clubIcons,
-          homeMine: homeMine,
-          awayMine: awayMine,
-          onTap: openPlayer,
-        ),
+        // **Keine Bank über nichts.** Steht auf keiner Seite jemand auf der
+        // Bank, gibt es auch nichts aufzuklappen — die Zeile hätte nur
+        // gesagt, dass sie leer ist.
+        if (home.bench.isNotEmpty || (away?.bench.isNotEmpty ?? false))
+          _BenchSection(
+            home: home,
+            away: away,
+            homeName: homeName,
+            awayName: awayName,
+            clubIcons: clubIcons,
+            homeMine: homeMine,
+            awayMine: awayMine,
+            onTap: openPlayer,
+          ),
       ],
     );
   }
@@ -185,6 +209,8 @@ class MatchupLineups extends ConsumerWidget {
     required bool homeMine,
     required bool awayMine,
     required Map<String, String?> clubIcons,
+    required List<Fixture> spiele,
+    required bool Function(String verein) angepfiffen,
     required void Function(FantasyPlayer, bool) onTap,
   }) {
     final hs = home.startersAt(pos);
@@ -203,8 +229,14 @@ class MatchupLineups extends ConsumerWidget {
           away: a,
           homePts: hp,
           awayPts: ap,
-          homeGespielt: h != null && home.gespielt.contains(h.id),
-          awayGespielt: a != null && (away?.gespielt.contains(a.id) ?? false),
+          // **Angepfiffen, nicht „hat Statistiken".** Vorher entschied das
+          // Vorhandensein einer Statistikzeile darüber, ob Punkte statt eines
+          // Strichs erscheinen — und die war schon vor dem Anstoß da. Genau
+          // deshalb standen zum Start des Spieltags überall 0,0 Punkte.
+          homeGespielt: h != null && angepfiffen(h.club),
+          awayGespielt: a != null && angepfiffen(a.club),
+          homeSpiel: h == null ? null : naechstesSpiel(spiele, runde, h.club),
+          awaySpiel: a == null ? null : naechstesSpiel(spiele, runde, a.club),
           homeMine: homeMine,
           awayMine: awayMine,
           clubIcons: clubIcons,
@@ -251,6 +283,8 @@ class _PlayerRow extends StatelessWidget {
     required this.awayPts,
     required this.homeGespielt,
     required this.awayGespielt,
+    required this.homeSpiel,
+    required this.awaySpiel,
     required this.homeMine,
     required this.awayMine,
     required this.clubIcons,
@@ -262,9 +296,14 @@ class _PlayerRow extends StatelessWidget {
   final double? homePts;
   final double? awayPts;
 
-  /// Hat der Spieler an diesem Spieltag schon gespielt?
+  /// **Hat sein Verein schon angepfiffen?** Erst dann sind Punkte eine
+  /// Auskunft; vorher steht in der Box, gegen wen und wann er spielt.
   final bool homeGespielt;
   final bool awayGespielt;
+
+  /// Sein Spiel an diesem Spieltag — `null`, wenn sein Verein frei hat.
+  final NaechstesSpiel? homeSpiel;
+  final NaechstesSpiel? awaySpiel;
 
   final bool homeMine;
   final bool awayMine;
@@ -298,6 +337,7 @@ class _PlayerRow extends StatelessWidget {
               mine: homeMine,
               highlight: lead > 0,
               gespielt: homeGespielt,
+              spiel: homeSpiel,
               start: true,
             ),
           ),
@@ -310,6 +350,7 @@ class _PlayerRow extends StatelessWidget {
               mine: awayMine,
               highlight: lead < 0,
               gespielt: awayGespielt,
+              spiel: awaySpiel,
               start: false,
             ),
           ),
@@ -325,6 +366,7 @@ class _PlayerRow extends StatelessWidget {
     required bool mine,
     required bool highlight,
     required bool gespielt,
+    required NaechstesSpiel? spiel,
     required bool start,
   }) {
     final scheme = Theme.of(context).colorScheme;
@@ -341,25 +383,26 @@ class _PlayerRow extends StatelessWidget {
             : scheme.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(10),
       ),
-      // **Noch nicht gespielt ist kein Nullpunktespiel.** Vorher stand hier
-      // in beiden Fällen „0" — man konnte nicht unterscheiden, ob jemand
-      // gespielt und nichts geholt hat oder noch gar nicht dran war.
+      // **Vor dem Anpfiff steht hier das Spiel, nicht ein Strich.** „Noch
+      // nicht gespielt" ist kein Nullpunktespiel — vorher stand in beiden
+      // Fällen „0", dann ein Strich. Ein Strich sagt nichts Falsches, aber
+      // auch nichts; die Frage vor einem Spieltag ist „gegen wen und wann?".
       //
       // `formatPoints` statt roher Interpolation: Die Wertung kennt −0,4 je
       // Foul, und `0.4`-Summen tragen sonst einen Fließkomma-Rattenschwanz
       // hinter sich her.
-      child: _punkte(
-        gespielt,
-        pts,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-          color: !gespielt
-              ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
-              : (highlight ? scheme.primary : scheme.onSurface),
-        ),
-      ),
+      child: gespielt
+          ? _punkte(
+              gespielt,
+              pts,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: highlight ? scheme.primary : scheme.onSurface,
+              ),
+            )
+          : _AnstossHinweis(spiel: spiel),
     );
     final badge = ClubBadge(
       club: player.club,
@@ -619,4 +662,63 @@ Widget _punkte(
         : Alignment.centerLeft,
     child: Punktzahl(pts ?? 0, stil: style),
   );
+}
+
+/// Was in der Punktebox steht, solange sein Verein nicht angepfiffen hat:
+/// **Gegner und Anstoß**, zweizeilig.
+///
+/// Zwei Zeilen und keine, weil „SVE Sa 15:30" in einer Zeile die Box auf die
+/// doppelte Breite zöge — und die Box steht in einer Reihe mit Wappen und
+/// Namen, die ihren Platz brauchen. Übereinander bleibt sie so breit wie eine
+/// Punktzahl und wächst nur um wenige Punkte in der Höhe, die die Zeile
+/// ohnehin hat.
+class _AnstossHinweis extends StatelessWidget {
+  const _AnstossHinweis({required this.spiel});
+
+  final NaechstesSpiel? spiel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final s = spiel;
+    // **Kein Spiel ist etwas anderes als „noch nicht angepfiffen".** Wessen
+    // Verein an diesem Spieltag frei hat, für den gibt es nichts anzukündigen.
+    if (s == null) {
+      return Text(
+        '–',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+        ),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          vereinsKuerzel(s.gegner),
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: Schrift.klein,
+            height: 1.1,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+            color: scheme.onSurface,
+          ),
+        ),
+        Text(
+          anpfiffKurz(s.anpfiff),
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: Schrift.mikro,
+            height: 1.25,
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
 }
