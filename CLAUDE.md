@@ -2720,6 +2720,17 @@ einem halben Dutzend Providern. Die Bausteine sind umgestellt und in
 damit noch nicht beurteilt. Wer hier weitermacht, baut zuerst die Vorschauen —
 sonst wiederholt sich genau der Fehler, den der ungethemte Golden oben zeigt.
 
+**Spiele eines Zeitfensters stehen zusammen.** Vorher trug jede Karte ihre
+eigene Uhrzeit — bei fünf Samstagsspielen stand fünfmal „15:30" untereinander,
+eine Wiederholung, die nichts unterscheidet. Jetzt gibt es zwei Ebenen: der Tag
+als Kapitelmarke, darunter je Anstoßzeit **eine** Zeile, und darunter die
+Spiele, die zu ihr gehören.
+
+Dabei fiel ein zweites Doppel auf: In der Kopfzeile stand bei laufenden Spielen
+„LIVE" — und dasselbe Wort steht ohnehin *in* der Karte unter dem Spielstand
+(`_CenterInfo`). Die Kopfzeile gehört jetzt mehreren Spielen; ein Zustand eines
+einzelnen hat dort nichts verloren. Sie ist weg, die Karte sagt es weiter.
+
 Nicht angefasst, weil schon deckungsgleich: `RoundSelector` und
 `MatchdayStepper` sind bis auf die Beschriftung derselbe Baustein (Chevrons,
 mittige Rundenbezeichnung, Ziel im Vorlese-Namen).

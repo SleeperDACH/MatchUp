@@ -172,15 +172,24 @@ class _FixtureListBody extends ConsumerWidget {
     // Tipps lassen sich nur abgeben, solange mindestens ein Spiel noch
     // nicht angepfiffen ist.
     final hasOpen = list.any((f) => !f.hasStarted);
+    final timeFormat = DateFormat('HH:mm', 'de_DE');
     final children = <Widget>[];
     String? lastDay;
+    String? lastTime;
     for (final fixture in list) {
       final day = dayFormat.format(fixture.kickoff.toLocal());
+      final time = timeFormat.format(fixture.kickoff.toLocal());
       // Datum steht jetzt in der Kopfzeile der Karte (links), die Uhrzeit
       // rechts daneben — außerhalb der Box. Nur beim ersten Spiel eines Tages
       // zeigen wir das Datum, sonst bleibt die Kopfzeile datumslos.
+      // **Der Tag ist die Rubrik, die Anstoßzeit die Gruppe darin.** Vorher
+      // trug jede Karte ihre eigene Uhrzeit — bei fünf Samstagsspielen stand
+      // fünfmal „15:30" untereinander. Wiederholung, die nichts unterscheidet.
+      // Jetzt steht die Zeit einmal über den Spielen, die zu ihr gehören.
       final isNewDay = day != lastDay;
+      final isNewTime = isNewDay || time != lastTime;
       if (isNewDay) lastDay = day;
+      if (isNewTime) lastTime = time;
       // Rundenwechsel (lokal ↔ Tipprunde) baut die Karten neu auf,
       // damit die Eingabefelder die Tipps der neuen Quelle zeigen.
       final activeRoundId = ref.watch(activeRoundProvider)?.id ?? 'lokal';
@@ -190,6 +199,7 @@ class _FixtureListBody extends ConsumerWidget {
           fixture: fixture,
           odds: odds[fixture.id],
           dayLabel: isNewDay ? day : null,
+          zeitLabel: isNewTime ? time : null,
         ),
       );
     }
@@ -218,6 +228,7 @@ class FixtureCard extends ConsumerStatefulWidget {
     required this.fixture,
     this.odds,
     this.dayLabel,
+    this.zeitLabel,
   });
 
   final Fixture fixture;
@@ -227,8 +238,12 @@ class FixtureCard extends ConsumerStatefulWidget {
   final MatchOdds? odds;
 
   /// Datum für die Kopfzeile über der Box — nur beim ersten Spiel eines Tages
-  /// gesetzt, sonst null (dann steht dort nur die Uhrzeit rechts).
+  /// gesetzt, sonst null.
   final String? dayLabel;
+
+  /// Anstoßzeit — **nur beim ersten Spiel eines Zeitfensters** gesetzt. Alle
+  /// weiteren Spiele derselben Anstoßzeit stehen ohne eigene Uhrzeit darunter.
+  final String? zeitLabel;
 
   @override
   ConsumerState<FixtureCard> createState() => _FixtureCardState();
@@ -301,7 +316,10 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _FixtureHeaderRow(dayLabel: widget.dayLabel, fixture: fixture),
+        _FixtureHeaderRow(
+          dayLabel: widget.dayLabel,
+          zeitLabel: widget.zeitLabel,
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, Abstand.s),
           child: Karte(
@@ -341,28 +359,24 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
 }
 
 /// Kopfzeile über der Spielbox: links das Datum (nur beim ersten Spiel eines
-/// Tages), rechts die Uhrzeit — bei laufenden Spielen stattdessen „LIVE".
+/// Tages als Kapitelmarke), rechts die Anstoßzeit des Zeitfensters.
 class _FixtureHeaderRow extends StatelessWidget {
-  const _FixtureHeaderRow({required this.dayLabel, required this.fixture});
+  const _FixtureHeaderRow({required this.dayLabel, required this.zeitLabel});
 
   final String? dayLabel;
-  final Fixture fixture;
+  final String? zeitLabel;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final live = fixture.status == FixtureStatus.live;
-    final Widget right = live
-        ? Text(
-            'LIVE',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: scheme.primary,
-            ),
-          )
+    // **Kein „LIVE" mehr in der Kopfzeile.** Es stand dort je Karte — und
+    // steht ohnehin schon *in* der Karte unter dem Spielstand
+    // (`_CenterInfo`). Zweimal dieselbe Auskunft, und die obere gehörte jetzt
+    // zu einer Zeile, die für mehrere Spiele gilt.
+    final Widget? right = zeitLabel == null
+        ? null
         : Text(
-            DateFormat('HH:mm', 'de_DE').format(fixture.kickoff.toLocal()),
+            zeitLabel!,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: scheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
@@ -380,18 +394,19 @@ class _FixtureHeaderRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Kapitelmarke(dayLabel!, farbe: scheme.primary),
           ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            dayLabel != null ? 0 : Abstand.s,
-            16,
-            4,
+        if (right != null)
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              dayLabel != null ? 0 : Abstand.m,
+              16,
+              4,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [right],
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [right],
-          ),
-        ),
       ],
     );
   }

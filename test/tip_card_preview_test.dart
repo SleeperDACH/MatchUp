@@ -51,6 +51,10 @@ void main() {
     tester,
   ) async {
     await initializeDateFormatting('de_DE');
+    // Fünf Karten brauchen mehr Schirm als der Standard von 800 Punkten.
+    tester.view.physicalSize = const Size(402 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
     final future = DateTime(2030, 9, 13, 15, 30);
     final future2 = DateTime(2030, 9, 13, 18, 30);
     final past = DateTime(2020, 9, 14, 17, 30);
@@ -77,26 +81,41 @@ void main() {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // **Drei Spiele in einem Zeitfenster.** Genau
+                        // dafür steht die Uhrzeit nur einmal darüber: Vorher
+                        // trug jede Karte ihre eigene, und bei fünf
+                        // Samstagsspielen stand fünfmal „15:30" untereinander.
                         FixtureCard(
                           fixture: _fx('1', 'Bayern', 'Dortmund', future),
                           odds: _odds(1.90, 3.40, 4.20),
                           dayLabel: 'Samstag, 13. September',
+                          zeitLabel: '15:30',
                         ),
                         FixtureCard(
-                          fixture: _fx('2', 'Leipzig', 'Union Berlin', future2),
+                          fixture: _fx('2', 'Leipzig', 'Union Berlin', future),
                           odds: _odds(1.65, 3.90, 5.10),
                         ),
                         FixtureCard(
+                          fixture: _fx('3', 'Freiburg', 'Augsburg', future),
+                          odds: _odds(2.10, 3.30, 3.40),
+                        ),
+                        FixtureCard(
+                          fixture: _fx('4', 'Werder Bremen', 'Mainz', future2),
+                          odds: _odds(2.35, 3.50, 2.85),
+                          zeitLabel: '18:30',
+                        ),
+                        FixtureCard(
                           fixture: _fx(
-                            '3',
-                            'Freiburg',
-                            'Mainz',
+                            '5',
+                            'Hoffenheim',
+                            'Köln',
                             past,
                             status: FixtureStatus.finished,
                             hs: 2,
                             as: 1,
                           ),
                           dayLabel: 'Sonntag, 14. September',
+                          zeitLabel: '17:30',
                         ),
                       ],
                     ),
