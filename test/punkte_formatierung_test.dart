@@ -90,8 +90,14 @@ void main() {
           // sie roh interpoliert, soll erklären müssen, warum sie kein
           // `double` ist; dafür steht die Ausnahmeliste oben.
           final klein = ausdruck.toLowerCase();
+          // **Fünfte Erweiterung, fünfter Durchrutscher.** Zuletzt `margin` —
+          // der Vorsprung eines Duells ist ein `double`, klingt aber nicht nach
+          // Punkten. Diese Wache rät Namen und ist nur so gut wie die Fantasie
+          // ihres Autors; die verlässliche liest den fertigen Schirm
+          // (`nachkommastellen_test.dart`).
           final klingtNachPunkten = RegExp(
-                  r'points?\b|\bpts\b|punkte|\bpkt|total|score(?!board)|summe')
+                  r'points?\b|\bpts\b|punkte|\bpkt|total|score(?!board)|summe'
+                  r'|margin|vorsprung|abstand|schnitt|\bdelta\b')
               .hasMatch(klein);
           if (!klingtNachPunkten) continue;
           if (ausdruck.contains('formatPoints(')) continue;

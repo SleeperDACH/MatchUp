@@ -280,7 +280,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
           icon: Icons.bolt,
           title: 'Nervenkrimi',
           primary: name(m.winnerId),
-          secondary: 'schlägt ${name(m.loserId)} · +${m.margin}',
+          secondary: 'schlägt ${name(m.loserId)} · +${formatPoints(m.margin)}',
           value:
               '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
           highlight: m.winnerId == myId || m.loserId == myId,
@@ -297,7 +297,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
           icon: Icons.local_fire_department,
           title: 'Klatsche',
           primary: name(m.winnerId),
-          secondary: 'deklassiert ${name(m.loserId)} · +${m.margin}',
+          secondary: 'deklassiert ${name(m.loserId)} · +${formatPoints(m.margin)}',
           value:
               '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
           highlight: m.winnerId == myId || m.loserId == myId,

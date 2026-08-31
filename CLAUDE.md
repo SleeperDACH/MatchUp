@@ -2830,6 +2830,49 @@ anzukündigen.
   malt selbst keinen Grund. Aufgenommen wird deshalb der `Scaffold`; eine
   zusätzliche Farbfläche dazwischen löst die Zusicherung oben aus.
 
+### Der fünfte Rattenschwanz — und warum die Wache ihn nicht sah
+
+Gemeldet, sichtlich entnervt: *„Im Wochenrecap sind NACH WIE VOR Zahlen mit
+dutzend Nachkommastellen."* Zu Recht. Auf dem Schirm stand:
+
+```
+schlägt Majusch · +0.1999999999999318
+deklassiert ana · +5.000000000000057
+```
+
+Die Stelle war `'+${m.margin}'` in den Rückblick-Karten „Nervenkrimi" und
+„Klatsche". `margin` ist `winnerPoints - loserPoints`, also ein `double` aus
+lauter Summen à 0,4 und 1,5.
+
+**Warum `punkte_formatierung_test.dart` das durchgelassen hat:** Diese Wache
+liest den Quelltext und prüft Interpolationen, deren Bezeichner **nach Punkten
+klingt** — `points`, `pts`, `punkte`, `total`, `score`, `summe`. „margin" klingt
+nicht danach. Es ist der **fünfte** Durchrutscher, und jedes Mal war die Antwort
+dieselbe: das Wortfeld erweitern. Eine Wache, die Namen rät, ist nur so gut wie
+die Fantasie ihres Autors — und die reicht offensichtlich nicht.
+
+**Die neue Wache rät nicht.** `test/nachkommastellen_test.dart` baut den
+Rückblick mit Werten, die garantiert krumm werden (elf Spieler je Manager mit
+unterschiedlich vielen Fouls, Torschussvorlagen und Ballverlusten — also lauter
+0,4er und 1,5er), und liest anschließend **jeden `Text` im fertigen Baum**:
+
+```dart
+final _rattenschwanz = RegExp(r'\d[.,]\d{3,}');
+```
+
+Wie die Zahl heißt, aus der ein Text entsteht, ist ihr egal. Gegengeprüft: Ohne
+die Korrektur meldet sie genau die beiden Zeilen von oben.
+
+Sie trägt eine **Vorbedingung** — dass überhaupt Inhalt da ist. Ohne die wäre
+sie auf einem leeren Schirm still grün, und genau das ist die Falle, in die
+Golden-Tests dieser Datei schon zweimal getappt sind.
+
+`pruefeNachkommastellen(tester)` ist als Funktion herausgezogen: Wer einen
+weiteren Schirm absichern will, baut ihn im Test auf und ruft sie. Die alte
+namensbasierte Wache bleibt für Schirme ohne Vorschau bestehen (und kennt jetzt
+auch `margin`, `vorsprung`, `abstand`, `schnitt`, `delta`) — aber die
+verlässliche ist die neue.
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;
