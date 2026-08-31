@@ -338,18 +338,19 @@ class HeroShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grund = Theme.of(context).cardColor;
-    // **Farbe nur, wo etwas ansteht.** Vorher füllte der Akzent die ganze
-    // Fläche — auch vor dem Anpfiff, wo nichts läuft. Grün heißt in dieser App
-    // „hier läuft etwas"; ein grüner Kasten für einen Spieltag, der erst
-    // Samstag beginnt, sagt das Falsche. Jetzt trägt der Kasten den Kartengrund
-    // und nur einen Hauch aus der Ecke: kräftig, solange live, leiser wenn
-    // beendet, gar nicht davor. Dasselbe Muster wie bei den Ligakarten auf dem
-    // Startbildschirm (`_kartenFlaeche`).
+    // **Der Akzent füllt nicht die Fläche, er haucht aus der Ecke** — dasselbe
+    // Muster wie bei den Ligakarten auf dem Startbildschirm
+    // (`_kartenFlaeche`). Kräftig, solange live; leiser sonst.
+    //
+    // **Auch die Vorschau trägt den Hauch.** Sie war eine Zeit lang ganz ohne,
+    // nach der Regel „Farbe nur, wo etwas ansteht" — und war damit die einzige
+    // graue Karte auf einem Schirm voller Zustände. Auf Ansage wieder
+    // eingefärbt, in derselben Stärke wie ein beendeter Spieltag:
+    // Unterschieden werden die beiden ohnehin deutlicher durch Marke
+    // („Vorschau" gegen „Beendet"), Punktestand und Balken.
     final hauch = live
         ? accent.withValues(alpha: 0.22)
-        : started
-            ? accent.withValues(alpha: 0.10)
-            : null;
+        : accent.withValues(alpha: 0.10);
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(18),

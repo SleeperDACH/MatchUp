@@ -13,6 +13,8 @@ import 'club_badge.dart';
 import 'manager_profile_screen.dart';
 import 'matchday_stepper.dart';
 import 'player_profile_sheet.dart';
+import '../logic/kader_am.dart';
+import '../models/roster_move.dart';
 
 // Award-Palette (abgestimmt auf die MatchUp-Übersicht).
 const _cGold = Color(0xFFFFC83D);
@@ -91,6 +93,9 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     final allFx =
         ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
         const <Fixture>[];
+    final bewegungen =
+        ref.watch(rosterMovesProvider(league.id)).valueOrNull ??
+        const <RosterMove>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
     return Scaffold(
@@ -117,10 +122,24 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
                     roundFx.isNotEmpty &&
                     roundFx.any((f) => f.status != FixtureStatus.scheduled);
 
+                // **Der Kader von damals, nicht der von heute.** Nach dem
+                // Abpfiff schneidet der Rückblick ab: Wer später geholt wurde,
+                // stand an diesem Spieltag nicht im Kader, und seine Punkte
+                // gehören nicht auf diese Bank. („SFV03 hatte keine 230 Punkte
+                // auf der Bank.")
+                final abpfiff = abpfiffDerRunde(roundFx.map((f) => f.kickoff));
+                final kader = abpfiff == null
+                    ? roster
+                    : kaderAm(
+                        aktuell: roster,
+                        bewegungen: bewegungen,
+                        stichtag: abpfiff,
+                      );
+
                 final recap = computeWeeklyRecap(
                   round: round,
                   ids: ids,
-                  roster: roster,
+                  roster: kader,
                   playerById: playerById,
                   lineups: lineups,
                   stats: stats,
@@ -297,7 +316,8 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
           icon: Icons.local_fire_department,
           title: 'Klatsche',
           primary: name(m.winnerId),
-          secondary: 'deklassiert ${name(m.loserId)} · +${formatPoints(m.margin)}',
+          secondary:
+              'deklassiert ${name(m.loserId)} · +${formatPoints(m.margin)}',
           value:
               '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
           highlight: m.winnerId == myId || m.loserId == myId,
@@ -555,10 +575,26 @@ class WeeklyRecapCard extends ConsumerWidget {
 
     final playerById = {for (final p in pool) p.id: p};
     final nameOf = {for (final m in managers) m.userId: m.display};
+    // Derselbe Schnitt wie im vollen Rückblick: der Kader zum Abpfiff.
+    final abpfiff = abpfiffDerRunde([
+      for (final f
+          in ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+              const <Fixture>[])
+        if (f.round == current) f.kickoff,
+    ]);
+    final kader = abpfiff == null
+        ? roster
+        : kaderAm(
+            aktuell: roster,
+            bewegungen:
+                ref.watch(rosterMovesProvider(league.id)).valueOrNull ??
+                const <RosterMove>[],
+            stichtag: abpfiff,
+          );
     final recap = computeWeeklyRecap(
       round: current,
       ids: stableManagerIds(managers),
-      roster: roster,
+      roster: kader,
       playerById: playerById,
       lineups: lineups,
       stats: stats,

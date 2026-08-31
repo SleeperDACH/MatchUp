@@ -2873,6 +2873,44 @@ namensbasierte Wache bleibt für Schirme ohne Vorschau bestehen (und kennt jetzt
 auch `margin`, `vorsprung`, `abstand`, `schnitt`, `delta`) — aber die
 verlässliche ist die neue.
 
+### Der Rückblick schneidet am Abpfiff ab
+
+Gemeldet: *„SFV03 hatte keine 230 Punkte auf der Bank."* Stimmt — der Rückblick
+rechnete mit dem **heutigen** Kader. Wer nach dem Spieltag geholt wurde, stand
+darin, und seine Punkte aus jenem Spieltag landeten auf der Bank des neuen
+Besitzers. Wer abgegeben wurde, fehlte umgekehrt.
+
+Ein Rückblick auf einen abgeschlossenen Spieltag muss den Stand von damals
+benutzen. Die Bewegungen dafür stehen seit Migration 0096 mit Zeitstempel in
+`fantasy_roster_moves` — dieselbe Quelle, aus der auch der Transfers-Bereich
+lebt. `kaderAm` rechnet rückwärts: Ein **Zugang** nach dem Stichtag wird
+herausgenommen, ein **Abgang** wieder eingesetzt.
+
+Der Schlüssel ist **Manager und Spieler**, nicht der Spieler allein. Ein Trade
+ist für den einen ein Abgang und für den anderen ein Zugang, beide zur selben
+Zeit; über den Spieler allein hebt sich das gegenseitig auf.
+
+**Der Stichtag ist „letzter Anpfiff plus zwei Stunden".** Eine echte Abpfiffzeit
+liefert keine der beiden Quellen; zwei Stunden liegen bei jedem Spiel auf der
+sicheren Seite, und dieselbe Annahme steht serverseitig schon in
+`fantasy_trade_frei_ab`.
+
+Ohne Bewegungen bleibt es der heutige Kader — für einen laufenden Spieltag
+genau richtig.
+
+### Die Vorschau trägt wieder Farbe
+
+Die MatchUp-Karte war vor dem Anpfiff ganz ohne Hauch, nach der Regel „Farbe
+nur, wo etwas ansteht": Grün heißt in dieser App „hier läuft etwas", und
+Samstag läuft noch nichts. Auf dem Schirm war sie damit die **einzige graue
+Karte zwischen lauter Zuständen** — gemeldet als „zu langweilig".
+
+Auf Ansage wieder eingefärbt, in derselben Stärke wie ein beendeter Spieltag
+(10 %). Die beiden verwechselt trotzdem niemand: Marke („Vorschau" gegen
+„Beendet"), Punktestand und Balken unterscheiden sie deutlicher, als ein
+fehlender Hauch es je getan hat. **Die Regel bleibt für Flächen und Ränder;
+für den Hauch einer Karte, die ohnehin zum Bereich gehört, war sie zu streng.**
+
 ### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
 
 Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;
