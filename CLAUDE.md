@@ -2899,6 +2899,43 @@ farbige Ränder — auf einem Schirm, von dem es kein Bild gab. Das ist kein
 Zufall; es ist die Regel, die in dieser Datei an einem halben Dutzend Stellen
 steht.
 
+### „Seit 34 Spielen rot gesperrt" — derselbe Namensfehler, zweite Stelle
+
+Gemeldet: *„Lukas Pinckert ist seit 34 Spielen rot gesperrt? Glaube nicht, dass
+das stimmt."* Stimmte auch nicht — er hat an Spieltag 1 volle 90 Minuten
+gespielt. In `player_absences` stand eine Rotsperre vom 29.10.2025 **ohne
+Enddatum**; Sportmonks hat sie nie geschlossen.
+
+Genau dafür gibt es `ueberholt`: Die Sicht vergleicht den Beginn eines Ausfalls
+mit dem letzten Einsatz aus **unseren eigenen** Minuten und wirft Meldungen weg,
+die unsere Daten widerlegen. Bei ihm griff das nicht — die Sicht verband
+`player_match_stats` und `fixtures` über `f.home_name = p.club`, also
+buchstabengenau. Sein Verein heißt im Kader „SV 07 Elversberg" und im
+Spielplan „Elversberg".
+
+**Das ist derselbe Fehler wie 0108, nur an einer anderen Stelle.** Beim
+Aufräumen damals hatte ich die *Funktionen* durchgesehen — und die *Sichten*
+nicht. Nachgezählt waren es zwei: `player_absences_v` und
+`stats_widersprueche`. Die zweite ist besonders ärgerlich: eine Wache, die
+genau die Fälle nicht sieht, die eine andere Wache schon einmal übersehen hat.
+
+**Und eine zweite, unabhängige Regel** (0112): Eine **Sperre** aus einer
+früheren Saison ist keine mehr. Eine Rotsperre läuft über ein bis drei Spiele,
+nie über zehn Monate und einen Saisonwechsel. Die Minutenprüfung konnte den
+zweiten Fall (Felix Götze, seit 30.10.2025, 32 Spiele) nicht widerlegen, weil er
+in dieser Saison gar nicht gespielt hat.
+
+**Verletzungen bleiben davon unberührt.** Ein Kreuzbandriss vom Oktober läuft im
+August durchaus noch; zwölf der aktuellen Meldungen sind genau das. Sie pauschal
+zu verwerfen hieße, richtige Auskünfte gegen falsche zu tauschen.
+
+Der Saisonstart ist nicht hartkodiert, sondern der früheste Anpfiff der jüngsten
+Saison im Spielplan.
+
+Ergebnis: 11 von 81 Meldungen fallen jetzt heraus (vorher 8) — drei Sperren,
+acht Verletzungen. Beides sind **Sichten**, kein App-Code: Die Korrektur wirkt
+ohne neuen Build.
+
 ### Der Rückblick schneidet am Abpfiff ab
 
 Gemeldet: *„SFV03 hatte keine 230 Punkte auf der Bank."* Stimmt — der Rückblick
