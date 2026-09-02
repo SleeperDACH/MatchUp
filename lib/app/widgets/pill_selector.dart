@@ -19,11 +19,17 @@ class PillChip extends StatelessWidget {
     this.trailing,
     this.centered = false,
     this.outlined = false,
+    this.gedaempft = false,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+
+  /// **Da, aber nicht wählbar.** Gedämpft statt weggelassen: „geht nicht" ist
+  /// ein anderer Zustand als „gibt es nicht", und wer zählt, soll auf
+  /// dieselbe Zahl kommen wie die Regel.
+  final bool gedaempft;
 
   /// Optionales Symbol oder Wappen vor der Beschriftung.
   final Widget? leading;
@@ -43,6 +49,15 @@ class PillChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    if (gedaempft) {
+      // Halb durchsichtig, aber weiterhin antippbar — der Tipp erklärt dann,
+      // warum es nicht geht.
+      return Opacity(opacity: 0.38, child: _pille(context, scheme));
+    }
+    return _pille(context, scheme);
+  }
+
+  Widget _pille(BuildContext context, ColorScheme scheme) {
     return Material(
       color: selected
           ? MatchUpColors.green.withValues(alpha: 0.16)
@@ -65,7 +80,11 @@ class PillChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(11),
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-              leading == null ? 14 : 9, 8, trailing == null ? 14 : 9, 8),
+            leading == null ? 14 : 9,
+            8,
+            trailing == null ? 14 : 9,
+            8,
+          ),
           child: Row(
             mainAxisSize: centered ? MainAxisSize.max : MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,

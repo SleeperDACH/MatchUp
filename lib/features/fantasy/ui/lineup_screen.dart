@@ -19,6 +19,7 @@ import 'club_badge.dart';
 import 'free_agency_screen.dart';
 import 'pitch_painter.dart';
 import 'player_profile_sheet.dart';
+import '../logic/formation_luecke.dart';
 
 /// Aufstellung als Fußballfeld: Startelf je Spieltag visuell auf dem Platz
 /// wählen. Oben Chips für gültige Formationen (flexibel, Min/Max je Position
@@ -640,14 +641,17 @@ class _FormationChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int avail(PlayerPosition pos) => (byPos[pos] ?? const []).length;
-    final formations = [
-      for (final fm in roster.validFormations())
-        if (fm.$1 <= avail(PlayerPosition.def) &&
-            fm.$2 <= avail(PlayerPosition.mid) &&
-            fm.$3 <= avail(PlayerPosition.fwd))
-          fm,
-    ];
+    final imKader = {
+      for (final p in PlayerPosition.values) p: (byPos[p] ?? const []).length,
+    };
+    String? fehlt((int, int, int) fm) => formationLuecke(fm, imKader: imKader);
+
+    // **Nicht spielbare Formationen verschwinden nicht, sie stehen gedämpft
+    // da.** Vorher waren sie schlicht weg — und wer sie zählt, kommt auf
+    // sieben statt neun und hält das für einen Fehler. Ein Zustand „geht
+    // nicht" muss sich von „gibt es nicht" unterscheiden; das ist dieselbe
+    // Regel, an der in dieser App schon mehrfach etwas hing.
+    final formations = roster.validFormations();
     if (formations.length < 2) return const SizedBox.shrink();
     return SizedBox(
       height: 48,
@@ -661,12 +665,30 @@ class _FormationChips extends StatelessWidget {
               // `PillChip` statt `ChoiceChip`: Material-Auswahlelemente ziehen
               // ihre Auswahlfarbe aus `secondaryContainer`, und aus dem grünen
               // Seed wird das ein stumpfes Oliv, das zu nichts sonst in der
-              // App passt (siehe CLAUDE.md). Fällt mit elf Formationen noch
+              // App passt (siehe CLAUDE.md). Fällt mit neun Formationen noch
               // mehr auf als mit acht.
               child: PillChip(
                 label: '${fm.$1}-${fm.$2}-${fm.$3}',
+                gedaempft: fehlt(fm) != null,
                 selected: fm == current,
-                onTap: () => onSelected(fm),
+                // **Der Tipp erklärt, statt nichts zu tun.** Ein gedämpftes
+                // Element, das auf Berührung schweigt, ist genauso ratlos
+                // machend wie ein fehlendes.
+                onTap: () {
+                  final grund = fehlt(fm);
+                  if (grund == null) {
+                    onSelected(fm);
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Für ${fm.$1}-${fm.$2}-${fm.$3} '
+                        'fehlt dir $grund.',
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
         ],

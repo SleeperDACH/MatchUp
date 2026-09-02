@@ -43,7 +43,10 @@ auffielen, als der 1. Spieltag wirklich gespielt wurde.
   oben die freien, darunter die vergebenen mit dem Team des Besitzers und einem
   Trade-Knopf. Sortiert nach den Punkten der laufenden Saison, die auch in der
   Zeile stehen. Die separate Spielersuche entfällt damit.
-- **Drei neue Formationen** (von acht auf elf), darunter 4-2-4.
+- **Eine neue Formation: 4-2-4** — von acht auf neun. (Kurz waren es elf,
+  3-3-4 und 3-6-1 sind auf Wunsch wieder raus.) Wie viele davon *du* stellen
+  kannst, hängt an deinem Kader: Formationen, für die dir Spieler fehlen,
+  stehen gedämpft da und sagen beim Antippen, was fehlt.
 - **Das Draft-Board bleibt nach dem Draft erreichbar** — wer nachsehen will,
   wer wen wann gezogen hat, kommt wieder hin.
 

@@ -1809,6 +1809,26 @@ Die Spannen standen im FPL-Zuschnitt (ABW 3–5, MF 2–5, ST 1–3) und ließen
 elf — neu: 3-3-4, 4-2-4, 3-6-1. Zwei davon sind auf ausdrücklichen Wunsch
 wieder weg (0086), 4-2-4 ist geblieben. Stand: **neun**.
 
+**Nicht spielbare Formationen verschwinden nicht mehr.** Gemeldet: *„Es fehlen
+Aufstellungen. In den Patchnotes steht was von 8 auf 11, aber ich sehe nur 7."*
+
+Die Sieben war richtig gezählt: Sein Kader hatte vier Mittelfeldspieler, und die
+Auswahl ließ stillschweigend weg, wofür die Spieler fehlten — 3-5-2 und 4-5-1.
+Weglassen war der Fehler. **„Geht nicht" ist ein anderer Zustand als „gibt es
+nicht"**; wer zählt, kommt sonst auf eine andere Zahl als die Regel und hält das
+für einen Fehler. Sie stehen jetzt gedämpft da und sagen beim Antippen, was
+fehlt („Für 3-5-2 fehlt dir 1 Mittelfeldspieler"). Ein gedämpftes Element, das
+auf Berührung schweigt, wäre genauso ratlos machend wie ein fehlendes.
+
+Die Regel dazu steht in `logic/formation_luecke.dart`, damit sie prüfbar ist —
+der Test rechnet **genau den gemeldeten Kader** nach: neun Formationen, sieben
+davon spielbar, und die zwei gesperrten sind namentlich 3-5-2 und 4-5-1.
+
+**Die Elf in der Patchnote war schlicht falsch.** Sie stand hier im selben
+Abschnitt richtig („von acht auf neun"), und ich habe sie beim Schreiben der
+Notes aus dem Gedächtnis genommen statt sie nachzulesen. Korrigiert in
+`CHANGELOG.md` und in der veröffentlichten Seite.
+
 **Dabei kam die Grenze des Modells zum Vorschein.** 3-6-1 ließ sich sauber über
 die Spanne entfernen — `midMax` zurück auf 5, es ist die einzige Formation mit
 sechs Mittelfeldspielern. 3-3-4 nicht: Es braucht dasselbe `fwdMax` 4 wie
