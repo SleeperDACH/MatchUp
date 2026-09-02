@@ -1031,7 +1031,7 @@ class _NewsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transfers = ref.watch(newsProvider('transfers'));
+    final transfers = ref.watch(newsProvider(homeNewsThema));
     return transfers.when(
       loading: () => const SizedBox.shrink(),
       error: (_, _) => const SizedBox.shrink(),

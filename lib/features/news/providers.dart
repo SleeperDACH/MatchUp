@@ -5,6 +5,14 @@ import '../../core/config/app_config.dart';
 import 'models/news_item.dart';
 import 'models/transfer_deal.dart';
 
+/// Das Thema, das der Homescreen unten zeigt.
+///
+/// Steht hier und nicht im Homescreen, weil auch der Startbildschirm darauf
+/// wartet ([homeBereitProvider]). Zwei Stellen mit demselben Zeichenketten-
+/// literal wären genau die Art Kopplung, die man erst merkt, wenn sie bricht:
+/// Der Schirm wartete dann auf ein Thema, das niemand anzeigt.
+const homeNewsThema = 'transfers';
+
 /// Bundesliga-News je Thema (`transfers` oder `injuries`) über die Edge
 /// Function `news` (RSS-Proxy + Cache). Leer ohne Server-Verbindung.
 final newsProvider =

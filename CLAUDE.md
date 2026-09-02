@@ -4016,6 +4016,49 @@ Feinschliff sofort wieder auseinandergelaufen.
 Angesehen wird der Tab über `test/favoriten_vorschau_test.dart`; wie bei den
 anderen beiden Vorschauen läuft der Bildvergleich nur mit `--update-goldens`.
 
+### Der Ladeschirm wartet jetzt auf den ganzen Homescreen
+
+Gewünscht: *„Bitte verlänger den Ladescreen der App, bis das Match über den
+Ligen geladen hat und die News da sind."*
+
+`homeBereitProvider` wartete auf **Ligen und Tipprunden** — mit einer
+ausdrücklich hingeschriebenen Begründung: „News, Favoritenspiele und offene
+Tipps kommen nach und füllen sich sichtbar auf — darauf zu warten hieße, den
+Startschirm an die langsamste Quelle zu hängen."
+
+Das Argument stimmt technisch und war in der Sache trotzdem falsch. „Füllt
+sich sichtbar auf" ist aus der Nähe eine Beschreibung, aus der Entfernung ein
+Symptom: Der Schirm blendete ab, und **danach** wuchsen die Kopfkarte mit dem
+nächsten Spiel und der Newsblock nach. Der Screen sprang unter dem Daumen —
+und zwar an der auffälligsten Stelle, ganz oben.
+
+Jetzt hängt der Schirm an allen vier Quellen, die den Homescreen von oben nach
+unten füllen: `favoritenSpieleProvider` (die Kopfkarte),
+`myFantasyLeaguesProvider`, `myRoundsProvider` und `newsProvider`.
+
+Drei Dinge, die dabei zusammenpassen mussten:
+
+- **`isLoading` ist bei einem Fehler falsch.** Eine Quelle, die scheitert, hält
+  den Schirm also nicht fest — sie ist fertig, nur eben ohne Inhalt. Ohne diese
+  Eigenschaft stünde der Schirm bei jedem Netzausfall bis zur Notbremse.
+- **Die Notbremse musste mit.** Sie stand auf 8 Sekunden, als nur zwei
+  Datenbankabfragen gewartet wurden. Die News gehen über eine Edge Function
+  nach draußen; kalt dauert das auch mal ein paar Sekunden. Eine Bremse, die
+  kürzer ist als ein realistisch langsamer Abruf, macht aus dem Notfall den
+  Normalfall — die Verlängerung wäre wirkungslos geblieben. Jetzt 12 Sekunden,
+  und ein Tipp überspringt weiterhin sofort.
+- **Das Newsthema steht nur noch einmal da** (`homeNewsThema` in
+  `features/news/providers.dart`). Vorher hätten Schirm und Homescreen je ein
+  eigenes `'transfers'` getragen — genau die Kopplung, die man erst merkt, wenn
+  sie bricht: Der Schirm wartete dann auf ein Thema, das niemand anzeigt.
+
+Nebenwirkung, und eine gute: Die vier Abfragen laufen jetzt schon während des
+Intros und liegen fertig im Cache, wenn der Homescreen zum ersten Mal baut.
+
+`test/ladeschirm_wartet_test.dart` prüft **jede** Quelle einzeln — sonst könnte
+eine wieder herausfallen, ohne dass es auffällt — dazu den Fehlerfall und die
+beiden Abkürzungen (ohne Server, ohne Anmeldung).
+
 ## Startbildschirm
 
 Zwei Schirme hintereinander, und nur der zweite lässt sich animieren:

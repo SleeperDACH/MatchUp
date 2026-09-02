@@ -7,30 +7,50 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../features/auth/providers.dart';
 import '../../features/fantasy/providers.dart';
+import '../../features/news/providers.dart';
 import '../../features/tippspiel/providers.dart';
+import '../home_favorites.dart';
 import '../theme.dart';
 import 'matchup_chevron.dart';
 
 /// „Der Homescreen hat sein Nötigstes geladen."
 ///
-/// Bewusst nur **Ligen und Tipprunden**: sie bestimmen, ob der Schirm etwas
-/// zu zeigen hat. News, Favoritenspiele und offene Tipps kommen nach und
-/// füllen sich sichtbar auf — darauf zu warten hieße, den Startschirm an die
-/// langsamste Quelle zu hängen.
+/// Gewartet wird auf **alles, was den Schirm von oben nach unten füllt**:
+/// die Kopfkarte mit dem nächsten Spiel des Favoriten
+/// ([favoritenSpieleProvider]), Ligen und Tipprunden — und die News ganz
+/// unten.
+///
+/// Vorher standen hier nur Ligen und Tipprunden, mit der Begründung, man
+/// dürfe den Startschirm nicht an die langsamste Quelle hängen. Das Argument
+/// stimmt technisch und war in der Sache trotzdem falsch: Der Schirm blendete
+/// ab, und **dann** wuchsen Kopfkarte und Newsblock nach — der Screen sprang
+/// unter dem Daumen. Gewünscht: *„Bitte verlänger den Ladescreen der App, bis
+/// das Match über den Ligen geladen hat und die News da sind."*
+///
+/// `isLoading` ist bei einem **Fehler** falsch. Eine Quelle, die scheitert,
+/// hält den Schirm also nicht fest — sie ist fertig, nur eben ohne Inhalt.
+/// Gegen echtes Hängen steht die Notbremse in [MatchUpSplash].
+///
+/// Ganz nebenbei ist der Aufbau danach schneller: Die vier Abfragen laufen
+/// schon während des Intros und liegen fertig im Cache, wenn der Homescreen
+/// zum ersten Mal baut.
 ///
 /// Ohne Server oder ohne Anmeldung gibt es nichts zu laden; dann sofort wahr.
 final homeBereitProvider = Provider<bool>((ref) {
   if (!AppConfig.isSupabaseConfigured) return true;
   if (ref.watch(currentUserProvider) == null) return true;
   return !ref.watch(myFantasyLeaguesProvider).isLoading &&
-      !ref.watch(myRoundsProvider).isLoading;
+      !ref.watch(myRoundsProvider).isLoading &&
+      !ref.watch(favoritenSpieleProvider).isLoading &&
+      !ref.watch(newsProvider(homeNewsThema)).isLoading;
 });
 
 /// Animierter Startbildschirm: die grüne Markenhälfte fährt von oben ein, die
 /// rote von unten, beide treffen sich in der Mitte, dann erscheint die
 /// Wortmarke. Danach **bleibt der Schirm stehen**, bis der Homescreen
-/// geladen hat ([homeBereitProvider]) — er verdeckt also das Aufbauen statt
-/// nach fester Zeit auf einen halb leeren Screen abzublenden.
+/// vollständig geladen hat ([homeBereitProvider]) — er verdeckt also das
+/// Aufbauen statt nach fester Zeit auf einen halb leeren Screen abzublenden,
+/// der sich danach unter dem Daumen weiterfüllt.
 ///
 /// Der Startschirm hängt damit an fremden Daten. Gegen einen ewig stehenden
 /// Schirm (Netz weg, Abfrage hängt) gibt es [_maximaleWartezeit]; danach wird
@@ -50,7 +70,13 @@ class MatchUpSplash extends ConsumerStatefulWidget {
 class _MatchUpSplashState extends ConsumerState<MatchUpSplash>
     with TickerProviderStateMixin {
   /// Notbremse, falls die Daten nie ankommen.
-  static const _maximaleWartezeit = Duration(seconds: 8);
+  ///
+  /// Seit die News mit dazugehören, hängt der Schirm an einem Abruf, der über
+  /// eine Edge Function nach draußen geht — kalt dauert der auch mal ein paar
+  /// Sekunden. Die Bremse muss deshalb länger sein als ein realistisch
+  /// langsamer Abruf, sonst wird aus dem Notfall der Normalfall und die
+  /// Verlängerung wirkungslos. Wem es zu lang ist, der tippt einmal.
+  static const _maximaleWartezeit = Duration(seconds: 12);
 
   late final AnimationController _intro = AnimationController(
     vsync: this,
