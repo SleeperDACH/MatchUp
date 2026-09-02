@@ -1139,6 +1139,27 @@ trug am wenigsten.**
 - Vier Farbflächen sagten den Modus an. Siehe oben: aus der Fläche ist ein
   Hauch in der Ecke geworden.
 
+**Hinter der Kopfkarte liegt ein Stadion bei Flutlicht**
+(`assets/images/spiel_bg.jpg`, aus dem Bild des Nutzers auf 1400 px verkleinert
+— 293 auf 107 KB). Drei Entscheidungen daran:
+
+- **Nur im dunklen Modus.** Das Foto ist fast schwarz; im hellen Modus stünde
+  dunkler Text darauf.
+- **Der untere Rand des Bildes** (`Alignment.bottomCenter`). In der Mitte ist
+  es fast schwarz — dort wäre es dasselbe wie kein Bild. Unten liegt der
+  beleuchtete Rasen mit Mittelkreis und Linien.
+- **Der Vereinsfarben-Verlauf deckt nicht mehr voll**: 60 % an den Rändern,
+  30 % in der Mitte, wo die Anstoßzeit steht. Bei den ursprünglichen 82/62 war
+  vom Bild nichts zu sehen.
+
+**Und die Lehre daraus, die Zeit gekostet hat: Bild-Assets erscheinen in den
+Golden-Vorschauen nicht.** Ein `Image`/`DecorationImage` bleibt dort leer — das
+Dekodieren ist echtes I/O und kommt in der Fake-Async-Zone von `testWidgets`
+nicht zurück. Ich habe drei Runden lang Deckkraft und Anschnitt am Golden
+beurteilt, auf dem gar kein Bild war. **Wer ein Bild einbaut, prüft es am
+Gerät** (`xcrun simctl io <udid> screenshot`), nicht in der Vorschau. Und ein
+neues Asset braucht einen **Neustart von `flutter run`**, kein Hot Restart.
+
 **Was die Kopfkarte bewusst *nicht* trägt: die eigenen Tipps.** Sie hatte
 einen Sockel, der je Tipprunde eine Zeile zeigte („Tipptest 1:9",
 „BuLi 26/27 2:0"), samt Weg in den jeweiligen Tippen-Tab. Mit zwei Runden

@@ -498,6 +498,21 @@ class _NaechstesSpiel extends ConsumerWidget {
           child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
+              // **Das Stadion bei Flutlicht liegt hinter der Karte.**
+              // Nur im dunklen Modus: Das Bild ist fast schwarz, im hellen
+              // Modus stünde dunkler Text darauf.
+              image: dark
+                  ? const DecorationImage(
+                      image: AssetImage('assets/images/spiel_bg.jpg'),
+                      fit: BoxFit.cover,
+                      // **Der untere Rand des Bildes.** In der Mitte ist das
+                      // Foto fast schwarz (dunkle Ränge) — dort wäre es
+                      // dasselbe wie keins. Unten liegt der beleuchtete Rasen
+                      // mit Mittelkreis und Linien, und der ist zu erkennen,
+                      // ohne dass er die Karte laut macht.
+                      alignment: Alignment.bottomCenter,
+                    )
+                  : null,
               // **Die Farben der beiden Vereine**, von links und rechts
               // hereingezogen — aber nur als Andeutung an den Rändern. Die
               // eigentliche Farbe sitzt im Hof hinter den Wappen
@@ -508,14 +523,24 @@ class _NaechstesSpiel extends ConsumerWidget {
               // sauber lag. So gehört die Farbe zum Verein, nicht zur Karte.
               // Die Mitte bleibt in jedem Fall neutral — dort steht die
               // Uhrzeit, und die soll nicht auf Farbe liegen.
+              //
+              // **Über dem Bild deckt sie nicht mehr voll**, sonst wäre das
+              // Bild umsonst: an den Rändern 60 %, in der Mitte 30 % — dort
+              // steht die Anstoßzeit, und die braucht ruhigen Grund. Das Bild
+              // ist ohnehin fast schwarz; mehr Schleier hieße, es gar nicht
+              // erst einzubauen.
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
-                  _heroGrund(scheme, dark, tonHeim),
-                  _heroGrund(scheme, dark, null),
-                  _heroGrund(scheme, dark, null),
-                  _heroGrund(scheme, dark, tonAusw),
+                  _heroGrund(scheme, dark, tonHeim)
+                      .withValues(alpha: dark ? 0.60 : 1),
+                  _heroGrund(scheme, dark, null)
+                      .withValues(alpha: dark ? 0.30 : 1),
+                  _heroGrund(scheme, dark, null)
+                      .withValues(alpha: dark ? 0.30 : 1),
+                  _heroGrund(scheme, dark, tonAusw)
+                      .withValues(alpha: dark ? 0.60 : 1),
                 ],
                 stops: const [0.0, 0.30, 0.70, 1.0],
               ),
