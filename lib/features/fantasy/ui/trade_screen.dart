@@ -1089,6 +1089,17 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+/// Sucht einen Manager in der Ligaliste. `null` = Liste noch nicht geladen
+/// **oder** der Mann ist nicht mehr in der Liga — die Karte behandelt beides
+/// gleich: Sie behauptet dann keinen Namen, statt einen falschen zu raten.
+FantasyManager? managerMit(List<FantasyManager>? liste, String id) {
+  if (liste == null) return null;
+  for (final m in liste) {
+    if (m.userId == id) return m;
+  }
+  return null;
+}
+
 /// Wiederverwendbare Trade-Karte (Chat & „Angebote"-Tab): lädt Angebot +
 /// Positionen selbst und zeigt Status; der Empfänger kann annehmen/ablehnen/
 /// kontern, der Absender zurückziehen. [inList] = volle Breite (Listen-Kontext)
@@ -1154,15 +1165,8 @@ class TradeCard extends ConsumerWidget {
       List<TradeItem> items) {
     final league = ref.read(draftLeagueProvider(trade.leagueId)).valueOrNull;
     final managers =
-        ref.read(fantasyManagersProvider(trade.leagueId)).valueOrNull ??
-            const <FantasyManager>[];
-    FantasyManager? sender;
-    for (final m in managers) {
-      if (m.userId == trade.fromManager) {
-        sender = m;
-        break;
-      }
-    }
+        ref.read(fantasyManagersProvider(trade.leagueId)).valueOrNull;
+    final sender = managerMit(managers, trade.fromManager);
     if (league == null || sender == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Kontern gerade nicht möglich.')));
@@ -1179,7 +1183,7 @@ class TradeCard extends ConsumerWidget {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => TradeComposeScreen(
         league: league,
-        partner: sender!,
+        partner: sender,
         initialOffer: myGive,
         initialRequest: theirGive,
         counterOf: trade.id,
@@ -1226,7 +1230,22 @@ class TradeCard extends ConsumerWidget {
         // Liga (Name + fürs Kontern) & Manager laden.
         final leagueName =
             ref.watch(draftLeagueProvider(trade.leagueId)).valueOrNull?.name;
-        ref.watch(fantasyManagersProvider(trade.leagueId));
+        final managers =
+            ref.watch(fantasyManagersProvider(trade.leagueId)).valueOrNull;
+        // **Die Gegenseite.** Bei einem eingehenden Angebot ist das der
+        // Absender, bei einem eigenen der Empfänger. Genau das fehlte: Die
+        // Karte sagte „Trade-Angebot" und den Liganamen — aber nicht, mit wem
+        // man da eigentlich handelt.
+        final gegen = managerMit(
+            managers, incoming ? trade.fromManager : trade.toManager);
+        // Ohne Namen bleibt es beim alten Kopf: lieber die neutrale Marke als
+        // eine leere Zeile, wo ein Mensch stehen sollte.
+        final kopf = gegen == null
+            ? 'Trade-Angebot'
+            : (incoming ? 'Von ${gegen.display}' : 'An ${gegen.display}');
+        final untertitel = gegen == null
+            ? leagueName
+            : ['Trade-Angebot', ?leagueName].join(' · ');
 
         return _shell(
           context,
@@ -1237,17 +1256,32 @@ class TradeCard extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.swap_horiz, size: 18, color: scheme.primary),
-                  const SizedBox(width: 6),
+                  // Das Gesicht der Gegenseite statt eines Piktogramms — in
+                  // dieser App steht überall ein Avatar für einen Menschen.
+                  if (gegen != null)
+                    AppAvatar(
+                      imageUrl: gegen.avatarUrl,
+                      emoji: gegen.avatarEmoji,
+                      colorHex: gegen.avatarColor,
+                      fallbackText: gegen.display,
+                      seed: gegen.userId,
+                      size: 28,
+                    )
+                  else
+                    Icon(Icons.swap_horiz, size: 18, color: scheme.primary),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('Trade-Angebot',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        if (leagueName != null)
-                          Text(leagueName,
+                        Text(kopf,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        if (untertitel != null)
+                          Text(untertitel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context)

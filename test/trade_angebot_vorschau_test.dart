@@ -18,6 +18,10 @@ import 'support/schrift.dart';
 /// jetzt, aber ohne Verein, ohne Position und ohne Wiedererkennung. Hier steht
 /// das eingehende Angebot (mit Annehmen/Ablehnen) neben dem selbst gestellten;
 /// auf dem Gerät sieht man immer nur eins von beiden.
+///
+/// Seit dem Bericht *„Wenn man einen Trade bekommt, sieht man in der Box
+/// leider nicht, von wem der kommt"* trägt der Kopf die **Gegenseite**:
+/// Avatar plus „Von …" beziehungsweise „An …".
 FantasyPlayer _spieler(String id, String name, PlayerPosition pos, String club) =>
     FantasyPlayer(
       id: id,
@@ -111,8 +115,15 @@ void main() {
               )),
           playerPoolProvider.overrideWith((ref) async => pool),
           clubIconsProvider.overrideWith((ref) async => const {}),
-          fantasyManagersProvider
-              .overrideWith((ref, id) => Stream.value(const [])),
+          fantasyManagersProvider.overrideWith((ref, id) => Stream.value(const [
+                FantasyManager(userId: 'ich', username: 'SFV03'),
+                FantasyManager(
+                    userId: 'gegner',
+                    username: 'eric',
+                    teamName: 'Erics Elf',
+                    avatarEmoji: '🦊',
+                    avatarColor: '#F2A93B'),
+              ])),
           tradeDetailProvider.overrideWith((ref, id) async => details[id]),
         ],
         child: MaterialApp(

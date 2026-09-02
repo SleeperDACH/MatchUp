@@ -1960,6 +1960,41 @@ ist ein eigener Zustand, nicht dasselbe wie „nichts dabei". Die Vorschau
 eingehendes Angebot (mit Annehmen/Ablehnen) neben einem selbst gestellten —
 auf dem Gerät sieht man immer nur eins von beiden.
 
+### Die Trade-Karte sagt, mit wem man handelt
+
+Gemeldet: *„Wenn man einen Trade bekommt, sieht man in der Box leider nicht,
+von wem der kommt. Das bitte einbauen."*
+
+Der Kopf trug ein Tauschsymbol, „Trade-Angebot" und den Liganamen — drei
+Auskünfte, die man alle schon hat, wenn man die Karte überhaupt vor sich hat.
+Die eine Angabe, die eine Entscheidung trägt („annehmen oder nicht?"), fehlte:
+**wer**.
+
+Verschärft hat es der Umstand, dass dieselbe `TradeCard` an **drei** Stellen
+hängt — in der Direktnachricht, im „Angebote"-Tab und in den Transfers. Nur im
+Chat ließ sich der Absender aus dem Gesprächspartner erschließen; in den beiden
+Listen stand die Auskunft nirgends. Beim Bauen fällt das nicht auf, weil man
+die Karte üblicherweise im Chat testet, wo der Kontext die Lücke füllt.
+
+Jetzt trägt der Kopf die **Gegenseite**: Avatar plus „Von Erics Elf"
+beziehungsweise „An Erics Elf" — bei einem eingehenden Angebot der Absender,
+beim eigenen der Empfänger. „Trade-Angebot" und Liganame rücken als
+Unterzeile darunter. Der Avatar ersetzt das Tauschsymbol, weil in dieser App
+überall ein Avatar für einen Menschen steht.
+
+Der Name kommt aus `fantasyManagersProvider` und ist der **Ligaanzeigename**
+(`display`: Teamname, sonst Nutzername) — dieselbe Auflösung wie in Tabelle,
+Kader und Chat.
+
+Und der Fall, den man leicht übersieht: Steht der Mann **nicht** in der Liste —
+Liste noch nicht geladen, oder er hat die Liga verlassen —, fällt der Kopf auf
+die alte neutrale Marke zurück. Keinen Namen raten, keine leere Zeile, wo ein
+Mensch stehen sollte. `managerMit()` liefert dafür bewusst für beide Fälle
+`null`; `test/trade_absender_test.dart` fragt alle drei Zustände ab.
+
+Nebenbei mitgenommen: `_counter` machte dieselbe Managersuche noch einmal von
+Hand. Sie steht jetzt einmal da.
+
 ### „Neuer Trade" — der Tausch steht jetzt oben
 
 Der Schirm zeigte zwei scrollende Kaderspalten und sonst nichts. Drei Befunde:
