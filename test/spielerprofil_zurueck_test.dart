@@ -5,7 +5,6 @@ import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/auth/providers.dart';
-import 'package:matchup/features/fantasy/logic/aufstellungs_prognose.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/providers.dart';

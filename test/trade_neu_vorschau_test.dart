@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/features/auth/providers.dart';
+import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/models/player_absence.dart';
@@ -84,6 +85,21 @@ void main() {
                 createdAt: DateTime(2026).toIso8601String(),
               )),
           playerPoolProvider.overrideWith((ref) async => [...meine, ...seine]),
+          // Punkte gehören ins Bild: Sie stehen seit dem Umbau in jeder Zeile
+          // und als Summe im Kopf — ohne sie sähe man den halben Schirm nicht.
+          seasonStatsProvider.overrideWith((ref) async => {
+                1: {
+                  'm1': const PlayerMatchStats(minutes: 90, played: true, cleanSheet: true, saves: 4),
+                  'm2': const PlayerMatchStats(minutes: 90, played: true, cleanSheet: true, tacklesWon: 3),
+                  'm4': const PlayerMatchStats(minutes: 90, played: true, goals: 1, assists: 1),
+                  'm5': const PlayerMatchStats(minutes: 76, played: true, assists: 1, keyPasses: 2),
+                  'm6': const PlayerMatchStats(minutes: 90, played: true, goals: 2),
+                  's1': const PlayerMatchStats(minutes: 90, played: true, saves: 2, goalsConceded: 1),
+                  's3': const PlayerMatchStats(minutes: 90, played: true, goals: 1, keyPasses: 3),
+                  's4': const PlayerMatchStats(minutes: 45, played: true),
+                  's5': const PlayerMatchStats(minutes: 90, played: true, goals: 1, assists: 2),
+                },
+              }),
           clubIconsProvider.overrideWith((ref) async => const {}),
           // **Ein Verletzter und ein Gesperrter im Bild.** Das Symbol lag
           // vorher oben rechts auf dem Wappen und überschnitt sich mit ihm

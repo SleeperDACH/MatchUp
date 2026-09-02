@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme.dart';
+import '../../../app/typografie.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../../messaging/providers.dart';
 import '../../messaging/ui/conversation_screen.dart';
+import '../logic/fantasy_scoring_engine.dart';
 import '../logic/playoff.dart';
+import '../logic/saison_punkte.dart';
 import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 import '../providers.dart';
@@ -459,6 +463,15 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
 
           final mine = myId == null ? <FantasyPlayer>[] : playersOf(myId);
           final theirs = playersOf(widget.partner.userId);
+          // **Die Zahl, an der ein Angebot hängt.** Ohne sie ist der Schirm
+          // eine Namensliste: Was man hergibt und was man bekommt, stand
+          // nirgends — man musste jeden Spieler einzeln öffnen. Gerechnet mit
+          // der Wertung dieser Liga, wie in der Free Agency.
+          final punkte = saisonPunkte(
+            saison: ref.watch(seasonStatsProvider).valueOrNull ?? const {},
+            spieler: byId,
+            regeln: widget.league.scoring,
+          );
           final offerSel = mine.where((p) => _offer.contains(p.id)).toList();
           final requestSel =
               theirs.where((p) => _request.contains(p.id)).toList();
@@ -469,7 +482,10 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
             children: [
               // Was ist der Tausch? Steht jetzt oben und bleibt stehen.
               _Geschaeft(
-                  gebe: offerSel, bekomme: requestSel, clubIcons: clubIcons),
+                  gebe: offerSel,
+                  bekomme: requestSel,
+                  clubIcons: clubIcons,
+                  punkte: punkte),
               // Kapitelmarken statt farbiger Kopfkästen — dieselbe Gliederung
               // wie auf dem Startbildschirm.
               Row(
@@ -497,6 +513,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                         players: mine,
                         selected: _offer,
                         clubIcons: clubIcons,
+                        punkte: punkte,
                         onToggle: (id) => setState(() =>
                             _offer.contains(id) ? _offer.remove(id) : _offer.add(id)),
                         onProfil: (p) => showPlayerProfile(
@@ -514,6 +531,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                         players: theirs,
                         selected: _request,
                         clubIcons: clubIcons,
+                        punkte: punkte,
                         onToggle: (id) => setState(() => _request.contains(id)
                             ? _request.remove(id)
                             : _request.add(id)),
@@ -536,23 +554,12 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                 top: false,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: canSend
-                          ? () => _confirmAndSend(
-                              context, offerSel, requestSel, clubIcons)
-                          : null,
-                      icon: _sending
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.arrow_forward),
-                      // Die Zahlen standen hier, weil der Tausch sonst
-                      // nirgends zusammengefasst war. Das tut jetzt der Kopf.
-                      label: Text(_sending ? 'Sende …' : 'Angebot senden'),
-                    ),
+                  child: _SendeKnopf(
+                    laeuft: _sending,
+                    onPressed: canSend
+                        ? () => _confirmAndSend(
+                            context, offerSel, requestSel, clubIcons)
+                        : null,
                   ),
                 ),
               ),
@@ -865,34 +872,28 @@ class _Geschaeft extends StatelessWidget {
     required this.gebe,
     required this.bekomme,
     required this.clubIcons,
+    required this.punkte,
   });
 
   final List<FantasyPlayer> gebe;
   final List<FantasyPlayer> bekomme;
   final Map<String, String?> clubIcons;
 
+  /// Saisonpunkte je Spieler — im Kopf steht die **Summe je Seite**. Sie ist
+  /// die kürzeste Antwort auf „lohnt sich das?", und sie stand hier nicht.
+  final Map<String, double> punkte;
+
+  double _summe(List<FantasyPlayer> xs) =>
+      xs.fold<double>(0, (a, p) => a + (punkte[p.id] ?? 0));
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    if (gebe.isEmpty && bekomme.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
-        child: Row(
-          children: [
-            Icon(Icons.touch_app_outlined,
-                size: 16, color: scheme.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Spieler antippen — aus deinem Kader und aus seinem.',
-                style: TextStyle(
-                    fontSize: 12, color: scheme.onSurfaceVariant),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    // **Die Karte steht immer, auch leer.** Vorher stand an ihrer Stelle die
+    // Zeile „Spieler antippen — aus deinem Kader und aus seinem". Eine
+    // Anleitung, die dasteht, bis man sie befolgt hat, ist eine Zeile, die
+    // niemand ein zweites Mal liest; die beiden Seiten mit „nichts" sagen
+    // dasselbe, und sie sagen es auch noch, wenn erst eine Seite steht.
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 2),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -904,27 +905,53 @@ class _Geschaeft extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(child: _seite(context, gebe, scheme.primary, links: true)),
+          Expanded(
+              child: _seite(context, gebe, scheme.primary,
+                  links: true, summe: _summe(gebe))),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Icon(Icons.swap_horiz,
                 size: 18, color: scheme.onSurfaceVariant),
           ),
           Expanded(
-              child: _seite(context, bekomme, scheme.tertiary, links: false)),
+              child: _seite(context, bekomme, scheme.tertiary,
+                  links: false, summe: _summe(bekomme))),
         ],
       ),
     );
   }
 
   Widget _seite(BuildContext context, List<FantasyPlayer> spieler, Color farbe,
-      {required bool links}) {
+      {required bool links, required double summe}) {
     final scheme = Theme.of(context).colorScheme;
     if (spieler.isEmpty) {
       return Text('nichts',
           textAlign: links ? TextAlign.start : TextAlign.end,
           style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant));
     }
+    return Column(
+      crossAxisAlignment:
+          links ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _kacheln(context, spieler, links),
+        const SizedBox(height: 4),
+        Text(
+          '${formatPoints(summe)} Punkte',
+          style: TextStyle(
+            fontSize: Schrift.klein,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _kacheln(
+      BuildContext context, List<FantasyPlayer> spieler, bool links) {
+    final scheme = Theme.of(context).colorScheme;
     return Wrap(
       alignment: links ? WrapAlignment.start : WrapAlignment.end,
       spacing: 4,
@@ -956,6 +983,74 @@ class _Geschaeft extends StatelessWidget {
   }
 }
 
+/// **Der Knopf, der das Angebot abschickt.**
+///
+/// Er trug das Markengrün, das in dieser App auf sehr vielen Knöpfen steht —
+/// und damit sah die einzige Entscheidung dieses Schirms aus wie jede andere
+/// Schaltfläche. Jetzt ist er hell auf dunklem Grund: der stärkste Kontrast,
+/// den diese Oberfläche hat, ohne eine weitere Signalfarbe einzuführen. Grün
+/// heißt hier ohnehin „hier läuft etwas", und ein Angebot läuft erst, wenn es
+/// abgeschickt ist.
+class _SendeKnopf extends StatelessWidget {
+  const _SendeKnopf({required this.laeuft, required this.onPressed});
+
+  final bool laeuft;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final an = onPressed != null;
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: MatchUpColors.snow,
+          foregroundColor: MatchUpColors.base,
+          disabledBackgroundColor: scheme.surfaceContainerHigh,
+          disabledForegroundColor: scheme.onSurfaceVariant,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          // **Aus dem Theme abgeleitet, nicht neu gebaut.** Ein blankes
+          // `TextStyle` in einem Theme-Feld ersetzt den aufgelösten Stil und
+          // verliert dabei die Schriftfamilie — in der Vorschau standen hier
+          // schwarze Kästchen. Dieselbe Falle wie bei den Reitern und den
+          // Fantasy-Einstellungen.
+          textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: Schrift.titel,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (laeuft)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: MatchUpColors.base),
+              )
+            else
+              Icon(Icons.send_rounded,
+                  size: 18,
+                  color: an ? MatchUpColors.base : scheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            // Die Zahlen standen hier, weil der Tausch sonst nirgends
+            // zusammengefasst war. Das tut jetzt der Kopf.
+            Text(laeuft ? 'Sende …' : 'Angebot senden'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RosterColumn extends StatelessWidget {
   const _RosterColumn({
     required this.players,
@@ -963,11 +1058,15 @@ class _RosterColumn extends StatelessWidget {
     required this.clubIcons,
     required this.onToggle,
     required this.onProfil,
+    required this.punkte,
   });
 
   final List<FantasyPlayer> players;
   final Set<String> selected;
   final Map<String, String?> clubIcons;
+
+  /// Saisonpunkte je Spieler, nach der Wertung dieser Liga.
+  final Map<String, double> punkte;
   final ValueChanged<String> onToggle;
 
   /// **Der Tipp auf die Karte wählt aus** — deshalb braucht das Profil einen
@@ -1007,11 +1106,12 @@ class _RosterColumn extends StatelessWidget {
     // Dieselbe Karte wie in der Angebotsansicht — herausgeloest nach
     // spieler_kachel.dart, damit beide Stellen nicht auseinanderlaufen.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+      padding: const EdgeInsets.fromLTRB(8, 3, 8, 3),
       child: SpielerKachel(
         spieler: p,
         iconUrl: clubIcons[p.club],
         hervor: sel,
+        punkte: punkte[p.id],
         onTap: () => onToggle(p.id),
         onProfil: () => onProfil(p),
       ),

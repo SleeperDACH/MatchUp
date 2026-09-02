@@ -1931,18 +1931,52 @@ des Trade-Wegs:
 
 | Schirm | vorher | jetzt |
 |---|---|---|
-| Auswahl | die Karte (110 px) | dieselbe Karte |
-| Bestätigung vor dem Senden | Pillen mit Namen | dieselbe Karte, 58 px |
-| Angebotskarte | Komma-Satz | dieselbe Karte, 58 px |
+| Auswahl | die Karte (110 px) | dieselbe Zeile (62 px) |
+| Bestätigung vor dem Senden | Pillen mit Namen | dieselbe Zeile, 46 px |
+| Angebotskarte | Komma-Satz | dieselbe Zeile, 46 px |
+| Transfers | — | dieselbe Zeile, 42 px |
 
-**Von der Kachel führt ein Knopf ins Profil, wo der Tipp schon etwas anderes
-tut.** In der Trade-Auswahl wählt der Tipp auf die Karte sie aus — damit war
-dieser Schirm der einzige im Fantasy-Bereich ohne Weg ins Profil, und genau
-dort will man vor einem Angebot Leistung, Ausfallgrund und Spielplan sehen.
-`SpielerKachel.onProfil` zeichnet dafür einen runden Knopf oben rechts (44
-Punkte Tastfläche, mit `tooltip` — sonst heißt er für die Vorlesehilfe
-„Schaltfläche"). Ohne Angabe erscheint er nicht: In der Angebotskarte und in
-den Transfers öffnet der Tipp auf die Kachel ohnehin schon das Profil.
+### Die Kachel ist eine Zeile geworden
+
+**Zwei Meldungen haben den alten Aufbau erledigt**, und beide klangen nach
+einem Platzierungsfehler: erst überschnitt das Ausfall-Symbol das Wappen, dann
+der Knopf ins Profil. Es war aber keiner. **Wer den halben Kartenrücken mit
+einem Wappen füllt, hat für alles Weitere nur noch dessen Fläche übrig** — die
+Karte hatte für ein zweites und drittes Ding schlicht keinen freien Platz, und
+jede Ecke, in die man auswich, lag wieder auf dem Logo.
+
+Jetzt steht alles nebeneinander in einer Reihe: Wappen (28 bzw. 20), Name,
+darunter die Positionsmarke („ABW" statt „Abwehr") mit Ausfall-Symbol und
+Punktzahl, rechts Haken und Chevron. Nichts liegt mehr auf etwas anderem, und
+neue Angaben brauchen keine neue Ecke.
+
+- **Die Positionsfarbe trägt nur noch die Marke — und die Fläche, wenn die
+  Karte gewählt ist.** Das ist die Ausnahme, die die Kartenregel ausdrücklich
+  zulässt („etwas ist ausgewählt" darf Farbe tragen); als Dauerfläche war sie
+  vier Sticker pro Bildschirm.
+- **`onProfil` zeichnet den Chevron** (44 Punkte hohe Tastfläche, mit
+  `tooltip` — sonst heißt er für die Vorlesehilfe „Schaltfläche"). Ohne Angabe
+  erscheint er nicht: In der Angebotskarte und in den Transfers öffnet der
+  Tipp auf die Kachel ohnehin schon das Profil.
+- **`punkte` bringt die Saisonpunkte in die Zeile**, gerechnet mit der Wertung
+  dieser Liga (`saisonPunkte`, dieselbe Funktion wie in der Free Agency). Ohne
+  sie war der Trade-Schirm eine Namensliste: Was man hergibt und was man
+  bekommt, stand nirgends — man musste jeden Spieler einzeln öffnen. Im Kopf
+  steht die **Summe je Seite**, die kürzeste Antwort auf „lohnt sich das?".
+
+**Der Sende-Knopf ist hell, nicht grün.** Das Markengrün steht in dieser App
+auf sehr vielen Knöpfen; damit sah die einzige Entscheidung dieses Schirms aus
+wie jede andere Schaltfläche. Jetzt trägt er `MatchUpColors.snow` auf dunklem
+Grund — der stärkste Kontrast, den diese Oberfläche hat, ohne eine weitere
+Signalfarbe einzuführen. **Die Falle dabei ist bekannt:** `textStyle` in
+`FilledButton.styleFrom` ersetzt den aufgelösten Stil, ein blankes `TextStyle`
+verliert die Schriftfamilie — in der Vorschau standen im Knopf schwarze
+Kästchen. Er leitet sich deshalb per `copyWith` aus dem `textTheme` ab.
+
+**Die Zeile „Spieler antippen — aus deinem Kader und aus seinem" ist weg.**
+Eine Anleitung, die dasteht, bis man sie befolgt hat, liest niemand ein
+zweites Mal; die Geschäftskarte mit „nichts" auf beiden Seiten sagt dasselbe
+und sagt es auch noch, wenn erst eine Seite steht.
 
 **Kompakt heißt auch schmal.** Der erste Wurf zog die Kacheln über die volle
 Kartenbreite — für Name und Position wirkte das viel zu groß, und drei Spieler
