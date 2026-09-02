@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 /// 13 und 14 machen zusammen die Hälfte aller Vorkommen aus) — es ist keine
 /// erfundene Skala, sondern die vorhandene, aufgeräumt.
 ///
-/// **Barlow Condensed ist schmal**, deshalb liegen die Stufen enger
+/// **Rajdhani ist schmal**, deshalb liegen die Stufen enger
 /// beieinander als bei einer normalen Grotesk: Was bei 16 Punkt in Inter
 /// deutlich größer wirkt als 14, unterscheidet sich hier kaum.
 abstract final class Schrift {
@@ -90,7 +90,7 @@ TextTheme matchUpTextTheme(Color aufFlaeche, Color leise) {
   TextStyle s(double groesse, FontWeight gewicht,
           {Color? farbe, double? hoehe, double? sperrung}) =>
       TextStyle(
-        fontFamily: 'BarlowCondensed',
+        fontFamily: 'Rajdhani',
         fontSize: groesse,
         fontWeight: gewicht,
         height: hoehe,

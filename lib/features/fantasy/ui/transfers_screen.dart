@@ -382,7 +382,7 @@ class _VorgangsKarte extends ConsumerWidget {
     // **Ein Trade steht als ein Tausch da, nicht als zwei Meldungen.** Er
     // erzeugt je Manager einen Vorgang; nebeneinander gestellt wären das
     // dieselbe Auskunft zweimal, spiegelverkehrt.
-    // **Kein „↔" im Text.** Barlow Condensed hat das Zeichen nicht; in der
+    // **Kein „↔" im Text.** Rajdhani hat das Zeichen nicht; in der
     // Vorschau stand dort ein leeres Kästchen, und auf dem Gerät hinge es an
     // einer Schrift-Ersatzkette. Der Tauschpfeil ist ein Symbol (links im
     // Kopf), kein Buchstabe — dieselbe Regel wie im Trade-Schirm.

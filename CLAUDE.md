@@ -172,6 +172,33 @@ hätte das nicht getan.
 dunkles Rasengrün an vier Stellen) und die Marken- und Signalfarben selbst.
 Verboten ist der **Stich** in Flächen, die neutral sein sollen.
 
+## Die Schrift: Rajdhani
+
+Seit dem 02.09.2026 läuft die App in **Rajdhani** (Indian Type Foundry, OFL —
+die Lizenz liegt als `assets/fonts/Rajdhani-OFL.txt` im Repo, das Repo ist
+öffentlich). Davor war es Barlow Condensed; die Umstellung war eine
+Gestaltungsentscheidung, keine technische.
+
+Drei Dinge, die dabei anfielen und beim nächsten Schriftwechsel wieder
+anfallen:
+
+- **Rajdhani endet bei 700.** Die App setzt an vielen Stellen `w800`; Flutter
+  nimmt dafür den nächsten vorhandenen Schnitt. Wer eine echte 800 braucht,
+  braucht eine andere Schrift.
+- **Sie baut höher als Barlow Condensed.** Die Ligakarten des Startbildschirms
+  liefen bei 108 Punkten um 3,8 über — `_kKartenHoehe` steht deshalb auf 116,
+  und die Vergleichsvorschau `karten_layout_preview_test.dart` hat dieselben
+  acht Punkte bekommen. **Das war der laute Fall**; der leise ist der aus dem
+  „Tinntest" (still gestauchte Unterlängen), und genau deshalb misst
+  `home_vorschau_test.dart` die Zeilenhöhe der Kartennamen.
+- **Ihr Zeichenvorrat ist ein anderer** — siehe die Tabelle unten. Wer eine
+  Schrift tauscht, rendert die Sonderzeichen der App einmal und sieht sie an.
+
+Die Schrift steht an drei Stellen: `pubspec.yaml` (Asset-Deklaration),
+`theme.dart`/`typografie.dart` (`fontFamily`) und `test/support/schrift.dart`
+(damit die Vorschauen sie laden). Alle drei müssen denselben Familiennamen
+tragen.
+
 ## Typografie: eine Leiter statt Einzelentscheidungen
 
 Gemeldet als „im Detail noch etwas unpoliert". Nachgezählt war es mehr als ein
@@ -1134,7 +1161,7 @@ Der Entwurf hatte an zwei Stellen mehr versprochen, als die Daten hergeben,
 und beides ist bewusst nicht nachgebaut: die **Spielstätte** unter der Uhrzeit
 (steht nur im Spiel-Detail, ein zweiter Abruf je Spiel wäre der Zeile nicht
 wert — dort steht jetzt der Tag) und **Archivo** als zweite Schriftfamilie für
-die Zahlen (Barlow Condensed mit `FontFeature.tabularFigures()` tut es; eine
+die Zahlen (Rajdhani mit `FontFeature.tabularFigures()` tut es; eine
 zweite Familie im Bundle ist eine eigene Entscheidung, keine Folge dieser).
 
 Die Kopfkarte hat **zwei** Vorlese-Stationen, nicht eine: das Spiel und der
@@ -1258,7 +1285,7 @@ hätte daran nichts geändert. Drei Dinge, die dabei zu wissen sind:
 
 Wappen werden darin zu Ersatzflächen (Netz gibt es im Test keins) — verglichen
 wird die Anordnung, nicht das Bild. **Material-Symbole erscheinen dagegen
-echt**, seit `ladeSchrift` (`test/support/schrift.dart`) neben Barlow Condensed
+echt**, seit `ladeSchrift` (`test/support/schrift.dart`) neben Rajdhani
 auch `MaterialIcons-Regular.otf` aus dem Flutter-SDK nachlädt. Vorher war jedes
 Symbol ein leeres Kästchen; wer über eine Leiste aus **Symbol und Wort**
 entscheiden soll, sieht dann nur die Wörter. Die Datei liegt nicht im Projekt,
@@ -1383,7 +1410,7 @@ Zwei Fallen, beide beim Nachsehen im Bild aufgefallen und nicht im Code:
 
 - **Ein blankes `TextStyle` erbt die `fontFamily` nicht.** `titleTextStyle:
   TextStyle(...)` in `ListTileThemeData` ersetzt den aufgelösten Stil; die
-  Zeilen fielen auf Roboto zurück statt Barlow Condensed zu benutzen — auf dem
+  Zeilen fielen auf Roboto zurück statt Rajdhani zu benutzen — auf dem
   Gerät genauso wie in der Vorschau. Die Stile leiten sich deshalb per
   `copyWith` aus `Theme.of(context).textTheme` ab.
 - **`ListTile` löst die Farbe seiner Symbole selbst auf** und überstimmt eine
@@ -1992,16 +2019,22 @@ den aufgelösten Stil; ein blankes `TextStyle` verliert die Schriftfamilie — i
 der ersten Fassung standen im Knopf schwarze Kästchen. Der Stil im Theme nennt
 `fontFamily` deshalb ausdrücklich.
 
-### Welche Zeichen Barlow Condensed hat, und welche nicht
+### Welche Zeichen Rajdhani hat, und welche nicht
 
 Gemessen am 02.09.2026, indem die Kandidaten einmal gerendert und angesehen
 wurden:
 
-| vorhanden | fehlt (leeres Kästchen) |
-|---|---|
-| `Ø` `≥` `∞` `−` | `⌀` `✓` `✔` `★` `●` `↔` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
+| | vorhanden | fehlt (leeres Kästchen) |
+|---|---|---|
+| Rajdhani (heute) | `Ø` `≥` `−` `€` `§` `«` `»` | `⌀` `✓` `★` `●` `↔` `∞` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
+| Barlow Condensed (bis 02.09.2026) | `Ø` `≥` `∞` `−` | `⌀` `✓` `✔` `★` `●` `↔` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
 
-Anlass war das Durchschnittszeichen: `⌀` (U+2300, Durchmesserzeichen) fehlt,
+**Der Wechsel der Schrift ändert die Liste** — Rajdhani hat das `∞` nicht mehr,
+das Barlow noch hatte. Es stand in den Kader-Limits für „ohne Grenze" und heißt
+dort jetzt „frei", was sich nebenbei auch vorlesen lässt.
+
+Anlass war das Durchschnittszeichen: `⌀` (U+2300, Durchmesserzeichen) fehlt in
+beiden Schriften,
 `Ø` (U+00D8) ist da und sieht gleich aus. Es stand an vier Stellen im
 Spielerprofil und wäre mit der neuen Kachel an acht gestanden. Mitgefunden:
 das `✓` in der Leistungstabelle („zu Null") — dort steht jetzt ein Symbol aus
@@ -3703,7 +3736,7 @@ umgekehrt. Fehlt sie (etwa weil die Rückfüllung sie nicht rekonstruieren
 konnte), steht die eine Seite allein — lieber halb als falsch. Beides steht als
 eigener Test da.
 
-**Kein „↔" im Text.** Barlow Condensed hat das Zeichen nicht; in der Vorschau
+**Kein „↔" im Text.** Rajdhani hat das Zeichen nicht; in der Vorschau
 stand dort ein leeres Kästchen, und auf dem Gerät hinge die Anzeige an einer
 Schrift-Ersatzkette. Der Tauschpfeil ist ein Symbol, kein Buchstabe — dieselbe
 Regel wie im Trade-Schirm. Im Kopf steht „Trade · A und B".
@@ -4148,7 +4181,7 @@ Zuständen keinen Kopf.
   `AnimatedDefaultTextStyle` *ersetzt* den Stil, es ergänzt ihn nicht. Ein
   blankes `TextStyle` verliert damit die `fontFamily` — in der Vorschau wurden
   die Reiter zu leeren Kästchen, auf dem Gerät wäre es stumm Roboto statt
-  Barlow Condensed gewesen. Der Stil leitet sich deshalb per `copyWith` aus
+  Rajdhani gewesen. Der Stil leitet sich deshalb per `copyWith` aus
   `Theme.of(context).textTheme` ab. Ohne
   `test/leise_reiter_vorschau_test.dart` wäre das durchgegangen; die Vorschau
   zeigt beide Einbauorte (vier Wörter im `AppBar.bottom`, zwei mitten im

@@ -11,12 +11,12 @@ import 'package:flutter/services.dart';
 /// Fake-Async-Zone, in der echtes Datei-I/O nie zurückkommt. Der Aufruf hängt
 /// dort bis zum Timeout, statt mit einer Meldung zu scheitern.
 Future<void> ladeSchrift() async {
-  final loader = FontLoader('BarlowCondensed');
+  final loader = FontLoader('Rajdhani');
   const dateien = [
-    'assets/fonts/BarlowCondensed-Regular.ttf',
-    'assets/fonts/BarlowCondensed-Medium.ttf',
-    'assets/fonts/BarlowCondensed-SemiBold.ttf',
-    'assets/fonts/BarlowCondensed-Bold.ttf',
+    'assets/fonts/Rajdhani-Regular.ttf',
+    'assets/fonts/Rajdhani-Medium.ttf',
+    'assets/fonts/Rajdhani-SemiBold.ttf',
+    'assets/fonts/Rajdhani-Bold.ttf',
   ];
   for (final d in dateien) {
     loader.addFont(File(d).readAsBytes().then((b) => ByteData.view(b.buffer)));

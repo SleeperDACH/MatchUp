@@ -159,7 +159,9 @@ class SpielerKachel extends ConsumerWidget {
                       color: vg,
                       shadows: hervor && spieler.position == PlayerPosition.def
                           ? null
-                          : const [Shadow(color: Colors.black38, blurRadius: 3)],
+                          : const [
+                              Shadow(color: Colors.black38, blurRadius: 3),
+                            ],
                     ),
                   ),
                 ),
@@ -172,16 +174,21 @@ class SpielerKachel extends ConsumerWidget {
                     // dort „Mitt…". Die Fläche sagt die Position ohnehin;
                     // dieser Text ist die Absicherung für den, der Farben
                     // nicht unterscheidet, und dafür genügt „MF".
+                    // Schrumpfen statt kappen — „A…" ist keine Position.
                     Flexible(
-                      child: Text(
-                        spieler.position.short,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: klein ? Schrift.winzig : Schrift.klein,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
-                          color: vg.withValues(alpha: 0.9),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          spieler.position.short,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: klein ? Schrift.winzig : Schrift.klein,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                            color: vg.withValues(alpha: 0.9),
+                          ),
                         ),
                       ),
                     ),
@@ -204,7 +211,7 @@ class SpielerKachel extends ConsumerWidget {
                     ],
                     if (punkte != null) ...[
                       const Spacer(),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       // **Das Zeichen sagt, was die Zahl ist.** Ohne das Ø
                       // läse sich 12,4 als Gesamtpunktzahl, und die ist bei
                       // einem Spieler mit zwölf Spieltagen zehnmal so hoch.
@@ -228,10 +235,16 @@ class SpielerKachel extends ConsumerWidget {
               padding: const EdgeInsets.only(left: 4),
               child: Container(
                 decoration: const BoxDecoration(
-                    color: Colors.white, shape: BoxShape.circle),
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
                 padding: const EdgeInsets.all(2),
-                child: Icon(Icons.check_rounded,
-                    size: 15, color: farbe, weight: 900),
+                child: Icon(
+                  Icons.check_rounded,
+                  size: 15,
+                  color: farbe,
+                  weight: 900,
+                ),
               ),
             ),
           if (onProfil != null)
@@ -244,9 +257,11 @@ class SpielerKachel extends ConsumerWidget {
               iconSize: 18,
               padding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints.tightFor(width: 32, height: 44),
-              icon: Icon(Icons.chevron_right,
-                  color: vg.withValues(alpha: 0.75)),
+              constraints: const BoxConstraints.tightFor(width: 26, height: 44),
+              icon: Icon(
+                Icons.chevron_right,
+                color: vg.withValues(alpha: 0.75),
+              ),
             ),
         ],
       ),

@@ -1623,7 +1623,7 @@ Widget _settingsGroup(
         minVerticalPadding: 10,
         // **Aus dem Theme abgeleitet, nicht neu gebaut.** Ein blankes
         // `TextStyle` erbt die `fontFamily` nicht — die Zeilen wären auf
-        // Roboto zurückgefallen statt Barlow Condensed zu benutzen, und zwar
+        // Roboto zurückgefallen statt Rajdhani zu benutzen, und zwar
         // auf dem Gerät genauso wie in der Vorschau.
         titleTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
           fontSize: 16,
@@ -1703,7 +1703,10 @@ String _kaderLimitText(RosterConfig r) {
       r.maxFwd == null) {
     return 'Keine Obergrenze je Position';
   }
-  String t(String k, int? v) => '$k ${v ?? '∞'}';
+  // **Kein „∞".** Rajdhani hat das Zeichen nicht (Barlow Condensed hatte es);
+  // in der Zeile stünde ein leeres Kästchen. „frei" sagt dasselbe und liest
+  // sich auch vor.
+  String t(String k, int? v) => '$k ${v ?? 'frei'}';
   return '${t('TW', r.maxGk)} · ${t('ABW', r.maxDef)} · '
       '${t('MF', r.maxMid)} · ${t('ST', r.maxFwd)}';
 }

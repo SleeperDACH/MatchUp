@@ -649,7 +649,7 @@ class _LeistungZeile extends StatelessWidget {
             z(gespielt ? '${stats.minutes}' : '–'),
             z(gespielt ? '${stats.goals}' : '–'),
             z(gespielt ? '${stats.assists}' : '–'),
-            // **Kein „✓" als Zeichen.** Barlow Condensed hat es nicht, und in
+            // **Kein „✓" als Zeichen.** Rajdhani hat es nicht, und in
             // der Vorschau stand dort ein leeres Kästchen; auf dem Gerät hinge
             // die Anzeige an einer Schrift-Ersatzkette. Ein Symbol aus der
             // Icon-Schrift ist beides nicht.

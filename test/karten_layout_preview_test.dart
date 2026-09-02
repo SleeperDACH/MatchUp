@@ -24,8 +24,12 @@ import 'support/schrift.dart';
 /// nicht die echten Widgets: die hängen an Riverpod-Providern (Manager,
 /// Beitrittsanfragen, offene Tipps) und ließen sich ohne halben Homescreen
 /// nicht rendern. Maße und Farben sind aus `home_screen.dart` übernommen.
-const _cardHeight = 132.0;
-const _tipCardHeight = 126.0;
+// **Acht Punkte höher als vor dem Schriftwechsel.** Rajdhani baut höher als
+// Barlow Condensed; mit den alten Maßen lief die Tippkarte in dieser Vorschau
+// um 3,8 Punkte über. Dieselbe Korrektur wie am echten Schirm
+// (`_kKartenHoehe` in `home_screen.dart`).
+const _cardHeight = 140.0;
+const _tipCardHeight = 134.0;
 const _rowPad = 12.0;
 const _gap = 8.0;
 const _screenWidth = 402.0; // iPhone 17 Pro in Punkten
@@ -443,7 +447,9 @@ void main() {
 
   testWidgets('Vorschau: Anordnung auf den Liga- und Tippspiel-Karten',
       (tester) async {
-    tester.view.physicalSize = const Size(1720, 1400);
+    // Höher als früher: Die Karten sind seit dem Wechsel auf Rajdhani acht
+    // Punkte höher, und vier Reihen davon passten nicht mehr aufs Blatt.
+    tester.view.physicalSize = const Size(1720, 1520);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
 

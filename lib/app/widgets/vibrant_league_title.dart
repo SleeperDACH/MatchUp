@@ -30,7 +30,7 @@ class VibrantLeagueTitle extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        // BarlowCondensed (App-Font) in maximaler Fettung → „dick" & sportlich.
+        // Rajdhani (App-Font) in maximaler Fettung → „dick" & sportlich.
         fontWeight: FontWeight.w800,
         fontSize: 24,
         letterSpacing: -0.4,

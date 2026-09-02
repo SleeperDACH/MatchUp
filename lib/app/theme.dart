@@ -96,7 +96,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
   return ThemeData(
     colorScheme: scheme,
     brightness: brightness,
-    fontFamily: 'BarlowCondensed',
+    fontFamily: 'Rajdhani',
     // **Eine Schriftskala statt Materials Vorgaben.** Ohne `textTheme` kommen
     // die Größen aus Material (bodyMedium 14, titleLarge 22 …) — eine Leiter,
     // die für eine normale Grotesk gedacht ist, nicht für eine schmale.
@@ -116,7 +116,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       // Auffälliger, „dicker" Titel in condensed Schrift — überall einheitlich
       // (wie die überarbeitete Liga-Kopfzeile, siehe VibrantLeagueTitle).
       titleTextStyle: TextStyle(
-        fontFamily: 'BarlowCondensed',
+        fontFamily: 'Rajdhani',
         fontWeight: FontWeight.w800,
         fontSize: Schrift.h1,
         letterSpacing: -0.4,
@@ -172,7 +172,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
         // Die Familie muss auch hier stehen — dieselbe Falle wie beim
         // Chip-Stil: Ein Stil in einem Theme-Feld ersetzt den aufgelösten.
         textStyle: const TextStyle(
-          fontFamily: 'BarlowCondensed',
+          fontFamily: 'Rajdhani',
           fontWeight: FontWeight.w800,
           fontSize: Schrift.titel,
           letterSpacing: 0.2,
@@ -195,14 +195,14 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       // **Die Familie muss hier stehen.** Ein Stil in einem Theme-Feld ersetzt
       // den aufgelösten Stil, er ergänzt ihn nicht — ohne `fontFamily` stand
       // jeder Material-Chip in der Systemschrift, mitten in einer App aus
-      // Barlow Condensed. Dritter Fall derselben Falle nach den
+      // Rajdhani. Dritter Fall derselben Falle nach den
       // Fantasy-Einstellungen und den Reitern.
       labelStyle: const TextStyle(
-          fontFamily: 'BarlowCondensed',
+          fontFamily: 'Rajdhani',
           fontWeight: FontWeight.w600,
           fontSize: Schrift.koerper),
       secondaryLabelStyle: const TextStyle(
-          fontFamily: 'BarlowCondensed',
+          fontFamily: 'Rajdhani',
           color: MatchUpColors.base,
           fontWeight: FontWeight.w700,
           fontSize: Schrift.koerper),

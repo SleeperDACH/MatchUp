@@ -1499,7 +1499,11 @@ double kartenHoehe(BuildContext context, double basis) =>
 /// um den Namen und schneidet ihn ab. Aus „Tipptest" wurde auf dem Gerät
 /// lesbar „Tinntest". Gehalten wird das von der Messung in
 /// `test/home_vorschau_test.dart`.
-const double _kKartenHoehe = 108;
+///
+/// **116 statt 108 seit dem Wechsel auf Rajdhani.** Die Schrift baut höher als
+/// Barlow Condensed; bei 108 meldete die Karte einen Überlauf von 3,8 Punkten
+/// — diesmal laut, weil der Sockel weg ist und nichts mehr still nachgibt.
+const double _kKartenHoehe = 116;
 
 /// Blau der Abschnitte, die nicht mir gehören, sondern dem Fußball: die
 /// Spiele meiner Vereine und die News. Grün und Rot sind vergeben (Marke und
@@ -1655,7 +1659,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
                                 fontWeight: FontWeight.w800,
                                 // 1.05 schnitt die Unterlängen ab: Aus
                                 // „Tipptest" wurde auf dem Gerät lesbar
-                                // „Tinntest". Barlow Condensed braucht mehr
+                                // „Tinntest". Rajdhani braucht mehr
                                 // als das, sobald p, g, j, q oder y
                                 // vorkommen — und Rundennamen kommen aus
                                 // freier Eingabe.
@@ -1814,7 +1818,7 @@ class _TipRoundCard extends ConsumerWidget {
                                 fontWeight: FontWeight.w800,
                                 // 1.05 schnitt die Unterlängen ab: Aus
                                 // „Tipptest" wurde auf dem Gerät lesbar
-                                // „Tinntest". Barlow Condensed braucht mehr
+                                // „Tinntest". Rajdhani braucht mehr
                                 // als das, sobald p, g, j, q oder y
                                 // vorkommen — und Rundennamen kommen aus
                                 // freier Eingabe.
