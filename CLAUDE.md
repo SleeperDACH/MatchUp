@@ -1208,12 +1208,17 @@ seitdem gilt:
   war nie, dass beide Farbe benutzen, sondern dass sie gleich laut waren.
 - **Wo Farbe zum Inhalt gehört, ist sie keine Dekoration.** Die Kopfkarte
   bekommt die **Trikotfarben** der beiden Vereine (`core/util/club_colors.dart`,
-  bis dahin nur im Spiel-Detail benutzt) — als weicher Hof hinter jedem
-  Wappen. Rot links heißt Bayern, und das sieht man vor dem Namen. Über die
-  ganze Karte gezogen war es falsch: Bayern gegen Stuttgart sind zwei rote
-  Vereine, das ergab eine durchgehend rote Fläche. Die Farbe klebt am Verein,
-  nicht an der Karte, und die Mitte bleibt neutral, weil dort die Uhrzeit
-  steht. `vereinsTon()` sucht dafür die erste Trikotfarbe mit echtem
+  bis dahin nur im Spiel-Detail benutzt). Über die ganze Karte gezogen war es
+  falsch: Bayern gegen Stuttgart sind zwei rote Vereine, das ergab eine
+  durchgehend rote Fläche. Die Farbe klebt am Verein, nicht an der Karte, und
+  die Mitte bleibt neutral, weil dort die Uhrzeit steht.
+
+  **Der Hof hinter den Wappen ist wieder weg** (auf Ansage, 02.09.2026). Er
+  stammt aus der Zeit, als die Karte eine graue Fläche war und Farbe brauchte;
+  seit das Stadionbild dahinterliegt, war er ein zweiter Lichtkreis auf einem
+  Bild, das schon eins hat — und er nahm dem Wappen die Fläche. Das Wappen ist
+  dafür von 44 auf 56 Punkte gewachsen, die Vereinsfarbe blieb an den
+  Kartenrändern. `vereinsTon()` sucht dafür die erste Trikotfarbe mit echtem
   **Farbton** und hebt nur deren Helligkeit in einen sichtbaren Bereich —
   und gibt `null` für unbekannte Vereine zurück: eine erfundene Farbe für
   einen Pokalgegner aus der Oberliga sähe aus wie eine Auskunft.
@@ -1236,8 +1241,8 @@ seitdem gilt:
 
   Gehalten von `test/vereinston_test.dart`: alle 25 Vereinsnamen aus
   `fixtures`, und geprüft wird nicht nur „kommt eine Farbe zurück", sondern
-  dass sie bunt ist **und sich vom Grund abhebt** — der Hof wird gegen
-  `MatchUpColors.base` gerechnet. Genau die Lücke dazwischen war der Fehler.
+  dass sie bunt ist **und sich vom Grund abhebt** — gerechnet gegen
+  `MatchUpColors.base`. Das gilt weiter für die Seitentönung, auch ohne Hof. Genau die Lücke dazwischen war der Fehler.
   Die Kopfkarten-Vorschau steht deshalb auf **Dortmund gegen HSV**: helle
   Grundfarbe auf der einen Seite, weiße auf der anderen.
 - **Fünf gleiche graue Versalköpfe geben keinen Takt** (Punkt 5 der

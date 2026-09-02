@@ -514,9 +514,9 @@ class _NaechstesSpiel extends ConsumerWidget {
                     )
                   : null,
               // **Die Farben der beiden Vereine**, von links und rechts
-              // hereingezogen — aber nur als Andeutung an den Rändern. Die
-              // eigentliche Farbe sitzt im Hof hinter den Wappen
-              // ([_HeroVerein]). Über die ganze Karte gezogen war sie
+              // hereingezogen — aber nur als Andeutung an den Rändern. Seit
+              // der Hof hinter den Wappen weg ist, ist das die einzige Stelle,
+              // an der sie vorkommen. Über die ganze Karte gezogen war sie
               // falsch: Bayern gegen Stuttgart sind zwei rote Vereine, das
               // ergab eine durchgehend rote Fläche, auf der weder die beiden
               // Seiten auseinanderzuhalten waren noch der goldene Sockel
@@ -614,10 +614,7 @@ class _NaechstesSpiel extends ConsumerWidget {
                         child: Row(
                           children: [
                             Expanded(
-                              child: _HeroVerein(
-                                team: fixture.home,
-                                ton: tonHeim,
-                              ),
+                              child: _HeroVerein(team: fixture.home),
                             ),
                             Padding(
                               padding: const EdgeInsets.symmetric(
@@ -667,10 +664,7 @@ class _NaechstesSpiel extends ConsumerWidget {
                               ),
                             ),
                             Expanded(
-                              child: _HeroVerein(
-                                team: fixture.away,
-                                ton: tonAusw,
-                              ),
+                              child: _HeroVerein(team: fixture.away),
                             ),
                           ],
                         ),
@@ -695,33 +689,21 @@ class _NaechstesSpiel extends ConsumerWidget {
 /// Test wie bei fehlendem Netz gar nicht da; der Hof trägt die Farbe auch
 /// dann. Unbekannte Vereine bekommen keinen — siehe [vereinsTon].
 class _HeroVerein extends StatelessWidget {
-  const _HeroVerein({required this.team, required this.ton});
+  const _HeroVerein({required this.team});
 
   final TeamRef team;
-  final Color? ton;
 
   @override
   Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(
-        width: 68,
-        height: 68,
-        alignment: Alignment.center,
-        decoration: ton == null
-            ? null
-            : BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  stops: const [0.34, 1.0],
-                  colors: [
-                    ton!.withValues(alpha: 0.62),
-                    ton!.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-        child: TeamBadge(team: team, size: 44),
-      ),
+      // **Das Wappen groß und ohne Hof.** Hinter ihm lag ein radialer
+      // Schimmer in der Vereinsfarbe; er stammt aus der Zeit, als die Karte
+      // eine graue Fläche war und Farbe brauchte. Seit das Stadion dahinter
+      // liegt, ist er ein zweiter Lichtkreis auf einem Bild, das schon eins
+      // hat — und er nahm dem Wappen die Fläche, die es jetzt bekommt
+      // (56 statt 44 Punkte). Die Vereinsfarbe bleibt an den Kartenrändern.
+      TeamBadge(team: team, size: 56),
       const SizedBox(height: 3),
       Text(
         // Ausgeschrieben und zweizeilig: „Borussia Mönchengladbach" soll
