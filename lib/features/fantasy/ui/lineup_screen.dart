@@ -840,8 +840,12 @@ class _Pitch extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
+                          // **Jeder Platz nimmt seinen Anteil an der Reihe.**
+                          // Vorher war er 76 Punkte breit, fest: Fünf davon
+                          // sind 380 und passen auf keinen Telefonschirm — bei
+                          // einer 3-5-2 lief die Mittelfeldreihe über.
                           for (var i = 0; i < (slots[pos]?.length ?? 0); i++)
-                            _slotTarget(pos, i),
+                            Expanded(child: _slotTarget(pos, i)),
                         ],
                       ),
                     ),
@@ -960,8 +964,11 @@ class _Slot extends ConsumerWidget {
     final ausfall = _ausfall(ref, p);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      width: 76,
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      // Keine feste Breite mehr — die Reihe teilt sie zu (siehe `_Pitch`).
+      // Innen bleibt alles mittig, damit vier Plätze nicht anders sitzen als
+      // fünf.
+      margin: const EdgeInsets.symmetric(horizontal: 1),
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: highlight ? Colors.white.withValues(alpha: 0.18) : null,
@@ -990,32 +997,17 @@ class _Slot extends ConsumerWidget {
                       clipBehavior: Clip.none,
                       alignment: Alignment.topCenter,
                       children: [
-                        // **Ein dunkler Ring um das Wappen.** Auf hellem Rasen
-                        // schwammen weiße Wappen vorher in die Fläche; der
-                        // Ring gibt jedem einen Rand, ohne Farbe zu setzen.
-                        Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.black.withValues(alpha: 0.30),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.14),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.35),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Opacity(
-                            opacity: gesperrt ? 0.6 : 1,
-                            child: ClubBadge(
-                              club: p.club,
-                              iconUrl: iconUrl,
-                              size: 46,
-                            ),
+                        // **Das Wappen steht ohne Scheibe darunter.** Ein
+                        // dunkler Kreis dahinter sollte es vom Rasen abheben
+                        // und tat vor allem eins: Er lag als schwarzer Fleck
+                        // hinter jedem Verein. Der dunkle Rasen trägt die
+                        // Wappen von selbst.
+                        Opacity(
+                          opacity: gesperrt ? 0.6 : 1,
+                          child: ClubBadge(
+                            club: p.club,
+                            iconUrl: iconUrl,
+                            size: 48,
                           ),
                         ),
                         // **Ausfall links, Spielsperre rechts.** Zwei
@@ -1083,7 +1075,7 @@ class _Slot extends ConsumerWidget {
                 // das ihn kleiner aussehen ließ, als er ist; auf dem dunklen
                 // Rasen trägt ihn ein Schatten besser als eine Fläche.
                 SizedBox(
-                  width: 74,
+                  width: double.infinity,
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
@@ -1110,7 +1102,11 @@ class _Slot extends ConsumerWidget {
           const SizedBox(height: 4),
           // Der Knopf zum Tauschen. Läuft sein Spiel schon, steht dort ein
           // Schloss statt eines Knopfes, der nichts tut.
-          _posPill(context),
+          //
+          // **`Center`, sonst zieht er sich über den ganzen Platz.** Seit die
+          // Reihe ihre Breite aufteilt, ist der Platz mal 74 und mal 180 Punkte
+          // breit; ohne diese Klammer wurde aus dem Knopf ein Balken.
+          Center(child: _posPill(context)),
         ],
       ),
     );
@@ -1161,10 +1157,13 @@ class _Slot extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onEditPosition,
+        // **Kein `alignment` an diesem Container.** Ein Container mit
+        // Ausrichtung nimmt sich, was die Eltern hergeben — er wurde damit so
+        // breit wie der Platz, aus dem Knopf ein Balken. Die Zeile darin ist
+        // ohnehin `MainAxisSize.min`.
         child: Container(
           height: 26,
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(13),

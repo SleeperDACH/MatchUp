@@ -1793,7 +1793,7 @@ Unruhe statt Struktur.
 
 | | vorher | jetzt |
 |---|---|---|
-| Wappen | 42, nackt auf dem Rasen | 46, dunkler Ring und Schatten |
+| Wappen | 42, nackt auf dem Rasen | 48, weiter ohne Scheibe darunter |
 | Punkte | 10 Punkt, Ecke des Wappens | **13 Punkt**, Chip auf der Unterkante |
 | Name | 11 Punkt in einem grauen Kästchen | 12 Punkt, weiß mit Schatten, ohne Kasten |
 | Tauschknopf | Symbol im 21er-Kreis | 26er-Pille mit Symbol **und Kürzel** („ABW") |
@@ -1815,18 +1815,35 @@ stand darüber eine graue Textzeile, die neben dem Rasen kaum auffiel. Jetzt:
   darüber mit der Zahl. Hier ist das Schloss die einzige Stelle, an der steht,
   *wen* es trifft.
 
-Angesehen über `test/aufstellung_feld_vorschau_test.dart` — drei Bilder, weil
-es drei Zustände gibt, die man nie nebeneinander sieht. **Der Schirm hatte
+Angesehen über `test/aufstellung_feld_vorschau_test.dart` — vier Bilder: die
+bearbeitbare Elf, eine 3-5-2 (fünf in einer Reihe), einzelne gesperrte Spieler
+und die ganz gesperrte Elf. **Der Schirm hatte
 vorher keine Vorschau**, und genau deshalb ließ sich sein Aussehen nur auf dem
 Gerät beurteilen, im Zustand, in dem die eigene Liga gerade war. Der
 Bildvergleich läuft nur mit `--update-goldens`: Ob jemand gesperrt ist, hängt
 an `DateTime.now()` gegen den Anpfiff.
 
-**Zwei Fallen dabei**, beide nur im Bild zu sehen: Ein `Material` mit
-`CircleBorder` und `Clip.antiAlias` schneidet einer Pille die Enden ab (aus
-„ABW" wurde „ABV" — `StadiumBorder` ist die richtige Form), und der Editor
-liest im `initState` das Repository, greift also ohne Ersatz auf
-`Supabase.instance` zu, die es im Test nicht gibt.
+**Die Plätze teilen sich die Reihe** (`Expanded`), sie sind nicht mehr 76
+Punkte breit. Gemeldet als „vor allem die 5er-Besetzung geht nicht": Fünf feste
+Plätze sind 380 Punkte und passen auf keinen Telefonschirm — bei einer 3-5-2
+lief die Mittelfeldreihe über. Die Vorschau stellt deshalb ausdrücklich eine
+3-5-2 hin.
+
+**Ein dunkler Kreis hinter dem Wappen war der erste Wurf und ist wieder raus**
+(auf Ansage). Er sollte es vom Rasen abheben und lag vor allem als schwarzer
+Fleck hinter jedem Verein; der dunkle Rasen trägt die Wappen von selbst.
+
+**Drei Fallen dabei**, alle drei nur im Bild zu sehen:
+
+- Ein `Material` mit `CircleBorder` und `Clip.antiAlias` schneidet einer Pille
+  die Enden ab — aus „ABW" wurde „ABV". `StadiumBorder` ist die richtige Form.
+- **Ein `Container` mit `alignment` nimmt sich, was die Eltern hergeben.**
+  Solange der Platz 76 Punkte breit war, fiel das nicht auf; seit die Reihe
+  ihre Breite aufteilt, wurde aus dem Tauschknopf ein Balken über den halben
+  Schirm. Die Zeile darin ist ohnehin `MainAxisSize.min` — die Ausrichtung war
+  überflüssig und teuer.
+- Der Editor liest im `initState` das Repository, greift also ohne Ersatz auf
+  `Supabase.instance` zu, die es im Test nicht gibt.
 
 ### Die Aufstellung sperrt je Spieler, nicht je Spieltag
 

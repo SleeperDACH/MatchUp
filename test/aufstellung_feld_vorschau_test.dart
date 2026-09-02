@@ -130,7 +130,15 @@ void main() {
     return [f(bvb, 'FC Augsburg'), f(fcb, sge)];
   }
 
-  Widget rahmen({required Set<String> gelaufen}) => ProviderScope(
+  /// Die Elf, die aufgestellt wird — [fuenferreihe] stellt eine 3-5-2 hin.
+  /// **Fünf in einer Reihe war der Fall, der überlief**, also gehört er ins
+  /// Bild.
+  Set<String> elfIds({bool fuenferreihe = false}) => fuenferreihe
+      ? {'gk1', 'd1', 'd2', 'd3', 'm1', 'm2', 'm3', 'm4', 'b2', 'f1', 'f2'}
+      : {for (final p in elf.take(10)) p.id};
+
+  Widget rahmen({required Set<String> gelaufen, bool fuenferreihe = false}) =>
+      ProviderScope(
         overrides: [
           fantasyLeagueRepositoryProvider.overrideWithValue(
             _StillesRepo(SupabaseClient(
@@ -160,7 +168,7 @@ void main() {
                   round: 1,
                   // Zehn statt elf: Ein leerer Platz gehört ins Bild, er ist
                   // ein eigener Zustand („frei", Einladung statt Fehler).
-                  playerIds: {for (final p in elf.take(10)) p.id},
+                  playerIds: elfIds(fuenferreihe: fuenferreihe),
                 ),
               ])),
           roundStatsProvider.overrideWith((ref, round) async => stats),
@@ -186,11 +194,12 @@ void main() {
       );
 
   Future<void> zeichne(WidgetTester tester,
-      {required Set<String> gelaufen}) async {
+      {required Set<String> gelaufen, bool fuenferreihe = false}) async {
     tester.view.physicalSize = const Size(402 * 3, 700 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(rahmen(gelaufen: gelaufen));
+    await tester.pumpWidget(
+        rahmen(gelaufen: gelaufen, fuenferreihe: fuenferreihe));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -208,6 +217,22 @@ void main() {
 
     await expectLater(find.byType(LineupEditor),
         matchesGoldenFile('goldens/aufstellung_feld.png'));
+  });
+
+  testWidgets('Vorschau: Spielfeld mit fünf in einer Reihe', (tester) async {
+    // **Der gemeldete Fall.** Die Plätze waren 76 Punkte breit, fest; fünf
+    // davon sind 380 und passen auf keinen Telefonschirm. Jetzt teilt die
+    // Reihe ihre Breite auf, und der Test scheitert an einem Überlauf, bevor
+    // es jemand auf dem Gerät sieht.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    await zeichne(tester, gelaufen: const {}, fuenferreihe: true);
+
+    expect(tester.takeException(), isNull);
+    await expectLater(find.byType(LineupEditor),
+        matchesGoldenFile('goldens/aufstellung_feld_fuenferreihe.png'));
   });
 
   testWidgets('Vorschau: Spielfeld, einzelne Spieler gesperrt',
