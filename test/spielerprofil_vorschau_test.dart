@@ -407,6 +407,107 @@ void main() {
     );
   });
 
+  testWidgets('Vorschau: gemeldete Aufstellung mit Bank', (tester) async {
+    // **Der Zustand, den es erst seit 0118 gibt.** Sportmonks' Prognose kennt
+    // keine Bank (gemessen: elf Namen je Mannschaft); sobald der Verein seine
+    // Aufstellung meldet, kommen Startelf und Bank getrennt. Dann faellt das
+    // „voraussichtlich" weg, und „Auf der Bank" ist eine andere Auskunft als
+    // „nicht dabei" — er kann eingewechselt werden.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 780 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final gemeldet = PrognoseElf(
+      club: club,
+      formation: '4-2-3-1',
+      stand: DateTime(2026, 9, 5, 14, 30),
+      bestaetigt: true,
+      elf: [
+        for (final s in prognose.elf)
+          if (s.playerId != held.id) s
+      ],
+      bank: const [
+        // Der Held sitzt draussen — deshalb ist er im Bild hervorgehoben.
+        PrognoseSpieler(
+            playerId: 'p1',
+            name: 'Nico Schlotterbeck',
+            nummer: 4,
+            formationsPosition: 12,
+            bank: true),
+        PrognoseSpieler(
+            playerId: 'sm:b1',
+            name: 'Alexander Meyer',
+            nummer: 33,
+            formationsPosition: 13,
+            bank: true),
+        PrognoseSpieler(
+            playerId: 'sm:b2',
+            name: 'Emre Can',
+            nummer: 23,
+            formationsPosition: 14,
+            bank: true),
+        PrognoseSpieler(
+            playerId: 'sm:b3',
+            name: 'Yan Couto',
+            nummer: 2,
+            formationsPosition: 15,
+            bank: true),
+        PrognoseSpieler(
+            playerId: 'sm:b4',
+            name: 'Marcel Sabitzer',
+            nummer: 20,
+            formationsPosition: 16,
+            bank: true),
+      ],
+    );
+
+    await tester.pumpWidget(rahmen(
+      elf: gemeldet,
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showPlayerProfile(
+              context,
+              league: liga,
+              player: held,
+              clubIcon: null,
+              isMine: true,
+            ),
+            child: const Text('öffnen'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('öffnen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.tap(find.text('Aufstellung'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    expect(find.text('Auf der Bank'), findsOneWidget,
+        reason: 'Gemeldet und draussen ist nicht dasselbe wie „nicht dabei"');
+
+    // Die Bank steht unter dem Feld — ohne Scrollen waere sie ausserhalb des
+    // Bildes, und genau sie ist hier der Gegenstand.
+    await tester.drag(find.byType(ListView).last, const Offset(0, -260));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    expect(find.text('Emre Can'), findsOneWidget);
+
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/spielerprofil_bank.png'),
+    );
+  });
+
   testWidgets('Vorschau: freier Spieler mit Pick-up', (tester) async {
     // **Der Fall, den es bisher nicht gab.** Das Profil eines freien Spielers
     // endete ohne jede Aktion: Man sah, dass er frei ist, und musste zurück in

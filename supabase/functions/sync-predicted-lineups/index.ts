@@ -13,6 +13,15 @@
 // Sync nur das Fenster VORLAUF_TAGE ab; alles darueber hinaus waere ein
 // Request fuer eine garantiert leere Antwort.
 //
+// **Die Bank kommt aus der gemeldeten Aufstellung, nicht aus der Prognose.**
+// Gemessen am 02.09.2026: `predictedLineups` liefert genau elf Namen je
+// Mannschaft, alle mit demselben type_id (111384) — eine vorhergesagte Bank
+// gibt es nicht. Der Include `lineups` trennt dagegen type_id 11 (Startelf)
+// von 12 (Bank) und kommt im selben multi-Request mit, ohne einen zweiten zu
+// kosten. Fuer ein Spiel ohne gemeldete Aufstellung ist er leer. Also:
+// **Was gemeldet ist, schlaegt was vorhergesagt ist** — sonst bleibt die
+// Prognose stehen (Spalte `bestaetigt`, Migration 0118).
+//
 // Aufruf (Cron oder manuell):
 //   POST /functions/v1/sync-predicted-lineups          → Fenster (Standard 3 Tage)
 //   POST /functions/v1/sync-predicted-lineups?days=7   → Fenster aendern
@@ -107,16 +116,23 @@ Deno.serve(async (req) => {
   let requests = 0;
   let spieler = 0;
   let mitPrognose = 0;
+  let mitAufstellung = 0;
 
   for (const batch of chunk(smIds, BATCH)) {
     const data = await smGet(
-      `/fixtures/multi/${batch.join(",")}?include=predictedLineups;formations`,
+      `/fixtures/multi/${batch.join(",")}?include=predictedLineups;formations;lineups`,
     );
     requests += 1;
 
     for (const fixture of data?.data ?? []) {
       const fixtureId = `sportmonks:${fixture.id}`;
-      const eintraege = fixture.predictedlineups ?? [];
+
+      // Sportmonks' Typen: 11 = Startelf, 12 = Bank. Eine gemeldete
+      // Aufstellung erkennt man daran, dass ueberhaupt Startelf-Zeilen da
+      // sind; eine Bank ohne Elf waere kein Ersatz fuer die Prognose.
+      const gemeldet = (fixture.lineups ?? []) as any[];
+      const bestaetigt = gemeldet.some((p) => p.type_id === 11);
+      const eintraege = bestaetigt ? gemeldet : (fixture.predictedlineups ?? []);
 
       // **Eine leere Antwort loescht nichts.** Sportmonks liefert die Prognose
       // erst kurz vor Anpfiff; ein Lauf davor wuerde sonst eine vorhandene
@@ -124,6 +140,7 @@ Deno.serve(async (req) => {
       // zurueckgezogen". Nur was tatsaechlich kommt, ersetzt den Stand.
       if (eintraege.length === 0) continue;
       mitPrognose += 1;
+      if (bestaetigt) mitAufstellung += 1;
 
       // **Der Verein muss dazu, sonst findet die App die Zeile nicht.**
       // `predicted_lineups.fixture_id` traegt die Sportmonks-ID, die App
@@ -169,6 +186,8 @@ Deno.serve(async (req) => {
         position_id: p.position_id ?? null,
         formation_position: p.formation_position ?? null,
         formation_field: p.formation_field ?? null,
+        bank: bestaetigt && p.type_id === 12,
+        bestaetigt,
         updated_at: new Date().toISOString(),
       }));
 
@@ -205,6 +224,7 @@ Deno.serve(async (req) => {
   return Response.json({
     fixtures: smIds.length,
     mitPrognose,
+    mitAufstellung,
     spieler,
     requests,
   });

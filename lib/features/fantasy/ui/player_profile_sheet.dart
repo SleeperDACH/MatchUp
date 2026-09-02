@@ -147,7 +147,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
                           ),
                           data: (season) => _table(context, season),
                         ),
-                        _Prognose(player: player),
+                        _Prognose(league: league, player: player),
                         _Spielplan(club: player.club),
                         _Vereinskader(
                           league: league,
@@ -901,9 +901,48 @@ class _Leer extends StatelessWidget {
 /// unter einer Liste. Die restlichen zehn sind Zusammenhang, kein Ersatz
 /// dafür.
 class _Prognose extends ConsumerWidget {
-  const _Prognose({required this.player});
+  const _Prognose({required this.league, required this.player});
 
+  final FantasyLeague league;
   final FantasyPlayer player;
+
+  /// **Ein Name auf dem Feld führt ins Profil**, genau wie in der Kaderliste
+  /// nebenan. Wer sieht, dass statt seines Stürmers ein anderer aufläuft, will
+  /// als Nächstes wissen, wer das ist — und muss dafür nicht in die Free
+  /// Agency zurück.
+  ///
+  /// Getippt wird nur, wen der Pool kennt: Sportmonks meldet gelegentlich
+  /// einen Spieler, den der letzte Kader-Sync noch nicht hat. Ein Tipp, der
+  /// nichts öffnet, wäre schlimmer als keiner — deshalb entscheidet der
+  /// Aufrufer anhand von [oeffnet], ob die Zeile überhaupt reagiert.
+  void _oeffne(BuildContext context, WidgetRef ref, String playerId) {
+    final ziel = _ausPool(ref, playerId);
+    if (ziel == null) return;
+    final icons =
+        ref.read(clubIconsProvider).valueOrNull ?? const <String, String?>{};
+    final myId = ref.read(currentUserProvider)?.id;
+    final roster = ref.read(leagueRosterProvider(league.id)).valueOrNull ??
+        const <RosterEntry>[];
+    final meiner =
+        roster.any((r) => r.playerId == ziel.id && r.managerId == myId);
+    Navigator.of(context).pop();
+    showPlayerProfile(
+      context,
+      league: league,
+      player: ziel,
+      clubIcon: icons[ziel.club],
+      isMine: meiner,
+    );
+  }
+
+  FantasyPlayer? _ausPool(WidgetRef ref, String playerId) {
+    final pool =
+        ref.read(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
+    for (final p in pool) {
+      if (p.id == playerId) return p;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -931,8 +970,23 @@ class _Prognose extends ConsumerWidget {
           if (elf == null)
             _NochKeinePrognose(player: player, spiel: spiel)
           else ...[
-            _Urteil(drin: elf.enthaelt(player.id)),
-            _Formationsfeld(elf: elf, ich: player.id),
+            _Urteil(
+              drin: elf.enthaelt(player.id),
+              bank: elf.aufBank(player.id),
+              bestaetigt: elf.bestaetigt,
+            ),
+            _Formationsfeld(
+              elf: elf,
+              ich: player.id,
+              oeffnet: (id) => _ausPool(ref, id) != null,
+              onTip: (id) => _oeffne(context, ref, id),
+            ),
+            _Bank(
+              elf: elf,
+              ich: player.id,
+              oeffnet: (id) => _ausPool(ref, id) != null,
+              onTip: (id) => _oeffne(context, ref, id),
+            ),
           ],
         ],
       ),
@@ -952,12 +1006,21 @@ class _Prognose extends ConsumerWidget {
 /// Rechnung — [PrognoseElf.reihen]. Torwart unten, Angriff oben, wie überall
 /// sonst in der App.
 class _Formationsfeld extends StatelessWidget {
-  const _Formationsfeld({required this.elf, required this.ich});
+  const _Formationsfeld({
+    required this.elf,
+    required this.ich,
+    required this.oeffnet,
+    required this.onTip,
+  });
 
   final PrognoseElf elf;
 
   /// Der Spieler, dessen Profil offen ist.
   final String ich;
+
+  /// Kennt der Pool diesen Spieler? Nur dann reagiert seine Karte.
+  final bool Function(String playerId) oeffnet;
+  final void Function(String playerId) onTip;
 
   @override
   Widget build(BuildContext context) {
@@ -984,9 +1047,15 @@ class _Formationsfeld extends StatelessWidget {
                     children: [
                       for (final s in reihe)
                         Flexible(
-                          child: _Feldspieler(
-                            spieler: s,
-                            hervor: s.playerId == ich,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: s.playerId == ich || !oeffnet(s.playerId)
+                                ? null
+                                : () => onTip(s.playerId),
+                            child: _Feldspieler(
+                              spieler: s,
+                              hervor: s.playerId == ich,
+                            ),
                           ),
                         ),
                     ],
@@ -1071,6 +1140,132 @@ String _kurzerName(String voll) {
   return '${teile.first.characters.first}. ${teile.sublist(1).join(' ')}';
 }
 
+/// **Die Bank.**
+///
+/// Sie steht bewusst unter dem Feld und nicht darauf: Wer sitzt, steht nicht
+/// im Raster, und ein zwölfter Kreis am Spielfeldrand wäre eine Behauptung
+/// über eine Position, die es nicht gibt.
+///
+/// **Es gibt sie erst mit der gemeldeten Aufstellung.** Sportmonks' Prognose
+/// liefert elf Namen und keine Ersatzbank (gemessen am 02.09.2026: 22
+/// Einträge je Partie, alle mit demselben Typ). Solange nur sie steht, sagt
+/// dieser Abschnitt genau das — eine leere Bank sähe sonst aus wie „niemand
+/// sitzt draußen", derselbe Fehler wie das leere Feld im Draft-Brett.
+class _Bank extends StatelessWidget {
+  const _Bank({
+    required this.elf,
+    required this.ich,
+    required this.oeffnet,
+    required this.onTip,
+  });
+
+  final PrognoseElf elf;
+  final String ich;
+  final bool Function(String playerId) oeffnet;
+  final void Function(String playerId) onTip;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Bank',
+            style: TextStyle(
+              fontSize: 11,
+              letterSpacing: 0.6,
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (elf.bank.isEmpty)
+            Text(
+              'Die Bank steht erst mit der gemeldeten Aufstellung, in der '
+              'Regel etwa eine Stunde vor Anpfiff.',
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                height: 1.35,
+                fontSize: 13,
+              ),
+            )
+          else
+            for (final s in elf.bank)
+              _Bankspieler(
+                spieler: s,
+                hervor: s.playerId == ich,
+                onTap: s.playerId == ich || !oeffnet(s.playerId)
+                    ? null
+                    : () => onTip(s.playerId),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Eine Zeile der Bank: Rückennummer, Name, Pfeil ins Profil.
+class _Bankspieler extends StatelessWidget {
+  const _Bankspieler({
+    required this.spieler,
+    required this.hervor,
+    required this.onTap,
+  });
+
+  final PrognoseSpieler spieler;
+  final bool hervor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 26,
+              child: Text(
+                spieler.nummer?.toString() ?? '–',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                spieler.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: Schrift.koerper,
+                  fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(
+              hervor ? Icons.person : Icons.chevron_right,
+              size: 18,
+              color: scheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Kopf des Reiters: welches Spiel, welche Formation, wie frisch.
 class _PrognoseKopf extends StatelessWidget {
   const _PrognoseKopf({required this.spiel, required this.elf});
@@ -1114,9 +1309,22 @@ class _PrognoseKopf extends StatelessWidget {
 /// **nicht** in der Elf, muss der Manager seine Aufstellung ändern. Steht er
 /// drin, ist nichts zu tun — dann bleibt es beim ruhigen Haken.
 class _Urteil extends StatelessWidget {
-  const _Urteil({required this.drin});
+  const _Urteil({
+    required this.drin,
+    required this.bank,
+    required this.bestaetigt,
+  });
 
   final bool drin;
+
+  /// Er sitzt auf der Bank — das gibt es nur bei einer gemeldeten
+  /// Aufstellung, und es ist eine andere Auskunft als „nicht dabei": Er kann
+  /// eingewechselt werden und Punkte holen.
+  final bool bank;
+
+  /// Gemeldet statt vorhergesagt. Dann fällt das „voraussichtlich" weg — es
+  /// wäre eine Unsicherheit, die es nicht mehr gibt.
+  final bool bestaetigt;
 
   @override
   Widget build(BuildContext context) {
@@ -1127,6 +1335,13 @@ class _Urteil extends StatelessWidget {
     // falsch: Es heißt in dieser App „hier läuft etwas", und es lief schon
     // einmal als Dauerfarbe durch dieses Profil.
     final farbe = drin ? scheme.onSurfaceVariant : const Color(0xFFFFC83D);
+    final text = drin
+        ? (bestaetigt ? 'In der Startelf' : 'Voraussichtlich in der Startelf')
+        : bank
+            ? 'Auf der Bank'
+            : bestaetigt
+                ? 'Nicht im Kader für dieses Spiel'
+                : 'Nicht in der voraussichtlichen Elf';
     return Container(
       margin: EdgeInsets.fromLTRB(12, 0, 12, drin ? 2 : 8),
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: drin ? 6 : 10),
@@ -1140,16 +1355,18 @@ class _Urteil extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            drin ? Icons.check_circle_outline : Icons.event_seat_outlined,
+            drin
+                ? Icons.check_circle_outline
+                : bank
+                    ? Icons.event_seat_outlined
+                    : Icons.remove_circle_outline,
             size: 18,
             color: farbe,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              drin
-                  ? 'Voraussichtlich in der Startelf'
-                  : 'Nicht in der voraussichtlichen Elf',
+              text,
               style: TextStyle(
                 fontWeight: drin ? FontWeight.w600 : FontWeight.w700,
                 color: farbe,

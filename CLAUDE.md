@@ -2255,6 +2255,25 @@ Spiele, für die tatsächlich eine Prognose kommt. Sonst räumte ein Lauf vor de
 Prognosefenster eine vorhandene Elf weg, und das sähe in der App aus wie
 „Prognose zurückgezogen".
 
+**Die Bank kommt aus der gemeldeten Aufstellung** (Migration 0118). Die
+Prognose gibt sie nicht her — gemessen am 02.09.2026 liefert
+`predictedLineups` genau elf Namen je Mannschaft, alle mit demselben
+`type_id` (111384). Der Include `lineups` trennt dagegen `type_id` 11
+(Startelf) von 12 (Bank), liefert für ein noch nicht angesetztes Spiel gar
+nichts und kommt im selben `fixtures/multi`-Request mit, ohne einen zweiten zu
+kosten. Daraus die Regel: **Was gemeldet ist, schlägt was vorhergesagt ist.**
+`predicted_lineups.bank` und `.bestaetigt` tragen den Unterschied; die App
+schreibt „In der Startelf" statt „Voraussichtlich in der Startelf", sobald er
+gemeldet ist, und kennt mit „Auf der Bank" einen dritten Zustand — er ist
+etwas anderes als „nicht dabei", weil ein Eingewechselter punktet. Solange nur
+die Prognose steht, sagt der Abschnitt, dass die Bank etwa eine Stunde vor
+Anpfiff kommt; eine leere Bank sähe aus wie „niemand sitzt draußen".
+
+**Ein Name auf dem Feld und auf der Bank führt ins Profil** — dieselbe
+Bewegung wie in der Kaderliste nebenan. Getippt wird nur, wen der Pool kennt:
+Sportmonks meldet gelegentlich einen Spieler, den der letzte Kader-Sync noch
+nicht hat, und ein Tipp, der nichts öffnet, wäre schlimmer als keiner.
+
 **Gezeigt wird die Formation, nicht eine Liste.** Eine Liste beantwortet „wer
 spielt", aber nicht „wo" — und das ist die Frage, wenn man eine Aufstellung
 liest. Gezeichnet wird auf demselben Feld wie der Aufstellungs-Editor, der

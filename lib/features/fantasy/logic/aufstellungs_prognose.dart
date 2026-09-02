@@ -73,7 +73,7 @@ Fixture _frueheste(List<Fixture> xs) {
   return xs.first;
 }
 
-/// Ein Spieler in der voraussichtlichen Elf.
+/// Ein Spieler in der voraussichtlichen Elf — oder auf der Bank.
 class PrognoseSpieler {
   const PrognoseSpieler({
     required this.playerId,
@@ -82,6 +82,7 @@ class PrognoseSpieler {
     this.formationsPosition,
     this.reihe,
     this.spalte,
+    this.bank = false,
   });
 
   final String playerId;
@@ -98,6 +99,10 @@ class PrognoseSpieler {
   /// links. Damit lässt sich die Elf hinstellen, statt sie zu raten.
   final int? reihe;
   final int? spalte;
+
+  /// Er sitzt auf der Bank. Gibt es nur in einer **gemeldeten** Aufstellung:
+  /// Sportmonks' Prognose kennt elf Namen und keine Ersatzbank.
+  final bool bank;
 }
 
 /// Die voraussichtliche Elf eines Vereins für ein bestimmtes Spiel.
@@ -105,12 +110,22 @@ class PrognoseElf {
   const PrognoseElf({
     required this.club,
     required this.elf,
+    this.bank = const [],
+    this.bestaetigt = false,
     this.formation,
     this.stand,
   });
 
   final String club;
   final List<PrognoseSpieler> elf;
+
+  /// Die Ersatzbank, in der Reihenfolge, in der sie gemeldet wurde. Leer,
+  /// solange nur die Prognose steht — die kennt keine Bank.
+  final List<PrognoseSpieler> bank;
+
+  /// Die Aufstellung ist vom Verein **gemeldet**, nicht vorhergesagt. Sie
+  /// steht in der Regel etwa eine Stunde vor Anpfiff.
+  final bool bestaetigt;
 
   /// „3-4-2-1" — kommt aus einem eigenen Sportmonks-Include und kann fehlen.
   final String? formation;
@@ -121,6 +136,9 @@ class PrognoseElf {
 
   bool enthaelt(String playerId) =>
       elf.any((s) => s.playerId == playerId);
+
+  bool aufBank(String playerId) =>
+      bank.any((s) => s.playerId == playerId);
 
   /// Die Elf in **Reihen**, von hinten nach vorn — Reihe 0 ist der Torwart.
   ///
@@ -167,18 +185,31 @@ class PrognoseElf {
   static PrognoseElf? ausZeilen(String club, List<Map<String, dynamic>> rows) {
     if (rows.isEmpty) return null;
 
-    final elf = [
-      for (final r in rows)
-        PrognoseSpieler(
+    PrognoseSpieler ausZeile(Map<String, dynamic> r) => PrognoseSpieler(
           playerId: r['player_id'] as String,
           name: (r['player_name'] as String?) ?? '',
           nummer: (r['jersey_number'] as num?)?.toInt(),
           formationsPosition: (r['formation_position'] as num?)?.toInt(),
           reihe: _rasterTeil(r['formation_field'], 0),
           spalte: _rasterTeil(r['formation_field'], 1),
-        )
-    ]..sort((a, b) =>
-        (a.formationsPosition ?? 99).compareTo(b.formationsPosition ?? 99));
+          bank: r['bank'] == true,
+        );
+
+    int nachPosition(PrognoseSpieler a, PrognoseSpieler b) =>
+        (a.formationsPosition ?? 99).compareTo(b.formationsPosition ?? 99);
+
+    // **Die Bank steht getrennt, nicht als zwoelfter Mann im Raster.** Sie
+    // kommt aus derselben Tabelle (Migration 0118), hat aber keinen Platz auf
+    // dem Feld — ihre `formation_position` zaehlt die Bank durch und wuerde
+    // sonst in der Elf mitsortiert.
+    final elf = [
+      for (final r in rows)
+        if (r['bank'] != true) ausZeile(r),
+    ]..sort(nachPosition);
+    final bank = [
+      for (final r in rows)
+        if (r['bank'] == true) ausZeile(r),
+    ]..sort(nachPosition);
 
     DateTime? neuster;
     String? formation;
@@ -191,6 +222,8 @@ class PrognoseElf {
     return PrognoseElf(
       club: club,
       elf: elf,
+      bank: bank,
+      bestaetigt: rows.any((r) => r['bestaetigt'] == true),
       formation: formation,
       stand: neuster?.toLocal(),
     );
