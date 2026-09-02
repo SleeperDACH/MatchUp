@@ -19,7 +19,6 @@ import 'pitch_painter.dart';
 import 'trade_screen.dart';
 import '../logic/waiver_fenster.dart';
 import 'player_action_buttons.dart';
-import '../../../app/typografie.dart';
 import '../../../app/widgets/punktzahl.dart';
 import '../logic/spieler_schnitt.dart';
 

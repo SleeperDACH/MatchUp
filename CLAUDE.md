@@ -3517,6 +3517,46 @@ ist ein strenger Präfix (`'🔄 Trade angenommen: %'`), nicht eine Suche nach
 „Trade" — im Verlauf steht eine echte Nachricht, die nur aus dem Emoji 🙂‍↔️
 besteht, und die hätte eine großzügigere Regel mitgenommen.
 
+### Nachrichten lassen sich kopieren — und der tote Griff
+
+Gemeldet: *„Wir brauchen außerdem die Funktion, dass man im Chat Nachrichten
+kopieren sowie einfügen kann. Das funktioniert irgendwie nicht."*
+
+Dahinter steckten zwei Dinge, und das zweite ist das lehrreiche:
+
+1. Es gab **überhaupt keinen** Kopierweg. Der Rumpf einer Blase war ein
+   schlichtes `Text`, das Aktionsblatt hinter dem Long-Press kannte genau
+   einen Eintrag: „Antworten". Kein `SelectableText`, kein `Clipboard`,
+   nirgends im Modul.
+2. Der Long-Press selbst hing komplett an `onReply`:
+   `onLongPress: onReply == null ? null : …`. In **Direktnachrichten** läuft
+   der Chat mit `enableReply: false` — dort war der Griff also tot. Man hielt
+   auf eine Nachricht, und nichts geschah.
+
+Punkt 2 erklärt das „irgendwie": Ein Griff, der nichts tut, ist von einem
+fehlenden Griff nicht zu unterscheiden — dasselbe Muster wie beim leeren
+Draft-Feld und beim stillen Autospeichern. Wer in der Liga probiert hätte,
+hätte wenigstens *ein* Menü gesehen und gemerkt, dass „Kopieren" fehlt; wer
+es in einer DM probierte, bekam gar keine Rückmeldung und konnte nur
+schließen, die Funktion sei kaputt.
+
+Jetzt: **Kopieren steht immer im Blatt, Antworten nur, wo es geht.** Der
+Long-Press ist unbedingt scharf. Nach dem Kopieren bestätigt eine Snackbar
+(„Nachricht kopiert") — sonst wäre der erfolgreiche Kopiervorgang wieder
+nicht vom fehlgeschlagenen zu unterscheiden.
+
+**Einfügen** brauchte keinen Code: Die Eingabezeile ist ein gewöhnliches
+`TextField` ohne `readOnly`, ohne abgeschaltete `enableInteractiveSelection`
+und ohne eigenen `contextMenuBuilder` — das System-Menü mit „Einfügen" ist
+also da. Es war nur nie etwas in der Zwischenablage, weil Punkt 1 fehlte.
+`test/chat_kopieren_test.dart` hält die drei Zusicherungen fest, damit sie
+nicht später versehentlich zugedreht werden.
+
+Der Test prüft **beide** Chat-Sorten. Ohne die Korrektur fällt der
+Liga-Fall am fehlenden Eintrag durch und der DM-Fall schon am Long-Press —
+hätte er nur den Liga-Fall abgefragt, wäre die eigentlich gemeldete Stelle
+grün geblieben.
+
 ### Das Karussell darf beim Nachladen nicht zurückspringen
 
 Gemeldet: *„Wenn man zwischen den MatchUps hin und her wischt und dann nach

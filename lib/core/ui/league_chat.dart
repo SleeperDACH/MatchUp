@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -355,7 +356,8 @@ class _MessageBubble extends StatelessWidget {
   final AvatarInfo? avatar;
   final bool isMine;
 
-  /// `null` = Antworten deaktiviert (kein Long-Press-Menü).
+  /// `null` = Antworten deaktiviert (Direktnachrichten). Das Long-Press-Menü
+  /// öffnet sich trotzdem — es bleibt dann beim Kopieren.
   final VoidCallback? onReply;
 
   /// Diese Nachricht ist eine Antwort (zitiert unten aufgelöst).
@@ -363,7 +365,16 @@ class _MessageBubble extends StatelessWidget {
   final String? quotedAuthor;
   final String? quotedBody;
 
+  /// Long-Press auf eine Blase: kopieren, antworten.
+  ///
+  /// **Kopieren steht immer drin, Antworten nur wenn moeglich.** Frueher hing
+  /// das ganze Blatt an `onReply` — wo nicht geantwortet werden kann, tat der
+  /// Long-Press schlicht nichts, und ein Griff, der nichts tut, ist von einem
+  /// fehlenden Griff nicht zu unterscheiden. Genau so las sich der Bericht:
+  /// „kopieren funktioniert irgendwie nicht".
   void _showActions(BuildContext context) {
+    // Vor dem `await` greifen: danach ist der Blatt-Kontext schon fort.
+    final messenger = ScaffoldMessenger.of(context);
     showModalBottomSheet<void>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -371,13 +382,25 @@ class _MessageBubble extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.reply),
-              title: const Text('Antworten'),
-              onTap: () {
+              leading: const Icon(Icons.content_copy),
+              title: const Text('Kopieren'),
+              onTap: () async {
                 Navigator.of(ctx).pop();
-                onReply!();
+                await Clipboard.setData(ClipboardData(text: message.body));
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Nachricht kopiert')),
+                );
               },
             ),
+            if (onReply != null)
+              ListTile(
+                leading: const Icon(Icons.reply),
+                title: const Text('Antworten'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  onReply!();
+                },
+              ),
           ],
         ),
       ),
@@ -392,7 +415,7 @@ class _MessageBubble extends StatelessWidget {
         '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 
     final bubble = GestureDetector(
-        onLongPress: onReply == null ? null : () => _showActions(context),
+        onLongPress: () => _showActions(context),
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 3),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
