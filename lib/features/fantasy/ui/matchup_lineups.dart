@@ -66,7 +66,11 @@ MatchupSideData computeSideData({
       if (r.managerId == managerId && byId[r.playerId] != null)
         byId[r.playerId]!,
   ];
-  final pointsByPlayer = {
+  final saved = lineups
+      .where((l) => l.managerId == managerId && l.round == round)
+      .map((l) => l.playerIds)
+      .firstOrNull;
+  final kaderPunkte = {
     for (final p in rosterPlayers)
       p: scorePlayer(
         stats[p.id] ?? const PlayerMatchStats(),
@@ -74,21 +78,41 @@ MatchupSideData computeSideData({
         league.scoring,
       ),
   };
-  final saved = lineups
-      .where((l) => l.managerId == managerId && l.round == round)
-      .map((l) => l.playerIds)
-      .firstOrNull;
   final starterIds = (saved != null && saved.isNotEmpty)
       ? {
           for (final id in saved)
             if (byId.containsKey(id)) id,
         }
-      : bestEleven(pointsByPlayer, league.roster).starterIds;
+      : bestEleven(kaderPunkte, league.roster).starterIds;
 
+  // **Die gespeicherte Elf ist die Auskunft, nicht der heutige Kader.**
+  //
+  // Vorher wurden die Startelf-Spieler aus `rosterPlayers` gefiltert — also
+  // aus dem Bestand von *jetzt*. Wer nach dem Anpfiff abgegeben oder getradet
+  // wurde, fiel damit rückwirkend aus der Elf und nahm seine Punkte mit.
+  // Gemeldet als „einen Spieler droppen beeinflusst im Nachhinein die Punkte".
+  //
+  // Wer zum Anpfiff in der Elf stand, punktet für diesen Spieltag — auch wenn
+  // er inzwischen woanders spielt. Der Server schreibt in `fantasy_lineups`
+  // ohnehin nur Spieler, die dem Manager zum Zeitpunkt des Speicherns
+  // gehörten (`fantasy_set_lineup`); geprüft wird beim **Schreiben**, nicht
+  // beim Lesen.
   final starters = [
-    for (final p in rosterPlayers)
-      if (starterIds.contains(p.id)) p,
-  ];
+    for (final id in starterIds)
+      if (byId[id] != null) byId[id]!,
+  ]..sort((a, b) => a.position.index.compareTo(b.position.index));
+  // Gewertet wird **Kader plus Startelf** — ein Spieler, der die Elf nach dem
+  // Anpfiff verlassen hat, steht in keinem Kader mehr und hätte sonst keine
+  // Punkte.
+  final pointsByPlayer = {
+    ...kaderPunkte,
+    for (final p in starters)
+      p: scorePlayer(
+        stats[p.id] ?? const PlayerMatchStats(),
+        p.position,
+        league.scoring,
+      ),
+  };
   final bench =
       [
         for (final p in rosterPlayers)
@@ -104,7 +128,7 @@ MatchupSideData computeSideData({
     for (final p in starters) points[p.id] ?? 0.0,
   ].fold<double>(0, (a, b) => a + b);
   final gespielt = {
-    for (final p in rosterPlayers)
+    for (final p in pointsByPlayer.keys)
       if (stats[p.id]?.hasContribution ?? false) p.id,
   };
   return MatchupSideData(starters, bench, points, total, gespielt);

@@ -2956,6 +2956,63 @@ Ergebnis: 11 von 81 Meldungen fallen jetzt heraus (vorher 8) — drei Sperren,
 acht Verletzungen. Beides sind **Sichten**, kein App-Code: Die Korrektur wirkt
 ohne neuen Build.
 
+### Ein Drop verschob rückwirkend Punkte (0113–0115)
+
+Gemeldet, und zu Recht scharf: *„Wenn man einen Spieler, der am Wochenende in
+der Startelf stand, droppt, beeinflusst das im Nachhinein die Punkte. Das darf
+auf keinen Fall passieren."*
+
+**Es waren zwei Fehler, und beide gehen auf meine eigenen Zeilen zurück.**
+
+**Erstens der Trigger aus 0094.** Er räumt einen abgegebenen Spieler aus den
+Aufstellungen, gefiltert auf `round >= fantasy_laufende_runde(...)`, mit dem
+Kommentar „nur die laufende und kommende Runden; vergangene Spieltage sind
+Geschichte". Genau das war der Denkfehler: **Die laufende Runde ist die, die
+gerade gewertet wird.** Ihre Elf ist keine Planung mehr, sondern eine Wette,
+die läuft.
+
+Dieselbe Zeile lief einmalig als Stapel (0094, Zeile 266) — am 30.08. um 09:15,
+**mitten in Spieltag 1**. Drei Aufstellungen wurden beschnitten; in
+MatchUp! #1 verloren Eric (Nadiem Amiri) und Majusch (Serhou Guirassy) je einen
+Startelf-Platz aus einem Trade vom Vortag.
+
+**Zweitens, und das war der eigentliche Grund, warum eine Reparatur der
+Aufstellung allein nichts gebracht hätte:** `computeSideData` filterte die
+Startelf gegen `rosterPlayers` — den Bestand von *jetzt*. Ein zurückgeschriebener
+Spieler wäre stumm wieder herausgefallen. Die gespeicherte Elf ist jetzt die
+Auskunft; aufgelöst wird über den Spielerpool, nicht über den Kader. **Geprüft
+wird beim Schreiben** (`fantasy_set_lineup` nimmt nur eigene Spieler an), nicht
+beim Lesen.
+
+**Die richtige Grenze ist der Anpfiff seines Vereins**, nicht der erste Anpfiff
+der Runde. 0113 sperrte die ganze Runde und ging damit zu weit: Wer freitags
+einen Sonntagsspieler abgibt, muss ihn auch aus der Elf verlieren — sonst
+punktete am Sonntag jemand für ein Team, das ihn seit Freitag nicht mehr hat.
+0115 setzt deshalb dieselbe Grenze wie die Aufstellungssperre aus 0084.
+
+Elegant daran: **Vergangene Spieltage brauchen keine eigene Regel mehr.** Dort
+liegt sein Anpfiff in der Vergangenheit, also ist er dort eingefroren. Genau die
+zweite Regel („round >= laufende Runde") war ja der Fehler.
+
+**Die Reparatur stellt nur das Eindeutige wieder her**: ein Manager, dem genau
+ein Platz fehlt und der vor dem Stapellauf genau einen Abgang hatte. Wo es
+mehrdeutig wäre, bleibt die Lücke stehen — raten wäre schlimmer als eine Lücke,
+die man sieht.
+
+**0114 war ein Nachtrag, weil 0113s Reparatur nicht griff:** Sie verglich die
+fehlenden Plätze gegen `fantasy_squad_size` — den **ganzen Kader** (16) statt
+der Startelf (11). Damit fehlten rechnerisch sechs Plätze bei einem Abgang, die
+Eindeutigkeitsprüfung schlug fehl, und es wurde nichts geschrieben. Der Filter
+war zu streng statt falsch: Der Schaden blieb, aber es entstand kein neuer.
+`fantasy_startelf_groesse` gibt es jetzt als eigenen Helfer — dass diese Zahl an
+zwei Stellen verschieden gerechnet wurde, war der ganze Fehler.
+
+Gegen die Produktion nachgemessen (mit Rollback): Ein Spieler aus Spieltag 1
+lässt sich abgeben, ohne dass die Elf schrumpft (11 → 11); einer aus dem noch
+nicht angepfiffenen Spieltag 2 fällt sehr wohl heraus (11 → 10).
+`test/elf_bleibt_gelocked_test.dart` hält die App-Seite fest — ohne die
+Korrektur fallen zwei seiner fünf Fälle.
+
 ### Der Rückblick schneidet am Abpfiff ab
 
 Gemeldet: *„SFV03 hatte keine 230 Punkte auf der Bank."* Stimmt — der Rückblick
