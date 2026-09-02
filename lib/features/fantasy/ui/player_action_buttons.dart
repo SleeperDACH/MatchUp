@@ -26,6 +26,7 @@ class PlayerActionButton extends ConsumerWidget {
     required this.myPlayers,
     required this.nextRank,
     required this.myId,
+    this.breit = false,
   });
 
   final FantasyLeague league;
@@ -49,40 +50,91 @@ class PlayerActionButton extends ConsumerWidget {
   final int nextRank;
   final String? myId;
 
+  /// **Breite Fassung mit Beschriftung** — für das Spielerprofil, wo eine
+  /// Aktionsleiste steht und kein Listenrand. Die Entscheidung, *welche*
+  /// Aktion möglich ist, bleibt dieselbe: Sie steht einmal in [build], und
+  /// genau deshalb kennt das Profil den Waiver, die U20-Sperre und den
+  /// Kadervoll-Fall, ohne eine Regel zu wiederholen.
+  final bool breit;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (ownerId != null) {
-      if (ownerId == myId) return const _MiniChip(text: 'Dein Team');
-      return _RoundBtn(
+      if (ownerId == myId) {
+        return breit
+            ? const _WeiterChip(text: 'In deinem Kader')
+            : const _MiniChip(text: 'Dein Team');
+      }
+      return _knopf(
+        context,
         color: _cTrade,
         fg: Colors.white,
         icon: Icons.swap_horiz,
-        tooltip: 'Trade anbieten',
+        label: 'Trade anbieten',
         onTap: () => _trade(context, ref),
       );
     }
-    if (player.isLockedNow(league.season)) return const _LockedChip();
+    if (player.isLockedNow(league.season)) {
+      return breit
+          ? const _WeiterChip(text: 'Für den U20-Draft gesperrt')
+          : const _LockedChip();
+    }
     // **Wire und laufendes Spiel führen zum selben Knopf.** Beides heißt
     // „jetzt nicht direkt, aber beantragen kannst du ihn" — und der Antrag
     // ist gefahrlos, weil das Waiver-Fenster zwei Tage vor dem nächsten
     // Spieltag liegt (`fantasy_next_waiver_window`): Er wird nie mitten in
     // einer laufenden Runde abgearbeitet.
     if (onWaiver || aufWire) {
-      if (claimed) return const _MiniChip(text: 'Beantragt');
-      return _RoundBtn(
+      if (claimed) {
+        return breit
+            ? const _WeiterChip(text: 'Antrag läuft')
+            : const _MiniChip(text: 'Beantragt');
+      }
+      return _knopf(
+        context,
         color: _cWaiver,
         fg: Colors.black,
         icon: Icons.schedule,
-        tooltip: 'Waiver – Antrag stellen',
+        label: 'Waiver-Antrag stellen',
         onTap: () => _claim(context, ref),
       );
     }
-    return _RoundBtn(
+    return _knopf(
+      context,
       color: _cAdd,
       fg: Colors.black,
       icon: Icons.add,
-      tooltip: 'Holen',
+      label: 'Holen',
       onTap: () => _add(context, ref),
+    );
+  }
+
+  /// Rund in der Liste, breit mit Wort im Profil — dieselbe Aktion.
+  Widget _knopf(
+    BuildContext context, {
+    required Color color,
+    required Color fg,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    if (!breit) {
+      return _RoundBtn(
+        color: color,
+        fg: fg,
+        icon: icon,
+        tooltip: label,
+        onTap: onTap,
+      );
+    }
+    return FilledButton.icon(
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: fg,
+      ),
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
     );
   }
 
@@ -118,7 +170,8 @@ class PlayerActionButton extends ConsumerWidget {
       // Hat dieser Zugang den letzten freien Platz belegt (ohne eigenen Drop),
       // werden offene Waiver-Anträge ohne Abgang bei der Abarbeitung ungültig.
       // Nutzer warnen und Storno anbieten, statt sie still verfallen zu lassen.
-      final filledLastSpot = confirm.dropId == null &&
+      final filledLastSpot =
+          confirm.dropId == null &&
           myPlayers.length + 1 >= league.roster.squadSize;
       if (filledLastSpot && context.mounted) {
         await _warnStaleWaiverClaims(context, ref);
@@ -132,8 +185,11 @@ class PlayerActionButton extends ConsumerWidget {
   /// ohne Abgang (die sonst als „Kader voll" ungültig würden) und bietet an,
   /// sie zu stornieren — damit der Nutzer sie mit Abgang neu stellen kann.
   Future<void> _warnStaleWaiverClaims(
-      BuildContext context, WidgetRef ref) async {
-    final claims = ref.read(myWaiverClaimsProvider(league.id)).valueOrNull ??
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final claims =
+        ref.read(myWaiverClaimsProvider(league.id)).valueOrNull ??
         const <WaiverClaim>[];
     final stale = claims
         .where((c) => c.status.isPending && c.dropPlayerId == null)
@@ -143,8 +199,9 @@ class PlayerActionButton extends ConsumerWidget {
     final pool =
         ref.read(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
     final nameById = {for (final p in pool) p.id: p.name};
-    final names =
-        stale.map((c) => nameById[c.addPlayerId] ?? c.addPlayerId).join(', ');
+    final names = stale
+        .map((c) => nameById[c.addPlayerId] ?? c.addPlayerId)
+        .join(', ');
 
     final cancel = await showDialog<bool>(
       context: context,
@@ -199,13 +256,15 @@ class PlayerActionButton extends ConsumerWidget {
         title: 'Waiver-Antrag',
         note: full
             ? 'Dein Kader ist voll — ohne Abgang wird der Antrag bei der '
-                'Abarbeitung ungültig. Wähle, wer Platz macht.'
+                  'Abarbeitung ungültig. Wähle, wer Platz macht.'
             : 'Freier Kaderplatz vorhanden — ein Abgang ist nicht nötig.',
       ),
     );
     if (confirm == null || !context.mounted) return;
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).submitWaiverClaim(
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .submitWaiverClaim(
             league.id,
             player.id,
             dropPlayerId: confirm.dropId,
@@ -213,7 +272,9 @@ class PlayerActionButton extends ConsumerWidget {
           );
       ref.invalidate(myWaiverClaimsProvider(league.id));
       ref.invalidate(waiverPlayersProvider(league.id));
-      if (context.mounted) _toast(context, 'Antrag für ${player.name} gestellt');
+      if (context.mounted) {
+        _toast(context, 'Antrag für ${player.name} gestellt');
+      }
     } catch (e) {
       if (context.mounted) _toast(context, 'Fehlgeschlagen: $e');
     }
@@ -222,7 +283,7 @@ class PlayerActionButton extends ConsumerWidget {
   void _trade(BuildContext context, WidgetRef ref) {
     final managers =
         ref.read(fantasyManagersProvider(league.id)).valueOrNull ??
-            const <FantasyManager>[];
+        const <FantasyManager>[];
     FantasyManager? owner;
     for (final m in managers) {
       if (m.userId == ownerId) {
@@ -235,13 +296,15 @@ class PlayerActionButton extends ConsumerWidget {
       return;
     }
     // Ich fordere diesen Spieler; was ich gebe, wähle ich im Compose.
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => TradeComposeScreen(
-        league: league,
-        partner: owner!,
-        initialRequest: {player.id},
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TradeComposeScreen(
+          league: league,
+          partner: owner!,
+          initialRequest: {player.id},
+        ),
       ),
-    ));
+    );
   }
 }
 
@@ -295,8 +358,10 @@ class _MiniChip extends StatelessWidget {
         color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(text,
-          style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+      ),
     );
   }
 }
@@ -312,11 +377,12 @@ class _LockedChip extends StatelessWidget {
       children: [
         Icon(Icons.lock_outline, size: 14, color: scheme.onSurfaceVariant),
         const SizedBox(width: 4),
-        Text('U20-Draft',
-            style: Theme.of(context)
-                .textTheme
-                .labelSmall
-                ?.copyWith(color: scheme.onSurfaceVariant)),
+        Text(
+          'U20-Draft',
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
       ],
     );
   }
@@ -362,10 +428,12 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
     final scheme = Theme.of(context).colorScheme;
     final canConfirm = widget.mode != _DropMode.mustDrop || _dropId != null;
     // Nach Position sortiert (TW → ABW → MF → ST), dann Name.
-    final sorted = [...widget.myPlayers]..sort((a, b) =>
-        a.position.index != b.position.index
+    final sorted = [...widget.myPlayers]
+      ..sort(
+        (a, b) => a.position.index != b.position.index
             ? a.position.index.compareTo(b.position.index)
-            : a.name.compareTo(b.name));
+            : a.name.compareTo(b.name),
+      );
     // **Der Knopf muss stehen bleiben.** Vorher lag das ganze Blatt in einem
     // `SingleChildScrollView`, und bei vollem Kader standen „Abbrechen" und
     // „Bestätigen" unter sechzehn Kaderzeilen — außerhalb des Bildes. Gemeldet
@@ -378,7 +446,8 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.85),
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -388,17 +457,20 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(widget.title,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   if (widget.note != null) ...[
                     const SizedBox(height: 8),
-                    Text(widget.note!,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                    Text(
+                      widget.note!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -410,31 +482,35 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-            _block(
-              context,
-              icon: Icons.add,
-              label: 'Kommt rein',
-              color: _cAdd,
-              child: _playerRow(widget.incoming),
-            ),
-            if (widget.mode != _DropMode.none) ...[
-              const SizedBox(height: 8),
-              Icon(Icons.arrow_downward, color: scheme.onSurfaceVariant),
-              const SizedBox(height: 8),
-              _block(
-                context,
-                icon: Icons.remove,
-                label: widget.mode == _DropMode.mustDrop
-                    ? 'Kader voll — wer macht Platz?'
-                    : 'Optional: wen abgeben? (nur bei vollem Kader nötig)',
-                color: _cTrade,
-                child: Column(
-                  children: [
-                    for (final p in sorted) _dropRow(p, _dropId == p.id),
-                  ],
-                ),
-              ),
-            ],
+                    _block(
+                      context,
+                      icon: Icons.add,
+                      label: 'Kommt rein',
+                      color: _cAdd,
+                      child: _playerRow(widget.incoming),
+                    ),
+                    if (widget.mode != _DropMode.none) ...[
+                      const SizedBox(height: 8),
+                      Icon(
+                        Icons.arrow_downward,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 8),
+                      _block(
+                        context,
+                        icon: Icons.remove,
+                        label: widget.mode == _DropMode.mustDrop
+                            ? 'Kader voll — wer macht Platz?'
+                            : 'Optional: wen abgeben? (nur bei vollem Kader nötig)',
+                        color: _cTrade,
+                        child: Column(
+                          children: [
+                            for (final p in sorted)
+                              _dropRow(p, _dropId == p.id),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -448,10 +524,14 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
                   // stand nur oben im Blatt, außer Sicht, sobald man zur Liste
                   // gescrollt hatte.
                   if (!canConfirm) ...[
-                    Text('Wähle oben, wer Platz macht.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: _cWaiver, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Wähle oben, wer Platz macht.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: _cWaiver,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                   ],
                   Row(
@@ -466,8 +546,9 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: canConfirm
-                              ? () =>
-                                  Navigator.of(context).pop(_MoveConfirm(_dropId))
+                              ? () => Navigator.of(
+                                  context,
+                                ).pop(_MoveConfirm(_dropId))
                               : null,
                           icon: const Icon(Icons.check),
                           label: const Text('Bestätigen'),
@@ -502,12 +583,16 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(fontWeight: FontWeight.bold, color: color)),
-          ]),
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(fontWeight: FontWeight.bold, color: color),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           child,
         ],
@@ -522,8 +607,11 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
         PositionPill(pos: p.position),
         const SizedBox(width: 8),
         Flexible(
-          child: Text('${p.name} · ${p.club}',
-              maxLines: 1, overflow: TextOverflow.ellipsis),
+          child: Text(
+            '${p.name} · ${p.club}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
@@ -555,21 +643,50 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
                 PositionPill(pos: p.position),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(p.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14)),
+                  child: Text(
+                    p.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ),
                 Icon(
-                  selected
-                      ? Icons.check_circle
-                      : Icons.radio_button_unchecked,
+                  selected ? Icons.check_circle : Icons.radio_button_unchecked,
                   size: 20,
                   color: selected ? _cTrade : scheme.onSurfaceVariant,
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ein Zustand statt einer Aktion, in der breiten Fassung: „hier ist nichts zu
+/// tun, und das ist der Grund". Ein Knopf, der nichts kann, wäre schlechter
+/// als ein Satz.
+class _WeiterChip extends StatelessWidget {
+  const _WeiterChip({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

@@ -17,6 +17,11 @@ import '../providers.dart';
 import 'club_badge.dart';
 import 'pitch_painter.dart';
 import 'trade_screen.dart';
+import '../logic/waiver_fenster.dart';
+import 'player_action_buttons.dart';
+import '../../../app/typografie.dart';
+import '../../../app/widgets/punktzahl.dart';
+import '../logic/spieler_schnitt.dart';
 
 /// Öffnet das Spielerprofil (Kopf + Leistungstabelle je Spieltag; für eigene
 /// Spieler zusätzlich „Droppen"). [isMine] steuert den Drop-Button.
@@ -60,8 +65,9 @@ class _PlayerProfileSheet extends ConsumerWidget {
     final cutoff = DateTime(league.season, 8, 1);
 
     return ConstrainedBox(
-      constraints:
-          BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -76,13 +82,14 @@ class _PlayerProfileSheet extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(player.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(
+                        player.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -121,13 +128,9 @@ class _PlayerProfileSheet extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const LeiseReiter(
-                      titel: [
-                        'Leistung',
-                        'Aufstellung',
-                        'Spielplan',
-                        'Kader'
-                      ],
-                      horizontal: 12),
+                    titel: ['Leistung', 'Aufstellung', 'Spielplan', 'Kader'],
+                    horizontal: 12,
+                  ),
                   Flexible(
                     child: TabBarView(
                       children: [
@@ -139,15 +142,19 @@ class _PlayerProfileSheet extends ConsumerWidget {
                           error: (e, _) => Padding(
                             padding: const EdgeInsets.all(24),
                             child: Text(
-                                'Stats konnten nicht geladen werden.\n$e',
-                                textAlign: TextAlign.center),
+                              'Stats konnten nicht geladen werden.\n$e',
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                           data: (season) => _table(context, season),
                         ),
                         _Prognose(player: player),
                         _Spielplan(club: player.club),
                         _Vereinskader(
-                            league: league, club: player.club, aktiv: player.id),
+                          league: league,
+                          club: player.club,
+                          aktiv: player.id,
+                        ),
                       ],
                     ),
                   ),
@@ -166,11 +173,12 @@ class _PlayerProfileSheet extends ConsumerWidget {
   Widget _actions(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final myId = ref.watch(currentUserProvider)?.id;
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
     final managers =
         ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
-            const <FantasyManager>[];
+        const <FantasyManager>[];
     final ownerId = roster
         .where((r) => r.playerId == player.id)
         .map((r) => r.managerId)
@@ -213,8 +221,46 @@ class _PlayerProfileSheet extends ConsumerWidget {
         ),
       ];
     } else {
-      // Freier Spieler (kein Besitzer) — hier keine Trade-/Drop-Aktion.
-      return const SizedBox.shrink();
+      // **Freie Spieler bekommen ihren Knopf.** Vorher endete das Profil hier
+      // ohne Aktion: Man sah, dass jemand frei ist, und musste zurück in die
+      // Free Agency, um ihn zu holen.
+      //
+      // Gebaut wird er von `PlayerActionButton` in seiner breiten Fassung —
+      // damit gelten hier dieselben Regeln wie in der Liste (Waiver,
+      // U20-Sperre, voller Kader mit Abgabe-Blatt), ohne sie zu wiederholen.
+      final spiele =
+          ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+          const <Fixture>[];
+      final onWaivers =
+          ref.watch(waiverPlayersProvider(league.id)).valueOrNull ??
+          const <String>{};
+      final claims =
+          ref.watch(myWaiverClaimsProvider(league.id)).valueOrNull ??
+          const <WaiverClaim>[];
+      final offen = claims.where((c) => c.status.isPending).toList();
+      final pool =
+          ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
+      final nachId = {for (final p in pool) p.id: p};
+      children = [
+        Expanded(
+          child: PlayerActionButton(
+            breit: true,
+            league: league,
+            player: player,
+            ownerId: null,
+            onWaiver: onWaivers.contains(player.id),
+            aufWire: vereinAufWire(player.club, spiele, DateTime.now()),
+            claimed: offen.any((c) => c.addPlayerId == player.id),
+            myPlayers: [
+              for (final r in roster)
+                if (r.managerId == myId && nachId[r.playerId] != null)
+                  nachId[r.playerId]!,
+            ],
+            nextRank: offen.length + 1,
+            myId: myId,
+          ),
+        ),
+      ];
     }
 
     return SafeArea(
@@ -231,23 +277,30 @@ class _PlayerProfileSheet extends ConsumerWidget {
   void _tradeRequest(BuildContext context, FantasyManager owner) {
     final nav = Navigator.of(context);
     nav.pop();
-    nav.push(MaterialPageRoute(
-      builder: (_) => TradeComposeScreen(
-        league: league,
-        partner: owner,
-        initialRequest: {player.id},
+    nav.push(
+      MaterialPageRoute(
+        builder: (_) => TradeComposeScreen(
+          league: league,
+          partner: owner,
+          initialRequest: {player.id},
+        ),
       ),
-    ));
+    );
   }
 
   /// Eigenen Spieler traden: Partner wählen, dann Compose mit dem Spieler
   /// bereits im Angebot.
-  Future<void> _tradeMine(BuildContext context, WidgetRef ref,
-      List<FantasyManager> managers, String? myId) async {
+  Future<void> _tradeMine(
+    BuildContext context,
+    WidgetRef ref,
+    List<FantasyManager> managers,
+    String? myId,
+  ) async {
     final others = managers.where((m) => m.userId != myId).toList();
     if (others.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Keine anderen Manager in der Liga.')));
+        const SnackBar(content: Text('Keine anderen Manager in der Liga.')),
+      );
       return;
     }
     final partner = await showDialog<FantasyManager>(
@@ -269,8 +322,11 @@ class _PlayerProfileSheet extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(m.display,
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      m.display,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -281,30 +337,37 @@ class _PlayerProfileSheet extends ConsumerWidget {
     if (partner == null || !context.mounted) return;
     final nav = Navigator.of(context);
     nav.pop();
-    nav.push(MaterialPageRoute(
-      builder: (_) => TradeComposeScreen(
-        league: league,
-        partner: partner,
-        initialOffer: {player.id},
+    nav.push(
+      MaterialPageRoute(
+        builder: (_) => TradeComposeScreen(
+          league: league,
+          partner: partner,
+          initialOffer: {player.id},
+        ),
       ),
-    ));
+    );
   }
 
   Widget _table(
-      BuildContext context, Map<int, Map<String, PlayerMatchStats>> season) {
+    BuildContext context,
+    Map<int, Map<String, PlayerMatchStats>> season,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     final rounds = season.keys.toList()..sort();
     if (rounds.isEmpty) {
       return const _Leer('Noch keine gewerteten Spieltage.');
     }
-    final defensive = player.position == PlayerPosition.gk ||
+    final defensive =
+        player.position == PlayerPosition.gk ||
         player.position == PlayerPosition.def;
     final rows = [
       for (final r in rounds)
-        (r, season[r]?[player.id] ?? const PlayerMatchStats())
+        (r, season[r]?[player.id] ?? const PlayerMatchStats()),
     ];
     final total = rows.fold<double>(
-        0, (s, e) => s + scorePlayer(e.$2, player.position, league.scoring));
+      0,
+      (s, e) => s + scorePlayer(e.$2, player.position, league.scoring),
+    );
     final games = rows.where((e) => e.$2.played).length;
 
     return ListView(
@@ -318,6 +381,15 @@ class _PlayerProfileSheet extends ConsumerWidget {
             const SizedBox(width: 10),
             _summary(context, '$games', 'Spiele', scheme.onSurfaceVariant),
           ],
+        ),
+        const SizedBox(height: 10),
+        _Schnitte(
+          schnitt: spielerSchnitt(
+            saison: season,
+            spielerId: player.id,
+            position: player.position,
+            regeln: league.scoring,
+          ),
         ),
         const SizedBox(height: 12),
         _LeistungKopf(defensive: defensive),
@@ -356,7 +428,10 @@ class _PlayerProfileSheet extends ConsumerWidget {
 
   /// Die Punkte eines Spieltags im Einzelnen.
   void _zeigeAufschluesselung(
-      BuildContext context, int runde, PlayerMatchStats stats) {
+    BuildContext context,
+    int runde,
+    PlayerMatchStats stats,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -379,18 +454,25 @@ class _PlayerProfileSheet extends ConsumerWidget {
         ),
         child: Column(
           children: [
-            Text(value,
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold, color: c)),
-            Text(label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: c,
+              ),
+            ),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
-
 
   Future<void> _drop(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
@@ -401,10 +483,11 @@ class _PlayerProfileSheet extends ConsumerWidget {
         // „Er bleibt in der Elf" ist die Auskunft, nach der man sonst rät —
         // und die Frage stellt sich genau in dem Moment, in dem man droppt.
         content: const Text(
-            'Der Spieler verlässt deinen Kader und kommt für 24 Stunden auf '
-            'den Waiver-Wire. Sein Platz bleibt frei, bis du nachlegst.\n\n'
-            'Hat sein Spiel schon angepfiffen, bleibt er für diesen Spieltag '
-            'in deiner Elf und punktet weiter für dich.'),
+          'Der Spieler verlässt deinen Kader und kommt für 24 Stunden auf '
+          'den Waiver-Wire. Sein Platz bleibt frei, bis du nachlegst.\n\n'
+          'Hat sein Spiel schon angepfiffen, bleibt er für diesen Spieltag '
+          'in deiner Elf und punktet weiter für dich.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -412,7 +495,8 @@ class _PlayerProfileSheet extends ConsumerWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Droppen'),
           ),
@@ -432,7 +516,8 @@ class _PlayerProfileSheet extends ConsumerWidget {
       ref.invalidate(leagueLineupsProvider(league.id));
       navigator.pop();
       messenger.showSnackBar(
-          SnackBar(content: Text('${player.name} gedroppt')));
+        SnackBar(content: Text('${player.name} gedroppt')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
@@ -459,13 +544,18 @@ class _LeistungKopf extends StatelessWidget {
       letterSpacing: 0.8,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
-    Widget z(String t) =>
-        SizedBox(width: zahl, child: Text(t, style: stil, textAlign: TextAlign.center));
+    Widget z(String t) => SizedBox(
+      width: zahl,
+      child: Text(t, style: stil, textAlign: TextAlign.center),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
       child: Row(
         children: [
-          SizedBox(width: spT, child: Text('SPT', style: stil)),
+          SizedBox(
+            width: spT,
+            child: Text('SPT', style: stil),
+          ),
           const Spacer(),
           z('MIN'),
           z('T'),
@@ -507,8 +597,9 @@ class _LeistungZeile extends StatelessWidget {
       color: gespielt ? scheme.onSurface : scheme.onSurfaceVariant,
     );
     Widget z(String t) => SizedBox(
-        width: _LeistungKopf.zahl,
-        child: Text(t, style: stil, textAlign: TextAlign.center));
+      width: _LeistungKopf.zahl,
+      child: Text(t, style: stil, textAlign: TextAlign.center),
+    );
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -517,8 +608,10 @@ class _LeistungZeile extends StatelessWidget {
           children: [
             SizedBox(
               width: _LeistungKopf.spT,
-              child: Text('$runde.',
-                  style: stil.copyWith(fontWeight: FontWeight.w700)),
+              child: Text(
+                '$runde.',
+                style: stil.copyWith(fontWeight: FontWeight.w700),
+              ),
             ),
             const Spacer(),
             // Nicht gespielt zeigt „–", nicht „0" — dieselbe Regel wie im
@@ -526,8 +619,7 @@ class _LeistungZeile extends StatelessWidget {
             z(gespielt ? '${stats.minutes}' : '–'),
             z(gespielt ? '${stats.goals}' : '–'),
             z(gespielt ? '${stats.assists}' : '–'),
-            if (defensive)
-              z(!gespielt ? '–' : (stats.cleanSheet ? '✓' : '–')),
+            if (defensive) z(!gespielt ? '–' : (stats.cleanSheet ? '✓' : '–')),
             SizedBox(
               width: _LeistungKopf.punkte,
               child: Text(
@@ -571,9 +663,11 @@ class _Aufschluesselung extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(titel,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              titel,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
             if (!gespielt)
               const _Leer('An diesem Spieltag nicht eingesetzt.')
@@ -591,10 +685,13 @@ class _Aufschluesselung extends StatelessWidget {
                           children: [
                             Expanded(child: Text(l.label)),
                             if (l.count != 1) ...[
-                              Text('${l.count} ×',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: scheme.onSurfaceVariant)),
+                              Text(
+                                '${l.count} ×',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
                               const SizedBox(width: 8),
                             ],
                             SizedBox(
@@ -605,7 +702,7 @@ class _Aufschluesselung extends StatelessWidget {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontFeatures: const [
-                                    FontFeature.tabularFigures()
+                                    FontFeature.tabularFigures(),
                                   ],
                                   // Rot markiert den Abzug — die Ausnahme.
                                   // Der Normalfall braucht keine Farbe.
@@ -622,17 +719,21 @@ class _Aufschluesselung extends StatelessWidget {
                     Row(
                       children: [
                         const Expanded(
-                          child: Text('Gesamt',
-                              style: TextStyle(fontWeight: FontWeight.w800)),
+                          child: Text(
+                            'Gesamt',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
-                        Text(formatPoints(score.total),
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: score.total < 0
-                                  ? scheme.error
-                                  : scheme.onSurface,
-                            )),
+                        Text(
+                          formatPoints(score.total),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: score.total < 0
+                                ? scheme.error
+                                : scheme.onSurface,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -664,7 +765,7 @@ class _Spielplan extends ConsumerWidget {
     }
     final seine = [
       for (final f in alle)
-        if (f.home.name == club || f.away.name == club) f
+        if (f.home.name == club || f.away.name == club) f,
     ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
     if (seine.isEmpty) {
       return _Leer('Für $club liegt kein Spielplan vor.');
@@ -717,12 +818,15 @@ class _Vereinskader extends ConsumerWidget {
     }
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
-    final kader = [
-      for (final p in pool)
-        if (p.club == club) p
-    ]..sort((a, b) => a.position.index != b.position.index
-        ? a.position.index.compareTo(b.position.index)
-        : a.name.compareTo(b.name));
+    final kader =
+        [
+          for (final p in pool)
+            if (p.club == club) p,
+        ]..sort(
+          (a, b) => a.position.index != b.position.index
+              ? a.position.index.compareTo(b.position.index)
+              : a.name.compareTo(b.name),
+        );
     if (kader.isEmpty) return _Leer('Für $club steht kein Kader im Pool.');
 
     return ListView.builder(
@@ -733,15 +837,23 @@ class _Vereinskader extends ConsumerWidget {
         final ich = p.id == aktiv;
         return ListTile(
           dense: true,
-          leading:
-              ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 28),
-          title: Text(p.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontWeight: ich ? FontWeight.w800 : FontWeight.w600)),
-          subtitle: Text(p.position.label,
-              style: TextStyle(color: scheme.onSurfaceVariant)),
+          leading: ClubBadge(
+            club: p.club,
+            iconUrl: clubIcons[p.club],
+            size: 28,
+          ),
+          title: Text(
+            p.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: ich ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            p.position.label,
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          ),
           // Kein Grün für „du bist hier" — das ist kein laufender Vorgang.
           trailing: ich
               ? Icon(Icons.person, size: 18, color: scheme.onSurfaceVariant)
@@ -772,14 +884,15 @@ class _Leer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(text,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+    ),
+  );
 }
 
 /// **Die voraussichtliche Aufstellung** des Vereins für das nächste Spiel.
@@ -804,8 +917,9 @@ class _Prognose extends ConsumerWidget {
       return const _Leer('Für diese Saison steht kein Spiel mehr an.');
     }
 
-    final elfAsync =
-        ref.watch(prognoseElfProvider((club: player.club, runde: spiel.round)));
+    final elfAsync = ref.watch(
+      prognoseElfProvider((club: player.club, runde: spiel.round)),
+    );
 
     return elfAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -872,7 +986,9 @@ class _Formationsfeld extends StatelessWidget {
                       for (final s in reihe)
                         Flexible(
                           child: _Feldspieler(
-                              spieler: s, hervor: s.playerId == ich),
+                            spieler: s,
+                            hervor: s.playerId == ich,
+                          ),
                         ),
                     ],
                   ),
@@ -975,10 +1091,9 @@ class _PrognoseKopf extends StatelessWidget {
             '${spiel.home.name} – ${spiel.away.name}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 2),
           Text(
@@ -1025,8 +1140,11 @@ class _Urteil extends StatelessWidget {
             ),
       child: Row(
         children: [
-          Icon(drin ? Icons.check_circle_outline : Icons.event_seat_outlined,
-              size: 18, color: farbe),
+          Icon(
+            drin ? Icons.check_circle_outline : Icons.event_seat_outlined,
+            size: 18,
+            color: farbe,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1034,9 +1152,10 @@ class _Urteil extends StatelessWidget {
                   ? 'Voraussichtlich in der Startelf'
                   : 'Nicht in der voraussichtlichen Elf',
               style: TextStyle(
-                  fontWeight: drin ? FontWeight.w600 : FontWeight.w700,
-                  color: farbe,
-                  fontSize: 13),
+                fontWeight: drin ? FontWeight.w600 : FontWeight.w700,
+                color: farbe,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
@@ -1085,10 +1204,9 @@ class _NochKeinePrognose extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'Noch keine Aufstellung',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -1106,18 +1224,22 @@ class _NochKeinePrognose extends ConsumerWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: scheme.onSurface.withValues(alpha: 0.12),
-                    width: 0.8),
+                  color: scheme.onSurface.withValues(alpha: 0.12),
+                  width: 0.8,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Zuletzt',
-                      style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 0.6,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurfaceVariant)),
+                  Text(
+                    'Zuletzt',
+                    style: TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 0.6,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     stats.minutes > 0
@@ -1138,7 +1260,6 @@ class _NochKeinePrognose extends ConsumerWidget {
 String _wannKurz(DateTime d) =>
     DateFormat('E, d. MMM, HH:mm', 'de_DE').format(d);
 
-
 /// Sagt im Profil, warum ein Spieler ausfällt — und seit wann.
 ///
 /// Die Karte trägt nur ein Symbol (dort ist für „Verletzung der hinteren
@@ -1154,8 +1275,9 @@ class _Ausfallzeile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final a = (ref.watch(absencesProvider).valueOrNull ?? const {})[playerId];
     if (a == null) return const SizedBox.shrink();
-    final farbe =
-        a.gesperrt ? const Color(0xFFF23030) : const Color(0xFFFFC83D);
+    final farbe = a.gesperrt
+        ? const Color(0xFFF23030)
+        : const Color(0xFFFFC83D);
 
     final teile = <String>[
       if (a.seit != null)
@@ -1178,8 +1300,11 @@ class _Ausfallzeile extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(a.gesperrt ? Icons.block : Icons.medical_services_outlined,
-                size: 15, color: farbe),
+            Icon(
+              a.gesperrt ? Icons.block : Icons.medical_services_outlined,
+              size: 15,
+              color: farbe,
+            ),
             const SizedBox(width: 7),
             Expanded(
               child: Column(
@@ -1188,22 +1313,149 @@ class _Ausfallzeile extends ConsumerWidget {
                   Text(
                     '${a.gesperrt ? 'Gesperrt' : 'Verletzt'} · ${a.grund}',
                     style: TextStyle(
-                        color: farbe,
-                        fontWeight: FontWeight.w700,
-                        fontSize: Schrift.koerperKlein),
+                      color: farbe,
+                      fontWeight: FontWeight.w700,
+                      fontSize: Schrift.koerperKlein,
+                    ),
                   ),
                   if (teile.isNotEmpty)
-                    Text(teile.join(' · '),
-                        style: TextStyle(
-                            fontSize: Schrift.klein,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant)),
+                    Text(
+                      teile.join(' · '),
+                      style: TextStyle(
+                        fontSize: Schrift.klein,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// **Die beiden Schnitte nebeneinander.**
+///
+/// „⌀ je Spieltag" ist der Erwartungswert für nächste Woche, „⌀ je Einsatz",
+/// was er kann, wenn er spielt. Beide zu zeigen ist keine Unentschlossenheit:
+/// Bei einem Stammspieler stehen dort zwei gleiche Zahlen, bei einem
+/// Ergänzungsspieler zwei sehr verschiedene — und **dieser Unterschied** ist
+/// die Auskunft vor einem Pick-up.
+class _Schnitte extends StatelessWidget {
+  const _Schnitte({required this.schnitt});
+
+  final SpielerSchnitt schnitt;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!schnitt.hatDaten) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final s = schnitt;
+
+    Widget spalte(String titel, String minuten, String punkte, String fuss) =>
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titel.toUpperCase(),
+                style: TextStyle(
+                  fontSize: Schrift.mikro,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    punkte,
+                    style: TextStyle(
+                      fontSize: Schrift.h3,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: gleichbreiteZiffern,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Pkt',
+                    style: TextStyle(
+                      fontSize: Schrift.winzig,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    minuten,
+                    style: TextStyle(
+                      fontSize: Schrift.koerper,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: gleichbreiteZiffern,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    'Min',
+                    style: TextStyle(
+                      fontSize: Schrift.winzig,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                fuss,
+                style: TextStyle(
+                  fontSize: Schrift.winzig,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+        );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: [
+          spalte(
+            '⌀ je Spieltag',
+            s.minutenJeSpieltag.round().toString(),
+            formatPoints(s.punkteJeSpieltag),
+            '${s.spieltage} Spieltage',
+          ),
+          // Ohne eine einzige Minute gibt es nichts zu mitteln — dann steht da
+          // der Grund und keine 0, die niemand behauptet hat.
+          if (s.punkteJeEinsatz == null)
+            Expanded(
+              child: Text(
+                'Noch kein Einsatz',
+                style: TextStyle(
+                  fontSize: Schrift.klein,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            spalte(
+              '⌀ je Einsatz',
+              s.minutenJeEinsatz!.round().toString(),
+              formatPoints(s.punkteJeEinsatz!),
+              '${s.einsaetze} Einsätze',
+            ),
+        ],
       ),
     );
   }

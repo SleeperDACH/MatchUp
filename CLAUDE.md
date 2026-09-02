@@ -3099,6 +3099,56 @@ Ein neu geholter Spieler landet ohne Zutun auf der Bank: Er kommt in
 `fantasy_rosters`, nicht in `fantasy_lineups`. Die Lücke bleibt also stehen,
 bis man sie selbst füllt.
 
+### Das Spielerprofil handelt jetzt selbst
+
+Gewünscht: *„Ich möchte, dass direkt über die Profile ein Knopf für Trade, Drop
+oder Pick-up (je nach Status des Teams) eingebaut wird. Außerdem eine Anzeige
+für durchschnittliche Minuten und durchschnittliche Punkte."*
+
+**Der freie Spieler hatte keinen Knopf.** Eigener Spieler → Traden + Droppen,
+fremder → Traden mit dem Besitzer, **frei → `SizedBox.shrink()`**. Man sah, dass
+jemand frei ist, und musste zurück in die Free Agency, um ihn zu holen.
+
+**Gebaut ist der Knopf nicht neu, sondern breit.** `PlayerActionButton` bekommt
+ein `breit`-Flag und rendert dann statt des runden Symbols einen beschrifteten
+Knopf. Damit gelten im Profil **dieselben Regeln wie in der Liste**, ohne sie zu
+wiederholen: Waiver-Antrag statt Holen, wenn er auf dem Wire liegt oder sein
+Verein angepfiffen hat; das Abgabe-Blatt bei vollem Kader; die U20-Sperre. Eine
+zweite Entscheidungslogik im Profil wäre genau die Sorte Doppelung, die in
+dieser Datei ein Dutzend Mal schiefgegangen ist.
+
+Wo nichts zu tun ist, steht **ein Satz statt eines toten Knopfes**: „In deinem
+Kader", „Antrag läuft", „Für den U20-Draft gesperrt". Ein Knopf, der nichts
+kann, wäre schlechter als eine Auskunft — dieselbe Regel wie beim
+Tippspiel-Schalter im dritten Zustand.
+
+**Zwei Schnitte, und ihr Unterschied ist die Auskunft.**
+
+| | Nenner | sagt |
+|---|---|---|
+| ⌀ je Spieltag | alle gewerteten Spieltage | der Erwartungswert für nächste Woche |
+| ⌀ je Einsatz | nur Spieltage mit Minuten | was er kann, wenn er spielt |
+
+Beide zu zeigen ist keine Unentschlossenheit: Bei einem Stammspieler stehen dort
+zwei gleiche Zahlen, bei einem Ergänzungsspieler zwei sehr verschiedene — und
+**genau dieser Unterschied** ist die Frage vor einem Pick-up. Wer die halbe
+Saison verletzt war, ist im Schnitt schlechter, auch wenn er stark spielt, wenn
+er spielt.
+
+Zwei Regeln in `logic/spieler_schnitt.dart`, beide schon einmal an anderer
+Stelle in dieser App falsch gewesen:
+
+- **Ein Spieltag zählt nur, wenn er gewertet ist** — erkennbar daran, dass
+  irgendein Spieler dort Daten hat. Ein Spieltag, der erst kommt, darf den
+  Schnitt nicht drücken („noch nicht gespielt ist kein Nullpunktespiel").
+- **Ohne eine einzige Minute gibt es keinen Einsatz-Schnitt**, sondern `null`
+  und den Satz „Noch kein Einsatz". Eine 0 wäre eine Aussage über etwas, das nie
+  stattfand.
+
+Angesehen über `test/spielerprofil_vorschau_test.dart`, das jetzt **vier**
+Fälle zeigt — neu der freie Spieler mit „Holen". Gerechnet wird in
+`test/spieler_schnitt_test.dart`.
+
 ### Der Rückblick schneidet am Abpfiff ab
 
 Gemeldet: *„SFV03 hatte keine 230 Punkte auf der Bank."* Stimmt — der Rückblick

@@ -219,6 +219,11 @@ void main() {
           fantasyManagersProvider
               .overrideWith((ref, id) => Stream.value(const [])),
           fantasySeasonFixturesProvider.overrideWith((ref) async => spiele),
+          // Für den Pick-up-Knopf im Profil eines freien Spielers.
+          waiverPlayersProvider
+              .overrideWith((ref, id) => Stream.value(const <String>{})),
+          myWaiverClaimsProvider
+              .overrideWith((ref, id) => Stream.value(const <WaiverClaim>[])),
         ],
         child: MaterialApp(theme: buildAppTheme(), home: kind),
       );
@@ -400,5 +405,47 @@ void main() {
       find.byType(BottomSheet),
       matchesGoldenFile('goldens/spielerprofil_nicht_in_elf.png'),
     );
+  });
+
+  testWidgets('Vorschau: freier Spieler mit Pick-up', (tester) async {
+    // **Der Fall, den es bisher nicht gab.** Das Profil eines freien Spielers
+    // endete ohne jede Aktion: Man sah, dass er frei ist, und musste zurück in
+    // die Free Agency, um ihn zu holen.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 780 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(rahmen(
+      elf: prognose,
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showPlayerProfile(
+              context,
+              league: liga,
+              player: held,
+              clubIcon: null,
+              // Frei: gehört niemandem, also weder „Traden" noch „Droppen".
+              isMine: false,
+            ),
+            child: const Text('öffnen'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('öffnen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    expect(find.text('Holen'), findsOneWidget,
+        reason: 'Ein freier Spieler muss von hier aus zu holen sein');
+
+    await expectLater(find.byType(BottomSheet),
+        matchesGoldenFile('goldens/spielerprofil_frei.png'));
   });
 }
