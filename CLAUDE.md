@@ -2259,9 +2259,21 @@ Prognosefenster eine vorhandene Elf weg, und das sähe in der App aus wie
 Prognose gibt sie nicht her — gemessen am 02.09.2026 liefert
 `predictedLineups` genau elf Namen je Mannschaft, alle mit demselben
 `type_id` (111384). Der Include `lineups` trennt dagegen `type_id` 11
-(Startelf) von 12 (Bank), liefert für ein noch nicht angesetztes Spiel gar
-nichts und kommt im selben `fixtures/multi`-Request mit, ohne einen zweiten zu
-kosten. Daraus die Regel: **Was gemeldet ist, schlägt was vorhergesagt ist.**
+(Startelf) von 12 (Bank) und kommt im selben `fixtures/multi`-Request mit,
+ohne einen zweiten zu kosten. Daraus die Regel: **Was gemeldet ist, schlägt
+was vorhergesagt ist.**
+
+**Erkannt wird die Meldung an der Bank, nicht an der Elf** — das war der
+Fehler der ersten Fassung, und er stand eine Stunde später in der Datenbank:
+`lineups` trägt Typ-11-Zeilen schon **zwei bis drei Tage vor Anpfiff**
+(gemessen für zwölf Mannschaften der Spieltage am 4. und 5.9., elf je
+Mannschaft, ohne eine einzige Typ-12-Zeile). Das ist keine Meldung, sondern
+dieselbe Erwartung noch einmal — wer nur auf Typ 11 prüft, schreibt „In der
+Startelf" über eine Vermutung und stellt darunter eine leere Bank hin. Eine
+echte Aufstellung bringt die Ersatzbank mit; nachgemessen an der gespielten
+Partie: 11 + 9 je Mannschaft. Migration 0119 räumt die falschen Markierungen
+weg, die an einem Spiel hängen blieben, für das Sportmonks in einem Lauf gar
+nichts lieferte (dort lässt der Sync die alten Zeilen absichtlich stehen).
 `predicted_lineups.bank` und `.bestaetigt` tragen den Unterschied; die App
 schreibt „In der Startelf" statt „Voraussichtlich in der Startelf", sobald er
 gemeldet ist, und kennt mit „Auf der Bank" einen dritten Zustand — er ist

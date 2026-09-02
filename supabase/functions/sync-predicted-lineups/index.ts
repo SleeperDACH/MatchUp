@@ -127,11 +127,21 @@ Deno.serve(async (req) => {
     for (const fixture of data?.data ?? []) {
       const fixtureId = `sportmonks:${fixture.id}`;
 
-      // Sportmonks' Typen: 11 = Startelf, 12 = Bank. Eine gemeldete
-      // Aufstellung erkennt man daran, dass ueberhaupt Startelf-Zeilen da
-      // sind; eine Bank ohne Elf waere kein Ersatz fuer die Prognose.
+      // Sportmonks' Typen: 11 = Startelf, 12 = Bank.
+      //
+      // **Erkannt wird die gemeldete Aufstellung an der Bank, nicht an der
+      // Elf.** Gemessen am 02.09.2026: `lineups` trug fuer zwoelf
+      // Mannschaften der Spieltage am 4. und 5.9. schon Zeilen vom Typ 11 —
+      // zwei bis drei Tage vor Anpfiff, elf je Mannschaft und **ohne einen
+      // einzigen** Typ 12. Das ist keine gemeldete Aufstellung, das ist
+      // dieselbe Erwartung noch einmal. Eine echte Aufstellung bringt die
+      // Ersatzbank mit (fuer die gespielte Partie: 22 plus 18).
+      //
+      // Wer hier nur auf Typ 11 prueft, schreibt „In der Startelf" ueber eine
+      // Vermutung und stellt darunter eine leere Bank hin.
       const gemeldet = (fixture.lineups ?? []) as any[];
-      const bestaetigt = gemeldet.some((p) => p.type_id === 11);
+      const bestaetigt = gemeldet.some((p) => p.type_id === 12) &&
+        gemeldet.some((p) => p.type_id === 11);
       const eintraege = bestaetigt ? gemeldet : (fixture.predictedlineups ?? []);
 
       // **Eine leere Antwort loescht nichts.** Sportmonks liefert die Prognose
