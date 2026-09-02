@@ -28,30 +28,51 @@ class PitchLinesPainter extends CustomPainter {
     // Gegenstand.
     // **Zwei Lichtkegel von oben.** Sie sind der Grund, warum die Fläche
     // überhaupt nach Stadion aussieht und nicht nach grünem Rechteck —
-    // dieselbe Sprache wie die Kopfkarte des Startbildschirms.
+    // dieselbe Sprache wie die Kopfkarte des Startbildschirms. Leise: Das
+    // Licht soll den Rasen tönen, nicht ihn ausleuchten.
     if (mitStreifen) {
-      for (final x in [w * 0.16, w * 0.84]) {
+      for (final x in [w * 0.14, w * 0.86]) {
+        final mitte = Offset(x, -h * 0.18);
+        final r = h * 0.72;
         canvas.drawCircle(
-          Offset(x, -h * 0.12),
-          h * 0.55,
+          mitte,
+          r,
           Paint()
             ..shader = RadialGradient(
               colors: [
-                Colors.white.withValues(alpha: 0.13),
+                Colors.white.withValues(alpha: 0.055),
                 Colors.white.withValues(alpha: 0.0),
               ],
-            ).createShader(
-                Rect.fromCircle(center: Offset(x, -h * 0.12), radius: h * 0.55)),
+              stops: const [0.0, 1.0],
+            ).createShader(Rect.fromCircle(center: mitte, radius: r)),
         );
       }
     }
 
+    // **Mähstreifen als weicher Verlauf, nicht als Rechtecke.**
+    // Sechs gefüllte Bahnen ergaben harte Kanten quer über das Feld — gemeldet
+    // als „merkwürdig abgehackter Farbverlauf". Ein Verlauf mit Stützstellen
+    // in den **Bahnmitten** blendet zwischen hell und dunkel über: dieselbe
+    // Struktur, aber ohne Kante.
     if (mitStreifen) {
-      final bahn = h / 6;
-      final hell = Paint()..color = Colors.white.withValues(alpha: 0.035);
-      for (var i = 0; i < 6; i += 2) {
-        canvas.drawRect(Rect.fromLTWH(0, i * bahn, w, bahn), hell);
+      const bahnen = 6;
+      final farben = <Color>[];
+      final stops = <double>[];
+      for (var i = 0; i <= bahnen; i++) {
+        farben.add(Colors.white
+            .withValues(alpha: i.isEven ? 0.030 : 0.0));
+        stops.add(i / bahnen);
       }
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, w, h),
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: farben,
+            stops: stops,
+          ).createShader(Rect.fromLTWH(0, 0, w, h)),
+      );
     }
 
     final line = Paint()
@@ -128,14 +149,19 @@ class PitchLinesPainter extends CustomPainter {
 /// Das ist kein Schmuck, sondern der Grund für alles darauf: Auf einer Fläche,
 /// die außen dunkel ist, stehen die Spieler an den Seitenlinien genauso lesbar
 /// da wie die in der Mitte.
+/// **Fünf Stufen statt vier, und dunkler.** Mit vier lagen zwischen den
+/// Stützstellen zu große Sprünge — auf einer Fläche von 470 Punkten wurde
+/// daraus eine sichtbare Kante („abgehackt"). Und der helle Kern stand zu weit
+/// vorn: Über den Stürmern war der Rasen heller als das Wappen darauf.
 const pitchGradient = RadialGradient(
-  center: Alignment(0, -0.62),
-  radius: 0.98,
+  center: Alignment(0, -0.35),
+  radius: 1.05,
   colors: [
-    Color(0xFF2E7D46),
-    Color(0xFF1A5730),
-    Color(0xFF0C3319),
-    Color(0xFF04150A),
+    Color(0xFF24603A),
+    Color(0xFF1C5231),
+    Color(0xFF144026),
+    Color(0xFF0C2C1A),
+    Color(0xFF061B10),
   ],
-  stops: [0.0, 0.34, 0.68, 1.0],
+  stops: [0.0, 0.26, 0.5, 0.75, 1.0],
 );

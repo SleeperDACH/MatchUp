@@ -1789,6 +1789,18 @@ Die Streifen lassen sich abschalten (`mitStreifen: false`): Im Draft-Raum und
 im Manager-Profil ist das Feld 200 Punkte hoch, sechs Bahnen darauf sind
 Unruhe statt Struktur.
 
+**Zwei Dinge daran waren im ersten Wurf falsch**, gemeldet als „merkwürdig
+abgehackter Farbverlauf, vorne zu hell":
+
+- **Die Streifen waren gefüllte Rechtecke** — sechs harte Kanten quer über das
+  Feld. Sie sind jetzt ein Verlauf mit Stützstellen in den **Bahnmitten**: Der
+  Übergang blendet über, die Struktur bleibt, die Kante ist weg.
+- **Der Grundverlauf hatte vier Stufen und einen zu hellen Kern.** Auf 470
+  Punkten Höhe lagen zwischen den Stufen sichtbare Sprünge; fünf Stufen
+  blenden sauber. Der Lichtkern sitzt außerdem nicht mehr über den Stürmern
+  (Alignment −0,62), sondern näher an der Mitte (−0,35), und die ganze Leiter
+  ist dunkler — vorne war der Rasen heller als die Wappen darauf.
+
 **Der Spieler auf dem Platz** (`_Slot`), von unten nach oben gelesen:
 
 | | vorher | jetzt |
