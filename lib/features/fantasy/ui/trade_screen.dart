@@ -9,7 +9,7 @@ import '../../messaging/providers.dart';
 import '../../messaging/ui/conversation_screen.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../logic/playoff.dart';
-import '../logic/saison_punkte.dart';
+import '../logic/spieler_schnitt.dart';
 import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 import '../providers.dart';
@@ -465,13 +465,30 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
           final theirs = playersOf(widget.partner.userId);
           // **Die Zahl, an der ein Angebot hängt.** Ohne sie ist der Schirm
           // eine Namensliste: Was man hergibt und was man bekommt, stand
-          // nirgends — man musste jeden Spieler einzeln öffnen. Gerechnet mit
-          // der Wertung dieser Liga, wie in der Free Agency.
-          final punkte = saisonPunkte(
-            saison: ref.watch(seasonStatsProvider).valueOrNull ?? const {},
-            spieler: byId,
-            regeln: widget.league.scoring,
-          );
+          // nirgends — man musste jeden Spieler einzeln öffnen.
+          //
+          // **Der Schnitt je Spieltag, nicht die Saisonsumme.** Zwei Spieler
+          // sind nur so vergleichbar: Wer erst im Winter kam oder verletzt
+          // war, hat eine kleine Summe und kann trotzdem der bessere sein.
+          // Das Ø vor der Zahl sagt es auch hin — sonst läse man sie als
+          // Gesamtpunktzahl.
+          final stats = ref.watch(seasonStatsProvider).valueOrNull ??
+              const <int, Map<String, PlayerMatchStats>>{};
+          final punkte = <String, double>{
+            for (final p in [...mine, ...theirs])
+              if (spielerSchnitt(
+                    saison: stats,
+                    spielerId: p.id,
+                    position: p.position,
+                    regeln: widget.league.scoring,
+                  ).hatDaten)
+                p.id: spielerSchnitt(
+                  saison: stats,
+                  spielerId: p.id,
+                  position: p.position,
+                  regeln: widget.league.scoring,
+                ).punkteJeSpieltag,
+          };
           final offerSel = mine.where((p) => _offer.contains(p.id)).toList();
           final requestSel =
               theirs.where((p) => _request.contains(p.id)).toList();
@@ -937,7 +954,7 @@ class _Geschaeft extends StatelessWidget {
         _kacheln(context, spieler, links),
         const SizedBox(height: 4),
         Text(
-          '${formatPoints(summe)} Punkte',
+          'Ø ${formatPoints(summe)} Punkte',
           style: TextStyle(
             fontSize: Schrift.klein,
             fontWeight: FontWeight.w700,
@@ -1006,26 +1023,9 @@ class _SendeKnopf extends StatelessWidget {
       height: 52,
       child: FilledButton(
         onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: MatchUpColors.snow,
-          foregroundColor: MatchUpColors.base,
-          disabledBackgroundColor: scheme.surfaceContainerHigh,
-          disabledForegroundColor: scheme.onSurfaceVariant,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          // **Aus dem Theme abgeleitet, nicht neu gebaut.** Ein blankes
-          // `TextStyle` in einem Theme-Feld ersetzt den aufgelösten Stil und
-          // verliert dabei die Schriftfamilie — in der Vorschau standen hier
-          // schwarze Kästchen. Dieselbe Falle wie bei den Reitern und den
-          // Fantasy-Einstellungen.
-          textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: Schrift.titel,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-        ),
+        // Farbe, Form und Schrift kommen aus dem Theme — seit der helle Knopf
+        // dort steht, hat dieser Schirm keine eigene Fassung mehr.
+
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1450,7 +1450,14 @@ class TradeCard extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
+                      // **Hier bleibt Grün.** Der gefüllte Knopf der App ist
+                      // sonst hell; „Annehmen" steht aber gegen „Ablehnen" in
+                      // Rot, und ohne Grün verliert Rot sein Gegenüber.
                       child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: MatchUpColors.green,
+                          foregroundColor: MatchUpColors.base,
+                        ),
                         onPressed: () => _respond(context, ref, trade, true),
                         child: const Text('Annehmen'),
                       ),

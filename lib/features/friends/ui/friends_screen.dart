@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/app_avatar.dart';
@@ -360,7 +361,13 @@ class _SearchResultRow extends ConsumerWidget {
     final trailing = switch (status) {
       FriendStatus.friends => const Chip(label: Text('Befreundet')),
       FriendStatus.outgoing => const Chip(label: Text('Angefragt')),
+      // **Hier bleibt Grün.** Der gefüllte Knopf der App ist sonst hell;
+      // „Annehmen" ist eine Zustimmung und steht gegen das Ablehnen daneben.
       FriendStatus.incoming => FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: MatchUpColors.green,
+            foregroundColor: MatchUpColors.base,
+          ),
           onPressed: () => repo.accept(user.id),
           child: const Text('Annehmen')),
       FriendStatus.none => FilledButton.icon(

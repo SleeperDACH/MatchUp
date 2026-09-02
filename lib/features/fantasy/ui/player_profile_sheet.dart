@@ -649,7 +649,17 @@ class _LeistungZeile extends StatelessWidget {
             z(gespielt ? '${stats.minutes}' : '–'),
             z(gespielt ? '${stats.goals}' : '–'),
             z(gespielt ? '${stats.assists}' : '–'),
-            if (defensive) z(!gespielt ? '–' : (stats.cleanSheet ? '✓' : '–')),
+            // **Kein „✓" als Zeichen.** Barlow Condensed hat es nicht, und in
+            // der Vorschau stand dort ein leeres Kästchen; auf dem Gerät hinge
+            // die Anzeige an einer Schrift-Ersatzkette. Ein Symbol aus der
+            // Icon-Schrift ist beides nicht.
+            if (defensive)
+              SizedBox(
+                width: _LeistungKopf.zahl,
+                child: !gespielt || !stats.cleanSheet
+                    ? Text('–', style: stil, textAlign: TextAlign.center)
+                    : Icon(Icons.check, size: 15, color: stil.color),
+              ),
             SizedBox(
               width: _LeistungKopf.punkte,
               child: Text(
@@ -1653,7 +1663,7 @@ class _Ausfallzeile extends ConsumerWidget {
 
 /// **Die beiden Schnitte nebeneinander.**
 ///
-/// „⌀ je Spieltag" ist der Erwartungswert für nächste Woche, „⌀ je Einsatz",
+/// „Ø je Spieltag" ist der Erwartungswert für nächste Woche, „Ø je Einsatz",
 /// was er kann, wenn er spielt. Beide zu zeigen ist keine Unentschlossenheit:
 /// Bei einem Stammspieler stehen dort zwei gleiche Zahlen, bei einem
 /// Ergänzungsspieler zwei sehr verschiedene — und **dieser Unterschied** ist
@@ -1746,7 +1756,7 @@ class _Schnitte extends StatelessWidget {
       child: Row(
         children: [
           spalte(
-            '⌀ je Spieltag',
+            'Ø je Spieltag',
             s.minutenJeSpieltag.round().toString(),
             formatPoints(s.punkteJeSpieltag),
             '${s.spieltage} Spieltage',
@@ -1765,7 +1775,7 @@ class _Schnitte extends StatelessWidget {
             )
           else
             spalte(
-              '⌀ je Einsatz',
+              'Ø je Einsatz',
               s.minutenJeEinsatz!.round().toString(),
               formatPoints(s.punkteJeEinsatz!),
               '${s.einsaetze} Einsätze',

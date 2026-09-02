@@ -1950,28 +1950,69 @@ darunter die Positionsmarke („ABW" statt „Abwehr") mit Ausfall-Symbol und
 Punktzahl, rechts Haken und Chevron. Nichts liegt mehr auf etwas anderem, und
 neue Angaben brauchen keine neue Ecke.
 
-- **Die Positionsfarbe trägt nur noch die Marke — und die Fläche, wenn die
-  Karte gewählt ist.** Das ist die Ausnahme, die die Kartenregel ausdrücklich
-  zulässt („etwas ist ausgewählt" darf Farbe tragen); als Dauerfläche war sie
-  vier Sticker pro Bildschirm.
+- **Die Fläche behält ihre Positionsfarbe** (auf Ansage nach dem ersten
+  Umbau): gewählt kräftig, sonst ein dunkler Ton davon. Sie war nie das
+  Problem — das Wappen darauf war es. Die kleinen Positionskästchen des
+  Zwischenstands sind wieder raus: Wenn die Fläche die Position ohnehin sagt,
+  ist ein farbiges Kästchen daneben dieselbe Auskunft ein zweites Mal. Das
+  Kürzel („MF") steht als leiser Text unter dem Namen — für den, der Farben
+  nicht unterscheidet, ist es die einzige Auskunft. **Das ganze Wort passt
+  nicht:** „Mittelfeld" neben dem Schnitt ergab in einer halben
+  Bildschirmbreite „Mitt…".
 - **`onProfil` zeichnet den Chevron** (44 Punkte hohe Tastfläche, mit
   `tooltip` — sonst heißt er für die Vorlesehilfe „Schaltfläche"). Ohne Angabe
   erscheint er nicht: In der Angebotskarte und in den Transfers öffnet der
   Tipp auf die Kachel ohnehin schon das Profil.
-- **`punkte` bringt die Saisonpunkte in die Zeile**, gerechnet mit der Wertung
-  dieser Liga (`saisonPunkte`, dieselbe Funktion wie in der Free Agency). Ohne
-  sie war der Trade-Schirm eine Namensliste: Was man hergibt und was man
-  bekommt, stand nirgends — man musste jeden Spieler einzeln öffnen. Im Kopf
-  steht die **Summe je Seite**, die kürzeste Antwort auf „lohnt sich das?".
+- **`punkte` bringt den Schnitt in die Zeile** — `punkteJeSpieltag` aus
+  `spielerSchnitt`, gerechnet mit der Wertung dieser Liga. Ohne die Zahl war
+  der Trade-Schirm eine Namensliste: Was man hergibt und was man bekommt,
+  stand nirgends. **Der Schnitt, nicht die Saisonsumme:** Zwei Spieler sind
+  nur so vergleichbar — wer erst im Winter kam oder verletzt war, hat eine
+  kleine Summe und kann trotzdem der bessere sein. Im Kopf steht die Summe
+  der Schnitte je Seite, die kürzeste Antwort auf „lohnt sich das?".
 
-**Der Sende-Knopf ist hell, nicht grün.** Das Markengrün steht in dieser App
-auf sehr vielen Knöpfen; damit sah die einzige Entscheidung dieses Schirms aus
-wie jede andere Schaltfläche. Jetzt trägt er `MatchUpColors.snow` auf dunklem
-Grund — der stärkste Kontrast, den diese Oberfläche hat, ohne eine weitere
-Signalfarbe einzuführen. **Die Falle dabei ist bekannt:** `textStyle` in
-`FilledButton.styleFrom` ersetzt den aufgelösten Stil, ein blankes `TextStyle`
-verliert die Schriftfamilie — in der Vorschau standen im Knopf schwarze
-Kästchen. Er leitet sich deshalb per `copyWith` aus dem `textTheme` ab.
+### Der gefüllte Hauptknopf ist hell, nicht grün
+
+Erst nur auf dem Trade-Schirm, dann auf Ansage für die ganze App
+(`filledButtonTheme` in `theme.dart`): Das Markengrün stand auf rund neunzig
+Knöpfen — Anmelden, Liga erstellen, Beitreten, Tipp speichern, Draft starten,
+Angebot senden. Damit sah die Entscheidung eines Schirms aus wie jede andere
+Schaltfläche, und Grün heißt in dieser App „hier läuft etwas". **Ein Knopf
+läuft nicht, er wartet auf einen Druck.** Hell auf dunklem Grund ist der
+stärkste Kontrast, den diese Oberfläche hat, ohne eine weitere Signalfarbe
+einzuführen.
+
+**Grün bleibt, wo es Zustimmung heißt:** „Annehmen" bei Trades und
+Freundschaftsanfragen setzt seine Farbe ausdrücklich. Dort steht es gegen ein
+rotes „Ablehnen", und ohne Grün verliert Rot sein Gegenüber. Rote Knöpfe
+(Löschen, Verlassen, Droppen) und Umriss-Knöpfe bleiben, wie sie waren.
+
+**Die Falle dabei ist bekannt:** Ein `textStyle` in einem Theme-Feld ersetzt
+den aufgelösten Stil; ein blankes `TextStyle` verliert die Schriftfamilie — in
+der ersten Fassung standen im Knopf schwarze Kästchen. Der Stil im Theme nennt
+`fontFamily` deshalb ausdrücklich.
+
+### Welche Zeichen Barlow Condensed hat, und welche nicht
+
+Gemessen am 02.09.2026, indem die Kandidaten einmal gerendert und angesehen
+wurden:
+
+| vorhanden | fehlt (leeres Kästchen) |
+|---|---|
+| `Ø` `≥` `∞` `−` | `⌀` `✓` `✔` `★` `●` `↔` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
+
+Anlass war das Durchschnittszeichen: `⌀` (U+2300, Durchmesserzeichen) fehlt,
+`Ø` (U+00D8) ist da und sieht gleich aus. Es stand an vier Stellen im
+Spielerprofil und wäre mit der neuen Kachel an acht gestanden. Mitgefunden:
+das `✓` in der Leistungstabelle („zu Null") — dort steht jetzt ein Symbol aus
+der Icon-Schrift.
+
+**Die Regel:** Ein Sonderzeichen im UI-Text wird vorher gerendert und
+angesehen, oder es wird ein `Icon`. In den Vorschauen ist der Fehler sichtbar
+(leeres Kästchen), auf dem Gerät hängt die Anzeige an einer Schrift-
+Ersatzkette — dann steht das Zeichen in einer fremden Schrift mitten im Satz.
+Die restlichen Fundstellen (`★` in der Tipp-Tabelle, `●` in der
+Liga-Übersicht, `⚽`/`⚡` in den Avataren) sind **noch offen**.
 
 **Die Zeile „Spieler antippen — aus deinem Kader und aus seinem" ist weg.**
 Eine Anleitung, die dasteht, bis man sie befolgt hat, liest niemand ein

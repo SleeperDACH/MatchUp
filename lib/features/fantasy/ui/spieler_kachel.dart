@@ -19,10 +19,14 @@ import 'club_badge.dart';
 /// Wappen füllt, hat für alles Weitere nur noch dessen Fläche übrig.
 ///
 /// Jetzt hat jedes Ding seinen eigenen Platz in einer Reihe, und nichts liegt
-/// mehr auf etwas anderem. Die Positionsfarbe trägt nur noch die kleine Marke
-/// unter dem Namen — und die Fläche, wenn die Karte **gewählt** ist. Das ist
-/// die Ausnahme, die die Kartenregel ausdrücklich zulässt: „etwas ist
-/// ausgewählt" darf Farbe tragen.
+/// mehr auf etwas anderem. **Die Fläche behält ihre Positionsfarbe** — sie war
+/// nie das Problem, sondern das Wappen darauf. Gewählt wird sie kräftig, sonst
+/// bleibt sie ein dunkler Ton davon.
+///
+/// Die kleinen Positionskästchen des ersten Umbaus sind wieder raus: Wenn die
+/// Fläche die Position ohnehin sagt, ist ein farbiges Kästchen daneben
+/// dieselbe Auskunft ein zweites Mal. Das Wort steht als leiser Text unter dem
+/// Namen — für den, der Farben nicht unterscheidet, ist es die einzige.
 class SpielerKachel extends ConsumerWidget {
   const SpielerKachel({
     super.key,
@@ -80,8 +84,6 @@ class SpielerKachel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final farbe = positionColor(spieler.position);
     final ausfall =
         (ref.watch(absencesProvider).valueOrNull ?? const {})[spieler.id];
@@ -92,9 +94,30 @@ class SpielerKachel extends ConsumerWidget {
     final wappen = klein ? 20.0 : 28.0;
     final rand = klein ? 8.0 : 10.0;
 
-    final grund = theme.cardColor;
-    final flaeche =
-        hervor ? Color.alphaBlend(farbe.withValues(alpha: 0.20), grund) : grund;
+    // Hervorgehoben: kräftige Positionsfarbe (Sticker-Optik), Text lesbar (auf
+    // Gelb schwarz). Sonst ein dunkler Ton derselben Farbe — kein aufgesetztes
+    // Overlay, damit die Ränder nicht „durchleuchten".
+    final vg = hervor
+        ? (spieler.position == PlayerPosition.def ? Colors.black : Colors.white)
+        : Colors.white.withValues(alpha: 0.86);
+    final verlauf = hervor
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(farbe, Colors.white, 0.14)!,
+              farbe,
+              Color.lerp(farbe, Colors.black, 0.36)!,
+            ],
+          )
+        : LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(farbe, const Color(0xFF12141C), 0.72)!,
+              Color.lerp(farbe, const Color(0xFF12141C), 0.86)!,
+            ],
+          );
 
     final karte = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -102,15 +125,14 @@ class SpielerKachel extends ConsumerWidget {
       width: breite,
       padding: EdgeInsets.symmetric(horizontal: rand),
       decoration: BoxDecoration(
-        color: flaeche,
+        gradient: verlauf,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          // Gewählt trägt Farbe, alles andere die Haarlinie — dieselbe Kante
-          // wie jede Karte dieser App.
-          color: hervor
-              ? farbe.withValues(alpha: 0.65)
-              : theme.dividerColor,
-          width: hervor ? 1.5 : 1,
+          // Die Kante sagt „gewählt", sonst hält sie die Karte nur zusammen.
+          color: hervor && mitHaken
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.06),
+          width: hervor && mitHaken ? 2 : 1,
         ),
       ),
       child: Row(
@@ -134,15 +156,35 @@ class SpielerKachel extends ConsumerWidget {
                       fontSize: klein ? Schrift.koerperKlein : Schrift.koerper,
                       fontWeight: FontWeight.w800,
                       height: 1.05,
-                      color: scheme.onSurface,
+                      color: vg,
+                      shadows: hervor && spieler.position == PlayerPosition.def
+                          ? null
+                          : const [Shadow(color: Colors.black38, blurRadius: 3)],
                     ),
                   ),
                 ),
                 SizedBox(height: klein ? 2 : 3),
                 Row(
                   children: [
-                    _Positionsmarke(
-                        position: spieler.position, gefuellt: hervor),
+                    // **Die Kurzform, nicht das Wort.** „Mittelfeld" neben
+                    // dem Schnitt lässt in einer halben Bildschirmbreite
+                    // beides nicht mehr stehen — in der ersten Fassung stand
+                    // dort „Mitt…". Die Fläche sagt die Position ohnehin;
+                    // dieser Text ist die Absicherung für den, der Farben
+                    // nicht unterscheidet, und dafür genügt „MF".
+                    Flexible(
+                      child: Text(
+                        spieler.position.short,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: klein ? Schrift.winzig : Schrift.klein,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: vg.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ),
                     // **Fällt er aus, steht es neben der Position.** Ein
                     // Symbol, kein Text: Für „Muskuläre Probleme" ist hier
                     // kein Platz, und der genaue Grund gehört ins Profil. Rot
@@ -162,13 +204,17 @@ class SpielerKachel extends ConsumerWidget {
                     ],
                     if (punkte != null) ...[
                       const Spacer(),
+                      const SizedBox(width: 6),
+                      // **Das Zeichen sagt, was die Zahl ist.** Ohne das Ø
+                      // läse sich 12,4 als Gesamtpunktzahl, und die ist bei
+                      // einem Spieler mit zwölf Spieltagen zehnmal so hoch.
                       Text(
-                        formatPoints(punkte!),
+                        'Ø ${formatPoints(punkte!)}',
                         style: TextStyle(
                           fontSize: klein ? Schrift.winzig : Schrift.klein,
                           fontWeight: FontWeight.w800,
                           fontFeatures: const [FontFeature.tabularFigures()],
-                          color: scheme.onSurfaceVariant,
+                          color: vg.withValues(alpha: 0.95),
                         ),
                       ),
                     ],
@@ -180,7 +226,13 @@ class SpielerKachel extends ConsumerWidget {
           if (hervor && mitHaken)
             Padding(
               padding: const EdgeInsets.only(left: 4),
-              child: Icon(Icons.check_circle_rounded, size: 20, color: farbe),
+              child: Container(
+                decoration: const BoxDecoration(
+                    color: Colors.white, shape: BoxShape.circle),
+                padding: const EdgeInsets.all(2),
+                child: Icon(Icons.check_rounded,
+                    size: 15, color: farbe, weight: 900),
+              ),
             ),
           if (onProfil != null)
             // **Neben dem Inhalt, nicht darauf.** Der Knopf lag einmal oben
@@ -193,7 +245,8 @@ class SpielerKachel extends ConsumerWidget {
               padding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
               constraints: const BoxConstraints.tightFor(width: 32, height: 44),
-              icon: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+              icon: Icon(Icons.chevron_right,
+                  color: vg.withValues(alpha: 0.75)),
             ),
         ],
       ),
@@ -206,45 +259,6 @@ class SpielerKachel extends ConsumerWidget {
       borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
       child: onTap == null ? karte : InkWell(onTap: onTap, child: karte),
-    );
-  }
-}
-
-/// Die Position als kleine Marke: „ABW" statt „Abwehr".
-///
-/// Sie trägt die Positionsfarbe, seit die Karte sie nicht mehr über die ganze
-/// Fläche zieht — an einer Stelle, an der sie etwas unterscheidet, statt als
-/// Dekoration. Gefüllt heißt „gewählt".
-class _Positionsmarke extends StatelessWidget {
-  const _Positionsmarke({required this.position, required this.gefuellt});
-
-  final PlayerPosition position;
-  final bool gefuellt;
-
-  @override
-  Widget build(BuildContext context) {
-    final farbe = positionColor(position);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: gefuellt ? farbe : farbe.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Text(
-        position.short,
-        style: TextStyle(
-          fontSize: Schrift.winzig,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.4,
-          height: 1.3,
-          // Auf dem gefüllten Gelb der Abwehr ist Weiß nicht zu lesen.
-          color: gefuellt
-              ? (position == PlayerPosition.def
-                  ? const Color(0xFF12141C)
-                  : Colors.white)
-              : farbe,
-        ),
-      ),
     );
   }
 }

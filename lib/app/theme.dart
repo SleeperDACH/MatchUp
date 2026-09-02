@@ -149,6 +149,36 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
         ),
       ),
     ),
+    // **Der gefüllte Hauptknopf ist hell, nicht grün.** Das Markengrün stand
+    // auf rund neunzig Knöpfen quer durch die App — Anmelden, Liga erstellen,
+    // Beitreten, Tipp speichern, Draft starten, Angebot senden. Damit sah die
+    // Entscheidung eines Schirms aus wie jede andere Schaltfläche, und Grün
+    // heißt in dieser App „hier läuft etwas". Ein Knopf läuft nicht; er wartet
+    // auf einen Druck. Hell auf dunklem Grund ist der stärkste Kontrast, den
+    // diese Oberfläche hat, ohne eine weitere Signalfarbe einzuführen.
+    //
+    // **Grün bleibt, wo es Zustimmung heißt** — beim Paar „Annehmen" gegen
+    // „Ablehnen" (Trades, Freundschaftsanfragen, Beitritte). Dort steht es
+    // gegen Rot, und ohne Grün verliert Rot sein Gegenüber. Diese Stellen
+    // setzen ihre Farbe ausdrücklich.
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: dark ? MatchUpColors.snow : MatchUpColors.base,
+        foregroundColor: dark ? MatchUpColors.base : MatchUpColors.snow,
+        disabledBackgroundColor: scheme.surfaceContainerHigh,
+        disabledForegroundColor: scheme.onSurfaceVariant,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        // Die Familie muss auch hier stehen — dieselbe Falle wie beim
+        // Chip-Stil: Ein Stil in einem Theme-Feld ersetzt den aufgelösten.
+        textStyle: const TextStyle(
+          fontFamily: 'BarlowCondensed',
+          fontWeight: FontWeight.w800,
+          fontSize: Schrift.titel,
+          letterSpacing: 0.2,
+        ),
+      ),
+    ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: cardColor,
       indicatorColor: MatchUpColors.green.withValues(alpha: 0.22),
