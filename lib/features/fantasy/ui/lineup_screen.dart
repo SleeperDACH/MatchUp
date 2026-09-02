@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/typografie.dart';
 import '../../../app/widgets/pill_selector.dart';
 
 import '../../auth/providers.dart';
@@ -437,7 +438,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
             // Die Sperre gilt je Spieler, also sagt die Zeile auch, wie
             // viele. „Aufstellung gesperrt" wäre ab dem Freitagsspiel
             // falsch — der Sonntagsspieler ist ja noch frei.
-            if (gesperrt.isNotEmpty)
+            if (gesperrt.isNotEmpty && !allesZu)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Row(
@@ -451,9 +452,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        allesZu
-                            ? 'Alle Spiele laufen — die Aufstellung steht.'
-                            : gesperrt.length == 1
+                        gesperrt.length == 1
                             ? 'Ein Spieler ist gesperrt, sein Spiel läuft.'
                             : '${gesperrt.length} Spieler sind gesperrt, '
                                   'ihre Spiele laufen.',
@@ -472,6 +471,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               clubIcons: clubIcons,
               onOpenProfile: _openProfile,
               gesperrt: gesperrt,
+              allesZu: allesZu,
               onTapSlot: allesZu
                   ? null
                   : (pos, i) =>
@@ -794,10 +794,15 @@ class _Pitch extends StatelessWidget {
     required this.onTapSlot,
     required this.onDrop,
     required this.gesperrt,
+    required this.allesZu,
   });
 
   /// IDs der Spieler, deren Spiel schon läuft — festgenagelt (Migration 0084).
   final Set<String> gesperrt;
+
+  /// Jeder Spieler der Elf ist festgenagelt: An dieser Aufstellung ist nichts
+  /// mehr zu ändern.
+  final bool allesZu;
 
   final Map<PlayerPosition, List<String?>> slots;
   final Map<String, FantasyPlayer> playerById;
@@ -809,31 +814,52 @@ class _Pitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // **Höher als früher (470 statt 420).** Der Platz kommt den Spielern
+    // zugute: größeres Wappen, lesbarer Name, eine Punktzahl, die man nicht
+    // suchen muss. Bei 420 stand alles davon im selben Raum wie vorher.
     return Container(
       margin: const EdgeInsets.all(12),
-      height: 420,
+      height: 470,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         gradient: pitchGradient,
+        // Dieselbe Haarlinie wie an jeder Karte dieser App.
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: CustomPaint(
         painter: const PitchLinesPainter(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-          child: Column(
-            children: [
-              for (final pos in _pitchOrder)
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      for (var i = 0; i < (slots[pos]?.length ?? 0); i++)
-                        _slotTarget(pos, i),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 16, 4, 14),
+              child: Column(
+                children: [
+                  for (final pos in _pitchOrder)
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          for (var i = 0; i < (slots[pos]?.length ?? 0); i++)
+                            _slotTarget(pos, i),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // **Steht die Elf, sagt es das Feld selbst.** Vorher stand darüber
+            // eine graue Textzeile, die neben dem Rasen kaum auffiel — und der
+            // wichtigste Zustand dieses Schirms ist genau der, in dem nichts
+            // mehr geht.
+            if (allesZu)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: _Sperrband(),
+              ),
+          ],
         ),
       ),
     );
@@ -859,6 +885,7 @@ class _Pitch extends StatelessWidget {
           player: player,
           pos: pos,
           points: pts,
+          alleZu: allesZu,
           iconUrl: player == null ? null : clubIcons[player.club],
           highlight: candidate.isNotEmpty,
           // Spieler antippen → Profil; Positions-Pille → Aufstellung bearbeiten.
@@ -899,11 +926,19 @@ class _Slot extends ConsumerWidget {
     required this.onEditPosition,
     this.highlight = false,
     this.gesperrt = false,
+    this.alleZu = false,
   });
 
   /// Sein Spiel läuft — der Platz ist zu. Wird als Schloss gezeigt, statt nur
   /// stumm nicht zu reagieren.
   final bool gesperrt;
+
+  /// **Die ganze Elf steht.** Dann trägt das Band über dem Feld die Auskunft,
+  /// und das Schloss am Wappen entfällt: Elf Schlösser sagen nicht mehr als
+  /// eines, sie machen nur das Feld unruhig. Beim *einzelnen* gesperrten
+  /// Spieler bleibt es — dort ist es die einzige Stelle, an der steht, wen es
+  /// betrifft.
+  final bool alleZu;
 
   final FantasyPlayer? player;
   final PlayerPosition pos;
@@ -922,12 +957,13 @@ class _Slot extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = player;
+    final ausfall = _ausfall(ref, p);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      width: 70,
+      width: 76,
       padding: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         color: highlight ? Colors.white.withValues(alpha: 0.18) : null,
         border: Border.all(
           color: highlight ? Colors.white : Colors.transparent,
@@ -938,7 +974,7 @@ class _Slot extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Avatar + Name: Spieler antippen → Profil (leer → Spielerwahl).
+          // Wappen + Punkte: Spieler antippen → Profil (leer → Spielerwahl).
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: p != null ? onProfile : onEditPosition,
@@ -946,132 +982,135 @@ class _Slot extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (p == null)
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white24,
-                      border: Border.all(
-                        color: positionColor(pos).withValues(alpha: 0.9),
-                        width: 2,
-                      ),
-                    ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 22),
-                  )
+                  _LeererPlatz(pos: pos)
                 else
-                  Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      // Gesperrt: gedimmt, damit der Platz nicht nur stumm
-                      // nicht reagiert, sondern erkennbar zu ist.
-                      Opacity(
-                        opacity: gesperrt ? 0.55 : 1,
-                        child: ClubBadge(
-                          club: p.club,
-                          iconUrl: iconUrl,
-                          size: 42,
+                  SizedBox(
+                    height: 54,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.topCenter,
+                      children: [
+                        // **Ein dunkler Ring um das Wappen.** Auf hellem Rasen
+                        // schwammen weiße Wappen vorher in die Fläche; der
+                        // Ring gibt jedem einen Rand, ohne Farbe zu setzen.
+                        Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.30),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.14),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Opacity(
+                            opacity: gesperrt ? 0.6 : 1,
+                            child: ClubBadge(
+                              club: p.club,
+                              iconUrl: iconUrl,
+                              size: 46,
+                            ),
+                          ),
                         ),
-                      ),
-                      // **Ausfall unten links, Spielsperre oben links.**
-                      // Zwei verschiedene Aussagen: „sein Spiel läuft schon"
-                      // ist eine Frist, „verletzt" ein Zustand. Sie dürfen
-                      // nicht dieselbe Ecke teilen.
-                      if (_ausfall(ref, p) != null)
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _ausfall(ref, p)!.gesperrt
+                        // **Ausfall links, Spielsperre rechts.** Zwei
+                        // verschiedene Aussagen: „sein Spiel läuft schon" ist
+                        // eine Frist, „verletzt" ein Zustand. Sie dürfen nicht
+                        // dieselbe Ecke teilen.
+                        if (ausfall != null)
+                          Positioned(
+                            top: 0,
+                            left: 2,
+                            child: _Eckzeichen(
+                              icon: ausfall.gesperrt
+                                  ? Icons.block
+                                  : Icons.medical_services_outlined,
+                              grund: ausfall.gesperrt
                                   ? const Color(0xFFF23030)
                                   : const Color(0xFFFFC83D),
                             ),
-                            child: Icon(
-                              _ausfall(ref, p)!.gesperrt
-                                  ? Icons.block
-                                  : Icons.medical_services_outlined,
-                              size: 10,
-                              color: Colors.black,
+                          ),
+                        if (gesperrt && !alleZu)
+                          const Positioned(
+                            top: 0,
+                            right: 2,
+                            child: _Eckzeichen(
+                              icon: Icons.lock,
+                              grund: Colors.white,
                             ),
                           ),
-                        ),
-                      if (gesperrt)
+                        // **Die Punktzahl sitzt auf der Unterkante des
+                        // Wappens** — und sie ist von 10 auf 13 Punkt
+                        // gewachsen. Sie ist die einzige Zahl auf diesem
+                        // Schirm; sie zu suchen war der Fehler.
                         Positioned(
-                          top: 0,
-                          left: 0,
+                          bottom: 0,
                           child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(
-                              color: Colors.black87,
-                              shape: BoxShape.circle,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
                             ),
-                            child: const Icon(
-                              Icons.lock,
-                              size: 11,
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B0F14)
+                                  .withValues(alpha: 0.88),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.16),
+                              ),
+                            ),
+                            child: Text(
+                              formatPoints(points ?? 0),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: Schrift.koerperKlein,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
                             ),
                           ),
                         ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          formatPoints(points ?? 0),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                // **Der Name ohne Kasten.** Er stand in einem grauen Kästchen,
+                // das ihn kleiner aussehen ließ, als er ist; auf dem dunklen
+                // Rasen trägt ihn ein Schatten besser als eine Fläche.
+                SizedBox(
+                  width: 74,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      p == null ? 'frei' : _short(p.name),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: p == null
+                            ? Colors.white.withValues(alpha: 0.75)
+                            : Colors.white,
+                        fontSize: Schrift.marke,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                        shadows: const [
+                          Shadow(color: Colors.black87, blurRadius: 4),
+                        ],
                       ),
-                    ],
-                  ),
-                const SizedBox(height: 2),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black38,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    p == null ? 'frei' : _short(p.name),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 3),
-          // Positions-Pille = Bearbeiten-Button (Spieler tauschen). Läuft sein
-          // Spiel schon, steht dort „läuft" statt eines Knopfes, der nichts tut.
-          if (gesperrt)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.black45,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'läuft',
-                style: TextStyle(color: Colors.white70, fontSize: 9),
-              ),
-            )
-          else
-            _posPill(context),
+          const SizedBox(height: 4),
+          // Der Knopf zum Tauschen. Läuft sein Spiel schon, steht dort ein
+          // Schloss statt eines Knopfes, der nichts tut.
+          _posPill(context),
         ],
       ),
     );
@@ -1079,9 +1118,26 @@ class _Slot extends ConsumerWidget {
 
   Widget _posPill(BuildContext context) {
     final color = positionColor(pos);
-    final editable = onEditPosition != null;
-    if (!editable) {
-      // Gesperrt: nur ein kleiner Farbpunkt als Positionshinweis.
+    if (gesperrt) {
+      // **Ein Schloss, kein toter Knopf.** Der Platz ist zu, und das sagt er
+      // an derselben Stelle, an der sonst der Tausch steht — statt „läuft" in
+      // 9 Punkt Grau, das man für eine Beschriftung halten konnte.
+      return Container(
+        width: 26,
+        height: 26,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        ),
+        child: Icon(Icons.lock,
+            size: 13, color: Colors.white.withValues(alpha: 0.8)),
+      );
+    }
+    if (onEditPosition == null) {
+      // Nicht bearbeitbar, aber auch nicht gesperrt (fremder Kader): nur ein
+      // Farbpunkt als Positionshinweis.
       return Container(
         width: 9,
         height: 9,
@@ -1092,25 +1148,45 @@ class _Slot extends ConsumerWidget {
         ),
       );
     }
-    // Bearbeitbar: Tausch-Symbol in der Positionsfarbe (dunkler Kreis + Ring,
-    // damit es sich vom Rasen abhebt).
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onEditPosition,
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.45),
-          shape: BoxShape.circle,
-          border: Border.all(color: color, width: 1.4),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 2,
-            ),
-          ],
+    // **Der Tauschknopf.** Größer als vorher (26 statt 21), mit dem Kürzel der
+    // Position statt eines nackten Symbols: Er sagt damit auch, *welcher*
+    // Platz getauscht wird — auf einem Feld mit elf gleichen Knöpfen ist das
+    // der Unterschied zwischen „ein Knopf" und „mein Innenverteidiger".
+    // **`StadiumBorder`, nicht `CircleBorder`.** Der Kreis-Clip schnitt dem
+    // Knopf die Enden ab: Aus „ABW" wurde „ABV". Ein Clip, der zur Form des
+    // Kindes passen muss, ist die Sorte Fehler, die man nur im Bild sieht.
+    return Material(
+      color: Colors.transparent,
+      shape: const StadiumBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onEditPosition,
+        child: Container(
+          height: 26,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: color.withValues(alpha: 0.9), width: 1.4),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.swap_horiz, size: 14, color: color),
+              const SizedBox(width: 3),
+              Text(
+                pos.short,
+                style: TextStyle(
+                  color: color,
+                  fontSize: Schrift.winzig,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
         ),
-        child: Icon(Icons.swap_horiz, size: 15, color: color),
       ),
     );
   }
@@ -1119,6 +1195,87 @@ class _Slot extends ConsumerWidget {
     final parts = name.trim().split(' ');
     return parts.length > 1 ? parts.last : name;
   }
+}
+
+/// Ein leerer Platz auf dem Feld: gestrichelter Kreis in der Positionsfarbe.
+///
+/// Er ist eine **Einladung**, kein Fehler — deshalb trägt er die Farbe seiner
+/// Position und ein Plus, nicht die stille graue Fläche von früher.
+class _LeererPlatz extends StatelessWidget {
+  const _LeererPlatz({required this.pos});
+
+  final PlayerPosition pos;
+
+  @override
+  Widget build(BuildContext context) {
+    final farbe = positionColor(pos);
+    return SizedBox(
+      height: 54,
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.35),
+          border: Border.all(color: farbe.withValues(alpha: 0.85), width: 2),
+        ),
+        child: Icon(Icons.add, color: farbe, size: 22),
+      ),
+    );
+  }
+}
+
+/// Kleines Zeichen an der Ecke des Wappens (Ausfall, Sperre).
+class _Eckzeichen extends StatelessWidget {
+  const _Eckzeichen({required this.icon, required this.grund});
+
+  final IconData icon;
+  final Color grund;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(2.5),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: grund,
+          border: Border.all(color: Colors.black.withValues(alpha: 0.45)),
+        ),
+        child: Icon(icon, size: 10, color: const Color(0xFF12141C)),
+      );
+}
+
+/// Das Band über dem Feld, wenn an der Elf nichts mehr zu ändern ist.
+class _Sperrband extends StatelessWidget {
+  const _Sperrband();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.black.withValues(alpha: 0.72),
+              Colors.black.withValues(alpha: 0.42),
+            ],
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock, size: 14, color: Color(0xFFFFC83D)),
+            const SizedBox(width: 7),
+            Text(
+              'Aufstellung steht — alle Spiele laufen',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.92),
+                fontSize: Schrift.klein,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 /// Spieler-Avatar als Drag-Vorschau unter dem Finger.

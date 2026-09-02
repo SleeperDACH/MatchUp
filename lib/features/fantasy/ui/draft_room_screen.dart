@@ -1141,7 +1141,7 @@ class _MyTeamTab extends StatelessWidget {
               gradient: pitchGradient,
             ),
             child: CustomPaint(
-              painter: const PitchLinesPainter(),
+              painter: const PitchLinesPainter(mitStreifen: false),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
                 child: Column(

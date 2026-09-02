@@ -1770,6 +1770,64 @@ vollem Limit geht durch, ein echter Zugang auf dieselbe Position nicht.
 **Aufgeschobene Trigger prüft man mit `set constraints <name> immediate`** —
 sonst feuern sie erst beim Commit, den ein Probelauf mit Rollback nie erreicht.
 
+### Das Spielfeld im Kader-Tab
+
+Gemeldet: „Die Namen sehen doof aus, die Punkte sind zu klein, die
+Tauschknöpfe sind in Ordnung, können aber besser. Außerdem muss das Aussehen
+besser sein, wenn man an der Aufstellung nichts mehr ändern kann."
+
+**Der Rasen ist Flutlicht geworden** (`pitchGradient`, `PitchLinesPainter`).
+Vorher ein flacher Verlauf von Dunkel- nach Mittelgrün — ein Rechteck Farbe,
+auf dem weiße Namen und helle Wappen um Kontrast kämpften. Jetzt fällt das
+Licht von oben ein: zwei Kegel aus den oberen Ecken, ein beleuchteter Kern
+oben in der Mitte, zu den Rändern hin fast schwarz, dazu sechs Mähstreifen.
+**Das ist kein Schmuck, sondern der Grund für alles darauf** — auf einer
+außen dunklen Fläche stehen die Spieler an den Seitenlinien so lesbar da wie
+die in der Mitte. Dieselbe Sprache wie die Kopfkarte des Startbildschirms.
+
+Die Streifen lassen sich abschalten (`mitStreifen: false`): Im Draft-Raum und
+im Manager-Profil ist das Feld 200 Punkte hoch, sechs Bahnen darauf sind
+Unruhe statt Struktur.
+
+**Der Spieler auf dem Platz** (`_Slot`), von unten nach oben gelesen:
+
+| | vorher | jetzt |
+|---|---|---|
+| Wappen | 42, nackt auf dem Rasen | 46, dunkler Ring und Schatten |
+| Punkte | 10 Punkt, Ecke des Wappens | **13 Punkt**, Chip auf der Unterkante |
+| Name | 11 Punkt in einem grauen Kästchen | 12 Punkt, weiß mit Schatten, ohne Kasten |
+| Tauschknopf | Symbol im 21er-Kreis | 26er-Pille mit Symbol **und Kürzel** („ABW") |
+
+Der Knopf sagt jetzt auch, *welcher* Platz getauscht wird — auf einem Feld mit
+elf gleichen Knöpfen ist das der Unterschied zwischen „ein Knopf" und „mein
+Innenverteidiger". Das Feld ist dafür von 420 auf 470 Punkte gewachsen; der
+Platz kommt den Spielern zugute, nicht dem Rasen.
+
+**Und der Zustand, in dem nichts mehr geht, sieht jetzt danach aus.** Vorher
+stand darüber eine graue Textzeile, die neben dem Rasen kaum auffiel. Jetzt:
+
+- **Alle Spiele laufen** → ein Band über dem Feld, „Aufstellung steht — alle
+  Spiele laufen", mit goldenem Schloss. Am Platz steht das Schloss dort, wo
+  sonst der Tauschknopf ist. **Kein Schloss am Wappen**: Elf Schlösser sagen
+  nicht mehr als eines, sie machen nur das Feld unruhig.
+- **Einzelne Spieler gesperrt** (der gewöhnliche Spieltag) → kein Band,
+  sondern das Schloss **am Wappen** dessen, den es betrifft, plus die Zeile
+  darüber mit der Zahl. Hier ist das Schloss die einzige Stelle, an der steht,
+  *wen* es trifft.
+
+Angesehen über `test/aufstellung_feld_vorschau_test.dart` — drei Bilder, weil
+es drei Zustände gibt, die man nie nebeneinander sieht. **Der Schirm hatte
+vorher keine Vorschau**, und genau deshalb ließ sich sein Aussehen nur auf dem
+Gerät beurteilen, im Zustand, in dem die eigene Liga gerade war. Der
+Bildvergleich läuft nur mit `--update-goldens`: Ob jemand gesperrt ist, hängt
+an `DateTime.now()` gegen den Anpfiff.
+
+**Zwei Fallen dabei**, beide nur im Bild zu sehen: Ein `Material` mit
+`CircleBorder` und `Clip.antiAlias` schneidet einer Pille die Enden ab (aus
+„ABW" wurde „ABV" — `StadiumBorder` ist die richtige Form), und der Editor
+liest im `initState` das Repository, greift also ohne Ersatz auf
+`Supabase.instance` zu, die es im Test nicht gibt.
+
 ### Die Aufstellung sperrt je Spieler, nicht je Spieltag
 
 Vorher galt **ein** Riegel für alles: `fantasy_round_deadline` liefert den

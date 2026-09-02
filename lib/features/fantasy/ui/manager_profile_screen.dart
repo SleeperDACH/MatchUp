@@ -261,7 +261,7 @@ class ManagerProfileScreen extends ConsumerWidget {
         gradient: pitchGradient,
       ),
       child: CustomPaint(
-        painter: const PitchLinesPainter(),
+        painter: const PitchLinesPainter(mitStreifen: false),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
           child: Column(
