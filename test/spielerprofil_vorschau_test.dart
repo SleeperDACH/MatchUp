@@ -77,6 +77,12 @@ void main() {
     2: {
       'p1': const PlayerMatchStats(
           minutes: 74, played: true, goalsConceded: 3, yellow: 1),
+      // Damit unter dem Feld Zahlen stehen: Wer zuletzt wie lange spielte,
+      // ordnet die Liste — und ein Neunzig-Minuten-Mann, den die Prognose
+      // vergisst, steht damit oben.
+      'p6': const PlayerMatchStats(minutes: 90, played: true),
+      'p7': const PlayerMatchStats(minutes: 63, played: true),
+      'p8': const PlayerMatchStats(minutes: 8, played: true),
     },
     3: {'p1': const PlayerMatchStats()},
   };
@@ -514,6 +520,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
     expect(find.text('Nicht in der Startelf'), findsOneWidget);
+    expect(find.text('Minuten zuletzt'), findsOneWidget);
+    expect(find.text('63'), findsOneWidget,
+        reason: 'Neben dem Namen stehen die Minuten aus dem letzten Spiel');
     // Ein Ersatzspieler, der auf keiner gemeldeten Bank steht, gehoert
     // trotzdem in die Liste — das ist der ganze Unterschied.
     expect(find.text('Yan Couto'), findsOneWidget);

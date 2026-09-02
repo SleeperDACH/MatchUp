@@ -954,16 +954,50 @@ class _Prognose extends ConsumerWidget {
   ///
   /// Abgewanderte bleiben draußen: Sie stehen für keinen Verein mehr auf dem
   /// Platz (Migration 0117).
-  List<FantasyPlayer> _uebrige(WidgetRef ref, PrognoseElf elf) {
+  ///
+  /// **Sortiert nach den Minuten des letzten Spiels**, nicht nach Position.
+  /// Der Grund steht in [_minutenZuletzt]: Wer eben noch neunzig Minuten
+  /// gespielt hat und in der Prognose fehlt, gehört nach oben.
+  List<FantasyPlayer> _uebrige(
+      WidgetRef ref, PrognoseElf elf, Map<String, int> minuten) {
     final pool =
         ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
     final drin = {for (final s in elf.elf) s.playerId};
     return [
       for (final p in pool)
         if (p.club == player.club && !p.abgewandert && !drin.contains(p.id)) p,
-    ]..sort((a, b) => a.position.index != b.position.index
-        ? a.position.index.compareTo(b.position.index)
-        : a.name.compareTo(b.name));
+    ]..sort((a, b) {
+        final ma = minuten[a.id] ?? 0;
+        final mb = minuten[b.id] ?? 0;
+        if (ma != mb) return mb.compareTo(ma);
+        if (a.position.index != b.position.index) {
+          return a.position.index.compareTo(b.position.index);
+        }
+        return a.name.compareTo(b.name);
+      });
+  }
+
+  /// Die Einsatzminuten aus dem **letzten Spiel dieses Vereins**.
+  ///
+  /// **Die Prognose trifft rund drei von vier Namen** — gemessen über die
+  /// Saison 2025/26 (306 Spiele): 77 % bei Sportmonks, und genau so gut ist
+  /// die banale Regel „dieselbe Elf wie letzte Woche" (77 %). Eine bessere
+  /// Quelle gibt es nur redaktionell; kicker beantwortet automatisierte
+  /// Abrufe mit 403.
+  ///
+  /// Statt eine Prognose zu behaupten, die sie nicht ist, steht neben jedem
+  /// Namen darunter, wie lange er zuletzt auf dem Platz war. Ein Kapitän mit
+  /// 90 Minuten, den die Prognose vergisst (gemeldet an Lukas Pinckert),
+  /// steht damit oben in der Liste und mit seiner Zahl daneben — die
+  /// Entscheidung trifft der Manager, nicht die Quelle.
+  Map<String, int> _minutenZuletzt(WidgetRef ref, List<Fixture> spiele) {
+    final saison = ref.watch(seasonStatsProvider).valueOrNull;
+    final zuletzt = letztesGespieltes(spiele, player.club);
+    if (saison == null || zuletzt == null) return const {};
+    return {
+      for (final e in (saison[zuletzt.round] ?? const {}).entries)
+        if (e.value.minutes > 0) e.key: e.value.minutes,
+    };
   }
 
   FantasyPlayer? _ausPool(WidgetRef ref, String playerId) {
@@ -1013,7 +1047,8 @@ class _Prognose extends ConsumerWidget {
               onTip: (id) => _oeffne(context, ref, id),
             ),
             _NichtInDerElf(
-              uebrige: _uebrige(ref, elf),
+              uebrige: _uebrige(ref, elf, _minutenZuletzt(ref, spiele)),
+              minuten: _minutenZuletzt(ref, spiele),
               ich: player.id,
               onTip: (id) => _oeffne(context, ref, id),
             ),
@@ -1185,11 +1220,15 @@ String _kurzerName(String voll) {
 class _NichtInDerElf extends StatelessWidget {
   const _NichtInDerElf({
     required this.uebrige,
+    required this.minuten,
     required this.ich,
     required this.onTip,
   });
 
   final List<FantasyPlayer> uebrige;
+
+  /// Einsatzminuten aus dem letzten Spiel des Vereins, je Spieler.
+  final Map<String, int> minuten;
   final String ich;
   final void Function(String playerId) onTip;
 
@@ -1201,14 +1240,30 @@ class _NichtInDerElf extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Nicht in der Startelf',
-            style: TextStyle(
-              fontSize: Schrift.klein,
-              letterSpacing: 0.6,
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurfaceVariant,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Nicht in der Startelf',
+                  style: TextStyle(
+                    fontSize: Schrift.klein,
+                    letterSpacing: 0.6,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              // **Die Zahl braucht ihre Beschriftung.** Ohne sie stünde neben
+              // einem Namen eine 90, die alles heißen könnte.
+              if (minuten.isNotEmpty)
+                Text(
+                  'Minuten zuletzt',
+                  style: TextStyle(
+                    fontSize: Schrift.klein,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 4),
           if (uebrige.isEmpty)
@@ -1224,6 +1279,7 @@ class _NichtInDerElf extends StatelessWidget {
             for (final p in uebrige)
               _Uebriger(
                 spieler: p,
+                minuten: minuten[p.id],
                 hervor: p.id == ich,
                 onTap: p.id == ich ? null : () => onTip(p.id),
               ),
@@ -1237,11 +1293,17 @@ class _NichtInDerElf extends StatelessWidget {
 class _Uebriger extends StatelessWidget {
   const _Uebriger({
     required this.spieler,
+    required this.minuten,
     required this.hervor,
     required this.onTap,
   });
 
   final FantasyPlayer spieler;
+
+  /// Minuten im letzten Spiel des Vereins. `null` heißt „war nicht auf dem
+  /// Platz" — dann steht dort nichts. Eine 0 wäre eine Zahl über etwas, das
+  /// nicht stattfand.
+  final int? minuten;
   final bool hervor;
   final VoidCallback? onTap;
 
@@ -1278,6 +1340,19 @@ class _Uebriger extends StatelessWidget {
                 ),
               ),
             ),
+            if (minuten != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  '$minuten',
+                  style: TextStyle(
+                    fontSize: Schrift.koerperKlein,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             Icon(
               hervor ? Icons.person : Icons.chevron_right,
               size: 18,

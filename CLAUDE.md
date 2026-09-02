@@ -2279,6 +2279,30 @@ schreibt „In der Startelf" statt „Voraussichtlich in der Startelf", sobald e
 gemeldet ist, und kennt mit „Auf der Bank" einen dritten Zustand — er ist
 etwas anderes als „nicht dabei", weil ein Eingewechselter punktet.
 
+**Wie gut die Prognose ist, ist gemessen** — über die ganze Saison 2025/26,
+306 Spiele, Prognose gegen die tatsächliche Startelf:
+
+| Verfahren | Treffer |
+|---|---|
+| Sportmonks-Prognose | 77,0 % |
+| „dieselbe Elf wie letzte Woche" | 77,1 % |
+| gewichtet über die letzten drei Spiele | 74,8 % |
+
+**Die gekaufte Prognose ist also nicht besser als die banalste Regel**, und
+ein eigenes Modell aus unseren Daten wäre es auch nicht. Spürbar besser wird
+es nur redaktionell (Pressekonferenzen), und dort ist der Weg versperrt:
+kicker beantwortet automatisierte Abrufe mit **403**, Ligainsider liefert nur
+HTML je Verein, ohne IDs und mit offener ToS-Frage. Gemeldet wurde das an
+Lukas Pinckert — Kapitän, 90 Minuten am 1. Spieltag, in der Prognose für den
+2. nicht dabei.
+
+**Die Antwort darauf steht in der Liste, nicht in der Quelle:** Neben jedem
+Namen unter dem Feld stehen seine **Minuten aus dem letzten Spiel des
+Vereins**, und danach ist die Liste sortiert. Ein vergessener
+Neunzig-Minuten-Mann steht damit oben, mit seiner Zahl daneben. Wer keine
+Minuten hat, bekommt keine Null hingeschrieben — das wäre eine Zahl über
+etwas, das nicht stattfand.
+
 **Angezeigt wird darunter trotzdem nicht die gemeldete Ersatzbank, sondern
 jeder Spieler des Vereins, der nicht in der Startelf steht** (auf ausdrückliche
 Ansage). Die echte Bank wäre die kleinere Auskunft: neun Namen, erst kurz vor
