@@ -8,6 +8,68 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.4.1+7 — 2. September 2026
+
+31 Commits seit 1.4.0+6 (31. August) — ein kleines Update vor dem 2. Spieltag.
+Der größte Teil davon sind Dinge, die am ersten Spieltag aufgefallen sind.
+
+### Behoben
+
+- **Ein Drop verschob rückwirkend Punkte.** Wer einen Spieler abgab, der am
+  Wochenende schon gespielt hatte, verlor dessen Punkte nachträglich — die
+  Aufstellung wurde für den laufenden Spieltag beschnitten. Ab dem Anpfiff
+  seines Vereins ist ein Spieler jetzt festgeschrieben: Er bleibt in der Elf
+  und punktet weiter für den, der ihn aufgestellt hatte. Beschnittene
+  Aufstellungen sind, soweit eindeutig, wiederhergestellt.
+- **Die Aufstellung speichert sofort.** Ein Wechsel ging vorher erst nach
+  700 ms raus; wer danach den Schirm verließ, verlor ihn. Scheitert das
+  Speichern, wird es wiederholt (2, 4, 8, 16, 30 s), und die Fußzeile sagt
+  das auch — vorher stand dort „Speichere …", während gar nichts unterwegs
+  war.
+- **Der Formationswechsel behält dieselbe Elf.** Er füllte die neue Formation
+  mit den punktbesten Bankspielern auf und tauschte damit ungefragt Spieler
+  aus. Jetzt bleibt, wer steht; wo ein Platz wegfällt, geht der letzte der
+  Reihe, und wo einer dazukommt, bleibt die Lücke — genau dort, wo man sie
+  füllen will.
+- **Alte Sperren sind keine.** Eine Rotsperre aus der vorigen Saison stand am
+  Spieler, als gälte sie heute („seit 34 Spielen gesperrt"). Sperren aus einer
+  früheren Saison fallen jetzt heraus, Verletzungen bleiben.
+- **Sieben Vereine wurden im Waiver nicht erkannt.** Spielplan und Kader
+  schreiben dieselben Vereine verschieden („1. FSV Mainz 05" gegen „FSV Mainz
+  05"); für sie ließ sich kein Antrag stellen.
+
+### Kader und Transfers
+
+- **Droppen und Traden gehen auch während des Spieltags.** Wer schon spielt,
+  bleibt trotzdem in deiner Elf und punktet weiter für dich.
+- **Wer die Bundesliga verlässt, verlässt auch den Kader.** Abgewanderte
+  Spieler standen weiter im Pool, mit altem Verein an der Karte, holbar in der
+  Free Agency und auf einem Kaderplatz, der bis Saisonende null Punkte bringt.
+  Sie werden jetzt entfernt; im Transfers-Bereich steht das als „Bundesliga
+  verlassen". Offene Anträge und Trade-Angebote auf sie werden aufgeräumt.
+- **Von überall ins Profil.** Aus der Aufstellung, aus dem Trade-Schirm und aus
+  einem Profil heraus in das nächste — und der Wisch nach unten führt dahin
+  zurück, wo man war, statt aus dem Reiter heraus.
+- **Im Trade steht, was ein Spieler bringt:** der Punkteschnitt je Spieltag in
+  jeder Zeile und die Summe je Seite im Kopf.
+- **Unter der voraussichtlichen Aufstellung steht der Rest des Kaders**, mit
+  den Minuten aus dem letzten Spiel — die Prognose der Quelle trifft im Schnitt
+  drei von vier Namen, und den vierten sieht man so trotzdem.
+
+### Aussehen
+
+- **Neue Schrift: Rajdhani.**
+- **Die Kopfkarte steht im Stadion** — das nächste Spiel deines Vereins auf
+  beleuchtetem Rasen, mit größeren Wappen.
+- **Das Spielfeld im Kader-Tab** ist neu: Flutlicht statt flachem Grün,
+  größere Wappen, lesbare Namen, deutlich größere Punktzahlen und ein
+  Tauschknopf, der sagt, welchen Platz er tauscht. Steht die Elf fest, sagt
+  das ein Band über dem Feld; einzelne gesperrte Spieler tragen ein Schloss.
+- **Der Trade-Schirm** zeigt die Spieler als Zeilen statt als Sticker; nichts
+  liegt mehr auf dem Wappen.
+- **Der Hauptknopf ist hell statt grün.** Grün heißt in dieser App „hier läuft
+  etwas" — ein Knopf läuft nicht. Zustimmung („Annehmen") bleibt grün.
+
 ## 1.4.0+6 — 31. August 2026
 
 89 Commits seit 1.3.0+5 (26. August) — der erste Build **während** einer
