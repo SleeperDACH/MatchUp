@@ -31,8 +31,8 @@ class TransferVorgang {
   /// Was den Kader verlassen hat.
   final List<RosterMove> raus;
 
-  /// Wie der Vorgang zustande kam — `draft`, `fa`, `waiver`, `trade` oder
-  /// `null` für einen reinen Abgang.
+  /// Wie der Vorgang zustande kam — `draft`, `fa`, `waiver`, `trade`,
+  /// `abgewandert` oder `null` für einen reinen Abgang.
   String? get weg =>
       rein.isNotEmpty ? rein.first.weg : (raus.isEmpty ? null : raus.first.weg);
 
@@ -40,7 +40,7 @@ class TransferVorgang {
   bool get nurAbgang => rein.isEmpty && raus.isNotEmpty;
 
   String get bezeichnung {
-    if (nurAbgang) return raus.first.weg == 'trade' ? 'Getradet' : 'Abgegeben';
+    if (nurAbgang) return raus.first.bezeichnung;
     return rein.first.bezeichnung;
   }
 }

@@ -135,7 +135,12 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
 
           // **Alle Spieler, nicht nur die freien** — gefiltert wie gehabt,
           // sortiert nach der Regel „freie zuerst, in jeder Gruppe die besten".
+          //
+          // Ausgenommen sind Abgewanderte: Wer die Bundesliga verlassen hat,
+          // steht hier nicht mehr, auch wenn seine Zeile im Pool bleiben muss
+          // (Draft-Brett, gespielte Spieltage).
           final gefiltert = pool
+              .where((p) => !p.abgewandert)
               .where((p) => _position == null || p.position == _position)
               .where(
                 (p) =>

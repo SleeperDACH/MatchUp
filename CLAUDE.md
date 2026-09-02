@@ -291,13 +291,28 @@ gilt das Raster ab sofort.
   weil das Spiel in der App schon sichtbar, aber noch nicht gespiegelt ist.
 - **Kader-Sync: Edge Function `supabase/functions/sync-squads/`** (gleiche
   Schutz-/Deploy-Konvention) holt die kompletten Kader der 18 Bundesliga-
-  Vereine von Sportmonks, spielt Zugänge per Upsert ein und entfernt Abgänge
-  über `fantasy_prune_departed_players` (Migration 0073). Zwei Sicherungen:
-  Geprunt wird **nur**, wenn alle 18 Kader plausibel geladen wurden
-  (`MIN_SQUAD` 15) — sonst reißt eine API-Lücke halbe Kader weg; und gelöscht
-  wird nur, wer in **keiner** referenzierenden Tabelle steht (nicht gedraftet,
-  nicht gerostert, keine Trades/Waiver, keine Match-Stats). Ein gedrafteter
-  Spieler verschwindet niemandem aus dem Kader.
+  Vereine von Sportmonks, spielt Zugänge per Upsert ein und nimmt Abgänge über
+  `fantasy_prune_departed_players` aus dem Pool (Migration 0073, seit **0117**
+  neu geschrieben). Die Sicherung bleibt: Geprunt wird **nur**, wenn alle 18
+  Kader plausibel geladen wurden (`MIN_SQUAD` 15) — sonst reißt eine API-Lücke
+  halbe Kader weg.
+  **Wer die Bundesliga verlässt, verlässt seit 0117 auch den Fantasy-Pool.**
+  Vorher blieb er stehen, sobald irgendetwas auf ihn zeigte (gedraftet,
+  gerostert, einmal gewertet) — mit altem Verein an der Karte, holbar in der
+  Free Agency, und im Kader auf einem Platz, der bis Saisonende null Punkte
+  bringt. Der Schutz galt dem Manager und kostete ihn genau den Kaderplatz.
+  Jetzt gilt: `players.abgang_am` markiert ihn; gelöscht wird weiterhin nur,
+  wer in **keiner** referenzierenden Tabelle steht (Draft-Picks, Stats, alte
+  Trades halten die Zeile — das Draft-Brett und die gewerteten Spieltage
+  brauchen den Namen). Aus den Kadern fliegt er in jedem Fall, die Trigger aus
+  0094/0096 räumen die Aufstellung und protokollieren den Abgang als
+  `abgewandert` („Bundesliga verlassen"). **Ausnahme:** Wer in der Elf der
+  laufenden Runde steht, bleibt bis zum Abpfiff — sonst verlöre er
+  rückwirkend Punkte, die er am Samstag geholt hat. Offene Anträge, Wunsch-
+  listen und schwebende Trades auf ihn werden mit aufgeräumt; ein
+  `before insert`-Trigger auf `fantasy_rosters` lässt ihn nicht zurück. In der
+  App blendet ihn `FantasyPlayer.abgewandert` überall aus, wo man jemanden
+  holen kann (Free Agency, Draft, Aktionsknopf) — geladen bleibt er.
   **Der Zeitplan ist der eigentliche Punkt** (Migration 0076, täglich 04:17
   UTC): Die Function war geschrieben, committet und hier dokumentiert — aber
   monatelang **weder deployed noch eingeplant**. Der Pool stand deshalb auf

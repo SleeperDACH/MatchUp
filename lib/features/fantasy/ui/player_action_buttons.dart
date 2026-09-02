@@ -59,6 +59,15 @@ class PlayerActionButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // **Wer die Bundesliga verlassen hat, ist für niemanden mehr zu haben** —
+    // weder zu holen noch zu traden. Steht vor der Besitzfrage: Solange er
+    // noch in der Elf der laufenden Runde steht, bleibt er im Kader (0117),
+    // aber ein Trade auf ihn wäre schon hinfällig, wenn er angenommen wird.
+    if (player.abgewandert) {
+      return breit
+          ? const _WeiterChip(text: 'Hat die Bundesliga verlassen')
+          : const _MiniChip(text: 'Nicht mehr in der BL');
+    }
     if (ownerId != null) {
       if (ownerId == myId) {
         return breit

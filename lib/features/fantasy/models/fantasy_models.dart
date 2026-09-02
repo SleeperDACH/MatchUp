@@ -391,6 +391,7 @@ class FantasyPlayer {
     required this.birthDate,
     required this.nationality,
     this.isForeignNewcomer = false,
+    this.abgangAm,
   });
 
   final String id;
@@ -405,6 +406,17 @@ class FantasyPlayer {
   /// Neuzugang aus dem Ausland — im Dynasty-Modus zusammen mit den
   /// U20-Spielern im Vorsaison-Draft wählbar.
   final bool isForeignNewcomer;
+
+  /// Wann der Kader-Sync ihn in keinem Bundesliga-Kader mehr fand — er hat
+  /// die Liga verlassen. `null` = im Pool.
+  ///
+  /// Er bleibt trotzdem geladen: Die gespielten Spieltage, das Draft-Brett
+  /// und die alten Kader brauchen seinen Namen. Ausgeblendet wird er nur
+  /// dort, wo man jemanden **holen** kann.
+  final DateTime? abgangAm;
+
+  /// Hat die Bundesliga verlassen.
+  bool get abgewandert => abgangAm != null;
 
   int ageOn(DateTime date) {
     var age = date.year - birthDate.year;
@@ -437,6 +449,9 @@ class FantasyPlayer {
         birthDate: DateTime.parse(json['birth_date'] as String),
         nationality: json['nationality'] as String,
         isForeignNewcomer: json['is_foreign_newcomer'] as bool? ?? false,
+        abgangAm: json['abgang_am'] == null
+            ? null
+            : DateTime.parse(json['abgang_am'] as String).toLocal(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -448,6 +463,7 @@ class FantasyPlayer {
             '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
         'nationality': nationality,
         'is_foreign_newcomer': isForeignNewcomer,
+        'abgang_am': abgangAm?.toUtc().toIso8601String(),
       };
 }
 

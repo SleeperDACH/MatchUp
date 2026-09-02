@@ -1,8 +1,9 @@
 // Kader-Sync: hält den Fantasy-Spielerpool (public.players) automatisch aktuell.
 // Holt die kompletten Kader der 18 Bundesliga-Vereine von Sportmonks, spielt
-// aktuelle Zugänge per Upsert ein und entfernt abgewanderte Spieler FK-sicher
-// (nur wenn sie in keiner Liga gedraftet/gerostert sind — siehe SQL-Funktion
-// public.fantasy_prune_departed_players in Migration 0073).
+// aktuelle Zugänge per Upsert ein und nimmt abgewanderte Spieler aus dem Pool
+// (SQL-Funktion public.fantasy_prune_departed_players, Migration 0117): Sie
+// werden markiert (players.abgang_am), aus den Kadern genommen und dort
+// gelöscht, wo kein Fremdschlüssel daran hängt.
 //
 // Portiert die Logik aus tools/import_sportmonks_pool.py (Vereins-Mapping,
 // Positionen) in einen serverseitigen, planbaren Lauf — damit Transfers ohne
@@ -169,7 +170,9 @@ Deno.serve(async (req) => {
 
   // Abgänge nur entfernen, wenn ALLE Kader plausibel geladen wurden — sonst
   // droht durch API-Lücken ein Massen-Löschen.
-  let pruned: { deleted: number; kept: number } | null = null;
+  let pruned:
+    | { deleted: number; kept: number; abgewandert: number; ausKadern: number }
+    | null = null;
   let pruneSkippedReason: string | null = null;
   if (!allClubsOk) {
     pruneSkippedReason =
@@ -183,7 +186,12 @@ Deno.serve(async (req) => {
       return new Response(`Prune-Fehler: ${error.message}`, { status: 500 });
     }
     const r = Array.isArray(data) ? data[0] : data;
-    pruned = { deleted: r?.deleted ?? 0, kept: r?.kept ?? 0 };
+    pruned = {
+      deleted: r?.deleted ?? 0,
+      kept: r?.kept ?? 0,
+      abgewandert: r?.abgewandert ?? 0,
+      ausKadern: r?.aus_kadern ?? 0,
+    };
   }
 
   return new Response(

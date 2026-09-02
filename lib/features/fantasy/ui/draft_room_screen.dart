@@ -304,6 +304,8 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     // Aufbau-Draft = ganzer Pool (alle Spieler, U20 inkl.). Nur der U20-Draft
     // ist auf Rookies (U20 + Auslands-Neuzugänge) beschränkt.
     bool inPhasePool(FantasyPlayer p) {
+      // Wer die Bundesliga verlassen hat, ist in keiner Phase wählbar.
+      if (p.abgewandert) return false;
       if (league.mode != FantasyMode.dynasty) return true;
       if (league.draftPhase == DraftPhase.u20) return p.isRookieFor(league.season);
       return true;

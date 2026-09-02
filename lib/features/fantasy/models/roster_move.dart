@@ -22,13 +22,15 @@ class RosterMove {
   /// `true` = in den Kader, `false` = aus dem Kader.
   final bool zugang;
 
-  /// `draft`, `fa`, `waiver`, `trade` — oder `null`.
+  /// `draft`, `fa`, `waiver`, `trade`, `abgewandert` — oder `null`.
   ///
   /// **Beim Abgang steht hier meist nichts**, und das ist Absicht: Die
   /// Datenbank sieht beim Löschen einer Kaderzeile nicht, ob ein Drop, eine
   /// Waiver-Abgabe oder eine Admin-Korrektur dahintersteckt. Etwas zu raten
   /// wäre schlimmer als nichts zu sagen. Beim Trade weiß sie es, weil dort
-  /// der Besitzer wechselt statt gelöscht zu werden.
+  /// der Besitzer wechselt statt gelöscht zu werden — und beim Abgang aus der
+  /// Bundesliga (`abgewandert`), weil der Kader-Sync ihn selbst einträgt
+  /// (Migration 0117).
   final String? weg;
 
   final DateTime passiertAm;
@@ -46,7 +48,14 @@ class RosterMove {
 
   /// Wie die Bewegung heißt, wenn man sie hinschreibt.
   String get bezeichnung {
-    if (!zugang) return weg == 'trade' ? 'Getradet' : 'Abgegeben';
+    if (!zugang) {
+      return switch (weg) {
+        'trade' => 'Getradet',
+        // Kein Drop des Managers: Der Spieler ist aus der Liga weg.
+        'abgewandert' => 'Bundesliga verlassen',
+        _ => 'Abgegeben',
+      };
+    }
     return switch (weg) {
       'draft' => 'Gedraftet',
       'fa' => 'Verpflichtet',
