@@ -1935,6 +1935,15 @@ des Trade-Wegs:
 | Bestätigung vor dem Senden | Pillen mit Namen | dieselbe Karte, 58 px |
 | Angebotskarte | Komma-Satz | dieselbe Karte, 58 px |
 
+**Von der Kachel führt ein Knopf ins Profil, wo der Tipp schon etwas anderes
+tut.** In der Trade-Auswahl wählt der Tipp auf die Karte sie aus — damit war
+dieser Schirm der einzige im Fantasy-Bereich ohne Weg ins Profil, und genau
+dort will man vor einem Angebot Leistung, Ausfallgrund und Spielplan sehen.
+`SpielerKachel.onProfil` zeichnet dafür einen runden Knopf oben rechts (44
+Punkte Tastfläche, mit `tooltip` — sonst heißt er für die Vorlesehilfe
+„Schaltfläche"). Ohne Angabe erscheint er nicht: In der Angebotskarte und in
+den Transfers öffnet der Tipp auf die Kachel ohnehin schon das Profil.
+
 **Kompakt heißt auch schmal.** Der erste Wurf zog die Kacheln über die volle
 Kartenbreite — für Name und Position wirkte das viel zu groß, und drei Spieler
 machten die Angebotskarte doppelt so hoch wie nötig. Jetzt haben sie eine feste
@@ -3972,10 +3981,14 @@ entscheidet sich, ob man den Spieler hält).
 
 Wo es steht:
 
-- **An der Spielerkachel** ein Symbol, oben rechts über dem Wappen — rot mit
-  Verbotszeichen für die Sperre, gold mit Kreuz für die Verletzung. Zuerst saß
-  es oben links und überlappte auf einer 42 Punkte hohen Kachel den Namen;
-  rechts liegt nur das halb durchscheinende Wappen.
+- **An der Spielerkachel** ein Symbol **neben der Position** — rot mit
+  Verbotszeichen für die Sperre, gold mit Kreuz für die Verletzung. Es hat
+  zwei Umzüge hinter sich: oben links überlappte es auf einer 42 Punkte hohen
+  Kachel den Namen, oben rechts lag es auf dem Wappen und überschnitt sich mit
+  ihm (gemeldet an der Trade-Auswahl, wo die Kacheln am größten sind). In der
+  Zeile mit der Position nimmt es nichts weg und steht bei den übrigen
+  Angaben zum Spieler. **Die dunkle Unterlage trägt dabei die Farbe**: Gold
+  auf der gelben Abwehr-Kachel wäre unsichtbar.
 - **Auf dem Spielfeld** ein Punkt unten links am Wappen. Oben links sitzt schon
   die Spielsperre („sein Spiel läuft") — zwei verschiedene Aussagen dürfen
   nicht dieselbe Ecke teilen.

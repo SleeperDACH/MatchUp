@@ -10,6 +10,7 @@ import '../models/fantasy_models.dart';
 import '../models/trade.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'player_profile_sheet.dart';
 import 'spieler_kachel.dart';
 import '../../../app/widgets/segmented_tab_bar.dart';
 
@@ -498,6 +499,13 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                         clubIcons: clubIcons,
                         onToggle: (id) => setState(() =>
                             _offer.contains(id) ? _offer.remove(id) : _offer.add(id)),
+                        onProfil: (p) => showPlayerProfile(
+                          context,
+                          league: widget.league,
+                          player: p,
+                          clubIcon: clubIcons[p.club],
+                          isMine: true,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -509,6 +517,15 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                         onToggle: (id) => setState(() => _request.contains(id)
                             ? _request.remove(id)
                             : _request.add(id)),
+                        // Sein Spieler: kein „Droppen" im Profil, aber der
+                        // Trade-Knopf — dieselbe Regel wie in jeder Liste.
+                        onProfil: (p) => showPlayerProfile(
+                          context,
+                          league: widget.league,
+                          player: p,
+                          clubIcon: clubIcons[p.club],
+                          isMine: false,
+                        ),
                       ),
                     ),
                   ],
@@ -945,12 +962,19 @@ class _RosterColumn extends StatelessWidget {
     required this.selected,
     required this.clubIcons,
     required this.onToggle,
+    required this.onProfil,
   });
 
   final List<FantasyPlayer> players;
   final Set<String> selected;
   final Map<String, String?> clubIcons;
   final ValueChanged<String> onToggle;
+
+  /// **Der Tipp auf die Karte wählt aus** — deshalb braucht das Profil einen
+  /// eigenen Knopf. Vor einem Angebot will man Leistung, Ausfallgrund und
+  /// Spielplan sehen, und dieser Schirm war der einzige im Fantasy-Bereich,
+  /// von dem aus es keinen Weg dorthin gab.
+  final ValueChanged<FantasyPlayer> onProfil;
 
   @override
   Widget build(BuildContext context) {
@@ -989,6 +1013,7 @@ class _RosterColumn extends StatelessWidget {
         iconUrl: clubIcons[p.club],
         hervor: sel,
         onTap: () => onToggle(p.id),
+        onProfil: () => onProfil(p),
       ),
     );
   }

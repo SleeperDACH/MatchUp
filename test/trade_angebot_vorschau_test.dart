@@ -5,6 +5,7 @@ import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/features/auth/providers.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/models/player_absence.dart';
 import 'package:matchup/features/fantasy/models/trade.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/trade_screen.dart';
@@ -115,6 +116,15 @@ void main() {
               )),
           playerPoolProvider.overrideWith((ref) async => pool),
           clubIconsProvider.overrideWith((ref) async => const {}),
+          // Ein Verletzter auf der kompakten Kachel: Das Symbol steht seit
+          // dem Umbau neben der Position statt in der Ecke — auf 46 Punkten
+          // Höhe ist das die engste Stelle, an der es passen muss.
+          absencesProvider.overrideWith((ref) => Stream.value({
+                'p2': const PlayerAbsence(
+                    playerId: 'p2',
+                    gesperrt: false,
+                    grundQuelle: 'Hamstring Injury'),
+              })),
           fantasyManagersProvider.overrideWith((ref, id) => Stream.value(const [
                 FantasyManager(userId: 'ich', username: 'SFV03'),
                 FantasyManager(

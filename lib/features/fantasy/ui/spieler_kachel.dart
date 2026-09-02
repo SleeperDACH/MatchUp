@@ -28,6 +28,7 @@ class SpielerKachel extends ConsumerWidget {
     this.hoehe = 110,
     this.breite,
     this.onTap,
+    this.onProfil,
   });
 
   final FantasyPlayer spieler;
@@ -49,6 +50,12 @@ class SpielerKachel extends ConsumerWidget {
   final double? breite;
 
   final VoidCallback? onTap;
+
+  /// **Der zweite Weg von dieser Karte weg.** Wo der Tipp auf die Karte schon
+  /// etwas anderes tut — in der Trade-Auswahl wählt er sie aus —, führt sonst
+  /// nichts mehr ins Profil, und genau dort will man vor einem Angebot
+  /// nachsehen. Ohne Angabe erscheint der Knopf nicht.
+  final VoidCallback? onProfil;
 
   /// Vorname auf einen Buchstaben kürzen: „Jonas Urbig" → „J. Urbig".
   static String kurzerName(String full) {
@@ -115,40 +122,6 @@ class SpielerKachel extends ConsumerWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // **Fällt er aus, steht es auf der Karte.** Ein Symbol, kein Text:
-          // Auf 124 Punkten Breite ist für „Muskuläre Probleme" kein Platz,
-          // und der genaue Grund gehört ohnehin ins Profil. Rot für die
-          // Sperre (eine Folge des eigenen Verhaltens), Gold für die
-          // Verletzung — dieselbe Bedeutung wie überall sonst in der App.
-          if (ausfall != null)
-            // **Oben rechts, nicht links.** Links steht der Name, und auf
-            // einer 42 Punkte hohen Kachel überlappte das Symbol ihn. Rechts
-            // liegt nur das halb durchscheinende Wappen — dort nimmt es
-            // nichts weg.
-            Positioned(
-              right: 0,
-              top: 0,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(7, 3, 6, 4),
-                decoration: BoxDecoration(
-                  color: (ausfall.gesperrt
-                          ? const Color(0xFFF23030)
-                          : const Color(0xFFFFC83D))
-                      .withValues(alpha: 0.92),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(15),
-                    bottomLeft: Radius.circular(10),
-                  ),
-                ),
-                child: Icon(
-                  ausfall.gesperrt
-                      ? Icons.block
-                      : Icons.medical_services_outlined,
-                  size: hoehe < 60 ? 10 : 13,
-                  color: Colors.black,
-                ),
-              ),
-            ),
           Positioned(
             right: -wappen * 0.48,
             top: 0,
@@ -193,18 +166,78 @@ class SpielerKachel extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  spieler.position.label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: fg.withValues(alpha: 0.9),
-                  ),
+                // **Fällt er aus, steht es neben der Position.** Ein Symbol,
+                // kein Text: Auf 124 Punkten Breite ist für „Muskuläre
+                // Probleme" kein Platz, und der genaue Grund gehört ohnehin
+                // ins Profil. Rot für die Sperre (eine Folge des eigenen
+                // Verhaltens), Gold für die Verletzung — dieselbe Bedeutung
+                // wie überall sonst in der App.
+                //
+                // **In der Zeile, nicht in der Ecke.** Oben rechts lag es auf
+                // dem Wappen und überschnitt sich mit ihm — gemeldet an der
+                // Trade-Auswahl, wo die Karten am größten sind. Hier stört es
+                // nichts und steht bei den übrigen Angaben zum Spieler.
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        spieler.position.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: fg.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ),
+                    if (ausfall != null) ...[
+                      const SizedBox(width: 6),
+                      // Die dunkle Unterlage trägt die Farbe: Gold auf der
+                      // gelben Abwehr-Kachel wäre unsichtbar.
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.42),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          ausfall.gesperrt
+                              ? Icons.block
+                              : Icons.medical_services_outlined,
+                          size: hoehe < 60 ? 10 : 12,
+                          color: ausfall.gesperrt
+                              ? const Color(0xFFF23030)
+                              : const Color(0xFFFFC83D),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
+          if (onProfil != null)
+            Positioned(
+              right: 4,
+              top: 4,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.42),
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: IconButton(
+                  tooltip: 'Profil von ${spieler.name}',
+                  onPressed: onProfil,
+                  iconSize: 18,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints.tightFor(width: 44, height: 44),
+                  icon: const Icon(Icons.person_outline, color: Colors.white),
+                ),
+              ),
+            ),
           if (hervor && mitHaken)
             Positioned(
               left: 8,

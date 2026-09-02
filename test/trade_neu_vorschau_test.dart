@@ -6,6 +6,7 @@ import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/features/auth/providers.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/features/fantasy/models/player_absence.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/trade_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
@@ -84,6 +85,20 @@ void main() {
               )),
           playerPoolProvider.overrideWith((ref) async => [...meine, ...seine]),
           clubIconsProvider.overrideWith((ref) async => const {}),
+          // **Ein Verletzter und ein Gesperrter im Bild.** Das Symbol lag
+          // vorher oben rechts auf dem Wappen und überschnitt sich mit ihm
+          // (gemeldet); jetzt steht es neben der Position, und genau das muss
+          // man nebeneinander sehen können.
+          absencesProvider.overrideWith((ref) => Stream.value({
+                'm2': const PlayerAbsence(
+                    playerId: 'm2',
+                    gesperrt: false,
+                    grundQuelle: 'Hamstring Injury'),
+                's4': const PlayerAbsence(
+                    playerId: 's4',
+                    gesperrt: true,
+                    grundQuelle: 'Red Card Suspension'),
+              })),
           leagueRosterProvider.overrideWith(
             (ref, id) => Stream.value([
               for (final p in meine)
@@ -109,6 +124,11 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
+
+    // **Jede Karte hat einen Weg ins Profil.** Der Tipp auf die Karte wählt
+    // sie aus; ohne eigenen Knopf käme man von diesem Schirm nirgends hin.
+    expect(find.byTooltip('Profil von Jonas Urbig'), findsOneWidget);
+    expect(find.byTooltip('Profil von Manuel Neuer'), findsOneWidget);
 
     await expectLater(
       find.byType(TradeComposeScreen),
