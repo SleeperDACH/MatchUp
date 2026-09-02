@@ -44,6 +44,37 @@ Future<void> showPlayerProfile(
   );
 }
 
+/// Öffnet ein **weiteres** Profil über dem aktuellen.
+///
+/// **Ohne `pop`, und das ist der Punkt.** Vorher schloss der Tipp auf einen
+/// anderen Spieler das offene Blatt und öffnete ein neues an seiner Stelle —
+/// wer danach nach unten wischte, landete nicht beim Profil, aus dem er kam,
+/// sondern ganz draußen im Reiter. Gemeldet als „ich bin komplett raus aus
+/// dem Tab". Gestapelt führt die gewohnte Geste dahin zurück, wo man war, und
+/// das darunterliegende Blatt behält seinen Reiter und seinen Scrollstand.
+///
+/// `isMine` wird hier **gerechnet**, nicht geraten: Die Kaderliste gab bisher
+/// pauschal `false` mit, und damit fehlte am eigenen Spieler der Droppen-Knopf.
+void _weiteresProfil(
+  BuildContext context,
+  WidgetRef ref, {
+  required FantasyLeague league,
+  required FantasyPlayer ziel,
+}) {
+  final icons =
+      ref.read(clubIconsProvider).valueOrNull ?? const <String, String?>{};
+  final myId = ref.read(currentUserProvider)?.id;
+  final roster = ref.read(leagueRosterProvider(league.id)).valueOrNull ??
+      const <RosterEntry>[];
+  showPlayerProfile(
+    context,
+    league: league,
+    player: ziel,
+    clubIcon: icons[ziel.club],
+    isMine: roster.any((r) => r.playerId == ziel.id && r.managerId == myId),
+  );
+}
+
 class _PlayerProfileSheet extends ConsumerWidget {
   const _PlayerProfileSheet({
     required this.league,
@@ -859,16 +890,7 @@ class _Vereinskader extends ConsumerWidget {
               : const Icon(Icons.chevron_right, size: 18),
           onTap: ich
               ? null
-              : () {
-                  Navigator.of(context).pop();
-                  showPlayerProfile(
-                    context,
-                    league: league,
-                    player: p,
-                    clubIcon: clubIcons[p.club],
-                    isMine: false,
-                  );
-                },
+              : () => _weiteresProfil(context, ref, league: league, ziel: p),
         );
       },
     );
@@ -918,21 +940,7 @@ class _Prognose extends ConsumerWidget {
   void _oeffne(BuildContext context, WidgetRef ref, String playerId) {
     final ziel = _ausPool(ref, playerId);
     if (ziel == null) return;
-    final icons =
-        ref.read(clubIconsProvider).valueOrNull ?? const <String, String?>{};
-    final myId = ref.read(currentUserProvider)?.id;
-    final roster = ref.read(leagueRosterProvider(league.id)).valueOrNull ??
-        const <RosterEntry>[];
-    final meiner =
-        roster.any((r) => r.playerId == ziel.id && r.managerId == myId);
-    Navigator.of(context).pop();
-    showPlayerProfile(
-      context,
-      league: league,
-      player: ziel,
-      clubIcon: icons[ziel.club],
-      isMine: meiner,
-    );
+    _weiteresProfil(context, ref, league: league, ziel: ziel);
   }
 
   /// Alle Spieler des Vereins, die **nicht** in der Startelf stehen — aus

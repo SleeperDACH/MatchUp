@@ -2288,10 +2288,22 @@ drin?" — wer sonst noch da ist. Die Liste kommt deshalb aus `players`, nach
 Position sortiert, ohne Abgewanderte (0117); die Spalten aus 0118 bleiben für
 Wortlaut und Urteil.
 
-**Ein Name auf dem Feld und auf der Bank führt ins Profil** — dieselbe
+**Ein Name auf dem Feld und in der Liste führt ins Profil** — dieselbe
 Bewegung wie in der Kaderliste nebenan. Getippt wird nur, wen der Pool kennt:
 Sportmonks meldet gelegentlich einen Spieler, den der letzte Kader-Sync noch
 nicht hat, und ein Tipp, der nichts öffnet, wäre schlimmer als keiner.
+
+**Ein Profil aus einem Profil legt sich darüber, es ersetzt es nicht.** Beide
+Wege (Kader-Reiter und Aufstellung) riefen vorher `pop` und danach
+`showPlayerProfile` — das erste Blatt war weg, bevor das zweite kam, und der
+Wisch nach unten führte nicht zurück, sondern ganz aus dem Reiter heraus
+(gemeldet als „ich bin komplett raus aus dem Tab"). Gestapelt führt die
+gewohnte Geste dahin zurück, wo man war, und das darunterliegende Blatt behält
+Reiter und Scrollstand. Beide Wege gehen dafür durch `_weiteresProfil`, das
+`isMine` **rechnet** statt es zu raten — die Kaderliste gab pauschal `false`
+mit, und damit fehlte am eigenen Spieler der Droppen-Knopf. Gehalten von
+`test/spielerprofil_zurueck_test.dart`, gegengeprüft: mit dem `pop` fallen
+beide Fälle.
 
 **Gezeigt wird die Formation, nicht eine Liste.** Eine Liste beantwortet „wer
 spielt", aber nicht „wo" — und das ist die Frage, wenn man eine Aufstellung
