@@ -368,8 +368,14 @@ Lineup bestEleven(Map<FantasyPlayer, double> points, RosterConfig roster) {
 }
 
 /// Aufstellung aus einer manuell gewählten Starter-Menge: summiert die
-/// Punkte der gewählten Spieler (Bank zählt nicht). Spieler in
-/// [starterIds], die nicht (mehr) im Kader sind, werden ignoriert.
+/// Punkte der gewählten Spieler (Bank zählt nicht).
+///
+/// **Wer hier fehlt, zählt nicht** — deshalb muss [points] jeden Aufgestellten
+/// enthalten, auch einen, der den Kader inzwischen verlassen hat. Bis dahin
+/// stand an dieser Stelle „Spieler, die nicht mehr im Kader sind, werden
+/// ignoriert", und das war genau der Fehler: Ein Trade nach dem Anpfiff nahm
+/// dem Abgeber rückwirkend die Punkte weg. Dafür sorgt
+/// [effectiveTotalsForRound].
 Lineup chosenLineup(
     Map<FantasyPlayer, double> points, Set<String> starterIds) {
   final starters = <String>{};
@@ -417,16 +423,6 @@ Map<String, double> effectiveTotalsForRound({
       out[m.userId] = 0.0;
       continue;
     }
-    final players = [
-      for (final r in roster)
-        if (r.managerId == m.userId && playerById[r.playerId] != null)
-          playerById[r.playerId]!
-    ];
-    final points = {
-      for (final p in players)
-        p: scorePlayer(
-            stats[p.id] ?? const PlayerMatchStats(), p.position, scoring)
-    };
     Set<String>? manual;
     for (final l in lineups) {
       if (l.round == round && l.managerId == m.userId) {
@@ -434,6 +430,24 @@ Map<String, double> effectiveTotalsForRound({
         break;
       }
     }
+    // **Kader plus gestellte Elf.** Wer zum Anpfiff aufgestellt war, punktet
+    // für diesen Spieltag — auch wenn er den Kader danach verlassen hat.
+    // Vorher kam die Liste allein aus dem Kader von *jetzt*, und ein Trade
+    // nach dem Anpfiff verschob die Punkte rückwirkend.
+    final ids = <String>{
+      for (final r in roster)
+        if (r.managerId == m.userId) r.playerId,
+      ...?manual,
+    };
+    final players = [
+      for (final id in ids)
+        if (playerById[id] != null) playerById[id]!,
+    ];
+    final points = {
+      for (final p in players)
+        p: scorePlayer(
+            stats[p.id] ?? const PlayerMatchStats(), p.position, scoring)
+    };
     out[m.userId] = effectiveLineup(points, rosterConfig, manual).total;
   }
   return out;

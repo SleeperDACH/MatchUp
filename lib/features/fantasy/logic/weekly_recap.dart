@@ -127,13 +127,6 @@ WeeklyRecap computeWeeklyRecap({
   BenchBlunder? blunder;
 
   for (final managerId in ids) {
-    final players = rosterByManager[managerId] ?? const <FantasyPlayer>[];
-    final points = {
-      for (final p in players)
-        p: scorePlayer(
-            stats[p.id] ?? const PlayerMatchStats(), p.position, scoring)
-    };
-
     // Manuelle Aufstellung dieses Spieltags, falls vorhanden.
     Set<String>? manual;
     for (final l in lineups) {
@@ -142,6 +135,28 @@ WeeklyRecap computeWeeklyRecap({
         break;
       }
     }
+
+    // **Kader plus gestellte Elf** — dieselbe Regel wie in
+    // `effectiveTotalsForRound`: Wer zum Anpfiff aufgestellt war, punktet für
+    // diesen Spieltag, auch wenn er den Kader danach verlassen hat. Sonst
+    // rechnete der Rückblick eine andere Summe als die Tabelle.
+    final players = <FantasyPlayer>[
+      ...?rosterByManager[managerId],
+      for (final id in manual ?? const <String>{})
+        if (playerById[id] != null &&
+            !(rosterByManager[managerId] ?? const <FantasyPlayer>[]).any(
+              (p) => p.id == id,
+            ))
+          playerById[id]!,
+    ];
+    final points = {
+      for (final p in players)
+        p: scorePlayer(
+          stats[p.id] ?? const PlayerMatchStats(),
+          p.position,
+          scoring,
+        ),
+    };
     final effective = effectiveLineup(points, rosterConfig, manual);
     final best = bestEleven(points, rosterConfig);
     scores.add(ManagerScore(managerId, effective.total));
@@ -164,7 +179,10 @@ WeeklyRecap computeWeeklyRecap({
             pts > cur.points ||
             (pts == cur.points && player.id.compareTo(cur.playerId) < 0)) {
           mvp = PlayerAward(
-              playerId: player.id, managerId: managerId, points: pts);
+            playerId: player.id,
+            managerId: managerId,
+            points: pts,
+          );
         }
       } else {
         final cur = benchHero;
@@ -172,16 +190,21 @@ WeeklyRecap computeWeeklyRecap({
             pts > cur.points ||
             (pts == cur.points && player.id.compareTo(cur.playerId) < 0)) {
           benchHero = PlayerAward(
-              playerId: player.id, managerId: managerId, points: pts);
+            playerId: player.id,
+            managerId: managerId,
+            points: pts,
+          );
         }
       }
     }
   }
 
   // Ranking absteigend, Gleichstand deterministisch nach Manager-ID.
-  scores.sort((a, b) => a.points != b.points
-      ? b.points.compareTo(a.points)
-      : a.managerId.compareTo(b.managerId));
+  scores.sort(
+    (a, b) => a.points != b.points
+        ? b.points.compareTo(a.points)
+        : a.managerId.compareTo(b.managerId),
+  );
 
   final topScore = scores.isNotEmpty ? scores.first : null;
   final lowScore = scores.length >= 2 ? scores.last : null;

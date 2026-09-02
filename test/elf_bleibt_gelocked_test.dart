@@ -124,4 +124,57 @@ void main() {
     );
     expect(s.starters, hasLength(11));
   });
+  // ---------------------------------------------------------------------
+  // Dieselbe Frage an die **Tabelle**, nicht nur an die Aufstellungsansicht.
+  //
+  // Der erste Anlauf hat nur `computeSideData` korrigiert — die Elf sah danach
+  // richtig aus, die Punkte blieben falsch („Erics Punkte hat es nicht
+  // geändert"). Die Summe kommt aus `effectiveTotalsForRound`, und die filterte
+  // ebenfalls gegen den Kader von jetzt. Zwei Wege, dieselbe Frage; ein Test,
+  // der nur einen prüft, sagt nichts.
+  // ---------------------------------------------------------------------
+  double summe(List<RosterEntry> roster) => effectiveTotalsForRound(
+        stats: stats,
+        round: 1,
+        managers: const [FantasyManager(userId: 'm1', username: 'Eric')],
+        roster: roster,
+        playerById: byId,
+        lineups: aufstellung,
+        scoring: liga.scoring,
+        rosterConfig: liga.roster,
+      )['m1']!;
+
+  test('die Tabellensumme ändert sich durch einen Trade danach nicht', () {
+    final voll = summe(kader([...elf, bank]));
+    final ohne = summe(kader([...elf.where((p) => p.id != 'fwd0'), bank]));
+    expect(voll, greaterThan(0));
+    expect(ohne, voll,
+        reason: 'Der Aufgestellte punktet weiter für den, der ihn gestellt hat');
+  });
+
+  test('auch mehrere Abgänge bewegen die Summe nicht', () {
+    final voll = summe(kader([...elf, bank]));
+    final ohne = summe(kader([
+      ...elf.where((p) => p.id != 'fwd0' && p.id != 'mid2'),
+      bank,
+    ]));
+    expect(ohne, voll);
+  });
+
+  test('ohne gestellte Elf zählt weiter der Kader von jetzt', () {
+    // Ein Team ohne Aufstellung bekommt die beste Elf — und die kann nur aus
+    // dem bestehen, was es hat.
+    double ohneElf(List<RosterEntry> roster) => effectiveTotalsForRound(
+          stats: stats,
+          round: 1,
+          managers: const [FantasyManager(userId: 'm1', username: 'Eric')],
+          roster: roster,
+          playerById: byId,
+          lineups: const [],
+          scoring: liga.scoring,
+          rosterConfig: liga.roster,
+        )['m1']!;
+    expect(ohneElf(kader([...elf, bank])),
+        greaterThan(ohneElf(kader([...elf.take(6), bank]))));
+  });
 }

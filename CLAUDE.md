@@ -3010,8 +3010,25 @@ zwei Stellen verschieden gerechnet wurde, war der ganze Fehler.
 Gegen die Produktion nachgemessen (mit Rollback): Ein Spieler aus Spieltag 1
 lässt sich abgeben, ohne dass die Elf schrumpft (11 → 11); einer aus dem noch
 nicht angepfiffenen Spieltag 2 fällt sehr wohl heraus (11 → 10).
-`test/elf_bleibt_gelocked_test.dart` hält die App-Seite fest — ohne die
-Korrektur fallen zwei seiner fünf Fälle.
+
+**Und dann war es trotzdem noch falsch.** Gemeldet: *„Erics Punkte hat es nicht
+geändert."* Die Elf sah korrekt aus, die Summe blieb dieselbe — weil sie aus
+einer **zweiten** Funktion kommt: `effectiveTotalsForRound` speist Tabelle,
+H2H-Bilanz, MatchUp-Karte und Detailkopf, und sie baute ihre Punkteliste
+ebenfalls allein aus dem Kader von jetzt. Im Kommentar von `chosenLineup` stand
+der Fehler sogar ausgeschrieben als Absicht: „Spieler, die nicht mehr im Kader
+sind, werden ignoriert."
+
+**Zwei Wege, dieselbe Frage — und ich hatte nur einen geprüft.** Der Test, den
+ich zum ersten Anlauf geschrieben hatte, war grün, während die Anzeige falsch
+blieb: Er fragte nur `computeSideData`. Die Regel steht jetzt an drei Stellen
+gleich (Aufstellungsansicht, Tabellensumme, Rückblick), und der Test fragt alle
+drei. Ohne die Korrektur fallen vier seiner acht Fälle.
+
+**Die Lehre, wieder einmal dieselbe:** Wo eine Größe an mehr als einer Stelle
+gerechnet wird, prüft ein Test einer Stelle gar nichts. `formatPoints`,
+`vierStuermerBrauchenVierAbwehr` und die Vereinsnamen sind dieselbe Geschichte —
+hier war es die Startelf-Summe.
 
 ### Der Rückblick schneidet am Abpfiff ab
 
