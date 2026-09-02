@@ -10,6 +10,7 @@ import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../logic/aufstellung_sperre.dart';
 import '../logic/aufstellung_uebernahme.dart';
+import '../logic/formation_umbau.dart';
 import '../logic/lineup_autosave.dart';
 import '../data/fantasy_league_repository.dart';
 import '../models/fantasy_models.dart';
@@ -92,6 +93,14 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   /// unvollständig war.
   bool _dirty = false;
 
+  /// Wie oft das Speichern hintereinander gescheitert ist (0 = alles gut).
+  ///
+  /// Steuert den Abstand des nächsten Versuchs und die Fußzeile. Vorher gab es
+  /// das nicht: Ein Fehlschlag zeigte eine Snackbar, und danach passierte
+  /// **nichts mehr** — der einzige Ausgang des Auto-Speichers ohne zweiten
+  /// Versuch.
+  int _fehlversuche = 0;
+
   /// Für den Flush in [dispose] festgehalten: `ref` ist dann nicht mehr
   /// verlässlich zu benutzen.
   FantasyLeagueRepository? _repo;
@@ -128,11 +137,33 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     super.dispose();
   }
 
-  /// Änderungen automatisch (leicht verzögert) speichern, sobald die
-  /// Aufstellung gültig ist — kein extra Speichern-Button nötig.
-  void _autoSave() {
+  /// Änderungen automatisch speichern, sobald die Aufstellung gültig ist —
+  /// kein extra Speichern-Button nötig.
+  ///
+  /// [sofort] für **Wechsel** (Spielerwahl, Ziehen aufs Feld, Ziehen auf die
+  /// Bank): Gewünscht nach dem letzten Spieltag — *„Bitte so umbauen, dass,
+  /// wenn ein Spieler eingewechselt wird, die Aufstellung gespeichert wird."*
+  /// Die 700 ms Verzögerung sind für einen Wechsel die falsche Größe: Wer
+  /// tauscht und sofort den Schirm verlässt oder in ein Funkloch fährt, hat
+  /// eine Aufstellung gesehen, die es nirgends gibt.
+  ///
+  /// Ohne [sofort] bleibt es beim Sammeln — für den Formationswechsel, bei
+  /// dem man sich durch die Auswahl tippt.
+  ///
+  /// **Nicht direkt, sondern nach dem nächsten Bild.** `_valid` und `_lastIds`
+  /// entstehen im `build`; unmittelbar nach `setState` stehen dort noch die
+  /// Werte von *vor* dem Zug. Genau davon lebte die alte Verzögerung, ohne
+  /// dass es irgendwo stand.
+  void _autoSave({bool sofort = false}) {
     _dirty = true;
+    _fehlversuche = 0; // neue Änderung, neuer Anlauf
     _saveTimer?.cancel();
+    if (sofort) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _versuchenZuSpeichern(),
+      );
+      return;
+    }
     _saveTimer = Timer(
       const Duration(milliseconds: 700),
       _versuchenZuSpeichern,
@@ -233,11 +264,30 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       // Nur bei Erfolg: Ein Fehlschlag lässt die Änderung offen, damit der
       // Flush in dispose sie noch mitnimmt.
       _dirty = false;
+      _fehlversuche = 0;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+        _fehlversuche++;
+        // **Noch einmal versuchen.** Das war die Lücke hinter „häufiger
+        // Speicherprobleme": Ein Netzfehler zeigte eine Snackbar und war
+        // fertig. Die Änderung blieb offen (`_dirty`), aber niemand nahm sie
+        // je wieder auf — außer zufällig der nächste Zug.
+        _saveTimer?.cancel();
+        _saveTimer = Timer(
+          wartezeitNachFehler(_fehlversuche),
+          _versuchenZuSpeichern,
+        );
+        // Nur beim ersten Mal laut. Danach trägt die Fußzeile den Zustand;
+        // eine Snackbar je Versuch wäre Lärm über einem Schirm, an dem man
+        // gerade arbeitet.
+        if (_fehlversuche == 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Speichern fehlgeschlagen: $e — versuche es '
+                  'weiter.'),
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -437,7 +487,16 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                 byPos: byPos,
                 current: (d, m, f),
                 onSelected: (fm) {
-                  setState(() => _slots = _buildSlots(fm, assigned, byPos));
+                  // **Dieselben elf Spieler.** Vorher füllte `_buildSlots` die
+                  // neue Formation mit den punktbesten Bankspielern auf — der
+                  // Formationsknopf tauschte damit ungefragt den Kader.
+                  setState(
+                    () => _slots = umbauAufFormation(
+                      slots: slots,
+                      formation: fm,
+                      torhueter: _roster.gk,
+                    ),
+                  );
                   _autoSave();
                 },
               ),
@@ -453,41 +512,59 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
             if (!allesZu)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Drei Zustände, nicht einer. Vorher stand hier auch
-                    // dann „wird automatisch gespeichert", wenn gar nichts
-                    // gespeichert werden konnte — die Zeile war der Grund,
-                    // warum ein verlorener Stand niemandem auffiel.
-                    Icon(
-                      !_valid
-                          ? Icons.error_outline
-                          : (_saving || _dirty)
-                          ? Icons.sync
-                          : Icons.cloud_done_outlined,
-                      size: 14,
-                      color: !_valid
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        !_valid
-                            ? 'Nicht gespeichert – die Elf ist noch nicht '
-                                  'vollständig'
-                            : (_saving || _dirty)
-                            ? 'Speichere …'
-                            : 'Gespeichert',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: !_valid
-                              ? Theme.of(context).colorScheme.error
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                child: Builder(
+                  builder: (context) {
+                    // Vier Zustände, nicht einer. „Speichere …" stand vorher
+                    // auch dann da, wenn der letzte Versuch gescheitert war —
+                    // der Unterschied zwischen „ist gleich da" und „ist nicht
+                    // angekommen" ist aber genau der, auf den es ankommt.
+                    final zustand = speicherAnzeige(
+                      gueltig: _valid,
+                      laeuftGerade: _saving,
+                      offen: _dirty,
+                      fehlversuche: _fehlversuche,
+                    );
+                    final warnt =
+                        zustand == SpeicherAnzeige.unvollstaendig ||
+                        zustand == SpeicherAnzeige.fehlgeschlagen;
+                    final farbe = warnt
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurfaceVariant;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          switch (zustand) {
+                            SpeicherAnzeige.unvollstaendig =>
+                              Icons.error_outline,
+                            SpeicherAnzeige.fehlgeschlagen =>
+                              Icons.cloud_off_outlined,
+                            SpeicherAnzeige.laeuft => Icons.sync,
+                            SpeicherAnzeige.gespeichert =>
+                              Icons.cloud_done_outlined,
+                          },
+                          size: 14,
+                          color: farbe,
                         ),
-                      ),
-                    ),
-                  ],
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            switch (zustand) {
+                              SpeicherAnzeige.unvollstaendig =>
+                                'Nicht gespeichert – die Elf ist noch nicht '
+                                    'vollständig',
+                              SpeicherAnzeige.fehlgeschlagen =>
+                                'Nicht gespeichert – neuer Versuch läuft',
+                              SpeicherAnzeige.laeuft => 'Speichere …',
+                              SpeicherAnzeige.gespeichert => 'Gespeichert',
+                            },
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: farbe),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               )
             else
@@ -585,7 +662,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       next[pos]![slotIndex] = picked == _clearSentinel ? null : picked;
       _slots = next;
     });
-    _autoSave();
+    _autoSave(sofort: true);
   }
 
   Map<PlayerPosition, List<String?>> _copy(
@@ -610,7 +687,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     next[pos]![index] = data.playerId;
     HapticFeedback.selectionClick();
     setState(() => _slots = next);
-    _autoSave();
+    _autoSave(sofort: true);
   }
 
   /// Einen aufgestellten Spieler per Drag auf die Bank setzen (Platz wird frei).
@@ -621,7 +698,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     next[from.$1]![from.$2] = null;
     HapticFeedback.selectionClick();
     setState(() => _slots = next);
-    _autoSave();
+    _autoSave(sofort: true);
   }
 }
 

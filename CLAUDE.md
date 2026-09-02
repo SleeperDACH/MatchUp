@@ -2991,6 +2991,78 @@ Ergebnis: 11 von 81 Meldungen fallen jetzt heraus (vorher 8) — drei Sperren,
 acht Verletzungen. Beides sind **Sichten**, kein App-Code: Die Korrektur wirkt
 ohne neuen Build.
 
+### Speichern beim Wechsel — und der Fehlschlag, der niemanden interessierte
+
+Gemeldet nach dem Spieltag: *„Während des letzten Spieltages gab es häufiger
+Speicherprobleme bei der Aufstellung. Bitte so umbauen, dass, wenn ein Spieler
+eingewechselt wird, die Aufstellung gespeichert wird."*
+
+Zwei Ursachen, und die zweite ist die schwerere.
+
+**1. Jede Änderung wartete 700 ms.** Für das Durchtippen einer Formation ist
+das richtig, für einen Wechsel ist es die falsche Größe: Wer tauscht und sofort
+weiterzieht — Schirm zu, Bildschirmsperre, Funkloch —, hat eine Aufstellung
+gesehen, die es nirgends gibt. Wechsel (Spielerwahl, Ziehen aufs Feld, Ziehen
+auf die Bank) speichern jetzt **sofort**.
+
+Dabei fiel eine Abhängigkeit auf, die nirgends stand: `_valid` und `_lastIds`
+entstehen im `build`. Unmittelbar nach `setState` stehen dort noch die Werte
+von *vor* dem Zug — die alte Verzögerung lebte genau davon. Das Sofort-
+Speichern hängt deshalb an `addPostFrameCallback`, nicht am Ereignis.
+
+**2. Der Fehlschlag war der einzige Ausgang ohne zweiten Versuch.** Der
+Auto-Speicher war an zwei Stellen schon einmal nachgebessert worden
+(`laeuftGerade` und `spieltag == null` bestellen sich beide neu ein) — beim
+Netzfehler blieb es bei einer Snackbar. Die Änderung blieb offen (`_dirty`),
+aber **niemand nahm sie je wieder auf**, außer zufällig der nächste Zug. Genau
+der Fall, der samstags im Stadion mit einem Balken Empfang auftritt.
+
+Jetzt: Wiederholung mit wachsendem Abstand (2, 4, 8, 16, 30 s, gedeckelt),
+laut nur beim ersten Mal. Und die Fußzeile bekam einen **vierten** Zustand:
+„Nicht gespeichert – neuer Versuch läuft". Vorher stand dort „Speichere …",
+dieselbe Zeile wie bei einem laufenden Speichern — der Unterschied zwischen
+„ist gleich da" und „ist nicht angekommen" ist aber genau der, auf den es
+ankommt. Dasselbe Muster wie beim leeren Draft-Feld und beim toten
+Long-Press im Chat.
+
+### Der Formationswechsel behält dieselbe Elf
+
+Gewünscht im selben Zug: *„Wenn die Aufstellung geändert wird, sollen dieselben
+elf Spieler im Kader bleiben. Wenn dann aber eine Positionsgruppe verringert
+wird, geht einer raus. Dafür ist dann in der Positionsgruppe, wo mehrere Leute
+dazukommen, ein freies Feld."*
+
+`_buildSlots` füllte bei jedem Wechsel **auf**: bestehende Auswahl zuerst, Rest
+mit den punktbesten Bankspielern. Von 4-4-2 auf 3-5-2 hieß das: ein Verteidiger
+raus (richtig) **und** ein fremder Mittelfeldspieler rein (falsch). Der
+Formationsknopf war damit ein Knopf für den Kader, und der Wechsel ließ sich
+nicht zurücknehmen, ohne von Hand nachzuziehen.
+
+`umbauAufFormation()` rechnet jetzt rein positionsweise und kennt weder Punkte
+noch Bank:
+
+- **Reihenfolge bleibt** — wird eine Gruppe kleiner, geht der *letzte* der
+  Reihe raus. Vorhersagbar; „der schwächste" wäre es nicht.
+- **Leere Plätze fallen zuerst weg** — `[A, null, B, C]` auf drei ergibt
+  `[A, B, C]`, nicht `[A, null, B]`. Sonst verlöre man einen Spieler an eine
+  Lücke, die man nie besetzt hatte.
+- **Neue Plätze bleiben leer.** Darum ging es: Die Lücke ist die Einladung,
+  den herausgefallenen Spieler dort wieder hineinzusetzen.
+
+Weil die Elf immer elf Plätze hat, ist die Zahl der Herausgefallenen stets
+gleich der Zahl der neuen Lücken — der Test prüft das über alle Formationen.
+
+Eine Folge, die man kennen muss: Nach einem Formationswechsel ist die Elf
+**unvollständig** und wird daher nicht gespeichert. Das ist gewollt und steht
+rot in der Fußzeile; vorher war sie durch das Auffüllen immer „gültig", und
+genau deshalb fiel der ungefragte Tausch nie auf.
+
+Geprüft wird beides — die reine Funktion in `test/formation_umbau_test.dart`
+**und** die Verdrahtung im echten Editor
+(`test/aufstellung_sofort_speichern_test.dart`). Dieselbe Regel an zwei Stellen
+zu prüfen ist hier keine Doppelung: Die Verzögerung beim Speichern war ein
+Detail des Widgets und wäre in keiner Logikprüfung aufgefallen.
+
 ### Ein Drop verschob rückwirkend Punkte (0113–0115)
 
 Gemeldet, und zu Recht scharf: *„Wenn man einen Spieler, der am Wochenende in

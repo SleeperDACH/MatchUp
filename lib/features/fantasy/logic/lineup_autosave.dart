@@ -44,3 +44,61 @@ SpeicherSchritt naechsterSpeicherSchritt({
   if (spieltag == null) return SpeicherSchritt.spaeterErneut;
   return SpeicherSchritt.speichern;
 }
+
+/// Wie lange nach einem **fehlgeschlagenen** Speichern gewartet wird, bevor es
+/// der Schirm noch einmal versucht.
+///
+/// Gemeldet nach dem Spieltag: *„Während des letzten Spieltages gab es
+/// häufiger Speicherprobleme bei der Aufstellung."*
+///
+/// Der Fehlschlag war die **einzige** Stelle im Auto-Speicher ohne zweiten
+/// Versuch. `laeuftGerade` bestellt sich neu ein, `spieltag == null` auch —
+/// nur ein Netzfehler zeigte eine Snackbar und war dann fertig. Genau der
+/// Fall, der an einem Samstagnachmittag im Stadion mit einem Balken Empfang
+/// auftritt: Der Zug ist im Schirm zu sehen, aber nirgends gespeichert.
+///
+/// Wachsender Abstand, damit ein länger weggebrochenes Netz nicht im
+/// Sekundentakt angefunkt wird, gedeckelt bei 30 s, damit ein
+/// wiedergekehrtes Netz nicht minutenlang ungenutzt bleibt.
+Duration wartezeitNachFehler(int fehlversuche) {
+  const kappe = Duration(seconds: 30);
+  if (fehlversuche < 1) return Duration.zero;
+  // Gedeckelt, bevor verschoben wird: Ein Schirm, der eine Viertelstunde
+  // offen liegt und kein Netz hat, käme sonst in Zahlenbereiche, in denen die
+  // Verschiebung kippt — und aus der Wartezeit würde eine negative Dauer.
+  final n = fehlversuche.clamp(1, 8);
+  final sekunden = 2 << (n - 1); // 2, 4, 8, 16, 32 …
+  return sekunden >= kappe.inSeconds ? kappe : Duration(seconds: sekunden);
+}
+
+/// Was die Fußzeile über den Speicherstand sagt.
+enum SpeicherAnzeige {
+  /// Die Elf ist nicht vollständig — es *kann* nichts gespeichert werden.
+  unvollstaendig,
+
+  /// Der letzte Versuch ist gescheitert, ein neuer ist bestellt.
+  fehlgeschlagen,
+
+  /// Unterwegs oder gleich unterwegs.
+  laeuft,
+
+  /// Alles beim Server.
+  gespeichert,
+}
+
+/// Der Zustand für die Fußzeile.
+///
+/// Vorher stand dort bei einem Fehlschlag „Speichere …" — dieselbe Zeile wie
+/// bei einem laufenden Speichern. Der Unterschied zwischen „ist gleich da"
+/// und „ist nicht angekommen" ist aber genau der, auf den es ankommt.
+SpeicherAnzeige speicherAnzeige({
+  required bool gueltig,
+  required bool laeuftGerade,
+  required bool offen,
+  required int fehlversuche,
+}) {
+  if (!gueltig) return SpeicherAnzeige.unvollstaendig;
+  if (fehlversuche > 0) return SpeicherAnzeige.fehlgeschlagen;
+  if (laeuftGerade || offen) return SpeicherAnzeige.laeuft;
+  return SpeicherAnzeige.gespeichert;
+}
