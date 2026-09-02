@@ -397,9 +397,14 @@ class _PlayerProfileSheet extends ConsumerWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: Text('${player.name} droppen?'),
+        // **Was mit einer laufenden Aufstellung passiert, gehört hierher.**
+        // „Er bleibt in der Elf" ist die Auskunft, nach der man sonst rät —
+        // und die Frage stellt sich genau in dem Moment, in dem man droppt.
         content: const Text(
             'Der Spieler verlässt deinen Kader und kommt für 24 Stunden auf '
-            'den Waiver-Wire. Sein Platz bleibt frei, bis du nachlegst.'),
+            'den Waiver-Wire. Sein Platz bleibt frei, bis du nachlegst.\n\n'
+            'Hat sein Spiel schon angepfiffen, bleibt er für diesen Spieltag '
+            'in deiner Elf und punktet weiter für dich.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),

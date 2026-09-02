@@ -3030,6 +3030,50 @@ gerechnet wird, prüft ein Test einer Stelle gar nichts. `formatPoints`,
 `vierStuermerBrauchenVierAbwehr` und die Vereinsnamen sind dieselbe Geschichte —
 hier war es die Startelf-Summe.
 
+### Die Regel für Kaderbewegungen, in einem Satz
+
+**Ein Spieler ist ab dem Anpfiff seines Vereins für diesen Spieltag
+festgeschrieben** — nicht ab dem ersten Anpfiff der Runde, nicht ab der
+Waiver-Frist. Vorher zählt er für den, dem er gerade gehört; ab seinem Anstoß
+für den, der ihn aufgestellt hatte, und zwar endgültig.
+
+Daraus folgt alles Übrige:
+
+| | vor seinem Anpfiff | nach seinem Anpfiff |
+|---|---|---|
+| droppen / traden | geht; er fällt aus der Elf | **geht auch** — er bleibt in der Elf |
+| ihn holen | geht, aufstellbar | nur per Antrag, zählt ab nächstem Spieltag |
+| Elf ändern | geht | gesperrt für ihn (0084) |
+| seine Punkte | wandern mit dem Kader | bleiben, wo sie sind |
+
+**Der Riegel sitzt an der Aufstellung, nicht an der Kaderbewegung.** Bis 0116
+verboten `fantasy_drop_player` und `fantasy_add_free_agent`, einen laufenden
+Spieler abzugeben („Er steht in deiner Elf und sein Spiel läuft schon"). Das
+war der richtige Schutz zum falschen Zeitpunkt: Seit 0115 nimmt der Trigger
+einen Spieler nur noch aus Aufstellungen, deren Anpfiff für ihn **noch
+aussteht** — der Schutz hängt also am Trigger und gilt damit für **jeden** Weg,
+der eine Kaderzeile löscht: Drop, Free-Agency-Tausch, Waiver-Zuteilung, Trade.
+
+Damit waren die beiden Ausnahmen kein Schutz mehr, sondern nur noch eine
+Einschränkung ohne Zweck. Auf Ansage sind sie weg: *„Trotzdem kann man Spieler
+während des Spieltags droppen oder traden. Sie müssen dann nur trotzdem im
+MatchUp-Kader bleiben."*
+
+**Nachgemessen statt behauptet** (Rollback-Proben gegen die Produktion). Ich
+hatte hier vorher eine Lücke gemeldet — die Waiver-Zuteilung umgehe die
+Elf-Prüfung. Das war falsch: Sie löscht eine Kaderzeile, also greift der
+Trigger. Nachgestellt: Elf bleibt bei 11.
+
+| Probe | Ergebnis |
+|---|---|
+| Waiver-Abgang aus angepfiffener Elf | 11 → 11 |
+| `fantasy_drop_player` auf Spieltag-1-Starter | geht durch, Kaderplatz weg, Elf 11 → 11 |
+| Derselbe Drop, Spieltag 2 (Anpfiff Fr) | Spieltag 1 bleibt 11, Spieltag 2 fällt auf 10 |
+
+Der Bestätigungsdialog sagt das jetzt auch: „Hat sein Spiel schon angepfiffen,
+bleibt er für diesen Spieltag in deiner Elf und punktet weiter für dich." Die
+Frage stellt sich genau in dem Moment, in dem man droppt.
+
 ### Der Rückblick schneidet am Abpfiff ab
 
 Gemeldet: *„SFV03 hatte keine 230 Punkte auf der Bank."* Stimmt — der Rückblick
