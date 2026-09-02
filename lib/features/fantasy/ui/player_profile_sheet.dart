@@ -935,6 +935,29 @@ class _Prognose extends ConsumerWidget {
     );
   }
 
+  /// Alle Spieler des Vereins, die **nicht** in der Startelf stehen — aus
+  /// unserem Pool, nicht aus der Aufstellung.
+  ///
+  /// **Die gemeldete Ersatzbank wäre die kleinere Auskunft.** Sie gibt es erst
+  /// kurz vor Anpfiff, sie umfasst neun Namen, und wer gar nicht im Kader für
+  /// dieses Spiel steht, fehlte darin ganz. Gefragt ist aber, wer sonst noch
+  /// da ist — vor dem Aufstellen ist das die Anschlussfrage an „steht mein
+  /// Spieler drin?".
+  ///
+  /// Abgewanderte bleiben draußen: Sie stehen für keinen Verein mehr auf dem
+  /// Platz (Migration 0117).
+  List<FantasyPlayer> _uebrige(WidgetRef ref, PrognoseElf elf) {
+    final pool =
+        ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
+    final drin = {for (final s in elf.elf) s.playerId};
+    return [
+      for (final p in pool)
+        if (p.club == player.club && !p.abgewandert && !drin.contains(p.id)) p,
+    ]..sort((a, b) => a.position.index != b.position.index
+        ? a.position.index.compareTo(b.position.index)
+        : a.name.compareTo(b.name));
+  }
+
   FantasyPlayer? _ausPool(WidgetRef ref, String playerId) {
     final pool =
         ref.read(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
@@ -981,10 +1004,9 @@ class _Prognose extends ConsumerWidget {
               oeffnet: (id) => _ausPool(ref, id) != null,
               onTip: (id) => _oeffne(context, ref, id),
             ),
-            _Bank(
-              elf: elf,
+            _NichtInDerElf(
+              uebrige: _uebrige(ref, elf),
               ich: player.id,
-              oeffnet: (id) => _ausPool(ref, id) != null,
               onTip: (id) => _oeffne(context, ref, id),
             ),
           ],
@@ -1140,28 +1162,27 @@ String _kurzerName(String voll) {
   return '${teile.first.characters.first}. ${teile.sublist(1).join(' ')}';
 }
 
-/// **Die Bank.**
+/// **Wer sonst noch da ist.**
 ///
-/// Sie steht bewusst unter dem Feld und nicht darauf: Wer sitzt, steht nicht
-/// im Raster, und ein zwölfter Kreis am Spielfeldrand wäre eine Behauptung
-/// über eine Position, die es nicht gibt.
+/// Unter dem Feld stehen alle Spieler des Vereins, die nicht in der Startelf
+/// stehen — der Kader aus unserem Pool, nicht die gemeldete Ersatzbank. Die
+/// wäre die kleinere Auskunft: Es gibt sie erst kurz vor Anpfiff, sie zählt
+/// neun Namen, und wer für dieses Spiel gar nicht im Kader steht, fehlte darin
+/// ganz. Vor dem Aufstellen ist aber genau das die Anschlussfrage an „steht
+/// mein Spieler drin?" — wer könnte statt seiner spielen.
 ///
-/// **Es gibt sie erst mit der gemeldeten Aufstellung.** Sportmonks' Prognose
-/// liefert elf Namen und keine Ersatzbank (gemessen am 02.09.2026: 22
-/// Einträge je Partie, alle mit demselben Typ). Solange nur sie steht, sagt
-/// dieser Abschnitt genau das — eine leere Bank sähe sonst aus wie „niemand
-/// sitzt draußen", derselbe Fehler wie das leere Feld im Draft-Brett.
-class _Bank extends StatelessWidget {
-  const _Bank({
-    required this.elf,
+/// Sie stehen unter dem Feld und nicht darauf: Wer nicht aufgestellt ist, hat
+/// keinen Platz im Raster, und ein zwölfter Kreis am Spielfeldrand wäre eine
+/// Behauptung über eine Position, die es nicht gibt.
+class _NichtInDerElf extends StatelessWidget {
+  const _NichtInDerElf({
+    required this.uebrige,
     required this.ich,
-    required this.oeffnet,
     required this.onTip,
   });
 
-  final PrognoseElf elf;
+  final List<FantasyPlayer> uebrige;
   final String ich;
-  final bool Function(String playerId) oeffnet;
   final void Function(String playerId) onTip;
 
   @override
@@ -1173,33 +1194,30 @@ class _Bank extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Bank',
+            'Nicht in der Startelf',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: Schrift.klein,
               letterSpacing: 0.6,
               fontWeight: FontWeight.w700,
               color: scheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 4),
-          if (elf.bank.isEmpty)
+          if (uebrige.isEmpty)
             Text(
-              'Die Bank steht erst mit der gemeldeten Aufstellung, in der '
-              'Regel etwa eine Stunde vor Anpfiff.',
+              'Aus dem Kader dieses Vereins steht niemand sonst im Pool.',
               style: TextStyle(
                 color: scheme.onSurfaceVariant,
                 height: 1.35,
-                fontSize: 13,
+                fontSize: Schrift.koerperKlein,
               ),
             )
           else
-            for (final s in elf.bank)
-              _Bankspieler(
-                spieler: s,
-                hervor: s.playerId == ich,
-                onTap: s.playerId == ich || !oeffnet(s.playerId)
-                    ? null
-                    : () => onTip(s.playerId),
+            for (final p in uebrige)
+              _Uebriger(
+                spieler: p,
+                hervor: p.id == ich,
+                onTap: p.id == ich ? null : () => onTip(p.id),
               ),
         ],
       ),
@@ -1207,15 +1225,15 @@ class _Bank extends StatelessWidget {
   }
 }
 
-/// Eine Zeile der Bank: Rückennummer, Name, Pfeil ins Profil.
-class _Bankspieler extends StatelessWidget {
-  const _Bankspieler({
+/// Eine Zeile darunter: Position, Name, Pfeil ins Profil.
+class _Uebriger extends StatelessWidget {
+  const _Uebriger({
     required this.spieler,
     required this.hervor,
     required this.onTap,
   });
 
-  final PrognoseSpieler spieler;
+  final FantasyPlayer spieler;
   final bool hervor;
   final VoidCallback? onTap;
 
@@ -1230,19 +1248,17 @@ class _Bankspieler extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 26,
+              width: 34,
               child: Text(
-                spieler.nummer?.toString() ?? '–',
-                textAlign: TextAlign.center,
+                spieler.position.short,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: Schrift.klein,
                   fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
                   color: scheme.onSurfaceVariant,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 spieler.name,

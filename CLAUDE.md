@@ -2277,9 +2277,16 @@ nichts lieferte (dort lässt der Sync die alten Zeilen absichtlich stehen).
 `predicted_lineups.bank` und `.bestaetigt` tragen den Unterschied; die App
 schreibt „In der Startelf" statt „Voraussichtlich in der Startelf", sobald er
 gemeldet ist, und kennt mit „Auf der Bank" einen dritten Zustand — er ist
-etwas anderes als „nicht dabei", weil ein Eingewechselter punktet. Solange nur
-die Prognose steht, sagt der Abschnitt, dass die Bank etwa eine Stunde vor
-Anpfiff kommt; eine leere Bank sähe aus wie „niemand sitzt draußen".
+etwas anderes als „nicht dabei", weil ein Eingewechselter punktet.
+
+**Angezeigt wird darunter trotzdem nicht die gemeldete Ersatzbank, sondern
+jeder Spieler des Vereins, der nicht in der Startelf steht** (auf ausdrückliche
+Ansage). Die echte Bank wäre die kleinere Auskunft: neun Namen, erst kurz vor
+Anpfiff, und wer für dieses Spiel gar nicht im Kader steht, fehlte darin ganz.
+Gefragt ist beim Aufstellen aber die Anschlussfrage an „steht mein Spieler
+drin?" — wer sonst noch da ist. Die Liste kommt deshalb aus `players`, nach
+Position sortiert, ohne Abgewanderte (0117); die Spalten aus 0118 bleiben für
+Wortlaut und Urteil.
 
 **Ein Name auf dem Feld und auf der Bank führt ins Profil** — dieselbe
 Bewegung wie in der Kaderliste nebenan. Getippt wird nur, wen der Pool kennt:

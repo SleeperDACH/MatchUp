@@ -60,6 +60,12 @@ void main() {
     _p('p2', 'Gregor Kobel', PlayerPosition.gk, club),
     _p('p3', 'Julian Brandt', PlayerPosition.mid, club),
     _p('p4', 'Serhou Guirassy', PlayerPosition.fwd, club),
+    // Vier, die in keiner der Prognosen stehen — sonst wäre die Liste
+    // „Nicht in der Startelf" leer, und genau die soll das Bild zeigen.
+    _p('p5', 'Alexander Meyer', PlayerPosition.gk, club),
+    _p('p6', 'Yan Couto', PlayerPosition.def, club),
+    _p('p7', 'Emre Can', PlayerPosition.mid, club),
+    _p('p8', 'Marcel Sabitzer', PlayerPosition.mid, club),
     _p('p9', 'Jamal Musiala', PlayerPosition.mid, 'FC Bayern München'),
   ];
 
@@ -407,12 +413,19 @@ void main() {
     );
   });
 
-  testWidgets('Vorschau: gemeldete Aufstellung mit Bank', (tester) async {
-    // **Der Zustand, den es erst seit 0118 gibt.** Sportmonks' Prognose kennt
-    // keine Bank (gemessen: elf Namen je Mannschaft); sobald der Verein seine
-    // Aufstellung meldet, kommen Startelf und Bank getrennt. Dann faellt das
-    // „voraussichtlich" weg, und „Auf der Bank" ist eine andere Auskunft als
-    // „nicht dabei" — er kann eingewechselt werden.
+  testWidgets('Vorschau: gemeldete Aufstellung, wer sonst da ist',
+      (tester) async {
+    // Zwei Dinge in einem Bild.
+    //
+    // **Unter dem Feld steht, wer nicht in der Startelf steht** — der Kader
+    // des Vereins aus unserem Pool, nicht die gemeldete Ersatzbank. Die wäre
+    // die kleinere Auskunft: neun Namen, erst kurz vor Anpfiff, und wer gar
+    // nicht im Spieltagskader steht, fehlte darin ganz.
+    //
+    // **Und das Urteil kennt „Auf der Bank"** (Migration 0118): Sobald der
+    // Verein gemeldet hat, fällt das „voraussichtlich" weg, und draußen zu
+    // sitzen ist etwas anderes als nicht dabei zu sein — er kann
+    // eingewechselt werden.
     final vorher = AppConfig.supabaseInitialized;
     AppConfig.supabaseInitialized = true;
     addTearDown(() => AppConfig.supabaseInitialized = vorher);
@@ -494,17 +507,23 @@ void main() {
     expect(find.text('Auf der Bank'), findsOneWidget,
         reason: 'Gemeldet und draussen ist nicht dasselbe wie „nicht dabei"');
 
-    // Die Bank steht unter dem Feld — ohne Scrollen waere sie ausserhalb des
+    // Die Liste steht unter dem Feld — ohne Scrollen waere sie ausserhalb des
     // Bildes, und genau sie ist hier der Gegenstand.
     await tester.drag(find.byType(ListView).last, const Offset(0, -260));
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    expect(find.text('Emre Can'), findsOneWidget);
+    expect(find.text('Nicht in der Startelf'), findsOneWidget);
+    // Ein Ersatzspieler, der auf keiner gemeldeten Bank steht, gehoert
+    // trotzdem in die Liste — das ist der ganze Unterschied.
+    expect(find.text('Yan Couto'), findsOneWidget);
+    expect(find.text('Marcel Sabitzer'), findsOneWidget);
+    // Wer in der Elf steht, steht nicht darunter.
+    expect(find.text('Julian Brandt'), findsNothing);
 
     await expectLater(
       find.byType(BottomSheet),
-      matchesGoldenFile('goldens/spielerprofil_bank.png'),
+      matchesGoldenFile('goldens/spielerprofil_uebrige.png'),
     );
   });
 
