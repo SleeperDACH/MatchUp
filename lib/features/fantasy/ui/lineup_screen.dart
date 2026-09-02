@@ -20,6 +20,7 @@ import 'free_agency_screen.dart';
 import 'pitch_painter.dart';
 import 'player_profile_sheet.dart';
 import '../logic/formation_luecke.dart';
+import '../logic/formation_fuer_elf.dart';
 
 /// Aufstellung als Fußballfeld: Startelf je Spieltag visuell auf dem Platz
 /// wählen. Oben Chips für gültige Formationen (flexibel, Min/Max je Position
@@ -517,8 +518,17 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       fwdCount: formation.$3,
     );
     if (!isValid) {
-      final feasible = _feasibleFormations(byPos);
-      if (feasible.isNotEmpty) formation = feasible.first;
+      // **Die Lücke bleibt, wo sie ist.** Vorher wurde hier die erste
+      // besetzbare Formation genommen — aus 4-4-2 ohne einen Verteidiger
+      // wurde 3-4-3, und ein Stürmer rückte in die Elf, den niemand
+      // aufgestellt hatte.
+      final passend = formationFuerElf(
+        gesetzt: formation,
+        besetzbar: _feasibleFormations(byPos),
+        basis: (_roster.def, _roster.mid, _roster.fwd),
+      );
+      formation =
+          passend ?? _feasibleFormations(byPos).firstOrNull ?? formation;
     }
     return _buildSlots(formation, seedIds, byPos);
   }

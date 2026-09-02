@@ -3074,6 +3074,31 @@ Der Bestätigungsdialog sagt das jetzt auch: „Hat sein Spiel schon angepfiffen
 bleibt er für diesen Spieltag in deiner Elf und punktet weiter für dich." Die
 Frage stellt sich genau in dem Moment, in dem man droppt.
 
+**Und die Lücke bleibt, wo sie entstanden ist.** Gemeldet als zweite Hälfte
+derselben Sache: *„Die Position bleibt dann erstmal leer und der neue Spieler
+kommt auf die Bank."*
+
+Solange der Aufstellungs-Schirm **offen** blieb, stimmte das schon: Die Slots
+bleiben stehen, der gedroppte Platz wird leer. Beim **Wiederöffnen** wird die
+Elf aber aus der gespeicherten Liste neu aufgebaut — und zehn Spieler sind
+keine gültige Formation. Der alte Weg nahm dann die *erste besetzbare*: Aus
+4-4-2 ohne einen Verteidiger wurde 3-4-3, und ein Stürmer rückte in die Elf,
+den niemand aufgestellt hatte.
+
+`formationFuerElf` (`logic/formation_fuer_elf.dart`) wählt jetzt die Formation
+mit dem **kleinsten Überschuss** — jeder gesetzte Spieler bleibt stehen, es
+entstehen genau so viele Lücken, wie Spieler fehlen.
+
+**Der Gleichstand brauchte einen Maßstab.** Fehlt aus 4-4-2 ein Verteidiger,
+sind 3-4-3, 3-5-2 und 4-4-2 alle „einen Spieler entfernt"; der Reihe nach
+genommen gewinnt 3-4-3. Entschieden wird deshalb nach Nähe zur
+**Grundformation der Liga** (`RosterConfig.def/mid/fwd`) — das Nächstbeste zu
+„wie es vorher aussah", und im Gegensatz zur Reihenfolge kein Zufall.
+
+Ein neu geholter Spieler landet ohne Zutun auf der Bank: Er kommt in
+`fantasy_rosters`, nicht in `fantasy_lineups`. Die Lücke bleibt also stehen,
+bis man sie selbst füllt.
+
 ### Der Rückblick schneidet am Abpfiff ab
 
 Gemeldet: *„SFV03 hatte keine 230 Punkte auf der Bank."* Stimmt — der Rückblick
