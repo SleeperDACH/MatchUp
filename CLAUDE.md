@@ -3956,6 +3956,28 @@ ist ein strenger Präfix (`'🔄 Trade angenommen: %'`), nicht eine Suche nach
 „Trade" — im Verlauf steht eine echte Nachricht, die nur aus dem Emoji 🙂‍↔️
 besteht, und die hätte eine großzügigere Regel mitgenommen.
 
+### Ein Chat beginnt unten, nicht irgendwo
+
+Gemeldet: „Wenn man in einen Chat reingeht, ist man immer irgendwo. Bitte so
+ändern, dass man immer bei der neuesten Nachricht ganz unten landet."
+
+Die Liste stand normal herum und sprang im ersten Frame per
+`jumpTo(maxScrollExtent)` ans Ende. **Das ist eine geschätzte Zahl:** Eine
+`ListView.builder` kennt die Höhe ungebauter Zeilen nicht, und Chatblasen sind
+verschieden hoch — je länger der Verlauf, desto weiter daneben. Nachgeladene
+Avatare verschoben es zusätzlich.
+
+Jetzt ist die Liste **umgedreht** (`reverse: true`, gebaut über
+`rows.length - 1 - i`): Offset 0 ist das untere Ende. Sie beginnt dort, ohne
+dass jemand etwas rechnet, und bleibt dort, wenn eine Nachricht dazukommt. Wer
+weiter oben liest, bleibt stehen — nachgeführt wird nur, wer ohnehin fast unten
+war (`offset <= 220`).
+
+Gehalten von `test/chat_unten_test.dart`: sechzig Nachrichten mit
+unterschiedlich hohen Blasen, danach muss die letzte im Bild sein und die erste
+gar nicht gebaut. Gegengeprüft — ohne `reverse` findet der Test die letzte
+Nachricht nicht.
+
 ### Nachrichten lassen sich kopieren — und der tote Griff
 
 Gemeldet: *„Wir brauchen außerdem die Funktion, dass man im Chat Nachrichten

@@ -160,31 +160,22 @@ class _MessageListState extends State<_MessageList> {
   final _controller = ScrollController();
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _toBottom(animate: false));
-  }
-
-  @override
   void didUpdateWidget(_MessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Bei neuer Nachricht ans untere Ende scrollen.
-    if (widget.messages.length != oldWidget.messages.length) {
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _toBottom(animate: true));
+    // Kommt eine Nachricht dazu, während man schon unten steht, rutscht die
+    // Liste von selbst mit (umgedrehte Liste, Offset 0 ist unten). Wer weiter
+    // oben liest, bleibt, wo er ist — genau wie in jedem anderen Chat.
+    // Bewegt wird nur, wenn man ohnehin fast unten war.
+    if (widget.messages.length > oldWidget.messages.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _nachUnten());
     }
   }
 
-  void _toBottom({required bool animate}) {
+  void _nachUnten() {
     if (!_controller.hasClients) return;
-    final max = _controller.position.maxScrollExtent;
-    if (animate) {
-      _controller.animateTo(max,
-          duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
-    } else {
-      _controller.jumpTo(max);
-    }
+    if (_controller.offset > 220) return; // liest gerade Älteres
+    _controller.animateTo(0,
+        duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
   }
 
   @override
@@ -236,12 +227,25 @@ class _MessageListState extends State<_MessageList> {
         onReply: widget.onReply == null ? null : () => widget.onReply!(msg),
       ));
     }
-    // Älteste oben, neueste unten — automatisch nach unten gescrollt.
+    // **Die Liste ist umgedreht, nicht gescrollt.**
+    //
+    // Vorher stand sie normal herum, und ein `jumpTo(maxScrollExtent)` im
+    // ersten Frame sollte sie ans Ende setzen. Das ging schief, sobald die
+    // Blasen verschieden hoch sind: Eine `ListView.builder` kennt die Höhe
+    // ungebauter Zeilen nicht, `maxScrollExtent` ist im ersten Frame also
+    // geschätzt — man landete „irgendwo", und je länger der Verlauf, desto
+    // weiter daneben. Bilder und nachgeladene Avatare verschoben es zusätzlich.
+    //
+    // Mit `reverse: true` ist Offset 0 das **untere** Ende: Die Liste beginnt
+    // dort, ohne dass jemand etwas rechnen muss, und sie bleibt dort, wenn
+    // eine Nachricht dazukommt. Gebaut wird von hinten (`rows.length - 1 - i`),
+    // damit oben trotzdem das Ältere steht.
     return ListView.builder(
       controller: _controller,
+      reverse: true,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       itemCount: rows.length,
-      itemBuilder: (context, i) => rows[i],
+      itemBuilder: (context, i) => rows[rows.length - 1 - i],
     );
   }
 }
