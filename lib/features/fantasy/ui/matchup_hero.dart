@@ -27,7 +27,11 @@ const _cRed = Color(0xFFF23030);
 /// Karussell liest sie, und `test/matchup_banner_vorschau_test.dart` rendert
 /// einen Kasten genau in dieser Höhe — wächst der Inhalt wieder, wird der Test
 /// rot statt das Gerät.
-const double kMatchupBannerHoehe = 236;
+// **206 statt 236, seit die Kopfzeile weg ist.** Die Zahl steht hier und
+// nicht im Karussell: Sie muss dem Inhalt folgen, und der Inhalt wohnt in
+// dieser Datei. Wächst er wieder, meldet die Vorschau
+// `matchup_banner_vorschau_test` den Überlauf, bevor es ein Gerät tut.
+const double kMatchupBannerHoehe = 206;
 
 // Das große Chevron als halbtransparentes Wasserzeichen hinter dem Inhalt ist
 // **entfernt**. Es lag mit 45 % Deckung quer über Namen und Punktestand und
@@ -201,13 +205,10 @@ class MatchupBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = live ? _cRed : _cGreen;
-    final status = live ? 'LIVE' : (started ? 'Beendet' : 'Vorschau');
 
     if (awayName == null) {
       return HeroShell(
         accent: accent,
-        round: round,
-        status: status,
         live: live,
         started: started,
         onTap: onTap,
@@ -239,8 +240,6 @@ class MatchupBanner extends StatelessWidget {
     final awayWin = started && awayPoints > homePoints;
     return HeroShell(
       accent: accent,
-      round: round,
-      status: status,
       live: live,
       started: started,
       onTap: onTap,
@@ -410,8 +409,6 @@ class HeroShell extends StatelessWidget {
   const HeroShell({
     super.key,
     required this.accent,
-    required this.round,
-    required this.status,
     required this.live,
     required this.started,
     required this.onTap,
@@ -419,8 +416,6 @@ class HeroShell extends StatelessWidget {
   });
 
   final Color accent;
-  final int round;
-  final String status;
   final bool live;
 
   /// Ist der Spieltag angepfiffen? Steuert, wie viel Farbe der Kasten trägt.
@@ -451,7 +446,9 @@ class HeroShell extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 150),
+          // Ohne Kopfzeile darf der Kasten flacher sein; bei einem
+          // spielfreien Spieltag stand sonst ein leeres Drittel darunter.
+          constraints: const BoxConstraints(minHeight: 122),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             color: grund,
@@ -473,96 +470,23 @@ class HeroShell extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: Stack(
               children: [
+                // **Keine Kopfzeile mehr.** Sie trug ein Blitzsymbol, das Wort
+                // MATCHUP, den Spieltag und eine Status-Pille — vier
+                // Auskünfte in 11 bis 13 Punkt über dem, worum es geht.
+                // Gemeldet als „zu viel kleine Schrift", und der Kasten
+                // steht ohnehin in einem Zusammenhang, der den Spieltag
+                // nennt (Spieltagswähler im MatchUp-Reiter, Kopf der
+                // Liga-Übersicht). Dass etwas läuft, sagen jetzt der
+                // kräftigere Hauch, die roten Zahlen und das Wort
+                // „Live-Punkte" unter dem Balken.
                 Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // **Ein garantierter Fuß unter der Kopfzeile.**
-                      // Kopfzeile und Inhalt sind Geschwister in einer
-                      // `spaceBetween`-Spalte; bei viel Inhalt — und live ist
-                      // der Inhalt am größten — fällt der Zwischenraum auf
-                      // null zusammen, und der LIVE-Chip klebte an der
-                      // Oberkante des Avatars darunter.
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: Abstand.s),
-                        child: Row(
-                        children: [
-                          Icon(Icons.bolt, size: 16, color: accent),
-                          const SizedBox(width: 4),
-                          Text.rich(
-                            TextSpan(children: [
-                              const TextSpan(
-                                  text: 'MATCHUP',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1.5)),
-                              TextSpan(
-                                  text: '  ·  SPIELTAG $round',
-                                  style: TextStyle(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.6),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 1)),
-                            ]),
-                          ),
-                          const Spacer(),
-                          HeroStatusPill(
-                              accent: accent, label: status, live: live),
-                        ],
-                      ),
-                      ),
-                      child,
-                    ],
-                  ),
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                  child: Center(child: child),
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class HeroStatusPill extends StatelessWidget {
-  const HeroStatusPill(
-      {super.key, required this.accent, required this.label, required this.live});
-
-  final Color accent;
-  final String label;
-  final bool live;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: live ? accent : Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (live) ...[
-            Container(
-              width: 7,
-              height: 7,
-              decoration:
-                  const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 5),
-          ],
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold)),
-        ],
       ),
     );
   }

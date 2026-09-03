@@ -2043,6 +2043,16 @@ den Zustand (`live`/`started`) bestimmen — beide Aufrufer reichen ihn durch.
 In der Vorschau steht er als **fester** Zeitpunkt, sonst wäre das Bild von Tag
 zu Tag anders.
 
+**Und die Kopfzeile ist weg** („zu viel kleine Schrift"). Sie trug ein
+Blitzsymbol, das Wort MATCHUP, den Spieltag und eine Status-Pille — vier
+Auskünfte in 11 bis 13 Punkt über dem, worum es geht. Der Kasten steht ohnehin
+in einem Zusammenhang, der den Spieltag nennt (Spieltagswähler im
+MatchUp-Reiter, Kopf der Liga-Übersicht); dass etwas läuft, sagen der
+kräftigere Hauch, die roten Zahlen und „Live-Punkte" unter dem Balken. Mit ihr
+fielen `HeroStatusPill` und die Felder `round`/`status` der `HeroShell` weg,
+und die Karussellhöhe sank von 236 auf **206** — die Zahl steht bei der Karte,
+nicht im Karussell, damit sie dem Inhalt folgen kann.
+
 ### Der MatchUp-Kasten war buchstäblich undurchsichtig
 
 So kam die Meldung, und sie traf es wörtlich. Vier Ursachen, alle im selben
