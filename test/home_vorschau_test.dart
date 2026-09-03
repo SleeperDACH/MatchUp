@@ -195,7 +195,29 @@ Future<void> _bauen(WidgetTester tester) async {
         tipJoinRequestsProvider.overrideWith(
           (ref, id) => Stream.value(const []),
         ),
-        newsProvider.overrideWith((ref, topic) async => const <NewsItem>[]),
+        // **Mit Meldungen im Bild.** Der News-Abschnitt ist seit dem Umbau
+        // (untereinander statt quer, Bild über die volle Breite) der längste
+        // Block des Schirms — mit leerer Liste sah man von ihm gar nichts.
+        // Die Bilder selbst erscheinen in Vorschauen nicht (Dekodieren ist
+        // echtes I/O); zu sehen ist die Ersatzfläche und die Anordnung.
+        newsProvider.overrideWith((ref, topic) async => [
+              NewsItem(
+                title: 'Karetsas, Banzuzi und Co. — wer wird der '
+                    '„neue Diomande"?',
+                url: 'https://example.org/1',
+                source: 'Sportschau',
+                publishedAt: DateTime(2026, 9, 3, 9, 26),
+                imageUrl: 'https://example.org/1.jpg',
+              ),
+              NewsItem(
+                title: 'Atubolu spricht über Wechsel-Posse: '
+                    '„Keine einfache Zeit"',
+                url: 'https://example.org/2',
+                source: 'Sportschau',
+                publishedAt: DateTime(2026, 9, 3, 8, 10),
+                imageUrl: 'https://example.org/2.jpg',
+              ),
+            ]),
       ],
       child: MaterialApp(theme: buildAppTheme(), home: const HomeScreen()),
     ),

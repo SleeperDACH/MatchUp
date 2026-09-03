@@ -1243,8 +1243,16 @@ Titelbilder der jeweiligen Berichte mit anzeigen."
 
 Die Leiste lief quer; was rechts außerhalb lag, sah niemand — auf einem
 Schirm, den man ohnehin nach unten liest, war das eine zweite Leserichtung für
-nichts. Jetzt fünf Meldungen untereinander, jede als Zeile mit Bild links
-(116 × 74), darunter der Weg in die volle Liste.
+nichts. Jetzt fünf Meldungen untereinander, darunter der Weg in die volle
+Liste.
+
+**Das Bild steht über der Schlagzeile und füllt die Karte** (16:9, der
+Zuschnitt der Quelle — anders beschnitten fehlte oben oder unten der halbe
+Kopf), mit dem Kartenrand ringsum. Als 116 Punkte breite Kachel neben dem Text
+war es eine Briefmarke; es ist der Grund, warum man an einer Meldung
+hängenbleibt. In der **vollen Liste** bleibt es die schmale Kachel links: Dort
+stehen Dutzende Meldungen, und fünf Bildschirmhöhen Bild wären dort keine
+Übersicht mehr.
 
 **Die Bilder gab es nicht.** Gemessen am 03.09.2026 über die Feeds selbst:
 

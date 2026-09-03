@@ -15,12 +15,14 @@ class NewsBild extends StatelessWidget {
   const NewsBild({
     super.key,
     required this.url,
-    required this.breite,
-    required this.hoehe,
+    this.breite = double.infinity,
+    this.hoehe = double.infinity,
     this.radius = 9,
   });
 
   final String? url;
+  /// Feste Maße für die Zeilenform; ohne Angabe füllt die Kachel, was sie
+  /// bekommt (Kartenform mit `AspectRatio` darüber).
   final double breite;
   final double hoehe;
   final double radius;
@@ -34,7 +36,8 @@ class NewsBild extends StatelessWidget {
       color: _blau.withValues(alpha: 0.14),
       child: Center(
         child: Icon(Icons.newspaper,
-            size: hoehe * 0.32, color: _blau.withValues(alpha: 0.75)),
+            size: hoehe.isFinite ? hoehe * 0.32 : 34,
+            color: _blau.withValues(alpha: 0.75)),
       ),
     );
     return ClipRRect(

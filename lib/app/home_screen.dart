@@ -1073,7 +1073,7 @@ class _NewsSection extends ConsumerWidget {
                 children: [
                   for (final n in shown) ...[
                     _NewsCard(item: n),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                   ],
                   _MehrNews(onTap: () => _openList(context)),
                 ],
@@ -1097,8 +1097,9 @@ class _NewsCard extends StatelessWidget {
 
   final NewsItem item;
 
-  static const _bildBreite = 116.0;
-  static const _bildHoehe = 74.0;
+  /// Das Seitenverhältnis der Quelle: Die Sportschau liefert ihre Bilder als
+  /// „16x9-big" — anders beschnitten fehlte oben oder unten der halbe Kopf.
+  static const _format = 16 / 9;
 
   @override
   Widget build(BuildContext context) {
@@ -1111,67 +1112,62 @@ class _NewsCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => openNews(context, item.url),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: scheme.outlineVariant.withValues(alpha: 0.7),
             ),
           ),
           padding: const EdgeInsets.all(8),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              NewsBild(
-                url: item.imageUrl,
-                breite: _bildBreite,
-                hoehe: _bildHoehe,
+              // **Das Bild über die volle Breite**, mit dem Rand der Karte
+              // ringsum: Es ist der Grund, warum man hier stehen bleibt, und
+              // als 116 Punkte breite Kachel war es eine Briefmarke.
+              AspectRatio(
+                aspectRatio: _format,
+                child: NewsBild(url: item.imageUrl, radius: 10),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: SizedBox(
-                  height: _bildHoehe,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            height: 1.18,
-                            fontSize: Schrift.koerper,
-                          ),
-                        ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 0, 2, 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        height: 1.18,
+                        fontSize: Schrift.titel,
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.newspaper,
-                            size: 12,
-                            color: _kVereinsBlau,
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              meta,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: scheme.onSurfaceVariant,
-                                fontSize: Schrift.klein,
-                              ),
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        const Icon(Icons.newspaper,
+                            size: 12, color: _kVereinsBlau),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: Schrift.klein,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
