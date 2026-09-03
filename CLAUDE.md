@@ -1236,6 +1236,23 @@ Die Kopfkarte hat **zwei** Vorlese-Stationen, nicht eine: das Spiel und der
 Sockel führen an verschiedene Orte. Deshalb setzt sie `_PressScale`s
 `eineAnsage` ab, das sonst jede Karte zu einer Ansage zusammenfasst.
 
+### Vier Wege, ein Ort, mit Wörtern
+
+Transfers, Nachrichten, Ligasuche und Erstellen standen als **vier nackte
+Symbole an zwei Orten**: Suche und „+" oben in der Kopfleiste, Doppelpfeil und
+Sprechblase eine Zeile tiefer neben dem Gruß. Ein Doppelpfeil ohne Wort ist
+nicht zu erraten, und wer den Schirm zum ersten Mal sieht, findet die
+Ligasuche gar nicht.
+
+Sie stehen jetzt zusammen unter dem Gruß (`_Schnellzugriff`): vier gleich
+breite Kacheln mit Symbol **und** Wort — Transfers · Chats · Suchen · Neu.
+Gleich breit, damit keine wichtiger aussieht als die andere; Farbe trägt nur,
+was wartet (der rote Zähler ungelesener Nachrichten). Die Kopfleiste behält
+Menü und Wortmarke, sonst nichts.
+
+Die Wörter schrumpfen statt zu kappen — „Transfers" ist auf einem Viertel der
+Bildschirmbreite das längste der Reihe.
+
 ### Der News-Feed läuft nach unten und zeigt Bilder
 
 Gewünscht: „Umbauen, sodass man nach unten scrollt statt zur Seite, und die

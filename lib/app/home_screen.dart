@@ -66,24 +66,11 @@ class HomeScreen extends ConsumerWidget {
               )
             : null,
         title: const _MatchUpTitle(),
-        actions: [
-          // Öffentliche Ligasuche direkt neben dem Erstellen/Beitreten-Knopf.
-          if (configured && user != null)
-            IconButton(
-              tooltip: 'Ligen entdecken',
-              icon: const Icon(Icons.search, size: 25),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
-              ),
-            ),
-          // Erstellen & Beitreten zusammengefasst in einem Knopf oben rechts.
-          if (configured && user != null)
-            IconButton(
-              tooltip: 'Erstellen oder beitreten',
-              icon: const Icon(Icons.add_circle_outline, size: 27),
-              onPressed: () => showCreateOrJoin(context, ref),
-            ),
-        ],
+        // **Keine Aktionen mehr in der Kopfleiste.** Suchen und Erstellen
+        // standen dort als nackte Symbole, Transfers und Nachrichten eine
+        // Zeile tiefer als zwei weitere — vier Knöpfe an zwei Orten, keiner
+        // mit einem Wort daran. Sie stehen jetzt zusammen und beschriftet
+        // unter dem Gruß (`_Schnellzugriff`).
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -108,7 +95,9 @@ class HomeScreen extends ConsumerWidget {
               )
             else ...[
               const _Appear(child: _GreetingBar()),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              const _Appear(delayMs: 20, child: _Schnellzugriff()),
+              const SizedBox(height: 14),
               // Die Kopfkarte führt: das nächste Spiel des eigenen Vereins
               // ist der Inhalt, an dem eine Zeit hängt. Sie blendet sich
               // aus, wenn es keinen Favoriten gibt.
@@ -1300,7 +1289,6 @@ class _GreetingBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final name = ref.watch(currentUsernameProvider).valueOrNull;
-    final unreadCount = ref.watch(unreadDmCountProvider);
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
@@ -1326,102 +1314,148 @@ class _GreetingBar extends ConsumerWidget {
               ),
             ),
           ),
-          // Transfers und Direktnachrichten bleiben als Direktzugänge
-          // erhalten — entfärbt, siehe oben.
-          _HeaderAction(
-            tooltip: 'Transfers',
-            icon: Icons.swap_horiz,
-            color: scheme.onSurfaceVariant,
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const TransfersScreen())),
-          ),
-          _HeaderAction(
-            tooltip: 'Direktnachrichten',
-            icon: Icons.forum_outlined,
-            color: scheme.onSurfaceVariant,
-            badge: unreadCount,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ConversationsScreen()),
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-/// Kompakter Icon-Knopf der Kopfzeile, optional mit rotem Zähler.
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({
-    required this.tooltip,
+/// **Die vier Wege, die nicht in einer Liste stehen.**
+///
+/// Transfers, Nachrichten, Ligasuche und Erstellen waren vorher vier nackte
+/// Symbole an **zwei** Orten: zwei in der Kopfleiste, zwei neben dem Gruß.
+/// Ohne ein Wort daran ist ein Doppelpfeil nicht zu erraten, und wer den
+/// Schirm zum ersten Mal sieht, findet die Ligasuche gar nicht.
+///
+/// Jetzt stehen sie zusammen, beschriftet, in einer Reihe unter dem Gruß —
+/// gleich breit, damit keiner wichtiger aussieht als der andere. Farbe trägt
+/// nur, was wartet: der rote Zähler ungelesener Nachrichten.
+class _Schnellzugriff extends ConsumerWidget {
+  const _Schnellzugriff();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ungelesen = ref.watch(unreadDmCountProvider);
+    return Row(
+      children: [
+        Expanded(
+          child: _ZugriffKachel(
+            icon: Icons.swap_horiz,
+            wort: 'Transfers',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TransfersScreen()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ZugriffKachel(
+            icon: Icons.forum_outlined,
+            wort: 'Chats',
+            zaehler: ungelesen,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ConversationsScreen()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ZugriffKachel(
+            icon: Icons.search,
+            wort: 'Suchen',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ZugriffKachel(
+            icon: Icons.add,
+            wort: 'Neu',
+            onTap: () => showCreateOrJoin(context, ref),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Eine Kachel der Schnellzugriff-Leiste: Symbol, Wort, optional ein Zähler.
+class _ZugriffKachel extends StatelessWidget {
+  const _ZugriffKachel({
     required this.icon,
-    required this.color,
+    required this.wort,
     required this.onTap,
-    this.badge = 0,
+    this.zaehler = 0,
   });
 
-  final String tooltip;
   final IconData icon;
-  final Color color;
+  final String wort;
   final VoidCallback onTap;
-  final int badge;
+  final int zaehler;
 
   @override
   Widget build(BuildContext context) {
-    // Knopf und Zähler sind **eine** Ansage. Vorgelesen wurden vorher zwei
-    // Stationen: „Direktnachrichten, Schaltfläche" und daneben ein nacktes
-    // „3", das nicht sagte, wovon es drei zählt.
+    final scheme = Theme.of(context).colorScheme;
+    // Knopf und Zähler sind **eine** Ansage. Vorgelesen waren es sonst zwei
+    // Stationen: „Chats, Schaltfläche" und daneben ein nacktes „8", das nicht
+    // sagte, wovon es acht zählt.
     return Semantics(
       button: true,
-      label: badge > 0 ? '$tooltip, $badge ungelesen' : tooltip,
-      onTap: onTap,
+      label: zaehler > 0 ? '$wort, $zaehler ungelesen' : wort,
       excludeSemantics: true,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          IconButton(
-            tooltip: tooltip,
-            onPressed: onTap,
-            visualDensity: VisualDensity.compact,
-            // Vorher 40 — unter dem Maß beider Plattformen. Die fehlenden
-            // Punkte holt sich der Knopf aus dem Luftraum um das Symbol,
-            // sichtbar ändert sich nichts.
-            constraints: BoxConstraints(
-              minWidth: minTastflaeche(context),
-              minHeight: minTastflaeche(context),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.7),
+              ),
             ),
-            icon: Icon(icon, size: 26, color: color),
-          ),
-          if (badge > 0)
-            Positioned(
-              right: 2,
-              top: 2,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: MatchUpColors.red,
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.surface,
-                    width: 2,
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 22,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(icon, size: 21, color: scheme.onSurface),
+                      if (zaehler > 0)
+                        Positioned(
+                          right: -9,
+                          top: -5,
+                          child: _CountBadge(count: zaehler),
+                        ),
+                    ],
                   ),
                 ),
-                child: Center(
+                const SizedBox(height: 5),
+                // Schrumpfen statt kappen: „Transfers" ist auf einem Viertel
+                // der Bildschirmbreite das längste Wort der Reihe.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
                   child: Text(
-                    badge > 99 ? '99+' : '$badge',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      height: 1.0,
+                    wort,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: Schrift.klein,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
