@@ -266,15 +266,23 @@ class HomeScreen extends ConsumerWidget {
           farbe: _kTipGold,
         )
       else
-        _Bleed(
-          hoehe: kartenHoehe(context, _kKartenHoehe),
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
-            physics: const BouncingScrollPhysics(),
-            itemCount: standalone.length,
-            separatorBuilder: (_, _) => const SizedBox(width: _kLeagueCardGap),
-            itemBuilder: (_, i) => _TipRoundCard(round: standalone[i]),
+        // **Streifen statt Karten** (auf Ansage, 03.09.2026). Die Tipprunden
+        // standen zwischendurch schon einmal als Zeilen da und wurden auf
+        // Wunsch zu Karten zurückgedreht; der Grund, der damals dagegen
+        // sprach, gilt für **gleich gebaute** Reihen: Zwei Kartenreihen
+        // untereinander lassen den halben Schirm gleich aussehen. Genau das
+        // löst der Streifen — die Ligen bleiben Karten, das Tippspiel wird
+        // eine Zeile, und die beiden Bereiche sind auf einen Blick
+        // auseinanderzuhalten.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: _kLeagueRowPad),
+          child: Column(
+            children: [
+              for (final r in standalone) ...[
+                _TipRoundStreifen(round: r),
+                const SizedBox(height: 8),
+              ],
+            ],
           ),
         ),
     ];
@@ -1781,8 +1789,16 @@ class _LeagueMark extends StatelessWidget {
 /// sind Höhe, Marke und Farbe. Der Preis steht in [_kKartenHoehe]: Der Name
 /// muss auf zwei Zeilen passen, und „Bundesliga +1" schrumpft, statt zu
 /// kappen.
-class _TipRoundCard extends ConsumerWidget {
-  const _TipRoundCard({required this.round});
+/// **Eine Tipprunde als flacher Streifen über die volle Breite.**
+///
+/// Marke links, Name und Wettbewerb daneben, rechts der Zähler offener
+/// Beitritte und der Pfeil. Höhe 62 — flach genug, dass drei Runden nicht den
+/// halben Schirm nehmen, hoch genug für die 44 Punkte Tastfläche.
+///
+/// Die Farbe der Runde trägt wie bei den Karten nur den **Hauch aus der Ecke**
+/// (`_kartenFlaeche`), nicht die Fläche.
+class _TipRoundStreifen extends ConsumerWidget {
+  const _TipRoundStreifen({required this.round});
 
   final TipRound round;
 
@@ -1790,7 +1806,6 @@ class _TipRoundCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final league = Leagues.byId(round.leagueId);
-    // Mehrere Wettbewerbe → „Bundesliga +2".
     final extra = round.competitions.length - 1;
     final wettbewerb = extra > 0 ? '${league.name} +$extra' : league.name;
     final farbe = parseColor(round.logoColor) ?? _kTipGold;
@@ -1799,85 +1814,66 @@ class _TipRoundCard extends ConsumerWidget {
     final showBadge =
         round.isPublic && round.isInviteOnly && myId == round.createdBy;
     final pending = showBadge
-        ? (ref.watch(tipJoinRequestsProvider(round.id)).valueOrNull?.length ??
-              0)
+        ? (ref.watch(tipJoinRequestsProvider(round.id)).valueOrNull?.length ?? 0)
         : 0;
 
     return _PressScale(
-      child: SizedBox(
-        width: leagueCardWidth(context),
-        height: kartenHoehe(context, _kKartenHoehe),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              activateRound(ref, round);
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => LeagueScreen(round: round)),
-              );
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Ink(
-              decoration: _kartenFlaeche(context, farbe),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            activateRound(ref, round);
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => LeagueScreen(round: round)),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            decoration: _kartenFlaeche(context, farbe),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+              child: Row(
                 children: [
+                  _RoundMark(round: round, farbe: farbe, size: 34),
+                  const SizedBox(width: 11),
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(9, 8, 8, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              _RoundMark(round: round, farbe: farbe, size: 28),
-                              const Spacer(),
-                              if (pending > 0) _CountBadge(count: pending),
-                            ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          round.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: Schrift.titel,
+                            fontWeight: FontWeight.w800,
+                            // 1.05 schnitt die Unterlängen ab — siehe
+                            // „Tinntest". Rundennamen kommen aus freier
+                            // Eingabe, da steht irgendwann ein „g".
+                            height: 1.2,
                           ),
-                          // Der Zwischenraum liegt **über** dem Namen: so
-                          // sitzt der Text am Sockel statt in der Mitte zu
-                          // schweben, und eine zweite Namenszeile wächst nach
-                          // oben in den freien Platz.
-                          const Spacer(),
-                          Flexible(
-                            child: Text(
-                              round.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                // 1.05 schnitt die Unterlängen ab: Aus
-                                // „Tipptest" wurde auf dem Gerät lesbar
-                                // „Tinntest". Rajdhani braucht mehr
-                                // als das, sobald p, g, j, q oder y
-                                // vorkommen — und Rundennamen kommen aus
-                                // freier Eingabe.
-                                height: 1.2,
-                              ),
-                            ),
+                        ),
+                        Text(
+                          wettbewerb,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: scheme.onSurface.withValues(alpha: 0.72),
+                            fontSize: Schrift.klein,
+                            fontWeight: FontWeight.w600,
                           ),
-                          // Der Wettbewerb schrumpft statt zu kappen: aus
-                          // „Bundesliga +1" darf nicht „Bundesli…" werden.
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              wettbewerb,
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: scheme.onSurface.withValues(alpha: 0.78),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
+                  if (pending > 0) ...[
+                    const SizedBox(width: 8),
+                    _CountBadge(count: pending),
+                  ],
+                  const SizedBox(width: 6),
+                  Icon(Icons.chevron_right,
+                      size: 18, color: scheme.onSurfaceVariant),
                 ],
               ),
             ),
