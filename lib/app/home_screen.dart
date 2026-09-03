@@ -95,9 +95,9 @@ class HomeScreen extends ConsumerWidget {
               )
             else ...[
               const _Appear(child: _GreetingBar()),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               const _Appear(delayMs: 20, child: _Schnellzugriff()),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               // Die Kopfkarte führt: das nächste Spiel des eigenen Vereins
               // ist der Inhalt, an dem eine Zeit hängt. Sie blendet sich
               // aus, wenn es keinen Favoriten gibt.
@@ -1330,6 +1330,12 @@ class _GreetingBar extends ConsumerWidget {
 /// Jetzt stehen sie zusammen, beschriftet, in einer Reihe unter dem Gruß —
 /// gleich breit, damit keiner wichtiger aussieht als der andere. Farbe trägt
 /// nur, was wartet: der rote Zähler ungelesener Nachrichten.
+///
+/// **Ohne Kachel, ohne Kante** (auf Ansage nach dem ersten Wurf: „wesentlich
+/// weniger auffällig"). Vier gerahmte Flächen direkt über der Kopfkarte
+/// nahmen ihr die Führung — sie ist der Inhalt des Schirms, das hier ist
+/// Werkzeug. Es bleiben Symbol und Wort auf dem Grund, beide gedämpft; die
+/// Tastfläche ist trotzdem 44 Punkte hoch.
 class _Schnellzugriff extends ConsumerWidget {
   const _Schnellzugriff();
 
@@ -1410,34 +1416,27 @@ class _ZugriffKachel extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.7),
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  height: 22,
+                  height: 20,
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Icon(icon, size: 21, color: scheme.onSurface),
+                      Icon(icon, size: 19, color: scheme.onSurfaceVariant),
                       if (zaehler > 0)
                         Positioned(
-                          right: -9,
-                          top: -5,
+                          right: -8,
+                          top: -4,
                           child: _CountBadge(count: zaehler),
                         ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 3),
                 // Schrumpfen statt kappen: „Transfers" ist auf einem Viertel
                 // der Bildschirmbreite das längste Wort der Reihe.
                 FittedBox(
@@ -1446,9 +1445,10 @@ class _ZugriffKachel extends StatelessWidget {
                     wort,
                     maxLines: 1,
                     style: TextStyle(
-                      fontSize: Schrift.klein,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant,
+                      fontSize: Schrift.winzig,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
                     ),
                   ),
                 ),
