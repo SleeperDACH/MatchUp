@@ -179,9 +179,34 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
         ),
       ),
     ),
+    // **Auch hier ist der aktive Reiter weiß, nicht grün.** Die schwebende
+    // Hauptleiste (`_GlassNavBar`) setzt ihre Farben selbst; dieses Theme
+    // trägt die zweite Leiste, die es gibt — die im Tippspiel-Screen. Beide
+    // sollen gleich aussehen, sonst heißt „ausgewählt" unten im Bild zweierlei.
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: cardColor,
-      indicatorColor: MatchUpColors.green.withValues(alpha: 0.22),
+      indicatorColor: MatchUpColors.snow.withValues(alpha: 0.14),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? MatchUpColors.snow
+              : MatchUpColors.snow.withValues(alpha: 0.45),
+        ),
+      ),
+      // Die Familie muss auch hier stehen — ein Stil in einem Theme-Feld
+      // ersetzt den aufgelösten Stil, er ergänzt ihn nicht.
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          fontFamily: 'Rajdhani',
+          fontSize: Schrift.winzig,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w800
+              : FontWeight.w500,
+          color: states.contains(WidgetState.selected)
+              ? MatchUpColors.snow
+              : MatchUpColors.snow.withValues(alpha: 0.45),
+        ),
+      ),
     ),
     // Ausgewählte Chips in **Markengrün**, nicht in der abgeleiteten
     // `secondaryContainer`-Farbe: aus dem grünen Seed macht Material daraus

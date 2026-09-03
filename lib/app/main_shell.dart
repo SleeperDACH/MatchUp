@@ -5,6 +5,7 @@ import '../features/favorites/ui/favorites_tab.dart';
 import 'home_screen.dart';
 import 'live_screen.dart';
 import 'theme.dart';
+import 'typografie.dart';
 import 'wiedereinstieg.dart';
 import 'widgets/liquid_glass.dart';
 
@@ -98,10 +99,14 @@ class _GlassNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Inaktiv gedämpft, aktiv im Markengrün. Der Kontrast zwischen beiden
-    // ersetzt die frühere Auswahl-Pille.
-    final inaktiv = MatchUpColors.snow.withValues(alpha: 0.55);
-    const aktiv = MatchUpColors.green;
+    // **Aktiv ist Weiß, nicht Grün** (auf Ansage, 03.09.2026). Grün heißt in
+    // dieser App „hier läuft etwas" — der Reiter, auf dem man gerade steht,
+    // läuft nicht. Damit der Unterschied trotzdem trägt, ist der inaktive
+    // Zustand deutlicher gedämpft als vorher (0,45 statt 0,55) und die aktive
+    // Beschriftung fetter: Der Kontrast kommt aus Helligkeit und Gewicht statt
+    // aus einer zweiten Farbe.
+    final inaktiv = MatchUpColors.snow.withValues(alpha: 0.45);
+    const aktiv = MatchUpColors.snow;
 
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(20, 0, 20, navBarBottomInset),
@@ -127,12 +132,22 @@ class _GlassNavBar extends StatelessWidget {
                   size: 23,
                   color: states.contains(WidgetState.selected) ? aktiv : inaktiv,
                 )),
-            labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.1,
-                  color: states.contains(WidgetState.selected) ? aktiv : inaktiv,
-                )),
+            // **Aus dem Theme abgeleitet, nicht neu gebaut.** Ein blankes
+            // `TextStyle` in einem Theme-Feld ersetzt den aufgelösten Stil und
+            // verliert dabei die Schriftfamilie — die Leiste stand damit in
+            // der Systemschrift mitten in einer App aus Rajdhani. Vierter Fall
+            // derselben Falle nach Chips, Reitern und Fantasy-Einstellungen.
+            labelTextStyle: WidgetStateProperty.resolveWith(
+              (states) {
+                final aus = states.contains(WidgetState.selected);
+                return Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: Schrift.winzig,
+                      fontWeight: aus ? FontWeight.w800 : FontWeight.w500,
+                      letterSpacing: 0.1,
+                      color: aus ? aktiv : inaktiv,
+                    );
+              },
+            ),
           ),
           child: NavigationBar(
             backgroundColor: Colors.transparent,
