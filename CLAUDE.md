@@ -2741,6 +2741,36 @@ bekommen neutrales Weiß auf Dunkel statt einer erfundenen Farbe. Der eigene
 Spieler wird durch einen hellen Schein hervorgehoben, nicht durch eine zweite
 Farbe.
 
+**Ein Trikot ist ein Umriss, kein Baukasten.** Der erste Wurf setzte es aus
+Teilen zusammen — zwei Ärmelvielecke, ein Rumpfrechteck — und zog um jedes eine
+Kontur; dort, wo die Teile untereinander lagen, blieben die Linien stehen.
+Gemeldet als „das sieht aus wie so Kästchen aneinander, diese Kanten dort, die
+überschneiden. Bitte richtige Trikots ohne irgendwelche Kanten und Ecken und
+Kästen."
+
+Jetzt ist der Umriss **ein einziger geschlossener Pfad** (Halsausschnitt →
+Schulter → Ärmel → Achsel → Saum → zurück), gefüllt und **einmal** außen
+konturiert. Zwei Dinge daran waren die eigentliche Arbeit:
+
+- **Die Ärmel sind Ärmel, keine Rechtecke.** Der zweite Anlauf legte die
+  Zweitfarbe als zwei Rechtecke über die oberen Ecken und schnitt sie am Umriss
+  ab (`clipPath`). Die Außenkante saß damit richtig — die **Innenkante** blieb
+  eine kerzengerade Senkrechte quer durch den Rumpf, und genau die las sich
+  weiter als Kästchen. Jeder Ärmel trägt jetzt seinen eigenen Pfad: außen die
+  Kontur des Trikots, innen die schräge Schulternaht von der Achsel zum Hals.
+- **Kurze Kurven an den Ecken, keine großen Bögen.** Der Anlauf davor war so
+  rund, dass die Ärmel wie zwei Ballons neben einem schmalen Rumpf saßen. Der
+  Rumpf nimmt jetzt 56 % der Breite, die Ärmel enden bei 48 % der Höhe.
+
+**Und beide Vorschauen, die Trikots zeigen, liefen ohne Schrift**
+(`jersey_preview_test`, `lineup_preview_test`) — Rückennummern, Spielernamen und
+Vereinsnamen standen als leere Kästchen im Bild. Ausgerechnet die Nummer ist
+das, woran sich entscheidet, ob das Symbol trägt; ich habe drei Runden lang
+Silhouetten beurteilt, über denen ein schwarzer Klotz lag. Beide laden jetzt
+`ladeSchrift` und `buildAppTheme()`. Dieselbe Lehre wie beim ungethemten
+Tippspiel-Golden: **ein Golden ohne Theme und Schrift ist als Urteilsgrundlage
+wertlos.**
+
 **Kein Signalgrün im Spielerprofil.** Es hatte sich an vier Stellen wieder
 eingeschlichen: die Punktekachel im Leistungsreiter, jeder positive Wert in der
 Aufschlüsselung, das „du bist hier"-Personensymbol im Kader und das Urteil im

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:matchup/app/theme.dart';
 import 'package:matchup/app/widgets/jersey_icon.dart';
 import 'package:matchup/core/util/club_colors.dart';
+
+import 'support/schrift.dart';
 
 // Vorschau der Trikot-Symbole auf dem Rasen (kein Regressionstest):
 //   flutter test --update-goldens test/jersey_preview_test.dart
@@ -14,6 +17,11 @@ import 'package:matchup/core/util/club_colors.dart';
 const _fallback = ClubColors(Color(0xFF4ADE6A), Color(0xFF0E2C1A));
 
 void main() {
+  // Ohne geladene Schrift stünden Nummer und Vereinsname als leere
+  // Kästchen da — und genau an der Nummer entscheidet sich, ob das Trikot
+  // trägt. Ein ungethemter Golden ist als Urteilsgrundlage wertlos.
+  setUpAll(ladeSchrift);
+
   testWidgets('Vorschau: Trikots in Vereinsfarben mit Rückennummer',
       (tester) async {
     const vereine = <(String, int)>[
@@ -32,6 +40,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(),
         home: Scaffold(
           body: Center(
             child: RepaintBoundary(
@@ -46,8 +55,8 @@ void main() {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Große Ausgabe: hier ist zu sehen, wo die Nummer sitzt und
-                    // ob sie sich vom Stoff abhebt (im Test-Renderer als
-                    // Kästchen — hell auf dunklem, dunkel auf hellem Trikot).
+                    // ob sie sich vom Stoff abhebt — hell auf dunklem, dunkel
+                    // auf hellem Trikot.
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [

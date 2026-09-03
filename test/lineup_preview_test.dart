@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/app/match_detail_screen.dart';
+import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/models/match_detail.dart';
 import 'package:matchup/core/models/models.dart';
+
+import 'support/schrift.dart';
 
 MatchEvent _wechsel(int minute, String rein, int reinId, String raus,
         int rausId, bool heim) =>
@@ -53,6 +56,11 @@ List<LineupPlayer> _elf(bool heim, List<int> formation) {
 }
 
 void main() {
+  // Ohne geladene Schrift standen Namen, Nummern und Formationszeile als
+  // leere Kästchen im Bild — die Vorschau zeigte dann nur die Anordnung und
+  // nicht, ob die Beschriftung neben dem Trikot überhaupt trägt.
+  setUpAll(ladeSchrift);
+
   testWidgets('Vorschau: Spielfeld — Heim oben, Auswärts unten',
       (tester) async {
     tester.view.physicalSize = const Size(900, 1500);
@@ -61,6 +69,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: buildAppTheme(),
         debugShowCheckedModeBanner: false,
         home: Scaffold(
           backgroundColor: const Color(0xFF12141C),
@@ -96,6 +105,7 @@ void main() {
   testWidgets('Vorschau: Bank mit Mannschaftszuordnung', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: buildAppTheme(),
         debugShowCheckedModeBanner: false,
         home: Scaffold(
           backgroundColor: const Color(0xFF12141C),
