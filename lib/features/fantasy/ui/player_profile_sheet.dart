@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/typografie.dart';
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/team_fixture_list.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/models/models.dart';
 import '../../../core/models/team_fixture.dart';
 
@@ -177,7 +178,13 @@ class _PlayerProfileSheet extends ConsumerWidget {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          data: (season) => _table(context, season),
+                          data: (season) => _table(
+                            context,
+                            season,
+                            ref.watch(fantasySeasonFixturesProvider)
+                                    .valueOrNull ??
+                                const <Fixture>[],
+                          ),
                         ),
                         _Prognose(league: league, player: player),
                         _Spielplan(club: player.club),
@@ -382,45 +389,64 @@ class _PlayerProfileSheet extends ConsumerWidget {
   Widget _table(
     BuildContext context,
     Map<int, Map<String, PlayerMatchStats>> season,
+    List<Fixture> spiele,
   ) {
     final scheme = Theme.of(context).colorScheme;
-    final rounds = season.keys.toList()..sort();
-    if (rounds.isEmpty) {
-      return const _Leer('Noch keine gewerteten Spieltage.');
-    }
-    final defensive =
-        player.position == PlayerPosition.gk ||
+    final defensive = player.position == PlayerPosition.gk ||
         player.position == PlayerPosition.def;
+
+    // **Alle Spieltage der Saison, nicht nur die gewerteten.** Vorher endete
+    // die Tabelle beim aktuellen Spieltag; damit war nicht zu sehen, gegen wen
+    // es als Nächstes geht — die Frage, die man vor einem Trade stellt.
+    final letzte = spiele.isEmpty
+        ? 34
+        : spiele.map((f) => f.round).fold(0, (a, b) => a > b ? a : b);
+    final runden = [for (var r = 1; r <= (letzte == 0 ? 34 : letzte); r++) r];
+
+    // Gegner je Spieltag, aus dem Spielplan des Vereins. Verglichen wird die
+    // kanonische Form: „1. FSV Mainz 05" und „FSV Mainz 05" sind derselbe
+    // Verein (siehe `vereins_kuerzel.dart` und Migration 0108).
+    final meiner = vereinKanonisch(player.club);
+    final gegner = <int, ({String kuerzel, bool heim})>{};
+    for (final f in spiele) {
+      final heim = vereinKanonisch(f.home.name) == meiner;
+      final aus = vereinKanonisch(f.away.name) == meiner;
+      if (!heim && !aus) continue;
+      gegner[f.round] = (
+        kuerzel: vereinsKuerzel(heim ? f.away.name : f.home.name),
+        heim: heim,
+      );
+    }
+
     final rows = [
-      for (final r in rounds)
+      for (final r in runden)
         (r, season[r]?[player.id] ?? const PlayerMatchStats()),
     ];
-    final total = rows.fold<double>(
+    final gewertet = [
+      for (final e in rows)
+        if (season.containsKey(e.$1)) e,
+    ];
+    final total = gewertet.fold<double>(
       0,
       (s, e) => s + scorePlayer(e.$2, player.position, league.scoring),
     );
-    final games = rows.where((e) => e.$2.played).length;
+    final schnitt = spielerSchnitt(
+      saison: season,
+      spielerId: player.id,
+      position: player.position,
+      regeln: league.scoring,
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       children: [
-        Row(
-          children: [
-            // Die Punktzahl ist der Inhalt, kein Signal — sie stand hier in
-            // Signalgrün und war damit das Lauteste im Reiter.
-            _summary(context, formatPoints(total), 'Punkte', scheme.onSurface),
-            const SizedBox(width: 10),
-            _summary(context, '$games', 'Spiele', scheme.onSurfaceVariant),
-          ],
-        ),
-        const SizedBox(height: 10),
-        _Schnitte(
-          schnitt: spielerSchnitt(
-            saison: season,
-            spielerId: player.id,
-            position: player.position,
-            regeln: league.scoring,
-          ),
+        // **Eine Leiste statt dreier Kästen.** Zwei getönte Kacheln über einem
+        // breiten Kasten sahen aus wie drei angefangene Gedanken; die vier
+        // Zahlen gehören zusammen und stehen jetzt in einer Reihe, durch
+        // Haarlinien getrennt.
+        _Bilanzleiste(
+          punkte: total,
+          schnitt: schnitt,
         ),
         const SizedBox(height: 12),
         _LeistungKopf(defensive: defensive),
@@ -446,8 +472,15 @@ class _PlayerProfileSheet extends ConsumerWidget {
                   runde: r,
                   stats: st,
                   defensive: defensive,
-                  punkte: scorePlayer(st, player.position, league.scoring),
-                  onTap: () => _zeigeAufschluesselung(context, r, st),
+                  gegner: gegner[r],
+                  // Ein Spieltag, der noch nicht gewertet ist, hat keine
+                  // Punktzahl — auch keine 0.
+                  punkte: season.containsKey(r)
+                      ? scorePlayer(st, player.position, league.scoring)
+                      : null,
+                  onTap: season.containsKey(r)
+                      ? () => _zeigeAufschluesselung(context, r, st)
+                      : null,
                 ),
               ],
             ],
@@ -457,7 +490,6 @@ class _PlayerProfileSheet extends ConsumerWidget {
     );
   }
 
-  /// Die Punkte eines Spieltags im Einzelnen.
   void _zeigeAufschluesselung(
     BuildContext context,
     int runde,
@@ -470,37 +502,6 @@ class _PlayerProfileSheet extends ConsumerWidget {
         titel: '${player.name} · $runde. Spieltag',
         score: scorePlayerDetailed(stats, player.position, league.scoring),
         gespielt: stats.hasContribution,
-      ),
-    );
-  }
-
-  Widget _summary(BuildContext context, String value, String label, Color c) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: c.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: c.withValues(alpha: 0.35)),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: c,
-              ),
-            ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -587,7 +588,7 @@ class _LeistungKopf extends StatelessWidget {
             width: spT,
             child: Text('SPT', style: stil),
           ),
-          const Spacer(),
+          Expanded(child: Text('GEGNER', style: stil)),
           z('MIN'),
           z('T'),
           z('V'),
@@ -602,6 +603,78 @@ class _LeistungKopf extends StatelessWidget {
   }
 }
 
+/// **Die Bilanz als eine Leiste.**
+///
+/// Hier standen zwei getönte Kacheln („Punkte", „Spiele") über einem breiten
+/// Kasten mit den Schnitten — drei Formen für vier Zahlen, und keine sagte,
+/// dass sie zusammengehören. Jetzt eine Reihe, durch Haarlinien geteilt.
+class _Bilanzleiste extends StatelessWidget {
+  const _Bilanzleiste({required this.punkte, required this.schnitt});
+
+  final double punkte;
+  final SpielerSchnitt schnitt;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget feld(String wert, String wort, {bool leise = false}) => Expanded(
+          child: Column(
+            children: [
+              Text(
+                wert,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: Schrift.h3,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: gleichbreiteZiffern,
+                  color: leise ? scheme.onSurfaceVariant : scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                wort.toUpperCase(),
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: Schrift.mikro,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        );
+
+    Widget trenner() => Container(
+          width: 1,
+          height: 30,
+          color: scheme.onSurface.withValues(alpha: 0.08),
+        );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: [
+          feld(formatPoints(punkte), 'Punkte'),
+          trenner(),
+          feld(formatPoints(schnitt.punkteJeSpieltag), 'Ø je Spieltag'),
+          trenner(),
+          feld('${schnitt.minutenJeSpieltag.round()}', 'Ø Minuten',
+              leise: true),
+          trenner(),
+          feld('${schnitt.einsaetze}', 'Einsätze', leise: true),
+        ],
+      ),
+    );
+  }
+}
+
 /// Eine Zeile der Leistungstabelle — antippbar für die Aufschlüsselung.
 class _LeistungZeile extends StatelessWidget {
   const _LeistungZeile({
@@ -610,22 +683,33 @@ class _LeistungZeile extends StatelessWidget {
     required this.defensive,
     required this.punkte,
     required this.onTap,
+    required this.gegner,
   });
 
   final int runde;
   final PlayerMatchStats stats;
   final bool defensive;
-  final double punkte;
-  final VoidCallback onTap;
+
+  /// `null` = der Spieltag ist noch nicht gewertet. Dann steht in der Zeile
+  /// überall ein Strich, und sie reagiert nicht auf Tippen: Es gibt nichts
+  /// aufzuschlüsseln.
+  final double? punkte;
+  final VoidCallback? onTap;
+
+  /// Gegner dieses Spieltags samt Heimrecht — aus dem Spielplan des Vereins.
+  final ({String kuerzel, bool heim})? gegner;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final gespielt = stats.hasContribution;
+    final offen = punkte == null;
     final stil = TextStyle(
       fontSize: 13,
       fontFeatures: const [FontFeature.tabularFigures()],
-      color: gespielt ? scheme.onSurface : scheme.onSurfaceVariant,
+      color: gespielt
+          ? scheme.onSurface
+          : scheme.onSurfaceVariant.withValues(alpha: offen ? 0.6 : 1),
     );
     Widget z(String t) => SizedBox(
       width: _LeistungKopf.zahl,
@@ -644,7 +728,23 @@ class _LeistungZeile extends StatelessWidget {
                 style: stil.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
-            const Spacer(),
+            // **Gegen wen.** Ohne den Gegner ist eine Zeile mit lauter
+            // Strichen nur ein leerer Spieltag; mit ihm ist sie der Spielplan
+            // — die Frage vor einem Trade lautet „wen hat er noch?".
+            Expanded(
+              child: Text(
+                gegner == null
+                    ? '–'
+                    : '${gegner!.heim ? '' : '@ '}${gegner!.kuerzel}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: stil.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant
+                      .withValues(alpha: offen ? 0.7 : 0.95),
+                ),
+              ),
+            ),
             // Nicht gespielt zeigt „–", nicht „0" — dieselbe Regel wie im
             // MatchUp: Eine Null ist sonst doppeldeutig.
             z(gespielt ? '${stats.minutes}' : '–'),
@@ -664,7 +764,7 @@ class _LeistungZeile extends StatelessWidget {
             SizedBox(
               width: _LeistungKopf.punkte,
               child: Text(
-                gespielt ? formatPoints(punkte) : '–',
+                gespielt && punkte != null ? formatPoints(punkte!) : '–',
                 textAlign: TextAlign.right,
                 style: stil.copyWith(fontWeight: FontWeight.w800, fontSize: 14),
               ),
@@ -1662,98 +1762,3 @@ class _Ausfallzeile extends ConsumerWidget {
   }
 }
 
-/// **Ein Schnitt, nicht zwei.**
-///
-/// Hier standen „Ø je Spieltag" und „Ø je Einsatz" nebeneinander, jeder mit
-/// Punkten und Minuten — vier Zahlen in zwei Spalten. Die Frage danach war:
-/// „Durchschnittliche Punkte, durchschnittliche Minuten ist doppelt, da
-/// verstehe ich nicht." Zu Recht: Zwei Mittelwerte derselben Sache mit
-/// verschiedenen Nennern erklären sich nicht selbst, sie brauchen einen
-/// Absatz Text — und den liest auf einer Spielerkarte niemand.
-///
-/// Es bleibt der **Schnitt je Spieltag**: der ehrliche Erwartungswert für die
-/// nächste Woche, in dem ein Nichteinsatz als null zählt. Wie oft er
-/// überhaupt gespielt hat, steht als **Fußzeile** darunter — dieselbe
-/// Auskunft, aber als Satz statt als zweiter Mittelwert.
-class _Schnitte extends StatelessWidget {
-  const _Schnitte({required this.schnitt});
-
-  final SpielerSchnitt schnitt;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!schnitt.hatDaten) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
-    final s = schnitt;
-
-    Widget zahl(String wert, String einheit, {required bool gross}) => Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              wert,
-              style: TextStyle(
-                fontSize: gross ? Schrift.h2 : Schrift.h3,
-                fontWeight: FontWeight.w800,
-                fontFeatures: gleichbreiteZiffern,
-                color: gross ? scheme.onSurface : scheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              einheit,
-              style: TextStyle(
-                fontSize: Schrift.klein,
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        );
-
-    final fuss = s.einsaetze == 0
-        ? '${s.spieltage} gewertete Spieltage, kein Einsatz'
-        : '${s.spieltage} gewertete Spieltage, davon '
-            '${s.einsaetze} mit Einsatz';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'IM SCHNITT JE SPIELTAG',
-            style: TextStyle(
-              fontSize: Schrift.mikro,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              zahl(formatPoints(s.punkteJeSpieltag), 'Punkte', gross: true),
-              const SizedBox(width: 18),
-              zahl(s.minutenJeSpieltag.round().toString(), 'Minuten',
-                  gross: false),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            fuss,
-            style: TextStyle(
-              fontSize: Schrift.klein,
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

@@ -50,6 +50,11 @@ void main() {
       // Durchlauf gefunden; sie steht hier, damit die Empfindlichkeit nicht
       // wieder zurückgedreht wird.
       r'$total',
+      // Gerundete Minuten je Spieltag in der Bilanzleiste des Spielerprofils —
+      // ein `int`, und „schnitt" im Namen lässt die Wache anschlagen.
+      'schnitt.minutenJeSpieltag.round()',
+      // Anzahl Einsätze in derselben Leiste — ebenfalls ein `int`.
+      'schnitt.einsaetze',
     };
 
     final klammer = RegExp(r'\$\{[^}]*\}');

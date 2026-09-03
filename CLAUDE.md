@@ -3721,11 +3721,23 @@ verstehe ich nicht". **Zwei Mittelwerte derselben Sache erklären sich nicht
 selbst** — sie brauchen einen Absatz Text, und den liest auf einer
 Spielerkarte niemand.
 
-Geblieben ist der Schnitt je Spieltag; wie oft er überhaupt gespielt hat, steht
-als Fußzeile darunter („3 gewertete Spieltage, davon 2 mit Einsatz"). Dieselbe
-Auskunft, aber als Satz statt als zweite Zahl. `punkteJeEinsatz` bleibt im
-Modell: Es ist gerechnet, geprüft und der natürliche Ort, falls die Auskunft je
-in einer eigenen Ansicht gebraucht wird.
+Geblieben ist der Schnitt je Spieltag. `punkteJeEinsatz` bleibt im Modell: Es
+ist gerechnet, geprüft und der natürliche Ort, falls die Auskunft je in einer
+eigenen Ansicht gebraucht wird.
+
+**Und der ganze Reiter ist eine Form ruhiger geworden** („sieht unordentlich
+aus, die Boxen sind unförmig"): Statt zweier getönter Kacheln über einem
+breiten Kasten steht dort **eine Leiste** mit vier Zahlen — Punkte, Ø je
+Spieltag, Ø Minuten, Einsätze —, durch Haarlinien geteilt. Drei Formen für vier
+Zahlen waren drei angefangene Gedanken.
+
+**Die Tabelle zeigt alle Spieltage der Saison, mit Gegner.** Vorher endete sie
+beim aktuellen Spieltag, und es war nicht zu sehen, gegen wen es weitergeht —
+die Frage vor einem Trade. Jetzt steht neben jedem Spieltag das Kürzel des
+Gegners, auswärts mit `@`; noch nicht gewertete Spieltage sind gedämpft, tragen
+Striche statt Nullen und reagieren nicht auf Tippen (es gibt nichts
+aufzuschlüsseln). Der Verein wird über `vereinKanonisch` zugeordnet — „1. FSV
+Mainz 05" und „FSV Mainz 05" sind derselbe Verein (siehe Migration 0108).
 
 Zwei Regeln in `logic/spieler_schnitt.dart`, beide schon einmal an anderer
 Stelle in dieser App falsch gewesen:
