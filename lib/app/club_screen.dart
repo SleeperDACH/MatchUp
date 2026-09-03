@@ -103,33 +103,15 @@ class _SpielplanTab extends ConsumerWidget {
       data: (fixtures) {
         if (fixtures.isEmpty) return const _Leer('Keine Spiele im Zeitraum.');
 
-        // Gleiche Aufteilung wie im Favoriten-Tab: erst was ansteht, darunter
-        // die Ergebnisse (jüngste zuerst). Die Darstellung der Boxen kommt aus
-        // `team_fixture_list.dart` — bewusst dieselbe wie dort.
-        final kommend = [
-          for (final f in fixtures)
-            if (f.status != FixtureStatus.finished) f
-        ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
-        final ergebnisse = [
-          for (final f in fixtures)
-            if (f.status == FixtureStatus.finished) f
-        ]..sort((a, b) => b.kickoff.compareTo(a.kickoff));
-
+        // Gleiche Aufteilung wie im Favoriten-Tab — beide rufen dafür
+        // dieselbe Funktion (`spielplanAbschnitte`), damit derselbe
+        // Spielplan nicht zweimal anders aussieht.
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(teamFixturesProvider(teamId)),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-            children: [
-              if (kommend.isNotEmpty) ...[
-                const FixtureSectionLabel('Nächste Spiele'),
-                ...fixturesWithDateHeaders(kommend),
-              ],
-              if (ergebnisse.isNotEmpty) ...[
-                const FixtureSectionLabel('Ergebnisse'),
-                ...fixturesWithDateHeaders(ergebnisse),
-              ],
-            ],
+            children: spielplanAbschnitte(fixtures),
           ),
         );
       },

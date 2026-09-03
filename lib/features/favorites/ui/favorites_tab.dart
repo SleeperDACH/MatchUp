@@ -540,14 +540,6 @@ class _FixturesTab extends ConsumerWidget {
       );
     }
 
-    final upcoming = [
-      for (final f in fixtures)
-        if (f.status != FixtureStatus.finished) f
-    ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
-    final results = [
-      for (final f in fixtures)
-        if (f.status == FixtureStatus.finished) f
-    ]..sort((a, b) => b.kickoff.compareTo(a.kickoff));
     return RefreshIndicator(
       onRefresh: () async {
         for (final id in teamIds) {
@@ -557,16 +549,10 @@ class _FixturesTab extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
         physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          if (upcoming.isNotEmpty) ...[
-            const FixtureSectionLabel('Nächste Spiele'),
-            ...fixturesWithDateHeaders(upcoming),
-          ],
-          if (results.isNotEmpty) ...[
-            const FixtureSectionLabel('Ergebnisse'),
-            ...fixturesWithDateHeaders(results),
-          ],
-        ],
+        // Aufteilung in `spielplanAbschnitte` — dieselbe wie auf der
+        // Vereinsseite, damit derselbe Spielplan nicht zweimal anders
+        // aussieht.
+        children: spielplanAbschnitte(fixtures),
       ),
     );
   }

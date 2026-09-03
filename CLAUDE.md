@@ -4579,6 +4579,17 @@ Design-Canvas (`design/favoriten/`), gewählt wurde **A**.
 abgekoppelt — zwei Darstellungen derselben Liste wären beim nächsten
 Feinschliff sofort wieder auseinandergelaufen.
 
+**Die letzten Ergebnisse stehen oben** (`spielplanAbschnitte`, seit
+03.09.2026). Gemeldet als „bei den Favoriten müssen die vorherigen Spiele auch
+zu sehen sein" — sie *waren* da, aber ganz unten: Der Spielplan reicht 150 Tage
+nach vorn, bis zu den Ergebnissen scrollte man an zwanzig Zeilen vorbei. Was
+man nicht findet, gibt es nicht.
+
+Drei Blöcke statt zwei: **Zuletzt** (die drei jüngsten Ergebnisse), **Nächste
+Spiele**, **Frühere Ergebnisse** (der Rest). Das ist die Frage, die man an
+einen Verein hat — wie lief es zuletzt, wer kommt jetzt? Beide Schirme rufen
+dafür dieselbe Funktion; die Aufteilung stand vorher zweimal im Code.
+
 Angesehen wird der Tab über `test/favoriten_vorschau_test.dart`; wie bei den
 anderen beiden Vorschauen läuft der Bildvergleich nur mit `--update-goldens`.
 

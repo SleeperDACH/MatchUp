@@ -21,6 +21,46 @@ import 'pulsing_dot.dart';
 /// Vorher standen beide Angaben getrennt: die Datums-Überschrift **über** der
 /// Box, Wettbewerb und Spieltag **in** ihr. Vier Spiele ergaben so acht
 /// Blöcke, und der Kopf der Box wiederholte, was daneben ohnehin stand.
+/// **Der Spielplan eines Vereins in drei Blöcken.**
+///
+/// Gemeldet an den Favoriten: „Es müssen auch die vorherigen Spiele zu sehen
+/// sein." Sie *waren* da — aber ganz unten, hinter allen kommenden Partien.
+/// Ein Spielplan reicht 150 Tage nach vorn; bis zu den Ergebnissen scrollte
+/// man an zwanzig Zeilen vorbei, und was man nicht findet, gibt es nicht.
+///
+/// Deshalb stehen die **drei jüngsten Ergebnisse oben**, direkt über dem, was
+/// als Nächstes ansteht — das ist die Frage, die man an einen Verein hat
+/// („wie lief es zuletzt, wer kommt jetzt?"). Alles Ältere bleibt unter den
+/// kommenden Spielen; dorthin geht, wer die Saison nachlesen will.
+List<Widget> spielplanAbschnitte(List<TeamFixture> fixtures) {
+  final kommend = [
+    for (final f in fixtures)
+      if (f.status != FixtureStatus.finished) f
+  ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+  final ergebnisse = [
+    for (final f in fixtures)
+      if (f.status == FixtureStatus.finished) f
+  ]..sort((a, b) => b.kickoff.compareTo(a.kickoff));
+
+  final juengste = ergebnisse.take(3).toList();
+  final aeltere = ergebnisse.skip(3).toList();
+
+  return [
+    if (juengste.isNotEmpty) ...[
+      const FixtureSectionLabel('Zuletzt'),
+      ...fixturesWithDateHeaders(juengste),
+    ],
+    if (kommend.isNotEmpty) ...[
+      const FixtureSectionLabel('Nächste Spiele'),
+      ...fixturesWithDateHeaders(kommend),
+    ],
+    if (aeltere.isNotEmpty) ...[
+      const FixtureSectionLabel('Frühere Ergebnisse'),
+      ...fixturesWithDateHeaders(aeltere),
+    ],
+  ];
+}
+
 List<Widget> fixturesWithDateHeaders(List<TeamFixture> list) {
   final out = <Widget>[];
   DateTime? lastDay;
