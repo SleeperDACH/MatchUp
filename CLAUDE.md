@@ -2276,6 +2276,15 @@ Freundschaftsanfragen setzt seine Farbe ausdrücklich. Dort steht es gegen ein
 rotes „Ablehnen", und ohne Grün verliert Rot sein Gegenüber. Rote Knöpfe
 (Löschen, Verlassen, Droppen) und Umriss-Knöpfe bleiben, wie sie waren.
 
+**Dasselbe gilt für die Auswahl-Pillen** (gemeldet am „Alle"-Filter der Free
+Agency: „grüner Hintergrund, grüne Schrift, grüner Rahmen"). Drei grüne
+Signale übereinander sind für einen Filter zu viel, und eine Pille, auf der man
+steht, *läuft* nicht. Gewählt heißt jetzt überall hell: `PillChip` (Fläche
+14 %, Kante 55 %, Schrift Snow), der Reiter-Indikator in `SegmentedTabBar` und
+der Wappen-Filter im Transfers-Schirm. **Nicht betroffen sind Aktionsknöpfe mit
+Bedeutung** — das grüne Plus („holen"), die goldene Uhr („Waiver"), der rote
+Tausch: Sie sagen mit Farbe, *was* passiert, nicht, wo man steht.
+
 **Die Falle dabei ist bekannt:** Ein `textStyle` in einem Theme-Feld ersetzt
 den aufgelösten Stil; ein blankes `TextStyle` verliert die Schriftfamilie — in
 der ersten Fassung standen im Knopf schwarze Kästchen. Der Stil im Theme nennt

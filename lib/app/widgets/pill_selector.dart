@@ -58,9 +58,14 @@ class PillChip extends StatelessWidget {
   }
 
   Widget _pille(BuildContext context, ColorScheme scheme) {
+    // **Gewählt ist hell, nicht grün** (auf Ansage, 03.09.2026). Grün heißt in
+    // dieser App „hier läuft etwas"; eine Pille, auf der man steht, läuft
+    // nicht. Und drei grüne Signale übereinander — Fläche, Rahmen, Schrift —
+    // waren für einen Filter zu viel. Der Kontrast kommt jetzt aus Helligkeit,
+    // wie beim gefüllten Knopf und in der Navigationsleiste.
     return Material(
       color: selected
-          ? MatchUpColors.green.withValues(alpha: 0.16)
+          ? MatchUpColors.snow.withValues(alpha: 0.14)
           : Colors.transparent,
       // Entweder `shape` **oder** `borderRadius` — `Material` verbietet
       // beides zusammen per Assertion.
@@ -70,7 +75,7 @@ class PillChip extends StatelessWidget {
               borderRadius: BorderRadius.circular(11),
               side: BorderSide(
                 color: selected
-                    ? MatchUpColors.green.withValues(alpha: 0.75)
+                    ? MatchUpColors.snow.withValues(alpha: 0.55)
                     : scheme.outlineVariant,
               ),
             )
@@ -101,7 +106,7 @@ class PillChip extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                     color: selected
-                        ? MatchUpColors.green
+                        ? MatchUpColors.snow
                         : scheme.onSurfaceVariant,
                   ),
                 ),

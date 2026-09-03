@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/transfer_deal.dart';
@@ -173,7 +175,6 @@ class _ClubFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       height: 52,
       child: ListView(
@@ -197,12 +198,13 @@ class _ClubFilterBar extends StatelessWidget {
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    // Gewählt ist hell, wie jede Auswahl in dieser App.
                     color: selected == c
-                        ? scheme.primary.withValues(alpha: 0.15)
+                        ? MatchUpColors.snow.withValues(alpha: 0.14)
                         : Colors.transparent,
                     border: Border.all(
                       color: selected == c
-                          ? scheme.primary
+                          ? MatchUpColors.snow.withValues(alpha: 0.75)
                           : Colors.transparent,
                       width: 2,
                     ),

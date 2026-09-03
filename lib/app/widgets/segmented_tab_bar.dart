@@ -54,15 +54,17 @@ class SegmentedTabBar extends StatelessWidget implements PreferredSizeWidget {
         // linken Rand mit Extra-Einzug; so beginnen sie bündig.
         tabAlignment: _scrollable ? TabAlignment.start : TabAlignment.fill,
         // Der Unterstrich weicht der Pille, die Trennlinie entfällt ganz.
+        // Dieselbe helle Auswahl wie bei `PillChip` und in der
+        // Navigationsleiste — Grün bleibt dem vorbehalten, was läuft.
         indicator: BoxDecoration(
-          color: MatchUpColors.green.withValues(alpha: 0.16),
+          color: MatchUpColors.snow.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(11),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         indicatorPadding: EdgeInsets.symmetric(vertical: _hasIcons ? 3 : 5),
         dividerColor: Colors.transparent,
         dividerHeight: 0,
-        labelColor: MatchUpColors.green,
+        labelColor: MatchUpColors.snow,
         unselectedLabelColor: scheme.onSurfaceVariant,
         labelStyle:
             const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
