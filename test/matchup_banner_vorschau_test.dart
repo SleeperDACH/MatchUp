@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/features/fantasy/ui/matchup_hero.dart';
 
@@ -12,7 +13,12 @@ import 'support/schrift.dart';
 /// einzigen Provider zeigen. Auf dem Gerät sieht man immer nur den einen
 /// Zustand, den die eigene Liga gerade hat.
 void main() {
-  setUpAll(ladeSchrift);
+  setUpAll(() async {
+    await ladeSchrift();
+    // Der Anpfiff steht als „Fr., 20:30" da — ohne Gebietsdaten wirft der
+    // Formatierer.
+    await initializeDateFormatting('de_DE');
+  });
 
   testWidgets('Vorschau: MatchUp-Banner', (tester) async {
     tester.view.physicalSize = const Size(402 * 3, 1180 * 3);
@@ -54,6 +60,10 @@ void main() {
                   live: false,
                   started: false,
                   mine: true,
+                  // Fester Anpfiff, kein `DateTime.now()`: Die Vorschau
+                  // schreibt ihn unter das „VS", und ein gleitendes Datum
+                  // machte das Bild von Tag zu Tag anders.
+                  anpfiff: DateTime(2026, 9, 4, 20, 30),
                   onTap: () {},
                 ),
               ),

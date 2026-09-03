@@ -2022,6 +2022,27 @@ reine Funktion in `logic/aufstellung_sperre.dart` (`anpfiffJeVerein`,
   statt pauschal „Aufstellung gesperrt" — das wäre ab dem Freitagsspiel schlicht
   falsch.
 
+### Vor dem Spieltag steht ein „VS", kein 0:0
+
+Gemeldet: „Ich mag das Design der MatchUp-Box zwischen den Spieltagen nicht.
+Da bitte was Cooleres einbauen."
+
+Zu Recht: In der Vorschau stand ein **„0 : 0"** über einem halbierten grauen
+Balken mit der Beschriftung „Punkteanteil" — zwei Anzeigen, die beide nichts
+messen, weil noch kein Ball gerollt ist. Ein Duell vor dem Anpfiff ist eine
+Ankündigung, keine Bilanz.
+
+Jetzt: ein gesperrtes **„VS"** in der Mitte, von zwei Haarlinien angelaufen,
+die zum Rand hin verlöschen (sie führen das Auge, ohne einen Kasten zu bauen),
+mit einem Schimmer in der Akzentfarbe. Darunter der **Anpfiff des Spieltags** —
+vor dem Spieltag die einzige Zahl, die schon etwas bedeutet. Punktestand und
+Momentum-Balken erscheinen erst, wenn es sie gibt.
+
+Der Anpfiff kommt als frühester Kickoff der Runde aus denselben Fixtures, die
+den Zustand (`live`/`started`) bestimmen — beide Aufrufer reichen ihn durch.
+In der Vorschau steht er als **fester** Zeitpunkt, sonst wäre das Bild von Tag
+zu Tag anders.
+
 ### Der MatchUp-Kasten war buchstäblich undurchsichtig
 
 So kam die Meldung, und sie traf es wörtlich. Vier Ursachen, alle im selben

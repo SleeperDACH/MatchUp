@@ -240,6 +240,13 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                   if (f.round == round) f
               ];
               final live = roundIsLive(roundFx, DateTime.now());
+              // Frühester Anpfiff des Spieltags — steht in der Vorschau unter
+              // dem „VS" (siehe `_VsPlatte`).
+              final anpfiff = roundFx.isEmpty
+                  ? null
+                  : roundFx
+                      .map((f) => f.kickoff)
+                      .reduce((a, b) => a.isBefore(b) ? a : b);
               final started = live ||
                   (roundFx.isNotEmpty &&
                       roundFx.every((f) => f.status == FixtureStatus.finished));
@@ -358,6 +365,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                             mine: hId == myId || aId == myId,
                             homeSub: subOf[hId],
                             awaySub: aId == null ? null : subOf[aId],
+                            anpfiff: anpfiff,
                             onTap: aId == null
                                 ? () {}
                                 : () => showMatchupDetail(context,

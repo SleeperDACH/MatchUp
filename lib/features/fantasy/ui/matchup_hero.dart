@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/typografie.dart';
 import '../../../app/widgets/punktzahl.dart';
@@ -98,6 +99,11 @@ class MatchupHero extends ConsumerWidget {
         if (f.round == round) f
     ];
     final live = roundIsLive(roundFx, DateTime.now());
+    // Frühester Anpfiff des Spieltags — die Vorschau schreibt ihn unter das
+    // „VS".
+    final anpfiff = roundFx.isEmpty
+        ? null
+        : roundFx.map((f) => f.kickoff).reduce((a, b) => a.isBefore(b) ? a : b);
     final allFinished = roundFx.isNotEmpty &&
         roundFx.every((f) => f.status == FixtureStatus.finished);
     final started = live || allFinished;
@@ -141,6 +147,7 @@ class MatchupHero extends ConsumerWidget {
       homeMe: true,
       awayMe: false,
       live: live,
+      anpfiff: anpfiff,
       started: started,
       mine: true,
       onTap: () => openDetail(oppId, nameOf[oppId]),
@@ -168,6 +175,7 @@ class MatchupBanner extends StatelessWidget {
     this.mine = false,
     this.homeSub,
     this.awaySub,
+    this.anpfiff,
   });
 
   final int round;
@@ -185,6 +193,10 @@ class MatchupBanner extends StatelessWidget {
   /// Optionale dritte Zeile je Seite (Saison-Kontext, z. B. „Platz 3 · 5-2-1").
   final String? homeSub;
   final String? awaySub;
+
+  /// Erster Anpfiff des Spieltags — steht in der Vorschau unter dem „VS".
+  /// Vor dem Spieltag ist das die einzige Zahl, die schon etwas bedeutet.
+  final DateTime? anpfiff;
 
   @override
   Widget build(BuildContext context) {
@@ -271,42 +283,123 @@ class MatchupBanner extends StatelessWidget {
                   name: awayName!, accent: _cRed, dim: started && !awayWin),
             ],
           ),
-          const SizedBox(height: 10),
-          // **Der Punktestand steht mittig auf eigener Zeile, nicht zwischen
-          // den Namen.** Dort nahm er genau die Breite weg, die die Namen
-          // brauchen: „lennartruepke" schrumpfte auf Winzgröße, und aus
-          // „FÜHRT" wurde „F…". Jetzt bekommt jede Seite die halbe Kastenbreite
-          // und die Namen stehen in voller Größe.
-          Center(
-            child: ScoreBadge(
-              left: homePoints,
-              right: awayPoints,
-              leftWin: homeWin,
-              rightWin: awayWin,
-              accent: accent,
+          if (!started) ...[
+            // **Vor dem Spieltag gibt es keinen Punktestand.** Dort stand ein
+            // „0 : 0" über einem halbierten grauen Balken mit der Beschriftung
+            // „Punkteanteil" — zwei Anzeigen, die beide nichts messen: Es ist
+            // noch kein Ball gerollt. Ein Duell vor dem Anpfiff ist eine
+            // Ankündigung, und die sieht so aus.
+            const SizedBox(height: 14),
+            _VsPlatte(accent: accent, anpfiff: anpfiff),
+            const SizedBox(height: 6),
+          ] else ...[
+            const SizedBox(height: 10),
+            // **Der Punktestand steht mittig auf eigener Zeile, nicht zwischen
+            // den Namen.** Dort nahm er genau die Breite weg, die die Namen
+            // brauchen: „lennartruepke" schrumpfte auf Winzgröße, und aus
+            // „FÜHRT" wurde „F…". Jetzt bekommt jede Seite die halbe
+            // Kastenbreite und die Namen stehen in voller Größe.
+            Center(
+              child: ScoreBadge(
+                left: homePoints,
+                right: awayPoints,
+                leftWin: homeWin,
+                rightWin: awayWin,
+                accent: accent,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          // „Momentum": Punkteanteil beider Seiten (vor Anpfiff 50/50) mit
-          // Label je nach Status — füllt den Banner und gibt Kontext.
-          _MomentumBar(left: homePoints, right: awayPoints),
-          const SizedBox(height: 5),
-          // Nur noch die Beschriftung. Links und rechts standen hier dieselben
-          // zwei Zahlen, die zwei Zeilen darüber schon groß im Punktestand
-          // stehen — dreimal dieselbe Auskunft in einem Kasten, der ohnehin zu
-          // voll war.
-          Center(
-            child: Text(
-                (live ? 'Live-Punkte' : (started ? 'Endpunkte' : 'Punkteanteil'))
-                    .toUpperCase(),
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.5)),
-          ),
+            const SizedBox(height: 10),
+            // „Momentum": Punkteanteil beider Seiten mit Label je nach Status.
+            _MomentumBar(left: homePoints, right: awayPoints),
+            const SizedBox(height: 5),
+            // Nur noch die Beschriftung. Links und rechts standen hier dieselben
+            // zwei Zahlen, die zwei Zeilen darüber schon groß im Punktestand
+            // stehen — dreimal dieselbe Auskunft in einem Kasten, der ohnehin
+            // zu voll war.
+            Center(
+              child: Text((live ? 'Live-Punkte' : 'Endpunkte').toUpperCase(),
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5)),
+            ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// **Die Ankündigung: „VS" statt eines Punktestands von null.**
+///
+/// Zwei feine Linien laufen von den Seiten auf die Buchstaben zu und verlieren
+/// sich zum Rand hin — sie führen das Auge in die Mitte, ohne einen Kasten zu
+/// bauen. Darunter steht der Anpfiff des Spieltags: vor dem Spieltag die
+/// einzige Zahl, die schon etwas bedeutet.
+class _VsPlatte extends StatelessWidget {
+  const _VsPlatte({required this.accent, required this.anpfiff});
+
+  final Color accent;
+  final DateTime? anpfiff;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget linie({required bool nachRechts}) => Container(
+          height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: nachRechts ? Alignment.centerLeft : Alignment.centerRight,
+              end: nachRechts ? Alignment.centerRight : Alignment.centerLeft,
+              colors: [
+                Colors.white.withValues(alpha: 0.0),
+                Colors.white.withValues(alpha: 0.22),
+              ],
+            ),
+          ),
+        );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(child: linie(nachRechts: true)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Text(
+                'VS',
+                style: TextStyle(
+                  // 24 statt 26: Die Leiter kennt keine 26, und für zwei
+                  // gesperrte Buchstaben braucht es keine eigene Stufe.
+                  fontSize: Schrift.h1,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 4,
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.92),
+                  shadows: [
+                    Shadow(color: accent.withValues(alpha: 0.55), blurRadius: 14),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(child: linie(nachRechts: false)),
+          ],
+        ),
+        if (anpfiff != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Anpfiff ${DateFormat('E, HH:mm', 'de_DE').format(anpfiff!.toLocal())} Uhr'
+                .toUpperCase(),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.5,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -362,14 +455,12 @@ class HeroShell extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             color: grund,
-            gradient: hauch == null
-                ? null
-                : LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    stops: const [0.0, 0.75],
-                    colors: [Color.alphaBlend(hauch, grund), grund],
-                  ),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              stops: const [0.0, 0.75],
+              colors: [Color.alphaBlend(hauch, grund), grund],
+            ),
             // **Eine Kante für alle Karten**, auch während des Spieltags.
             // Der farbige Rand bei „live" war der lauteste Strich des
             // Schirms und stand neben zwei Karten mit Haarlinie — drei
