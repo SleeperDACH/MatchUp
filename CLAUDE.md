@@ -948,6 +948,19 @@ Vor jedem Upload die Build-Nummer in `pubspec.yaml` (`version: x.y.z+N`)
 erhöhen — Play nimmt denselben `versionCode` kein zweites Mal an. iOS und
 Android teilen sich diese Nummer.
 
+**Die iOS-Untergrenze ist 15.0** (seit 03.09.2026, vorher 13.0). Sie steht an
+**drei** Stellen und muss überall gleich sein: `ios/Podfile` (`platform :ios,
+'15.0'` — im Flutter-Template ist die Zeile auskommentiert, dann bauen die Pods
+gegen eine andere Grenze als der Runner), `IPHONEOS_DEPLOYMENT_TARGET` in
+`ios/Runner.xcodeproj/project.pbxproj` (dreimal, je Konfiguration) und
+`MinimumOSVersion` in `ios/Flutter/AppFrameworkInfo.plist`. Nach einer Änderung
+`pod install`, sonst passt die `Podfile.lock` nicht mehr.
+
+**Geprüft wird das ohne Signatur:** `flutter build ios --release --no-codesign`
+kompiliert alles und umgeht den Signatur-Blocker (siehe unten) — nach der
+Umstellung baute es sauber durch, und im fertigen `Runner.app` steht
+`MinimumOSVersion = 15.0`.
+
 Toolchain auf dem MacBook: JDK ist die JBR von Android Studio
 (`flutter config --jdk-dir=…`), SDK unter `~/Library/Android/sdk` mit
 `cmdline-tools/latest`, `platforms;android-36` (= `flutter.compileSdkVersion`)

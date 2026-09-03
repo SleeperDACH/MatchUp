@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/models/chat_message.dart';
 import 'package:matchup/core/ui/league_chat.dart';
@@ -52,7 +53,14 @@ Widget _chat({required bool enableReply}) => ProviderScope(
     );
 
 void main() {
-  setUpAll(ladeSchrift);
+  setUpAll(() async {
+    await ladeSchrift();
+    // **Der Chat setzt Datumsmarken.** Bis zum Vortag heißen sie „Heute" und
+    // „Gestern", danach kommt `DateFormat('d. MMMM yyyy', 'de_DE')` — und der
+    // wirft ohne geladene Gebietsdaten. Der Test lief deshalb genau zwei Tage
+    // lang und fiel am dritten, ohne dass jemand etwas geändert hätte.
+    await initializeDateFormatting('de_DE');
+  });
 
   /// Fängt ab, was die App in die Zwischenablage legt.
   List<String> zwischenablage(WidgetTester tester) {
