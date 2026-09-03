@@ -22,6 +22,7 @@ import '../features/messaging/providers.dart';
 import '../features/messaging/ui/conversations_screen.dart';
 import '../features/news/models/news_item.dart';
 import '../features/news/providers.dart';
+import '../features/news/ui/news_bild.dart';
 import '../features/news/ui/transfers_screen.dart';
 import '../features/news/ui/news_list_screen.dart';
 import '../features/news/ui/news_tile.dart';
@@ -34,6 +35,7 @@ import 'home_menu_drawer.dart';
 import 'league_screen.dart';
 import 'match_detail_screen.dart';
 import 'theme.dart';
+import 'typografie.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/matchup_chevron.dart';
 import 'widgets/pulsing_dot.dart';
@@ -533,14 +535,26 @@ class _NaechstesSpiel extends ConsumerWidget {
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
-                  _heroGrund(scheme, dark, tonHeim)
-                      .withValues(alpha: dark ? 0.60 : 1),
-                  _heroGrund(scheme, dark, null)
-                      .withValues(alpha: dark ? 0.30 : 1),
-                  _heroGrund(scheme, dark, null)
-                      .withValues(alpha: dark ? 0.30 : 1),
-                  _heroGrund(scheme, dark, tonAusw)
-                      .withValues(alpha: dark ? 0.60 : 1),
+                  _heroGrund(
+                    scheme,
+                    dark,
+                    tonHeim,
+                  ).withValues(alpha: dark ? 0.60 : 1),
+                  _heroGrund(
+                    scheme,
+                    dark,
+                    null,
+                  ).withValues(alpha: dark ? 0.30 : 1),
+                  _heroGrund(
+                    scheme,
+                    dark,
+                    null,
+                  ).withValues(alpha: dark ? 0.30 : 1),
+                  _heroGrund(
+                    scheme,
+                    dark,
+                    tonAusw,
+                  ).withValues(alpha: dark ? 0.60 : 1),
                 ],
                 stops: const [0.0, 0.30, 0.70, 1.0],
               ),
@@ -613,9 +627,7 @@ class _NaechstesSpiel extends ConsumerWidget {
                         padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
                         child: Row(
                           children: [
-                            Expanded(
-                              child: _HeroVerein(team: fixture.home),
-                            ),
+                            Expanded(child: _HeroVerein(team: fixture.home)),
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -663,9 +675,7 @@ class _NaechstesSpiel extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            Expanded(
-                              child: _HeroVerein(team: fixture.away),
-                            ),
+                            Expanded(child: _HeroVerein(team: fixture.away)),
                           ],
                         ),
                       ),
@@ -1020,7 +1030,10 @@ class _FavoritSpielZeile extends StatelessWidget {
 class _NewsSection extends ConsumerWidget {
   const _NewsSection();
 
-  static const _maxTransfers = 6;
+  /// **Fünf Meldungen, untereinander.** Die Leiste lief vorher quer, und was
+  /// rechts außerhalb lag, sah niemand — auf einem Schirm, den man ohnehin
+  /// nach unten liest, war das eine zweite Leserichtung für nichts.
+  static const _maxTransfers = 5;
 
   void _openList(BuildContext context) {
     Navigator.of(context).push(
@@ -1054,17 +1067,16 @@ class _NewsSection extends ConsumerWidget {
               onMore: () => _openList(context),
               marke: _kVereinsBlau,
             ),
-            _Bleed(
-              hoehe: kartenHoehe(context, 92),
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                physics: const BouncingScrollPhysics(),
-                itemCount: shown.length + 1,
-                separatorBuilder: (_, _) => const SizedBox(width: 9),
-                itemBuilder: (_, i) => i < shown.length
-                    ? _NewsCard(item: shown[i])
-                    : _MoreNewsCard(onTap: () => _openList(context)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+              child: Column(
+                children: [
+                  for (final n in shown) ...[
+                    _NewsCard(item: n),
+                    const SizedBox(height: 8),
+                  ],
+                  _MehrNews(onTap: () => _openList(context)),
+                ],
               ),
             ),
           ],
@@ -1074,11 +1086,19 @@ class _NewsSection extends ConsumerWidget {
   }
 }
 
-/// Eine Schlagzeile als schmale Karte der News-Leiste.
+/// Eine Schlagzeile als Zeile mit Titelbild.
+///
+/// **Das Bild kommt aus dem Feed, nicht aus dem Artikel.** Nur die Sportschau
+/// liefert eines je Meldung (gemessen 03.09.2026); wo keins dabei ist, steht
+/// eine Ersatzfläche mit Zeitungssymbol — eine leere Lücke sähe aus wie ein
+/// Ladefehler.
 class _NewsCard extends StatelessWidget {
   const _NewsCard({required this.item});
 
   final NewsItem item;
+
+  static const _bildBreite = 116.0;
+  static const _bildHoehe = 74.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1087,57 +1107,74 @@ class _NewsCard extends StatelessWidget {
       if (item.source != null) item.source!,
       if (item.publishedAt != null) relativeNewsTime(item.publishedAt!),
     ].join(' · ');
-    return SizedBox(
-      width: 232,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => openNews(context, item.url),
-          borderRadius: BorderRadius.circular(14),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.7),
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => openNews(context, item.url),
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.7),
             ),
-            padding: const EdgeInsets.fromLTRB(11, 10, 11, 9),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    item.title,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      height: 1.15,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.newspaper, size: 12, color: _kVereinsBlau),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        meta,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 11,
+          ),
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              NewsBild(
+                url: item.imageUrl,
+                breite: _bildBreite,
+                hoehe: _bildHoehe,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: _bildHoehe,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            height: 1.18,
+                            fontSize: Schrift.koerper,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.newspaper,
+                            size: 12,
+                            color: _kVereinsBlau,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              meta,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: Schrift.klein,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1145,48 +1182,40 @@ class _NewsCard extends StatelessWidget {
   }
 }
 
-/// Abschluss der News-Leiste: alles Weitere in der vollen Liste.
-class _MoreNewsCard extends StatelessWidget {
-  const _MoreNewsCard({required this.onTap});
+/// Der Weg in die volle Liste, unter den fünf Meldungen.
+class _MehrNews extends StatelessWidget {
+  const _MehrNews({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: 96,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.8),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 20,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Alle News',
+                style: TextStyle(
                   color: scheme.onSurfaceVariant,
+                  fontSize: Schrift.koerperKlein,
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Alle News',
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
           ),
         ),
       ),

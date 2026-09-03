@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'news_bild.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/news_item.dart';
@@ -6,11 +8,12 @@ import '../models/news_item.dart';
 /// Öffnet einen News-Artikel extern (neuer Tab im Web, Browser auf Mobil).
 Future<void> openNews(BuildContext context, String url) async {
   final uri = Uri.tryParse(url);
-  final ok = uri != null &&
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  final ok =
+      uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (!ok && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Artikel konnte nicht geöffnet werden.')));
+      const SnackBar(content: Text('Artikel konnte nicht geöffnet werden.')),
+    );
   }
 }
 
@@ -45,30 +48,47 @@ class NewsTile extends StatelessWidget {
               if (dealStyle) ...[
                 const Icon(Icons.check_circle, size: 18, color: _green),
                 const SizedBox(width: 8),
+              ] else ...[
+                // **Dieselbe Kachel wie auf dem Startbildschirm.** Wer die
+                // Liste öffnet, soll dieselben Meldungen wiedererkennen, und
+                // zwar auch am Bild. Bei den Done Deals bleibt es beim Haken:
+                // Dort ist die Zeile eine Bestätigung, kein Bericht.
+                NewsBild(url: item.imageUrl, breite: 84, hoehe: 54),
+                const SizedBox(width: 10),
               ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, height: 1.2)),
+                    Text(
+                      item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                      ),
+                    ),
                     if (meta.isNotEmpty) ...[
                       const SizedBox(height: 3),
-                      Text(meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurfaceVariant)),
+                      Text(
+                        meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(dealStyle ? Icons.north_east : Icons.open_in_new,
-                  size: 16, color: scheme.onSurfaceVariant),
+              Icon(
+                dealStyle ? Icons.north_east : Icons.open_in_new,
+                size: 16,
+                color: scheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),

@@ -32,6 +32,16 @@ const KEYWORDS: Record<string, RegExp> = {
 type Source = { url: string; filter?: RegExp; source?: string };
 function sources(topic: string): Source[] {
   return [
+    // **Sportschau zuerst, wegen der Bilder.** Der Feed der ARD trägt je
+    // Meldung ein 16:9-Bild in `content:encoded`; Google News und kicker
+    // liefern keines (gemessen 03.09.2026). Er ist ein allgemeiner
+    // Bundesliga-Feed, deshalb derselbe Stichwortfilter wie bei kicker —
+    // bringt er nichts Passendes, greift die nächste Quelle wie bisher.
+    {
+      url: "https://www.sportschau.de/fussball/bundesliga/index~rss2.xml",
+      filter: KEYWORDS[topic],
+      source: "Sportschau",
+    },
     {
       url: `https://news.google.com/rss/search?q=${encodeURIComponent(QUERIES[topic])}` +
         `&hl=de&gl=DE&ceid=DE:de`,
@@ -157,6 +167,33 @@ function tag(block: string, name: string): string | null {
 // Parst RSS-<item>-Blöcke zu {title, url, source, publishedAt}. Google News
 // hängt die Quelle als „ - Quelle" an den Titel; das trennen wir sauber ab.
 // Mit [filter] werden nur Items behalten, deren Titel/Beschreibung passt.
+// **Das Titelbild eines Items.** Vier Wege, in dieser Reihenfolge:
+// `<enclosure url>`, `<media:content url>`, `<media:thumbnail url>` und das
+// erste `<img src>` in `content:encoded`/`description`.
+//
+// **Gemessen am 03.09.2026:** kicker und Google News liefern **kein** Bild je
+// Meldung (Google gar keines, kicker nur das Kanal-Logo). Der Sportschau-Feed
+// legt es als `<img>` in `content:encoded` — deshalb steht er in `sources()`
+// vorn, sonst gäbe es überhaupt keine Bilder.
+function bild(block: string): string {
+  const treffer = block.match(/<enclosure[^>]+url=["']([^"']+)["']/i) ??
+    block.match(/<media:content[^>]+url=["']([^"']+)["']/i) ??
+    block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i) ??
+    block.match(/<img[^>]+src=["']([^"']+)["']/i);
+  let url = treffer ? decode(treffer[1]) : "";
+  if (!/^https?:\/\//i.test(url)) return "";
+  // Sportschau liefert 1920 Pixel breite Bilder (240 KB); auf einer Kachel von
+  // 116 × 74 Punkten sind das ein paar hundert Kilobyte für nichts. 640 reicht
+  // auch bei dreifacher Pixeldichte und wiegt 38 KB.
+  //
+  // **Die Breite ist nicht frei wählbar:** Der Bilddienst kennt nur bestimmte
+  // Stufen. Gemessen am 03.09.2026 antworten 1920, 1280, 960, 640, 512, 384
+  // und 320 mit 200 — **800 und 480 dagegen mit 400**. Der erste Versuch stand
+  // auf 800, und die Liste zeigte lauter Ersatzflächen.
+  url = url.replace(/([?&]width=)\d+/i, "$1640");
+  return url;
+}
+
 function parseRss(xml: string, filter?: RegExp, defaultSource?: string) {
   const items: Array<Record<string, string>> = [];
   const blocks = xml.match(/<item>([\s\S]*?)<\/item>/gi) ?? [];
@@ -180,6 +217,7 @@ function parseRss(xml: string, filter?: RegExp, defaultSource?: string) {
       url: link,
       source,
       publishedAt: pubDate ? new Date(pubDate).toISOString() : "",
+      image: bild(block),
     });
     if (items.length >= MAX_ITEMS) break;
   }
@@ -325,9 +363,11 @@ Deno.serve(async (req) => {
     return json({ error: `News-Abruf fehlgeschlagen: ${lastErr}` }, 502);
   }
 
-  // Nur die Primärquelle (Google, zielgenau) cachen — der Fallback (kicker,
-  // dünner) wird geliefert, aber nicht persistiert, damit der nächste Aufruf
-  // wieder Google versucht und die Noise nicht 30 Min hängen bleibt.
+  // Nur die Primärquelle cachen — ein Fallback wird geliefert, aber nicht
+  // persistiert, damit der nächste Aufruf wieder die erste Quelle versucht und
+  // eine dünne Ausweichliste nicht 30 Minuten hängen bleibt. (Primär ist bei
+  // den Themen-Feeds seit dem 03.09.2026 die Sportschau — sie trägt die
+  // Bilder.)
   if (fromPrimary) {
     await supabase.from("news_cache").upsert({
       topic: cacheKey,

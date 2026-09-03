@@ -1236,6 +1236,46 @@ Die Kopfkarte hat **zwei** Vorlese-Stationen, nicht eine: das Spiel und der
 Sockel führen an verschiedene Orte. Deshalb setzt sie `_PressScale`s
 `eineAnsage` ab, das sonst jede Karte zu einer Ansage zusammenfasst.
 
+### Der News-Feed läuft nach unten und zeigt Bilder
+
+Gewünscht: „Umbauen, sodass man nach unten scrollt statt zur Seite, und die
+Titelbilder der jeweiligen Berichte mit anzeigen."
+
+Die Leiste lief quer; was rechts außerhalb lag, sah niemand — auf einem
+Schirm, den man ohnehin nach unten liest, war das eine zweite Leserichtung für
+nichts. Jetzt fünf Meldungen untereinander, jede als Zeile mit Bild links
+(116 × 74), darunter der Weg in die volle Liste.
+
+**Die Bilder gab es nicht.** Gemessen am 03.09.2026 über die Feeds selbst:
+
+| Quelle | Bild je Meldung |
+|---|---|
+| Google News RSS | keins |
+| kicker | keins (nur das Kanal-Logo) |
+| **Sportschau (ARD)** | **16:9 in `content:encoded`** |
+
+Auch der Umweg über den Artikel ist zu: kicker beantwortet automatisierte
+Abrufe mit **403**, ein `og:image` ist von dort nicht zu holen. Deshalb steht
+in `sources()` der Themen-Feeds jetzt die **Sportschau vorn** (derselbe
+Stichwortfilter wie bei kicker, weil es ein allgemeiner Bundesliga-Feed ist);
+bringt sie nichts Passendes, greift die Kette wie bisher auf Google und kicker
+zurück. Gemessen: 51 Meldungen im Feed, davon 10 mit Transfer-Bezug — und alle
+zehn mit Bild.
+
+**Die Bildbreite ist nicht frei wählbar.** Der Bilddienst der Sportschau kennt
+nur bestimmte Stufen: 1920, 1280, 960, 640, 512, 384 und 320 antworten mit
+200 — **800 und 480 mit 400**. Der erste Versuch schrieb 800 in die URL, und
+die Liste zeigte lauter Ersatzflächen. Sie steht jetzt auf 640 (38 KB statt
+240 KB bei 1920).
+
+Gezeichnet wird das Bild überall von `NewsBild`
+(`features/news/ui/news_bild.dart`) — auf dem Startbildschirm und in der
+vollen Liste. Fehlt eins, steht dort eine Fläche mit Zeitungssymbol; eine
+leere Stelle sähe aus wie ein Ladefehler, und dasselbe gilt für die Sekunde,
+in der das Bild noch unterwegs ist. Bei den **Done Deals** bleibt es beim
+grünen Haken statt eines Bildes: Dort ist die Zeile eine Bestätigung, kein
+Bericht.
+
 ### Einfarbig ist auch kein Zustand
 
 Der erste Wurf von „Richtung A" nahm die Diagnose zu wörtlich und strich
