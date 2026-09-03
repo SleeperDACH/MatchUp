@@ -95,8 +95,6 @@ class HomeScreen extends ConsumerWidget {
               )
             else ...[
               const _Appear(child: _GreetingBar()),
-              const SizedBox(height: 6),
-              const _Appear(delayMs: 20, child: _Schnellzugriff()),
               const SizedBox(height: 12),
               // Die Kopfkarte führt: das nächste Spiel des eigenen Vereins
               // ist der Inhalt, an dem eine Zeit hängt. Sie blendet sich
@@ -1314,6 +1312,11 @@ class _GreetingBar extends ConsumerWidget {
               ),
             ),
           ),
+          // **Die vier Wege stehen in der Grußzeile**, nicht als eigene Reihe
+          // darunter. Der Zwischenstand war eine Reihe beschrifteter Kacheln:
+          // zu laut direkt über der Kopfkarte, die den Schirm führen soll.
+          // Hier nehmen sie keine Zeile für sich.
+          const _Schnellzugriff(),
         ],
       ),
     );
@@ -1343,44 +1346,34 @@ class _Schnellzugriff extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ungelesen = ref.watch(unreadDmCountProvider);
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: _ZugriffKachel(
-            icon: Icons.swap_horiz,
-            wort: 'Transfers',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TransfersScreen()),
-            ),
+        _ZugriffKachel(
+          icon: Icons.swap_horiz,
+          wort: 'Transfers',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TransfersScreen()),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _ZugriffKachel(
-            icon: Icons.forum_outlined,
-            wort: 'Chats',
-            zaehler: ungelesen,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ConversationsScreen()),
-            ),
+        _ZugriffKachel(
+          icon: Icons.forum_outlined,
+          wort: 'Nachrichten',
+          zaehler: ungelesen,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ConversationsScreen()),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _ZugriffKachel(
-            icon: Icons.search,
-            wort: 'Suchen',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
-            ),
+        _ZugriffKachel(
+          icon: Icons.search,
+          wort: 'Ligen entdecken',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _ZugriffKachel(
-            icon: Icons.add,
-            wort: 'Neu',
-            onTap: () => showCreateOrJoin(context, ref),
-          ),
+        _ZugriffKachel(
+          icon: Icons.add,
+          wort: 'Erstellen oder beitreten',
+          onTap: () => showCreateOrJoin(context, ref),
         ),
       ],
     );
@@ -1413,46 +1406,30 @@ class _ZugriffKachel extends StatelessWidget {
       excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: 20,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Icon(icon, size: 19, color: scheme.onSurfaceVariant),
-                      if (zaehler > 0)
-                        Positioned(
-                          right: -8,
-                          top: -4,
-                          child: _CountBadge(count: zaehler),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 3),
-                // Schrumpfen statt kappen: „Transfers" ist auf einem Viertel
-                // der Bildschirmbreite das längste Wort der Reihe.
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    wort,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: Schrift.winzig,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+        // **Ohne Wort daneben.** Es steht im `tooltip` und in der Ansage für
+        // die Vorlesehilfe — dort trägt es die Auskunft, ohne Fläche zu
+        // kosten. Die Tastfläche bleibt 44 Punkte breit und hoch.
+        child: Tooltip(
+          message: wort,
+          child: InkResponse(
+            onTap: onTap,
+            radius: 24,
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+                  if (zaehler > 0)
+                    Positioned(
+                      right: 3,
+                      top: 5,
+                      child: _CountBadge(count: zaehler),
                     ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

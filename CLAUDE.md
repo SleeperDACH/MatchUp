@@ -1244,14 +1244,20 @@ Sprechblase eine Zeile tiefer neben dem Gruß. Ein Doppelpfeil ohne Wort ist
 nicht zu erraten, und wer den Schirm zum ersten Mal sieht, findet die
 Ligasuche gar nicht.
 
-Sie stehen jetzt zusammen unter dem Gruß (`_Schnellzugriff`): vier gleich
-breite Kacheln mit Symbol **und** Wort — Transfers · Chats · Suchen · Neu.
-Gleich breit, damit keine wichtiger aussieht als die andere; Farbe trägt nur,
-was wartet (der rote Zähler ungelesener Nachrichten). Die Kopfleiste behält
-Menü und Wortmarke, sonst nichts.
+Sie stehen jetzt zusammen **in der Grußzeile** (`_Schnellzugriff`), als vier
+schmale Symbole rechts neben „Hallo, …". Die Kopfleiste behält Menü und
+Wortmarke, sonst nichts.
 
-Die Wörter schrumpfen statt zu kappen — „Transfers" ist auf einem Viertel der
-Bildschirmbreite das längste der Reihe.
+**Zwei Stufen leiser, in zwei Runden.** Der erste Wurf war eine eigene Reihe
+mit vier gerahmten, beschrifteten Kacheln („zu auffällig"), der zweite
+dieselbe Reihe ohne Rahmen („noch weniger auffällig oder den Standort
+wechseln"). Jetzt kosten sie **keine Zeile** mehr: Direkt über der Kopfkarte
+darf nichts stehen, das mit ihr um die Führung ringt — sie ist der Inhalt des
+Schirms, das hier ist Werkzeug.
+
+**Das Wort steckt im `tooltip` und in der Vorlese-Ansage**, nicht daneben:
+Dort trägt es die Auskunft, ohne Fläche zu kosten. Farbe trägt nur, was wartet
+— der rote Zähler ungelesener Nachrichten. Die Tastfläche bleibt 44 Punkte.
 
 ### Der News-Feed läuft nach unten und zeigt Bilder
 
