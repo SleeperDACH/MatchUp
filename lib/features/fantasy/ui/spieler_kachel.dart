@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/typografie.dart';
@@ -114,8 +115,8 @@ class SpielerKachel extends ConsumerWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color.lerp(farbe, const Color(0xFF12141C), 0.72)!,
-              Color.lerp(farbe, const Color(0xFF12141C), 0.86)!,
+              Color.lerp(farbe, MatchUpColors.base, 0.72)!,
+              Color.lerp(farbe, MatchUpColors.base, 0.86)!,
             ],
           );
 

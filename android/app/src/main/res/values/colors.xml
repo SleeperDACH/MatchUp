@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#12141C</color>
+    <!-- Grund des Startbildschirms — dieselbe Farbe wie MatchUpColors.base.
+         Vorher stand hier Weiß (Flutter-Vorlage) bzw. die Systemfarbe: Beim
+         Start blitzte je nach Gerät eine fremde Fläche auf, bevor die App
+         ihren eigenen Grund zeichnete. -->
+    <color name="launch_background">#000000</color>
 </resources>

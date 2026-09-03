@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/theme.dart';
 import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,7 +13,7 @@ import 'matchup_lineups.dart';
 // MatchUp-Palette (wie in der Übersicht): grün normal, rot solange live.
 const _cGreen = Color(0xFF4ADE6A);
 const _cRed = Color(0xFFF23030);
-const _cBase = Color(0xFF12141C);
+const _cBase = MatchUpColors.base;
 
 /// Öffnet die Detailseite einer Head-to-Head-Paarung eines Spieltags.
 void showMatchupDetail(

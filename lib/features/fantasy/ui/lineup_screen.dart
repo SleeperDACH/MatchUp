@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../app/theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -1048,8 +1049,7 @@ class _Slot extends ConsumerWidget {
                               vertical: 1,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0B0F14)
-                                  .withValues(alpha: 0.88),
+                              color: Colors.black.withValues(alpha: 0.86),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.16),
@@ -1239,7 +1239,7 @@ class _Eckzeichen extends StatelessWidget {
           color: grund,
           border: Border.all(color: Colors.black.withValues(alpha: 0.45)),
         ),
-        child: Icon(icon, size: 10, color: const Color(0xFF12141C)),
+        child: Icon(icon, size: 10, color: MatchUpColors.base),
       );
 }
 

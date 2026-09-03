@@ -6,8 +6,14 @@ import 'typografie.dart';
 class MatchUpColors {
   const MatchUpColors._();
 
-  /// Dunkler Hintergrund (fast Schwarz mit leichtem Blaustich).
-  static const base = Color(0xFF12141C);
+  /// **Schwarz.** Der Grund der App, seit dem 03.09.2026 ohne den früheren
+  /// Blaustich (`#12141C`) — auf Ansage: „Die gesamte App wechselt auf
+  /// schwarzen Hintergrund."
+  ///
+  /// Er ist zugleich die Schrift- und Symbolfarbe **auf** hellen Flächen
+  /// (weißer Hauptknopf, gefüllte Positionsmarken); dort war der Blaustich nie
+  /// zu sehen, und Schwarz auf Weiß ist der stärkere Kontrast.
+  static const base = Color(0xFF000000);
 
   /// Marken-/Primärakzent (Logo-„Up", Buttons, aktive Zustände).
   static const green = Color(0xFF4ADE6A);
@@ -19,18 +25,22 @@ class MatchUpColors {
   static const snow = Color(0xFFEDEFF4);
 
   // Abgestufte Flächen über [base] für Tiefe (Karten, Leisten, Kopfzeilen).
-  static const _surfaceCard = Color(0xFF1A1D27);
-  static const _surfaceHigh = Color(0xFF252937);
-  // Die übrigen Stufen der Material-3-Flächenleiter, **neutral gehalten**.
-  // Siehe die Erklärung am Farbschema: Ohne sie mischt Material 3 die grüne
-  // Seed-Farbe hinein.
-  static const _surfaceLowest = Color(0xFF0E1016);
-  static const _surfaceLow = Color(0xFF161822);
-  static const _surfaceMid = Color(0xFF1F2330);
-  static const _divider = Color(0xFF2A2E3A);
+  //
+  // **Neutrale Graustufen, kein Blau mehr.** Auf einem schwarzen Grund fiel
+  // der alte Blaustich der Karten (`#1A1D27`) auf: Die Flächen schienen zu
+  // leuchten, statt über dem Grund zu liegen. Die Leiter steigt jetzt in
+  // gleichen Kanälen — und weil kein Kanal führt, bleibt sie auch neutral,
+  // wenn Material 3 seine Seed-Farbe einmischen will.
+  static const _surfaceCard = Color(0xFF121212);
+  static const _surfaceHigh = Color(0xFF232323);
+  static const _surfaceLowest = Color(0xFF050505);
+  static const _surfaceLow = Color(0xFF0D0D0D);
+  static const _surfaceMid = Color(0xFF1A1A1A);
+  static const _divider = Color(0xFF2A2A2A);
 
-  /// Gedämpftes Snow für Sekundärtext.
-  static const _mutedText = Color(0xFFA6ACBA);
+  /// Gedämpftes Snow für Sekundärtext. Ebenfalls entblaut: Auf Schwarz las
+  /// sich der alte Ton (`#A6ACBA`) als kühles Grau-Blau.
+  static const _mutedText = Color(0xFFAAAAAA);
 
   // Helle Variante (Light-Theme): heller Grund, dunkle Schrift, gleiche Akzente.
   static const _lightBg = Color(0xFFF5F6F8);

@@ -793,7 +793,7 @@ class _SubBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: const Color(0xFF12141C),
+        color: MatchUpColors.base,
         shape: BoxShape.circle,
         border: Border.all(
             color: incoming ? MatchUpColors.green : MatchUpColors.red,

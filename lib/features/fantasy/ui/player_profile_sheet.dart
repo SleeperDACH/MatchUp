@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -1179,7 +1180,7 @@ class _Feldspieler extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w800,
               fontFeatures: const [FontFeature.tabularFigures()],
-              color: hervor ? const Color(0xFF12141C) : schnee,
+              color: hervor ? MatchUpColors.base : schnee,
             ),
           ),
         ),

@@ -34,7 +34,7 @@ class CompetitionEmblem extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1E2230), MatchUpColors.base],
+          colors: [Color(0xFF1E1E1E), MatchUpColors.base],
         ),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),

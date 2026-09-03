@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
@@ -1377,7 +1378,7 @@ class _BoardCol {
 // Board-Farben: beigetretene Teams grün, das aktuell ziehende Team rot.
 const _cBoardGreen = Color(0xFF4ADE6A);
 const _cBoardRed = Color(0xFFF23030);
-const _cBoardInk = Color(0xFF12141C);
+const _cBoardInk = MatchUpColors.base;
 
 /// Kopfzelle einer Board-Spalte: farbiger Hintergrund (grün beigetreten, rot am
 /// Zug, neutral für Platzhalter) plus optionales „AUTO"-Badge.

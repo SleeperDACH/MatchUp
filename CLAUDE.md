@@ -119,6 +119,40 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   Supabase erzwungen (Fixtures werden dafür serverseitig gespiegelt);
   die Client-Sperre ist nur UX.
 
+## Der Grund ist schwarz
+
+Seit dem 03.09.2026 ist `MatchUpColors.base` **`#000000`**, vorher war es das
+blaustichige `#12141C`. Auf Ansage: „Die Hintergrundfarbe wird von dem
+bläulichen auf komplett schwarz geändert. Egal wo."
+
+**Die Flächenleiter musste mit.** Karten in `#1A1D27` schienen auf Schwarz zu
+leuchten, statt über dem Grund zu liegen — der Blaustich war gegen `#12141C`
+unsichtbar und gegen Schwarz nicht. Sie steigt jetzt in **gleichen Kanälen**:
+
+| Stufe | vorher | jetzt |
+|---|---|---|
+| `surface` (Grund) | `#12141C` | `#000000` |
+| `surfaceContainerLowest` | `#0E1016` | `#050505` |
+| `surfaceContainerLow` | `#161822` | `#0D0D0D` |
+| `surfaceContainer` / Karte | `#1A1D27` | `#121212` |
+| `surfaceContainerHigh` | `#1F2330` | `#1A1A1A` |
+| `surfaceContainerHighest` | `#252937` | `#232323` |
+| Trennlinie | `#2A2E3A` | `#2A2A2A` |
+| Sekundärtext | `#A6ACBA` | `#AAAAAA` |
+
+Nebeneffekt, der bleibt: Weil kein Kanal führt, kann die Leiter auch nicht
+mehr grün gestochen sein — die Regel unten hält sich damit von selbst.
+
+**Auch die Startbildschirme des Systems**, nicht nur die App: der iOS-Storyboard
+(`ios/Runner/Base.lproj/LaunchScreen.storyboard`, RGB auf 0) und Androids
+`launch_background.xml` (vorher Weiß bzw. die Systemfarbe — beim Start blitzte
+je nach Gerät eine fremde Fläche auf). **Das App-Icon behält seinen Grund**
+(`ic_launcher_background` = `#12141C`): Das ist Marke, kein Hintergrund.
+
+`MatchUpColors.base` ist zugleich die Schrift- und Symbolfarbe **auf** hellen
+Flächen — weißer Hauptknopf, gefüllte Positionsmarken. Dort war der Blaustich
+nie zu sehen, und Schwarz auf Weiß ist der stärkere Kontrast.
+
 ## Verboten: grün gestochene Flächen
 
 **Keine Fläche dieser App trägt einen Grünstich. Das ist keine Vorliebe,
