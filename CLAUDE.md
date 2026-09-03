@@ -3706,18 +3706,26 @@ Kader", „Antrag läuft", „Für den U20-Draft gesperrt". Ein Knopf, der nicht
 kann, wäre schlechter als eine Auskunft — dieselbe Regel wie beim
 Tippspiel-Schalter im dritten Zustand.
 
-**Zwei Schnitte, und ihr Unterschied ist die Auskunft.**
+**Ein Schnitt im Bild, zwei in der Rechnung.**
 
 | | Nenner | sagt |
 |---|---|---|
-| ⌀ je Spieltag | alle gewerteten Spieltage | der Erwartungswert für nächste Woche |
-| ⌀ je Einsatz | nur Spieltage mit Minuten | was er kann, wenn er spielt |
+| je Spieltag | alle gewerteten Spieltage | der Erwartungswert für nächste Woche |
+| je Einsatz | nur Spieltage mit Minuten | was er kann, wenn er spielt |
 
-Beide zu zeigen ist keine Unentschlossenheit: Bei einem Stammspieler stehen dort
-zwei gleiche Zahlen, bei einem Ergänzungsspieler zwei sehr verschiedene — und
-**genau dieser Unterschied** ist die Frage vor einem Pick-up. Wer die halbe
-Saison verletzt war, ist im Schnitt schlechter, auch wenn er stark spielt, wenn
-er spielt.
+`spielerSchnitt` rechnet **beide** — der Trade-Schirm und das Profil zeigen
+aber nur den **ersten**. Im Profil standen sie eine Zeit lang nebeneinander,
+mit Punkten und Minuten je Spalte: vier Zahlen, zwei Nenner, und die Rückfrage
+lautete „durchschnittliche Punkte, durchschnittliche Minuten ist doppelt, da
+verstehe ich nicht". **Zwei Mittelwerte derselben Sache erklären sich nicht
+selbst** — sie brauchen einen Absatz Text, und den liest auf einer
+Spielerkarte niemand.
+
+Geblieben ist der Schnitt je Spieltag; wie oft er überhaupt gespielt hat, steht
+als Fußzeile darunter („3 gewertete Spieltage, davon 2 mit Einsatz"). Dieselbe
+Auskunft, aber als Satz statt als zweite Zahl. `punkteJeEinsatz` bleibt im
+Modell: Es ist gerechnet, geprüft und der natürliche Ort, falls die Auskunft je
+in einer eigenen Ansicht gebraucht wird.
 
 Zwei Regeln in `logic/spieler_schnitt.dart`, beide schon einmal an anderer
 Stelle in dieser App falsch gewesen:

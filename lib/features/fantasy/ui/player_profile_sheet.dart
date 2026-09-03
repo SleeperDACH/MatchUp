@@ -1662,13 +1662,19 @@ class _Ausfallzeile extends ConsumerWidget {
   }
 }
 
-/// **Die beiden Schnitte nebeneinander.**
+/// **Ein Schnitt, nicht zwei.**
 ///
-/// „Ø je Spieltag" ist der Erwartungswert für nächste Woche, „Ø je Einsatz",
-/// was er kann, wenn er spielt. Beide zu zeigen ist keine Unentschlossenheit:
-/// Bei einem Stammspieler stehen dort zwei gleiche Zahlen, bei einem
-/// Ergänzungsspieler zwei sehr verschiedene — und **dieser Unterschied** ist
-/// die Auskunft vor einem Pick-up.
+/// Hier standen „Ø je Spieltag" und „Ø je Einsatz" nebeneinander, jeder mit
+/// Punkten und Minuten — vier Zahlen in zwei Spalten. Die Frage danach war:
+/// „Durchschnittliche Punkte, durchschnittliche Minuten ist doppelt, da
+/// verstehe ich nicht." Zu Recht: Zwei Mittelwerte derselben Sache mit
+/// verschiedenen Nennern erklären sich nicht selbst, sie brauchen einen
+/// Absatz Text — und den liest auf einer Spielerkarte niemand.
+///
+/// Es bleibt der **Schnitt je Spieltag**: der ehrliche Erwartungswert für die
+/// nächste Woche, in dem ein Nichteinsatz als null zählt. Wie oft er
+/// überhaupt gespielt hat, steht als **Fußzeile** darunter — dieselbe
+/// Auskunft, aber als Satz statt als zweiter Mittelwert.
 class _Schnitte extends StatelessWidget {
   const _Schnitte({required this.schnitt});
 
@@ -1680,72 +1686,35 @@ class _Schnitte extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final s = schnitt;
 
-    Widget spalte(String titel, String minuten, String punkte, String fuss) =>
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                titel.toUpperCase(),
-                style: TextStyle(
-                  fontSize: Schrift.mikro,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1,
-                  color: scheme.onSurfaceVariant,
-                ),
+    Widget zahl(String wert, String einheit, {required bool gross}) => Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              wert,
+              style: TextStyle(
+                fontSize: gross ? Schrift.h2 : Schrift.h3,
+                fontWeight: FontWeight.w800,
+                fontFeatures: gleichbreiteZiffern,
+                color: gross ? scheme.onSurface : scheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    punkte,
-                    style: TextStyle(
-                      fontSize: Schrift.h3,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: gleichbreiteZiffern,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Pkt',
-                    style: TextStyle(
-                      fontSize: Schrift.winzig,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    minuten,
-                    style: TextStyle(
-                      fontSize: Schrift.koerper,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: gleichbreiteZiffern,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    'Min',
-                    style: TextStyle(
-                      fontSize: Schrift.winzig,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+            ),
+            const SizedBox(width: 5),
+            Text(
+              einheit,
+              style: TextStyle(
+                fontSize: Schrift.klein,
+                color: scheme.onSurfaceVariant,
               ),
-              Text(
-                fuss,
-                style: TextStyle(
-                  fontSize: Schrift.winzig,
-                  color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         );
+
+    final fuss = s.einsaetze == 0
+        ? '${s.spieltage} gewertete Spieltage, kein Einsatz'
+        : '${s.spieltage} gewertete Spieltage, davon '
+            '${s.einsaetze} mit Einsatz';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1754,33 +1723,35 @@ class _Schnitte extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          spalte(
-            'Ø je Spieltag',
-            s.minutenJeSpieltag.round().toString(),
-            formatPoints(s.punkteJeSpieltag),
-            '${s.spieltage} Spieltage',
-          ),
-          // Ohne eine einzige Minute gibt es nichts zu mitteln — dann steht da
-          // der Grund und keine 0, die niemand behauptet hat.
-          if (s.punkteJeEinsatz == null)
-            Expanded(
-              child: Text(
-                'Noch kein Einsatz',
-                style: TextStyle(
-                  fontSize: Schrift.klein,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            )
-          else
-            spalte(
-              'Ø je Einsatz',
-              s.minutenJeEinsatz!.round().toString(),
-              formatPoints(s.punkteJeEinsatz!),
-              '${s.einsaetze} Einsätze',
+          Text(
+            'IM SCHNITT JE SPIELTAG',
+            style: TextStyle(
+              fontSize: Schrift.mikro,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: scheme.onSurfaceVariant,
             ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              zahl(formatPoints(s.punkteJeSpieltag), 'Punkte', gross: true),
+              const SizedBox(width: 18),
+              zahl(s.minutenJeSpieltag.round().toString(), 'Minuten',
+                  gross: false),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            fuss,
+            style: TextStyle(
+              fontSize: Schrift.klein,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+            ),
+          ),
         ],
       ),
     );
