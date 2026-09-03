@@ -2732,6 +2732,15 @@ entsprechen; fehlt auch die, bleibt eine einzige Reihe. **Kein Fall darf
 Spieler verlieren** — eine schiefe Formation ist besser als eine, in der jemand
 fehlt, und genau das steht als eigener Test da (`4-4-1` auf elf Spielern).
 
+**Auf dem Feld stehen Trikots, keine Kreise.** Die Elf trug ihre Nummern in
+Kreisen; jetzt zeichnet dasselbe `JerseyIcon` wie im Spielbericht ein Trikot in
+den Vereinsfarben (`clubColors`) mit der Rückennummer darin — als Symbol sofort
+als Spieler lesbar, und die Farbe sagt vor dem Namen, welche Mannschaft da
+steht. Vereine ohne hinterlegte Trikotfarben (Pokalgegner aus der Oberliga)
+bekommen neutrales Weiß auf Dunkel statt einer erfundenen Farbe. Der eigene
+Spieler wird durch einen hellen Schein hervorgehoben, nicht durch eine zweite
+Farbe.
+
 **Kein Signalgrün im Spielerprofil.** Es hatte sich an vier Stellen wieder
 eingeschlichen: die Punktekachel im Leistungsreiter, jeder positive Wert in der
 Aufschlüsselung, das „du bist hier"-Personensymbol im Kader und das Urteil im

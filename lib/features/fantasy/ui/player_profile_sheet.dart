@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/typografie.dart';
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/team_fixture_list.dart';
+import '../../../app/widgets/jersey_icon.dart';
+import '../../../core/util/club_colors.dart';
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/models/models.dart';
 import '../../../core/models/team_fixture.dart';
@@ -1154,6 +1155,7 @@ class _Prognose extends ConsumerWidget {
             _Formationsfeld(
               elf: elf,
               ich: player.id,
+              verein: player.club,
               oeffnet: (id) => _ausPool(ref, id) != null,
               onTip: (id) => _oeffne(context, ref, id),
             ),
@@ -1185,9 +1187,13 @@ class _Formationsfeld extends StatelessWidget {
   const _Formationsfeld({
     required this.elf,
     required this.ich,
+    required this.verein,
     required this.oeffnet,
     required this.onTip,
   });
+
+  /// Der Verein, dessen Elf hier steht — er gibt den Trikots ihre Farbe.
+  final String verein;
 
   final PrognoseElf elf;
 
@@ -1230,6 +1236,7 @@ class _Formationsfeld extends StatelessWidget {
                                 : () => onTip(s.playerId),
                             child: _Feldspieler(
                               spieler: s,
+                              verein: verein,
                               hervor: s.playerId == ich,
                             ),
                           ),
@@ -1250,10 +1257,21 @@ class _Formationsfeld extends StatelessWidget {
 /// Hervorgehoben wird **hell**, nicht grün: Grün heißt in dieser App „hier
 /// läuft etwas", und dass man gerade das eigene Profil ansieht, läuft nicht.
 class _Feldspieler extends StatelessWidget {
-  const _Feldspieler({required this.spieler, required this.hervor});
+  const _Feldspieler({
+    required this.spieler,
+    required this.verein,
+    required this.hervor,
+  });
 
   final PrognoseSpieler spieler;
+
+  /// Verein der Elf — bestimmt die Trikotfarbe.
+  final String verein;
   final bool hervor;
+
+  /// Vereine ohne hinterlegte Trikotfarben (Pokalgegner aus der Oberliga)
+  /// bekommen ein neutrales Weiß auf Dunkel statt einer erfundenen Farbe.
+  static const _ersatz = ClubColors(Color(0xFFEDEFF4), Color(0xFF2A2A2A));
 
   @override
   Widget build(BuildContext context) {
@@ -1262,26 +1280,29 @@ class _Feldspieler extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
+        // **Ein Trikot statt eines Kreises.** Es ist als Symbol sofort als
+        // Spieler lesbar, und die Vereinsfarbe sagt vor dem Namen, welche
+        // Mannschaft da steht — dasselbe `JerseyIcon` wie im Spielbericht,
+        // kein zweiter Feldlook.
+        DecoratedBox(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: hervor ? schnee : Colors.black.withValues(alpha: 0.42),
-            border: Border.all(
-              color: schnee.withValues(alpha: hervor ? 1 : 0.45),
-              width: hervor ? 2 : 1,
-            ),
+            boxShadow: hervor
+                ? [
+                    BoxShadow(
+                      color: schnee.withValues(alpha: 0.55),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : const [
+                    BoxShadow(color: Colors.black45, blurRadius: 4),
+                  ],
           ),
-          child: Text(
-            spieler.nummer?.toString() ?? '–',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              fontFeatures: const [FontFeature.tabularFigures()],
-              color: hervor ? MatchUpColors.base : schnee,
-            ),
+          child: JerseyIcon(
+            colors: clubColors(verein, fallback: _ersatz),
+            number: spieler.nummer,
+            size: hervor ? 38 : 34,
           ),
         ),
         const SizedBox(height: 3),
