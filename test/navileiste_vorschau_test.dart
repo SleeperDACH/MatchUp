@@ -6,12 +6,12 @@ import 'package:matchup/app/widgets/navi_kapsel.dart';
 
 import 'support/schrift.dart';
 
-// Vorschau der unteren Navi-Kapsel (kein Regressionstest):
+// Vorschau der unteren Navileiste (kein Regressionstest):
 //   flutter test --update-goldens test/navileiste_vorschau_test.dart
 // -> test/goldens/navileiste.png
 //
 // **Sie steht über zwei Untergründen, und das ist der ganze Zweck.** Die
-// Kapsel schwebt über dem, was der Tab gerade zeigt (`extendBody`), und der
+// Leiste liegt über dem, was der Tab gerade zeigt (`extendBody`), und der
 // Newsblock des Startbildschirms bringt große helle Bilder mit. Ein Bild nur
 // über schwarzem Grund würde genau den Fall auslassen, an dem die vorige
 // Fassung scheiterte: weiß getöntes Glas wurde dort zu grauem Matsch, und die
@@ -49,7 +49,7 @@ class _Untergrund extends StatelessWidget {
 void main() {
   setUpAll(ladeSchrift);
 
-  testWidgets('Vorschau: untere Navi-Kapsel', (tester) async {
+  testWidgets('Vorschau: untere Navileiste', (tester) async {
     tester.view.physicalSize = const Size(402 * 3, 620 * 3);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -70,7 +70,7 @@ void main() {
                       children: [
                         _Untergrund(hell: hell),
                         Align(
-                          alignment: Alignment.center,
+                          alignment: Alignment.bottomCenter,
                           child: NaviKapsel(index: i, onSelected: (_) {}),
                         ),
                       ],
@@ -147,7 +147,7 @@ void main() {
     }
   });
 
-  test('Die reservierte Höhe passt zur Kapsel', () {
+  test('Die reservierte Höhe passt zur Leiste', () {
     // `extendBody: true` legt die Kapsel über den Body; der Live-Tab hält den
     // Platz selbst frei und liest dafür dieselbe Zahl. Sie muss die
     // tatsächliche Höhe treffen, sonst klebt der Inhalt darunter.

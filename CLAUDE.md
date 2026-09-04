@@ -1533,7 +1533,7 @@ bringt niemandem etwas außer der Gewohnheit, ihn zu übergehen. Die Bilder sind
 zum Ansehen da; was gehalten werden muss, steht als **Messung** daneben (etwa
 die Zeilenhöhe der Kartennamen) und läuft bei jedem `flutter test`.
 
-## Die untere Navi-Kapsel
+## Die untere Navileiste
 
 Gemeldet als „die untere Leiste ist meiner Meinung nach noch schlecht designed,
 kann man da noch was rausholen?". Drei Befunde, und der erste war der, den man
@@ -1547,15 +1547,50 @@ nur über fremdem Inhalt sieht:
   Untergrund dunkel ist. Sie tönt jetzt mit Schwarz (0,58) und hält ihn unten,
   egal was er zeigt. `LiquidGlass` hat dafür ein `tintColor` bekommen — der
   Anmeldeschirm benutzt weiter Weiß, dort liegt nichts dahinter.
-- **Sie war eine Leiste, keine Kapsel.** Über die volle Breite gezogen standen
-  drei Ziele mit großen Lücken dazwischen; bei drei Zielen füllt nichts diese
-  Breite. Sie ist jetzt nur so breit wie ihr Inhalt und steht mittig — ein
-  Bedienelement, das schwebt, statt den Inhalt unten abzuschneiden.
+- **Zwischen den drei Zielen klafften große Lücken.** Über die volle Breite
+  gezogen füllt bei drei Zielen nichts diese Breite. Der Zwischenstand war eine
+  Kapsel, die auf die Breite ihrer Ziele schrumpfte — sie löste die Lücken und
+  war trotzdem falsch, siehe unten. Die Lücken trägt jetzt die Marke: Sie sagt,
+  wo man steht, und dafür müssen die Ziele nicht eng beieinander stehen.
 - **Den aktiven Zustand trug allein die Helligkeit.** Über einem bunten Bild
   trennt 0,45-Weiß von 1,0-Weiß kaum. Der aktive Reiter trägt jetzt die
   **helle Auswahlmarke**, die in dieser App überall „gewählt" heißt
   (`PillChip`, `SegmentedTabBar`, Wappenfilter): helle Fläche, hellere Kante,
   Schrift in Snow.
+
+### Durchgängig von links nach rechts
+
+**Die Leiste läuft von Kante zu Kante** (auf Ansage: „Es muss definitiv von
+links nach rechts durchgängig sein"). Zwei Zwischenstände liegen dahinter, und
+beide sind verworfen:
+
+| Fassung | warum sie fiel |
+|---|---|
+| 20 Punkt Luft an den Seiten | zwei Ränder, an denen der Inhalt vorbeischaut |
+| Kapsel auf Inhaltsbreite | stand als Insel im Bild, der Schirm hatte unten keinen Abschluss mehr |
+
+Der Denkfehler bei der Kapsel war, das Problem „große Lücken zwischen den
+Zielen" mit „weniger Breite" zu beantworten. Es war aber ein Problem der
+**Markierung**, nicht der Breite — seit die helle Marke sagt, wo man steht,
+dürfen die Ziele weit auseinanderstehen. **Eine Leiste, die den Schirm unten
+abschließt, muss unten abschließen.**
+
+Daraus folgen drei Dinge, die eine schwebende Fläche nicht braucht:
+
+- **`LiquidGlass` ist hier bewusst nicht im Einsatz.** Der Baustein bringt
+  runde Ecken, einen Schlagschatten und eine Kante auf **allen vier** Seiten
+  mit. Alles drei richtig für eine schwebende Fläche und alles drei falsch für
+  eine Leiste am Bildschirmrand: Die runden Ecken ließen an den Außenkanten
+  Zwickel offen, der Schatten fiele ins Nichts, und von der Kante ist nur die
+  **obere** je zu sehen. Er bleibt für den Anmeldeschirm.
+- **Der Fußraum gehört in die Leiste, nicht darunter.** Sonst liefe der Inhalt
+  des Tabs unter dem Home-Indikator durch, und die Leiste hörte einen
+  Zentimeter über der Unterkante auf. Maßgeblich ist das Maximum aus
+  `viewPadding.bottom` und `navBarBottomInset` — auf einem Gerät ohne
+  Indikator klebten die Wörter sonst an der Kante.
+- **Die ganze Spalte nimmt den Tipp an, nicht nur die Marke.** Die Marke ist
+  rund 90 Punkte breit, die Spalte ein Drittel des Schirms; läge der Knopf nur
+  unter der Marke, wären links und rechts davon gut zwanzig Punkte tot.
 
 **Ein erster Versuch mit einer dunklen Mulde ging unter.** Naheliegend wäre,
 den aktiven Reiter im dunklen Glas noch weiter abzusenken — Licht wegzunehmen
@@ -1592,7 +1627,7 @@ Dazu eine Layout-Falle, die erst am Gerät zugeschlagen hätte: **Im
 bildschirmhoch geworden. Zentriert wird deshalb über eine `Row`, die die Höhe
 ihres Kindes annimmt.
 
-Die Kapsel steht dafür als `NaviKapsel` in `app/widgets/navi_kapsel.dart` — sie
+Die Leiste steht dafür als `NaviKapsel` in `app/widgets/navi_kapsel.dart` — sie
 lag vorher privat in `main_shell.dart` und war damit **das einzige Element der
 App-Hülle ohne Vorschau**. `test/navileiste_vorschau_test.dart` zeigt sie
 sechsmal: jeden der drei Reiter aktiv, jeweils über schwarzem Grund **und über
