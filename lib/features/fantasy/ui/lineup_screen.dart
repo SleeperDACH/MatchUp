@@ -405,11 +405,19 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
 
         final assigned = _assignedIds(slots);
         final (d, m, f) = _formationOf(slots);
+        // **Hat er überhaupt einen Torwart?** Verlässt der einzige die
+        // Bundesliga, nimmt ihn der Abgangs-Lauf aus dem Kader — ohne diese
+        // Ausnahme wäre danach keine Elf mehr gültig, und der Schirm stünde
+        // für immer auf „noch nicht vollständig". Dieselbe Regel steht in
+        // `fantasy_set_lineup` (Migration 0120).
+        final hatTorwart =
+            myPlayers.any((p) => p.position == PlayerPosition.gk);
         final valid = _roster.isValidFormation(
           gkCount: slots[PlayerPosition.gk]?.whereType<String>().length ?? 0,
           defCount: slots[PlayerPosition.def]?.whereType<String>().length ?? 0,
           midCount: slots[PlayerPosition.mid]?.whereType<String>().length ?? 0,
           fwdCount: slots[PlayerPosition.fwd]?.whereType<String>().length ?? 0,
+          torwartImKader: hatTorwart,
         );
         _lastIds = assigned.toList();
         _valid = valid;
@@ -589,11 +597,13 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       cnt(PlayerPosition.mid),
       cnt(PlayerPosition.fwd),
     );
+    final hatTorwart = (byPos[PlayerPosition.gk] ?? const []).isNotEmpty;
     final isValid = _roster.isValidFormation(
-      gkCount: _roster.gk,
+      gkCount: hatTorwart ? _roster.gk : 0,
       defCount: formation.$1,
       midCount: formation.$2,
       fwdCount: formation.$3,
+      torwartImKader: hatTorwart,
     );
     if (!isValid) {
       // **Die Lücke bleibt, wo sie ist.** Vorher wurde hier die erste

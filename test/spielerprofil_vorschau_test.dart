@@ -560,6 +560,12 @@ void main() {
               clubIcon: null,
               // Frei: gehört niemandem, also weder „Traden" noch „Droppen".
               isMine: false,
+              // **Feste Uhr, vor dem dritten Spieltag der Vorschau.** Ohne sie
+              // hängt das Bild am Kalender: Am 04.09.2026 war dessen Anpfiff
+              // erreicht, der Spieler rutschte auf den Waiver, und aus
+              // „Holen" wurde „Antrag" — ohne dass jemand Code angefasst
+              // hätte.
+              jetzt: DateTime(2026, 9, 2, 12),
             ),
             child: const Text('öffnen'),
           ),

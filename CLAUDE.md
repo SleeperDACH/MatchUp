@@ -3883,6 +3883,76 @@ Ein neu geholter Spieler landet ohne Zutun auf der Bank: Er kommt in
 `fantasy_rosters`, nicht in `fantasy_lineups`. Die Lücke bleibt also stehen,
 bis man sie selbst füllt.
 
+### Wer keinen Torwart hat, spielt mit zehn (0120)
+
+Gemeldet: *„Bei Lewins Aufstellung passt irgendetwas gar nicht. Das muss
+unbedingt bearbeitet werden."* Der Befund: Sein Kader hatte **14 Spieler und
+keinen einzigen Torwart**. Jede Formation dieser App verlangt genau einen —
+ohne ihn nimmt `fantasy_set_lineup` gar keine Elf an, der Schirm steht
+dauerhaft auf „Nicht gespeichert – die Elf ist noch nicht vollständig", und er
+geht ohne eigenes Zutun mit null Punkten in jeden Spieltag.
+
+**Die Daten waren richtig, die Folge war es nicht.** Am 02.09.2026 um 19:33
+hat der Abgangs-Lauf aus 0117 zwei Spieler aus seinem Kader genommen. Bei der
+Quelle nachgeprüft, statt es zu vermuten:
+
+| Spieler | wohin | wann |
+|---|---|---|
+| Michael Zetterer (sein einziger TW) | Leeds United | 29.08.2026 |
+| Hugo Larsson | Fulham | 01.09.2026 |
+
+Beide haben die Bundesliga wirklich verlassen, der Prune hat korrekt
+gearbeitet. **Der Fehler liegt darin, was danach nicht passierte.**
+
+**Entschieden: die Torwartposition bleibt leer, die anderen zehn bleiben
+besetzt.** Der naheliegende Weg wäre gewesen, ihm einen freien Torwart in den
+Kader zu setzen — das hätte für ihn eine Kaderentscheidung getroffen, die ihm
+gehört. Eine leere Position kostet ihn die Punkte dieses einen Platzes; ein
+aufgezwungener Spieler kostet ihn den Kaderplatz.
+
+Die Ausnahme hängt am **Kader, nicht an der Auswahl**: Wer einen Torwart hat,
+muss ihn aufstellen. Sonst wäre aus der Notlösung eine frei wählbare Formation
+mit zehn Feldspielern geworden. **Die Regel steht deshalb zweimal** — in
+`fantasy_set_lineup` (0120) und in `RosterConfig.isValidFormation`
+(`torwartImKader`). Dieselbe bewusste Doppelung wie `tip_scoring.dart` ↔
+SQL-View; laufen sie auseinander, zeigt die App eine Elf als gültig, die der
+Server ablehnt.
+
+**Warum der Server die Elf zusätzlich selbst einträgt.** Die gelockerte Regel
+allein half dem Betroffenen nicht: Die App schickt eine unvollständige Elf gar
+nicht erst ab (`naechsterSpeicherSchritt` → `unvollstaendig`), er käme also
+bis zum nächsten Release an keine gespeicherte Aufstellung. `fantasy_zehn_ohne_torwart()`
+trägt sie ein — nach Einsatzminuten dieser Saison, dann nach Namen. **Keine
+Punktewertung in SQL:** Die steht in Dart, und eine zweite Fassung davon wäre
+genau die Doppelung, die in diesem Projekt schon dreimal auseinanderlief.
+
+Drei Sicherungen darin, jede aus einem Fehler dieses Projekts gelernt:
+
+- **Nur vor dem ersten Anpfiff der Runde.** Die Funktion schreibt direkt in
+  `fantasy_lineups` und geht damit an der Sperre je Spieler (0084) vorbei;
+  ohne die Bedingung könnte sie mitten im Spieltag Punkte verschieben — der
+  Fehler aus 0113–0115.
+- **Ligafilter auf `bundesliga` und `sportmonks:`.** Der erste Entwurf sah
+  Runde 2 *aller* Wettbewerbe: Die 2. Liga stößt am selben Wochenende früher
+  an, und die Bedingung war erfüllt, bevor in der Bundesliga ein Ball rollte.
+  Genau die Lücke, die 0107/0108 schon einmal gekostet hat.
+- **Eine vorhandene Aufstellung wird nie überschrieben**, auch keine
+  unvollständige — dieselbe Zusage wie in 0110.
+
+Gegen die Produktion nachgemessen (Rollback-Proben): Lewin darf zehn
+Feldspieler speichern, ein Manager **mit** Torwart bekommt weiterhin
+„Aufstellung braucht genau 11 Spieler"; der Lauf trägt genau eine Elf ein und
+der zweite Lauf null. Danach ausgespielt, und die Elf steht.
+
+**Nebenbefund, unabhängig davon:** `spielerprofil_vorschau_test` fiel an
+diesem Tag ohne jede Codeänderung um. Der dritte Spieltag seiner festen
+Fixtures war der 04.09. — also *heute* —, der freie Spieler rutschte damit auf
+den Waiver, und aus „Holen" wurde „Antrag". `showPlayerProfile` nimmt jetzt
+ein optionales `jetzt`, wie der Free-Agency-Schirm seit 0107. **Eine Uhr, die
+man stellen kann, ist die einzige Art, ein zeitabhängiges Bild fest
+einzuchecken** — und ein Test, der irgendwann von selbst rot wird, ist ein
+Test, den man sich abgewöhnt zu lesen.
+
 ### Das Spielerprofil handelt jetzt selbst
 
 Gewünscht: *„Ich möchte, dass direkt über die Profile ein Knopf für Trade, Drop

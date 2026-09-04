@@ -33,6 +33,7 @@ Future<void> showPlayerProfile(
   required FantasyPlayer player,
   String? clubIcon,
   required bool isMine,
+  DateTime? jetzt,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -43,6 +44,7 @@ Future<void> showPlayerProfile(
       player: player,
       clubIcon: clubIcon,
       isMine: isMine,
+      jetzt: jetzt,
     ),
   );
 }
@@ -84,12 +86,23 @@ class _PlayerProfileSheet extends ConsumerWidget {
     required this.player,
     required this.clubIcon,
     required this.isMine,
+    this.jetzt,
   });
 
   final FantasyLeague league;
   final FantasyPlayer player;
   final String? clubIcon;
   final bool isMine;
+
+  /// Stellbare Uhr, nur für die Vorschau. **Sonst hängt das Bild am Kalender:**
+  /// Ob ein freier Spieler „Holen" oder „Antrag" anbietet, entscheidet der
+  /// Anpfiff seines Vereins — und die Vorschau baut feste Spieltage. Am
+  /// 04.09.2026 wurde ihr dritter Spieltag zum heutigen, der Spieler rutschte
+  /// auf den Waiver, und der Test fiel ohne jede Änderung am Code. Dieselbe
+  /// Lehre und dieselbe Lösung wie beim Free-Agency-Schirm: Eine Uhr, die man
+  /// stellen kann, ist die einzige Art, ein zeitabhängiges Bild fest
+  /// einzuchecken.
+  final DateTime? jetzt;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -288,7 +301,8 @@ class _PlayerProfileSheet extends ConsumerWidget {
             player: player,
             ownerId: null,
             onWaiver: onWaivers.contains(player.id),
-            aufWire: vereinAufWire(player.club, spiele, DateTime.now()),
+            aufWire: vereinAufWire(
+                player.club, spiele, jetzt ?? DateTime.now()),
             claimed: offen.any((c) => c.addPlayerId == player.id),
             myPlayers: [
               for (final r in roster)

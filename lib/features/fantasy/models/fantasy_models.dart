@@ -299,21 +299,40 @@ class RosterConfig {
 
   /// Prüft, ob eine Positionsverteilung eine gültige Startelf-Formation ist:
   /// Torwart exakt, Feldspieler in ihrer Spanne, Summe = [starters].
+  ///
+  /// **[torwartImKader] ist die einzige Ausnahme.** Wer keinen Torwart mehr
+  /// besitzt, lässt die Position leer und spielt mit zehn. Der Fall entsteht
+  /// nicht durch eine eigene Entscheidung: Verlässt der einzige Torwart die
+  /// Bundesliga, nimmt ihn der Abgangs-Lauf aus dem Kader (Migration 0117),
+  /// und ohne diese Ausnahme wäre danach **gar keine** Elf mehr gültig — der
+  /// Schirm stünde für immer auf „noch nicht vollständig" und der Manager
+  /// ginge ohne eigenes Zutun mit null Punkten in jeden Spieltag. Gemeldet
+  /// am 04.09.2026 an einem Manager, dessen Torwart nach Leeds gewechselt war.
+  ///
+  /// Die Ausnahme hängt am **Kader**, nicht an der Auswahl: Wer einen Torwart
+  /// hat, muss ihn aufstellen. Sonst wäre aus der Notlösung eine frei
+  /// wählbare Formation mit zehn Feldspielern geworden. **Dieselbe Regel
+  /// steht ein zweites Mal in `fantasy_set_lineup`** (Migration 0120) — wie
+  /// bei `tip_scoring.dart` ↔ SQL-View gilt: Wer sie hier ändert, ändert sie
+  /// dort mit.
   bool isValidFormation({
     required int gkCount,
     required int defCount,
     required int midCount,
     required int fwdCount,
-  }) =>
-      gkCount == gk &&
-      defCount >= defMin &&
-      defCount <= defMax &&
-      midCount >= midMin &&
-      midCount <= midMax &&
-      fwdCount >= fwdMin &&
-      fwdCount <= fwdMax &&
-      vierStuermerBrauchenVierAbwehr(defCount, fwdCount) &&
-      gkCount + defCount + midCount + fwdCount == starters;
+    bool torwartImKader = true,
+  }) {
+    final gkSoll = torwartImKader ? gk : 0;
+    return gkCount == gkSoll &&
+        defCount >= defMin &&
+        defCount <= defMax &&
+        midCount >= midMin &&
+        midCount <= midMax &&
+        fwdCount >= fwdMin &&
+        fwdCount <= fwdMax &&
+        vierStuermerBrauchenVierAbwehr(defCount, fwdCount) &&
+        gkCount + defCount + midCount + fwdCount == starters - (gk - gkSoll);
+  }
 
   /// Kurzschreibweise der Feldspieler-Formation, z. B. „4-4-2".
   String formationLabel({
