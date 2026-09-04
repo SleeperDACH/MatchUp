@@ -184,19 +184,32 @@ class PitchLinesPainter extends CustomPainter {
 /// **Satter, nicht bunter** (04.09.2026). Gemeldet als „das Feld sieht
 /// bisschen blass aus — können wir das upgraden, ohne es wieder bunt und
 /// knallig zu machen?". Die alte Leiter (`#24603A` … `#061B10`) hatte viel
-/// Grau im Grün; sie trägt jetzt in jeder Stufe etwas mehr Grün bei
-/// **gleicher Helligkeit**. Kein neuer Farbton, kein höherer Kontrast — nur
-/// weniger Grau. Die eigentliche Tiefe kommt aus Mähbahnen, Linien und
-/// Vignette im [PitchLinesPainter], also aus Weiß und Schwarz.
+/// Grau im Grün; sie trägt jetzt in jeder Stufe **mehr Grün und weniger Rot
+/// und Blau**. Die eigentliche Tiefe kommt aus Mähbahnen, Linien und Vignette
+/// im [PitchLinesPainter], also aus Weiß und Schwarz.
+///
+/// **Und sie ist dunkler als vorher, nicht heller.** Der erste Anlauf machte
+/// das Grün satt *und* hell (Grünkanal 96 → 107) — prompt kam „es wird mir
+/// vorne zu hell" zurück. Vorne ist oben, die Stürmerreihe, und dort saßen
+/// zwei Lichtquellen übereinander: der Kern dieses Verlaufs und die beiden
+/// Kegel des Painters, deren Mittelpunkte über der Oberkante liegen. Jeder
+/// Grünkanal liegt jetzt **unter** dem alten Wert.
+///
+/// **Der Lichtkern ist zum dritten Mal nach unten gewandert** (−0,62 → −0,35 →
+/// −0,10). Das ist kein Zufall, sondern die Eigenart dieses Feldes: Die
+/// Stürmer stehen oben, ihre Wappen sind das Hellste darauf, und ein
+/// Lichtkern über ihnen nimmt ihnen den Grund weg. In der Mitte (0) läge er
+/// wie eine Lampe im Raum; −0,10 hält die Richtung „von oben", ohne die
+/// oberste Reihe auszuleuchten.
 const pitchGradient = RadialGradient(
-  center: Alignment(0, -0.35),
+  center: Alignment(0, -0.10),
   radius: 1.05,
   colors: [
-    Color(0xFF1E6B3C),
-    Color(0xFF175C32),
-    Color(0xFF104725),
-    Color(0xFF083118),
-    Color(0xFF041D0E),
+    Color(0xFF175A31),
+    Color(0xFF124D29),
+    Color(0xFF0D3B1F),
+    Color(0xFF082915),
+    Color(0xFF04190D),
   ],
   stops: [0.0, 0.26, 0.5, 0.75, 1.0],
 );

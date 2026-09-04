@@ -2077,7 +2077,8 @@ schlechter als eine blasse.
 
 | Was | vorher | jetzt |
 |---|---|---|
-| Grün der Leiter | `#24603A` … `#061B10` | `#1E6B3C` … `#041D0E` |
+| Grün der Leiter | `#24603A` … `#061B10` | `#175A31` … `#04190D` |
+| Lichtkern | `Alignment(0, −0.35)` | `Alignment(0, −0.10)` |
 | Mähbahn | 3 % Weiß | **5,5 %** |
 | Feldlinien | 34 % Weiß | **44 %** |
 | Vignette | keine | 35 % Schwarz an den Ecken |
@@ -2089,6 +2090,20 @@ die sichtbare Mähbahn, die kräftigere Linienzeichnung und die abgedunkelten
 Ecken. Bei 8 % Bahnstärke kippt es in die andere Richtung: Dann sind es
 Streifen, die mit den Namen konkurrieren — auch das stand im Canvas
 nebeneinander, sonst hätte ich es geraten.
+
+**Der erste Anlauf machte das Grün satt *und* hell** (Grünkanal 96 → 107), und
+prompt kam *„es wird mir vorne zu hell"* zurück. Vorne ist oben, die
+Stürmerreihe — und dort saßen zwei Lichtquellen übereinander: der Kern des
+Verlaufs und die beiden Kegel des Painters, deren Mittelpunkte über der
+Oberkante liegen. Jeder Grünkanal liegt jetzt **unter** dem alten Wert; satter
+heißt mehr Grün *im Verhältnis*, nicht mehr Licht.
+
+**Der Lichtkern ist damit zum dritten Mal nach unten gewandert** (−0,62 →
+−0,35 → −0,10). Das ist kein Herumprobieren, sondern die Eigenart dieses
+Feldes: Die Stürmer stehen oben, ihre Wappen sind das Hellste darauf, und ein
+Lichtkern über ihnen nimmt ihnen den Grund weg. Genau in der Mitte (0) läge er
+wie eine Lampe im Raum — auch das stand im Canvas daneben; −0,10 hält die
+Richtung „von oben", ohne die oberste Reihe auszuleuchten.
 
 **Die Vignette sitzt im Painter, nicht an den Einbauorten.** Ein `CustomPaint`
 malt seinen Painter vor dem Kind; sie liegt damit unter Wappen und Namen und
