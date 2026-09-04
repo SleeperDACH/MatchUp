@@ -4851,6 +4851,22 @@ Zuständen keinen Kopf.
   Felder, anderer Einstiegspunkt in dieselben Daten. Drei Darstellungen
   derselben Liste waren zwei zu viel.
 
+  **Je Anstoßzeit ein Kopf, nicht je Spiel einer** (04.09.2026). Die Schleife
+  rechnete `lastDay` mit und benutzte es nirgends — beide Zweige ihres `if`
+  taten dasselbe, der Kopf wurde **immer** ausgegeben. In einer Vereinsliste
+  fiel das nie auf, weil dort je Datum ohnehin nur eine Partie steht; auf dem
+  Spieltag der Liga-Übersicht standen neun Köpfe über neun Spielen, fünf davon
+  Wort für Wort gleich. Gemeldet als *„Das ist anstrengend, wenn du immer das
+  Datum dazwischen hast."*
+
+  Gruppiert wird auf die **Minute**; die Uhrzeit wandert damit in den Kopf, wo
+  sie einmal statt fünfmal steht, und in der Zeile hält ein gedämpfter Strich
+  die Spalte besetzt — sonst liefen die Namen beider Mannschaften an die
+  Ränder auseinander. Dieselbe Entscheidung wie im Live-Tab und im Tippspiel.
+  **Die Gegenprobe steht als eigener Test daneben:** Eine Vereins- oder
+  Favoritenliste ändert sich nicht, weil dort jede Partie ihren eigenen Anstoß
+  trägt und damit weiter ihren eigenen Kopf bekommt.
+
 **Die Zeilen waren „trostlos" — und das lag nicht an den Zeilen, sondern an
 dem, was sie nicht sagten.** Zwischen dem Duell-Kasten oben und dem Spieltag
 unten, beides Bereiche mit Fläche und Inhalt, lagen fünf nackte Zeilen mit je

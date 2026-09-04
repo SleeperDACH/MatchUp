@@ -61,21 +61,38 @@ List<Widget> spielplanAbschnitte(List<TeamFixture> fixtures) {
   ];
 }
 
+/// Spiele als Liste, **je Anstoßzeit ein Kopf**.
+///
+/// Vorher bekam **jedes** Spiel seinen eigenen Kopf: Die Schleife rechnete
+/// zwar `lastDay` mit, benutzte es aber nirgends, und beide Zweige des `if`
+/// taten dasselbe. In einer Vereinsliste fiel das nicht auf — dort steht je
+/// Datum ohnehin nur eine Partie. Auf dem Spieltag der Liga-Übersicht standen
+/// damit neun Köpfe über neun Spielen, fünfmal davon derselbe: „Sa, 6. Sept,
+/// Bundesliga, 2. Spieltag". Gemeldet als *„Das ist anstrengend, wenn du immer
+/// das Datum dazwischen hast."*
+///
+/// Jetzt zählt die **Anstoßzeit auf die Minute**: Alle Spiele, die zugleich
+/// beginnen, stehen unter einem Kopf. Dieselbe Entscheidung wie im Live-Tab
+/// und im Tippspiel — und die Uhrzeit wandert damit aus der Zeile in den Kopf,
+/// wo sie einmal statt fünfmal steht.
+///
+/// Für eine Vereins- oder Favoritenliste ändert sich dadurch nichts: Dort
+/// trägt jede Partie ihren eigenen Anstoß, also bekommt jede weiterhin ihren
+/// eigenen Kopf.
 List<Widget> fixturesWithDateHeaders(List<TeamFixture> list) {
   final out = <Widget>[];
-  DateTime? lastDay;
+  DateTime? letzterAnstoss;
   for (var i = 0; i < list.length; i++) {
     final f = list[i];
     final lt = f.kickoff.toLocal();
-    final day = DateTime(lt.year, lt.month, lt.day);
-    if (i > 0 && (lastDay == null || lastDay != day)) {
-      out.add(const _Trennlinie());
-    } else if (i > 0) {
-      out.add(const _Trennlinie());
+    final anstoss = DateTime(lt.year, lt.month, lt.day, lt.hour, lt.minute);
+    final neuerBlock = letzterAnstoss == null || letzterAnstoss != anstoss;
+    if (i > 0) out.add(const _Trennlinie());
+    if (neuerBlock) {
+      out.add(FixtureDateHeader(date: anstoss, fixture: f, mitZeit: true));
+      letzterAnstoss = anstoss;
     }
-    out.add(FixtureDateHeader(date: day, fixture: f));
-    lastDay = day;
-    out.add(TeamFixtureCard(fixture: f));
+    out.add(TeamFixtureCard(fixture: f, zeitImKopf: true));
   }
   return out;
 }
@@ -97,12 +114,22 @@ class _Trennlinie extends StatelessWidget {
 /// Zeile über einem Spiel: Datum, Wettbewerb, Spieltag — alles, was **nicht**
 /// die Partie ist, an einem Ort.
 class FixtureDateHeader extends StatelessWidget {
-  const FixtureDateHeader({super.key, required this.date, this.fixture});
+  const FixtureDateHeader({
+    super.key,
+    required this.date,
+    this.fixture,
+    this.mitZeit = false,
+  });
 
   final DateTime date;
 
   /// Liefert Wettbewerb und Spieltag. Ohne Spiel bleibt es beim Datum.
   final TeamFixture? fixture;
+
+  /// Setzt die **Anstoßzeit** neben das Datum. Sie steht dann nicht mehr in
+  /// jeder Zeile darunter — bei fünf Samstagsspielen war das fünfmal
+  /// dieselbe Zahl, die die Zeilen nicht unterscheidet.
+  final bool mitZeit;
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +149,17 @@ class FixtureDateHeader extends StatelessWidget {
             label[0].toUpperCase() + label.substring(1),
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           ),
+          if (mitZeit) ...[
+            const SizedBox(width: 7),
+            Text(
+              DateFormat('HH:mm').format(date),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
           if (zusatz != null) ...[
             const SizedBox(width: 7),
             Flexible(
@@ -208,7 +246,18 @@ String? matchdayLabel(TeamFixture f) {
 /// Liste zeigen, fluchteten dadurch nicht miteinander. Was nicht die Partie
 /// ist, steht jetzt in der Zeile darüber ([FixtureDateHeader]).
 class TeamFixtureCard extends StatelessWidget {
-  const TeamFixtureCard({super.key, required this.fixture});
+  const TeamFixtureCard({
+    super.key,
+    required this.fixture,
+    this.zeitImKopf = false,
+  });
+
+  /// Steht der Anstoß schon im Kopf des Blocks, trägt die Zeile ihn nicht noch
+  /// einmal. Statt der Zahl hält ein gedämpfter Strich die Spalte besetzt —
+  /// er ist in dieser App ohnehin das Zeichen für „hat noch nicht gespielt",
+  /// und ohne ihn liefen die Namen beider Mannschaften an die Ränder
+  /// auseinander.
+  final bool zeitImKopf;
   final TeamFixture fixture;
 
   @override
@@ -261,6 +310,15 @@ class TeamFixtureCard extends StatelessWidget {
                               ? MatchUpColors.red
                               : scheme.onSurfaceVariant,
                           fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      )
+                    else if (zeitImKopf)
+                      Text(
+                        '–',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface.withValues(alpha: 0.28),
                         ),
                       )
                     else
