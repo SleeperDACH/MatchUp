@@ -59,6 +59,13 @@ void main() {
       1,
       'Derselbe Block im Trade-Schirm, aus demselben Grund.'
     ),
+    'app/widgets/navi_kapsel.dart': (
+      1,
+      'Der aktive Reiter in der Navi-Kapsel — ein Zustand, und zwar derselbe '
+          'helle, den `PillChip` und `SegmentedTabBar` für „gewählt" '
+          'benutzen. Die Kapsel selbst trägt ihre eigene Kante über '
+          '`LiquidGlass` und ist keine Karte.'
+    ),
     'features/fantasy/ui/spieler_kachel.dart': (
       1,
       'Auswahl-Hervorhebung der Spielerkachel — ein Zustand.'

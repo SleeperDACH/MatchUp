@@ -16,6 +16,7 @@ class LiquidGlass extends StatelessWidget {
     this.padding,
     this.tintOpacity,
     this.borderOpacity,
+    this.tintColor,
   });
 
   final Widget child;
@@ -30,12 +31,21 @@ class LiquidGlass extends StatelessWidget {
   /// Kleiner setzen, wenn die Fläche zurücktreten soll (Navi-Leiste).
   final double? borderOpacity;
 
+  /// Farbe der Grundtönung; ohne Angabe Weiß.
+  ///
+  /// **Schwarz ist die richtige Wahl über fremdem Inhalt.** Eine aufhellende
+  /// Tönung setzt voraus, dass dahinter etwas Dunkles liegt — über einem
+  /// hellen Nachrichtenbild wird aus derselben Schicht grauer Matsch, und
+  /// helle Schrift darauf verliert ihren Kontrast. Verdunkeltes Glas hält den
+  /// Untergrund unten, egal was er zeigt.
+  final Color? tintColor;
+
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     // Auf Dunkel eine aufhellende weiße Tönung, auf Hell eine weiße Milchglas-
     // Schicht — beides so, dass der Untergrund durchschimmert.
-    final tint = (dark ? Colors.white : Colors.white)
+    final tint = (tintColor ?? Colors.white)
         .withValues(alpha: tintOpacity ?? (dark ? 0.10 : 0.55));
     final radius = BorderRadius.circular(borderRadius);
 

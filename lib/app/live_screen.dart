@@ -10,7 +10,7 @@ import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'club_screen.dart';
 import 'league_overview_screen.dart';
-import 'main_shell.dart' show navBarBottomInset, navBarHeight;
+import 'widgets/navi_kapsel.dart' show navBarBottomInset, navBarHeight;
 import 'match_detail_screen.dart';
 import 'theme.dart';
 import 'widgets/league_logo.dart';

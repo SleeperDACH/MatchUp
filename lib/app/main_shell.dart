@@ -4,23 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/favorites/ui/favorites_tab.dart';
 import 'home_screen.dart';
 import 'live_screen.dart';
-import 'theme.dart';
-import 'typografie.dart';
 import 'wiedereinstieg.dart';
-import 'widgets/liquid_glass.dart';
-
-/// Maße der schwebenden Navi-Kapsel.
-///
-/// Öffentlich, weil `extendBody: true` die Leiste über den Body legt: Screens,
-/// deren Inhalt fest unten endet (Live-Tab), müssen den Platz selbst frei
-/// halten und brauchen dafür dieselben Zahlen. Vorher standen sie doppelt im
-/// Code — eine Änderung hier hätte den Abstand dort still verschoben.
-const double navBarHeight = 60;
-
-/// Mindestabstand der Kapsel zur Bildschirmunterkante. `SafeArea(minimum:)`
-/// nimmt davon und dem Geräte-Sicherheitsbereich das **Maximum** — auf einem
-/// Gerät mit Home-Indikator greift also dessen Wert, nicht dieser hier.
-const double navBarBottomInset = 10;
+import 'widgets/navi_kapsel.dart';
 
 /// App-Gerüst mit unterer Navigationsleiste: Home · Live · Favoriten. Das
 /// Profil ist über den Avatar oben links im Home-Tab erreichbar (kein eigener
@@ -75,105 +60,9 @@ class _MainShellState extends ConsumerState<MainShell>
       // Glas-Leiste greift auf den Inhalt (nicht nur den Grund).
       extendBody: true,
       body: IndexedStack(index: _index, children: _tabs),
-      bottomNavigationBar: _GlassNavBar(
+      bottomNavigationBar: NaviKapsel(
         index: _index,
         onSelected: (i) => setState(() => _index = i),
-      ),
-    );
-  }
-}
-
-/// Schwebende „Liquid Glass"-Navigationsleiste: eine abgerundete Glaskapsel
-/// mit Abstand zu den Rändern, echtem Hintergrund-Blur und dezentem Glanz.
-///
-/// Bewusst zurückhaltend gehalten — die Leiste ist Navigation, nicht Inhalt:
-/// keine gefüllte Auswahl-Pille (die grüne Kapsel war das lauteste Element im
-/// Bild), stattdessen trägt allein die Farbe von Symbol und Beschriftung den
-/// aktiven Zustand. Dazu eine flachere Kapsel, schwächere Tönung und ein
-/// feinerer Rand, damit der Inhalt darüber die Aufmerksamkeit behält.
-class _GlassNavBar extends StatelessWidget {
-  const _GlassNavBar({required this.index, required this.onSelected});
-
-  final int index;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    // **Aktiv ist Weiß, nicht Grün** (auf Ansage, 03.09.2026). Grün heißt in
-    // dieser App „hier läuft etwas" — der Reiter, auf dem man gerade steht,
-    // läuft nicht. Damit der Unterschied trotzdem trägt, ist der inaktive
-    // Zustand deutlicher gedämpft als vorher (0,45 statt 0,55) und die aktive
-    // Beschriftung fetter: Der Kontrast kommt aus Helligkeit und Gewicht statt
-    // aus einer zweiten Farbe.
-    final inaktiv = MatchUpColors.snow.withValues(alpha: 0.45);
-    const aktiv = MatchUpColors.snow;
-
-    return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(20, 0, 20, navBarBottomInset),
-      child: LiquidGlass(
-        borderRadius: 24,
-        blur: 24,
-        // Schwächer als der Standard (0.10): die Kapsel soll sich vom Grund
-        // abheben, ohne als helle Fläche zu lesen.
-        tintOpacity: 0.06,
-        borderOpacity: 0.09,
-        child: NavigationBarTheme(
-          data: NavigationBarThemeData(
-            backgroundColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            // Keine gefüllte Pille mehr hinter dem aktiven Symbol.
-            indicatorColor: Colors.transparent,
-            indicatorShape: const StadiumBorder(),
-            overlayColor: WidgetStatePropertyAll(
-                MatchUpColors.snow.withValues(alpha: 0.06)),
-            iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
-                  size: 23,
-                  color: states.contains(WidgetState.selected) ? aktiv : inaktiv,
-                )),
-            // **Aus dem Theme abgeleitet, nicht neu gebaut.** Ein blankes
-            // `TextStyle` in einem Theme-Feld ersetzt den aufgelösten Stil und
-            // verliert dabei die Schriftfamilie — die Leiste stand damit in
-            // der Systemschrift mitten in einer App aus Rajdhani. Vierter Fall
-            // derselben Falle nach Chips, Reitern und Fantasy-Einstellungen.
-            labelTextStyle: WidgetStateProperty.resolveWith(
-              (states) {
-                final aus = states.contains(WidgetState.selected);
-                return Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: Schrift.winzig,
-                      fontWeight: aus ? FontWeight.w800 : FontWeight.w500,
-                      letterSpacing: 0.1,
-                      color: aus ? aktiv : inaktiv,
-                    );
-              },
-            ),
-          ),
-          child: NavigationBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            height: navBarHeight,
-            selectedIndex: index,
-            onDestinationSelected: onSelected,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.sports_soccer_outlined),
-                selectedIcon: Icon(Icons.sports_soccer),
-                label: 'Live',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.star_border),
-                selectedIcon: Icon(Icons.star),
-                label: 'Favoriten',
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

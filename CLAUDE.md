@@ -1533,6 +1533,75 @@ bringt niemandem etwas außer der Gewohnheit, ihn zu übergehen. Die Bilder sind
 zum Ansehen da; was gehalten werden muss, steht als **Messung** daneben (etwa
 die Zeilenhöhe der Kartennamen) und läuft bei jedem `flutter test`.
 
+## Die untere Navi-Kapsel
+
+Gemeldet als „die untere Leiste ist meiner Meinung nach noch schlecht designed,
+kann man da noch was rausholen?". Drei Befunde, und der erste war der, den man
+nur über fremdem Inhalt sieht:
+
+- **Das Glas hellte auf, statt zu verdunkeln.** `LiquidGlass` tönte auf Dunkel
+  mit **Weiß** — über dem schwarzen Grund ein Grauschleier, über dem
+  Nachrichtenbild des Startbildschirms grauer Matsch, und genau dort verloren
+  die ruhenden Ziele ihren Kontrast. **Die Leiste liegt über allem, was ein Tab
+  gerade zeigt** (`extendBody`); sie kann sich nicht darauf verlassen, dass der
+  Untergrund dunkel ist. Sie tönt jetzt mit Schwarz (0,58) und hält ihn unten,
+  egal was er zeigt. `LiquidGlass` hat dafür ein `tintColor` bekommen — der
+  Anmeldeschirm benutzt weiter Weiß, dort liegt nichts dahinter.
+- **Sie war eine Leiste, keine Kapsel.** Über die volle Breite gezogen standen
+  drei Ziele mit großen Lücken dazwischen; bei drei Zielen füllt nichts diese
+  Breite. Sie ist jetzt nur so breit wie ihr Inhalt und steht mittig — ein
+  Bedienelement, das schwebt, statt den Inhalt unten abzuschneiden.
+- **Den aktiven Zustand trug allein die Helligkeit.** Über einem bunten Bild
+  trennt 0,45-Weiß von 1,0-Weiß kaum. Der aktive Reiter trägt jetzt die
+  **helle Auswahlmarke**, die in dieser App überall „gewählt" heißt
+  (`PillChip`, `SegmentedTabBar`, Wappenfilter): helle Fläche, hellere Kante,
+  Schrift in Snow.
+
+**Ein erster Versuch mit einer dunklen Mulde ging unter.** Naheliegend wäre,
+den aktiven Reiter im dunklen Glas noch weiter abzusenken — Licht wegzunehmen
+trägt aber nicht, wo ohnehin wenig ist. Im Entwurfsbild war die Mulde schlicht
+nicht zu sehen.
+
+**Und weil die Marke jetzt den Zustand trägt, dürfen die Ruhenden lesbar sein**
+(0,45 → 0,62). Vorher galt das Gegenteil: Je heller die ruhenden Ziele, desto
+schwächer das Signal — „Live" und „Favoriten" mussten fast verschwinden, damit
+man „Home" fand.
+
+**Kein Grün**, unverändert: Die gefüllte grüne Pille war einmal das lauteste
+Element im Bild, und der Reiter, auf dem man steht, läuft nicht.
+
+### Was der selbst gebaute Ersatz für `NavigationBar` kostet
+
+Die Kapsel ist kein Material-`NavigationBar` mehr — das füllt immer die Breite.
+Zwei Dinge, die es umsonst mitbrachte und die man von Hand nachziehen muss,
+**und beide waren im ersten Wurf falsch**:
+
+- **Die Tastfläche war 36,6 Punkte hoch statt 44.** Ein `Row` zentriert seine
+  Kinder in ihrer *natürlichen* Höhe; das Ziel war damit nur so hoch wie Symbol
+  und Wort. Sichtbar ist der Unterschied nicht, fühlbar schon —
+  `CrossAxisAlignment.stretch` behebt es.
+- **`ExcludeSemantics` um den `InkWell` verschluckte dessen Tipp-Aktion.** Es
+  soll nur verhindern, dass die Vorlesehilfe das Wort zweimal liest (einmal als
+  Beschriftung, einmal als Text darin) — außen gesetzt kannte VoiceOver drei
+  benannte Schaltflächen, die sich nicht bedienen ließen. Es gehört **innen**
+  um den Inhalt, nicht außen um den Knopf.
+
+Dazu eine Layout-Falle, die erst am Gerät zugeschlagen hätte: **Im
+`bottomNavigationBar`-Platz misst das `Scaffold` mit lockeren Constraints.** Ein
+`Align` ohne Höhenfaktor nimmt sich davon das Maximum, und die Leiste wäre
+bildschirmhoch geworden. Zentriert wird deshalb über eine `Row`, die die Höhe
+ihres Kindes annimmt.
+
+Die Kapsel steht dafür als `NaviKapsel` in `app/widgets/navi_kapsel.dart` — sie
+lag vorher privat in `main_shell.dart` und war damit **das einzige Element der
+App-Hülle ohne Vorschau**. `test/navileiste_vorschau_test.dart` zeigt sie
+sechsmal: jeden der drei Reiter aktiv, jeweils über schwarzem Grund **und über
+einem hellen Bild**. Der zweite Untergrund ist der ganze Zweck — über Schwarz
+allein sah auch die alte Fassung passabel aus. Daneben laufen drei Messungen
+bei jedem `flutter test`: die Vorlese-Namen samt Auswahlzustand, die 44 Punkte
+Tastfläche und die Übereinstimmung von `navBarHeight` mit der tatsächlichen
+Höhe (der Live-Tab hält den Platz selbst frei und liest dieselbe Zahl).
+
 ## Fantasy-Einstellungen
 
 Kein eigener Canvas — der Schirm bekommt die Sprache, die die anderen fünf
