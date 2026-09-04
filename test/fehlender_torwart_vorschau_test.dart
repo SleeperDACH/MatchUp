@@ -51,12 +51,14 @@ FantasyPlayer _p(String id, String name, PlayerPosition pos, String club) =>
       birthDate: DateTime(1998, 5, 4),
     );
 
-MatchupSideData _seite(List<FantasyPlayer> elf) => MatchupSideData(
+MatchupSideData _seite(List<FantasyPlayer> elf,
+        {List<FantasyPlayer> bank = const []}) =>
+    MatchupSideData(
       elf,
-      const [],
-      {for (final p in elf) p.id: 4.5},
+      bank,
+      {for (final p in [...elf, ...bank]) p.id: 4.5},
       elf.length * 4.5,
-      {for (final p in elf) p.id},
+      {for (final p in [...elf, ...bank]) p.id},
     );
 
 /// Zehn Feldspieler, kein Torwart — Lewins Fall.

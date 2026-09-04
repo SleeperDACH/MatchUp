@@ -2629,6 +2629,29 @@ Auskunft.
 Nachgemessen gegen die Produktions-DB (mit Rollback): Ein fälliger Trade wird
 ausgeführt und die Spieler wechseln, ein noch nicht fälliger bleibt unangetastet.
 
+### Die Bank steht immer da
+
+Gemeldet: *„Die Bank beim MatchUp soll nicht durch so einen Dropdown angezeigt
+werden, sondern immer. Allerdings so, dass die Spieler so klein bleiben, wie
+sie es jetzt sind. Also keine vollen Boxen."*
+
+Sie steckte in einer `ExpansionTile` — zugeklappt, bis jemand darauf tippte,
+und beim nächsten Öffnen des MatchUps wieder. Wer wissen wollte, wen der Gegner
+noch draußen hat, musste jedes Mal von vorn anfangen. Für eine Auskunft, die
+man beim Vergleichen ohnehin braucht, ist ein Tipp einer zu viel.
+
+**Beide Hälften des Wunsches gehören zusammen: sichtbar und leise.** Die
+Zeilen bleiben, wie sie waren — Positionspunkt, 20er-Wappen, gekürzter Name,
+Punktzahl, zwei Spalten nebeneinander. Bekäme die Bank die große
+Gegenüberstellung der Startelf (Wappen an den Außenkanten, 16er-Namen), hätte
+der Schirm zwei gleich laute Abschnitte, und die Elf verlöre ihren Vorrang.
+
+Der Kopf ist derselbe wie bei den Positionsblöcken darüber (Punkt, Wort), nur
+in Grau: Die Bank ist keine Position, sondern deren Rest. Gehalten von
+`test/matchup_bank_vorschau_test.dart`, das ausdrücklich prüft, dass **keine**
+`ExpansionTile` mehr im Baum steht und die Bankspieler ohne einen einzigen Tipp
+zu finden sind.
+
 ### Wer noch nicht gespielt hat, führt nicht
 
 Gemeldet: Im MatchUp hatte ein Spieler eine Umrahmung, der **noch gar nicht

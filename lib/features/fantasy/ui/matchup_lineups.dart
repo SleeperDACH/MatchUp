@@ -561,7 +561,19 @@ String shortPlayerName(String name) {
   return parts.length > 1 ? parts.last : name;
 }
 
-/// Ausklappbare Bank beider Seiten (zählt nicht für die Wertung).
+/// Die Bank beider Seiten, die nicht für die Wertung zählt —
+/// **immer sichtbar, nicht hinter einem Ausklapper**.
+///
+/// Sie steckte in einer `ExpansionTile`, war also zugeklappt, bis jemand darauf
+/// tippte. Wer wissen wollte, wen der Gegner noch draußen hat, musste das erst
+/// aufmachen — und beim nächsten Öffnen des MatchUps wieder. Gemeldet als „die
+/// Bank soll nicht durch so einen Dropdown angezeigt werden, sondern immer".
+///
+/// **Die Zeilen bleiben klein** (ausdrücklich so gewünscht: „keine vollen
+/// Boxen"): Positionspunkt, 20er-Wappen, gekürzter Name, Punktzahl — zwei
+/// Spalten nebeneinander. Die große Gegenüberstellung mit Wappen an den
+/// Außenkanten gehört der Startelf; die Bank ist die Auskunft daneben und darf
+/// nicht so laut sein wie sie.
 class _BenchSection extends StatelessWidget {
   const _BenchSection({
     required this.home,
@@ -586,43 +598,59 @@ class _BenchSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-        title: Text(
-          'Bank',
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Kopf wie bei den Positionsblöcken darüber — grauer Punkt, weil die
+        // Bank keine Position ist, sondern deren Rest.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
             children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Bank',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _column(
+                context,
+                homeName,
+                home.bench,
+                home.points,
+                homeMine,
+              ),
+            ),
+            if (awayName != null && away != null)
               Expanded(
                 child: _column(
                   context,
-                  homeName,
-                  home.bench,
-                  home.points,
-                  homeMine,
+                  awayName!,
+                  away!.bench,
+                  away!.points,
+                  awayMine,
                 ),
               ),
-              if (awayName != null && away != null)
-                Expanded(
-                  child: _column(
-                    context,
-                    awayName!,
-                    away!.bench,
-                    away!.points,
-                    awayMine,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 
