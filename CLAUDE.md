@@ -3944,6 +3944,35 @@ Feldspieler speichern, ein Manager **mit** Torwart bekommt weiterhin
 „Aufstellung braucht genau 11 Spieler"; der Lauf trägt genau eine Elf ein und
 der zweite Lauf null. Danach ausgespielt, und die Elf steht.
 
+**Und die leere Position war nicht zu sehen.** Sofort danach gemeldet: *„Aber
+dass der TW leer ist, wird nicht angezeigt."* In der Duell-Ansicht
+(`matchup_lineups.dart`) war die unbesetzte Zelle ein blanker
+`SizedBox(height: 60)`, und stand auf **beiden** Seiten kein Torwart,
+verschwand der ganze Positionsblock über `if (hs.isEmpty && as.isEmpty)`. Wer
+draufschaute, sah eine ordentliche Aufstellung mit einer Reihe weniger.
+
+**Zum vierten Mal derselbe Fehler in diesem Projekt: Ein Zustand „hier fehlt
+jemand" sah aus wie „alles in Ordnung"** — nach dem leeren Feld im
+Draft-Brett, dem Phantom in der Elf und dem stillen Auto-Speichern.
+
+Jetzt steht dort `_FehlendePosition`: goldener Kreis mit Ausrufezeichen, „Kein
+Torwart", darunter „Position unbesetzt". Gold, weil es kein Fehler ist,
+sondern etwas, das noch zu tun ist — dieselbe Farbe wie „Aufstellung · Noch
+nicht gestellt" auf der Liga-Übersicht.
+
+**Die Unterscheidung, auf die es dabei ankommt:** Eine leere Zelle in der
+Abwehr-, Mittelfeld- oder Sturmreihe heißt **nicht**, dass dort jemand fehlt —
+sie heißt, dass die Gegenseite eine andere Formation spielt (4-4-2 gegen
+3-5-2). Eine Warnung wäre dort schlicht falsch. Nur der Torwart hat eine feste
+Zahl (`roster.gk`); die Blöcke bekommen sie als `pflicht` gereicht, alle
+anderen `null`. Die Vorschau `fehlender_torwart.png` stellt genau diese drei
+Fälle nebeneinander, und die Messungen daneben halten sie fest: dreimal „Kein
+Torwart", kein einziges „Kein Abwehrspieler".
+
+**Der Aufstellungs-Editor war nicht betroffen** — er zeigt leere Plätze seit
+jeher als `_LeererPlatz` mit „+". Der Fehler saß allein dort, wo man **fremde**
+Aufstellungen ansieht, und genau dort ist er gemeldet worden.
+
 **Nebenbefund, unabhängig davon:** `spielerprofil_vorschau_test` fiel an
 diesem Tag ohne jede Codeänderung um. Der dritte Spieltag seiner festen
 Fixtures war der 04.09. — also *heute* —, der freie Spieler rutschte damit auf

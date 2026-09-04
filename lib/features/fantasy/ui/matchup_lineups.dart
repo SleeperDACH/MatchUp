@@ -195,6 +195,11 @@ class MatchupLineups extends ConsumerWidget {
           ..._positionBlock(
             context,
             pos: pos,
+            // **Nur der Torwart hat eine feste Zahl.** Abwehr, Mittelfeld und
+            // Sturm stehen in Spannen — dort heißt eine leere Zelle bloß, dass
+            // die andere Seite eine andere Formation spielt, und das ist kein
+            // Mangel. Beim Torwart heißt sie: Es ist keiner da.
+            pflicht: pos == PlayerPosition.gk ? league.roster.gk : null,
             home: home,
             away: away,
             homeMine: homeMine,
@@ -228,6 +233,7 @@ class MatchupLineups extends ConsumerWidget {
   List<Widget> _positionBlock(
     BuildContext context, {
     required PlayerPosition pos,
+    required int? pflicht,
     required MatchupSideData home,
     required MatchupSideData? away,
     required bool homeMine,
@@ -239,9 +245,21 @@ class MatchupLineups extends ConsumerWidget {
   }) {
     final hs = home.startersAt(pos);
     final as = away?.startersAt(pos) ?? const <FantasyPlayer>[];
-    if (hs.isEmpty && as.isEmpty) return const [];
+
+    // **Fehlt eine Pflichtposition, ist das der Inhalt der Zeile.** Verlässt
+    // der einzige Torwart die Bundesliga, nimmt ihn der Abgangs-Lauf aus dem
+    // Kader (0117) und die Elf hat nur zehn Mann (0120). Vorher blieb davon
+    // nichts übrig: Die leere Zelle war ein `SizedBox` und der ganze Block
+    // verschwand, wenn auf beiden Seiten keiner stand. **Ein Zustand „hier
+    // fehlt jemand" sah aus wie „alles in Ordnung"** — derselbe Fehler wie
+    // beim leeren Feld im Draft-Brett und beim Phantom in der Elf.
+    final fehltHeim = pflicht != null && hs.length < pflicht;
+    final fehltGast = pflicht != null && away != null && as.length < pflicht;
+
+    if (hs.isEmpty && as.isEmpty && !fehltHeim && !fehltGast) return const [];
     final rows = <Widget>[];
-    final n = hs.length > as.length ? hs.length : as.length;
+    var n = hs.length > as.length ? hs.length : as.length;
+    if (pflicht != null && n < pflicht) n = pflicht;
     for (var i = 0; i < n; i++) {
       final h = i < hs.length ? hs[i] : null;
       final a = i < as.length ? as[i] : null;
@@ -251,6 +269,8 @@ class MatchupLineups extends ConsumerWidget {
         _PlayerRow(
           home: h,
           away: a,
+          homeFehlt: h == null && fehltHeim ? pos : null,
+          awayFehlt: a == null && fehltGast ? pos : null,
           homePts: hp,
           awayPts: ap,
           // **Angepfiffen, nicht „hat Statistiken".** Vorher entschied das
@@ -313,10 +333,18 @@ class _PlayerRow extends StatelessWidget {
     required this.awayMine,
     required this.clubIcons,
     required this.onTap,
+    this.homeFehlt,
+    this.awayFehlt,
   });
 
   final FantasyPlayer? home;
   final FantasyPlayer? away;
+
+  /// Gesetzt, wenn an dieser Stelle eine **Pflichtposition** unbesetzt ist —
+  /// heute nur der Torwart. Ohne die Angabe bleibt eine leere Zelle leer:
+  /// Dort spielt die andere Seite bloß eine andere Formation.
+  final PlayerPosition? homeFehlt;
+  final PlayerPosition? awayFehlt;
   final double? homePts;
   final double? awayPts;
 
@@ -363,6 +391,7 @@ class _PlayerRow extends StatelessWidget {
               gespielt: homeGespielt,
               spiel: homeSpiel,
               start: true,
+              fehltPos: homeFehlt,
             ),
           ),
           const SizedBox(width: 8),
@@ -376,6 +405,7 @@ class _PlayerRow extends StatelessWidget {
               gespielt: awayGespielt,
               spiel: awaySpiel,
               start: false,
+              fehltPos: awayFehlt,
             ),
           ),
         ],
@@ -392,10 +422,14 @@ class _PlayerRow extends StatelessWidget {
     required bool gespielt,
     required NaechstesSpiel? spiel,
     required bool start,
+    PlayerPosition? fehltPos,
   }) {
     final scheme = Theme.of(context).colorScheme;
     if (player == null) {
-      return const SizedBox(height: 60);
+      // Ohne [fehltPos] ist die Zelle nur die Gegenseite einer anderen
+      // Formation — dort fehlt nichts, dort steht bloß niemand.
+      if (fehltPos == null) return const SizedBox(height: 60);
+      return _FehlendePosition(pos: fehltPos);
     }
     final pos = positionColor(player.position);
     final ptsBox = Container(
@@ -743,6 +777,81 @@ class _AnstossHinweis extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// **Eine Pflichtposition, die niemand besetzt.**
+///
+/// Sie entsteht nicht durch eine Entscheidung: Verlässt der einzige Torwart
+/// die Bundesliga, nimmt ihn der Abgangs-Lauf aus dem Kader (Migration 0117),
+/// und die Elf hat von da an zehn Mann (0120). Vorher war davon in der
+/// Duell-Ansicht **nichts** zu sehen — die Zelle war ein leerer `SizedBox`,
+/// und stand auf beiden Seiten keiner, verschwand der ganze Block. Wer
+/// draufschaute, sah eine ordentliche Aufstellung mit einer Reihe weniger.
+///
+/// Gold, nicht Rot: Es ist kein Fehler, sondern etwas, das noch zu tun ist —
+/// dieselbe Farbe wie „Aufstellung · Noch nicht gestellt" auf der
+/// Liga-Übersicht.
+class _FehlendePosition extends StatelessWidget {
+  const _FehlendePosition({required this.pos});
+
+  final PlayerPosition pos;
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFFFC83D);
+    return SizedBox(
+      height: 60,
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: gold.withValues(alpha: 0.12),
+              border: Border.all(color: gold.withValues(alpha: 0.55)),
+            ),
+            child: const Icon(Icons.priority_high, size: 17, color: gold),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  // **Nicht `pos.label`.** Das ist „Tor", und „Kein Tor" wäre
+                  // in einer Fußball-App die denkbar falscheste Auskunft.
+                  switch (pos) {
+                    PlayerPosition.gk => 'Kein Torwart',
+                    PlayerPosition.def => 'Kein Abwehrspieler',
+                    PlayerPosition.mid => 'Kein Mittelfeldspieler',
+                    PlayerPosition.fwd => 'Kein Stürmer',
+                  },
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: Schrift.koerperKlein,
+                    fontWeight: FontWeight.w700,
+                    color: gold,
+                  ),
+                ),
+                Text(
+                  'Position unbesetzt',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: Schrift.klein,
+                    color: gold.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
