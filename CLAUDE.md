@@ -2079,7 +2079,7 @@ schlechter als eine blasse.
 |---|---|---|
 | Grün der Leiter | `#24603A` … `#061B10` | `#175A31` … `#04190D` |
 | Lichtkern | `Alignment(0, −0.35)` | `Alignment(0, −0.10)` |
-| Mähbahn | 3 % Weiß | **5,5 %** |
+| Mähbahn | 3 % Weiß | **18 % Schwarz** |
 | Feldlinien | 34 % Weiß | **44 %** |
 | Vignette | keine | 35 % Schwarz an den Ecken |
 
@@ -2090,6 +2090,25 @@ die sichtbare Mähbahn, die kräftigere Linienzeichnung und die abgedunkelten
 Ecken. Bei 8 % Bahnstärke kippt es in die andere Richtung: Dann sind es
 Streifen, die mit den Namen konkurrieren — auch das stand im Canvas
 nebeneinander, sonst hätte ich es geraten.
+
+**Die Mähbahn dunkelt ab, sie hellt nicht auf — und das war der eigentliche
+Fehler.** Sie stand erst auf 3 % Weiß, dann auf 5,5 %; zurück kam *„ich sehe da
+keinen Unterschied"*. Zu Recht: Ein paar Prozent Weiß auf dunklem Grün liegen
+unter der Wahrnehmungsschwelle. Der Denkfehler war größer als die Zahl —
+**Textur über Aufhellen zu bauen**, während zweimal gemeldet worden war, dass
+es zu hell wird. Schwarz gibt dem Rasen Struktur und nimmt ihm dabei Licht,
+statt welches hinzuzufügen; 18 % sind deutlich sichtbar, ohne dass ein einziger
+Pixel heller wird.
+
+**Und die Lehre über den Rasen hinaus: Textur beurteilt man im Ausschnitt, nie
+im verkleinerten Gesamtbild.** Ich hatte den Entwurfs-Canvas auf ein Drittel
+skaliert angesehen; dort schien die helle Bahn zu tragen. Am Gerät, in voller
+Auflösung, war sie nicht da. Ein Golden ist erst dann eine Urteilsgrundlage,
+wenn man ihn in der Größe ansieht, in der die Sache wirkt — bei einer 5-%-Tönung
+heißt das 1:1. Dasselbe gilt für den Gegenbeweis: Dass die Änderung am Gerät
+**ankam**, war über die Pixelwerte des Screenshots in einer Minute belegt
+(oben 42/101/65 → 33/75/50); die Frage war nie, ob sie da ist, sondern ob man
+sie sieht.
 
 **Der erste Anlauf machte das Grün satt *und* hell** (Grünkanal 96 → 107), und
 prompt kam *„es wird mir vorne zu hell"* zurück. Vorne ist oben, die

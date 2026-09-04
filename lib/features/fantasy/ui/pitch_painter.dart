@@ -40,7 +40,10 @@ class PitchLinesPainter extends CustomPainter {
           Paint()
             ..shader = RadialGradient(
               colors: [
-                Colors.white.withValues(alpha: 0.055),
+                // Zurückgenommen von 0,055: Nachdem der Lichtkern nach unten
+                // gewandert ist, sind diese beiden Kegel das Letzte, was die
+                // Stürmerreihe noch aufhellt.
+                Colors.white.withValues(alpha: 0.035),
                 Colors.white.withValues(alpha: 0.0),
               ],
               stops: const [0.0, 1.0],
@@ -59,12 +62,16 @@ class PitchLinesPainter extends CustomPainter {
       final farben = <Color>[];
       final stops = <double>[];
       for (var i = 0; i <= bahnen; i++) {
-        // **0,055 statt 0,030.** Bei 3 % war die Bahn da und trotzdem nicht
-        // zu sehen — der Rasen las sich als grüne Fläche, gemeldet als „das
-        // Feld sieht bisschen blass aus". Bei 8 % kippt es in die andere
-        // Richtung: Dann sind es Streifen, die mit den Namen darüber
-        // konkurrieren. Beide Enden standen im Entwurfs-Canvas nebeneinander.
-        farben.add(Colors.white.withValues(alpha: i.isEven ? 0.055 : 0.0));
+        // **Die Bahn dunkelt ab, sie hellt nicht auf — und zwar deutlich.**
+        //
+        // Sie stand zuerst auf 3 % Weiß, dann auf 5,5 %. Beides war unsichtbar:
+        // Ein paar Prozent Weiß auf dunklem Grün liegen unter der
+        // Wahrnehmungsschwelle, und gemeldet kam „ich sehe da keinen
+        // Unterschied". Der Fehler dahinter war größer als die Zahl — **Textur
+        // über Aufhellen zu bauen**, während zweimal gemeldet worden war, dass
+        // es zu hell wird. Schwarz gibt dem Rasen Struktur und nimmt ihm dabei
+        // Licht, statt welches hinzuzufügen.
+        farben.add(Colors.black.withValues(alpha: i.isEven ? 0.18 : 0.0));
         stops.add(i / bahnen);
       }
       canvas.drawRect(
