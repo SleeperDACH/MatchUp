@@ -1469,9 +1469,10 @@ Was sich daraus geändert hat:
   Linie, und die endet mitten im Nichts statt am Rand. Der Name steht deshalb
   in `Flexible(flex: 0)` — natürliche Breite, darf trotzdem schrumpfen.
 - **Die Spielzeile** (`_SpielZeile`): Wappen außen, der Name **direkt daneben
-  an der Außenkante**, Ergebnis oder Anstoß in der Mitte, der Live-Punkt ganz
-  außen. Der 4-px-Streifen links ist weg — er verschob die Zeile gegen die
-  anderen. Laufende Spiele sind rot getönt und tragen das Ergebnis in Rot.
+  an der Außenkante**, das Ergebnis in der Mitte, der Live-Punkt ganz außen.
+  Der 4-px-Streifen links ist weg — er verschob die Zeile gegen die anderen.
+  Laufende Spiele tragen das Ergebnis in Rot (die rote Tönung über der ganzen
+  Zeile ist weg, siehe „Der Tag zerfällt in Anstoßzeiten").
   Zuerst waren die Namen **zur Mitte hin** ausgerichtet, also an das Ergebnis
   gedrängt; die Zeile sah dadurch in der Mitte zusammengeschoben aus, und
   neben den Wappen klaffte bei jeder Zeile eine andere Lücke — bei „RB
@@ -1479,8 +1480,9 @@ Was sich daraus geändert hat:
   Zeilen ergab das einen unruhigen linken und rechten Rand. Jetzt fluchten die
   Spalten, und der Luftraum sammelt sich um das Ergebnis, wo er nicht stört.
 - **„Anstoß" unter der Uhrzeit ist gestrichen** — das sagte dasselbe zweimal,
-  derselbe Fehler wie „bis 20:30" unter einer 20:30. „beendet" bleibt: Einem
-  3:2 sieht man nicht an, ob es das Endergebnis ist.
+  derselbe Fehler wie „bis 20:30" unter einer 20:30. Die Auskunft „beendet"
+  bleibt, denn einem 3:2 sieht man nicht an, ob es das Endergebnis ist — sie
+  steht seit dem 04.09.2026 im Kopf des Zeitblocks statt in jeder Zeile.
 - **Die Wettbewerbe sind fünf gleich breite Kacheln** (`_WettbewerbsKacheln`)
   — alle ohne Wischen sichtbar und direkt antippbar. Drei Fassungen hat das
   gebraucht, und die mittlere ist die lehrreiche: Zuerst fünf farbige
@@ -1493,6 +1495,61 @@ Was sich daraus geändert hat:
   „Pokal", „Frauen" — die vollen Namen passen bei knapp 72 Punkten je Kachel
   nicht). Gleich breit, weil sonst „Bundesliga" die Reihe dominiert und
   „Pokal" den Restplatz bekommt.
+
+### Der Tag zerfällt in Anstoßzeiten
+
+Gemeldet: „Den Live-Tab bitte nochmal übersichtlicher machen." Die Diagnose kam
+nicht vom Gerät — an einem Freitag mit fünf Partien sah der Schirm ordentlich
+aus. **Die Vorschau zeigte denselben ruhigen Fall** (sieben Spiele) und war
+damit als Urteilsgrundlage wertlos. Erst mit einem echten Samstag darin
+(vierzehn Partien, fünf davon gleichzeitig live) stand das Problem im Bild:
+
+| Was dastand | wie oft |
+|---|---|
+| „15:30" in der Mitte einer Zeile | einmal je Spiel des Blocks |
+| „beendet" unter dem Ergebnis | dreimal untereinander |
+| rot getönte Zeile | fünf von sechs Bundesliga-Zeilen |
+
+**Die Uhrzeit stand ausgerechnet dort nicht, wo man sie braucht.** Sie erschien
+nur, solange es kein Ergebnis gab — bei fünf laufenden Spielen stand also
+nirgends, dass sie alle um 15:30 angefangen hatten.
+
+Jetzt gibt es unter jedem Wettbewerb **je Anstoßzeit einen Block**
+(`_zeitbloecke`, `_ZeitKopf`): eine leise Zeile mit der Uhrzeit und dem, was
+der Block gerade tut („15:30 · läuft" in Rot mit Punkt, „13:00 · beendet",
+oder nur „18:30"). Dieselbe Entscheidung wie im Tippspiel-Tab, wo fünfmal
+„15:30" untereinander schon einmal derselbe Fehler war.
+
+Drei Dinge folgen daraus:
+
+- **Die Mitte der Zeile trägt nur noch das Ergebnis.** Wo keins ist, steht ein
+  gedämpfter Strich — in dieser App ohnehin das Zeichen für „hat noch nicht
+  gespielt". Er hält die Spalte besetzt, damit die Namen über alle Zeilen
+  fluchten.
+- **„beendet" steht im Kopf, nicht in jeder Zeile** — aber nur, wenn der ganze
+  Block es teilt. Bei gemischtem Block trägt die Zeile es weiter; die Zusage,
+  dass man einem 3:2 ansieht, ob es das Endergebnis ist, bleibt.
+- **Die rote Wäsche über der Zeile ist weg.** Sie sollte laufende Spiele
+  hervorheben und tat am vollen Samstag das Gegenteil: Wenn fünf von sechs
+  Zeilen glühen, hebt sich nichts mehr hervor. **Derselbe Fehler wie in der
+  Tipp-Tabelle, die einmal komplett grün war** — eine Hervorhebung, die den
+  Normalfall trifft, ist keine. „Läuft" sagen jetzt das rote Ergebnis, der
+  pulsierende Punkt am Rand und der Blockkopf.
+
+**Die Blockköpfe kosten Höhe, und die wurde woanders geholt**: Zeilen 12 → 10,
+Wettbewerbskopf 26 → 22, Zeitkopf 10/4 → 8/2. Ohne das lagen 3. Liga und
+Frauen-Bundesliga am vollen Samstag komplett unterhalb des Bildes.
+
+**Gegengeprüft am ruhigen Tag** (`live_vorschau_ruhig.png`): Dort bekommt jeder
+Wettbewerb mit einem Spiel seinen eigenen Blockkopf, und genau dort könnte die
+Ordnung zur Aufblähung werden. Sie tut es nicht — die Uhrzeit wird vom
+Mittelding zum linken Anker. Ohne dieses zweite Bild wäre der Fall nie
+angesehen worden.
+
+**Falle beim Bauen:** Der neue Vergleich lief zunächst als harter Golden mit
+und fiel prompt (0,34 %, das fehlende Logo der 2. Bundesliga) — ob ein
+Wettbewerbslogo im Bild steht, hängt am Zeitpunkt. Die Live-Vorschauen tragen
+deshalb beide `if (!autoUpdateGoldenFiles) return;`, wie Home und Favoriten.
 
 **Zwei bewusste Abweichungen vom Entwurf**, beide dokumentiert, weil sie sonst
 wie Nachlässigkeit aussehen:
