@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/config/app_config.dart';
+import '../../auth/providers.dart';
 import '../providers.dart';
 
 /// Freundes-Status-Button für Profile: „Freund hinzufügen" / „Anfrage gesendet"
@@ -13,7 +14,18 @@ class FriendActionButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final me = Supabase.instance.client.auth.currentUser?.id;
+    // **Nicht `Supabase.instance` direkt.** Der Zugriff wirft eine Assertion,
+    // wenn es die Instanz nicht gibt — im Test und, was schwerer wiegt, bei
+    // fehlgeschlagener Initialisierung im Release-Build. Dort reißt er dann
+    // den ganzen Schirm hoch, auf dem er steht, und das sieht für den Nutzer
+    // wie eine graue Fläche ohne Meldung aus. Dieselbe Falle hat schon einmal
+    // den Favoriten-Tab erwischt; die Regel dazu steht in CLAUDE.md.
+    //
+    // `currentUserProvider` prüft `isSupabaseConfigured` selbst und liefert
+    // sonst `null` — ohne angemeldeten Nutzer gibt es hier ohnehin nichts
+    // anzubieten.
+    if (!AppConfig.isSupabaseConfigured) return const SizedBox.shrink();
+    final me = ref.watch(currentUserProvider)?.id;
     if (me == null || me == userId) return const SizedBox.shrink();
 
     final status = ref.watch(friendStatusProvider(userId));

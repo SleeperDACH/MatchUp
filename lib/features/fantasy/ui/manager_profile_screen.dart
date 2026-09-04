@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/typografie.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../../friends/ui/friend_action_button.dart';
@@ -59,14 +60,28 @@ class ManagerProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final round = ref.watch(fantasyCurrentRoundProvider).valueOrNull ?? 34;
+    // **Die Aufstellungsrunde, nicht die Anzeigerunde.** Beide fallen
+    // auseinander, sobald der letzte Anpfiff durch ist: `currentFantasyRound`
+    // lässt den beendeten Spieltag bis zur Waiver-Frist stehen (Montag 15:00),
+    // während alle längst den nächsten stellen. In diesem Fenster zeigte das
+    // Profil die Elf von *vorletzter* Woche und hieß trotzdem „Aufstellung" —
+    // gemeldet als „das Profil soll immer die aktuelle Aufstellung zeigen".
+    //
+    // **Und kein `?? 34`.** Der Notnagel hat in diesem Projekt schon einmal
+    // eine Aufstellung auf Spieltag 34 geschrieben; hier las er von dort und
+    // fand nie eine — das Profil zeigte dann eine *gerechnete* Elf, als wäre
+    // sie die gestellte. Solange die Runde lädt, wird gewartet, nicht geraten.
+    final rundeAsync = ref.watch(fantasyAufstellungsRundeProvider);
+    final round = rundeAsync.valueOrNull;
     final poolAsync = ref.watch(playerPoolProvider);
     final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
     final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
         const <FantasyLineup>[];
-    final stats = ref.watch(roundStatsProvider(round)).valueOrNull ??
-        const <String, PlayerMatchStats>{};
+    final stats = round == null
+        ? const <String, PlayerMatchStats>{}
+        : (ref.watch(roundStatsProvider(round)).valueOrNull ??
+            const <String, PlayerMatchStats>{});
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
@@ -113,13 +128,18 @@ class ManagerProfileScreen extends ConsumerWidget {
           preferredSize: const Size.fromHeight(22),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Text('Aufstellung · Spieltag $round',
+            child: Text(
+                round == null
+                    ? 'Aufstellung'
+                    : 'Aufstellung · Spieltag $round',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ),
         ),
       ),
-      body: poolAsync.when(
+      body: round == null
+          ? const Center(child: CircularProgressIndicator())
+          : poolAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (pool) {
@@ -145,18 +165,23 @@ class ManagerProfileScreen extends ConsumerWidget {
                   p.position, league.scoring)
           };
 
-          // Gespeicherte Aufstellung des Spieltags, sonst beste Elf.
+          // **Gestellt oder gerechnet — und das muss man unterscheiden.**
+          // Ohne gespeicherte Elf zeigte der Schirm `bestEleven`, und zwar
+          // ununterscheidbar von einer echten. Für einen fremden Manager ist
+          // das eine Behauptung über eine Entscheidung, die er nie getroffen
+          // hat. Gezeigt wird sie weiterhin (danach wird er auch gewertet),
+          // aber sie sagt jetzt, was sie ist.
           final saved = lineups
               .where((l) => l.managerId == managerId && l.round == round)
               .map((l) => l.playerIds)
               .firstOrNull;
-          final Set<String> starterIds =
-              (saved != null && saved.isNotEmpty)
-                  ? {
-                      for (final id in saved)
-                        if (byId.containsKey(id)) id
-                    }
-                  : bestEleven(points, league.roster).starterIds;
+          final gestellt = saved != null && saved.isNotEmpty;
+          final Set<String> starterIds = gestellt
+              ? {
+                  for (final id in saved)
+                    if (byId.containsKey(id)) id
+                }
+              : bestEleven(points, league.roster).starterIds;
 
           final starters = [
             for (final p in rosterPlayers)
@@ -185,6 +210,7 @@ class ManagerProfileScreen extends ConsumerWidget {
           return ListView(
             children: [
               if (!isMe) _actions(context, ref, managers),
+              if (!gestellt) _nochNichtGestellt(context),
               _pitch(context, byPos, points, clubIcons, openPlayer),
               _bench(context, bench, points, clubIcons, openPlayer),
               const SizedBox(height: 20),
@@ -246,6 +272,34 @@ class ManagerProfileScreen extends ConsumerWidget {
     );
   }
 
+  /// **„Noch nicht gestellt" ist eine Auskunft, keine Aufstellung.**
+  ///
+  /// Gezeigt wird darunter trotzdem die beste Elf — nach der wird er gewertet,
+  /// wenn er nichts stellt (`effectiveTotalsForRound`). Sie ohne ein Wort
+  /// hinzustellen war der Fehler: Dann sieht eine Rechnung aus wie eine
+  /// Entscheidung.
+  Widget _nochNichtGestellt(BuildContext context) {
+    const gold = Color(0xFFFFC83D);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule, size: 16, color: gold),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              'Noch nicht gestellt — gezeigt wird die beste Elf',
+              style: TextStyle(
+                fontSize: Schrift.koerperKlein,
+                color: gold.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _pitch(
     BuildContext context,
     Map<PlayerPosition, List<FantasyPlayer>> byPos,
@@ -274,6 +328,18 @@ class ManagerProfileScreen extends ConsumerWidget {
                       for (final p in (byPos[pos] ?? const <FantasyPlayer>[]))
                         _pitchPlayer(
                             p, points[p] ?? 0.0, clubIcons[p.club], () => onTap(p)),
+                      // **Ein unbesetzter Torwartplatz ist keine leere Reihe.**
+                      // Verlässt der einzige Torwart die Bundesliga, nimmt ihn
+                      // der Abgangs-Lauf aus dem Kader (0117) und die Elf hat
+                      // zehn Mann (0120). Ohne Marke rendert die Reihe als
+                      // Nichts, und das Feld sieht aus wie eine ordentliche
+                      // Aufstellung mit einer Bahn weniger. Nur der Torwart
+                      // hat eine feste Zahl — Abwehr, Mittelfeld und Sturm
+                      // stehen in Spannen, dort ist eine kürzere Reihe bloß
+                      // eine andere Formation.
+                      if (pos == PlayerPosition.gk &&
+                          (byPos[pos]?.length ?? 0) < league.roster.gk)
+                        const _LeereFeldposition(),
                     ],
                   ),
                 ),
@@ -422,5 +488,48 @@ class ManagerProfileScreen extends ConsumerWidget {
   static String _short(String name) {
     final parts = name.trim().split(' ');
     return parts.length > 1 ? parts.last : name;
+  }
+}
+
+/// Der unbesetzte Torwartplatz auf dem Feld des Managerprofils.
+///
+/// Gold wie überall, wo etwas noch zu tun ist — es ist kein Fehler des
+/// Managers, sondern die Folge eines Wechsels ins Ausland.
+class _LeereFeldposition extends StatelessWidget {
+  const _LeereFeldposition();
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFFFC83D);
+    return SizedBox(
+      width: 66,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.black.withValues(alpha: 0.45),
+              border: Border.all(color: gold.withValues(alpha: 0.7), width: 2),
+            ),
+            child: const Icon(Icons.priority_high, color: gold, size: 20),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Kein Torwart',
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: Schrift.klein,
+              fontWeight: FontWeight.w700,
+              color: gold,
+              shadows: [Shadow(color: Colors.black, blurRadius: 3)],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -3982,6 +3982,53 @@ man stellen kann, ist die einzige Art, ein zeitabhängiges Bild fest
 einzuchecken** — und ein Test, der irgendwann von selbst rot wird, ist ein
 Test, den man sich abgewöhnt zu lesen.
 
+### Das Ligaprofil zeigt die aktuelle Aufstellung
+
+Gewünscht: *„Bitte bau ein, dass das Profil der Ligateilnehmer für alle anderen
+immer die aktuelle Aufstellung anzeigt."* Drei Gründe, warum es das nicht tat,
+und alle drei standen in einem Schirm **ohne Vorschau**.
+
+- **Es las die Anzeigerunde statt der Aufstellungsrunde.**
+  `fantasyCurrentRoundProvider` lässt einen beendeten Spieltag bis zur
+  Waiver-Frist stehen (Montag 15:00), während alle längst den nächsten
+  stellen. In diesem Fenster zeigte das Profil die Elf der Vorwoche und hieß
+  trotzdem „Aufstellung". Es liest jetzt
+  `fantasyAufstellungsRundeProvider` — dieselbe Runde, die auch der
+  Aufstellungs-Editor öffnet. Während eines laufenden Spieltags sind beide
+  gleich; der Unterschied entsteht nur in genau diesem Fenster.
+- **Der `?? 34`-Notnagel war zurück.** Er hat in diesem Projekt schon einmal
+  eine Aufstellung auf Spieltag 34 *geschrieben*; hier **las** er von dort,
+  fand nie eine Elf und zeigte stattdessen die gerechnete. Solange die Runde
+  lädt, wird jetzt gewartet, nicht geraten.
+- **„Noch nicht gestellt" sah aus wie eine Aufstellung.** Ohne gespeicherte Elf
+  rendert der Schirm `bestEleven` — richtig, denn danach wird der Manager auch
+  gewertet. Sie ohne ein Wort hinzustellen war der Fehler: Für einen fremden
+  Manager ist das eine Behauptung über eine Entscheidung, die er nie getroffen
+  hat. Darüber steht jetzt eine goldene Zeile, die sagt, was es ist.
+
+**Und der unbesetzte Torwartplatz war auch hier unsichtbar.** Seit 0120 kann
+eine Elf zehn Mann haben; die Torwartreihe rendert dann als leere `Row`, und
+das Feld sieht aus wie eine ordentliche Aufstellung mit einer Bahn weniger.
+Dieselbe Marke wie in der Duell-Ansicht steht jetzt auf dem Platz. **Nur der
+Torwart hat eine feste Zahl** — eine kürzere Abwehr- oder Mittelfeldreihe ist
+bloß eine andere Formation und wird nicht gemeldet.
+
+**Beim Bauen der Vorschau kam ein echter Absturzpfad hoch:**
+`FriendActionButton` griff in seinem `build` direkt auf
+`Supabase.instance.client` zu. Das wirft eine Assertion, wenn es die Instanz
+nicht gibt — im Test, und schwerer wiegend bei fehlgeschlagener
+Initialisierung im Release-Build, wo es den ganzen Schirm mitreißt und als
+graue Fläche ohne Meldung endet. **Exakt die Falle, die schon einmal den
+Favoriten-Tab erwischt hat**, und die Regel dagegen steht seit damals in dieser
+Datei. Er prüft jetzt `isSupabaseConfigured` und liest den Nutzer aus
+`currentUserProvider`.
+
+Angesehen über `test/managerprofil_vorschau_test.dart` mit drei Bildern
+(gestellt · noch nicht gestellt · ohne Torwart) — die drei Zustände, die sich
+unterscheiden müssen und es vorher nicht taten. Der Spielplan darin hat drei
+abgepfiffene Runden, damit die Aufstellungsrunde **fest** auf 3 steht: Ein
+Bild, das an `DateTime.now()` hängt, wird irgendwann von selbst rot.
+
 ### Das Spielerprofil handelt jetzt selbst
 
 Gewünscht: *„Ich möchte, dass direkt über die Profile ein Knopf für Trade, Drop
