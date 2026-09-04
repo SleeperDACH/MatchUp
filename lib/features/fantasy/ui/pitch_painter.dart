@@ -59,8 +59,12 @@ class PitchLinesPainter extends CustomPainter {
       final farben = <Color>[];
       final stops = <double>[];
       for (var i = 0; i <= bahnen; i++) {
-        farben.add(Colors.white
-            .withValues(alpha: i.isEven ? 0.030 : 0.0));
+        // **0,055 statt 0,030.** Bei 3 % war die Bahn da und trotzdem nicht
+        // zu sehen — der Rasen las sich als grüne Fläche, gemeldet als „das
+        // Feld sieht bisschen blass aus". Bei 8 % kippt es in die andere
+        // Richtung: Dann sind es Streifen, die mit den Namen darüber
+        // konkurrieren. Beide Enden standen im Entwurfs-Canvas nebeneinander.
+        farben.add(Colors.white.withValues(alpha: i.isEven ? 0.055 : 0.0));
         stops.add(i / bahnen);
       }
       canvas.drawRect(
@@ -75,12 +79,14 @@ class PitchLinesPainter extends CustomPainter {
       );
     }
 
+    // 0,44 statt 0,34: Die Linien sind das, was eine grüne Fläche überhaupt
+    // erst zu einem Spielfeld macht. Weiß ist keine Farbe im Sinne von „bunt".
     final line = Paint()
-      ..color = Colors.white.withValues(alpha: 0.34)
+      ..color = Colors.white.withValues(alpha: 0.44)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.6;
     final dot = Paint()
-      ..color = Colors.white.withValues(alpha: 0.34)
+      ..color = Colors.white.withValues(alpha: 0.44)
       ..style = PaintingStyle.fill;
 
     // Außenlinie (oben = Mittellinie, unten = Torlinie).
@@ -132,6 +138,28 @@ class PitchLinesPainter extends CustomPainter {
       false,
       line,
     );
+
+    // **Vignette zum Schluss.** Sie dunkelt die Ecken ab und macht damit die
+    // Mitte heller, ohne dort einen einzigen Wert zu erhöhen — der billigste
+    // Weg zu Tiefe, der ohne zusätzliche Farbe auskommt.
+    //
+    // Sie steht **hier** und nicht an den vier Einbauorten: Ein `CustomPaint`
+    // malt seinen Painter vor dem Kind, die Vignette liegt also unter Wappen
+    // und Namen und nimmt ihnen nichts. Als Overlay an jedem Aufrufer wäre sie
+    // viermal gebaut und läge dreimal falsch.
+    final mitte = Offset(cx, h * 0.40);
+    final vr = math.max(w, h) * 0.78;
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, w, h),
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            Colors.black.withValues(alpha: 0.0),
+            Colors.black.withValues(alpha: 0.35),
+          ],
+          stops: const [0.55, 1.0],
+        ).createShader(Rect.fromCircle(center: mitte, radius: vr)),
+    );
   }
 
   @override
@@ -153,15 +181,22 @@ class PitchLinesPainter extends CustomPainter {
 /// Stützstellen zu große Sprünge — auf einer Fläche von 470 Punkten wurde
 /// daraus eine sichtbare Kante („abgehackt"). Und der helle Kern stand zu weit
 /// vorn: Über den Stürmern war der Rasen heller als das Wappen darauf.
+/// **Satter, nicht bunter** (04.09.2026). Gemeldet als „das Feld sieht
+/// bisschen blass aus — können wir das upgraden, ohne es wieder bunt und
+/// knallig zu machen?". Die alte Leiter (`#24603A` … `#061B10`) hatte viel
+/// Grau im Grün; sie trägt jetzt in jeder Stufe etwas mehr Grün bei
+/// **gleicher Helligkeit**. Kein neuer Farbton, kein höherer Kontrast — nur
+/// weniger Grau. Die eigentliche Tiefe kommt aus Mähbahnen, Linien und
+/// Vignette im [PitchLinesPainter], also aus Weiß und Schwarz.
 const pitchGradient = RadialGradient(
   center: Alignment(0, -0.35),
   radius: 1.05,
   colors: [
-    Color(0xFF24603A),
-    Color(0xFF1C5231),
-    Color(0xFF144026),
-    Color(0xFF0C2C1A),
-    Color(0xFF061B10),
+    Color(0xFF1E6B3C),
+    Color(0xFF175C32),
+    Color(0xFF104725),
+    Color(0xFF083118),
+    Color(0xFF041D0E),
   ],
   stops: [0.0, 0.26, 0.5, 0.75, 1.0],
 );

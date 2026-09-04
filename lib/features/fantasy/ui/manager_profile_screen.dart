@@ -316,7 +316,10 @@ class ManagerProfileScreen extends ConsumerWidget {
         gradient: pitchGradient,
       ),
       child: CustomPaint(
-        painter: const PitchLinesPainter(mitStreifen: false),
+        // **Mit Streifen.** Sie waren aus, weil sechs Bahnen auf den 200
+        // Punkten des Draft-Raums Unruhe sind — dieses Feld ist aber 420 hoch,
+        // und ohne sie las es sich als grüne Fläche statt als Rasen.
+        painter: const PitchLinesPainter(),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
           child: Column(

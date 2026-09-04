@@ -2068,6 +2068,38 @@ Die Streifen lassen sich abschalten (`mitStreifen: false`): Im Draft-Raum und
 im Manager-Profil ist das Feld 200 Punkte hoch, sechs Bahnen darauf sind
 Unruhe statt Struktur.
 
+**Satter, nicht bunter** (04.09.2026). Gemeldet als *„das Feld sieht bisschen
+blass aus — können wir das upgraden, ohne es wieder bunt und knallig zu
+machen?"*. Vier Fassungen lagen dafür als Entwurfs-Canvas nebeneinander,
+**mit Spielern darauf**: Der Rasen ist der Grund für Wappen, Namen und Zahlen,
+und eine Fläche, die für sich schön aussieht und die Namen schluckt, ist
+schlechter als eine blasse.
+
+| Was | vorher | jetzt |
+|---|---|---|
+| Grün der Leiter | `#24603A` … `#061B10` | `#1E6B3C` … `#041D0E` |
+| Mähbahn | 3 % Weiß | **5,5 %** |
+| Feldlinien | 34 % Weiß | **44 %** |
+| Vignette | keine | 35 % Schwarz an den Ecken |
+
+Der Punkt dabei: **Die Tiefe kommt aus Weiß und Schwarz, nicht aus Farbe.** Am
+Grün ändert sich nur, dass in jeder Stufe etwas weniger Grau steckt — gleiche
+Helligkeit, kein neuer Farbton. Was den Rasen wirklich zum Rasen macht, sind
+die sichtbare Mähbahn, die kräftigere Linienzeichnung und die abgedunkelten
+Ecken. Bei 8 % Bahnstärke kippt es in die andere Richtung: Dann sind es
+Streifen, die mit den Namen konkurrieren — auch das stand im Canvas
+nebeneinander, sonst hätte ich es geraten.
+
+**Die Vignette sitzt im Painter, nicht an den Einbauorten.** Ein `CustomPaint`
+malt seinen Painter vor dem Kind; sie liegt damit unter Wappen und Namen und
+nimmt ihnen nichts. Als Overlay an jedem der vier Aufrufer wäre sie viermal
+gebaut und läge dreimal falsch.
+
+**Im Managerprofil sind die Streifen jetzt an.** Sie waren aus, weil sechs
+Bahnen auf den 200 Punkten des Draft-Raums Unruhe sind — dieses Feld ist aber
+420 hoch, und ohne sie las es sich als grüne Fläche statt als Rasen. Der
+Draft-Raum behält sie aus.
+
 **Zwei Dinge daran waren im ersten Wurf falsch**, gemeldet als „merkwürdig
 abgehackter Farbverlauf, vorne zu hell":
 
