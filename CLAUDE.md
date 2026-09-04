@@ -4029,6 +4029,25 @@ und alle drei standen in einem Schirm **ohne Vorschau**.
   Manager ist das eine Behauptung über eine Entscheidung, die er nie getroffen
   hat. Darüber steht jetzt eine goldene Zeile, die sagt, was es ist.
 
+**Ein Schloss statt eines Farbpunkts** (04.09.2026). Unter jedem Spieler des
+Feldes saß ein 9 Punkt großer Kreis in der Positionsfarbe. Er sagte zweierlei
+gleichzeitig und beides schlecht: Als **Positionshinweis** war er überflüssig —
+auf einem Spielfeld sagt die Reihe, wer Torwart und wer Stürmer ist —, und als
+**Zustandshinweis** sagte er nichts, weil er wie Schmuck aussah. Gemeldet als
+*„wenn die Kader nicht mehr bearbeitet werden können, ist dort nur noch ein
+Punkt in der Farbe der Position; das möchte ich als Schloss und alles
+einfarbig"*.
+
+**Einfarbig ist dabei keine Sparsamkeit, sondern die Aussage.** Vier
+Positionsfarben nebeneinander lesen sich als Gliederung; elf gleiche Schlösser
+lesen sich als ein Zustand, der für alle gilt.
+
+Die Marke steht als `GesperrtMarke` an einer Stelle und wird **an beiden**
+benutzt: im Ligaprofil und im Aufstellungs-Editor, wo derselbe Zweig bisher
+seinen eigenen Kreis baute. Zwei Wege in denselben Zustand dürfen nicht
+verschieden aussehen — und der Editor zeigte für einen angepfiffenen Spieler
+schon immer genau dieses Schloss.
+
 **Und der unbesetzte Torwartplatz war auch hier unsichtbar.** Seit 0120 kann
 eine Elf zehn Mann haben; die Torwartreihe rendert dann als leere `Row`, und
 das Feld sieht aus wie eine ordentliche Aufstellung mit einer Bahn weniger.

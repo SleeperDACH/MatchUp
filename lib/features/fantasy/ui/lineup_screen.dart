@@ -19,6 +19,7 @@ import '../models/fantasy_models.dart';
 import '../models/player_absence.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'gesperrt_marke.dart';
 import 'free_agency_screen.dart';
 import 'pitch_painter.dart';
 import 'player_profile_sheet.dart';
@@ -1128,31 +1129,13 @@ class _Slot extends ConsumerWidget {
       // **Ein Schloss, kein toter Knopf.** Der Platz ist zu, und das sagt er
       // an derselben Stelle, an der sonst der Tausch steht — statt „läuft" in
       // 9 Punkt Grau, das man für eine Beschriftung halten konnte.
-      return Container(
-        width: 26,
-        height: 26,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.55),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-        ),
-        child: Icon(Icons.lock,
-            size: 13, color: Colors.white.withValues(alpha: 0.8)),
-      );
+      return const GesperrtMarke(size: 26);
     }
     if (onEditPosition == null) {
-      // Nicht bearbeitbar, aber auch nicht gesperrt (fremder Kader): nur ein
-      // Farbpunkt als Positionshinweis.
-      return Container(
-        width: 9,
-        height: 9,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.black.withValues(alpha: 0.35)),
-        ),
-      );
+      // Nicht bearbeitbar: **dieselbe Marke wie beim gesperrten Platz**.
+      // Vorher stand hier ein Farbpunkt, der als Positionshinweis überflüssig
+      // war (die Reihe sagt die Position) und als Zustandshinweis nichts sagte.
+      return const GesperrtMarke(size: 26);
     }
     // **Der Tauschknopf.** Größer als vorher (26 statt 21), mit dem Kürzel der
     // Position statt eines nackten Symbols: Er sagt damit auch, *welcher*

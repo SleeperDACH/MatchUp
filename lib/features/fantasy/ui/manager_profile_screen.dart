@@ -10,6 +10,7 @@ import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'gesperrt_marke.dart';
 import 'pitch_painter.dart';
 import 'player_profile_sheet.dart';
 import 'trade_screen.dart';
@@ -393,15 +394,10 @@ class ManagerProfileScreen extends ConsumerWidget {
                 style: const TextStyle(color: Colors.white, fontSize: 11)),
           ),
           const SizedBox(height: 3),
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(
-              color: positionColor(p.position),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.black.withValues(alpha: 0.35)),
-            ),
-          ),
+          // **Ein Schloss, kein Farbpunkt.** Dieses Feld ist zum Ansehen da;
+          // die Marke sagt das, statt eine Position zu wiederholen, die die
+          // Reihe ohnehin sagt. Siehe [GesperrtMarke].
+          const GesperrtMarke(size: 18),
         ],
       ),
       ),

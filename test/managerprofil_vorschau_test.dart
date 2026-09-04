@@ -9,6 +9,7 @@ import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/providers.dart';
+import 'package:matchup/features/fantasy/ui/gesperrt_marke.dart';
 import 'package:matchup/features/fantasy/ui/manager_profile_screen.dart';
 
 import 'support/schrift.dart';
@@ -190,6 +191,10 @@ void main() {
 
     expect(find.text('Aufstellung · Spieltag 3'), findsOneWidget,
         reason: 'die Aufstellungsrunde, nicht die Anzeigerunde');
+    // **Elf gleiche Schlösser, keine vier Positionsfarben.** Das Feld ist zum
+    // Ansehen da; die Marke sagt das für alle Plätze gleich, statt eine
+    // Position zu wiederholen, die die Reihe ohnehin sagt.
+    expect(find.byType(GesperrtMarke), findsNWidgets(11));
     expect(find.textContaining('Noch nicht gestellt'), findsNothing);
     await expectLater(find.byType(ManagerProfileScreen),
         matchesGoldenFile('goldens/managerprofil_gestellt.png'));
