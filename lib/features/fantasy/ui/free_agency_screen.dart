@@ -132,6 +132,9 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
             spieler: playerById,
             regeln: league.scoring,
           );
+          // Der Nenner für den Schnitt — für alle Spieler derselbe, also
+          // einmal gerechnet statt je Zeile.
+          final spieltage = gewerteteSpieltage(saison);
 
           // **Alle Spieler, nicht nur die freien** — gefiltert wie gehabt,
           // sortiert nach der Regel „freie zuerst, in jeder Gruppe die besten".
@@ -224,6 +227,19 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                       // sich wie keine. Wer keinen Einsatz hatte, bekommt
                       // nichts hingeschrieben — „0" wäre eine Behauptung über
                       // jemanden, der gar nicht gespielt hat.
+                      // **Zwei Zahlen übereinander: Summe oben, Schnitt
+                      // darunter.** Danach wird sortiert, und beide zusammen
+                      // sind die Frage, die man an einen freien Spieler hat —
+                      // die Summe sagt, was er gebracht hat, der Schnitt, was
+                      // er je Spieltag bringt. Wer im Winter kam oder verletzt
+                      // war, hat eine kleine Summe und kann trotzdem der
+                      // bessere sein.
+                      //
+                      // Den Platz dafür gab die Zeile „Waiver bis Mo, 15:00"
+                      // her: Sie stand wortgleich in jeder Zeile, obwohl die
+                      // Frist für alle dieselbe ist und **einmal** über der
+                      // Liste steht. Eine Auskunft, die sich je Zeile nicht
+                      // unterscheidet, gehört nicht in die Zeile.
                       title: Row(
                         children: [
                           Expanded(child: Text(p.name)),
@@ -251,11 +267,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                               [
                                 p.club,
                                 if (imKader)
-                                  teamName[ownerByPlayer[p.id]] ?? 'vergeben'
-                                else if (waiver || aufWire)
-                                  frist == null
-                                      ? 'Waiver'
-                                      : 'Waiver bis ${fristKurz(frist)}',
+                                  teamName[ownerByPlayer[p.id]] ?? 'vergeben',
                                 // **Wer ausfällt, gehört hier genannt.**
                                 // Einen verletzten Spieler zu holen ist der
                                 // teuerste Fehler in der Free Agency.
@@ -275,6 +287,25 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                                     ),
                             ),
                           ),
+                          // **Das Ø sagt, was die Zahl ist.** Ohne es läse
+                          // sich 6,1 als zweite Summe — und die ist bei einem
+                          // Spieler mit zwölf Spieltagen zehnmal so hoch.
+                          if (punkte[p.id] != null && spieltage > 0) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              'Ø ${formatPoints(punkte[p.id]! / spieltage)}',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.8),
+                                  ),
+                            ),
+                          ],
                         ],
                       ),
                       trailing: PlayerActionButton(

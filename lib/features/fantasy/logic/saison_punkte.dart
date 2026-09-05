@@ -30,6 +30,24 @@ Map<String, double> saisonPunkte({
   return summe;
 }
 
+/// **Wie viele Spieltage schon gewertet sind.**
+///
+/// Der Nenner für den Schnitt — und er ist für alle Spieler derselbe: Ein
+/// gewerteter Spieltag ohne diesen Spieler zählt für ihn als Null. Genau so
+/// rechnet auch [spielerSchnitt] sein `punkteJeSpieltag`, nur eben je Spieler;
+/// hier genügt eine Zahl für die ganze Liste.
+///
+/// **Als Spieltag zählt nur, was überhaupt gewertet wurde** — erkennbar daran,
+/// dass dort irgendein Spieler Daten hat. Ein Spieltag, der erst kommt, darf
+/// den Schnitt nicht drücken: „noch nicht gespielt ist kein Nullpunktespiel".
+int gewerteteSpieltage(Map<int, Map<String, PlayerMatchStats>> saison) {
+  var n = 0;
+  for (final runde in saison.values) {
+    if (runde.isNotEmpty) n++;
+  }
+  return n;
+}
+
 /// Die Reihung der Free Agency: **erst die freien Spieler, dann die in
 /// Kadern** — und innerhalb jeder Gruppe die besten zuerst.
 ///

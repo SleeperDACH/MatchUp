@@ -70,8 +70,12 @@ void main() {
         minutes: 90, played: true, goals: 1, assists: 2, keyPasses: 3);
     const s3 = PlayerMatchStats(minutes: 62, played: true, assists: 1);
     const s4 = PlayerMatchStats(minutes: 90, played: true, tacklesWon: 4);
+    // **Zwei gewertete Spieltage, nicht einer.** Bei einem einzigen sind
+    // Summe und Schnitt dieselbe Zahl — die Zeile zeigte dann zweimal
+    // dasselbe, und der Unterschied, um den es geht, wäre nie im Bild.
     final saison = {
       1: {'f': s1, 'g': s2, 'a': s2, 'b': s3, 'd': s4},
+      2: {'f': s2, 'g': s3, 'a': s1, 'b': s4},
     };
 
     final liga = FantasyLeague(

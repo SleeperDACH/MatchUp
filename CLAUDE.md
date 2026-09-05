@@ -4440,6 +4440,31 @@ die Free Agency kann jetzt beides.
 Die Punkte **stehen in der Zeile**. Eine Reihenfolge ohne sichtbaren Grund
 liest sich wie keine.
 
+**Und daneben der Schnitt** (05.09.2026, auf Ansage). Die Zeile trägt jetzt
+zwei Zahlen übereinander: die Saisonsumme oben, „Ø je Spieltag" darunter. Beide
+zusammen sind die Frage, die man an einen freien Spieler hat — die Summe sagt,
+was er gebracht hat, der Schnitt, was er je Spieltag bringt. Wer im Winter kam
+oder verletzt war, hat eine kleine Summe und kann trotzdem der bessere sein;
+dieselbe Begründung wie auf dem Trade-Schirm.
+
+**Den Platz gab „Waiver bis Mo, 15:00" her.** Der Satz stand wortgleich in
+jeder betroffenen Zeile, obwohl die Frist für alle dieselbe ist und **einmal**
+im Balken über der Liste steht. *„Ich brauche das nicht bei jedem, dort lieber
+mehr Platz für die Punkte insgesamt und die durchschnittlichen."* Die Regel
+dahinter ist dieselbe wie bei „LIVE" in der Tipp-Tabelle und der Uhrzeit im
+Live-Tab: **Eine Auskunft, die sich je Zeile nicht unterscheidet, gehört nicht
+in die Zeile.** Dass ein Spieler auf dem Wire liegt, sagt weiterhin sein
+goldener Antragsknopf am rechten Rand.
+
+**Der Nenner ist eine Zahl für die ganze Liste**, kein zweiter Durchlauf je
+Spieler: `gewerteteSpieltage(saison)` zählt die Runden, in denen überhaupt
+gewertet wurde — ein gewerteter Spieltag ohne diesen Spieler zählt für ihn als
+Null, genau wie in `spielerSchnitt.punkteJeSpieltag`.
+
+**Die Vorschau hat dafür einen zweiten Spieltag bekommen.** Mit nur einem sind
+Summe und Schnitt dieselbe Zahl — die Zeile zeigte zweimal dasselbe, und der
+Unterschied, um den es geht, wäre nie im Bild gewesen.
+
 **Was dabei wegfällt:** Die freien Spieler waren vorher so sortiert, dass die
 frisch gedroppten vom Waiver-Wire oben standen („die spannenden Neuzugänge").
 Das schlägt die Punktregel jetzt; ein Wire-Spieler ohne Einsätze rutscht nach
