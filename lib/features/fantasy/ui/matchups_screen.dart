@@ -401,6 +401,20 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                                 aId == null ? 0.0 : (weekTotals[aId] ?? 0.0),
                             homeMe: hId == myId,
                             awayMe: aId == myId,
+                            homeAvatar: ManagerAvatar(
+                              userId: hId,
+                              url: avatarOf[hId]?.url,
+                              emoji: avatarOf[hId]?.emoji,
+                              color: avatarOf[hId]?.color,
+                            ),
+                            awayAvatar: aId == null
+                                ? null
+                                : ManagerAvatar(
+                                    userId: aId,
+                                    url: avatarOf[aId]?.url,
+                                    emoji: avatarOf[aId]?.emoji,
+                                    color: avatarOf[aId]?.color,
+                                  ),
                             live: live,
                             started: started,
                             mine: hId == myId || aId == myId,

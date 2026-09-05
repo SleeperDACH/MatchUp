@@ -12,6 +12,7 @@ import '../../../core/logic/round_robin.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'matchup_detail_screen.dart';
+import '../../../core/ui/app_avatar.dart';
 
 // MatchUp-Palette (wie in der Übersicht): grün normal, rot solange live.
 const _cGreen = Color(0xFF4ADE6A);
@@ -88,6 +89,15 @@ class MatchupHero extends ConsumerWidget {
     if (pairing == null) return fallback;
 
     final nameOf = {for (final m in managers) m.userId: m.display};
+    final avatarOf = {
+      for (final m in managers)
+        m.userId: ManagerAvatar(
+          userId: m.userId,
+          url: m.avatarUrl,
+          emoji: m.avatarEmoji,
+          color: m.avatarColor,
+        ),
+    };
     // Tap auf den Kopf → Detailseite der eigenen Paarung (ich immer „Heim").
     void openDetail(String? oppId, String? oppName) => showMatchupDetail(
           context,
@@ -122,6 +132,7 @@ class MatchupHero extends ConsumerWidget {
         awayPoints: 0,
         homeMe: true,
         awayMe: false,
+        homeAvatar: avatarOf[myId],
         live: live,
         started: started,
         mine: true,
@@ -150,6 +161,8 @@ class MatchupHero extends ConsumerWidget {
       awayPoints: oppPts,
       homeMe: true,
       awayMe: false,
+      homeAvatar: avatarOf[myId],
+      awayAvatar: avatarOf[oppId],
       live: live,
       anpfiff: anpfiff,
       started: started,
@@ -173,6 +186,8 @@ class MatchupBanner extends StatelessWidget {
     required this.awayPoints,
     required this.homeMe,
     required this.awayMe,
+    this.homeAvatar,
+    this.awayAvatar,
     required this.live,
     required this.started,
     required this.onTap,
@@ -189,6 +204,11 @@ class MatchupBanner extends StatelessWidget {
   final double awayPoints;
   final bool homeMe;
   final bool awayMe;
+
+  /// Profilbild-Daten beider Seiten. Ohne Angabe zeichnet [AppAvatar] das
+  /// Standardbild aus dem Namen — eine Zeile ohne Bild ist damit nie leer.
+  final ManagerAvatar? homeAvatar;
+  final ManagerAvatar? awayAvatar;
   final bool live;
   final bool started;
   final bool mine;
@@ -214,7 +234,13 @@ class MatchupBanner extends StatelessWidget {
         onTap: onTap,
         child: Row(
           children: [
-            HeroAvatar(name: homeName, accent: accent),
+            HeroAvatar(
+                name: homeName,
+                accent: accent,
+                imageUrl: homeAvatar?.url,
+                emoji: homeAvatar?.emoji,
+                colorHex: homeAvatar?.color,
+                userId: homeAvatar?.userId),
             const SizedBox(width: 10),
             Expanded(
               child: HeroTeam(
@@ -249,7 +275,13 @@ class MatchupBanner extends StatelessWidget {
           Row(
             children: [
               HeroAvatar(
-                  name: homeName, accent: accent, dim: started && !homeWin),
+                  name: homeName,
+                  accent: accent,
+                  dim: started && !homeWin,
+                  imageUrl: homeAvatar?.url,
+                  emoji: homeAvatar?.emoji,
+                  colorHex: homeAvatar?.color,
+                  userId: homeAvatar?.userId),
               const SizedBox(width: 10),
               Expanded(
                 child: HeroTeam(
@@ -279,7 +311,13 @@ class MatchupBanner extends StatelessWidget {
               const SizedBox(width: 10),
               // Gegner in Rot → „vs"-Kontrast.
               HeroAvatar(
-                  name: awayName!, accent: _cRed, dim: started && !awayWin),
+                  name: awayName!,
+                  accent: _cRed,
+                  dim: started && !awayWin,
+                  imageUrl: awayAvatar?.url,
+                  emoji: awayAvatar?.emoji,
+                  colorHex: awayAvatar?.color,
+                  userId: awayAvatar?.userId),
             ],
           ),
           if (!started) ...[
@@ -691,34 +729,64 @@ class ScoreBadge extends StatelessWidget {
   }
 }
 
-/// Runder Manager-Avatar mit Initiale. Farbiger Ring im Banner-Akzent; der
-/// Verlierer/Nicht-Führende wird gedimmt.
+/// Die Profildaten eines Managers, so wie sie im Banner gebraucht werden.
+///
+/// Ein eigener kleiner Typ statt vier loser Parameter je Seite: Acht
+/// Argumente an einem Konstruktor sind acht Gelegenheiten, Heim und Gast zu
+/// vertauschen.
+class ManagerAvatar {
+  const ManagerAvatar({this.userId, this.url, this.emoji, this.color});
+
+  final String? userId;
+  final String? url;
+  final String? emoji;
+  final String? color;
+}
+
+/// Runder Manager-Avatar im Banner: **das Profilbild des Kontos**, im
+/// Banner-Akzent geringt; der Nicht-Führende wird gedimmt.
+///
+/// **Vorher stand hier ein Kreis mit dem Anfangsbuchstaben** — selbst
+/// gezeichnet, obwohl die App mit [AppAvatar] längst einen Baustein für genau
+/// diese Frage hat (Bild, sonst Emoji, sonst ein aus der Nutzer-ID erzeugtes
+/// Standardbild). Im Seitenmenü, im Ligaprofil und in der Teamliste stand das
+/// echte Bild, ausgerechnet im Duell nicht. Gemeldet als „im MatchUp-Tab
+/// bitte die Account-Profilbilder statt der Kreise mit den Buchstaben".
+///
+/// Ring und Schein bleiben: Sie tragen den Zustand („wer führt"), und den
+/// kennt [AppAvatar] nicht — er weiß nur, wie ein Mensch aussieht.
 class HeroAvatar extends StatelessWidget {
-  const HeroAvatar(
-      {super.key, required this.name, required this.accent, this.dim = false});
+  const HeroAvatar({
+    super.key,
+    required this.name,
+    required this.accent,
+    this.dim = false,
+    this.imageUrl,
+    this.emoji,
+    this.colorHex,
+    this.userId,
+  });
 
   final String name;
   final Color accent;
   final bool dim;
 
+  /// Die drei Felder des Profils. Fehlen sie alle, erzeugt [AppAvatar] aus
+  /// [userId] (sonst dem Namen) ein stabiles Standardbild — dasselbe, das der
+  /// Nutzer überall sonst in der App hat.
+  final String? imageUrl;
+  final String? emoji;
+  final String? colorHex;
+  final String? userId;
+
   @override
   Widget build(BuildContext context) {
-    final trimmed = name.trim();
-    final initial = trimmed.isEmpty ? '?' : trimmed[0].toUpperCase();
     return Container(
       width: 46,
       height: 46,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: dim ? 0.10 : 0.26),
-            Colors.white.withValues(alpha: dim ? 0.04 : 0.10),
-          ],
-        ),
         border: Border.all(
             color: dim ? Colors.white.withValues(alpha: 0.28) : accent,
             width: 2.5),
@@ -731,11 +799,22 @@ class HeroAvatar extends StatelessWidget {
                     spreadRadius: -3),
               ],
       ),
-      child: Text(initial,
-          style: TextStyle(
-              color: Colors.white.withValues(alpha: dim ? 0.7 : 1),
-              fontWeight: FontWeight.w900,
-              fontSize: 18)),
+      // **Der Ring bleibt sichtbar, das Bild sitzt darin.** Ohne das Polster
+      // liefe das Bild unter den Rand und der Zustand wäre weg.
+      child: Padding(
+        padding: const EdgeInsets.all(2.5),
+        child: Opacity(
+          opacity: dim ? 0.55 : 1,
+          child: AppAvatar(
+            imageUrl: imageUrl,
+            emoji: emoji,
+            colorHex: colorHex,
+            fallbackText: name,
+            seed: userId,
+            size: 41,
+          ),
+        ),
+      ),
     );
   }
 }

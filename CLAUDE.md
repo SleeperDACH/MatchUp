@@ -2357,6 +2357,29 @@ fielen `HeroStatusPill` und die Felder `round`/`status` der `HeroShell` weg,
 und die Karussellhöhe sank von 236 auf **206** — die Zahl steht bei der Karte,
 nicht im Karussell, damit sie dem Inhalt folgen kann.
 
+### Im Duell steht das Profilbild, kein Buchstabe
+
+Gemeldet: *„Im MatchUp-Tab bitte nicht die Kreise mit den Buchstaben, sondern
+die Account-Profilbilder."*
+
+`HeroAvatar` zeichnete seinen Kreis selbst und setzte den Anfangsbuchstaben
+hinein — obwohl die App mit `AppAvatar` seit langem einen Baustein für genau
+diese Frage hat: Bild, sonst Emoji, sonst ein aus der Nutzer-ID erzeugtes
+Standardbild. Im Seitenmenü, im Ligaprofil und in der Teamliste desselben Tabs
+stand das echte Bild; **ausgerechnet im Duell nicht.**
+
+**Ring und Schein bleiben selbst gezeichnet**, und das ist der Punkt: Sie
+tragen den Zustand („wer führt", gedimmt für den anderen), und den kennt
+`AppAvatar` nicht — er weiß nur, wie ein Mensch aussieht. Das Bild sitzt mit
+2,5 Punkten Polster **innerhalb** des Rings; ohne das liefe es unter den Rand,
+und der Zustand wäre weg.
+
+**Die Daten lagen schon bereit.** Der MatchUp-Schirm baut `avatarOf` ohnehin
+für seine Teamliste; das Banner bekommt sie jetzt als `ManagerAvatar` gereicht
+— ein eigener kleiner Typ statt vier loser Parameter je Seite, weil acht
+Argumente an einem Konstruktor acht Gelegenheiten sind, Heim und Gast zu
+vertauschen.
+
 ### Der MatchUp-Kasten war buchstäblich undurchsichtig
 
 So kam die Meldung, und sie traf es wörtlich. Vier Ursachen, alle im selben

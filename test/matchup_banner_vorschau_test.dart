@@ -5,6 +5,7 @@ import 'package:matchup/app/theme.dart';
 import 'package:matchup/features/fantasy/ui/matchup_hero.dart';
 
 import 'support/schrift.dart';
+import 'package:matchup/core/ui/app_avatar.dart';
 
 /// Vorschau des **MatchUp-Banners** in allen vier Zuständen.
 ///
@@ -155,5 +156,12 @@ void main() {
       find.byType(ListView),
       matchesGoldenFile('goldens/matchup_banner_vorschau.png'),
     );
+
+    // **Das Konto-Profilbild, kein Kreis mit Buchstaben.** Der Avatar wurde
+    // hier selbst gezeichnet, obwohl die App mit `AppAvatar` längst einen
+    // Baustein dafür hat — im Seitenmenü, im Ligaprofil und in der Teamliste
+    // stand das echte Bild, ausgerechnet im Duell nicht.
+    expect(find.byType(AppAvatar), findsWidgets,
+        reason: 'die Banner zeigen Profilbilder');
   });
 }
