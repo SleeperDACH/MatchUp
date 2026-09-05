@@ -44,15 +44,21 @@ void main() {
     expect(spielFuerPrognose(s, bvb)?.round, 1);
   });
 
-  test('eigenes Spiel gelaufen, Spieltag laeuft noch: das naechste Spiel', () {
-    // Bayern spielt freitags, der Spieltag endet sonntags. Fuer die bereits
-    // gespielte Partie ist nichts mehr zu entscheiden — sie hier stehen zu
-    // lassen hiesse, ein Spiel von gestern mit „Aufstellung kommt noch" zu
-    // beschriften.
+  test('eigenes Spiel gelaufen, Spieltag laeuft noch: es bleibt stehen', () {
+    // **Umgedreht am 05.09.2026**, auf Ansage: „Bis zum Ende des Spieltags
+    // möchte ich die Aufstellung des Spieltags sehen."
+    //
+    // Vorher sprang die Anzeige nach dem Abpfiff sofort auf Spieltag 2 — und
+    // dort gibt es Tage vorher keine Prognose, also stand im Profil „Noch
+    // keine Aufstellung", obwohl die Elf, die gerade gespielt hatte,
+    // verfügbar war. Die alte Begründung („für ein gespieltes Spiel ist
+    // nichts mehr zu entscheiden") stammt aus der Zeit, als es zu einem
+    // abgepfiffenen Spiel nichts zu zeigen gab; seit Migration 0118 steht
+    // dort die gemeldete Aufstellung samt Bank.
     final s = saison(
         bvbSpiel1: FixtureStatus.finished,
         letztesSpiel1: FixtureStatus.scheduled);
-    expect(spielFuerPrognose(s, bvb)?.round, 2);
+    expect(spielFuerPrognose(s, bvb)?.round, 1);
   });
 
   test('eigenes Spiel steht noch aus: nicht auf den naechsten Spieltag', () {

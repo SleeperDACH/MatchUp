@@ -12,24 +12,31 @@ import '../../../core/logic/vereins_kuerzel.dart';
 ///
 /// Maßgeblich ist deshalb der **Spieltag**, nicht der Verein: Gezeigt wird die
 /// laufende Runde, bis deren letztes Spiel abgepfiffen ist; danach die nächste.
+///
+/// **Auch dann, wenn dieser Verein schon gespielt hat** (05.09.2026). Bis
+/// dahin sprang die Anzeige nach dem Abpfiff sofort auf den nächsten Spieltag
+/// — und für den gibt es Tage vorher keine Prognose, also stand dort „Noch
+/// keine Aufstellung", während die Elf, die gerade gespielt hatte, verfügbar
+/// gewesen wäre. Gemeldet als „bis zum Ende des Spieltags möchte ich die
+/// Aufstellung des Spieltags sehen".
+///
+/// Die frühere Begründung („für ein gespieltes Spiel gibt es nichts mehr zu
+/// entscheiden") stammt aus der Zeit, als es zu einem abgepfiffenen Spiel
+/// nichts zu zeigen gab. Seit Migration 0118 steht dort die **gemeldete**
+/// Aufstellung samt Bank — also genau die Antwort auf „hat er gespielt?".
 Fixture? spielFuerPrognose(List<Fixture> spiele, String verein) {
   final runde = aktiveRunde(spiele);
   if (runde == null) return null;
+
+  // Sein Spiel dieser Runde, gespielt oder nicht.
+  final inRunde =
+      _fuerVerein(spiele, verein).where((f) => f.round == runde).toList();
+  if (inRunde.isNotEmpty) return _frueheste(inRunde);
 
   // Der Verein kann in der aktiven Runde spielfrei sein (Pokal-Wochenende,
   // verlegte Partie, ein Spieler aus einem Verein ohne Ansetzung). Dann gilt
   // sein nächstes Spiel — sonst stünde das Profil ohne Auskunft da, obwohl es
   // eine gibt.
-  //
-  // **Und er kann sein Spiel des laufenden Spieltags schon hinter sich
-  // haben.** Bayern spielt freitags, der Spieltag endet sonntags: Von Freitag
-  // 22 Uhr bis Sonntagabend stünde hier sonst eine bereits gespielte Partie
-  // mit dem Hinweis, die Aufstellung komme noch. Fuer dieses Spiel ist nichts
-  // mehr zu entscheiden — dann gilt das nächste.
-  final inRunde = _fuerVerein(spiele, verein).where(
-      (f) => f.round == runde && f.status != FixtureStatus.finished);
-  if (inRunde.isNotEmpty) return _frueheste(inRunde.toList());
-
   final offen = _fuerVerein(spiele, verein)
       .where((f) => f.status != FixtureStatus.finished)
       .toList();

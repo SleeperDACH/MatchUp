@@ -1164,7 +1164,14 @@ class _Prognose extends ConsumerWidget {
             _Urteil(
               drin: elf.enthaelt(player.id),
               bank: elf.aufBank(player.id),
-              bestaetigt: elf.bestaetigt,
+              // **Ein abgepfiffenes Spiel ist nie „voraussichtlich".** Seit
+              // die Anzeige bis zum Ende des Spieltags auf der laufenden Runde
+              // bleibt, steht hier auch eine gelaufene Partie. In aller Regel
+              // ist ihre Aufstellung ohnehin gemeldet; fehlte das Kennzeichen
+              // einmal, stünde sonst „voraussichtlich in der Startelf" über
+              // einem Spiel von gestern.
+              bestaetigt:
+                  elf.bestaetigt || spiel.status == FixtureStatus.finished,
             ),
             _Formationsfeld(
               elf: elf,
@@ -1664,7 +1671,9 @@ class _NochKeinePrognose extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Noch keine Aufstellung',
+                  spiel.status == FixtureStatus.finished
+                      ? 'Keine Aufstellung'
+                      : 'Noch keine Aufstellung',
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -1674,8 +1683,14 @@ class _NochKeinePrognose extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Die voraussichtliche Elf steht in der Regel ein bis zwei Tage '
-            'vor Anpfiff.',
+            // **Für ein gespieltes Spiel wäre „kommt noch" falsch.** Seit die
+            // Anzeige bis zum Ende des Spieltags auf der laufenden Runde
+            // bleibt, kann hier auch eine abgepfiffene Partie stehen — dann
+            // fehlt die Aufstellung wirklich, statt noch unterwegs zu sein.
+            spiel.status == FixtureStatus.finished
+                ? 'Für dieses Spiel liegt keine Aufstellung vor.'
+                : 'Die voraussichtliche Elf steht in der Regel ein bis zwei '
+                    'Tage vor Anpfiff.',
             style: TextStyle(color: scheme.onSurfaceVariant, height: 1.35),
           ),
           if (stats != null && zuletzt != null) ...[

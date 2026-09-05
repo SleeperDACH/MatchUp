@@ -2943,13 +2943,29 @@ verdrängte die Elf, die gerade auf dem Platz steht. Maßgeblich ist deshalb die
 und getestet). Ist der Verein in dieser Runde spielfrei, gilt sein nächstes
 Spiel — sonst stünde das Profil ohne Auskunft da, obwohl es eine gibt.
 
-**Zwei Fälle, und beide sind einzeln getestet**, weil sie in verschiedene
-Richtungen ziehen: Steht das eigene Spiel des laufenden Spieltags **noch aus**,
-darf nichts vorgreifen, auch wenn andere Partien der Runde schon gelaufen sind.
-Ist es dagegen **schon gespielt**, gilt das nächste — Bayern spielt freitags,
-der Spieltag endet sonntags, und von Freitagabend bis Sonntag stünde hier sonst
-eine bereits gespielte Partie mit dem Hinweis, die Aufstellung komme noch. Für
-ein Spiel, das gelaufen ist, gibt es nichts mehr zu entscheiden.
+**Die Elf bleibt bis zum Ende des Spieltags stehen** (05.09.2026, auf Ansage:
+*„Bis zum Ende des Spieltags möchte ich die Aufstellung des Spieltags
+sehen"*). Vorher sprang die Anzeige nach dem Abpfiff **des eigenen Spiels**
+sofort auf den nächsten Spieltag — und für den gibt es Tage vorher keine
+Prognose. Im Profil stand also „Noch keine Aufstellung", obwohl die Elf, die
+gerade auf dem Platz gestanden hatte, verfügbar war.
+
+**Die alte Begründung war zu ihrer Zeit richtig und ist es nicht mehr:** „Für
+ein gespieltes Spiel gibt es nichts mehr zu entscheiden" stammt aus der Zeit,
+als zu einer abgepfiffenen Partie nichts zu zeigen war. Seit Migration 0118
+steht dort die **gemeldete** Aufstellung samt Bank — also genau die Antwort auf
+„hat er gespielt?".
+
+Was bleibt: Steht das eigene Spiel der laufenden Runde **noch aus**, darf
+nichts vorgreifen, auch wenn andere Partien der Runde schon gelaufen sind. Und
+ist der ganze Spieltag durch, rückt die Anzeige weiter — dann greift der
+Zustand ohne Prognose mit den Minuten des letzten Einsatzes.
+
+**Zwei Wortlaute mussten mitziehen**, weil jetzt auch eine abgepfiffene Partie
+hier stehen kann: Der Leerzustand sagt für sie „Für dieses Spiel liegt keine
+Aufstellung vor" statt „kommt ein bis zwei Tage vor Anpfiff", und das Urteil
+nennt sie nie „voraussichtlich" — über einem Spiel von gestern wäre das eine
+Unsicherheit, die es nicht gibt.
 
 **Verbunden wird über Verein und Spieltag, nicht über die Fixture-ID.** Das
 ist beim Anschluss der Oberfläche aufgefallen: `predicted_lineups.fixture_id`

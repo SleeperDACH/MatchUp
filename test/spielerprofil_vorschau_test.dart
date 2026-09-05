@@ -198,7 +198,8 @@ void main() {
     ],
   );
 
-  Widget rahmen(Widget kind, {PrognoseElf? elf}) => ProviderScope(
+  Widget rahmen(Widget kind, {PrognoseElf? elf, List<Fixture>? spielplan}) =>
+      ProviderScope(
         overrides: [
           prognoseElfProvider.overrideWith((ref, k) async => elf),
           // **Ein Ausfall im Bild.** Sonst sieht man weder das Symbol an der
@@ -230,7 +231,8 @@ void main() {
           ),
           fantasyManagersProvider
               .overrideWith((ref, id) => Stream.value(const [])),
-          fantasySeasonFixturesProvider.overrideWith((ref) async => spiele),
+          fantasySeasonFixturesProvider
+              .overrideWith((ref) async => spielplan ?? spiele),
           // Für den Pick-up-Knopf im Profil eines freien Spielers.
           waiverPlayersProvider
               .overrideWith((ref, id) => Stream.value(const <String>{})),
@@ -582,5 +584,99 @@ void main() {
 
     await expectLater(find.byType(BottomSheet),
         matchesGoldenFile('goldens/spielerprofil_frei.png'));
+  });
+
+  testWidgets('Vorschau: Spieltag gelaufen, Aufstellung bleibt stehen',
+      (tester) async {
+    // **Bis zum Ende des Spieltags bleibt die Elf des Spieltags stehen**
+    // (auf Ansage, 05.09.2026). Vorher sprang die Anzeige nach dem Abpfiff
+    // sofort auf den nächsten Spieltag — und für den gibt es Tage vorher
+    // keine Prognose, also stand hier „Noch keine Aufstellung", obwohl die
+    // gerade gespielte Elf verfügbar war.
+    //
+    // Der Spielplan hier: Das Spiel des Vereins in Runde 3 ist **abgepfiffen**,
+    // eine andere Partie derselben Runde steht noch aus. Die Runde läuft also,
+    // und genau dann muss sein gespieltes Spiel stehen bleiben.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 780 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final laufenderSpieltag = [
+      for (final f in spiele)
+        if (f.round < 3)
+          f
+        else
+          Fixture(
+            id: f.id,
+            leagueId: f.leagueId,
+            season: f.season,
+            round: f.round,
+            roundName: f.roundName,
+            kickoff: f.kickoff,
+            home: f.home,
+            away: f.away,
+            status: FixtureStatus.finished,
+            homeScore: 2,
+            awayScore: 1,
+          ),
+      // Eine offene Partie derselben Runde — ohne sie wäre der Spieltag vorbei
+      // und die Anzeige dürfte weiterrücken.
+      Fixture(
+        id: 'sportmonks:offen',
+        leagueId: 'bundesliga',
+        season: 2026,
+        round: 3,
+        roundName: 'Spieltag 3',
+        kickoff: DateTime(2026, 9, 6, 17, 30),
+        home: const TeamRef(id: 'sge', name: 'Eintracht Frankfurt',
+            shortName: 'SGE'),
+        away: const TeamRef(id: 'rbl', name: 'RB Leipzig', shortName: 'RBL'),
+        status: FixtureStatus.scheduled,
+      ),
+    ];
+
+    await tester.pumpWidget(rahmen(
+      elf: prognose,
+      spielplan: laufenderSpieltag,
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showPlayerProfile(
+              context,
+              league: liga,
+              player: held,
+              clubIcon: null,
+              isMine: true,
+            ),
+            child: const Text('öffnen'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('öffnen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.tap(find.text('Aufstellung'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // Die Elf des gelaufenen Spieltags steht da — nicht der Leerzustand.
+    expect(find.text('Noch keine Aufstellung'), findsNothing,
+        reason: 'die Elf des Spieltags ist verfügbar und bleibt stehen');
+    expect(find.textContaining('N. Schlotterbeck'), findsWidgets);
+    // **Über einem Spiel von gestern steht kein „voraussichtlich".**
+    expect(find.textContaining('Voraussichtlich'), findsNothing);
+    expect(find.text('In der Startelf'), findsOneWidget);
+
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/spielerprofil_spieltag_gelaufen.png'),
+    );
   });
 }
