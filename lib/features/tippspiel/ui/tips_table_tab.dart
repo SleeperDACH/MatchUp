@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/data/odds/frozen_odds.dart';
@@ -444,7 +443,6 @@ class _TableBodyState extends ConsumerState<_TableBody> {
           ),
           if (round.scoring.bonusTips.isNotEmpty)
             _BonusTableEntry(round: round),
-          _InviteCodeCard(round: round),
         ],
       ),
     );
@@ -552,8 +550,14 @@ class _NameCell extends StatelessWidget {
   }
 }
 
-/// Spaltenkopf: Teamkürzel + Spielstand. Laufende Spiele zeigen den
-/// Live-Stand orange mit „LIVE"-Markierung.
+/// Spaltenkopf: Teamkürzel + Spielstand.
+///
+/// **Rot sagt „läuft", ohne es hinzuschreiben.** Unter dem Stand stand
+/// zusätzlich „● LIVE" in 9 Punkt — dieselbe Auskunft ein zweites Mal, und in
+/// einer Kopfzeile, die schon Paarung und Ergebnis trägt, war es die dritte
+/// Zeile für zwei Angaben. Gemeldet als „das Live bitte wegnehmen, es reicht,
+/// wenn das Ergebnis rot ist". Derselbe Grund, aus dem im Live-Tab „LIVE" aus
+/// der Kopfzeile geflogen ist und „Anstoß" unter der Anstoßzeit.
 class _FixtureHeader extends StatelessWidget {
   const _FixtureHeader({required this.fixture});
 
@@ -576,33 +580,20 @@ class _FixtureHeader extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        if (live && fixture.hasScore) ...[
-          Text(
-            '${fixture.homeScore}:${fixture.awayScore}',
-            style: small?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: _liveColor,
-            ),
+        // Ein Stand, eine Zeile. Rot heißt „läuft"; steht noch kein Stand
+        // fest, bleibt der Strich — auch für ein laufendes Spiel, denn „LIVE"
+        // statt einer Zahl wäre wieder ein Wort an der Stelle eines
+        // Ergebnisses.
+        Text(
+          fixture.hasScore
+              ? '${fixture.homeScore}:${fixture.awayScore}'
+              : '–',
+          style: small?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: live ? _liveColor : null,
+            fontFeatures: gleichbreiteZiffern,
           ),
-          const Text(
-            '● LIVE',
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-              color: _liveColor,
-            ),
-          ),
-        ] else
-          Text(
-            fixture.hasResult
-                ? '${fixture.homeScore}:${fixture.awayScore}'
-                : (live ? 'LIVE' : '–'),
-            style: small?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: live ? _liveColor : null,
-              fontFeatures: gleichbreiteZiffern,
-            ),
-          ),
+        ),
       ],
     );
   }
@@ -697,42 +688,6 @@ class _TipCell extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _InviteCodeCard extends StatelessWidget {
-  const _InviteCodeCard({required this.round});
-
-  final TipRound round;
-
-  @override
-  Widget build(BuildContext context) {
-    return Karte(
-      padding: EdgeInsets.zero,
-      child: ListTile(
-        dense: true,
-        visualDensity: VisualDensity.compact,
-        leading: const Icon(Icons.key, size: 18),
-        title: Text(
-          round.inviteCode,
-          style: const TextStyle(
-            fontSize: 13,
-            letterSpacing: 1.2,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: const Text('Einladungscode — antippen zum Kopieren'),
-        trailing: const Icon(Icons.copy, size: 16),
-        onTap: () async {
-          await Clipboard.setData(ClipboardData(text: round.inviteCode));
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Einladungscode kopiert')),
-            );
-          }
-        },
       ),
     );
   }

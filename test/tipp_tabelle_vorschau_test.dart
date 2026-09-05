@@ -29,7 +29,9 @@ TipRound _runde() => TipRound(
       createdBy: 'ich',
     );
 
-Fixture _fx(String id, String h, String a, {int? hs, int? as}) => Fixture(
+Fixture _fx(String id, String h, String a,
+        {int? hs, int? as, bool live = false}) =>
+    Fixture(
       id: id,
       leagueId: 'bundesliga',
       season: 2026,
@@ -40,7 +42,9 @@ Fixture _fx(String id, String h, String a, {int? hs, int? as}) => Fixture(
       away: TeamRef(id: a, name: a, shortName: a.substring(0, 3)),
       homeScore: hs,
       awayScore: as,
-      status: hs == null ? FixtureStatus.scheduled : FixtureStatus.finished,
+      status: live
+          ? FixtureStatus.live
+          : (hs == null ? FixtureStatus.scheduled : FixtureStatus.finished),
     );
 
 void main() {
@@ -59,7 +63,10 @@ void main() {
     final spiele = [
       _fx('f1', 'Bayern', 'Dortmund', hs: 2, as: 1),
       _fx('f2', 'Leipzig', 'Union Berlin', hs: 0, as: 0),
-      _fx('f3', 'Freiburg', 'Augsburg', hs: 3, as: 1),
+      // **Ein laufendes Spiel gehört ins Bild.** Ohne eines zeigt die
+      // Vorschau nie, wie der Live-Stand aussieht — und genau daran hing die
+      // Frage, ob das Wort „LIVE" darunter nötig ist.
+      _fx('f3', 'Freiburg', 'Augsburg', hs: 3, as: 1, live: true),
       _fx('f4', 'Werder Bremen', 'Mainz'),
     ];
     const namen = [
@@ -121,5 +128,16 @@ void main() {
 
     await expectLater(find.byType(TipsTableTab),
         matchesGoldenFile('goldens/tipp_tabelle_vorschau.png'));
+
+    // **Rot sagt „läuft", ohne es hinzuschreiben.** Unter dem Live-Stand stand
+    // zusätzlich „● LIVE" in 9 Punkt — dieselbe Auskunft ein zweites Mal, in
+    // einer Kopfzeile, die schon Paarung und Ergebnis trägt.
+    expect(find.textContaining('LIVE'), findsNothing,
+        reason: 'der rote Stand trägt den Zustand allein');
+
+    // **Der Einladungscode wohnt in den Einstellungen**, nicht über der
+    // Rangliste: Man braucht ihn einmal beim Anlegen, die Tabelle sieht man
+    // mehrmals am Spieltag.
+    expect(find.textContaining('Einladungscode'), findsNothing);
   });
 }

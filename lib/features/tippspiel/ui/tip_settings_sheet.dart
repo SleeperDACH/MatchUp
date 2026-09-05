@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
@@ -323,6 +324,33 @@ class _TipSettingsScreen extends ConsumerWidget {
               builder: (_) => TipInvitePlayersScreen(round: round),
             ),
           ),
+        ),
+      // **Der Einladungscode wohnt hier, nicht auf der Tabelle** (auf Ansage,
+      // 05.09.2026). Dort stand er als eigene Karte über der Rangliste — vor
+      // etwas, das man mehrmals am Spieltag ansieht, für eine Sache, die man
+      // einmal beim Anlegen braucht. Er steht jetzt neben „Mitglieder
+      // einladen", also bei der Frage, die ihn aufwirft.
+      if (!round.isFantasyLinked)
+        _Zeile(
+          icon: Icons.key,
+          titel: 'Einladungscode',
+          untertitel: '${round.inviteCode} — antippen zum Kopieren',
+          trailing: Icon(
+            Icons.copy,
+            size: 18,
+            color: Theme.of(context)
+                .colorScheme
+                .onSurfaceVariant
+                .withValues(alpha: 0.7),
+          ),
+          onTap: () async {
+            await Clipboard.setData(ClipboardData(text: round.inviteCode));
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Einladungscode kopiert')),
+              );
+            }
+          },
         ),
       if (isCreator)
         _Zeile(

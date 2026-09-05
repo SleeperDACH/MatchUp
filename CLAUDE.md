@@ -3677,6 +3677,34 @@ Was das Bild sofort zeigte:
   flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
   ist die Beschriftung, das Ergebnis die Auskunft.
 
+### „LIVE" stand dreimal da, der Einladungscode am falschen Ort
+
+Zwei Meldungen zur Tipp-Tabelle, beide vom selben Schlag — etwas steht da, wo
+es nicht hingehört.
+
+**Das Wort „LIVE" ist weg** (*„es reicht, wenn das Ergebnis rot ist, das sollte
+deutlich genug sein"*). Der Spaltenkopf trug bei einem laufenden Spiel drei
+Zeilen: die Paarung, den Stand in Rot und darunter „● LIVE" in 9 Punkt. Die
+dritte sagte, was die zweite über ihre Farbe schon sagt. Dieselbe Streichung
+wie „LIVE" in der Kopfzeile des Live-Tabs und „Anstoß" unter der Anstoßzeit —
+**eine Auskunft, zwei Träger, einer zu viel.**
+
+Mitgegangen ist ein zweiter Fall derselben Sorte: Ohne Stand stand dort früher
+`LIVE` **statt einer Zahl**. Jetzt bleibt der Strich, auch für ein laufendes
+Spiel; ein Wort an der Stelle eines Ergebnisses ist kein Ergebnis.
+
+**Der Einladungscode ist in die Einstellungen gezogen.** Er lag als eigene
+Karte über der Rangliste — vor etwas, das man mehrmals am Spieltag ansieht,
+für eine Sache, die man einmal beim Anlegen braucht. Er steht jetzt neben
+„Mitglieder einladen", also bei der Frage, die ihn überhaupt aufwirft, und
+**dort gestaffelt wie diese Zeile**: Bei einer fantasy-gekoppelten Tipprunde
+kommen die Mitglieder aus der Fantasy-Liga, ein Beitrittscode führt ins Leere.
+Auf der Tabelle stand er unbedingt, also auch dort.
+
+**Die Vorschau hatte kein laufendes Spiel** und konnte deshalb nie zeigen,
+worum es hier ging. Sie hat jetzt eins, dazu zwei Messungen daneben: kein
+`LIVE` im Baum, kein `Einladungscode` auf der Tabelle.
+
 ### Vor dem Anpfiff steht in der Punktebox das Spiel
 
 Gemeldet: *„Statt ‚–' möchte ich das nächste Spiel sehen: ‚FCB Sa 15:30'. Die
