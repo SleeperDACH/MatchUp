@@ -1381,6 +1381,24 @@ ausgespielten Function:
 | `injuries` | 5 | **4** | 0 |
 | `done_deals` | 4 | **3** | 0 |
 
+**Die Vereins-News hingen zwei Schritte hinterher.** Gemeldet als *„jetzt sehe
+ich kein Bild im Newsfeed"* — und im Cache stand es schwarz auf weiß: Die
+Themen-Feeds trugen 0 Meldungen ohne Bild, die Vereins-Feeds **19 von 19**. Sie
+kamen ausschließlich von kicker, waren also nie umgestellt worden. Sie nehmen
+jetzt dieselben vier Bildquellen, gefiltert nach den Stichwörtern des Vereins,
+mit dem kicker-Team-Feed als Notnagel. Gemessen: Bayern 16 Meldungen, HSV 4,
+alle mit Bild.
+
+**Die Liga-News bleiben dagegen bei kicker — auch ohne Bild.** Derselbe Umbau
+ist dort gescheitert, und die Ursache lohnt sich zu merken: `LEAGUE_KW` wurde
+gebaut, um einen **bereits themengerechten** kicker-Feed zu filtern, nicht um
+aus einem allgemeinen Sportfeed auszuwählen. Für die 3. Liga kamen damit
+Basketball-WM der Frauen, Frauen-Bundesliga und Dortmund gegen HSV heraus —
+vier von elf Meldungen ohne jeden Bezug. **Ein Basketballbericht in den News
+der 3. Liga ist der schlimmere Fehler als eine Kachel ohne Bild.** Bei den
+Vereinen trägt derselbe Ansatz, weil ein Vereinsname ein spezifisches Stichwort
+ist und ein Ligaschlagwort keins.
+
 **kicker und Google bleiben als Notnagel** (`nurTextQuellen`): Liefern die
 Bildquellen zusammen **nichts** — Ausfall, Umbau eines Feeds, ein Thema ohne
 Treffer —, wird auf sie ausgewichen. Sie stehen damit nie *neben* den

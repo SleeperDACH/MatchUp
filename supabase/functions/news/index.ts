@@ -109,6 +109,38 @@ function sources(topic: string): Source[] {
   ];
 }
 
+/// Dieselben vier Bildquellen, aber nach einem **Verein** gefiltert statt nach
+/// einem Thema — für die News eines Vereins.
+///
+/// Gemessen am 05.09.2026 über alle vier Feeds: Bayern 17 Treffer, Dortmund
+/// 11, Schalke 10, HSV 8 — und **Hannover 96 null**. Die Sportschau schreibt
+/// nur über die Bundesliga, die überregionalen Blätter fast nur über die
+/// großen Namen. Für die zweite und dritte Liga trägt deshalb der Notnagel.
+function bildQuellenFuer(muster: RegExp): Source[] {
+  return [
+    {
+      url: "https://www.sportschau.de/fussball/bundesliga/index~rss2.xml",
+      filter: muster,
+      source: "Sportschau",
+    },
+    {
+      url: "https://www.spiegel.de/sport/fussball/index.rss",
+      filter: muster,
+      source: "Spiegel",
+    },
+    {
+      url: "https://newsfeed.zeit.de/sport/index",
+      filter: muster,
+      source: "Zeit",
+    },
+    {
+      url: "https://www.n-tv.de/sport/rss",
+      filter: muster,
+      source: "n-tv",
+    },
+  ];
+}
+
 /// **Der Notnagel: Quellen ohne Bild.**
 ///
 /// Sie stehen nicht im Feed — gefragt werden sie nur, wenn die Bildquellen
@@ -202,6 +234,13 @@ const TEAM_FEED: Record<string, string> = {
 
 // Suchbegriffe für den Team-Fallback (Liga-Feed nach Team gefiltert): aus dem
 // Namen abgeleitet + ein paar geläufige Kurzformen.
+/// Sonderzeichen in einem Stichwort maskieren, bevor daraus ein Muster wird.
+/// „FC St. Pauli" enthält einen Punkt — unmaskiert passte der auf **jedes**
+/// Zeichen und damit auf fast jede Meldung.
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function teamKeywords(name: string): string[] {
   const folded = name.toLowerCase()
     .replaceAll("ä", "ae").replaceAll("ö", "oe").replaceAll("ü", "ue")
@@ -340,25 +379,52 @@ Deno.serve(async (req) => {
   let feeds: Source[];
   // Team ohne eigenen kicker-Feed → Liga-Feed nach Team-Namen filtern.
   const teamFallback = !!teamId && !TEAM_FEED[teamId];
+  // Der Notnagel je Zweig — gefragt nur, wenn die Bildquellen nichts bringen.
+  let notnagel: Source[] = [];
   if (teamId) {
     cacheKey = `team:${teamId}`;
     const slug = TEAM_FEED[teamId];
+    // **Auch die Vereins-News nehmen zuerst die Bildquellen** (05.09.2026).
+    // Sie kamen bis dahin ausschließlich von kicker und trugen deshalb
+    // **kein einziges** Bild — im Cache standen 19 von 19 Meldungen ohne.
+    // Gemeldet als „jetzt sehe ich kein Bild im Newsfeed": Die Themen-Feeds
+    // waren längst umgestellt, die Vereins-Feeds nicht.
+    feeds = team
+      ? bildQuellenFuer(
+        new RegExp(teamKeywords(team).map(escapeRe).join("|"), "i"),
+      )
+      : [];
     if (slug) {
-      feeds = [{ url: `https://newsfeed.kicker.de/team/${slug}`, source: "kicker" }];
+      notnagel = [{
+        url: `https://newsfeed.kicker.de/team/${slug}`,
+        source: "kicker",
+      }];
     } else if (league && LEAGUE_FEED[league]) {
-      feeds = [{ url: LEAGUE_FEED[league], source: "kicker" }];
-    } else {
+      notnagel = [{ url: LEAGUE_FEED[league], source: "kicker" }];
+    }
+    if (feeds.length === 0 && notnagel.length === 0) {
       return json([]); // keine Quelle
     }
   } else if (league) {
     // `league` = App-Liga-ID. kicker-Feed bevorzugt, sonst Google-News-Suche.
     cacheKey = `league:${league}`;
+    // **Liga-News bleiben bei kicker — auch ohne Bild.**
+    //
+    // Der Versuch, sie wie die Themen- und Vereins-News aus den Bildquellen zu
+    // ziehen, ist am Zuschnitt gescheitert: `LEAGUE_KW` wurde gebaut, um einen
+    // **bereits themengerechten** kicker-Feed zu filtern, nicht um aus einem
+    // allgemeinen Sportfeed auszuwählen. Gemessen am 05.09.2026 kamen für die
+    // 3. Liga heraus: Basketball-WM der Frauen, Frauen-Bundesliga, 2.
+    // Bundesliga, Dortmund gegen HSV — vier von elf Meldungen ohne jeden
+    // Bezug. **Ein Basketballbericht in den News der 3. Liga ist ein
+    // schlimmerer Fehler als eine Kachel ohne Bild.**
     const kicker = LEAGUE_FEED[league];
+    feeds = [];
     if (kicker) {
-      feeds = [{ url: kicker, source: "kicker" }];
+      notnagel = [{ url: kicker, source: "kicker" }];
     } else {
       const name = LEAGUE_NAME[league] ?? league;
-      feeds = [{
+      notnagel = [{
         url: `https://news.google.com/rss/search?q=` +
           encodeURIComponent(`"${name}" Fußball when:14d`) +
           `&hl=de&gl=DE&ceid=DE:de`,
@@ -367,6 +433,7 @@ Deno.serve(async (req) => {
   } else if (QUERIES[topic]) {
     cacheKey = topic;
     feeds = sources(topic);
+    notnagel = nurTextQuellen(topic);
   } else {
     return json({ error: "Unbekanntes oder fehlendes Thema." }, 400);
   }
@@ -436,8 +503,8 @@ Deno.serve(async (req) => {
   // ausgewichen. Deren Meldungen tragen kein Bild und stehen deshalb nie
   // *neben* den bebilderten, sondern nur an ihrer Stelle: Ein leerer
   // Nachrichtenbereich wäre schlechter als eine Kachel mit Zeitungssymbol.
-  if (QUERIES[topic] && proQuelle.every((l) => l.length === 0)) {
-    proQuelle = await holen(nurTextQuellen(topic));
+  if (notnagel.length > 0 && proQuelle.every((l) => l.length === 0)) {
+    proQuelle = await holen(notnagel);
   }
 
   // Zusammenführen in Quellenreihenfolge: Bei einer Dublette gewinnt die
