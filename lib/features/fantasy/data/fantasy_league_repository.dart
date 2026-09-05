@@ -8,6 +8,7 @@ import '../models/player_absence.dart';
 import '../models/roster_move.dart';
 import '../models/trade.dart';
 import '../logic/fantasy_scoring_rules.dart';
+import '../../../core/data/live_mit_rueckfall.dart';
 
 /// Dedupliziert Waiver-Anträge nach `id`. Der Supabase-Realtime-Stream kann
 /// denselben Antrag doppelt liefern (Initial-Snapshot + Insert-Event); ohne
@@ -47,13 +48,23 @@ class FantasyLeagueRepository {
   /// Die Auswahl übernimmt weiter die RLS (`is_fantasy_member(id) or
   /// created_by = auth.uid()`), für den Stream genauso wie für die Abfrage —
   /// die Liste bleibt also dieselbe, sie steht jetzt nur nicht mehr still.
-  Stream<List<FantasyLeague>> myLeaguesStream() => _client
-      .from('fantasy_leagues')
-      .stream(primaryKey: ['id'])
-      .order('created_at', ascending: false)
-      .map((rows) => ohneDubletten(rows, ['id'])
-          .map(FantasyLeague.fromJson)
-          .toList());
+  /// **Und sie hängt nicht an der Realtime-Verbindung.** `.stream()` holt den
+  /// ersten Schnappschuss und abonniert in einem Zug; scheitert das
+  /// Abonnement (`RealtimeSubscribeException`, Status `timedOut` — gemeldet
+  /// am 05.09.2026), wirft der ganze Strom, und die Liste kommt gar nicht.
+  /// Dabei liefert [myLeagues] sie über eine gewöhnliche Abfrage jederzeit:
+  /// Der Fehler betrifft das Zuhören, nicht das Lesen. [liveMitRueckfall]
+  /// trennt beides und verbindet sich mit wachsendem Abstand neu.
+  Stream<List<FantasyLeague>> myLeaguesStream() => liveMitRueckfall(
+        abfrage: myLeagues,
+        strom: () => _client
+            .from('fantasy_leagues')
+            .stream(primaryKey: ['id'])
+            .order('created_at', ascending: false)
+            .map((rows) => ohneDubletten(rows, ['id'])
+                .map(FantasyLeague.fromJson)
+                .toList()),
+      );
 
   Future<FantasyLeague> createLeague({
     required String name,

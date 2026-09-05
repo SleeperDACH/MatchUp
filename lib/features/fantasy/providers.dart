@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/data/live_mit_rueckfall.dart';
 import '../../core/data/openligadb/openligadb_provider.dart';
 import '../../core/logic/round_robin.dart';
 import '../../core/logic/vereins_kuerzel.dart';
@@ -66,10 +67,20 @@ final myFantasyLeaguesProvider = StreamProvider<List<FantasyLeague>>((ref) {
 /// `asyncMap` statt `map`: Der Stream ist nur die Klingel (siehe
 /// [FantasyLeagueRepository.memberChanges]), die Liste mit Namen und Avataren
 /// kommt aus der vollständigen Abfrage.
+/// **Und die Liste hängt nicht an der Realtime-Verbindung.** Scheitert das
+/// Abonnement beim Start (`RealtimeSubscribeException`, Status `timedOut`),
+/// wirft der Strom, und die Mitglieder kommen gar nicht — der MatchUp-Tab
+/// stünde dann auf „Matchups konnten nicht geladen werden", obwohl die
+/// gewöhnliche Abfrage sie liefert. [liveMitRueckfall] holt den Schnappschuss
+/// über HTTP und verbindet sich mit wachsendem Abstand neu.
 final fantasyManagersProvider =
     StreamProvider.family<List<FantasyManager>, String>((ref, leagueId) {
   final repo = ref.watch(fantasyLeagueRepositoryProvider);
-  return repo.memberChanges(leagueId).asyncMap((_) => repo.managers(leagueId));
+  return liveMitRueckfall(
+    abfrage: () => repo.managers(leagueId),
+    strom: () =>
+        repo.memberChanges(leagueId).asyncMap((_) => repo.managers(leagueId)),
+  );
 });
 
 /// Verwaiste Teams einer Liga (für die Admin-Zuweisung).

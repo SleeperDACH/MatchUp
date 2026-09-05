@@ -2006,6 +2006,44 @@ Last erzeugte: Der Draft-Raum rief alle zwei Sekunden
 offen („Mitglieder kommen nicht per Realtime"). Das hielt die Liste nur *im
 Draft-Raum* aktuell und fragte dafür im Sekundentakt ab.
 
+### Ein Live-Strom darf nicht an seiner Verbindung hängen
+
+Gemeldet: *„In der App habe ich öfter den Fehler ‚Deine Ligen ließen sich nicht
+laden‘ — RealtimeSubscribeException, Status timedOut."*
+
+**`.stream()` tut zwei Dinge in einem:** Es holt einen ersten Schnappschuss
+**und** abonniert die Änderungen. Scheitert das Abonnement — ein Funkloch beim
+Start, ein langsamer Kaltstart, ein WLAN-Wechsel —, wirft der ganze Strom, und
+die Liste kommt **gar nicht**. Dabei liefert `myLeagues()` sie über eine
+gewöhnliche Abfrage jederzeit: **Der Fehler betrifft das Zuhören, nicht das
+Lesen.**
+
+Das war der Rest desselben Fehlers, den die Oberfläche schon einmal hatte
+(„Der Fehler ersetzt die Reihe nur, wenn es nichts zu zeigen gibt"). Dort war
+die Regel richtig gesetzt — und griff nicht, weil beim Erstladen tatsächlich
+nie Daten ankamen.
+
+`liveMitRueckfall` (`core/data/live_mit_rueckfall.dart`) trennt die beiden
+Aufgaben:
+
+- **Der Schnappschuss kommt zuerst**, über HTTP. Die Liste steht, bevor die
+  Verbindung überhaupt eine Rolle spielt.
+- **Ein Verbindungsfehler wird nicht durchgereicht**, solange Daten geflossen
+  sind — er löst einen neuen Versuch mit wachsendem Abstand aus (2 s bis 30 s).
+- **Erst wenn auch die Abfrage scheitert**, gibt es einen Fehler. Dann ist
+  wirklich nichts zu zeigen, und das darf man sagen.
+
+Benutzt für die **Ligaliste** und die **Mitgliederliste** — die beiden, die auf
+dem Startbildschirm und im MatchUp-Tab als Fehlerkarte sichtbar wurden. Die
+übrigen Realtime-Ströme (Kader, Aufstellungen, Trades, Chat) haben dasselbe
+Muster und dieselbe Hülle steht bereit; sie sind bewusst nicht mit umgestellt,
+weil sie nie ohne einen Schirm auftreten, der schon Daten hat.
+
+**Der vierte Test ist der, den man vergisst:** dass das Abonnement beim
+Abbestellen wirklich endet. Ohne ihn bliebe je Schirmwechsel eine
+Realtime-Verbindung offen, und der Fehler zeigte sich erst nach einer halben
+Stunde Benutzung.
+
 **Die Regel daraus:** Eine Tabelle, deren Änderungen jemand sehen soll, braucht
 **beides** — den Eintrag in `supabase_realtime` und einen Provider, der zuhört.
 Fehlt eins von beidem, sieht es wie Trägheit aus. Prüfen lässt es sich in einer
