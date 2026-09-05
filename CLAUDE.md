@@ -2795,6 +2795,30 @@ in Grau: Die Bank ist keine Position, sondern deren Rest. Gehalten von
 `ExpansionTile` mehr im Baum steht und die Bankspieler ohne einen einzigen Tipp
 zu finden sind.
 
+### Eine Bilanz ist ein Ergebnis, kein Zwischenstand
+
+Gemeldet: *„Im MatchUp-Bereich steht schon eine Niederlage bei SFV, obwohl der
+Spieltag ja noch gar nicht vorbei ist. Das macht keinen Sinn."*
+
+Die Head-to-Head-Bilanz lief über **alle** Runden mit Statistikzeilen — und die
+gibt es für den laufenden Spieltag schon mittags, sobald die erste Partie
+angepfiffen ist. Wer am Samstag um 16 Uhr hinten lag, hatte dort eine
+Niederlage stehen, die sich bis Sonntagabend noch drehen konnte.
+
+`gewerteteRunden(abgepfiffen, mitDaten)` schneidet die Menge jetzt auf beides
+zu: **abgepfiffen und mit Daten.** Zwei Bedingungen, weil eine allein in beide
+Richtungen schiefgeht — ein Spieltag ohne Statistikzeilen ergäbe für alle null
+Punkte und damit ein Unentschieden, das nie gespielt wurde. Dieselbe Regel gilt
+im MatchUp-Bereich und in der Fantasy-Tabelle; **der laufende Spieltag hat
+seinen eigenen Ort**, nämlich die Live-Punkte im Kasten darüber, die dort auch
+so heißen.
+
+**Und die Reihenfolge ist Sieg – Unentschieden – Niederlage** (auf Ansage).
+Im MatchUp-Kasten und im Tippspiel-Duell stand S-N-U, in der Fantasy-Tabelle
+dagegen S·U·N. Jede Sportsendung liest sich S-U-N, und wer „2-1-3" sieht,
+rechnet sie automatisch so — die alte Reihenfolge machte aus einem Manager mit
+drei Niederlagen einen mit drei Unentschieden.
+
 ### Wer noch nicht gespielt hat, führt nicht
 
 Gemeldet: Im MatchUp hatte ein Spieler eine Umrahmung, der **noch gar nicht

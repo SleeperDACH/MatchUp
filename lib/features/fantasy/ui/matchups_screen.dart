@@ -298,20 +298,32 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                 return (p.home, p.away);
               }
 
-              // Bilanz über alle gespielten Spieltage.
+              // **Bilanz nur über abgepfiffene Spieltage.** Vorher zählte
+              // jede Runde mit Statistikzeilen — auch die laufende, und die
+              // trägt schon mittags Zwischenstände. Im Kasten stand damit am
+              // Samstagnachmittag eine Niederlage, obwohl der Spieltag noch
+              // lief. Eine Bilanz ist ein Ergebnis, kein Zwischenstand; der
+              // laufende Spieltag hat seinen eigenen Ort, nämlich die
+              // Live-Punkte darüber.
+              final fertig = gewerteteRunden(
+                  ref.watch(abgepfiffeneRundenProvider), seasonStats.keys);
               final totalsByRound = <int, Map<String, double>>{
                 for (final entry in seasonStats.entries)
-                  entry.key: _totals(entry.value, entry.key,
+                  if (fertig.contains(entry.key))
+                    entry.key: _totals(entry.value, entry.key,
                       managers: managers,
                       roster: roster,
-                      playerById: playerById,
-                      lineups: lineups)
+                        playerById: playerById,
+                        lineups: lineups)
               };
               final standings = h2hStandings(ids, totalsByRound);
-              // Saison-Kontext je Manager fürs Banner: „Platz X · S-N-U".
+              // **Sieg – Unentschieden – Niederlage**, in dieser Reihenfolge
+              // (auf Ansage, 05.09.2026). Vorher stand hier S-N-U; jede
+              // Tabelle dieser App und jede Sportsendung liest sich S-U-N,
+              // und wer eine „2-1-3" sieht, rechnet sie automatisch so.
               final subOf = <String, String>{
                 for (final (i, r) in standings.indexed)
-                  r.managerId: 'P${i + 1} · ${r.wins}-${r.losses}-${r.ties}',
+                  r.managerId: 'P${i + 1} · ${r.wins}-${r.ties}-${r.losses}',
               };
 
               final gemerkt =

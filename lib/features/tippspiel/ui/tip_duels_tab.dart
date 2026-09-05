@@ -384,7 +384,10 @@ class _StandingRow extends StatelessWidget {
       ),
       subtitle: Text('${record.pointsFor}:${record.pointsAgainst} Pkt.'),
       trailing: Text(
-        '${record.wins}-${record.losses}-${record.ties}',
+        // **Sieg – Unentschieden – Niederlage.** Vorher S-N-U; jede Tabelle
+        // dieser App und jede Sportsendung liest sich anders herum, und wer
+        // „2-1-3" sieht, rechnet sie automatisch als S-U-N.
+        '${record.wins}-${record.ties}-${record.losses}',
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
           color: scheme.primary,
           fontWeight: FontWeight.bold,

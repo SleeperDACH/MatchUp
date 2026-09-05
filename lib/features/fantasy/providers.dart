@@ -554,6 +554,25 @@ final abgepfiffeneRundenProvider = Provider<List<int>>((ref) {
   return fertig;
 });
 
+/// **Nur die abgepfiffenen Spieltage, für die es Daten gibt.**
+///
+/// Der Nenner der Head-to-Head-Bilanz. Sie stand vorher über *allen* Runden
+/// mit Statistikzeilen — also auch über der laufenden, und die trägt schon
+/// mittags Zwischenstände. Im MatchUp-Bereich stand damit am Samstagnachmittag
+/// bereits eine Niederlage, obwohl der Spieltag noch lief und sich das bis
+/// Sonntagabend drehen kann. Gemeldet am 05.09.2026.
+///
+/// **Eine Bilanz ist ein Ergebnis, kein Zwischenstand.** Der laufende Spieltag
+/// hat seinen eigenen Ort — die Punkte im MatchUp-Kasten, die live mitzählen
+/// und dort auch so heißen.
+Set<int> gewerteteRunden(List<int> abgepfiffen, Iterable<int> mitDaten) {
+  final fertig = abgepfiffen.toSet();
+  return {
+    for (final r in mitDaten)
+      if (fertig.contains(r)) r,
+  };
+}
+
 /// Roh-Leistungsdaten aller Poolspieler für einen Spieltag.
 ///
 /// **Lädt nach, solange der Spieltag läuft.** Vorher war das ein einfacher

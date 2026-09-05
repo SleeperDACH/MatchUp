@@ -90,18 +90,25 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
         return pa != pb ? pa.compareTo(pb) : a.compareTo(b);
       });
 
+    // **Nur abgepfiffene Spieltage.** Dieselbe Regel wie im MatchUp-Bereich:
+    // Ein laufender Spieltag trägt schon mittags Zwischenstände, und eine
+    // Bilanz ist ein Ergebnis. Ohne das stand in der Tabelle eine Niederlage,
+    // die sich bis Sonntagabend noch drehen konnte.
+    final fertig = gewerteteRunden(
+        ref.watch(abgepfiffeneRundenProvider), seasonStats.keys);
     final totalsByRound = <int, Map<String, double>>{
       for (final entry in seasonStats.entries)
-        entry.key: effectiveTotalsForRound(
+        if (fertig.contains(entry.key))
+          entry.key: effectiveTotalsForRound(
           stats: entry.value,
           round: entry.key,
           managers: managers,
           roster: roster,
           playerById: playerById,
           lineups: lineups,
-          scoring: league.scoring,
-          rosterConfig: league.roster,
-        )
+            scoring: league.scoring,
+            rosterConfig: league.roster,
+          )
     };
     final standings = h2hStandings(ids, totalsByRound);
     final nonePlayed = standings.every((r) => r.played == 0);
