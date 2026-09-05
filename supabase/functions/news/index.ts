@@ -27,16 +27,22 @@ const KEYWORDS: Record<string, RegExp> = {
     /perfekt|offiziell|fix\b|unterschreib|verpflicht|wechselt (zu|zum|nach)|festgemacht|gebucht|best[äa]tigt/i,
 };
 
-// Quellen je Thema: Google News (zielgenau) mit kicker-Fallback (allgemeiner
-// Feed, per Stichwort gefiltert) — Google drosselt Cloud-IPs gelegentlich.
+// Quellen je Thema. **Sie werden gemischt, nicht der Reihe nach probiert.**
+//
+// Bis zum 05.09.2026 war das eine Kette mit `break` bei der ersten Quelle, die
+// etwas lieferte. Seit die Sportschau wegen der Bilder vorn steht, liefert die
+// erste Quelle immer etwas — und kicker und Google kamen nie mehr vor.
+// Gemeldet als „warum sind nur noch News von Sportschau da, wo sind die
+// kicker-News?". Eine Rangfolge ist die richtige Antwort auf „welche Quelle
+// nehmen wir, wenn eine ausfällt", und die falsche auf „was steht im Feed".
 type Source = { url: string; filter?: RegExp; source?: string };
 function sources(topic: string): Source[] {
   return [
-    // **Sportschau zuerst, wegen der Bilder.** Der Feed der ARD trägt je
-    // Meldung ein 16:9-Bild in `content:encoded`; Google News und kicker
-    // liefern keines (gemessen 03.09.2026). Er ist ein allgemeiner
-    // Bundesliga-Feed, deshalb derselbe Stichwortfilter wie bei kicker —
-    // bringt er nichts Passendes, greift die nächste Quelle wie bisher.
+    // **Sportschau steht vorn, weil sie die Bilder trägt.** Der Feed der ARD
+    // legt je Meldung ein 16:9-Bild in `content:encoded`; kicker und Google
+    // liefern keines (gemessen 03.09. und wieder 05.09.2026: Sportschau 59
+    // von 59 Meldungen mit Bild, kicker 0 von 20). Bei gleichem Zeitstempel
+    // gewinnt deshalb die frühere Quelle.
     {
       url: "https://www.sportschau.de/fussball/bundesliga/index~rss2.xml",
       filter: KEYWORDS[topic],
@@ -57,6 +63,12 @@ function sources(topic: string): Source[] {
 
 const ttlMin = Number(Deno.env.get("NEWS_CACHE_TTL_MIN") ?? "30");
 const MAX_ITEMS = 20;
+
+// Obergrenze der **gemischten** Liste. `MAX_ITEMS` gilt je Quelle; bei drei
+// Quellen kämen sonst bis zu 60 Meldungen in den Cache und über die Leitung.
+// Dreißig sind mehr als die zwanzig von früher und bleiben eine Größe, die
+// man scrollen kann.
+const MAX_GEMISCHT = 30;
 
 // Liga-spezifische News: kicker-RSS je Liga (zuverlässig, kein Cloud-IP-Block).
 // Frauen-Bundesliga hat keinen kicker-Feed → Google-News-Fallback (best effort).
@@ -310,11 +322,13 @@ Deno.serve(async (req) => {
     "Accept": "application/rss+xml, application/xml, text/xml, */*",
   };
   let items: Array<Record<string, string>> = [];
-  let fromPrimary = false;
+  let erreicht = 0;
   let lastErr = "keine Quelle";
-  outer:
-  for (let i = 0; i < feeds.length; i++) {
-    const src = feeds[i];
+
+  // **Alle Quellen holen und mischen.** Vorher brach die Schleife bei der
+  // ersten ab, die etwas lieferte — seit die Sportschau vorn steht und
+  // zuverlässig liefert, kam kicker damit nie mehr vor.
+  const proQuelle = await Promise.all(feeds.map(async (src) => {
     // Pro Quelle bis zu zwei Versuche (Google 503 → kurzer Backoff).
     for (const wait of [0, 700]) {
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -324,19 +338,46 @@ Deno.serve(async (req) => {
           lastErr = `RSS ${res.status}`;
           continue;
         }
-        const parsed = parseRss(await res.text(), src.filter, src.source);
-        if (parsed.length > 0) {
-          items = parsed;
-          fromPrimary = i === 0;
-          break outer;
-        }
-        lastErr = "leerer Feed";
-        break; // Quelle erreichbar, aber nichts Passendes → nächste Quelle.
+        return parseRss(await res.text(), src.filter, src.source);
       } catch (e) {
         lastErr = `${e}`;
       }
     }
+    return [] as Array<Record<string, string>>;
+  }));
+
+  // Zusammenführen in Quellenreihenfolge: Bei einer Dublette gewinnt die
+  // frühere Quelle, und das ist die Sportschau — also die mit dem Bild.
+  const gesehen = new Set<string>();
+  for (const liste of proQuelle) {
+    if (liste.length > 0) erreicht++;
+    for (const it of liste) {
+      // **Dubletten laufen über den Titel, nicht über den Link.** Dieselbe
+      // Meldung steht bei Google News unter einer Weiterleitungs-URL und beim
+      // Verlag unter seiner eigenen; die Links sind also nie gleich, die
+      // Überschriften praktisch immer. Verglichen wird ohne Satzzeichen und
+      // Groß-/Kleinschreibung.
+      const key = (it.title ?? "")
+        .toLowerCase()
+        .replace(/[^a-zäöüß0-9]+/g, " ")
+        .trim();
+      if (key.length === 0 || gesehen.has(key)) continue;
+      gesehen.add(key);
+      items.push(it);
+    }
   }
+
+  // Nach Datum, neueste zuerst. Ohne das stünden erst alle 59
+  // Sportschau-Meldungen und danach die von kicker — also wieder keine
+  // Mischung, nur eine längere Liste.
+  items.sort((a, b) => {
+    const ta = Date.parse(a.publishedAt ?? "");
+    const tb = Date.parse(b.publishedAt ?? "");
+    if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+    if (Number.isNaN(ta)) return 1;
+    if (Number.isNaN(tb)) return -1;
+    return tb - ta;
+  });
 
   // Team-Fallback (Liga-Feed) nach Team-Namen filtern; Liga-Feeds nach Liga.
   // (Ein eigener kicker-Team-Feed ist bereits teamspezifisch → kein Filter.)
@@ -357,18 +398,19 @@ Deno.serve(async (req) => {
     }
   }
 
+  if (items.length > MAX_GEMISCHT) items = items.slice(0, MAX_GEMISCHT);
+
   if (items.length === 0) {
     // Nichts frisch bekommen → lieber alten Cache als Fehler.
     if (cached) return json(cached.payload);
     return json({ error: `News-Abruf fehlgeschlagen: ${lastErr}` }, 502);
   }
 
-  // Nur die Primärquelle cachen — ein Fallback wird geliefert, aber nicht
-  // persistiert, damit der nächste Aufruf wieder die erste Quelle versucht und
-  // eine dünne Ausweichliste nicht 30 Minuten hängen bleibt. (Primär ist bei
-  // den Themen-Feeds seit dem 03.09.2026 die Sportschau — sie trägt die
-  // Bilder.)
-  if (fromPrimary) {
+  // **Nur eine vollständige Mischung wird gecacht.** Hat nur eine von mehreren
+  // Quellen geantwortet, ist die Liste dünn und einseitig — die 30 Minuten
+  // festzuschreiben hieße, einen Ausfall zu konservieren. Der nächste Aufruf
+  // versucht es dann neu.
+  if (erreicht >= Math.min(2, feeds.length)) {
     await supabase.from("news_cache").upsert({
       topic: cacheKey,
       fetched_at: new Date().toISOString(),

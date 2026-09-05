@@ -1293,6 +1293,45 @@ bringt sie nichts Passendes, greift die Kette wie bisher auf Google und kicker
 zurück. Gemessen: 51 Meldungen im Feed, davon 10 mit Transfer-Bezug — und alle
 zehn mit Bild.
 
+**Die Quellen werden gemischt, nicht der Reihe nach probiert** (05.09.2026).
+Gemeldet: *„Warum sind nur noch News von Sportschau da? Wo sind die
+kicker-News?"* — und die Antwort stand in derselben Änderung, die die Bilder
+gebracht hat. `sources()` war immer eine **Kette** mit `break outer` bei der
+ersten Quelle, die etwas lieferte; solange Google vorn stand und Cloud-IPs
+gedrosselt wurden, kam kicker regelmäßig zum Zug. Seit die Sportschau vorn
+steht und **immer** liefert, war die Kette nach dem ersten Glied zu Ende.
+
+**Eine Rangfolge ist die richtige Antwort auf „welche Quelle nehmen wir, wenn
+eine ausfällt", und die falsche auf „was steht im Feed".** Jetzt werden alle
+Quellen parallel geholt und zusammengeführt:
+
+- **Dubletten laufen über den Titel, nicht über den Link.** Dieselbe Meldung
+  steht bei Google unter einer Weiterleitungs-URL und beim Verlag unter seiner
+  eigenen — die Links sind nie gleich, die Überschriften praktisch immer.
+  Verglichen wird ohne Satzzeichen und Groß-/Kleinschreibung.
+- **Bei einer Dublette gewinnt die frühere Quelle**, also die Sportschau —
+  damit bleibt das Bild erhalten.
+- **Sortiert wird nach Datum.** Ohne das stünden erst alle Sportschau-Meldungen
+  und danach die von kicker; das wäre keine Mischung, nur eine längere Liste.
+- **`MAX_ITEMS` gilt je Quelle**, deshalb deckelt `MAX_GEMISCHT` (30) die
+  zusammengeführte Liste. Bei drei Quellen kämen sonst bis zu 60 Meldungen in
+  den Cache.
+- **Gecacht wird nur eine vollständige Mischung** (mindestens zwei erreichte
+  Quellen). Eine dünne, einseitige Liste 30 Minuten festzuschreiben hieße,
+  einen Ausfall zu konservieren.
+
+Nachgemessen an der ausgespielten Function: `transfers` liefert 21 Meldungen
+(12 Sportschau, 9 kicker), `injuries` und `done_deals` je 4 aus beiden Quellen.
+**Die Folge, die man kennen muss:** Nur die Sportschau-Meldungen tragen ein
+Bild, und weil nach Datum sortiert wird, können oben im Feed mehrere Kacheln
+mit dem Zeitungssymbol stehen. Das ist der Preis der Mischung — dafür gibt es
+`NewsBild` mit seiner Ersatzfläche.
+
+**Falle beim Nachmessen:** `nocache` liest die Function **nur aus dem
+POST-Body**. Ein `?nocache=1` an der URL wird stillschweigend ignoriert, und
+man misst den alten Cache — genau das ist beim ersten Prüflauf passiert und
+sah aus, als hätte der Deploy nichts bewirkt.
+
 **Die Bildbreite ist nicht frei wählbar.** Der Bilddienst der Sportschau kennt
 nur bestimmte Stufen: 1920, 1280, 960, 640, 512, 384 und 320 antworten mit
 200 — **800 und 480 mit 400**. Der erste Versuch schrieb 800 in die URL, und
