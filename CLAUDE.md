@@ -5617,19 +5617,66 @@ Design-Canvas (`design/favoriten/`), gewählt wurde **A**.
 abgekoppelt — zwei Darstellungen derselben Liste wären beim nächsten
 Feinschliff sofort wieder auseinandergelaufen.
 
-**Die letzten Ergebnisse stehen oben** (`spielplanAbschnitte`, seit
-03.09.2026). Gemeldet als „bei den Favoriten müssen die vorherigen Spiele auch
-zu sehen sein" — sie *waren* da, aber ganz unten: Der Spielplan reicht 150 Tage
-nach vorn, bis zu den Ergebnissen scrollte man an zwanzig Zeilen vorbei. Was
-man nicht findet, gibt es nicht.
+#### Der Spielplan beginnt beim nächsten Spiel
 
-Drei Blöcke statt zwei: **Zuletzt** (die drei jüngsten Ergebnisse), **Nächste
-Spiele**, **Frühere Ergebnisse** (der Rest). Das ist die Frage, die man an
-einen Verein hat — wie lief es zuletzt, wer kommt jetzt? Beide Schirme rufen
-dafür dieselbe Funktion; die Aufteilung stand vorher zweimal im Code.
+Zwei Meldungen im Abstand von zwei Tagen, und zusammen ergeben sie eine
+Anordnung, die keine gewöhnliche Liste hergibt:
 
-Angesehen wird der Tab über `test/favoriten_vorschau_test.dart`; wie bei den
-anderen beiden Vorschauen läuft der Bildvergleich nur mit `--update-goldens`.
+1. *„Bei den Favoriten müssen die vorherigen Spiele auch zu sehen sein"*
+   (03.09.2026). Sie *waren* da, aber ganz unten: Der Spielplan reicht 150 Tage
+   nach vorn, bis zu den Ergebnissen scrollte man an zwanzig Zeilen vorbei.
+   **Was man nicht findet, gibt es nicht.** Antwort damals: drei Blöcke —
+   *Zuletzt* (die drei jüngsten Ergebnisse), *Nächste Spiele*, *Frühere
+   Ergebnisse*.
+2. *„Die nächsten Spiele sollen ganz oben angezeigt werden. Dann kann man aber
+   trotzdem noch nach oben wischen, und dort steht dann ‚Vorherige Spiele
+   anzeigen'. Die gehen dann von oben nach unten, sodass die zuletzt
+   passierten ganz unten sind."* (05.09.2026)
+
+Die erste Antwort war die falsche Hälfte: Sie machte die Ergebnisse auffindbar
+und schob dafür die Frage „wer kommt jetzt?" hinter drei Zeilen Vergangenheit.
+**Beides geht nur, wenn die Liste nicht am Anfang beginnt.**
+
+`SpielplanAnsicht` (`app/widgets/team_fixture_list.dart`) ist deshalb ein
+`CustomScrollView` mit **`center`**: Der Anker sitzt auf der Kapitelmarke
+*Nächste Spiele*, alles Vergangene liegt **darüber**. Der Schirm öffnet bei der
+Trennstelle; nach oben wischen führt in die Saison zurück.
+
+Drei Dinge daran sind nicht offensichtlich:
+
+- **Slivers vor dem Anker wachsen nach oben**, ihr Kind 0 liegt direkt über der
+  Trennstelle. Die Liste wird dort deshalb **rückwärts indiziert**
+  (`oben[oben.length - 1 - i]`) — dieselbe Technik wie `reverse: true` im Chat.
+  Reversiert wird die **fertige Widget-Liste**, nicht die Fixtures: Ein
+  Datumskopf muss über seinen Spielen bleiben.
+- **Die Ergebnisse stehen aufsteigend**, ältestes oben. Das jüngste sitzt damit
+  unmittelbar über dem nächsten Spiel — genau da, wo man es sucht, und der
+  Block *Zuletzt* wird überflüssig.
+- **Das Aufklappen verschiebt nichts.** Die Zeilen entstehen oberhalb des
+  Ankers, die Scroll-Position bleibt stehen. Eine gewöhnliche Liste müsste
+  dafür die Höhe des Nachgewachsenen schätzen — dieselbe Rechnerei, die den
+  Chat einmal „irgendwo" landen ließ.
+
+Solange nichts aufgeklappt ist, steht über der Trennstelle **eine** Zeile:
+*Vorherige Spiele anzeigen* mit der Anzahl daneben. Gibt es keine kommenden
+Spiele mehr, ist die Vergangenheit der ganze Inhalt und steht offen da — ein
+Knopf wäre dann eine Hürde vor dem Einzigen, was da ist.
+
+**Die Vereinsseite benutzt dasselbe Widget.** Sie teilte sich mit dem
+Favoriten-Tab schon `spielplanAbschnitte`; nur den einen Schirm umzubauen hätte
+genau die zwei Darstellungen erzeugt, gegen die diese Teilung angelegt wurde.
+
+**Der Preis, den man kennen muss: Zum Neuladen zieht man am oberen Ende**, also
+über den Ergebnissen. An der Trennstelle liegt Inhalt darüber, dort holt ein
+Zug nach unten die Vergangenheit — und genau das ist gewollt.
+
+Angesehen über `test/spielplan_anker_vorschau_test.dart` mit **drei** Bildern
+(Ruhe · Griff · aufgeklappt): Der Griff liegt im Ruhezustand außer Sicht, ein
+Bild davon kann ihn gar nicht zeigen. Gemessen wird in
+`test/spielplan_anker_test.dart` — gegengeprüft, ohne `center:` fallen drei von
+fünf Fällen. Den Favoriten-Tab als Ganzes zeigt weiter
+`test/favoriten_vorschau_test.dart`; wie bei den anderen Vorschauen läuft der
+Bildvergleich nur mit `--update-goldens`.
 
 ### Der Ladeschirm wartet jetzt auf den ganzen Homescreen
 

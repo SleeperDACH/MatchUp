@@ -540,20 +540,16 @@ class _FixturesTab extends ConsumerWidget {
       );
     }
 
-    return RefreshIndicator(
+    // Dieselbe Ansicht wie auf der Vereinsseite (`SpielplanAnsicht`), damit
+    // derselbe Spielplan nicht zweimal anders aussieht: Der Schirm öffnet bei
+    // den nächsten Spielen, die Ergebnisse liegen darüber.
+    return SpielplanAnsicht(
+      fixtures: fixtures,
       onRefresh: () async {
         for (final id in teamIds) {
           ref.invalidate(teamFixturesProvider(id));
         }
       },
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
-        physics: const AlwaysScrollableScrollPhysics(),
-        // Aufteilung in `spielplanAbschnitte` — dieselbe wie auf der
-        // Vereinsseite, damit derselbe Spielplan nicht zweimal anders
-        // aussieht.
-        children: spielplanAbschnitte(fixtures),
-      ),
     );
   }
 }

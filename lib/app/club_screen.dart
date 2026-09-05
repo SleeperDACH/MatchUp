@@ -104,16 +104,13 @@ class _SpielplanTab extends ConsumerWidget {
       data: (fixtures) {
         if (fixtures.isEmpty) return const _Leer('Keine Spiele im Zeitraum.');
 
-        // Gleiche Aufteilung wie im Favoriten-Tab — beide rufen dafür
-        // dieselbe Funktion (`spielplanAbschnitte`), damit derselbe
-        // Spielplan nicht zweimal anders aussieht.
-        return RefreshIndicator(
+        // Gleiche Ansicht wie im Favoriten-Tab — beide bauen dafür dasselbe
+        // Widget (`SpielplanAnsicht`), damit derselbe Spielplan nicht zweimal
+        // anders aussieht.
+        return SpielplanAnsicht(
+          fixtures: fixtures,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
           onRefresh: () async => ref.invalidate(teamFixturesProvider(teamId)),
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-            children: spielplanAbschnitte(fixtures),
-          ),
         );
       },
     );

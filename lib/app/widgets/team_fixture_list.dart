@@ -15,50 +15,192 @@ import 'pulsing_dot.dart';
 /// Darstellung benutzt. Zwei Kopien wären beim nächsten Feinschliff sofort
 /// wieder auseinandergelaufen.
 
-/// Setzt vor jedes Spiel eine Zeile mit Datum, Wettbewerb und Spieltag —
-/// darunter das Spiel selbst als schmale Zeile.
+/// **Der Spielplan beginnt beim nächsten Spiel.**
 ///
-/// Vorher standen beide Angaben getrennt: die Datums-Überschrift **über** der
-/// Box, Wettbewerb und Spieltag **in** ihr. Vier Spiele ergaben so acht
-/// Blöcke, und der Kopf der Box wiederholte, was daneben ohnehin stand.
-/// **Der Spielplan eines Vereins in drei Blöcken.**
+/// Gemeldet an den Favoriten: erst *„es müssen auch die vorherigen Spiele zu
+/// sehen sein"*, und danach — als sie oben standen — *„die nächsten Spiele
+/// sollen ganz oben angezeigt werden. Dann kann man aber trotzdem noch nach
+/// oben wischen, und dort steht dann ‚Vorherige Spiele anzeigen'."*
 ///
-/// Gemeldet an den Favoriten: „Es müssen auch die vorherigen Spiele zu sehen
-/// sein." Sie *waren* da — aber ganz unten, hinter allen kommenden Partien.
-/// Ein Spielplan reicht 150 Tage nach vorn; bis zu den Ergebnissen scrollte
-/// man an zwanzig Zeilen vorbei, und was man nicht findet, gibt es nicht.
+/// Beide Wünsche vertragen sich nur, wenn die Liste **nicht am Anfang
+/// beginnt**. Die drei Anläufe davor sind der Grund für diese Bauart:
 ///
-/// Deshalb stehen die **drei jüngsten Ergebnisse oben**, direkt über dem, was
-/// als Nächstes ansteht — das ist die Frage, die man an einen Verein hat
-/// („wie lief es zuletzt, wer kommt jetzt?"). Alles Ältere bleibt unter den
-/// kommenden Spielen; dorthin geht, wer die Saison nachlesen will.
-List<Widget> spielplanAbschnitte(List<TeamFixture> fixtures) {
-  final kommend = [
-    for (final f in fixtures)
-      if (f.status != FixtureStatus.finished) f
-  ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
-  final ergebnisse = [
-    for (final f in fixtures)
-      if (f.status == FixtureStatus.finished) f
-  ]..sort((a, b) => b.kickoff.compareTo(a.kickoff));
+/// | Fassung | warum sie fiel |
+/// |---|---|
+/// | alles nach Anstoß, Ergebnisse unten | 150 Tage Vorlauf davor — sie waren unauffindbar |
+/// | drei Blöcke, „Zuletzt" ganz oben | die Frage „wer kommt jetzt?" stand hinter drei Ergebnissen |
+/// | jetzt: der Anker liegt bei den kommenden Spielen | — |
+///
+/// Der Schirm öffnet bei **Nächste Spiele**; alles Vergangene liegt darüber
+/// und wird nur sichtbar, wenn man es holt. Ein `CustomScrollView` mit
+/// [center] kann das: Slivers **vor** dem Anker wachsen nach oben, ihr Kind 0
+/// liegt direkt über der Trennstelle. Deshalb wird die Liste dort **rückwärts
+/// indiziert** — die Reihenfolge im Bild bleibt so von oben nach unten
+/// lesbar, das jüngste Ergebnis sitzt unmittelbar über dem nächsten Spiel.
+///
+/// **Der zweite Grund für den Anker ist das Nachwachsen.** Werden die
+/// Ergebnisse aufgeklappt, entstehen sie **oberhalb** der Trennstelle: Die
+/// Scroll-Position bleibt, wo sie ist, und unter dem Daumen springt nichts.
+/// Eine gewöhnliche Liste müsste dafür ihre Höhe schätzen — dieselbe Rechnerei
+/// wie beim Chat, der aus genau diesem Grund `reverse: true` benutzt.
+class SpielplanAnsicht extends StatefulWidget {
+  const SpielplanAnsicht({
+    super.key,
+    required this.fixtures,
+    this.padding = const EdgeInsets.fromLTRB(12, 8, 12, 96),
+    this.onRefresh,
+  });
 
-  final juengste = ergebnisse.take(3).toList();
-  final aeltere = ergebnisse.skip(3).toList();
+  final List<TeamFixture> fixtures;
+  final EdgeInsets padding;
 
-  return [
-    if (juengste.isNotEmpty) ...[
-      const FixtureSectionLabel('Zuletzt'),
-      ...fixturesWithDateHeaders(juengste),
-    ],
-    if (kommend.isNotEmpty) ...[
-      const FixtureSectionLabel('Nächste Spiele'),
-      ...fixturesWithDateHeaders(kommend),
-    ],
-    if (aeltere.isNotEmpty) ...[
-      const FixtureSectionLabel('Frühere Ergebnisse'),
-      ...fixturesWithDateHeaders(aeltere),
-    ],
-  ];
+  /// Zum Neuladen nach unten ziehen. Greift am **oberen** Ende der Liste, also
+  /// über den Ergebnissen — an der Trennstelle zieht man die Vergangenheit
+  /// herunter, und genau das ist hier gewollt.
+  final Future<void> Function()? onRefresh;
+
+  @override
+  State<SpielplanAnsicht> createState() => _SpielplanAnsichtState();
+}
+
+class _SpielplanAnsichtState extends State<SpielplanAnsicht> {
+  /// Der Anker, an dem der Schirm aufgeht. Ein `center`-Schlüssel muss an
+  /// einem Sliver **in derselben Liste** hängen, sonst wirft der Viewport.
+  static const _anker = ValueKey<String>('spielplan-anker');
+
+  bool _vergangeneOffen = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final kommend = [
+      for (final f in widget.fixtures)
+        if (f.status != FixtureStatus.finished) f
+    ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+    // **Aufsteigend, nicht absteigend.** Die Ergebnisse stehen über der
+    // Trennstelle und lesen sich von oben nach unten wie der Rest der App:
+    // das älteste ganz oben, das zuletzt passierte unmittelbar über dem
+    // nächsten Spiel.
+    final vergangen = [
+      for (final f in widget.fixtures)
+        if (f.status == FixtureStatus.finished) f
+    ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+
+    // Steht nichts mehr an, gibt es nichts zu verstecken: Dann ist die
+    // Vergangenheit der ganze Inhalt, und ein Knopf davor wäre eine Hürde vor
+    // dem einzigen, was da ist.
+    final offen = _vergangeneOffen || kommend.isEmpty;
+
+    final oben = <Widget>[];
+    if (vergangen.isNotEmpty) {
+      if (offen) {
+        oben.add(const FixtureSectionLabel('Vorherige Spiele'));
+        oben.addAll(fixturesWithDateHeaders(vergangen));
+      } else {
+        oben.add(
+          _VorherigeSpieleKnopf(
+            anzahl: vergangen.length,
+            onTap: () => setState(() => _vergangeneOffen = true),
+          ),
+        );
+      }
+    }
+
+    final seiten = EdgeInsets.only(
+      left: widget.padding.left,
+      right: widget.padding.right,
+    );
+
+    final liste = CustomScrollView(
+      center: _anker,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: seiten.copyWith(top: widget.padding.top),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              // Rückwärts: Kind 0 liegt direkt über dem Anker, deshalb steht
+              // hier das **letzte** Element der Bildreihenfolge.
+              (_, i) => oben[oben.length - 1 - i],
+              childCount: oben.length,
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          key: _anker,
+          child: kommend.isEmpty
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: seiten,
+                  child: const FixtureSectionLabel('Nächste Spiele'),
+                ),
+        ),
+        SliverPadding(
+          padding: seiten.copyWith(bottom: widget.padding.bottom),
+          sliver: SliverList.list(children: fixturesWithDateHeaders(kommend)),
+        ),
+      ],
+    );
+
+    final onRefresh = widget.onRefresh;
+    if (onRefresh == null) return liste;
+    return RefreshIndicator(onRefresh: onRefresh, child: liste);
+  }
+}
+
+/// Der Griff in die Vergangenheit — die einzige Zeile über der Trennstelle,
+/// solange nichts aufgeklappt ist.
+///
+/// Der Pfeil zeigt nach oben, weil dort steht, was er holt. Die Zahl daneben
+/// sagt, wie viel kommt: „anzeigen" allein verrät nicht, ob man drei Zeilen
+/// bekommt oder eine halbe Saison.
+class _VorherigeSpieleKnopf extends StatelessWidget {
+  const _VorherigeSpieleKnopf({required this.anzahl, required this.onTap});
+
+  final int anzahl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 44,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.keyboard_arrow_up,
+                size: 18,
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Vorherige Spiele anzeigen',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$anzahl',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Spiele als Liste, **je Anstoßzeit ein Kopf**.
