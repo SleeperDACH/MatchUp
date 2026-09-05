@@ -173,7 +173,13 @@ class HomeScreen extends ConsumerWidget {
         count: list?.length,
         marke: MatchUpColors.green,
       ),
-      if (leagues.hasError)
+      // **Der Fehler ersetzt die Reihe nur, wenn es nichts zu zeigen gibt.**
+      // `myFantasyLeaguesProvider` ist ein Realtime-Stream: Reißt die
+      // Verbindung ab, meldet er einen Fehler und liefert den letzten Stand
+      // trotzdem mit. Auf `hasError` allein zu schauen hieß, die Ligakarten
+      // gegen eine Fehlerkarte zu tauschen, obwohl sie vollständig dalagen —
+      // derselbe Fehler wie im MatchUp-Tab, gemeldet am 05.09.2026.
+      if (leagues.hasError && list == null)
         _InfoCard(
           'Deine Ligen ließen sich nicht laden.',
           hinweis:
@@ -233,7 +239,8 @@ class HomeScreen extends ConsumerWidget {
         count: standalone?.length,
         marke: _kTipGold,
       ),
-      if (rounds.hasError)
+      // Dieselbe Regel wie bei den Ligen darüber: erst wenn nichts da ist.
+      if (rounds.hasError && standalone == null)
         _InfoCard(
           'Deine Tipprunden ließen sich nicht laden.',
           hinweis:

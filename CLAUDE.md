@@ -4838,6 +4838,40 @@ ist gegengeprüft: **ohne den Schlüssel meldet er `100000` statt `100002`.**
 Die Lehre für den Testbau: Eine Vorbedingung, die man nicht prüft, ist die
 Stelle, an der ein Test grün wird, ohne etwas zu zeigen.
 
+### Und derselbe Fehler noch einmal — mit `hasError`
+
+Gemeldet: *„Wenn ich auf dem MatchUp-Tab bin, während Spiele laufen, muss ich
+alle 3 Sekunden erneut laden, obwohl es eine Verbindung abbricht. Das ist sehr,
+sehr anstrengend."*
+
+Der `isLoading`-Zweig war repariert, der **Fehlerzweig daneben nicht**. Er hing
+weiter an „ist ein Fehler gemeldet?" statt an „gibt es etwas zu zeigen?" — und
+`fantasyManagersProvider` ist ein Realtime-Stream: Reißt die Verbindung ab (an
+einem Spieltag immer wieder), meldet er einen Fehler **und liefert den letzten
+Stand trotzdem mit**. Der Tab wurde damit gegen „Matchups konnten nicht geladen
+werden" samt Knopf getauscht, obwohl die Daten vollständig dalagen — und weil
+es wieder ein früher `return` war, fiel das Karussell dabei auch noch auf das
+erste MatchUp zurück.
+
+**Dieselbe Regel gilt jetzt an drei weiteren Stellen**, die alle dieselbe Form
+hatten:
+
+| Schirm | vorher | jetzt |
+|---|---|---|
+| MatchUp-Tab | `error != null` → Fehlerschirm | nur ohne Daten |
+| Startbildschirm, Ligen | `leagues.hasError` → Fehlerkarte statt Reihe | `&& list == null` |
+| Startbildschirm, Tipprunden | `rounds.hasError` | `&& standalone == null` |
+| Live-Tab | `hasError` → Wettbewerb fällt aus der Tafel | Spielplan zählt, wenn vorhanden |
+
+**Der zweite Test hat einen echten Absturzpfad freigelegt.** Der
+`PageController` entstand als `late final`-Ausdruck, lief also erst beim ersten
+Zugriff — und wenn der Schirm nie ein Karussell gebaut hatte (weil er auf dem
+Fehler- oder Ladezustand stand), war dieser erste Zugriff das `dispose()`. Dort
+ist `ref` schon tot: *„Cannot use ref after the widget was disposed"*, geworfen
+beim Verlassen des Tabs. Er entsteht jetzt in `initState`, wo `ref.read`
+erlaubt und der Zeitpunkt eindeutig ist. Ohne den Gegenprobe-Fall („ohne jede
+Daten meldet er den Fehler weiterhin") wäre er nicht aufgefallen.
+
 **Die Regel darüber hinaus:** Ein `isLoading`-Zweig, der den Schirm ersetzt,
 ist nur beim Erstaufbau richtig. Danach wirft er jeden Zustand weg, den der
 Nutzer aufgebaut hat — Wischposition, Scrollstand, aufgeklappte Bereiche. Das

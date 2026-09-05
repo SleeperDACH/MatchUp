@@ -66,8 +66,22 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
 
   /// **Der Controller startet auf der gemerkten Seite**, nicht stur auf der
   /// ersten — und die liegt im Provider, nicht im State.
-  late final _pageController = PageController(
-      initialPage: _loopBase + ref.read(matchupKarussellSeiteProvider(widget.league.id)));
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    // **Hier, nicht als `late final`-Ausdruck.** Der lief erst beim ersten
+    // Zugriff — und wenn der Schirm nie ein Karussell gebaut hatte (weil er
+    // auf dem Fehler- oder Ladezustand stand), war das `dispose()`. Dort ist
+    // `ref` schon tot: „Cannot use ref after the widget was disposed",
+    // geworfen beim Verlassen des Tabs. In `initState` ist `ref.read` erlaubt
+    // und der Zeitpunkt eindeutig.
+    _pageController = PageController(
+      initialPage:
+          _loopBase + ref.read(matchupKarussellSeiteProvider(widget.league.id)),
+    );
+  }
 
   @override
   void dispose() {
@@ -125,17 +139,32 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
     //
     // Maßgeblich ist deshalb, ob **Daten da sind**, nicht ob gerade geladen
     // wird. Ein Nachladen über vorhandenen Daten darf man nicht sehen.
-    if (managersAsync.valueOrNull == null || poolAsync.valueOrNull == null) {
-      if (managersAsync.hasError || poolAsync.hasError) {
-        // fällt unten in die Fehlerbehandlung
-      } else {
+    // **Derselbe Grundsatz gilt für den Fehler, und das war er nicht.**
+    //
+    // Der Spinner hing schon an „sind Daten da?" — der Fehlerschirm dagegen
+    // an „ist ein Fehler gemeldet?", ganz unabhängig davon. Und
+    // `fantasyManagersProvider` ist ein Realtime-Stream: Reißt die Verbindung
+    // ab (was während eines Spieltags immer wieder vorkommt), meldet er einen
+    // Fehler und liefert den letzten Stand trotzdem mit. Der Tab wurde damit
+    // durch „Matchups konnten nicht geladen werden" ersetzt, obwohl die Daten
+    // vollständig dalagen — gemeldet als „ich muss alle 3 Sekunden erneut
+    // laden, obwohl nur eine Verbindung abbricht".
+    //
+    // Nebenwirkung, die derselbe frühe `return` hatte: Er baut den `PageView`
+    // ab, also fiel das Karussell dabei auch noch auf das erste MatchUp
+    // zurück.
+    //
+    // **Ein Fehler ersetzt den Schirm nur, wenn es nichts zu zeigen gibt.**
+    // Liegen Daten vor, bleiben sie stehen; der Stream verbindet sich von
+    // selbst wieder, und ein Stand von vor zehn Sekunden ist allemal besser
+    // als ein leerer Tab mit einem Knopf.
+    final hatDaten =
+        managersAsync.valueOrNull != null && poolAsync.valueOrNull != null;
+    if (!hatDaten) {
+      final loadError = managersAsync.error ?? poolAsync.error;
+      if (loadError == null) {
         return const Center(child: CircularProgressIndicator());
       }
-    }
-    // Fehler-State abfangen (z. B. abgebrochener Request) statt via requireValue
-    // den ganzen Tab abstürzen zu lassen.
-    final loadError = managersAsync.error ?? poolAsync.error;
-    if (loadError != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

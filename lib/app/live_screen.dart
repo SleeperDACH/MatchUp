@@ -116,15 +116,21 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     Object? error;
     for (final id in leagueIds) {
       final async = ref.watch(leagueSeasonFixturesProvider(id));
-      if (async.isLoading) {
-        anyLoading = true;
+      final fixtures = async.valueOrNull;
+      // **Vorhandene Spiele zählen, auch wenn zuletzt ein Abruf scheiterte.**
+      // Vorher entschied `hasError` allein, und ein einzelner fehlgeschlagener
+      // Nachladeversuch ließ den ganzen Wettbewerb aus der Tafel
+      // verschwinden — obwohl sein Spielplan noch dalag. Ein Fehler zählt erst,
+      // wenn er nichts übrig lässt.
+      if (fixtures != null) {
+        final league = Leagues.byId(id);
+        for (final f in fixtures) {
+          items.add(_LiveItem(league, f));
+        }
       } else if (async.hasError) {
         error ??= async.error;
       } else {
-        final league = Leagues.byId(id);
-        for (final f in async.valueOrNull ?? const <Fixture>[]) {
-          items.add(_LiveItem(league, f));
-        }
+        anyLoading = true;
       }
     }
 
