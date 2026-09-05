@@ -1337,8 +1337,11 @@ ist zu — `https://www.kicker.de/…/artikel` antwortet mit **403**, auch mit
 Browser-Kennung und von einem Wohnzimmer-Anschluss aus. Das ist eine bewusste
 Sperre, und die umgeht diese App nicht.
 
-**Deshalb eine zweite Quelle mit Bildern** (auf Ansage). Die Wahl fiel auf den
-Spiegel, und die Begründung ist gemessen, nicht geschmacklich:
+**Deshalb nur noch Quellen mit Bildern** (auf Ansage: *„Ich dachte, wir machen
+jetzt verschiedene Quellen, aber nur welche, die Bilder haben"*). kicker und
+Google News sind damit aus den Themen-Feeds heraus — nicht wegen ihrer
+Meldungen, sondern weil ihr RSS keins trägt. Die Auswahl ist gemessen, nicht
+geschmacklich:
 
 | Quelle | Meldungen | mit Bild | Größe je Bild | Zuschnitt |
 |---|---|---|---|---|
@@ -1362,8 +1365,27 @@ zu Juventus" — für eine Bundesliga-App keine Meldungen. `BUNDESLIGA` fordert
 deshalb zusätzlich einen Ligabezug; `Source.mussAuch` trägt das, weil ein
 einzelner regulärer Ausdruck das „und" nicht ausdrücken kann.
 
-Nachgemessen an der ausgespielten Function: `transfers` 23 Meldungen
-(13 Sportschau, 9 kicker, 1 Spiegel), davon 14 mit Bild.
+| Zeit Sport | 15 | 15 | 30 KB | allgemein |
+| n-tv Sport | 10 | 10 | 12 KB | allgemein |
+
+Drinnen sind damit **Sportschau, Spiegel, Zeit und n-tv**. Die drei allgemeinen
+Fußball- bzw. Sportfeeds tragen `BUNDESLIGA` als zweite Bedingung, sonst stünde
+im Transfer-Feed dieser App „Manchester City zahlt 145 Millionen".
+
+**Der Preis ist die Menge, und der ist bewusst gezahlt.** Nachgemessen an der
+ausgespielten Function:
+
+| Thema | vorher (mit kicker/Google) | jetzt | ohne Bild |
+|---|---|---|---|
+| `transfers` | 23 | **13** | 0 |
+| `injuries` | 5 | **4** | 0 |
+| `done_deals` | 4 | **3** | 0 |
+
+**kicker und Google bleiben als Notnagel** (`nurTextQuellen`): Liefern die
+Bildquellen zusammen **nichts** — Ausfall, Umbau eines Feeds, ein Thema ohne
+Treffer —, wird auf sie ausgewichen. Sie stehen damit nie *neben* den
+bebilderten Meldungen, sondern nur an ihrer Stelle: Ein leerer
+Nachrichtenbereich wäre schlechter als eine Kachel mit Zeitungssymbol.
 
 **Falle beim Nachmessen:** `nocache` liest die Function **nur aus dem
 POST-Body**. Ein `?nocache=1` an der URL wird stillschweigend ignoriert, und

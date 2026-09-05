@@ -53,6 +53,13 @@ type Source = {
 };
 function sources(topic: string): Source[] {
   return [
+    // **Alle Quellen hier tragen Bilder — das ist die Auswahlregel**
+    // (05.09.2026, auf Ansage: „verschiedene Quellen, aber nur welche, die
+    // Bilder haben"). kicker und Google News sind deshalb aus den Themen-
+    // Feeds raus: Ihr RSS liefert je Meldung kein Bild, und die Artikelseiten
+    // von kicker antworten auf jeden automatisierten Abruf mit 403. Als
+    // **Notnagel** stehen sie weiter unten — siehe `nurTextQuellen`.
+    //
     // **Sportschau steht vorn, weil sie die Bilder trägt.** Der Feed der ARD
     // legt je Meldung ein 16:9-Bild in `content:encoded`; kicker und Google
     // liefern keines (gemessen 03.09. und wieder 05.09.2026: Sportschau 59
@@ -63,15 +70,21 @@ function sources(topic: string): Source[] {
       filter: KEYWORDS[topic],
       source: "Sportschau",
     },
+    // **Zeit und n-tv als weitere Bildquellen** (05.09.2026). Beide sind
+    // allgemeiner Sport, deshalb wie beim Spiegel [BUNDESLIGA] als zweite
+    // Bedingung. Gemessen: Zeit 15 Meldungen mit 30 KB je Bild, n-tv 10 mit
+    // 12 KB — beide in derselben Größenordnung wie die Sportschau.
     {
-      url: `https://news.google.com/rss/search?q=${encodeURIComponent(QUERIES[topic])}` +
-        `&hl=de&gl=DE&ceid=DE:de`,
+      url: "https://newsfeed.zeit.de/sport/index",
+      filter: KEYWORDS[topic],
+      mussAuch: BUNDESLIGA,
+      source: "Zeit",
     },
     {
-      url: "https://newsfeed.kicker.de/news/bundesliga",
+      url: "https://www.n-tv.de/sport/rss",
       filter: KEYWORDS[topic],
-      // kicker-Feed hat kein <source>-Element je Item → Default-Quelle.
-      source: "kicker",
+      mussAuch: BUNDESLIGA,
+      source: "n-tv",
     },
     // **Zweite Quelle mit Bildern** (05.09.2026). Anlass: kicker liefert im
     // RSS keins, und seine Artikelseiten antworten auf jeden automatisierten
@@ -92,6 +105,28 @@ function sources(topic: string): Source[] {
       filter: KEYWORDS[topic],
       mussAuch: BUNDESLIGA,
       source: "Spiegel",
+    },
+  ];
+}
+
+/// **Der Notnagel: Quellen ohne Bild.**
+///
+/// Sie stehen nicht im Feed — gefragt werden sie nur, wenn die Bildquellen
+/// zusammen **nichts** liefern. Eine Meldung ohne Bild ist besser als ein
+/// leerer Nachrichtenbereich; sie ist nur nicht gut genug, um neben den
+/// bebilderten zu stehen.
+function nurTextQuellen(topic: string): Source[] {
+  return [
+    {
+      url: "https://newsfeed.kicker.de/news/bundesliga",
+      filter: KEYWORDS[topic],
+      // kicker-Feed hat kein <source>-Element je Item → Default-Quelle.
+      source: "kicker",
+    },
+    {
+      url:
+        `https://news.google.com/rss/search?q=${encodeURIComponent(QUERIES[topic])}` +
+        `&hl=de&gl=DE&ceid=DE:de`,
     },
   ];
 }
@@ -368,24 +403,42 @@ Deno.serve(async (req) => {
 
   // **Alle Quellen holen und mischen.** Vorher brach die Schleife bei der
   // ersten ab, die etwas lieferte — seit die Sportschau vorn steht und
-  // zuverlässig liefert, kam kicker damit nie mehr vor.
-  const proQuelle = await Promise.all(feeds.map(async (src) => {
-    // Pro Quelle bis zu zwei Versuche (Google 503 → kurzer Backoff).
-    for (const wait of [0, 700]) {
-      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-      try {
-        const res = await fetch(src.url, { headers });
-        if (!res.ok) {
-          lastErr = `RSS ${res.status}`;
-          continue;
+  // zuverlässig liefert, kam keine zweite Quelle mehr vor.
+  async function holen(quellen: Source[]) {
+    return await Promise.all(quellen.map(async (src) => {
+      // Pro Quelle bis zu zwei Versuche (Google 503 → kurzer Backoff).
+      for (const wait of [0, 700]) {
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+        try {
+          const res = await fetch(src.url, { headers });
+          if (!res.ok) {
+            lastErr = `RSS ${res.status}`;
+            continue;
+          }
+          return parseRss(
+            await res.text(),
+            src.filter,
+            src.source,
+            src.mussAuch,
+          );
+        } catch (e) {
+          lastErr = `${e}`;
         }
-        return parseRss(await res.text(), src.filter, src.source, src.mussAuch);
-      } catch (e) {
-        lastErr = `${e}`;
       }
-    }
-    return [] as Array<Record<string, string>>;
-  }));
+      return [] as Array<Record<string, string>>;
+    }));
+  }
+
+  let proQuelle = await holen(feeds);
+
+  // **Der Notnagel.** Liefern die Bildquellen zusammen nichts — Ausfall,
+  // Umbau eines Feeds, ein Thema ohne Treffer —, wird auf kicker und Google
+  // ausgewichen. Deren Meldungen tragen kein Bild und stehen deshalb nie
+  // *neben* den bebilderten, sondern nur an ihrer Stelle: Ein leerer
+  // Nachrichtenbereich wäre schlechter als eine Kachel mit Zeitungssymbol.
+  if (QUERIES[topic] && proQuelle.every((l) => l.length === 0)) {
+    proQuelle = await holen(nurTextQuellen(topic));
+  }
 
   // Zusammenführen in Quellenreihenfolge: Bei einer Dublette gewinnt die
   // frühere Quelle, und das ist die Sportschau — also die mit dem Bild.
