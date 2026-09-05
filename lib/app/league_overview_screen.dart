@@ -13,6 +13,7 @@ import 'match_detail_screen.dart';
 import 'theme.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/segmented_tab_bar.dart';
+import 'widgets/tabellen_punkte.dart';
 
 /// Liga-Übersicht mit Tabs: Spieltage, Tabelle, Torjäger und liga-spezifische
 /// News. Aufgerufen über die Liga-Buttons im Live-Tab.
@@ -96,6 +97,12 @@ class _TableTab extends ConsumerWidget {
     // Bewusst die live überlagerte Tabelle: Die reine API-Tabelle zeigt
     // gerade beendete und laufende Spiele noch nicht.
     final tableAsync = ref.watch(liveLeagueTableProvider(leagueId));
+    // **Wer gerade spielt, trägt seine Punkte in Rot.** Die Tabelle rechnet
+    // laufende Spiele ohnehin mit; bis hierher war der vorläufige Stand von
+    // einem festen nicht zu unterscheiden.
+    final laufend = laufendeTeams(
+      ref.watch(leagueSeasonFixturesProvider(leagueId)).valueOrNull ?? const [],
+    );
     return tableAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => _Retry(
@@ -114,7 +121,11 @@ class _TableTab extends ConsumerWidget {
             itemCount: rows.length + 1,
             itemBuilder: (context, i) {
               if (i == 0) return const _TableHeader();
-              return _TableRowTile(row: rows[i - 1], leagueId: leagueId);
+              return _TableRowTile(
+                row: rows[i - 1],
+                leagueId: leagueId,
+                live: laufend.contains(rows[i - 1].team.id),
+              );
             },
           ),
         );
@@ -326,8 +337,11 @@ class _TableHeader extends StatelessWidget {
 }
 
 class _TableRowTile extends StatelessWidget {
-  const _TableRowTile({required this.row, this.leagueId});
+  const _TableRowTile({required this.row, this.leagueId, this.live = false});
   final StandingRow row;
+
+  /// Läuft gerade ein Spiel dieser Mannschaft?
+  final bool live;
 
   /// Für den Sprung auf die Vereinsseite. Bei Gruppentabellen (Turniere) nicht
   /// gesetzt — dort führt der Verein keine Ligatabelle.
@@ -376,9 +390,7 @@ class _TableRowTile extends StatelessWidget {
           ),
           SizedBox(
             width: 34,
-            child: Text('${row.points}',
-                textAlign: TextAlign.end,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: TabellenPunkte(punkte: row.points, live: live),
           ),
         ],
       ),

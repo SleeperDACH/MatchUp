@@ -3677,6 +3677,46 @@ Was das Bild sofort zeigte:
   flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
   ist die Beschriftung, das Ergebnis die Auskunft.
 
+### Die Ligatabelle zeigt jetzt, dass sie live ist
+
+Gewünscht: *„Bitte in den Tabellen eine LIVE-Tabelle einbauen. Dass, wenn
+Spiele laufen, von den Teams, die gerade spielen, die Punktestände rot
+angezeigt werden."*
+
+**Live war sie längst, man sah es nur nicht.** `mergeLiveResults` rechnet
+laufende Spiele seit jeher mit — führt eine Mannschaft zur Halbzeit, stehen
+ihre drei Punkte schon in der Spalte. Eine vorläufige Zahl sah damit aus wie
+eine feste, und wer die Tabelle am Samstagnachmittag aufschlug, konnte nicht
+erkennen, welche Ränge noch wackeln. **Die Rechnung war richtig, die Anzeige
+verschwieg ihren Zustand.**
+
+Rot heißt in dieser App „läuft gerade" — derselbe Ton wie der Live-Punkt im
+Live-Tab, der Spielstand einer laufenden Partie und die Kopfzeile der
+Tipp-Tabelle. Und wie dort steht **kein Wort daneben**: In einer Zeile, die
+für vier Zahlen gebaut ist, wäre „LIVE" die zweite Fassung derselben Auskunft
+(siehe den Abschnitt darunter).
+
+**Der Baustein steht an einer Stelle** (`app/widgets/tabellen_punkte.dart`),
+weil die Ligatabelle an **drei** gerendert wird — Liga-Übersicht,
+Vereinsseite, Spiel-Detail — jede mit ihrer eigenen Zeilenklasse. Drei Kopien
+einer Farbregel wären die vierte Gelegenheit, dass sie auseinanderlaufen; die
+Zeilen selbst blieben unangetastet. `laufendeTeams(fixtures)` liefert dazu die
+Menge der Mannschaften mit laufendem Spiel — **aus dem Spielplan, nicht aus
+der Tabelle**: Die Tabelle sagt, wie viele Punkte jemand hat, nicht, ob er
+gerade spielt.
+
+**Die Tipp- und die Fantasy-Tabelle bekommen das ausdrücklich nicht.** Dort
+ändert ein laufendes Spiel die Punkte **aller** Teilnehmer — jeder tippt jede
+Partie, und jede Elf hat Spieler im Einsatz. Alle Zeilen rot zu färben, wäre
+genau der Fehler, der im Live-Tab schon einmal repariert werden musste: Eine
+Hervorhebung, die den Normalfall trifft, hebt nichts hervor. In der Ligatabelle
+trifft sie an einem Samstag vier von achtzehn Zeilen, und darum trägt sie dort.
+
+Angesehen über `test/live_tabelle_vorschau_test.dart`, das zwei laufende und
+eine **beendete** Partie nebeneinanderstellt: Ein abgepfiffenes Spiel färbt
+nichts — seine Punkte stehen fest, und Rot heißt „läuft gerade", nicht „hat
+heute gespielt".
+
 ### „LIVE" stand dreimal da, der Einladungscode am falschen Ort
 
 Zwei Meldungen zur Tipp-Tabelle, beide vom selben Schlag — etwas steht da, wo

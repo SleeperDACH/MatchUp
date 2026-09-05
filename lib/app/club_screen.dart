@@ -12,6 +12,7 @@ import '../features/tippspiel/ui/team_badge.dart';
 import 'widgets/team_fixture_list.dart';
 import 'theme.dart';
 import 'widgets/segmented_tab_bar.dart';
+import 'widgets/tabellen_punkte.dart';
 
 /// Vereinsseite: Spielplan, Tabelle, Kader und News eines Klubs.
 ///
@@ -129,6 +130,11 @@ class _TabelleTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(liveLeagueTableProvider(leagueId));
+    // Wer gerade spielt, trägt seine Punkte in Rot — die Tabelle rechnet
+    // laufende Spiele ohnehin mit, sichtbar war es nicht.
+    final laufend = laufendeTeams(
+      ref.watch(leagueSeasonFixturesProvider(leagueId)).valueOrNull ?? const [],
+    );
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => _Fehler(
@@ -143,8 +149,11 @@ class _TabelleTab extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
             itemCount: rows.length,
-            itemBuilder: (context, i) =>
-                _TabellenZeile(row: rows[i], eigene: rows[i].team.id == teamId),
+            itemBuilder: (context, i) => _TabellenZeile(
+              row: rows[i],
+              eigene: rows[i].team.id == teamId,
+              live: laufend.contains(rows[i].team.id),
+            ),
           ),
         );
       },
@@ -153,9 +162,16 @@ class _TabelleTab extends ConsumerWidget {
 }
 
 class _TabellenZeile extends StatelessWidget {
-  const _TabellenZeile({required this.row, required this.eigene});
+  const _TabellenZeile({
+    required this.row,
+    required this.eigene,
+    this.live = false,
+  });
   final StandingRow row;
   final bool eigene;
+
+  /// Läuft gerade ein Spiel dieser Mannschaft?
+  final bool live;
 
   @override
   Widget build(BuildContext context) {
@@ -190,9 +206,7 @@ class _TabellenZeile extends StatelessWidget {
                   textAlign: TextAlign.end)),
           SizedBox(
             width: 32,
-            child: Text('${row.points}',
-                textAlign: TextAlign.end,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: TabellenPunkte(punkte: row.points, live: live),
           ),
         ],
       ),

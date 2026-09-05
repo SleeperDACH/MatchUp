@@ -14,6 +14,7 @@ import 'club_screen.dart';
 import '../core/util/club_colors.dart';
 import 'widgets/jersey_icon.dart';
 import 'widgets/segmented_tab_bar.dart';
+import 'widgets/tabellen_punkte.dart';
 
 /// Spiel-Detailansicht mit Tabs: Übersicht (Ergebnis, Spielverlauf,
 /// Torschützen), Aufstellung, Statistik und (Live-)Tabelle. Quelle: Sportmonks.
@@ -1187,6 +1188,9 @@ class _TableTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(liveLeagueTableProvider(leagueId));
+    final laufend = laufendeTeams(
+      ref.watch(leagueSeasonFixturesProvider(leagueId)).valueOrNull ?? const [],
+    );
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => Center(
@@ -1209,7 +1213,11 @@ class _TableTab extends ConsumerWidget {
             final highlight =
                 row.team.id == detail.home.id || row.team.id == detail.away.id;
             return _TableRow(
-                row: row, highlight: highlight, leagueId: leagueId);
+              row: row,
+              highlight: highlight,
+              leagueId: leagueId,
+              live: laufend.contains(row.team.id),
+            );
           },
         );
       },
@@ -1248,10 +1256,17 @@ class _TableHeader extends StatelessWidget {
 }
 
 class _TableRow extends StatelessWidget {
-  const _TableRow(
-      {required this.row, required this.highlight, this.leagueId});
+  const _TableRow({
+    required this.row,
+    required this.highlight,
+    this.leagueId,
+    this.live = false,
+  });
   final StandingRow row;
   final bool highlight;
+
+  /// Läuft gerade ein Spiel dieser Mannschaft?
+  final bool live;
 
   /// Für den Sprung auf die Vereinsseite (Tabellen-Tab dort).
   final String? leagueId;
@@ -1303,9 +1318,7 @@ class _TableRow extends StatelessWidget {
                   style: TextStyle(color: scheme.onSurfaceVariant))),
           SizedBox(
               width: 34,
-              child: Text('${row.points}',
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(fontWeight: FontWeight.bold))),
+              child: TabellenPunkte(punkte: row.points, live: live)),
         ],
       ),
     );
