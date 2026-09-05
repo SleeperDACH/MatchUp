@@ -34,9 +34,30 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   String get partnerId => widget.partnerId;
   String get partnerName => widget.partnerName;
 
+  /// **Der Lesestand von vor dem Öffnen.**
+  ///
+  /// Der Schirm setzt die Marke beim Aufbau auf *jetzt* — richtig, denn wer
+  /// den Verlauf offen hat, liest ihn. Nur waren die ungelesenen Nachrichten
+  /// damit verschwunden, bevor man sie sehen konnte: Gemeldet als „ich kann
+  /// nicht erkennen, welche gemeint sind". Der alte Stand wird deshalb
+  /// **einmal** festgehalten und zieht im Verlauf die Linie „Neue
+  /// Nachrichten".
+  DateTime? _standVorherGesetzt;
+  DateTime? _standVorher;
+
   @override
   Widget build(BuildContext context) {
     final myId = ref.watch(currentUserProvider)?.id;
+    final gemerkt = ref.watch(dmLastReadProvider(partnerId));
+    if (_standVorherGesetzt == null) {
+      // Erst merken, wenn die Marke aus den Einstellungen geladen ist —
+      // sonst hielte man das `null` des ersten Frames fest und die Linie
+      // stünde über der allerersten Nachricht des Verlaufs.
+      if (gemerkt != null) {
+        _standVorher = gemerkt;
+        _standVorherGesetzt = gemerkt;
+      }
+    }
     // Solange der Chat offen ist, gilt er als gelesen (roter Punkt verschwindet).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -96,6 +117,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         ),
       ),
       body: LeagueChat(
+        neuAb: _standVorher,
         messages: messages,
         names: {partnerId: partnerName},
         avatars: {partnerId: ?partnerAvatar},

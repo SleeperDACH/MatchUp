@@ -5,6 +5,8 @@ import '../../../core/ui/app_avatar.dart';
 import '../models/direct_message.dart';
 import '../providers.dart';
 import 'conversation_screen.dart';
+import '../../../app/theme.dart';
+import '../../../app/typografie.dart';
 
 /// Übersicht der Direktnachrichten (ligaübergreifend), erreichbar über das
 /// Profil. Pro Partner die letzte Nachricht; oben ein neues Gespräch starten.
@@ -23,6 +25,7 @@ class ConversationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dmAsync = ref.watch(directMessagesProvider);
+    final ungelesen = ref.watch(unreadDmByPartnerProvider);
     final convos = ref.watch(conversationsProvider);
     final names = ref.watch(conversationNamesProvider).valueOrNull ?? const {};
     final avatars =
@@ -70,6 +73,13 @@ class ConversationsScreen extends ConsumerWidget {
               final c = convos[i];
               final name = names[c.partnerId] ?? '…';
               final av = avatars[c.partnerId];
+              // **Was ungelesen ist, sieht man der Zeile an.** Der rote
+              // Zähler am Nachrichten-Symbol sagte „8", und die Liste sah
+              // für gelesen und ungelesen gleich aus — man konnte nicht
+              // erkennen, welche gemeint waren. Beide Zahlen kommen jetzt aus
+              // derselben Regel.
+              final offen = ungelesen[c.partnerId] ?? 0;
+              final scheme = Theme.of(context).colorScheme;
               return ListTile(
                 leading: AppAvatar(
                   imageUrl: av?.url,
@@ -78,11 +88,61 @@ class ConversationsScreen extends ConsumerWidget {
                   fallbackText: name,
                   size: 44,
                 ),
-                title: Text(name),
-                subtitle: Text(c.lastMessage.body,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: Text(_time(c.lastMessage.createdAt),
-                    style: Theme.of(context).textTheme.labelSmall),
+                title: Text(
+                  name,
+                  style: TextStyle(
+                    fontWeight: offen > 0 ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  c.lastMessage.body,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  // Ungelesenes steht heller als Gelesenes — dieselbe Sprache
+                  // wie überall in dieser App: hell heißt „das gilt jetzt".
+                  style: TextStyle(
+                    color: offen > 0
+                        ? scheme.onSurface
+                        : scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                    fontWeight: offen > 0 ? FontWeight.w600 : null,
+                  ),
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _time(c.lastMessage.createdAt),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: offen > 0 ? MatchUpColors.red : null,
+                          ),
+                    ),
+                    if (offen > 0) ...[
+                      const SizedBox(height: 4),
+                      // **Rot und mit Zahl.** Ein Punkt sagte nur „irgendwas",
+                      // die Zahl sagt, wie viel wartet — dieselbe Marke wie am
+                      // Nachrichten-Symbol des Startbildschirms.
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: MatchUpColors.red,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18),
+                        child: Text(
+                          '$offen',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: Schrift.winzig,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => ConversationScreen(
                         partnerId: c.partnerId, partnerName: name))),

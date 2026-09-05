@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../app/theme.dart';
+import '../../app/typografie.dart';
 import '../models/chat_message.dart';
 import 'app_avatar.dart';
 
@@ -24,6 +26,7 @@ class LeagueChat extends StatefulWidget {
     this.emptyText = 'Noch keine Nachrichten.\nSchreib der Liga als Erster!',
     this.extraBuilder,
     this.enableReply = true,
+    this.neuAb,
   });
 
   /// user_id → Avatar-Info (Bild oder Emoji+Farbe); fehlt ein Eintrag, greift
@@ -33,6 +36,17 @@ class LeagueChat extends StatefulWidget {
   /// Ob auf Nachrichten geantwortet werden kann (setzt eine `reply_to`-Spalte
   /// voraus). Für Direktnachrichten aus (dort nicht unterstützt).
   final bool enableReply;
+
+  /// **Ab wann ist eine Nachricht neu?** Ist der Zeitpunkt gesetzt, zieht der
+  /// Verlauf vor der ersten jüngeren *fremden* Nachricht eine Linie „Neue
+  /// Nachrichten".
+  ///
+  /// Ohne sie war nicht zu erkennen, welche Nachrichten der rote Zähler
+  /// gemeint hatte: Der Schirm setzte die Lesemarke beim Öffnen auf *jetzt*,
+  /// die Ungelesenen waren also verschwunden, bevor man sie sehen konnte.
+  /// Deshalb hält der Schirm den Stand **von vor dem Öffnen** fest und reicht
+  /// ihn hier herein.
+  final DateTime? neuAb;
 
   /// Optionale Zusatzkarte unter einer Nachricht (z. B. Trade-Aktionen).
   final Widget? Function(BuildContext, ChatMessage)? extraBuilder;
@@ -103,6 +117,7 @@ class _LeagueChatState extends State<LeagueChat> {
                     ),
                   )
                 : _MessageList(
+                    neuAb: widget.neuAb,
                     messages: list,
                     names: widget.names,
                     avatars: widget.avatars,
@@ -141,7 +156,11 @@ class _MessageList extends StatefulWidget {
     required this.myId,
     required this.onReply,
     this.extraBuilder,
+    this.neuAb,
   });
+
+  /// Siehe [LeagueChat.neuAb].
+  final DateTime? neuAb;
 
   final List<ChatMessage> messages;
   final Map<String, String> names;
@@ -190,11 +209,21 @@ class _MessageListState extends State<_MessageList> {
     final byId = {for (final m in widget.messages) m.id: m};
     final rows = <Widget>[];
     DateTime? lastDay;
+    var neuMarkeGesetzt = false;
     for (final msg in widget.messages) {
       final day = DateUtils.dateOnly(msg.createdAt.toLocal());
       if (lastDay == null || day != lastDay) {
         rows.add(_DateSeparator(day: day));
         lastDay = day;
+      }
+      // Die Linie steht **einmal**, vor der ersten neuen fremden Nachricht.
+      // Eigene zählen nicht: Was man selbst geschrieben hat, hat man gelesen.
+      if (!neuMarkeGesetzt &&
+          widget.neuAb != null &&
+          msg.userId != widget.myId &&
+          msg.createdAt.isAfter(widget.neuAb!)) {
+        rows.add(const _NeuTrenner());
+        neuMarkeGesetzt = true;
       }
       if (msg.isSystem) {
         rows.add(_SystemLine(text: msg.body));
@@ -246,6 +275,41 @@ class _MessageListState extends State<_MessageList> {
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       itemCount: rows.length,
       itemBuilder: (context, i) => rows[rows.length - 1 - i],
+    );
+  }
+}
+
+/// „Neue Nachrichten" — die Linie, ab der man noch nicht gelesen hatte.
+///
+/// Rot, weil sie dasselbe meint wie der Zähler am Nachrichten-Symbol: Hier
+/// wartet etwas. Sie steht genau einmal je Verlauf; eine Linie über jeder
+/// neuen Nachricht wäre keine Grenze mehr, sondern ein Muster.
+class _NeuTrenner extends StatelessWidget {
+  const _NeuTrenner();
+
+  @override
+  Widget build(BuildContext context) {
+    const rot = MatchUpColors.red;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(child: Container(height: 1, color: rot.withValues(alpha: 0.45))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              'Neue Nachrichten',
+              style: TextStyle(
+                color: rot,
+                fontSize: Schrift.klein,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+          Expanded(child: Container(height: 1, color: rot.withValues(alpha: 0.45))),
+        ],
+      ),
     );
   }
 }

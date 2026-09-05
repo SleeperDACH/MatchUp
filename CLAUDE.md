@@ -5014,6 +5014,44 @@ unterschiedlich hohen Blasen, danach muss die letzte im Bild sein und die erste
 gar nicht gebaut. Gegengeprüft — ohne `reverse` findet der Test die letzte
 Nachricht nicht.
 
+### Ungelesen war eine Zahl ohne Ort
+
+Gemeldet: *„Mir werden ungelesene Nachrichten angezeigt. Wenn ich aber auf die
+Nachrichten gehe, kann ich nicht erkennen, welche damit gemeint sind."*
+
+Zwei Ursachen, und die zweite ist die interessantere:
+
+- **Die Gesprächsliste kennzeichnete gar nichts.** Sie zeigte Name, Vorschau
+  und Uhrzeit — für gelesene und ungelesene Gespräche identisch, während der
+  rote Zähler am Nachrichten-Symbol „8" behauptete. Gerechnet hat nur der
+  Zähler.
+- **Der Verlauf löschte den Beweis beim Öffnen.** `markRead(DateTime.now())`
+  lief in jedem `build`; in dem Moment, in dem man nachsehen wollte, welche
+  Nachrichten neu sind, waren sie es nicht mehr.
+
+Die Zahl kommt jetzt aus `unreadDmByPartnerProvider` — **einer** Regel je
+Gesprächspartner, aus der sich der Gesamtzähler summiert. Zwei Stellen, die
+dieselbe Frage getrennt beantworten, sind in dieser Datei oft genug
+schiefgegangen.
+
+**Die Liste sagt, welches Gespräch**: Name fetter, Vorschau heller, Uhrzeit rot
+und ein roter Zähler mit der Anzahl — dieselbe Marke wie am Nachrichten-Symbol,
+aus derselben Regel.
+
+**Der Verlauf sagt, welche Nachricht**: Der Schirm hält den Lesestand von
+**vor** dem Öffnen einmal fest und reicht ihn als `neuAb` in `LeagueChat`; dort
+steht davor die Linie „Neue Nachrichten". Zwei Feinheiten, beide als Test:
+
+* **Nur einmal je Verlauf.** Eine Linie über jeder neuen Nachricht wäre keine
+  Grenze mehr, sondern ein Muster.
+* **Eigene Nachrichten lösen sie nicht aus.** Was man selbst geschrieben hat,
+  hat man gelesen — sonst stünde die Linie ausgerechnet über der eigenen
+  letzten Antwort.
+
+**Der Stand wird erst gemerkt, wenn er geladen ist.** `dmLastReadProvider` holt
+ihn aus den Einstellungen und liefert im ersten Frame `null`; hielte man das
+fest, stünde die Linie über der allerersten Nachricht des ganzen Verlaufs.
+
 ### Nachrichten lassen sich kopieren — und der tote Griff
 
 Gemeldet: *„Wir brauchen außerdem die Funktion, dass man im Chat Nachrichten

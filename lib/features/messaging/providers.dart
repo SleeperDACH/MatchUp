@@ -87,19 +87,37 @@ class DmReadNotifier extends StateNotifier<DateTime?> {
   }
 }
 
-/// Anzahl ungelesener Direktnachrichten (empfangen, neuer als die jeweilige
-/// Lesemarke des Partners). Grundlage für die Zahl am Nachrichten-Symbol.
-final unreadDmCountProvider = Provider<int>((ref) {
+/// **Ungelesene Nachrichten je Gesprächspartner.**
+///
+/// Die eine Regel, aus der sowohl der rote Zähler am Nachrichten-Symbol als
+/// auch die Kennzeichnung in der Gesprächsliste kommt. Vorher rechnete nur der
+/// Zähler, und die Liste zeigte gar nichts — gemeldet als *„mir werden
+/// ungelesene Nachrichten angezeigt, aber ich kann nicht erkennen, welche
+/// gemeint sind"*. Zwei Stellen, die dieselbe Frage verschieden beantworten,
+/// sind in dieser App schon oft genug schiefgegangen; hier beantwortet sie
+/// eine.
+final unreadDmByPartnerProvider = Provider<Map<String, int>>((ref) {
   final me = Supabase.instance.client.auth.currentUser?.id;
   final msgs = ref.watch(directMessagesProvider).valueOrNull ?? const [];
-  if (me == null) return 0;
-  var count = 0;
+  if (me == null) return const {};
+  final out = <String, int>{};
   for (final m in msgs) {
     if (m.senderId == me) continue;
     final lastRead = ref.watch(dmLastReadProvider(m.senderId));
-    if (lastRead == null || m.createdAt.isAfter(lastRead)) count++;
+    if (lastRead == null || m.createdAt.isAfter(lastRead)) {
+      out[m.senderId] = (out[m.senderId] ?? 0) + 1;
+    }
   }
-  return count;
+  return out;
+});
+
+/// Anzahl ungelesener Direktnachrichten insgesamt — die Summe der Regel oben.
+final unreadDmCountProvider = Provider<int>((ref) {
+  var summe = 0;
+  for (final n in ref.watch(unreadDmByPartnerProvider).values) {
+    summe += n;
+  }
+  return summe;
 });
 
 /// Gibt es ungelesene Direktnachrichten (empfangen, neuer als die Lesemarke)?
