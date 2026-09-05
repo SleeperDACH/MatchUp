@@ -6,6 +6,7 @@ import '../../leagues/models/join_request.dart';
 import '../models/chat_message.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
+import '../../../core/data/live_mit_rueckfall.dart';
 
 /// Tipprunden-Verwaltung gegen Supabase. RLS sorgt dafür, dass nur die
 /// eigenen Runden sichtbar sind.
@@ -184,14 +185,31 @@ class TipRoundRepository {
   /// Live-Stream der Chat-Nachrichten einer Liga (älteste zuerst). Läuft
   /// über Supabase Realtime; die RLS lässt nur Mitglieder mitlesen.
   Stream<List<ChatMessage>> messageStream(String roundId) {
-    return _client
+    // **Der Verlauf hängt nicht an der Verbindung.** Ein Kanalfehler beim
+    // Öffnen — gemeldet als `SocketException: Connection reset by peer` —
+    // ließ den Chat sonst leer stehen, obwohl die Nachrichten über HTTP
+    // jederzeit zu holen sind.
+    return liveMitRueckfall(
+      abfrage: () => messages(roundId),
+      strom: () => _client
+          .from('tip_round_messages')
+          .stream(primaryKey: ['id'])
+          .eq('round_id', roundId)
+          // Älteste zuerst (Supabase sortiert sonst absteigend) — so stehen
+          // neue Nachrichten unten.
+          .order('created_at', ascending: true)
+          .map((rows) => rows.map(ChatMessage.fromJson).toList()),
+    );
+  }
+
+  /// Dieselben Nachrichten als gewöhnliche Abfrage — die Grundlage oben.
+  Future<List<ChatMessage>> messages(String roundId) async {
+    final rows = await _client
         .from('tip_round_messages')
-        .stream(primaryKey: ['id'])
+        .select()
         .eq('round_id', roundId)
-        // Älteste zuerst (Supabase sortiert sonst absteigend) — so stehen
-        // neue Nachrichten unten.
-        .order('created_at', ascending: true)
-        .map((rows) => rows.map(ChatMessage.fromJson).toList());
+        .order('created_at', ascending: true);
+    return rows.map(ChatMessage.fromJson).toList();
   }
 
   /// Schreibt eine Nachricht in den Liga-Chat (nur als Mitglied erlaubt,

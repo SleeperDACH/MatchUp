@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/data/live_mit_rueckfall.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../models/direct_message.dart';
 
@@ -13,14 +14,38 @@ class MessagingRepository {
 
   String? get _uid => _client.auth.currentUser?.id;
 
-  /// Alle eigenen Nachrichten (RLS-gefiltert) in Echtzeit, älteste zuerst.
-  /// Der Client gruppiert sie zu Konversationen.
-  Stream<List<DirectMessage>> messagesStream() => _client
-      .from('direct_messages')
-      .stream(primaryKey: ['id'])
-      // Älteste zuerst — neue Nachrichten erscheinen unten (wie im Liga-Chat).
-      .order('created_at', ascending: true)
-      .map((rows) => rows.map(DirectMessage.fromJson).toList());
+  /// Alle eigenen Nachrichten (RLS-gefiltert), älteste zuerst — als
+  /// gewöhnliche Abfrage.
+  ///
+  /// Sie ist die Grundlage von [messagesStream] und der Grund, warum ein
+  /// Verbindungsabbruch dort keinen leeren Schirm mehr hinterlässt.
+  Future<List<DirectMessage>> messages() async {
+    final rows = await _client
+        .from('direct_messages')
+        .select()
+        .order('created_at', ascending: true);
+    return rows.map(DirectMessage.fromJson).toList();
+  }
+
+  /// Dieselben Nachrichten **live**.
+  ///
+  /// **Und sie hängen nicht an der Realtime-Verbindung.** Gemeldet am
+  /// 05.09.2026: Beim Öffnen der Nachrichten kam eine
+  /// `RealtimeSubscribeException` — Kanalfehler, darunter ein
+  /// `SocketException: Connection reset by peer (errno 54)`. Der Strom warf,
+  /// und der Schirm blieb leer, obwohl [messages] die Liste über HTTP
+  /// jederzeit liefert. Ein zurückgesetztes Socket ist ein Grund, neu zu
+  /// verbinden — keiner, den Verlauf wegzuwerfen.
+  Stream<List<DirectMessage>> messagesStream() => liveMitRueckfall(
+        abfrage: messages,
+        strom: () => _client
+            .from('direct_messages')
+            .stream(primaryKey: ['id'])
+            // Älteste zuerst — neue Nachrichten erscheinen unten (wie im
+            // Liga-Chat).
+            .order('created_at', ascending: true)
+            .map((rows) => rows.map(DirectMessage.fromJson).toList()),
+      );
 
   Future<void> sendMessage(String recipientId, String body,
       {String? tradeId, String? inviteLeagueId, String? inviteCode}) async {

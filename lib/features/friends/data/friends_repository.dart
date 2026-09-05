@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/data/live_mit_rueckfall.dart';
 
 /// Eine Freundschafts-Zeile aus `public.friendships`.
 class Friendship {
@@ -32,10 +33,20 @@ class FriendsRepository {
   String? get _uid => _client.auth.currentUser?.id;
 
   /// Alle eigenen Freundschaften (RLS-gefiltert) in Echtzeit.
-  Stream<List<Friendship>> friendshipsStream() => _client
-      .from('friendships')
-      .stream(primaryKey: ['requester_id', 'addressee_id'])
-      .map((rows) => rows.map(Friendship.fromJson).toList());
+  Stream<List<Friendship>> friendshipsStream() => liveMitRueckfall(
+        abfrage: friendships,
+        strom: () => _client
+            .from('friendships')
+            .stream(primaryKey: ['requester_id', 'addressee_id'])
+            .map((rows) => rows.map(Friendship.fromJson).toList()),
+      );
+
+  /// Dieselbe Liste als gewöhnliche Abfrage. Sie trägt das Seitenmenü, wenn
+  /// die Realtime-Verbindung nicht zustande kommt.
+  Future<List<Friendship>> friendships() async {
+    final rows = await _client.from('friendships').select();
+    return rows.map(Friendship.fromJson).toList();
+  }
 
   /// Freundschaftsanfrage an [addresseeId] stellen.
   Future<void> sendRequest(String addresseeId) async {

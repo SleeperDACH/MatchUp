@@ -2033,11 +2033,24 @@ Aufgaben:
 - **Erst wenn auch die Abfrage scheitert**, gibt es einen Fehler. Dann ist
   wirklich nichts zu zeigen, und das darf man sagen.
 
-Benutzt für die **Ligaliste** und die **Mitgliederliste** — die beiden, die auf
-dem Startbildschirm und im MatchUp-Tab als Fehlerkarte sichtbar wurden. Die
-übrigen Realtime-Ströme (Kader, Aufstellungen, Trades, Chat) haben dasselbe
-Muster und dieselbe Hülle steht bereit; sie sind bewusst nicht mit umgestellt,
-weil sie nie ohne einen Schirm auftreten, der schon Daten hat.
+**Benutzt überall dort, wo ein Ausfall einen Schirm leer lässt:**
+
+| Strom | Schirm | Anlass |
+|---|---|---|
+| Ligaliste | Startbildschirm | „Deine Ligen ließen sich nicht laden" |
+| Mitgliederliste | MatchUp-Tab | „Matchups konnten nicht geladen werden" |
+| Direktnachrichten | Nachrichten | `Connection reset by peer`, errno 54 |
+| Liga-Chat (Fantasy) | Ligachat | dieselbe Bauart |
+| Liga-Chat (Tippspiel) | Tipprunde | dieselbe Bauart |
+| Freundschaften | Seitenmenü | dieselbe Bauart |
+
+**Die drei letzten sind nicht gemeldet worden, sondern mitgezogen.** Der Nutzer
+hat denselben Fehler an zwei Tagen auf zwei Schirmen getroffen; ihn einzeln
+abzuarbeiten, sobald er wieder auftaucht, ist die falsche Form. Was bleibt —
+Kader, Aufstellungen, Trades, Draft — steht nie allein auf einem Schirm: Dort
+liegen immer schon Daten aus einer anderen Quelle, und die Oberfläche zeigt
+seit „Ein Fehler ersetzt den Schirm nur, wenn nichts zu zeigen ist" den letzten
+Stand weiter.
 
 **Der vierte Test ist der, den man vergisst:** dass das Abonnement beim
 Abbestellen wirklich endet. Ohne ihn bliebe je Schirmwechsel eine

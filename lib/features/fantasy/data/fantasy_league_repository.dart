@@ -499,14 +499,30 @@ class FantasyLeagueRepository {
           .toList());
 
   /// Live-Stream des ligainternen Chats (älteste zuerst, neue unten).
-  Stream<List<ChatMessage>> messageStream(String leagueId) => _client
-      .from('fantasy_league_messages')
-      .stream(primaryKey: ['id'])
-      .eq('league_id', leagueId)
-      .order('created_at', ascending: true)
-      .map((rows) => ohneDubletten(rows, ['id'])
-          .map(ChatMessage.fromJson)
-          .toList());
+  ///
+  /// **Der Verlauf hängt nicht an der Verbindung** — siehe
+  /// [liveMitRueckfall]. Ein Kanalfehler ließ den Chat sonst leer stehen.
+  Stream<List<ChatMessage>> messageStream(String leagueId) => liveMitRueckfall(
+        abfrage: () => messages(leagueId),
+        strom: () => _client
+            .from('fantasy_league_messages')
+            .stream(primaryKey: ['id'])
+            .eq('league_id', leagueId)
+            .order('created_at', ascending: true)
+            .map((rows) => ohneDubletten(rows, ['id'])
+                .map(ChatMessage.fromJson)
+                .toList()),
+      );
+
+  /// Dieselben Nachrichten als gewöhnliche Abfrage.
+  Future<List<ChatMessage>> messages(String leagueId) async {
+    final rows = await _client
+        .from('fantasy_league_messages')
+        .select()
+        .eq('league_id', leagueId)
+        .order('created_at', ascending: true);
+    return rows.map(ChatMessage.fromJson).toList();
+  }
 
   Future<void> sendMessage(String leagueId, String body,
       {String? replyTo}) async {
