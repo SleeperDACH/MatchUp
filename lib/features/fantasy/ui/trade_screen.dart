@@ -58,7 +58,7 @@ class TradeScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            _PartnerList(league: league),
+            TradePartnerList(league: league),
             _ActiveOffers(league: league, incoming: true),
             _ActiveOffers(league: league, incoming: false),
             _TradeHistory(league: league),
@@ -81,10 +81,22 @@ bool _tradesClosed(FantasyLeague league, int? currentRound) {
   return plan.isValid && currentRound > plan.tradeDeadlineRound;
 }
 
-class _PartnerList extends ConsumerWidget {
-  const _PartnerList({required this.league});
+/// **Die Partnerwahl: alle Kader nebeneinander.**
+///
+/// Öffentlich, weil sie an zwei Stellen gebraucht wird — als erster Reiter des
+/// Trade-Schirms und über [TradePartnerScreen] aus einem Spielerprofil.
+/// Vorher stand dort ein `SimpleDialog` mit einer Namensliste: dieselbe Frage,
+/// zwei Antworten, und die schlechtere gewann. **Mit wem man tauscht,
+/// entscheidet man an den Kadern, nicht an den Namen.**
+class TradePartnerList extends ConsumerWidget {
+  const TradePartnerList({super.key, required this.league, this.initialOffer});
 
   final FantasyLeague league;
+
+  /// Spieler, die im Angebot schon stehen sollen — der, aus dessen Profil man
+  /// hergekommen ist. Ohne ihn müsste man ihn auf dem nächsten Schirm noch
+  /// einmal suchen.
+  final Set<String>? initialOffer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -159,8 +171,11 @@ class _PartnerList extends ConsumerWidget {
                     clubIcons: clubIcons,
                     enabled: !closed,
                     onOpen: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) =>
-                            TradeComposeScreen(league: league, partner: m))),
+                        builder: (_) => TradeComposeScreen(
+                              league: league,
+                              partner: m,
+                              initialOffer: initialOffer ?? const {},
+                            ))),
                   );
                 },
               ),
@@ -1664,4 +1679,28 @@ class TradeCard extends ConsumerWidget {
               fontWeight: FontWeight.w700)),
     );
   }
+}
+
+/// Die Partnerwahl als eigener Schirm — der Weg aus einem Spielerprofil.
+///
+/// Gemeldet: *„Wenn ich über ein Spielerprofil von meinen Spielern traden
+/// möchte, habe ich nur den Screen mit allen Teilnehmern und nicht den
+/// normalen Auswahlscreen von den Trades."* Dort stand ein Dialog mit
+/// Avataren und Namen; die Frage „mit wem tausche ich?" beantwortet man aber
+/// an den **Kadern** — und die zeigt der Trade-Schirm längst.
+class TradePartnerScreen extends StatelessWidget {
+  const TradePartnerScreen({
+    super.key,
+    required this.league,
+    this.initialOffer,
+  });
+
+  final FantasyLeague league;
+  final Set<String>? initialOffer;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Neuer Trade')),
+        body: TradePartnerList(league: league, initialOffer: initialOffer),
+      );
 }

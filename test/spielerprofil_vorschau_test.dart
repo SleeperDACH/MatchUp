@@ -16,6 +16,7 @@ import 'package:matchup/features/fantasy/ui/player_profile_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import 'support/schrift.dart';
+import 'package:matchup/features/fantasy/ui/trade_screen.dart';
 
 /// Vorschau des **Spielerprofils**.
 ///
@@ -198,7 +199,10 @@ void main() {
     ],
   );
 
-  Widget rahmen(Widget kind, {PrognoseElf? elf, List<Fixture>? spielplan}) =>
+  Widget rahmen(Widget kind,
+          {PrognoseElf? elf,
+          List<Fixture>? spielplan,
+          List<FantasyManager> managers = const []}) =>
       ProviderScope(
         overrides: [
           prognoseElfProvider.overrideWith((ref, k) async => elf),
@@ -230,7 +234,7 @@ void main() {
             ]),
           ),
           fantasyManagersProvider
-              .overrideWith((ref, id) => Stream.value(const [])),
+              .overrideWith((ref, id) => Stream.value(managers)),
           fantasySeasonFixturesProvider
               .overrideWith((ref) async => spielplan ?? spiele),
           // Für den Pick-up-Knopf im Profil eines freien Spielers.
@@ -678,5 +682,63 @@ void main() {
       find.byType(BottomSheet),
       matchesGoldenFile('goldens/spielerprofil_spieltag_gelaufen.png'),
     );
+  });
+
+  testWidgets('„Traden" führt auf den normalen Auswahlschirm', (tester) async {
+    // **Ein Golden zeigt nicht, wohin ein Knopf führt.** Deshalb eine
+    // Zusicherung statt eines Bildes.
+    //
+    // Vorher öffnete „Traden" im Profil eines eigenen Spielers einen eigenen
+    // `SimpleDialog` mit Avataren und Namen — gemeldet als „ich habe nur den
+    // Screen mit allen Teilnehmern und nicht den normalen Auswahlscreen von
+    // den Trades". Mit wem man tauscht, entscheidet man an den Kadern, und
+    // die stellt `TradePartnerScreen` nebeneinander.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(rahmen(
+      elf: prognose,
+      // **Ohne Gegenüber gibt es nichts zu tauschen.** Mit leerer
+      // Managerliste bricht „Traden" mit „Keine anderen Manager in der Liga"
+      // ab — der Test hätte dann die Kulisse geprüft, nicht den Weg.
+      managers: const [
+        FantasyManager(userId: 'ich', username: 'SFV03'),
+        FantasyManager(userId: 'du', username: 'Lewin9'),
+      ],
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showPlayerProfile(
+              context,
+              league: liga,
+              player: held,
+              clubIcon: null,
+              isMine: true,
+            ),
+            child: const Text('öffnen'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('öffnen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    expect(find.text('Traden'), findsOneWidget);
+    await tester.tap(find.text('Traden'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    expect(find.byType(TradePartnerScreen), findsOneWidget,
+        reason: 'derselbe Schirm wie über den Trades-Einstieg');
+    // Der Dialog von früher darf nicht mehr auftauchen.
+    expect(find.text('Mit wem traden?'), findsNothing);
   });
 }

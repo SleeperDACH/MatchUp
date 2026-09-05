@@ -2690,6 +2690,30 @@ ist ein eigener Zustand, nicht dasselbe wie „nichts dabei". Die Vorschau
 eingehendes Angebot (mit Annehmen/Ablehnen) neben einem selbst gestellten —
 auf dem Gerät sieht man immer nur eins von beiden.
 
+### Aus dem Profil in den normalen Trade-Schirm
+
+Gemeldet: *„Wenn ich über ein Spielerprofil von meinen Spielern traden möchte,
+habe ich nur den Screen mit allen Teilnehmern und nicht den normalen
+Auswahlscreen von den Trades."*
+
+Im Profil eines eigenen Spielers öffnete „Traden" einen eigenen `SimpleDialog`:
+Avatar und Name je Manager, sonst nichts. **Mit wem man tauscht, entscheidet
+man aber an den Kadern**, und die stellt der Trade-Schirm längst nebeneinander
+— zwei Antworten auf dieselbe Frage, und die schlechtere stand ausgerechnet
+dort, wo man mit einem konkreten Spieler im Kopf herkommt.
+
+Die Partnerwahl ist deshalb aus dem Trade-Schirm herausgelöst
+(`TradePartnerList`, plus `TradePartnerScreen` als Hülle mit Kopfzeile). Der
+Reiter „Neuer Trade" benutzt sie, das Profil auch. **Der Spieler geht als
+`initialOffer` mit**: Ohne ihn müsste man ihn auf dem nächsten Schirm noch
+einmal suchen — und er ist der Grund, warum man überhaupt hier ist.
+
+**Ein Golden zeigt nicht, wohin ein Knopf führt**, deshalb hält den Weg eine
+Zusicherung: Tipp auf „Traden" → `TradePartnerScreen` im Baum, und der alte
+Dialogtitel nirgends mehr. Der Test brauchte dafür eine Kulisse mit **zwei**
+Managern; mit der leeren Liste von vorher brach „Traden" mit „Keine anderen
+Manager in der Liga" ab, und geprüft worden wäre die Kulisse statt des Wegs.
+
 ### Die Trade-Karte sagt, mit wem man handelt
 
 Gemeldet: *„Wenn man einen Trade bekommt, sieht man in der Box leider nicht,

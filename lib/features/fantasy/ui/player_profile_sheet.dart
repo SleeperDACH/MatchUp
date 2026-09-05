@@ -11,7 +11,6 @@ import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/models/models.dart';
 import '../../../core/models/team_fixture.dart';
 
-import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/aufstellungs_prognose.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -343,6 +342,20 @@ class _PlayerProfileSheet extends ConsumerWidget {
 
   /// Eigenen Spieler traden: Partner wählen, dann Compose mit dem Spieler
   /// bereits im Angebot.
+  /// **Der normale Auswahlschirm, kein eigener Dialog.**
+  ///
+  /// Hier stand ein `SimpleDialog` mit Avataren und Namen. Gemeldet: *„Wenn
+  /// ich über ein Spielerprofil von meinen Spielern traden möchte, habe ich
+  /// nur den Screen mit allen Teilnehmern und nicht den normalen
+  /// Auswahlscreen von den Trades."*
+  ///
+  /// Zu Recht: **Mit wem man tauscht, entscheidet man an den Kadern, nicht an
+  /// den Namen** — und genau die stellt der Trade-Schirm nebeneinander. Es
+  /// waren zwei Antworten auf dieselbe Frage, und die schlechtere stand
+  /// ausgerechnet dort, wo man mit einem konkreten Spieler im Kopf herkommt.
+  ///
+  /// Der Spieler geht als `initialOffer` mit: Ohne ihn müsste man ihn auf dem
+  /// nächsten Schirm noch einmal suchen.
   Future<void> _tradeMine(
     BuildContext context,
     WidgetRef ref,
@@ -356,45 +369,12 @@ class _PlayerProfileSheet extends ConsumerWidget {
       );
       return;
     }
-    final partner = await showDialog<FantasyManager>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Mit wem traden?'),
-        children: [
-          for (final m in others)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(ctx).pop(m),
-              child: Row(
-                children: [
-                  AppAvatar(
-                    imageUrl: m.avatarUrl,
-                    emoji: m.avatarEmoji,
-                    colorHex: m.avatarColor,
-                    fallbackText: m.display,
-                    size: 32,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      m.display,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-    if (partner == null || !context.mounted) return;
     final nav = Navigator.of(context);
     nav.pop();
     nav.push(
       MaterialPageRoute(
-        builder: (_) => TradeComposeScreen(
+        builder: (_) => TradePartnerScreen(
           league: league,
-          partner: partner,
           initialOffer: {player.id},
         ),
       ),
