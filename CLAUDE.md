@@ -3456,6 +3456,41 @@ Dienstag und Mittwoch gefallen und das Bild ohne Anlass rot geworden.
 einen festen Samstag. Eine Uhr, die man stellen kann, ist die einzige Art, ein
 zeitabhängiges Bild fest einzuchecken.
 
+### Die Regel stimmte, die Uhr stand
+
+Gemeldet: *„Ich habe versucht, Hollerbach, der noch nicht gespielt hat, gegen
+Ebimbe, der aktuell spielt, einen Waiver-Antrag zu stellen. Das hat nicht
+funktioniert."*
+
+**Server und Client meinten dasselbe** — mit einer Rollback-Probe unter dem
+JWT des Nutzers nachgestellt: `fantasy_submit_waiver_claim` nimmt genau diesen
+Antrag an, und `vereinAufWire` sagt für Schalke ebenfalls „auf dem Waiver".
+Keine der Regeln war schuld.
+
+**Der Unterschied war der Zeitpunkt der Frage.** Die Free Agency rechnete
+`DateTime.now()` **einmal je Aufbau**, und nichts baute den Schirm neu, wenn
+ein Anpfiff verstrich. Wer die Liste um 18:20 offen hatte, sah für einen
+Schalker um 18:35 immer noch das grüne Plus — und `fantasy_add_free_agent`
+antwortete dann mit „Er liegt auf dem Waiver – bitte per Antrag holen".
+
+Das ist die **dritte** Ausprägung desselben Musters in dieser Datei, und die
+lehrreichste: Zweimal lagen Client und Server inhaltlich auseinander (0107,
+0108), diesmal war die Regel identisch und nur eine Seite **veraltet**. Eine
+Oberfläche, deren Aussage von einem Zeitpunkt abhängt, braucht eine Uhr —
+sonst ist sie ab dem Moment falsch, in dem der Zeitpunkt vergeht.
+
+**Ein einmaliger Timer auf den nächsten Anpfiff**, kein Sekundentakt: Zwischen
+zwei Anpfiffen ändert sich an dieser Frage nichts, und die Liste sortiert bei
+jedem Aufbau den ganzen Spielerpool. Nach dem Wecken plant sich der nächste
+Takt selbst — dieselbe Bauart wie beim Nachladen der Live-Punkte. Die feste
+Uhr der Vorschau (`jetzt`) schaltet ihn ab, sonst liefe ein Bild davon.
+
+**Und der Fehlschlag ist keine Sackgasse mehr.** Enthält die Serverantwort das
+Wort „Waiver", holt der Knopf den Wire-Stand und den Spielplan neu; beim
+nächsten Aufbau steht dort der Antragsknopf. Ein Gerät, das eine Minute
+nachgeht, oder eine verlegte Anstoßzeit reichen sonst aus, um denselben
+Zustand wieder herzustellen.
+
 ### Zwei Quellen, zwei Schreibweisen — und der Join dazwischen (0108)
 
 **Ein Fehler, den 0107 selbst ausgelöst hat.** Gemeldet als *„es kommt eine

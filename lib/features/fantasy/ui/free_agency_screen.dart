@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,6 +53,61 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
   String _query = '';
   PlayerPosition? _position;
 
+  /// **Eine Uhr für den Schirm.**
+  ///
+  /// Ob ein Spieler frei ist oder auf dem Waiver liegt, entscheidet ein
+  /// Zeitpunkt: der Anpfiff seines Vereins. `jetzt` wurde aber **einmal je
+  /// Aufbau** gerechnet, und nichts baute den Schirm neu, wenn dieser
+  /// Zeitpunkt vorbeiging. Wer die Liste um 18:20 offen hatte, sah für einen
+  /// Schalker um 18:35 immer noch das grüne Plus — und der Server antwortete
+  /// dann mit „Er liegt auf dem Waiver – bitte per Antrag holen".
+  ///
+  /// Gemeldet als „ich habe versucht, einen Waiver-Antrag zu stellen, das hat
+  /// aber nicht funktioniert". **Die Regel war auf beiden Seiten dieselbe, nur
+  /// die Uhr des Clients stand.**
+  ///
+  /// **Ein einmaliger Timer auf den nächsten Anpfiff**, kein Sekundentakt:
+  /// Zwischen zwei Anpfiffen ändert sich an dieser Frage nichts, und die Liste
+  /// sortiert bei jedem Aufbau den ganzen Spielerpool. Dieselbe Bauart wie
+  /// beim Nachladen der Live-Punkte.
+  Timer? _uhr;
+
+  @override
+  void dispose() {
+    _uhr?.cancel();
+    super.dispose();
+  }
+
+  /// Weckt den Schirm zum nächsten Zeitpunkt, an dem sich etwas ändern kann:
+  /// dem nächsten Anpfiff, sonst der Waiver-Frist.
+  void _planeNaechstenTakt(List<Fixture> spiele, DateTime jetzt) {
+    // Eine feste Uhr aus der Vorschau darf nicht weiterlaufen.
+    if (widget.jetzt != null) return;
+    DateTime? naechster;
+    for (final f in spiele) {
+      final k = f.kickoff.toLocal();
+      if (!k.isAfter(jetzt)) continue;
+      if (naechster == null || k.isBefore(naechster)) naechster = k;
+    }
+    final runde = wireRunde(spiele, jetzt);
+    if (runde != null) {
+      final frist = waiverFrist(spiele, runde);
+      if (frist != null &&
+          frist.isAfter(jetzt) &&
+          (naechster == null || frist.isBefore(naechster))) {
+        naechster = frist;
+      }
+    }
+    _uhr?.cancel();
+    if (naechster == null) return;
+    // Eine Sekunde Zugabe, damit der Weckruf **nach** dem Anpfiff liegt und
+    // nicht auf die Sekunde davor fällt.
+    final dauer = naechster.difference(jetzt) + const Duration(seconds: 1);
+    _uhr = Timer(dauer, () {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final league = widget.league;
@@ -75,6 +132,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
         ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
         const <Fixture>[];
     final jetzt = widget.jetzt ?? DateTime.now();
+    _planeNaechstenTakt(spiele, jetzt);
     // **Die Waiver-Regel, nicht die Anpfiff-Regel.** Ein Spieler bleibt nach
     // dem Anpfiff seines Vereins bis zur Frist auf dem Waiver — nicht nur, bis
     // der Spieltag durch ist. `wireRunde` liefert `null`, sobald die Frist

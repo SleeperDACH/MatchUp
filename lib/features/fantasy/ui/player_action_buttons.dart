@@ -186,6 +186,17 @@ class PlayerActionButton extends ConsumerWidget {
         await _warnStaleWaiverClaims(context, ref);
       }
     } catch (e) {
+      // **„Er liegt auf dem Waiver" ist keine Sackgasse.** Der Knopf sagt
+      // „Holen", weil die Oberfläche den Anpfiff seines Vereins noch nicht
+      // gesehen hatte — der Schirm hat dafür eine Uhr, aber ein Gerät, das
+      // eine Minute nachgeht, oder ein Anpfiff, der sich verschiebt, reichen
+      // aus. Statt den Nutzer mit einer Fehlermeldung stehen zu lassen, wird
+      // der Wire-Stand neu geholt: Beim nächsten Aufbau steht dort der
+      // Antragsknopf, und der Weg ist wieder offen.
+      if (e.toString().contains('Waiver')) {
+        ref.invalidate(waiverPlayersProvider(league.id));
+        ref.invalidate(fantasySeasonFixturesProvider);
+      }
       if (context.mounted) _toast(context, 'Fehlgeschlagen: $e');
     }
   }
