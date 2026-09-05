@@ -23,6 +23,7 @@
 library;
 
 import '../../../core/models/models.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
 
 /// Der nächste [wochentag] um 15:00 **echt nach** [ab].
 DateTime naechsteFrist(DateTime ab, int wochentag) {
@@ -81,7 +82,12 @@ bool vereinAufWire(String verein, List<Fixture> spiele, DateTime jetzt) {
   if (runde == null) return false;
   for (final f in spiele) {
     if (f.round != runde) continue;
-    if (f.home.name != verein && f.away.name != verein) continue;
+    // Kanonisch vergleichen: Kader und Spielplan schreiben sieben von
+    // achtzehn Vereinen unterschiedlich (siehe Migration 0108).
+    if (vereinKanonisch(f.home.name) != vereinKanonisch(verein) &&
+        vereinKanonisch(f.away.name) != vereinKanonisch(verein)) {
+      continue;
+    }
     if (!f.kickoff.toLocal().isAfter(jetzt)) return true;
   }
   return false;

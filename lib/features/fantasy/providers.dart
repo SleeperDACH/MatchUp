@@ -6,10 +6,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/app_config.dart';
 import '../../core/data/openligadb/openligadb_provider.dart';
 import '../../core/logic/round_robin.dart';
+import '../../core/logic/vereins_kuerzel.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/models/models.dart';
 import '../auth/providers.dart';
-import '../tippspiel/providers.dart' show chatLastReadProvider;
+import '../tippspiel/providers.dart'
+    show chatLastReadProvider, sportsProviderFor;
 import 'data/db_fantasy_data_provider.dart';
 import 'data/draft_repository.dart';
 import 'data/fantasy_data_provider.dart';
@@ -370,9 +372,30 @@ final prognoseElfProvider =
 /// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).
 /// Alle Bundesliga-Fixtures der Fantasy-Saison (Anstoßzeiten, Teams,
 /// Ergebnisse) — Basis für die Spieltags-Anzeige und den aktuellen Spieltag.
+/// **Dieselbe Quelle wie überall sonst** (05.09.2026). Bis dahin stand hier
+/// fest `OpenLigaDbProvider()`, während Live-Tab, Vereinsseite und der Server
+/// längst Sportmonks lesen. Zwei Folgen hatte das, und beide sind gemeldet
+/// worden:
+///
+/// * **Ein Spiel aus der Fantasy-Liga öffnete eine leere Detailseite.** Die
+///   Fixture-IDs hießen `openligadb:…`, und `matchDetailProvider` leitet den
+///   Adapter aus dem Präfix ab — für OpenLigaDB gibt es weder Aufstellung noch
+///   Spielverlauf. Gemeldet als „keine Aufstellung, keine Spieldetails, keine
+///   Tabelle, nichts".
+/// * **Client und Server meinten verschiedene Spielpläne.** Genau daran hing
+///   schon einmal „man kann ihn aufnehmen, es passiert überhaupt nichts": Die
+///   Waiver-Regeln des Servers rechnen seit 0107 ausschließlich über
+///   `sportmonks:`-Zeilen.
+///
+/// **Der Preis ist die Schreibweise der Vereinsnamen.** `players.club` trägt
+/// die OpenLigaDB-Form („1. FC Köln"), Sportmonks schreibt kürzer („FC Köln").
+/// Jeder Vergleich zwischen Kader und Spielplan läuft deshalb über
+/// [vereinKanonisch] — dieselbe Reparatur, die der Server in Migration 0108
+/// hinter sich hat, jetzt auch hier.
 final fantasySeasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
-  return OpenLigaDbProvider().getSeasonFixtures(Leagues.bundesliga, season);
+  return sportsProviderFor(Leagues.bundesliga)
+      .getSeasonFixtures(Leagues.bundesliga, season);
 });
 
 /// Aktueller Fantasy-Spieltag: er läuft bis zur **Waiver-Frist**, also Montag

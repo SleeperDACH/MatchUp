@@ -3345,11 +3345,11 @@ Wire, **vor** seinem Anpfiff nicht und **nach** der Frist nicht mehr; „Holen"
 wird abgelehnt (*„Er liegt auf dem Waiver"*), der Antrag angenommen; die
 englische Woche über zwei eingefügte Di/Mi-Ansetzungen → Donnerstag 15:00.
 
-**Die App liest den Spielplan weiter direkt bei OpenLigaDB** (`OpenLigaDbProvider`
-in `fantasySeasonFixturesProvider`), nicht aus unserer Tabelle. Das war der
-Grund, warum im Simulator alles normal aussah, während der Server blockierte:
-Die API-Daten sind aktuell, die gespiegelten Zeilen waren es nicht. Umgestellt
-ist das **nicht** — es wäre ein eigener Umbau.
+**Die App las den Spielplan bis zum 05.09.2026 direkt bei OpenLigaDB**
+(`OpenLigaDbProvider` fest in `fantasySeasonFixturesProvider`), während
+Live-Tab, Vereinsseite und Server längst Sportmonks lesen. Das war der Grund,
+warum im Simulator alles normal aussah, während der Server blockierte. **Seit
+dem 05.09.2026 ist es umgestellt** — siehe „Eine Quelle für den Spielplan".
 
 **Und der Vorschau-Golden hing plötzlich am Wochentag.** „Waiver bis Mo, 15:00"
 wird in einer englischen Woche zu „Do, 15:00", und die Vorschau baute ihre
@@ -4837,6 +4837,56 @@ ist gegengeprüft: **ohne den Schlüssel meldet er `100000` statt `100002`.**
 
 Die Lehre für den Testbau: Eine Vorbedingung, die man nicht prüft, ist die
 Stelle, an der ein Test grün wird, ohne etwas zu zeigen.
+
+### Eine Quelle für den Spielplan, nicht zwei
+
+Gemeldet: *„Wenn ich innerhalb einer Fantasy-Liga auf ein Spiel gehe, wird mir
+keine Aufstellung angezeigt, keine Spieldetails, keine Tabelle, nichts. Das
+bitte so machen wie im Live-Tab."*
+
+**Es war genau eine Zeile.** `fantasySeasonFixturesProvider` holte den
+Spielplan fest bei `OpenLigaDbProvider()`, alles andere in der App über
+`sportsProviderFor(league)` — und die Bundesliga steht dort auf `sportmonks`.
+Die Fixture-IDs aus der Fantasy-Liga hießen damit `openligadb:…`, und
+`matchDetailProvider` leitet den Adapter **aus dem Präfix** ab. Für OpenLigaDB
+gibt es weder Aufstellung noch Spielverlauf: Der Tipp führte auf eine Seite,
+die nichts zeigen konnte.
+
+**Derselbe Riss hatte schon einmal eine Woche gekostet.** „Man kann ihn
+aufnehmen, es passiert überhaupt nichts" (0107) entstand daraus, dass der
+Client OpenLigaDB las und der Server über `sportmonks:`-Zeilen rechnete. Die
+Notiz „umgestellt ist das nicht — es wäre ein eigener Umbau" stand seitdem in
+dieser Datei. Er ist jetzt gemacht.
+
+**Der Preis ist die Schreibweise der Vereinsnamen**, und der ist bekannt:
+`players.club` trägt die OpenLigaDB-Form („1. FC Köln"), Sportmonks schreibt
+kürzer („FC Köln") — bei **sieben von achtzehn** Vereinen. Jeder Abgleich
+zwischen Kader und Spielplan läuft deshalb jetzt über `vereinKanonisch`:
+
+| Stelle | was sie tut |
+|---|---|
+| `anpfiffJeVerein` | schlüsselt die Karte kanonisch |
+| `spielerGesperrt`, `vereinSpieltGerade` | schlagen kanonisch nach |
+| `spielFuerPrognose` | findet das Spiel des Vereins |
+| `naechstesSpiel` | Gegner und Anstoß in der Punktebox |
+| `vereinAufWire` | das Waiver-Fenster |
+
+**Ohne das wäre die Aufstellungssperre still ausgefallen** — „kein Spiel
+gefunden" heißt dort „nicht gesperrt", die Elf ließe sich also mitten im
+laufenden Spiel ändern. Es ist dieselbe Reparatur, die der Server in Migration
+0108 hinter sich hat; sie stand nur auf der Client-Seite noch aus.
+
+Gehalten von `test/eine_spielplanquelle_test.dart`: Der Wächter liest die
+Provider-Datei und lässt kein `OpenLigaDbProvider(` mehr im Rumpf dieses
+Providers zu — dieselbe Bauart wie `knopfnamen_test` und `kartenkanten_test`.
+Daneben stehen die sieben Namenspaare **und die Gegenprobe**, dass keine zwei
+Vereine auf dieselbe kanonische Form fallen: Ein zu grober Vergleich wäre
+schlimmer als ein zu strenger, er verwechselte zwei Vereine.
+
+**Am Gerät nachgesehen**, und zwar an der Schreibweise: In der Spielplanzeile
+der Liga-Übersicht steht seitdem „FC Köln" statt „1. FC Köln". Das ist der
+Beweis, dass die Umstellung greift — synthetische Tipps und Wischgesten nimmt
+der Simulator dafür ohnehin nicht zuverlässig an.
 
 ### Und derselbe Fehler noch einmal — mit `hasError`
 

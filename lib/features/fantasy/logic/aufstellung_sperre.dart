@@ -13,6 +13,7 @@ library;
 
 import '../../../core/models/models.dart';
 import '../models/fantasy_models.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
 
 /// Anpfiff je Verein für einen Spieltag.
 ///
@@ -22,9 +23,16 @@ Map<String, DateTime> anpfiffJeVerein(List<Fixture> spiele, int runde) {
   final out = <String, DateTime>{};
   for (final f in spiele) {
     if (f.round != runde) continue;
+    // **Kanonisch, nicht buchstabengetreu.** Der Kader trägt „1. FC Köln",
+    // der Sportmonks-Spielplan „FC Köln" — sieben von achtzehn Vereinen
+    // schreiben sich unterschiedlich. Genau daran ist der Server in 0108
+    // schon einmal gescheitert: Wo der Abgleich nichts findet, gilt ein
+    // Spieler als nicht gesperrt, und die Elf lässt sich mitten im Spiel
+    // ändern.
     for (final name in [f.home.name, f.away.name]) {
-      final da = out[name];
-      if (da == null || f.kickoff.isBefore(da)) out[name] = f.kickoff;
+      final k = vereinKanonisch(name);
+      final da = out[k];
+      if (da == null || f.kickoff.isBefore(da)) out[k] = f.kickoff;
     }
   }
   return out;
@@ -41,7 +49,7 @@ bool spielerGesperrt(
   Map<String, DateTime> anpfiff,
   DateTime jetzt,
 ) {
-  final kick = anpfiff[spieler.club];
+  final kick = anpfiff[vereinKanonisch(spieler.club)];
   return kick != null && !jetzt.isBefore(kick);
 }
 
@@ -73,6 +81,6 @@ bool vereinSpieltGerade(
   Map<String, DateTime> anpfiffDerRunde,
   DateTime jetzt,
 ) {
-  final kick = anpfiffDerRunde[verein];
+  final kick = anpfiffDerRunde[vereinKanonisch(verein)];
   return kick != null && !jetzt.isBefore(kick);
 }

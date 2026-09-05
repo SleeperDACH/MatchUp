@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/fantasy/logic/aufstellung_sperre.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
+import 'package:matchup/core/logic/vereins_kuerzel.dart';
 
 /// Die Aufstellung sperrt **je Spieler**, zum Anpfiff seines Vereins — nicht
 /// pauschal zum Beginn des Spieltags. Maßgeblich ist `fantasy_set_lineup`
@@ -41,11 +42,39 @@ void main() {
 
   group('Sperre je Spieler', () {
     test('Anpfiff wird je Verein aufgelöst, nur für die gefragte Runde', () {
+      // **Die Karte ist kanonisch geschlüsselt**, seit der Spielplan von
+      // Sportmonks kommt: Der Kader trägt „1. FC Köln", der Spielplan
+      // „FC Köln". Gesucht wird deshalb über `vereinKanonisch` — dieselbe
+      // Form, die `spielerGesperrt` beim Nachschlagen benutzt.
       final a = anpfiffJeVerein(spiele, 1);
-      expect(a['FC Bayern München'], freitag);
-      expect(a['VfB Stuttgart'], freitag);
-      expect(a['RB Leipzig'], samstag);
-      expect(a.containsKey('Borussia Dortmund'), isFalse);
+      expect(a[vereinKanonisch('FC Bayern München')], freitag);
+      expect(a[vereinKanonisch('VfB Stuttgart')], freitag);
+      expect(a[vereinKanonisch('RB Leipzig')], samstag);
+      expect(a.containsKey(vereinKanonisch('Borussia Dortmund')), isFalse);
+    });
+
+    test('verschiedene Schreibweisen treffen denselben Verein', () {
+      // **Der Fall, der den Server in Migration 0108 eine Woche gekostet
+      // hat**, jetzt auf der Client-Seite: Sieben von achtzehn Vereinen
+      // schreiben sich im Kader anders als im Sportmonks-Spielplan. Ohne
+      // kanonischen Vergleich fände der Abgleich nichts — und „kein Spiel
+      // gefunden" heißt „nicht gesperrt", die Elf ließe sich also mitten im
+      // laufenden Spiel ändern.
+      final a = anpfiffJeVerein([
+        _spiel('FC Köln', 'Werder Bremen', freitag),
+      ], 1);
+      final koelner = FantasyPlayer(
+        id: 'p1',
+        name: 'Timo Hübers',
+        position: PlayerPosition.def,
+        club: '1. FC Köln', // Schreibweise des Kaders
+        nationality: 'de',
+        birthDate: DateTime(1996, 7, 20),
+      );
+      expect(spielerGesperrt(koelner, a, freitag.add(const Duration(hours: 1))),
+          isTrue);
+      expect(spielerGesperrt(koelner, a, freitag.subtract(const Duration(hours: 1))),
+          isFalse);
     });
 
     test('nach dem Freitagsspiel ist nur der Freitagsspieler gesperrt', () {
@@ -90,7 +119,8 @@ void main() {
         _spiel('SC Freiburg', 'FC Augsburg', samstag),
         _spiel('SC Freiburg', 'FC Augsburg', freitag),
       ];
-      expect(anpfiffJeVerein(doppelt, 1)['SC Freiburg'], freitag);
+      expect(anpfiffJeVerein(doppelt, 1)[vereinKanonisch('SC Freiburg')],
+          freitag);
     });
   });
 }

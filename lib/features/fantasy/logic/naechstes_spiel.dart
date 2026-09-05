@@ -12,6 +12,7 @@
 library;
 
 import '../../../core/models/models.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
 
 class NaechstesSpiel {
   const NaechstesSpiel({
@@ -40,11 +41,11 @@ NaechstesSpiel? naechstesSpiel(
 ) {
   for (final f in spiele) {
     if (f.round != runde) continue;
-    if (f.home.name == verein) {
+    if (vereinKanonisch(f.home.name) == vereinKanonisch(verein)) {
       return NaechstesSpiel(
           gegner: f.away.name, anpfiff: f.kickoff.toLocal(), heim: true);
     }
-    if (f.away.name == verein) {
+    if (vereinKanonisch(f.away.name) == vereinKanonisch(verein)) {
       return NaechstesSpiel(
           gegner: f.home.name, anpfiff: f.kickoff.toLocal(), heim: false);
     }

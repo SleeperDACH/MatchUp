@@ -1,4 +1,5 @@
 import 'package:matchup/core/models/models.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
 
 /// **Welches Spiel zeigt die Aufstellungsprognose?**
 ///
@@ -66,7 +67,9 @@ Fixture? letztesGespieltes(List<Fixture> spiele, String verein) {
 }
 
 Iterable<Fixture> _fuerVerein(List<Fixture> spiele, String verein) =>
-    spiele.where((f) => f.home.name == verein || f.away.name == verein);
+    spiele.where((f) =>
+        vereinKanonisch(f.home.name) == vereinKanonisch(verein) ||
+        vereinKanonisch(f.away.name) == vereinKanonisch(verein));
 
 Fixture _frueheste(List<Fixture> xs) {
   xs.sort((a, b) => a.kickoff.compareTo(b.kickoff));
