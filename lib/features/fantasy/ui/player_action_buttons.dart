@@ -83,7 +83,7 @@ class PlayerActionButton extends ConsumerWidget {
         onTap: () => _trade(context, ref),
       );
     }
-    if (player.isLockedNow(league.season)) {
+    if (player.istFuerU20Gesperrt(league)) {
       return breit
           ? const _WeiterChip(text: 'Für den U20-Draft gesperrt')
           : const _LockedChip();

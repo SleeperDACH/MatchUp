@@ -3292,6 +3292,40 @@ Angesehen über `test/free_agency_vorschau_test.dart`: die drei Zustände einer
 Zeile nebeneinander (Waiver, Spiel läuft, frei), die es auf dem Gerät nie
 gleichzeitig gibt. Gerechnet wird in `test/free_agent_sperre_test.dart`.
 
+### Die U20-Sperre gilt nur in Dynasty (0121)
+
+Gemeldet: *„Es macht keinen Sinn, dass hier einer für den U20-Draft gesperrt
+ist, weil es im Redraft-Modus keinen U20-Draft gibt. Das ist nur in Dynasty."*
+
+`fantasy_is_locked` kennt Geburtsdatum, Auslands-Neuzugang und Saison — **aber
+keine Liga**, und damit auch nicht deren Modus. Ab dem 5. September
+(Transferschluss) fiel damit jeder Rookie aus der Free Agency, **auch in Ligen,
+in denen er nie wieder gedraftet wird**: Im Redraft gibt es genau einen Draft
+und danach nie einen zweiten. Der Spieler war für den Rest der Saison für
+niemanden mehr zu holen, ohne dass es dafür einen Grund gab. Nachgezählt am
+05.09.2026: **62 Spieler** im Pool, betroffen wären sie in sieben von acht
+Ligen gewesen.
+
+**Die Sperre selbst bleibt richtig, nur eine Frage fehlte davor.**
+`fantasy_is_locked` beantwortet „ist dieser Spieler ein reservierter Rookie?"
+und tut das korrekt; sie ist unverändert. Neu ist `fantasy_u20_gesperrt(liga,
+spieler)` — „gilt diese Reservierung in dieser Liga überhaupt?". In Dynasty
+bleibt sie, denn dort wird der Kader über Saisons behalten und die Rookies
+werden vor der neuen Saison neu gedraftet; sie vorher per Free Agency
+wegzuschnappen, hebelte den U20-Draft aus.
+
+**Und wieder gilt: die Regel steht zweimal.** Serverseitig `fantasy_u20_gesperrt`
+(benutzt von `fantasy_add_free_agent` und `fantasy_submit_waiver_claim`), in
+Dart `FantasyPlayer.istFuerU20Gesperrt(liga)`. Nur den Client zu ändern hätte
+genau den Zustand erzeugt, der in dieser Datei schon mehrfach steht: **Die App
+zeigt ein grünes Plus, und der Server antwortet mit einer Fehlermeldung.**
+
+Die beiden Funktionen sind wie in 0106 aus der laufenden Datenbank gezogen
+(`pg_get_functiondef`) und nur an der einen Stelle geändert — sie aus fünf
+Migrationen zusammenzusuchen wäre ein Rückschritt gewesen, jede davon hat sie
+seither angefasst. Gegen die Produktion nachgemessen: In der Dynasty-Liga sind
+die geprüften Rookies gesperrt, in allen sieben Redraft-Ligen keiner.
+
 ### Der Waiver hat eine Frist: Montag 15:00 (0107)
 
 Vorgegeben: *„Ab Anpfiff der jeweiligen Vereine auf dem Waiver. Bis Montag

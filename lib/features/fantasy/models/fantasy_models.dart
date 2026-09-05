@@ -454,11 +454,32 @@ class FantasyPlayer {
   bool isRookieFor(int season) =>
       isForeignNewcomer || isU20On(DateTime(season, 8, 1));
 
-  /// Ab 05.09. (nach Transferschluss) gesperrt: für den U20-Draft
-  /// reserviert, nicht per Free Agency holbar. Entspricht
-  /// fantasy_is_locked auf dem Server.
+  /// Ab 05.09. (nach Transferschluss) für den U20-Draft reserviert.
+  /// Entspricht `fantasy_is_locked` auf dem Server.
+  ///
+  /// **Sagt nichts über die Liga.** Ob die Reservierung dort überhaupt gilt,
+  /// beantwortet [istFuerU20Gesperrt] — im Redraft-Modus gibt es keinen
+  /// zweiten Draft, für den man jemanden zurückhalten könnte.
   bool isLockedNow(int season) =>
       isRookieFor(season) && !DateTime.now().isBefore(DateTime(season, 9, 5));
+
+  /// **Ist er in dieser Liga für den U20-Draft gesperrt?**
+  ///
+  /// Gemeldet: „Es macht keinen Sinn, dass hier einer für den U20-Draft
+  /// gesperrt ist, weil es im Redraft-Modus keinen U20-Draft gibt." Genau so
+  /// war es: Ab dem 5. September fiel jeder Rookie aus der Free Agency —
+  /// **auch in Ligen, in denen er nie wieder gedraftet wird**, und damit für
+  /// den Rest der Saison für niemanden mehr zu holen.
+  ///
+  /// In Dynasty bleibt die Sperre: Dort wird der Kader über Saisons behalten
+  /// und die Rookies werden vor der neuen Saison neu gedraftet — sie vorher
+  /// per Free Agency wegzuschnappen, hebelte den U20-Draft aus.
+  ///
+  /// **Dieselbe Regel steht ein zweites Mal in SQL** (`fantasy_u20_gesperrt`,
+  /// Migration 0121). Laufen sie auseinander, zeigt die App einen Knopf, den
+  /// der Server ablehnt — oder verschweigt einen, den er nähme.
+  bool istFuerU20Gesperrt(FantasyLeague liga) =>
+      liga.mode == FantasyMode.dynasty && isLockedNow(liga.season);
 
   factory FantasyPlayer.fromJson(Map<String, dynamic> json) => FantasyPlayer(
         id: json['id'] as String,
