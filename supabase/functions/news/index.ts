@@ -35,7 +35,22 @@ const KEYWORDS: Record<string, RegExp> = {
 // Gemeldet als „warum sind nur noch News von Sportschau da, wo sind die
 // kicker-News?". Eine Rangfolge ist die richtige Antwort auf „welche Quelle
 // nehmen wir, wenn eine ausfällt", und die falsche auf „was steht im Feed".
-type Source = { url: string; filter?: RegExp; source?: string };
+// **Bundesliga-Bezug.** Nur für allgemeine Fußball-Feeds gedacht, die nicht
+// ohnehin auf die Liga zugeschnitten sind: Ohne ihn stünde im Transfer-Feed
+// dieser App „Manchester City zahlt 145 Millionen" und „Woltemade zu Juventus"
+// — beides gemessen am 05.09.2026 im Spiegel-Feed, beides für eine
+// Bundesliga-App keine Meldung.
+const BUNDESLIGA =
+  /bundesliga|bayern|dortmund|leipzig|leverkusen|frankfurt|stuttgart|gladbach|wolfsburg|bremen|freiburg|hoffenheim|mainz|augsburg|union berlin|st\. pauli|heidenheim|hamburger sv|\bhsv\b|köln|schalke|hertha|nürnberg|kaiserslautern|paderborn|elversberg|karlsruher|hannover|bochum|düsseldorf|magdeburg|braunschweig|dfb-pokal/i;
+
+// `filter` = Thema, `mussAuch` = zusätzliche Bedingung. Beide müssen greifen;
+// ein einzelner Ausdruck könnte das „und" nicht ausdrücken.
+type Source = {
+  url: string;
+  filter?: RegExp;
+  mussAuch?: RegExp;
+  source?: string;
+};
 function sources(topic: string): Source[] {
   return [
     // **Sportschau steht vorn, weil sie die Bilder trägt.** Der Feed der ARD
@@ -57,6 +72,26 @@ function sources(topic: string): Source[] {
       filter: KEYWORDS[topic],
       // kicker-Feed hat kein <source>-Element je Item → Default-Quelle.
       source: "kicker",
+    },
+    // **Zweite Quelle mit Bildern** (05.09.2026). Anlass: kicker liefert im
+    // RSS keins, und seine Artikelseiten antworten auf jeden automatisierten
+    // Abruf mit 403 — die Titelbilder von kicker.de sind also nicht zu holen,
+    // ohne eine bewusste Sperre zu umgehen.
+    //
+    // **Warum Spiegel und nicht FAZ**, obwohl die FAZ einen reinen
+    // Bundesliga-Feed hat (39 Meldungen, alle mit Bild): Ihre Bilder wiegen
+    // **593 KB** je Stück, und die Größe steht fest in der URL — jeder
+    // Umschreibversuch (halbe, drittel, viertel Kantenlänge bei gleichem
+    // Seitenverhältnis) antwortet mit 403. Beim Spiegel sind es **18 KB**,
+    // weniger als die 40 der Sportschau.
+    //
+    // Der Preis ist der Zuschnitt: Der Feed ist allgemeiner Fußball, nicht
+    // Bundesliga — deshalb [BUNDESLIGA] als zweite Bedingung.
+    {
+      url: "https://www.spiegel.de/sport/fussball/index.rss",
+      filter: KEYWORDS[topic],
+      mussAuch: BUNDESLIGA,
+      source: "Spiegel",
     },
   ];
 }
@@ -206,7 +241,12 @@ function bild(block: string): string {
   return url;
 }
 
-function parseRss(xml: string, filter?: RegExp, defaultSource?: string) {
+function parseRss(
+  xml: string,
+  filter?: RegExp,
+  defaultSource?: string,
+  mussAuch?: RegExp,
+) {
   const items: Array<Record<string, string>> = [];
   const blocks = xml.match(/<item>([\s\S]*?)<\/item>/gi) ?? [];
   for (const block of blocks) {
@@ -220,6 +260,7 @@ function parseRss(xml: string, filter?: RegExp, defaultSource?: string) {
     const pubDate = (tag(block, "pubDate") ?? "").trim();
     if (!rawTitle || !link) continue;
     if (filter && !filter.test(`${rawTitle} ${desc}`)) continue;
+    if (mussAuch && !mussAuch.test(`${rawTitle} ${desc}`)) continue;
     let title = rawTitle;
     if (source && title.endsWith(` - ${source}`)) {
       title = title.slice(0, title.length - source.length - 3).trim();
@@ -338,7 +379,7 @@ Deno.serve(async (req) => {
           lastErr = `RSS ${res.status}`;
           continue;
         }
-        return parseRss(await res.text(), src.filter, src.source);
+        return parseRss(await res.text(), src.filter, src.source, src.mussAuch);
       } catch (e) {
         lastErr = `${e}`;
       }

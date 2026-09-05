@@ -1327,6 +1327,44 @@ Bild, und weil nach Datum sortiert wird, können oben im Feed mehrere Kacheln
 mit dem Zeitungssymbol stehen. Das ist der Preis der Mischung — dafür gibt es
 `NewsBild` mit seiner Ersatzfläche.
 
+### kicker hat Titelbilder — sein RSS nicht
+
+Gemeldet: *„Aber kicker hat doch auch Titelbilder."* Stimmt, auf kicker.de.
+**Im Feed steht keins**: Der `<item>`-Block trägt Titel, Link, Beschreibung und
+ein `content:encoded`, das nur denselben Text noch einmal enthält; ein Bild gibt
+es allein als Kanal-Logo im `<channel>`. Und der Umweg über die Artikelseite
+ist zu — `https://www.kicker.de/…/artikel` antwortet mit **403**, auch mit
+Browser-Kennung und von einem Wohnzimmer-Anschluss aus. Das ist eine bewusste
+Sperre, und die umgeht diese App nicht.
+
+**Deshalb eine zweite Quelle mit Bildern** (auf Ansage). Die Wahl fiel auf den
+Spiegel, und die Begründung ist gemessen, nicht geschmacklich:
+
+| Quelle | Meldungen | mit Bild | Größe je Bild | Zuschnitt |
+|---|---|---|---|---|
+| Sportschau (drin) | 59 | 59 | 40 KB | Bundesliga |
+| kicker (drin) | 20 | **0** | — | Bundesliga |
+| **FAZ Bundesliga** | 39 | 39 | **593 KB** | Bundesliga |
+| **Spiegel Fußball** | 20 | 20 | **18 KB** | allgemein |
+
+**Die FAZ hatte den besseren Zuschnitt und ist trotzdem draußen.** Ihr
+Bilddienst schreibt die Kantenlänge fest in den Pfad
+(`/w2463h1385x0y166/`), und **jeder** Umschreibversuch antwortet mit 403 —
+halbe, drittel und viertel Kantenlänge bei unverändertem Seitenverhältnis
+allesamt. 593 KB je Kachel sind für einen Feed, den man am Handy scrollt,
+keine Option. Der Spiegel liefert sein Bild von sich aus in 520 Pixeln
+Breite; ein `_w720_` gibt es dort nicht, also bleibt es, wie es kommt.
+
+**Der Preis beim Spiegel ist der Zuschnitt**, und der brauchte eine eigene
+Regel: Der Feed ist allgemeiner Fußball. Ohne Zusatzbedingung standen im
+Transfer-Feed dieser App „Manchester City zahlt 145 Millionen" und „Woltemade
+zu Juventus" — für eine Bundesliga-App keine Meldungen. `BUNDESLIGA` fordert
+deshalb zusätzlich einen Ligabezug; `Source.mussAuch` trägt das, weil ein
+einzelner regulärer Ausdruck das „und" nicht ausdrücken kann.
+
+Nachgemessen an der ausgespielten Function: `transfers` 23 Meldungen
+(13 Sportschau, 9 kicker, 1 Spiegel), davon 14 mit Bild.
+
 **Falle beim Nachmessen:** `nocache` liest die Function **nur aus dem
 POST-Body**. Ein `?nocache=1` an der URL wird stillschweigend ignoriert, und
 man misst den alten Cache — genau das ist beim ersten Prüflauf passiert und
