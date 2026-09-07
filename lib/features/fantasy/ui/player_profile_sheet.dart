@@ -24,6 +24,7 @@ import 'player_action_buttons.dart';
 import '../../../app/widgets/punktzahl.dart';
 import '../logic/spieler_schnitt.dart';
 import '../logic/rueckkehr.dart';
+import '../logic/naechstes_spiel.dart';
 
 /// Öffnet das Spielerprofil (Kopf + Leistungstabelle je Spieltag; für eigene
 /// Spieler zusätzlich „Droppen"). [isMine] steuert den Drop-Button.
@@ -900,10 +901,10 @@ class _Spielplan extends ConsumerWidget {
     if (alle == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    final seine = [
-      for (final f in alle)
-        if (f.home.name == club || f.away.name == club) f,
-    ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+    // **Kanonisch vergleichen, nicht buchstabengenau.** `players.club` schreibt
+    // „1. FC Köln", der Spielplan „FC Köln" — bei sieben von achtzehn Vereinen
+    // gehen die Schreibweisen auseinander, und der Reiter blieb für sie leer.
+    final seine = spieleDesVereins(alle, club);
     if (seine.isEmpty) {
       return _Leer('Für $club liegt kein Spielplan vor.');
     }

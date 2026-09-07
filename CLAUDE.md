@@ -5796,6 +5796,40 @@ sonst wächst die Liste und niemand räumt sie. Dasselbe Muster wie bei
 `punkte_formatierung_test.dart` — es hat sich als das einzige erwiesen, das
 eine Stilregel über Monate hält.
 
+### Sieben Vereine ohne Spielplan im Profil
+
+Gemeldet: *„Warum liegt für Schalke 04 kein Spielplan vor? Vorhin hatte ich das
+auch bei Köln."* Ich habe zuerst am falschen Ende gesucht — Favoriten-Schlüssel,
+Endpunkt, Cache, alles in Ordnung. **Der entscheidende Hinweis kam nach:** *„Im
+Live-Tab sind die Spielpläne von Köln und Schalke ja da. Die fehlen nur im
+Spielerprofil."*
+
+Damit war es kein Datenproblem, sondern ein Vergleich. Der Spielplan-Reiter im
+Profil prüfte `f.home.name == club`, **buchstabengenau**. `players.club` trägt
+die OpenLigaDB-Schreibweise, der Spielplan die von Sportmonks, und bei **sieben
+von achtzehn** Vereinen gehen sie auseinander — genau die Liste aus Migration
+0108: Köln, Schalke, Mainz, Werder, Union, Elversberg, Paderborn.
+
+**Warum ausgerechnet dort und nirgends sonst:** Der Live-Tab liest beide Seiten
+aus derselben Quelle und muss nichts abgleichen. Ein Abgleich entsteht erst,
+wo ein Name aus dem **Kader** auf einen Namen aus dem **Spielplan** trifft — und
+das ist im Profil der Fall, weil der Reiter den Verein des Spielers kennt und
+dessen Partien sucht.
+
+`spieleDesVereins` (`logic/naechstes_spiel.dart`) vergleicht ab jetzt über
+`vereinKanonisch`. Dieselbe Reparatur wie an fünf anderen Client-Stellen; diese
+eine war übersehen worden, weil sie beim Umbau auf Sportmonks nicht in der
+Liste stand.
+
+**Die Lehre für die Fehlersuche, nicht für den Code:** „Es fehlt bei Köln und
+Schalke" nannte die Ursache bereits — es sind zwei der sieben Namen, an denen
+dieses Projekt schon zweimal hängengeblieben ist. Ich habe stattdessen Cache
+und Endpunkt geprüft. **Wenn ein Fehler genau die Vereine trifft, die in zwei
+Quellen verschieden heißen, ist es der Name.**
+
+Gehalten von `test/spielplan_im_profil_test.dart`, das alle sieben Paare
+einzeln durchgeht.
+
 ### Eine leere Antwort wird nicht gemerkt
 
 Gemeldet: *„Warum liegt für Schalke 04 kein Spielplan vor? Vorhin hatte ich das

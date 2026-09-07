@@ -60,3 +60,40 @@ String anpfiffKurz(DateTime anpfiff) {
   final m = anpfiff.minute.toString().padLeft(2, '0');
   return '${tage[anpfiff.weekday - 1]} $h:$m';
 }
+
+/// **Alle Partien eines Vereins aus dem Spielplan.**
+///
+/// Gemeldet: *„Warum liegt für Schalke 04 kein Spielplan vor? Vorhin hatte ich
+/// das auch bei Köln. Im Live-Tab sind die Spielpläne von Köln und Schalke ja
+/// da — die fehlen nur im Spielerprofil."*
+///
+/// Genau diese beiden, und das ist kein Zufall: Der Spielplan-Reiter im Profil
+/// verglich den Vereinsnamen **buchstabengenau** (`f.home.name == club`).
+/// `players.club` trägt die OpenLigaDB-Schreibweise, der Spielplan die von
+/// Sportmonks, und sie gehen bei **sieben von achtzehn** Vereinen auseinander:
+///
+/// | `players.club` | Spielplan |
+/// |---|---|
+/// | 1. FC Köln | FC Köln |
+/// | FC Schalke 04 | Schalke 04 |
+/// | 1. FSV Mainz 05 | FSV Mainz 05 |
+/// | SV Werder Bremen | Werder Bremen |
+/// | 1. FC Union Berlin | FC Union Berlin |
+/// | SV 07 Elversberg | Elversberg |
+/// | SC Paderborn 07 | Paderborn |
+///
+/// Der Live-Tab war deshalb in Ordnung: Er liest denselben Spielplan von
+/// beiden Seiten und muss nichts abgleichen. Verglichen wird ab hier über
+/// [vereinKanonisch] — dieselbe Reparatur, die der Server in Migration 0108
+/// und der Client schon an fünf anderen Stellen hinter sich hat.
+///
+/// Nach Anstoß sortiert; die Eingabeliste bleibt unangetastet.
+List<Fixture> spieleDesVereins(List<Fixture> alle, String verein) {
+  final gesucht = vereinKanonisch(verein);
+  return [
+    for (final f in alle)
+      if (vereinKanonisch(f.home.name) == gesucht ||
+          vereinKanonisch(f.away.name) == gesucht)
+        f,
+  ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+}
