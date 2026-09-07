@@ -10,6 +10,7 @@ class PlayerAbsence {
     required this.gesperrt,
     this.grundQuelle,
     this.seit,
+    this.bis,
     this.spieleVerpasst,
     this.ausgewechselt = false,
     this.runde,
@@ -28,6 +29,12 @@ class PlayerAbsence {
   final String? grundQuelle;
 
   final DateTime? seit;
+
+  /// Voraussichtliche Rückkehr, wenn die Quelle sie kennt — sie tut das
+  /// selten (gemessen 24 von 109). `null` heißt „Rückkehr unbekannt", nicht
+  /// „kommt nie wieder".
+  final DateTime? bis;
+
   final int? spieleVerpasst;
 
   /// **Nicht gemeldet, sondern gesehen.** Der Eintrag kommt nicht aus der
@@ -50,6 +57,7 @@ class PlayerAbsence {
         gesperrt: (j['kategorie'] as String?) == 'suspended',
         grundQuelle: j['grund_quelle'] as String?,
         seit: DateTime.tryParse((j['seit'] as String?) ?? ''),
+        bis: DateTime.tryParse((j['bis'] as String?) ?? ''),
         spieleVerpasst: (j['spiele_verpasst'] as num?)?.toInt(),
         ausgewechselt: (j['quelle'] as String?) == 'ausgewechselt',
         runde: (j['runde'] as num?)?.toInt(),

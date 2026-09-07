@@ -202,6 +202,7 @@ void main() {
   Widget rahmen(Widget kind,
           {PrognoseElf? elf,
           List<Fixture>? spielplan,
+          PlayerAbsence? ausfall,
           List<FantasyManager> managers = const []}) =>
       ProviderScope(
         overrides: [
@@ -209,13 +210,17 @@ void main() {
           // **Ein Ausfall im Bild.** Sonst sieht man weder das Symbol an der
           // Kachel noch den Grund im Profil — und beides ist der Punkt.
           absencesProvider.overrideWith((ref) => Stream.value({
-                'p1': PlayerAbsence(
-                  playerId: 'p1',
-                  gesperrt: false,
-                  grundQuelle: 'Hamstring Injury',
-                  seit: DateTime(2026, 8, 24),
-                  spieleVerpasst: 2,
-                ),
+                'p1': ausfall ??
+                    PlayerAbsence(
+                      playerId: 'p1',
+                      gesperrt: false,
+                      grundQuelle: 'Hamstring Injury',
+                      seit: DateTime(2026, 8, 24),
+                      // Mit Rückkehrdatum, damit die Zeile im Bild steht.
+                      // Die Quelle füllt es nur bei jedem fünften Ausfall.
+                      bis: DateTime(2026, 9, 30),
+                      spieleVerpasst: 2,
+                    ),
               })),
           currentUserProvider.overrideWith((ref) => User(
                 id: 'ich',
@@ -266,6 +271,9 @@ void main() {
               player: held,
               clubIcon: null,
               isMine: true,
+              // Feste Uhr: Die Rückkehrzeile rechnet gegen heute, sonst wäre
+              // das Bild morgen ein anderes.
+              jetzt: DateTime(2026, 9, 7, 12),
             ),
             child: const Text('öffnen'),
           ),
@@ -327,6 +335,65 @@ void main() {
     await expectLater(
       find.byType(BottomSheet).last,
       matchesGoldenFile('goldens/spielerprofil_aufschluesselung.png'),
+    );
+  });
+
+  testWidgets('Vorschau: verletzt ausgewechselt, Rückkehr unbekannt',
+      (tester) async {
+    // **Der gemeldete Fall.** Filippo Mane ging am 2. Spieltag in der 32.
+    // Minute verletzt vom Platz; die Ausfallliste der Quelle kannte ihn nicht.
+    // Zwei Dinge müssen hier im Bild stehen und sich unterscheiden lassen:
+    // dass es eine **Beobachtung** ist („Vermutlich verletzt“), und dass
+    // niemand weiß, wann er wiederkommt.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 780 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(rahmen(
+      elf: prognose,
+      ausfall: PlayerAbsence.fromJson(const {
+        'player_id': 'p1',
+        'kategorie': 'injury',
+        'grund_quelle': 'Substituted Off Injured',
+        'quelle': 'ausgewechselt',
+        'seit': '2026-09-05',
+        'runde': 2,
+        'minute': 32,
+      }),
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showPlayerProfile(
+              context,
+              league: liga,
+              player: held,
+              clubIcon: null,
+              isMine: true,
+              jetzt: DateTime(2026, 9, 7, 12),
+            ),
+            child: const Text('öffnen'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('öffnen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // Messungen neben dem Bild: Ein Golden zeigt, wie es aussieht, nicht, dass
+    // es stimmt.
+    expect(find.textContaining('Vermutlich verletzt'), findsOneWidget);
+    expect(find.textContaining('in der 32. Minute'), findsOneWidget);
+    expect(find.text('Rückkehr unbekannt'), findsOneWidget);
+
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/spielerprofil_ausgewechselt.png'),
     );
   });
 

@@ -23,6 +23,7 @@ import '../logic/waiver_fenster.dart';
 import 'player_action_buttons.dart';
 import '../../../app/widgets/punktzahl.dart';
 import '../logic/spieler_schnitt.dart';
+import '../logic/rueckkehr.dart';
 
 /// Öffnet das Spielerprofil (Kopf + Leistungstabelle je Spieltag; für eigene
 /// Spieler zusätzlich „Droppen"). [isMine] steuert den Drop-Button.
@@ -153,7 +154,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
                       // **Hier steht der genaue Grund.** Auf der Karte ist nur
                       // Platz für ein Symbol; wer wissen will, ob es ein
                       // Kreuzbandriss oder eine Prellung ist, kommt hierher.
-                      _Ausfallzeile(playerId: player.id),
+                      _Ausfallzeile(playerId: player.id, jetzt: jetzt),
                     ],
                   ),
                 ),
@@ -1723,9 +1724,13 @@ String _wannKurz(DateTime d) =>
 /// Prellung und einem Kreuzbandriss entscheidet aber, ob man den Spieler hält
 /// oder abgibt — deshalb steht er hier im Wortlaut.
 class _Ausfallzeile extends ConsumerWidget {
-  const _Ausfallzeile({required this.playerId});
+  const _Ausfallzeile({required this.playerId, this.jetzt});
 
   final String playerId;
+
+  /// Feste Uhr für die Vorschau — sonst hinge das Bild an `DateTime.now()`
+  /// und wäre morgen ein anderes.
+  final DateTime? jetzt;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1743,6 +1748,29 @@ class _Ausfallzeile extends ConsumerWidget {
             ? 'ein Spiel verpasst'
             : '${a.spieleVerpasst} Spiele verpasst',
     ];
+
+    // **Die Rückkehr steht auf einer eigenen Zeile**, nicht hinter „seit ...".
+    // Sie beantwortet eine andere Frage als der Rest der Karte: nicht „was hat
+    // er", sondern „kann ich ihn nächste Woche aufstellen".
+    final verein = ref
+        .watch(playerPoolProvider)
+        .valueOrNull
+        ?.where((p) => p.id == playerId)
+        .firstOrNull
+        ?.club;
+    final spielplan =
+        ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
+    final spieltag = (a.bis != null && verein != null)
+        ? ersterSpieltagAb(a.bis!, spielplan, verein)
+        : null;
+    final rueckkehr = [
+      rueckkehrSatz(a.bis, jetzt ?? DateTime.now()),
+      // Der Spieltag ist die Zahl, mit der man plant. Er kommt nur dazu, wenn
+      // das Datum in der Zukunft liegt — hinter „Rückkehr war für den 10.
+      // September geplant" wäre er eine Behauptung.
+      if (spieltag != null && !a.bis!.isBefore(DateTime.now()))
+        'frühestens $spieltag. Spieltag',
+    ].join(' · ');
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -1782,6 +1810,19 @@ class _Ausfallzeile extends ConsumerWidget {
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      rueckkehr,
+                      style: TextStyle(
+                        fontSize: Schrift.klein,
+                        fontWeight: FontWeight.w600,
+                        color: a.bis == null
+                            ? Theme.of(context).colorScheme.onSurfaceVariant
+                            : farbe.withValues(alpha: 0.92),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

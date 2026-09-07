@@ -3534,6 +3534,105 @@ ist von einem Erfolg nicht zu unterscheiden. Wo ein Blatt etwas abschicken
 soll, muss der Abschicken-Knopf immer sichtbar sein — und wenn er nicht kann,
 muss er sagen, warum.
 
+### Verletzt ausgewechselt zählt als Ausfall (0122)
+
+Gemeldet: *„Filippo Mane wurde im zweiten Spiel nach 32 Minuten
+ausgewechselt, mit einer Oberschenkelverletzung. Solche Fehler dürfen nicht
+passieren. Ich kann nicht bei jedem Spieler manuell nachforschen."*
+
+**Die Ausfallliste der Quelle ist als alleinige Quelle nicht tragfähig.**
+Nachgemessen über die Saison 2026 (18 Partien, 173 Wechsel):
+
+| | Anzahl |
+|---|---|
+| Auswechslungen mit `injured: true` | **9** |
+| davon **ohne** Eintrag in `player_absences` | **5** |
+
+Die fünf sind Brackelmann, Dinkçi, Mane, Moffi und Lemperle.
+`include=sidelined` ist bei Stammspielern gepflegt und bei allen anderen
+löchrig.
+
+**Die zweite Quelle kostet keinen einzigen Request.** `sync-stats` holt
+ohnehin `/fixtures/multi/{ids}?include=lineups.details.type;events`, und dort
+steht es längst drin: `type_id` 18, `related_player_id` = der Spieler, der
+herausgeht, `minute`, `injured: true`. Die Zeile landet in
+`verletzt_ausgewechselt`; **`related_player_id` ist der Herausgehende** — wer
+ihn mit `player_id` verwechselt, markiert den Einwechselspieler als verletzt.
+
+`player_absences_v` führt beide Quellen zusammen, mit zwei neuen Spalten
+(`quelle`, `runde`/`minute`). Drei Regeln darin:
+
+- **Der abgeleitete Eintrag löst sich selbst auf**, sobald der Spieler in einer
+  späteren Runde Minuten macht. Nachgemessen an Brackelmann: 1. Spieltag
+  verletzt raus, 2. Spieltag 84 Minuten, also kein Ausfall mehr. Dieselbe
+  Logik wie `ueberholt`, nur andersherum angewandt.
+- **Die gemeldete Quelle gewinnt**, wo es sie gibt: Sie kennt den Grund, das
+  Ereignis nur die Tatsache.
+- **Eine Beobachtung ist keine Diagnose.** Der Kopf heißt „Vermutlich
+  verletzt", nicht „Verletzt", und der Text nennt Spieltag und Minute statt
+  einer Verletzungsart, die niemand kennt.
+
+Dazu die Wache `ausfaelle_ohne_meldung`, gleiche Bauart wie
+`stats_widersprueche`: wer verletzt vom Platz ging, ohne dass die Quelle einen
+Ausfall meldet. Heute fünf. Steht dort etwas, ist die Liste lückenhaft — und
+man sieht es dort, statt es von einem Nutzer zu erfahren.
+
+**Zweiter Fehler, beim Nachsehen gefunden: `.stream()` lief auf einer Sicht.**
+`player_absences_v` ist eine View, und eine View kann in Postgres gar nicht in
+einer Realtime-Publication stehen. Der erste Schnappschuss kam an, **jede
+spätere Änderung nicht** — die Ausfälle standen auf dem Stand des App-Starts,
+während der Server stündlich neue holte. Die Klingel hängt jetzt an der
+Basistabelle `player_absences`, die vollständige Abfrage kommt per `asyncMap`
+hinterher (dieselbe Bauart wie bei den Ligamitgliedern). Dazu frischt der
+Live-Takt der Punkte die Ausfälle mit auf — `sync-stats` schreibt beides im
+selben Lauf — und `beimZurueckkommenAktualisieren` nimmt sie auf.
+
+**Die Lehre, und sie ist in diesem Projekt nicht neu:** Wo eine Liste
+„vollständig" sein soll, lohnt die Gegenprobe aus einer zweiten Quelle, die
+dasselbe Ereignis anders sieht. Hier lag sie im selben Abruf.
+
+### Die voraussichtliche Rückkehr
+
+Gewünscht: *„Wenn ein Spieler verletzt ist, wird die voraussichtliche Rückkehr
+angezeigt. Ob das jetzt ein genaues Datum, ein genauer Spieltag, eine ungefähre
+Anzahl an Wochen oder Monaten ist, ist egal. Wenn es nicht bekannt ist, dann
+Rückkehr unbekannt."*
+
+**Die Quelle kennt genau ein Feld dafür** (`end_date`) und füllt es selten:
+gemessen am 07.09.2026 **24 von 109** Ausfällen. Es gibt kein zweites Feld und
+keine Dauer je Verletzungsart — „Rückkehr unbekannt" ist deshalb in vier von
+fünf Fällen die richtige Auskunft, nicht eine Notlösung. Ein abgeleiteter
+Eintrag (verletzt ausgewechselt) hat nie ein Datum.
+
+`logic/rueckkehr.dart` bereitet nur auf:
+
+| Fall | Text |
+|---|---|
+| kein Datum | „Rückkehr unbekannt" |
+| heute / morgen | Wörter statt Zahlen |
+| bis 13 Tage | „Zurück ab 12. September · in 5 Tagen" |
+| bis 10 Wochen | „… in etwa 3 Wochen" |
+| darüber | „… in etwa 5 Monaten" |
+| Datum vergangen | „Rückkehr war für den 1. September geplant" |
+
+Drei Entscheidungen darin:
+
+- **Die Spanne ist grob.** Das Datum ist eine Schätzung; „in 23 Tagen"
+  täuschte eine Genauigkeit vor, die dahinter nicht steckt.
+- **Ein vergangenes Datum ist eine Verzögerung, keine Rückkehr.** Die Quelle
+  schreibt es nicht zurück; „zurück ab 1. September" wäre schlicht falsch.
+- **Der Spieltag ist die Zahl, mit der man plant.** `ersterSpieltagAb` nennt
+  die erste Partie des Vereins ab dem Tag, verglichen über `vereinKanonisch`
+  (Kader und Spielplan schreiben denselben Verein verschieden, siehe 0108).
+  Ohne Treffer bleibt er weg — ein geratener Spieltag wäre schlechter als
+  keiner.
+
+Angesehen über `test/spielerprofil_vorschau_test.dart`, das jetzt beide Fälle
+zeigt: mit Rückkehrdatum (`spielerprofil_leistung.png`) und den gemeldeten Fall
+ohne (`spielerprofil_ausgewechselt.png`). Beide mit **fester Uhr** — die Zeile
+rechnet gegen heute, und ein Bild ohne gestellte Uhr wäre morgen ein anderes.
+Gerechnet wird in `test/rueckkehr_test.dart`.
+
 ### Der Name führt überall ins Profil
 
 In der Free Agency und in der Spielersuche reagierte die Zeile **gar nicht** —
