@@ -1170,9 +1170,14 @@ trug am wenigsten.**
   `_FavoritenSpiele`, das jetzt das erste Spiel überspringt — die Regel
   „alle Spiele des Tages, wenn es mehrere gibt" gilt unverändert, sie ist nur
   auf zwei Stellen verteilt.
-  **Oben steht das Spiel des obersten Favoriten**, nicht das früheste des
-  Tages: Wer Bayern über Bochum stellt, will an einem Samstag mit beiden
-  Bayern auf der Kopfkarte sehen, auch wenn Bochum um 13:30 anfängt.
+  **Oben steht der nächste Anpfiff** (Ansage vom 07.09.2026). Der
+  Favoritenrang entscheidet **nur bei gleicher Anstoßzeit** — an einem Samstag
+  um 15:30 mit drei eigenen Vereinen gehört meiner nach oben, sonst zählt
+  allein, was als Nächstes angepfiffen wird. Vorher galt der Rang unbedingt
+  („wer Bayern über Bochum stellt, will beide Bayern oben sehen, auch wenn
+  Bochum um 13:30 anfängt"); das ist zurückgenommen, weil es eine Partie nach
+  oben schob, die erst Stunden später beginnt, während eine andere schon
+  läuft.
   `favoritenSpielZuerst` (pur, getestet) hebt es im `favoritenSpieleProvider`
   an den Anfang; der Rest bleibt nach Anstoß sortiert, damit die Liste
   darunter den Tagesverlauf liest. Bei Favorit gegen Favorit zählt der höher
@@ -1289,15 +1294,21 @@ Drei Dinge, die daran hängen:
 - **Gespielte Partien bleiben stehen**, mit Ergebnis. Genau darum ging es. Die
   Kopfkarte trägt weiter das Spiel des obersten Favoriten und zeigt nach dem
   Abpfiff dessen Ergebnis (`hasScore` deckte den Fall schon ab).
-- **Die Kopfkarte zeigt das nächste Spiel, kein abgepfiffenes.** Das ist die
-  Regel, die der Umbau fast gekostet hätte: Seit das Fenster gespielte Partien
-  enthält, hätte am Sonntagabend das Freitagsspiel des obersten Favoriten oben
-  gestanden, während ein anderer Verein gerade noch spielt.
-  `favoritenSpielZuerst` wählt deshalb **unter den noch nicht beendeten**; die
-  alte Regel („der oberste Favorit, nicht der früheste Anstoß") gilt innerhalb
-  dieser Menge unverändert. Ist alles gespielt — Sonntagabend bis Montag
-  15:00 —, bleibt die ganze Liste Kandidat, und oben steht das Wochenende mit
-  Ergebnis statt einer leeren Karte.
+- **Die Kopfkarte zeigt den nächsten Anpfiff.** `favoritenSpielZuerst` wählt
+  unter den noch nicht beendeten Partien die **früheste**; bei gleicher
+  Anstoßzeit entscheidet der Favoritenrang, und ein Verein, der nur über den
+  Gegner in die Liste geraten ist, verliert diesen Gleichstand. Ist alles
+  gespielt — Sonntagabend bis Montag 15:00 —, steht das **zuletzt** gespielte
+  oben: Es ist das, worüber man dann redet, und eine leere Karte wäre
+  schlechter.
+
+  **Zwei Anläufe hat das gekostet, beide an derselben Stelle.** Der Umbau auf
+  die Fußballwoche brachte gespielte Partien in die Liste, und die alte
+  Rangregel griff sich davon das Freitagsspiel des obersten Favoriten. Die
+  Korrektur schloss zwar Abgepfiffenes aus, ließ den Rang aber unbedingt
+  gelten — und damit stand weiter eine Partie oben, die erst Stunden später
+  beginnt. **Wer eine Auswahlregel ändert, muss beide Achsen prüfen: was
+  ausgeschlossen ist und wonach unter dem Rest geordnet wird.**
 - **Die Liste ist vollständig, die Partie der Kopfkarte eingeschlossen.** Der
   erste Anlauf ließ sie unten weg, weil sie oben schon steht — nachgefragt:
   *„Ich hab ja gesagt, dass das erste Spiel trotzdem oben in dem Kästchen

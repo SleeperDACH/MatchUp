@@ -75,18 +75,26 @@ bool _imFenster(TeamFixture f, DateTime von, DateTime bis) {
   return !lt.isBefore(von) && lt.isBefore(bis);
 }
 
-/// Stellt das Spiel des **obersten Favoriten** an den Anfang der Tagesliste.
+/// Stellt das Spiel an den Anfang, das die Kopfkarte tragen soll.
 ///
-/// [wochenendSpiele] sortiert nach Anstoß — die richtige Ordnung für eine
-/// Liste, die das Wochenende abbildet. Die Kopfkarte des Homescreens stellt aber
-/// eine andere Frage: Von vier Vereinen, die an einem Samstag spielen, gehört
-/// **meiner** nach oben, nicht der, der zufällig um 13:30 anfängt. „Meiner"
-/// ist dabei der, der in der Favoritenreihenfolge oben steht
-/// (`favoritenRaenge`) — dieselbe Reihenfolge, die der Favoriten-Tab zeigt.
+/// **Die Regel ist der nächste Anpfiff** (auf Ansage, 07.09.2026). Der
+/// Favoritenrang entscheidet **nur bei gleicher Anstoßzeit** — an einem
+/// Samstag um 15:30 mit drei eigenen Vereinen gehört meiner nach oben, sonst
+/// zählt allein, was als Nächstes angepfiffen wird.
 ///
-/// Der Rest bleibt nach Anstoß sortiert: Wer die Liste darunter liest, liest
-/// den Tagesverlauf. Nur ein Eintrag wird herausgehoben, nicht die Ordnung
-/// umgeworfen.
+/// Vorher galt der Rang unbedingt („wer Bayern über Bochum stellt, will an
+/// einem Samstag mit beiden Bayern oben sehen"). Das ist ausdrücklich
+/// zurückgenommen: Es schob eine Partie nach oben, die erst Stunden später
+/// beginnt, während eine andere schon läuft.
+///
+/// **Abgepfiffenes kommt nicht auf die Kopfkarte**, solange im Fenster noch
+/// etwas aussteht. Ist alles gespielt — Sonntagabend bis Montag 15:00 —, bleibt
+/// das **zuletzt** gespielte oben stehen: Es ist das, worüber man dann redet,
+/// und eine leere Karte wäre schlechter.
+///
+/// Der Rest bleibt, wie er kam. Nur ein Eintrag wird herausgehoben, die
+/// Ordnung wird nicht umgeworfen — der Abschnitt „Mein Wochenende" sortiert
+/// ohnehin selbst nach Anstoß.
 ///
 /// [rang] liefert die Position des Vereins (kleiner ist weiter oben) oder
 /// `null` für „gehört zu keinem Favoriten" — das kommt vor, wenn ein Spiel
@@ -97,35 +105,34 @@ List<TeamFixture> favoritenSpielZuerst({
 }) {
   if (spiele.length < 2) return spiele;
 
-  // **Die Kopfkarte zeigt das nächste Spiel, kein abgepfiffenes.** Seit das
-  // Fenster die ganze Fußballwoche umfasst, stehen auch gespielte Partien in
-  // der Liste — und ohne diese Einschränkung landete am Sonntagabend das
-  // Freitagsspiel des obersten Favoriten oben, während ein anderer Verein
-  // gerade noch spielte.
-  //
-  // Ist alles gespielt (Sonntagabend bis Montag 15:00), bleibt die ganze
-  // Liste Kandidat: Dann soll das Wochenende oben stehen bleiben, mit
-  // Ergebnis, statt die Karte leer zu lassen.
   final offen = [
     for (var i = 0; i < spiele.length; i++)
       if (spiele[i].status != FixtureStatus.finished) i,
   ];
-  final kandidaten = offen.isEmpty
+  final alleGespielt = offen.isEmpty;
+  final kandidaten = alleGespielt
       ? [for (var i = 0; i < spiele.length; i++) i]
       : offen;
 
+  // Steht noch etwas aus, zählt der **früheste** Anpfiff; ist alles gespielt,
+  // der **späteste**. Beides ist dasselbe „das aktuellste Spiel", einmal nach
+  // vorn und einmal nach hinten gelesen.
   var besterIndex = kandidaten.first;
-  int? bester;
   for (final i in kandidaten) {
-    final r = rang(spiele[i]);
-    if (r == null) continue;
-    // Bei Gleichstand gewinnt der frühere Anstoß — die Liste ist danach
-    // sortiert, also genügt das strikte Kleiner.
-    if (bester == null || r < bester) {
-      bester = r;
-      besterIndex = i;
+    final a = spiele[i].kickoff;
+    final b = spiele[besterIndex].kickoff;
+    if (a == b) {
+      // Gleiche Anstoßzeit: jetzt erst entscheidet der Favoritenrang. Ein
+      // unbekannter Verein (`null`) verliert gegen jeden bekannten.
+      final ra = rang(spiele[i]);
+      final rb = rang(spiele[besterIndex]);
+      if (ra != null && (rb == null || ra < rb)) besterIndex = i;
+      continue;
     }
+    final besser = alleGespielt ? a.isAfter(b) : a.isBefore(b);
+    if (besser) besterIndex = i;
   }
+
   if (besterIndex == 0) return spiele;
   return [
     spiele[besterIndex],

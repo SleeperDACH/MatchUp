@@ -23,115 +23,102 @@ void main() {
   // Hier bleibt, was unverändert gilt: welches der Spiele die Kopfkarte trägt.
 
   group('favoritenSpielZuerst', () {
-    // Rangkarte: fcb ist der oberste Favorit, bvb der zweite.
-    int? rang(TeamFixture f) => switch ((f.home.id, f.away.id)) {
-      (_, _) when f.home.id == 'fcb' || f.away.id == 'fcb' => 0,
-      (_, _) when f.home.id == 'bvb' || f.away.id == 'bvb' => 1,
-      _ => null,
-    };
+    // **Der nächste Anpfiff gewinnt** (auf Ansage, 07.09.2026). Der
+    // Favoritenrang entscheidet nur bei gleicher Anstoßzeit. Vorher galt der
+    // Rang unbedingt — das schob eine Partie nach oben, die erst Stunden
+    // später beginnt, während eine andere schon läuft.
+    int? rangVon(TeamFixture f) => switch (f.home.name) {
+          'bayern' => 0,
+          'bochum' => 1,
+          'hsv' => 2,
+          _ => null,
+        };
 
-    test('das Spiel des obersten Favoriten kommt nach vorn', () {
-      // Der BVB stößt früher an — auf die Kopfkarte gehört trotzdem Bayern.
+    test('der frühere Anstoß kommt nach vorn, auch beim kleineren Favoriten',
+        () {
       final list = favoritenSpielZuerst(
         spiele: [
-          _fx('frueh', 'bvb', 'x', DateTime(2026, 8, 22, 13, 30)),
-          _fx('spaet', 'fcb', 'y', DateTime(2026, 8, 22, 18, 30)),
+          _fx('spaet', 'bayern', 'x', DateTime(2026, 9, 12, 18, 30)),
+          _fx('frueh', 'bochum', 'y', DateTime(2026, 9, 12, 13, 30)),
         ],
-        rang: rang,
+        rang: rangVon,
       );
-      expect(list.map((f) => f.id), ['spaet', 'frueh']);
+      expect(list.first.id, 'frueh');
     });
 
-    test('der Rest bleibt nach Anstoß sortiert', () {
+    test('bei gleicher Anstoßzeit entscheidet der Favoritenrang', () {
       final list = favoritenSpielZuerst(
         spiele: [
-          _fx('a', 'bvb', 'x', DateTime(2026, 8, 22, 13, 30)),
-          _fx('b', 'z', 'q', DateTime(2026, 8, 22, 15, 30)),
-          _fx('c', 'fcb', 'y', DateTime(2026, 8, 22, 18, 30)),
+          _fx('bochum', 'bochum', 'x', DateTime(2026, 9, 12, 15, 30)),
+          _fx('bayern', 'bayern', 'y', DateTime(2026, 9, 12, 15, 30)),
+          _fx('hsv', 'hsv', 'z', DateTime(2026, 9, 12, 15, 30)),
         ],
-        rang: rang,
+        rang: rangVon,
       );
-      expect(list.map((f) => f.id), ['c', 'a', 'b']);
+      expect(list.first.id, 'bayern');
     });
 
-    test('steht der oberste Favorit schon vorn, ändert sich nichts', () {
-      final spiele = [
-        _fx('a', 'fcb', 'x', DateTime(2026, 8, 22, 13, 30)),
-        _fx('b', 'bvb', 'y', DateTime(2026, 8, 22, 15, 30)),
-      ];
-      expect(identical(favoritenSpielZuerst(spiele: spiele, rang: rang), spiele),
-          isTrue);
-    });
-
-    test('Favorit gegen Favorit zählt mit dem höheren Rang', () {
-      // Das Duell trägt Rang 0 (Bayern) und schlägt das reine BVB-Spiel.
+    test('ein unbekannter Verein verliert den Gleichstand', () {
+      // Ein Spiel, das nur über den Gegner in die Liste geraten ist, gehört
+      // nicht auf die Kopfkarte.
       final list = favoritenSpielZuerst(
         spiele: [
-          _fx('bvb-solo', 'bvb', 'x', DateTime(2026, 8, 22, 13, 30)),
-          _fx('duell', 'bvb', 'fcb', DateTime(2026, 8, 22, 18, 30)),
+          _fx('fremd', 'irgendwer', 'x', DateTime(2026, 9, 12, 15, 30)),
+          _fx('hsv', 'hsv', 'y', DateTime(2026, 9, 12, 15, 30)),
         ],
-        rang: rang,
+        rang: rangVon,
       );
-      expect(list.first.id, 'duell');
-    });
-
-    test('kennt der Rang keinen der Vereine, bleibt die Reihenfolge', () {
-      // Ein Spiel, das nur über den Gegner in die Liste geriet.
-      final list = favoritenSpielZuerst(
-        spiele: [
-          _fx('a', 'fremd', 'auch-fremd', DateTime(2026, 8, 22, 13, 30)),
-          _fx('b', 'noch-fremd', 'x', DateTime(2026, 8, 22, 15, 30)),
-        ],
-        rang: (_) => null,
-      );
-      expect(list.map((f) => f.id), ['a', 'b']);
+      expect(list.first.id, 'hsv');
     });
 
     test('ein abgepfiffenes Spiel kommt nicht auf die Kopfkarte', () {
-      // **Die Kopfkarte zeigt das nächste Spiel.** Seit das Fenster die ganze
-      // Fußballwoche umfasst, stehen auch gespielte Partien in der Liste —
-      // ohne diese Regel landete am Sonntagabend das Freitagsspiel des
-      // obersten Favoriten oben, während ein anderer Verein gerade noch
-      // spielte.
       final list = favoritenSpielZuerst(
         spiele: [
-          _fx('freitag', 'bs', 'x', DateTime(2026, 9, 11, 18, 30),
+          _fx('freitag', 'bayern', 'x', DateTime(2026, 9, 11, 18, 30),
               status: FixtureStatus.finished),
           _fx('sonntag', 'hsv', 'y', DateTime(2026, 9, 13, 15, 30)),
         ],
-        // Braunschweig steht oben in den Favoriten, hat aber schon gespielt.
-        rang: (f) => f.home.name == 'bs' ? 0 : 1,
+        rang: rangVon,
       );
       expect(list.first.id, 'sonntag');
     });
 
-    test('unter den offenen gewinnt weiter der oberste Favorit', () {
-      // Die alte Regel bleibt: Wer Bayern über Bochum stellt, will an einem
-      // Samstag mit beiden Bayern oben sehen — nicht den früheren Anstoß.
+    test('ist alles gespielt, steht das zuletzt gespielte oben', () {
+      // Sonntagabend bis Montag 15:00: Es gibt keinen nächsten Anpfiff mehr im
+      // Fenster. Dann ist das jüngste Ergebnis das, worüber man redet.
       final list = favoritenSpielZuerst(
         spiele: [
-          _fx('frueh', 'bochum', 'x', DateTime(2026, 9, 12, 13, 30)),
-          _fx('spaet', 'bayern', 'y', DateTime(2026, 9, 12, 18, 30)),
+          _fx('freitag', 'bayern', 'x', DateTime(2026, 9, 11, 18, 30),
+              status: FixtureStatus.finished),
+          _fx('sonntag', 'bochum', 'y', DateTime(2026, 9, 13, 17, 30),
+              status: FixtureStatus.finished),
         ],
-        rang: (f) => f.home.name == 'bayern' ? 0 : 1,
+        rang: rangVon,
       );
-      expect(list.first.id, 'spaet');
+      expect(list.first.id, 'sonntag');
     });
 
-    test('ist alles gespielt, bleibt das Wochenende oben stehen', () {
-      // Sonntagabend bis Montag 15:00: Es gibt kein nächstes Spiel mehr im
-      // Fenster. Eine leere Kopfkarte wäre schlechter als das Ergebnis.
+    test('der Rest behält seine Reihenfolge', () {
       final list = favoritenSpielZuerst(
         spiele: [
-          _fx('a', 'bochum', 'x', DateTime(2026, 9, 12, 13, 30),
-              status: FixtureStatus.finished),
-          _fx('b', 'bayern', 'y', DateTime(2026, 9, 13, 18, 30),
-              status: FixtureStatus.finished),
+          _fx('a', 'bayern', 'x', DateTime(2026, 9, 12, 18, 30)),
+          _fx('b', 'bochum', 'y', DateTime(2026, 9, 12, 13, 30)),
+          _fx('c', 'hsv', 'z', DateTime(2026, 9, 13, 15, 30)),
         ],
-        rang: (f) => f.home.name == 'bayern' ? 0 : 1,
+        rang: rangVon,
       );
-      expect(list.first.id, 'b');
+      expect(list.map((f) => f.id), ['b', 'a', 'c']);
+    });
+
+    test('kennt der Rang keinen der Vereine, zählt allein die Zeit', () {
+      final list = favoritenSpielZuerst(
+        spiele: [
+          _fx('spaet', 'fremd', 'x', DateTime(2026, 9, 12, 18, 30)),
+          _fx('frueh', 'auch-fremd', 'y', DateTime(2026, 9, 12, 13, 30)),
+        ],
+        rang: (_) => null,
+      );
+      expect(list.first.id, 'frueh');
     });
   });
-
 }
