@@ -330,9 +330,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                                 // Einen verletzten Spieler zu holen ist der
                                 // teuerste Fehler in der Free Agency.
                                 if (ausfaelle[p.id] != null)
-                                  ausfaelle[p.id]!.gesperrt
-                                      ? 'gesperrt'
-                                      : 'verletzt',
+                                  ausfaelle[p.id]!.kurz,
                               ].join(' · '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

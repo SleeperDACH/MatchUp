@@ -114,6 +114,19 @@ class PlayerAbsence {
     return _deutsch[q] ?? q;
   }
 
+  /// Ein Wort für enge Stellen — die Zeile in der Free Agency, wo neben
+  /// Verein und Punkten kein Satz Platz hat.
+  ///
+  /// **„Angeschlagen" statt „verletzt"** für die Beobachtung: Wir wissen, dass
+  /// er verletzt vom Platz ging, nicht dass er ausfällt. „Verletzt" wäre an
+  /// der Stelle, an der man jemanden holt oder liegen lässt, eine Behauptung
+  /// zu viel.
+  String get kurz => gesperrt
+      ? 'gesperrt'
+      : ausgewechselt
+          ? 'angeschlagen'
+          : 'verletzt';
+
   /// Was über dem Grund steht. Eine Beobachtung sagt nicht „Verletzt“ —
   /// das behauptete eine Diagnose, die niemand gestellt hat.
   String get kopf => gesperrt

@@ -127,6 +127,20 @@ void main() {
       expect(mane.kopf, isNot('Verletzt'));
     });
 
+    test('in engen Zeilen steht „angeschlagen", nicht „verletzt"', () {
+      // Die Free Agency hat neben Verein und Punkten Platz für ein Wort. Dort
+      // ist „verletzt" eine Behauptung zu viel — genau an der Stelle, an der
+      // man jemanden holt oder liegen lässt.
+      expect(mane.kurz, 'angeschlagen');
+      final gemeldet = _ausJson({
+        'player_id': 'sportmonks:9',
+        'kategorie': 'injury',
+        'grund_quelle': 'Knee Injury',
+        'quelle': 'gemeldet',
+      });
+      expect(gemeldet.kurz, 'verletzt');
+    });
+
     test('der englische Wortlaut der Quelle steht nie auf dem Schirm', () {
       // Sonst stünde dort „Substituted Off Injured" — die Sentinel-Zeichenkette
       // aus der Sicht, nicht für Leser gedacht.

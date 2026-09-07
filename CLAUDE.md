@@ -3637,6 +3637,34 @@ Gemessen vorher und nachher:
 
 Die drei verbliebenen Sperren sind echte Rotsperren mit Enddatum.
 
+### Wieder eingeplant heißt wieder fit (0124)
+
+Eingewandt: *„Wenn der Spieler den Eintrag hat, nur weil er verletzt
+ausgewechselt wurde, und dann aber wieder fit ist in der Woche, wird er als
+verletzt angezeigt, obwohl das falsch ist."*
+
+Stimmt, und es traf genau die Woche, in der man die Aufstellung macht. 0122
+löste den abgeleiteten Eintrag erst auf, wenn der Spieler **wieder Minuten
+gemacht** hat — also frühestens während des nächsten Spiels. Bis dahin stand
+die Vermutung, auch wenn der Verein ihn längst wieder eingeplant hatte.
+
+**Die Aufstellung weiß es früher.** `predicted_lineups` trägt ein bis zwei
+Tage vor Anpfiff die voraussichtliche Elf und, sobald gemeldet, die echte samt
+Bank (576 Zeilen über 18 Spiele, Stand 07.09.2026). Wer dort für ein
+**späteres** Spiel steht, ist offensichtlich fit — **die Bank zählt mit**, denn
+auf sie setzt niemand einen Verletzten.
+
+Rollback-Probe gegen die Produktion: Mane ist sichtbar; sobald eine Zeile ihn
+für Dortmunds Spiel am 3. Spieltag auf die Bank setzt, verschwindet der
+Eintrag. Danach zurückgerollt.
+
+**Was bleibt, ist die Lücke zwischen Abpfiff und Prognose.** Von Sonntagabend
+bis etwa Mittwoch gibt es schlicht keine neue Auskunft — kein Trainingsbericht,
+keine Meldung, keine Aufstellung. Der Eintrag sagt deshalb „vermutlich" und
+nennt die Beobachtung im Wortlaut; in engen Zeilen (Free Agency) steht
+**„angeschlagen"** statt „verletzt". Das ist die ehrlichste erreichbare
+Auskunft, und es ist bewusst keine Sicherheit vorgetäuscht.
+
 ### Zwei Ausfälle, einer wird gezeigt
 
 Gemeldet: *„Prass zeigt auch falsche Verletzung an."* Alexander Prass trug
