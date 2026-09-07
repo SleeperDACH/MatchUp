@@ -44,7 +44,8 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
         const <String, FrozenOdds>{};
     final current = ref.watch(currentRoundProvider).valueOrNull;
 
-    if (membersAsync.isLoading || fixturesAsync.isLoading) {
+    // Nur wenn nichts dasteht — ein Nachladen darf die Duelle nicht ersetzen.
+    if (membersAsync.valueOrNull == null || fixturesAsync.valueOrNull == null) {
       return const Center(child: CircularProgressIndicator());
     }
     final members = membersAsync.valueOrNull ?? const <RoundMember>[];

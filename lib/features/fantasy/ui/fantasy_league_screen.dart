@@ -31,6 +31,7 @@ import 'weekly_recap_screen.dart';
 import '../../../app/widgets/karte.dart';
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/matchup_chevron.dart';
+import '../../../app/vorwaermen.dart';
 
 /// Vollwertiger Fantasy-Liga-Screen mit Tabs. Zeigt schon vor dem Draft
 /// Tabelle, Teilnehmer und (leeren) Kader an; die Übersicht führt durch
@@ -93,13 +94,22 @@ class FantasyLeagueScreen extends ConsumerWidget {
             },
           ),
         ),
-        body: TabBarView(
-          children: [
-            _OverviewTab(league: live, isAdmin: isAdmin),
-            MatchupsBody(league: live),
-            _RostersTab(league: live),
-            FantasyTableBody(league: live),
-          ],
+        body: Vorwaermer(
+          // Kader, Aufstellungen und Trades hängen an allen vier Reitern;
+          // der Unterbau (Pool, Spielplan, Saison-Stats) an fast jedem Schirm
+          // dahinter — Aufstellung, Free Agency, Spielerprofil.
+          holt: (ref) {
+            warmeFantasyUnterbau(ref);
+            warmeFantasyLiga(ref, live.id);
+          },
+          child: TabBarView(
+            children: [
+              _OverviewTab(league: live, isAdmin: isAdmin),
+              MatchupsBody(league: live),
+              _RostersTab(league: live),
+              FantasyTableBody(league: live),
+            ],
+          ),
         ),
       ),
     );

@@ -13,6 +13,8 @@ import 'widgets/team_fixture_list.dart';
 import 'theme.dart';
 import 'widgets/segmented_tab_bar.dart';
 import 'widgets/tabellen_punkte.dart';
+import '../core/data/neu_laden.dart';
+import 'vorwaermen.dart';
 
 /// Vereinsseite: Spielplan, Tabelle, Kader und News eines Klubs.
 ///
@@ -49,7 +51,23 @@ class ClubScreen extends ConsumerWidget {
       _NewsTab(teamId: _teamId, name: team.name, leagueId: liga),
     ];
 
-    return DefaultTabController(
+    // Alle Reiter zugleich anstoßen — Kader und News hängen an keinem anderen
+    // Schirm und wurden sonst erst beim Antippen geholt.
+    return Vorwaermer(
+      holt: (ref) {
+        ref.read(teamFixturesProvider(_teamId));
+        ref.read(teamSquadProvider(_teamId));
+        ref.read(teamNewsProvider(
+            (teamId: _teamId, name: team.name, leagueId: liga)));
+        // Die Vereinstabelle rechnet live: Sie braucht Tabelle **und**
+        // Spielplan (`liveLeagueTableProvider`). Nur die halbe Quelle
+        // vorzuwärmen hieße, den Reiter trotzdem warten zu lassen.
+        if (liga != null) {
+          ref.read(leagueTableProvider(liga));
+          ref.read(leagueSeasonFixturesProvider(liga));
+        }
+      },
+      child: DefaultTabController(
       length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
@@ -67,6 +85,7 @@ class ClubScreen extends ConsumerWidget {
           bottom: SegmentedTabBar(tabs: tabs),
         ),
         body: TabBarView(children: views),
+      ),
       ),
     );
   }
@@ -110,7 +129,7 @@ class _SpielplanTab extends ConsumerWidget {
         return SpielplanAnsicht(
           fixtures: fixtures,
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-          onRefresh: () async => ref.invalidate(teamFixturesProvider(teamId)),
+          onRefresh: () => neuLaden(() => ref.invalidate(teamFixturesProvider(teamId))),
         );
       },
     );
@@ -141,7 +160,7 @@ class _TabelleTab extends ConsumerWidget {
       data: (rows) {
         if (rows.isEmpty) return const _Leer('Noch keine Tabelle verfügbar.');
         return RefreshIndicator(
-          onRefresh: () async => _tabelleNeuLaden(ref, leagueId),
+          onRefresh: () => neuLaden(() => _tabelleNeuLaden(ref, leagueId)),
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -244,7 +263,7 @@ class _KaderTab extends ConsumerWidget {
         }
 
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(teamSquadProvider(teamId)),
+          onRefresh: () => neuLaden(() => ref.invalidate(teamSquadProvider(teamId))),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -344,7 +363,7 @@ class _NewsTab extends ConsumerWidget {
       data: (items) {
         if (items.isEmpty) return const _Leer('Aktuell keine Meldungen.');
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(teamNewsProvider(args)),
+          onRefresh: () => neuLaden(() => ref.invalidate(teamNewsProvider(args))),
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),

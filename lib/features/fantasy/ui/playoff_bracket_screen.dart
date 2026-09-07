@@ -46,7 +46,8 @@ class PlayoffBracketScreen extends ConsumerWidget {
           'Für diese Liga sind noch keine Playoffs konfiguriert. Das lässt '
           'sich in den Liga-Einstellungen anpassen.'));
     }
-    if (managersAsync.isLoading || poolAsync.isLoading) {
+    // Nur wenn nichts dasteht — sonst ersetzt jedes Nachladen den Bracket.
+    if (managersAsync.valueOrNull == null || poolAsync.valueOrNull == null) {
       return scaffold(const Center(child: CircularProgressIndicator()));
     }
     final managers = managersAsync.valueOrNull ?? const <FantasyManager>[];

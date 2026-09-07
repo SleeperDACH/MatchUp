@@ -16,6 +16,7 @@ import 'theme.dart';
 import 'typografie.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/pulsing_dot.dart';
+import '../core/data/neu_laden.dart';
 
 /// Signaturfarbe je Wettbewerb — im Quadrat vor dem Liganamen, in der
 /// Wettbewerbszeile unten und im Auswahl-Sheet.
@@ -290,9 +291,13 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   }
 
   void _refresh() {
-    for (final l in Leagues.all) {
-      ref.invalidate(leagueSeasonFixturesProvider(l.id));
-    }
+    // Ausdrücklich frisch: Der Live-Tab ist die Stelle, an der ein veralteter
+    // Spielstand am meisten stört.
+    neuLaden(() {
+      for (final l in Leagues.all) {
+        ref.invalidate(leagueSeasonFixturesProvider(l.id));
+      }
+    });
   }
 }
 

@@ -5,7 +5,30 @@ import '../../models/models.dart';
 import '../../models/squad_member.dart';
 import '../../models/team_fixture.dart';
 import '../../models/top_scorer.dart';
+import '../abfrage_buendel.dart';
 import '../sports_data_provider.dart';
+
+/// **Gebündelt wird auf Modulebene, nicht je Objekt.** `sportsProviderFor`
+/// baut bei jedem Aufruf einen neuen Adapter; eine Instanz könnte sich also
+/// nichts merken, und genau deshalb ging jede Frage einzeln ans Netz.
+final sportmonksBuendel = AbfrageBuendel();
+
+/// Wie lange eine Antwort noch gilt. Die Zahlen kommen aus dem, was sich
+/// ändern kann: Ein laufendes Spiel ändert seinen Stand in Sekunden, ein
+/// Vereinskader in Monaten.
+///
+/// **Der Spielplan steht bewusst auf 20 Sekunden**, weil die Live-Punkte alle
+/// 30 Sekunden nachladen und dabei die Spielstände mitnehmen — eine längere
+/// Geltung hielte den Spieltag „live", nachdem er beendet ist.
+Duration _gueltig(String kind) => switch (kind) {
+      'fixture' => const Duration(seconds: 10),
+      'seasonFixtures' => const Duration(seconds: 20),
+      'teamFixtures' => const Duration(seconds: 30),
+      'standings' => const Duration(seconds: 30),
+      'topscorers' => const Duration(minutes: 2),
+      'squad' => const Duration(minutes: 10),
+      _ => const Duration(seconds: 30),
+    };
 
 /// Daten-Adapter für die **Sportmonks Football API** — über die Edge Function
 /// `sportmonks` (Key bleibt serverseitig). Deckt die fünf deutschen Ligen des
@@ -24,21 +47,28 @@ class SupabaseSportmonksProvider implements SportsDataProvider {
   String get id => 'sportmonks';
 
   Future<Map<String, dynamic>> _call(String kind,
-      {String? leagueKey, String? fixtureId, String? teamId}) async {
-    final res = await _client.functions.invoke('sportmonks', body: {
-      'kind': kind,
-      'leagueKey': ?leagueKey,
-      'fixtureId': ?fixtureId,
-      'teamId': ?teamId,
+      {String? leagueKey, String? fixtureId, String? teamId}) {
+    // Der Schlüssel ist die Frage selbst. Zwei Schirme, die im selben Moment
+    // dasselbe wissen wollen, teilen sich damit **eine** Verbindung.
+    final schluessel = '$kind|${leagueKey ?? ''}|${fixtureId ?? ''}|'
+        '${teamId ?? ''}';
+    return sportmonksBuendel.hole(schluessel, _gueltig(kind), () async {
+      final res = await _client.functions.invoke('sportmonks', body: {
+        'kind': kind,
+        'leagueKey': ?leagueKey,
+        'fixtureId': ?fixtureId,
+        'teamId': ?teamId,
+      });
+      final data = res.data;
+      if (data is Map && data['error'] != null) {
+        throw SportmonksException(data['error'].toString());
+      }
+      if (data is! Map<String, dynamic>) {
+        throw SportmonksException(
+            'Unerwartete Antwort der Sportmonks-Function.');
+      }
+      return data;
     });
-    final data = res.data;
-    if (data is Map && data['error'] != null) {
-      throw SportmonksException(data['error'].toString());
-    }
-    if (data is! Map<String, dynamic>) {
-      throw SportmonksException('Unerwartete Antwort der Sportmonks-Function.');
-    }
-    return data;
   }
 
   @override

@@ -55,12 +55,14 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
         const <FantasyLineup>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
-    if (managersAsync.isLoading || poolAsync.isLoading) {
+    // Nur wenn nichts dasteht: Der Mitgliederstrom meldet bei jedem
+    // Wiederverbinden „lädt", und die Tabelle fiel dabei auf einen leeren
+    // Kreis zurück.
+    final managers = managersAsync.valueOrNull;
+    final pool = poolAsync.valueOrNull;
+    if (managers == null || pool == null) {
       return const Center(child: CircularProgressIndicator());
     }
-
-    final managers = managersAsync.requireValue;
-    final pool = poolAsync.requireValue;
     final playerById = {for (final p in pool) p.id: p};
     final nameOf = {for (final m in managers) m.userId: m.display};
     final avatarOf = {

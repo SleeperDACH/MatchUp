@@ -19,6 +19,7 @@ import 'round_selector.dart';
 import 'tip_member_profile_sheet.dart';
 import '../../../app/widgets/karte.dart';
 import '../../../app/widgets/punktzahl.dart';
+import '../../../core/data/sportmonks/sportmonks_provider.dart';
 
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
 const Color _liveColor = Color(0xFFF23030); // MatchUp Red — Live-Spiele
@@ -184,15 +185,19 @@ class _TableBodyState extends ConsumerState<_TableBody> {
       for (final id in round.competitions)
         ref.watch(leagueSeasonFixturesProvider(id)),
     ];
-    final seasonLoading = seasonAsyncs.any((a) => a.isLoading);
+    final seasonFehlt = seasonAsyncs.any((a) => a.valueOrNull == null);
     final seasonError = seasonAsyncs
         .map((a) => a.error)
         .firstWhere((e) => e != null, orElse: () => null);
 
-    if (membersAsync.isLoading ||
-        tipsAsync.isLoading ||
-        (fixturesAsync?.isLoading ?? false) ||
-        seasonLoading) {
+    // **Der Spinner ersetzt die Tabelle nur, wenn es keine gibt.** Gefragt ist
+    // „liegen Daten vor?", nicht „lädt gerade etwas?" — sonst fällt der Schirm
+    // bei jedem Nachladen auf einen leeren Kreis zurück, und die Tipps laden
+    // an einem Spieltag alle 30 Sekunden nach.
+    if (membersAsync.valueOrNull == null ||
+        tipsAsync.valueOrNull == null ||
+        (fixturesAsync != null && fixturesAsync.valueOrNull == null) ||
+        seasonFehlt) {
       return const Center(child: CircularProgressIndicator());
     }
     final error =
@@ -449,6 +454,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
   }
 
   void _refresh() {
+    sportmonksBuendel.leeren();
     ref.invalidate(roundMembersProvider(widget.round.id));
     ref.invalidate(allRoundTipsProvider(widget.round.id));
     ref.invalidate(tipPresenceProvider(widget.round.id));

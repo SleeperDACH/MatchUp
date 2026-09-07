@@ -15,6 +15,7 @@ import 'team_badge.dart';
 import '../../../app/typografie.dart';
 import '../../../app/widgets/kapitelmarke.dart';
 import '../../../app/widgets/karte.dart';
+import '../../../core/data/neu_laden.dart';
 
 /// Tippen-Tab: In Runden mit mehreren Wettbewerben ein gemeinsamer
 /// Wochen-Feed (alle Ligen zusammen, Woche für Woche); sonst die klassische
@@ -104,12 +105,12 @@ class _WeekTipView extends ConsumerWidget {
               child: _FixtureListBody(
                 list: week.fixtures,
                 odds: odds,
-                onRefresh: () async {
+                onRefresh: () => neuLaden(() {
                   ref.invalidate(roundWeeksProvider);
                   for (final id in competitions) {
                     ref.invalidate(leagueSeasonFixturesProvider(id));
                   }
-                },
+                }),
               ),
             ),
           ],
@@ -136,7 +137,7 @@ class _FixtureList extends ConsumerWidget {
       data: (list) => _FixtureListBody(
         list: list,
         odds: ref.watch(roundOddsProvider(round)),
-        onRefresh: () async => ref.invalidate(roundFixturesProvider(round)),
+        onRefresh: () => neuLaden(() => ref.invalidate(roundFixturesProvider(round))),
       ),
     );
   }

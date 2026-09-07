@@ -6,6 +6,8 @@ import 'home_screen.dart';
 import 'live_screen.dart';
 import 'wiedereinstieg.dart';
 import 'widgets/navi_kapsel.dart';
+import 'vorwaermen.dart';
+import 'widgets/matchup_splash.dart';
 
 /// App-Gerüst mit unterer Navigationsleiste: Home · Live · Favoriten. Das
 /// Profil ist über den Avatar oben links im Home-Tab erreichbar (kein eigener
@@ -21,11 +23,35 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell>
     with WidgetsBindingObserver {
   int _index = 0;
+  bool _vorgewaermt = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // **Der Unterbau wird geholt, sobald der Startbildschirm steht.**
+    //
+    // Gemeldet: *„Auch bei guter Internetverbindung sind ganz oft
+    // Ladescreens."* Spielerpool, Saison-Spielplan und die Saison-Statistik
+    // hängen an fast jedem Fantasy-Schirm — geholt wurden sie aber erst, wenn
+    // einer davon offen war. Jetzt laufen sie, während der Nutzer noch auf den
+    // Startbildschirm schaut.
+    //
+    // **Erst nach `homeBereitProvider`**, nicht sofort: Der Startschirm wartet
+    // auf vier eigene Abfragen, und die dürfen sich nicht mit fünf weiteren um
+    // die Leitung streiten. Genau einmal je Sitzung — ein `build` läuft bei
+    // jedem Reiterwechsel.
+    if (!_vorgewaermt && ref.watch(homeBereitProvider)) {
+      _vorgewaermt = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) warmeFantasyUnterbau(ref);
+      });
+    }
+    return _bauen(context);
   }
 
   @override
@@ -53,8 +79,7 @@ class _MainShellState extends ConsumerState<MainShell>
     FavoritesTab(),
   ];
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _bauen(BuildContext context) {
     return Scaffold(
       // Inhalt läuft hinter der schwebenden Leiste durch → der Blur der
       // Glas-Leiste greift auf den Inhalt (nicht nur den Grund).

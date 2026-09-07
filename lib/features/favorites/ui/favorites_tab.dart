@@ -13,6 +13,7 @@ import '../../../app/widgets/leise_reiter.dart';
 import '../favorites.dart';
 import '../logic/favorite_order.dart';
 import 'favorites_manage_screen.dart';
+import '../../../core/data/neu_laden.dart';
 
 /// Reine Sportmonks-Team-ID aus dem Favoriten-Key (`sportmonks:503` → `503`).
 /// Favoriten-Tab: Auswahl der favorisierten Teams oben, darunter je Team der
@@ -545,11 +546,11 @@ class _FixturesTab extends ConsumerWidget {
     // den nächsten Spielen, die Ergebnisse liegen darüber.
     return SpielplanAnsicht(
       fixtures: fixtures,
-      onRefresh: () async {
+      onRefresh: () => neuLaden(() {
         for (final id in teamIds) {
           ref.invalidate(teamFixturesProvider(id));
         }
-      },
+      }),
     );
   }
 }

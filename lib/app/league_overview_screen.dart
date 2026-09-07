@@ -14,6 +14,8 @@ import 'theme.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/segmented_tab_bar.dart';
 import 'widgets/tabellen_punkte.dart';
+import '../core/data/neu_laden.dart';
+import 'vorwaermen.dart';
 
 /// Liga-Übersicht mit Tabs: Spieltage, Tabelle, Torjäger und liga-spezifische
 /// News. Aufgerufen über die Liga-Buttons im Live-Tab.
@@ -38,24 +40,31 @@ class LeagueOverviewScreen extends StatelessWidget {
       _TopScorersTab(leagueId: league.id),
       _NewsTab(leagueId: league.id),
     ];
-    return DefaultTabController(
-      length: tabs.length,
-      child: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LeagueLogo(leagueId: league.id, size: 26),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(league.name, overflow: TextOverflow.ellipsis),
-              ),
-            ],
+    // **Alle vier Reiter zugleich anstoßen.** Ein `TabBarView` baut nur den
+    // sichtbaren; die Torjägerliste hängt an keinem anderen Schirm und wurde
+    // deshalb garantiert erst in dem Moment geholt, in dem jemand sie sehen
+    // wollte — und der sah zuerst einen Kreis.
+    return Vorwaermer(
+      holt: (ref) => warmeWettbewerb(ref, league.id),
+      child: DefaultTabController(
+        length: tabs.length,
+        child: Scaffold(
+          appBar: AppBar(
+            centerTitle: true,
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LeagueLogo(leagueId: league.id, size: 26),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(league.name, overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+            bottom: SegmentedTabBar(tabs: tabs),
           ),
-          bottom: SegmentedTabBar(tabs: tabs),
+          body: TabBarView(children: views),
         ),
-        body: TabBarView(children: views),
       ),
     );
   }
@@ -114,7 +123,7 @@ class _TableTab extends ConsumerWidget {
           return const Center(child: Text('Noch keine Tabelle verfügbar.'));
         }
         return RefreshIndicator(
-          onRefresh: () async => _tabelleNeuLaden(ref, leagueId),
+          onRefresh: () => neuLaden(() => _tabelleNeuLaden(ref, leagueId)),
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -156,8 +165,8 @@ class _GroupTables extends ConsumerWidget {
               child: Text('Noch keine Gruppentabelle verfügbar.'));
         }
         return RefreshIndicator(
-          onRefresh: () async =>
-              ref.invalidate(leagueSeasonFixturesProvider(leagueId)),
+          onRefresh: () => neuLaden(
+              () => ref.invalidate(leagueSeasonFixturesProvider(leagueId))),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -748,8 +757,8 @@ class _TopScorersTab extends ConsumerWidget {
           );
         }
         return RefreshIndicator(
-          onRefresh: () async =>
-              ref.invalidate(leagueTopScorersProvider(leagueId)),
+          onRefresh: () => neuLaden(
+              () => ref.invalidate(leagueTopScorersProvider(leagueId))),
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -896,7 +905,7 @@ class _NewsTab extends ConsumerWidget {
               child: Text('Aktuell keine News für diesen Wettbewerb.'));
         }
         return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(leagueNewsProvider(leagueId)),
+          onRefresh: () => neuLaden(() => ref.invalidate(leagueNewsProvider(leagueId))),
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(4, 8, 4, 24),

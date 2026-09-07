@@ -2066,6 +2066,126 @@ Zeile:
 select tablename from pg_publication_tables where pubname = 'supabase_realtime';
 ```
 
+### Ladescreens waren nicht die Leitung, sondern der Zeitpunkt
+
+Gemeldet: *„Ich habe in der App das Problem, dass auch bei guter
+Internetverbindung ganz oft Ladescreens sind. Wenn man auf etwas tippt, soll
+gleich alles da sein."*
+
+Nachgemessen gegen die Produktion — die einzelnen Abrufe sind nicht langsam:
+
+| Abruf | warm | Größe |
+|---|---|---|
+| `players` (Spielerpool) | 0,35 s | 98 KB |
+| `player_match_stats` (2 Spieltage) | 0,32 s | 357 KB |
+| Edge Function `seasonFixtures` | 0,34 s | 137 KB |
+| dieselbe Function **kalt** | **3,0 s** | 137 KB |
+
+Drei Ursachen, keine davon Netzgeschwindigkeit.
+
+**1. Dieselbe Frage wurde bis zu sechsmal gestellt.** Der komplette
+Bundesliga-Spielplan wird von sechs Stellen unabhängig geholt, und drei davon
+holen ihn nur, um eine einzige Zahl daraus zu rechnen:
+
+| Aufrufer | wofür |
+|---|---|
+| `fantasySeasonFixturesProvider` | Fantasy-Spieltag, Sperren, Waiver |
+| `leagueSeasonFixturesProvider('bundesliga')` | Liga-Übersicht, Live-Tab |
+| `seasonFixturesProvider` | Tippspiel, gewählter Wettbewerb |
+| `currentRoundProvider` | **eine Zahl** — der aktuelle Spieltag |
+| `availableRoundsProvider` | die Liste der Spieltagsnamen |
+| `roundFixturesProvider(n)` | die Partien **eines** Spieltags |
+
+Die letzten drei rechnen ihr Ergebnis im Adapter aus der ganzen Saison
+(`getRoundFixtures` ruft `getSeasonFixtures` und filtert). Und weil
+`sportsProviderFor` bei **jedem** Aufruf ein neues Adapter-Objekt baut, konnte
+sich auch keine Instanz etwas merken: Ein Spieltagswechsel im Tippspiel lud
+137 KB nach, um neun Partien anzuzeigen.
+
+`AbfrageBuendel` (`core/data/abfrage_buendel.dart`) sitzt deshalb **auf
+Modulebene** im Sportmonks-Adapter, mit dem Frage-Text als Schlüssel. Es tut
+zwei Dinge und nicht mehr:
+
+* **Läuft die Frage gerade, bekommt der zweite Frager dieselbe Antwort.** Das
+  ist der eigentliche Gewinn — beim Öffnen eines Schirms fallen die Fragen im
+  selben Moment an, und dieser Teil hängt an keiner Geltungsdauer.
+* **Kurz danach gilt die Antwort noch** (Sekunden, nicht Minuten; je Art
+  verschieden: Spielplan 20 s, Tabelle 30 s, Kader 10 min). Ein Fehler wird
+  **nicht** gemerkt, sonst hinge ein Funkloch für die ganze Dauer fest.
+
+Riverpod hielt jedes Ergebnis ohnehin schon für sich fest (kein `autoDispose`
+in dieser App). Was fehlte, war das Teilen **zwischen** Fragestellern.
+
+**Der Preis ist ein neuer Pflichtgriff: „Zum Neuladen ziehen" muss die
+gemerkte Antwort zuerst verwerfen** — sonst liefe die Geste ins Leere. Dafür
+gibt es `neuLaden()` (`core/data/neu_laden.dart`), und **jeder**
+`RefreshIndicator` auf Sportmonks-Daten geht hindurch. Wer einen neuen baut,
+muss das mitdenken; es ist die einzige Stelle, an der das Bündel stören kann.
+
+**2. `isLoading` heißt nicht „nichts da".** Riverpod meldet es auch beim
+**Nachladen**, und dann hält der Zustand den vorherigen Wert bereit. Sechs
+Schirme fragten trotzdem danach und tauschten ihren Inhalt gegen einen Kreis —
+bei jedem Wiederverbinden des Mitgliederstroms, bei jedem Auffrischen der
+Live-Punkte (alle 30 Sekunden während eines Spieltags!) und bei jeder Rückkehr
+aus dem Hintergrund: Tipp-Tabelle, Tipp-Duelle, Bonustipp-Tabelle,
+Playoff-Bracket, Fantasy-Tabelle, Wochen-Recap.
+
+Gefragt ist `valueOrNull == null`, nicht `isLoading`. **`.when(loading:)` hat
+das Problem nicht** — es überspringt den Ladefall, wenn ein Wert vorliegt
+(`skipLoadingOnRefresh`, Standard true). Genau deshalb fiel es nie an den
+Stellen auf, die `.when` benutzen. Ein dünner `LinearProgressIndicator`
+**über** vorhandenem Inhalt darf weiter an `isLoading` hängen; er ersetzt ja
+nichts.
+
+**3. Geladen wurde erst beim Hinsehen.** Ein `TabBarView` baut nur den
+sichtbaren Reiter — die Torjägerliste wurde also in dem Moment angefragt, in
+dem jemand sie sehen wollte, und der sah zuerst einen Kreis.
+
+`Vorwaermer` (`app/vorwaermen.dart`) stellt die Fragen **eine Bewegung
+früher**: beim Aufbau eines Schirms für alle seine Reiter (Wettbewerbs-
+Übersicht, Fantasy-Liga, Vereinsseite), und in `MainShell` für den
+Fantasy-Unterbau (Pool, Spielplan, aktueller Spieltag, Saison-Statistik),
+sobald `homeBereitProvider` wahr ist. Es sind dieselben Abrufe wie vorher, nur
+nicht mehr im Weg.
+
+Drei Eigenschaften tragen das, und ohne sie wäre es Unsinn:
+
+* **`ref.read`, nicht `ref.watch`** — der Vorwärmer will anstoßen, nicht
+  reagieren. Mit `watch` baute sich der ganze Schirm bei jeder
+  Live-Aktualisierung neu auf.
+* **Nach dem ersten Frame** (`addPostFrameCallback`) und **genau einmal je
+  Schirm**. Ein Dutzend Abfragen im selben Frame verzögert genau den Aufbau,
+  um den es geht; ein `build` läuft bei jedem Reiterwechsel.
+* **Erst nach `homeBereitProvider`**, nicht beim Start: Der Startschirm wartet
+  auf vier eigene Abfragen, und die dürfen sich nicht mit fünf weiteren um die
+  Leitung streiten.
+
+**Ein Fehler im Bündel, den der erste Test sofort fand** und der hier steht,
+weil er sich leicht wiederholt: `whenComplete(() => _laufend.remove(k))` — mit
+Pfeil statt Klammern. `Map.remove` liefert den gespeicherten Wert zurück, und
+der ist hier selbst ein `Future`; ein `whenComplete`, dessen Rückruf ein
+Future zurückgibt, **wartet darauf**. Die Abfrage wartete damit auf sich selbst
+und wurde nie fertig. Dazu: Die gebündelte Antwort bekommt einen stillen
+Mithörer (`unawaited(future.then((_) {}, onError: (_) {}))`), sonst fiele ein
+Netzfehler ohne Wartenden als unbehandelt in die Zone und risse im
+Debug-Build die App hoch.
+
+Gehalten von `test/abfrage_buendel_test.dart` (sechs Frager → eine Verbindung,
+Ablauf der Geltung, Fehler werden nicht gemerkt, `leeren` für die
+Neuladen-Geste) und `test/ladeanzeige_test.dart`. Der zweite ist ein **Wächter
+über `lib/`**: kein `CircularProgressIndicator` direkt hinter einer
+`isLoading`-Frage, mit namentlicher Ausnahmeliste. Gegengeprüft — eine
+zurückgedrehte Stelle meldet er sofort. Dieselbe Bauart wie
+`knopfnamen_test` und `kartenkanten_test`; es ist das einzige Mittel, das so
+eine Regel über Monate hält.
+
+**Was damit nicht gelöst ist:** Beim **Kaltstart** ist immer noch nichts da —
+es gibt keinen Cache auf der Platte, jede Sitzung fängt bei null an, und der
+erste Aufruf einer Edge Function kostet gemessen 3 Sekunden statt 0,3. Und
+`player_match_stats` wächst mit der Saison (357 KB nach zwei Spieltagen, hochgerechnet
+rund 6 MB im Mai) — die Abfrage holt `select()`, also alle Spalten. Beides ist
+der nächste Schritt, wenn es wieder klemmt.
+
 ### Das Draft-Board bleibt erreichbar
 
 Nach dem letzten Pick verschwand der Draft-Raum aus der Liga-Übersicht

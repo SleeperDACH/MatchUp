@@ -42,7 +42,8 @@ class BonusTipsTableScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Bonustipp-Tabelle')),
-      body: (membersAsync.isLoading || answersAsync.isLoading)
+      // Nur wenn nichts dasteht, siehe die übrigen Tabellen.
+      body: (membersAsync.valueOrNull == null || answersAsync.valueOrNull == null)
           ? const Center(child: CircularProgressIndicator())
           : Builder(builder: (context) {
               final members = membersAsync.valueOrNull ?? const [];

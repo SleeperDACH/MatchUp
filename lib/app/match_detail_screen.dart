@@ -15,6 +15,7 @@ import '../core/util/club_colors.dart';
 import 'widgets/jersey_icon.dart';
 import 'widgets/segmented_tab_bar.dart';
 import 'widgets/tabellen_punkte.dart';
+import '../core/data/neu_laden.dart';
 
 /// Spiel-Detailansicht mit Tabs: Übersicht (Ergebnis, Spielverlauf,
 /// Torschützen), Aufstellung, Statistik und (Live-)Tabelle. Quelle: Sportmonks.
@@ -49,8 +50,8 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _refresh() async =>
-      ref.invalidate(matchDetailProvider(widget.fixtureId));
+  Future<void> _refresh() =>
+      neuLaden(() => ref.invalidate(matchDetailProvider(widget.fixtureId)));
 
   @override
   Widget build(BuildContext context) {

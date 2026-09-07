@@ -100,7 +100,9 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Wochen-Recap')),
-      body: (managersAsync.isLoading || poolAsync.isLoading)
+      // Nur wenn nichts dasteht — ein Nachladen darf den Rückblick nicht
+      // gegen einen leeren Kreis tauschen.
+      body: (managersAsync.valueOrNull == null || poolAsync.valueOrNull == null)
           ? const Center(child: CircularProgressIndicator())
           : Builder(
               builder: (context) {
