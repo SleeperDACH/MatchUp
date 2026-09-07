@@ -3591,6 +3591,52 @@ selben Lauf — und `beimZurueckkommenAktualisieren` nimmt sie auf.
 „vollständig" sein soll, lohnt die Gegenprobe aus einer zweiten Quelle, die
 dasselbe Ereignis anders sieht. Hier lag sie im selben Abruf.
 
+### „No Eligibility" ist keine Bundesliga-Sperre (0123)
+
+Gefragt: *„Warum sind Can und Lerma 5 Monate gesperrt?"* Zu Recht — die
+Anzeige war falsch, und zwar auf unserer Seite.
+
+In `player_absences` standen 17 Einträge vom Typ 1612 („No Eligibility"), alle
+mit Beginn kurz nach dem Transferschluss und Ende im Winterfenster:
+
+| Zeitraum | Spieler | Vereine |
+|---|---|---|
+| 03.09. – 28.01. | 11 | Dortmund, Leipzig, Stuttgart |
+| 04.09. – 29.01. | 5 | Leverkusen, Hoffenheim |
+| 04.09. – 18.12. | 1 | Freiburg |
+
+**Das sind genau die sechs Vereine im Europapokal, und die drei Zeiträume sind
+die Meldefristen dreier Wettbewerbe.** Kein Verein außerhalb Europas trägt so
+einen Eintrag. Es geht um die Kaderliste eines europäischen Wettbewerbs; für
+die Bundesliga sind diese Spieler spielberechtigt.
+
+Der Gegenbeweis steht in unseren eigenen Zahlen: Vier von ihnen haben am
+1. Spieltag gespielt (Konstantelias 54 Minuten, Hofmann 25, Stergiou 16,
+Boniface 5) und **danach** den Eintrag bekommen. Wer spielt, ist nicht gesperrt.
+
+**Sportmonks sagt nicht, welcher Wettbewerb gemeint ist** — `season_id` ist bei
+allen 17 `null`. Ein Eintrag, den wir nicht zuordnen können, darf nicht als
+„gesperrt" dastehen; dieselbe Regel wie überall hier. Die Sicht blendet ihn
+aus, die Zeile bleibt in der Tabelle stehen.
+
+**Der Schaden war größer als die falsche Zeile.** Der Client hält je Spieler
+genau einen Ausfall, und **die Sperre gewinnt über die Verletzung** (sie endet
+an einem bekannten Tag). Die erfundene Sperre verdrängte damit die echte
+Auskunft: Bei Emre Can standen fünf Monate Sperre statt Adduktorenbeschwerden,
+bei Lerma statt einer Muskelverletzung, bei Konstantelias statt eines
+Kreuzbandrisses. Eine Vorrangregel ist nur so gut wie die Einträge, zwischen
+denen sie wählt.
+
+Gemessen vorher und nachher:
+
+| | vorher | nachher |
+|---|---|---|
+| Spieler mit Ausfall | 96 | 86 |
+| davon „gesperrt" | 19 | **3** |
+| Verletzungen mit Rückkehrdatum | 2 | 3 |
+
+Die drei verbliebenen Sperren sind echte Rotsperren mit Enddatum.
+
 ### Die voraussichtliche Rückkehr
 
 Gewünscht: *„Wenn ein Spieler verletzt ist, wird die voraussichtliche Rückkehr
