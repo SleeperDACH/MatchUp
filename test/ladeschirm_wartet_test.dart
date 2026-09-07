@@ -71,11 +71,26 @@ ProviderContainer _behaelter({
 }
 
 /// Lässt die fertigen Futures durchlaufen und liest dann den Zustand.
+///
+/// **Gewartet wird auf das Ergebnis, nicht auf die Uhr.** Vorher stand hier
+/// ein festes `delay(20ms)`, und der Test war damit die bekannteste
+/// Wackelkandidatin des Projekts: Er fiel im Gesamtlauf, lief allein durch,
+/// und eine beliebige Änderung anderswo konnte ihn kippen — zuletzt eine
+/// zusätzliche Methode in einem Modell, das mit dem Startbildschirm nichts zu
+/// tun hat. Zwanzig Millisekunden sind keine Zusicherung, sondern eine Wette
+/// auf die Maschine.
+///
+/// Jetzt läuft die Ereignisschleife, bis der Schirm bereit meldet, höchstens
+/// aber [_grenze]. Für die Fälle, die *nicht* bereit werden sollen, kostet das
+/// die volle Grenze und ändert am Ergebnis nichts — was hängt, hängt auch nach
+/// hundert Runden.
 Future<bool> _bereit(ProviderContainer c) async {
+  const _grenze = 100;
   c.listen(homeBereitProvider, (a, b) {}, fireImmediately: true);
-  // Ein paar Runden der Ereignisschleife: Was fertig werden kann, wird es
-  // hier; was hängt, hängt auch danach noch.
-  await Future<void>.delayed(const Duration(milliseconds: 20));
+  for (var i = 0; i < _grenze; i++) {
+    if (c.read(homeBereitProvider)) return true;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+  }
   return c.read(homeBereitProvider);
 }
 

@@ -46,6 +46,63 @@ void main() {
     });
   });
 
+  group('zwei Einträge, einer wird gezeigt', () {
+    // Gemeldet: „Prass zeigt auch falsche Verletzung an." Die Quelle schließt
+    // einen Eintrag oft nicht, wenn ein neuer dazukommt — er trug „Ill" seit
+    // dem 23.01.2025 mit 64 verpassten Spielen **und** „Adductor Pain" seit
+    // dem 21.08.2026. Bis hierher entschied die Reihenfolge der Zeilen.
+    PlayerAbsence a({
+      required String grund,
+      required String seit,
+      bool gesperrt = false,
+    }) =>
+        _ausJson({
+          'player_id': 'sportmonks:31626002',
+          'kategorie': gesperrt ? 'suspended' : 'injury',
+          'grund_quelle': grund,
+          'seit': seit,
+        });
+
+    final alt = a(grund: 'Ill', seit: '2025-01-23');
+    final neu = a(grund: 'Adductor Pain', seit: '2026-08-21');
+
+    test('der jüngere Eintrag gewinnt', () {
+      expect(neu.schlaegt(alt), isTrue);
+      expect(alt.schlaegt(neu), isFalse);
+    });
+
+    test('und zwar unabhängig von der Reihenfolge', () {
+      // Genau daran hing der Fehler: Ohne Regel entschied, welche Zeile
+      // zuerst kam.
+      for (final reihenfolge in [
+        [alt, neu],
+        [neu, alt],
+      ]) {
+        PlayerAbsence? gewaehlt;
+        for (final e in reihenfolge) {
+          if (gewaehlt == null || e.schlaegt(gewaehlt)) gewaehlt = e;
+        }
+        expect(gewaehlt!.grund, 'Adduktorenbeschwerden');
+      }
+    });
+
+    test('die Sperre schlägt auch eine jüngere Verletzung', () {
+      // Wer gesperrt ist, spielt auch gesund nicht — und die Sperre endet an
+      // einem bekannten Tag.
+      final sperre = a(
+          grund: 'Red Card Suspension', seit: '2026-08-30', gesperrt: true);
+      final juengereVerletzung = a(grund: 'Knock', seit: '2026-09-05');
+      expect(sperre.schlaegt(juengereVerletzung), isTrue);
+      expect(juengereVerletzung.schlaegt(sperre), isFalse);
+    });
+
+    test('ohne Datum verliert ein Eintrag', () {
+      final ohne = a(grund: 'Knock', seit: '');
+      expect(ohne.schlaegt(neu), isFalse);
+      expect(neu.schlaegt(ohne), isTrue);
+    });
+  });
+
   group('beobachteter Ausfall', () {
     // Genau der gemeldete Fall: Hoffenheim gegen Dortmund, 2. Spieltag.
     final mane = _ausJson({

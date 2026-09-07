@@ -3637,6 +3637,51 @@ Gemessen vorher und nachher:
 
 Die drei verbliebenen Sperren sind echte Rotsperren mit Enddatum.
 
+### Zwei Ausfälle, einer wird gezeigt
+
+Gemeldet: *„Prass zeigt auch falsche Verletzung an."* Alexander Prass trug
+zwei offene Einträge — „Ill" seit dem **23.01.2025** mit 64 verpassten Spielen
+und „Adductor Pain" seit dem 21.08.2026. Die Quelle schließt den alten nicht,
+wenn ein neuer dazukommt.
+
+Der Client hält je Spieler genau einen Ausfall, und die einzige Regel dafür war
+„die Sperre schlägt die Verletzung". Zwischen **zwei Verletzungen** entschied
+damit die Reihenfolge der Zeilen, also der Zufall — angezeigt wurde eine
+Erkältung von vorletztem Januar. Gezählt am 07.09.2026: sechs Spieler mit zwei
+sichtbaren Einträgen, darunter Emre Can („Cruciate Ligament Tear" 03/2026 gegen
+„Adductor Pain" 07/2025).
+
+`PlayerAbsence.schlaegt` entscheidet es jetzt in zwei Stufen: **Sperre vor
+Verletzung**, und innerhalb derselben Art **der jüngere Eintrag**. Ein Eintrag
+ohne Datum verliert; er kann nicht belegen, der jüngere zu sein. Der Test prüft
+ausdrücklich **beide Reihenfolgen** derselben zwei Einträge — genau daran hing
+der Fehler.
+
+**Was bewusst bleibt:** Alte Verletzungen werden nicht pauschal verworfen. Nach
+der neuen Regel zeigen noch drei Spieler einen Eintrag von Ende 2025 (Hübers,
+Knieverletzung, 34 Spiele; El Mala; Dompé, Achillessehne). Sie haben seither
+keine Minute gespielt, unsere Daten widersprechen also nicht — und ein
+Kreuzband- oder Achillesschaden läuft wirklich ein Jahr. Eine Altersgrenze für
+Verletzungen wäre geraten, kein Wissen.
+
+### Ein fester `delay` ist keine Zusicherung
+
+`test/ladeschirm_wartet_test.dart` war die bekannteste Wackelkandidatin des
+Projekts: fiel im Gesamtlauf, lief allein durch. Die Ursache stand die ganze
+Zeit im Code — `await Future.delayed(20ms)`, danach den Zustand lesen. Zwanzig
+Millisekunden sind eine Wette auf die Maschine, keine Aussage über das
+Programm.
+
+Gekippt hat ihn zuletzt eine zusätzliche **Methode in einem Modell**, das mit
+dem Startbildschirm nichts zu tun hat. Genau das ist die Signatur des Fehlers:
+Wenn eine Änderung an unbeteiligtem Code einen Test umwirft, misst der Test die
+Laufzeit und nicht das Verhalten.
+
+Jetzt läuft die Ereignisschleife, **bis** der Schirm bereit meldet, höchstens
+aber hundert Runden. Für die Fälle, die absichtlich nicht bereit werden, kostet
+das die volle Grenze und ändert nichts: Was hängt, hängt auch nach hundert
+Runden. Dreimal hintereinander grün, und der Gesamtlauf zweimal.
+
 ### Die voraussichtliche Rückkehr
 
 Gewünscht: *„Wenn ein Spieler verletzt ist, wird die voraussichtliche Rückkehr

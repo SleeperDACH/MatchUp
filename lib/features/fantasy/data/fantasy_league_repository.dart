@@ -579,10 +579,8 @@ class FantasyLeagueRepository {
         for (final r in ohneDubletten(rows, const ['id'])) {
           if (r['ueberholt'] == true) continue;
           final a = PlayerAbsence.fromJson(r);
-          // Ist beides eingetragen, gewinnt die Sperre: Sie ist die
-          // verlässlichere Auskunft (sie endet an einem bekannten Tag).
           final da = out[a.playerId];
-          if (da == null || (a.gesperrt && !da.gesperrt)) out[a.playerId] = a;
+          if (da == null || a.schlaegt(da)) out[a.playerId] = a;
         }
         return out;
       });

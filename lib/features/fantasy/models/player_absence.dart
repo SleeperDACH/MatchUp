@@ -64,6 +64,35 @@ class PlayerAbsence {
         minute: (j['minute'] as num?)?.toInt(),
       );
 
+  /// **Welcher von zwei Ausfällen desselben Spielers angezeigt wird.**
+  ///
+  /// Die Quelle schließt einen Eintrag oft nicht, wenn ein neuer dazukommt —
+  /// Alexander Prass trug „Ill" seit dem 23.01.2025 (64 Spiele verpasst)
+  /// **und** „Adductor Pain" seit dem 21.08.2026. Bis hierher entschied die
+  /// Reihenfolge der Zeilen, also der Zufall, und angezeigt wurde eine
+  /// Erkältung von vorletztem Januar. Gezählt am 07.09.2026: sechs Spieler
+  /// mit zwei sichtbaren Einträgen.
+  ///
+  /// Zwei Regeln, in dieser Reihenfolge:
+  ///
+  /// * **Die Sperre schlägt die Verletzung.** Sie ist die härtere Auskunft und
+  ///   endet an einem bekannten Tag; wer gesperrt ist, spielt auch gesund
+  ///   nicht.
+  /// * **Innerhalb derselben Art gewinnt der jüngere Eintrag.** Eine neue
+  ///   Meldung löst eine alte ab — das ist die einzige Lesart, unter der zwei
+  ///   Einträge überhaupt Sinn ergeben.
+  ///
+  /// Ohne Datum verliert ein Eintrag: Er kann nicht belegen, dass er der
+  /// jüngere ist.
+  bool schlaegt(PlayerAbsence anderer) {
+    if (gesperrt != anderer.gesperrt) return gesperrt;
+    final meins = seit;
+    final seins = anderer.seit;
+    if (meins == null) return false;
+    if (seins == null) return true;
+    return meins.isAfter(seins);
+  }
+
   /// Der Grund auf Deutsch.
   ///
   /// **Die Liste ist gemessen, nicht geraten**: Sie enthält genau die 35
