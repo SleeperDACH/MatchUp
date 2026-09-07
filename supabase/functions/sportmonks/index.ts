@@ -491,6 +491,30 @@ async function writeCache(supabase: any, key: string, payload: unknown) {
   });
 }
 
+// **Eine leere Antwort wird nicht gemerkt** -- fuer die Listen, bei denen leer
+// keine gueltige Auskunft ist.
+//
+// Ein Verein hat immer Spiele, eine Liga hat immer eine Tabelle. Kommt dort
+// nichts, war es eine Stoerung; sie zwei Minuten festzuschreiben macht aus
+// einer schlechten Antwort zwei Minuten schlechter Antworten -- fuer jeden,
+// der in der Zeit hinsieht. Dieselbe Regel wie in der `news`-Function, wo nur
+// eine vollstaendige Mischung in den Cache geht.
+//
+// **Nicht fuer alles.** `topscorers` darf leer sein: Der DFB-Pokal hat keine
+// Torjaegerliste, und genau diese Zeile steht auch im Cache (gemessen
+// 07.09.2026). Wer die Regel dorthin ausweitet, holt sie jedes Mal neu.
+// deno-lint-ignore no-explicit-any
+async function writeCacheWennGefuellt(
+  supabase: any,
+  key: string,
+  payload: any,
+  feld: string,
+) {
+  const liste = payload?.[feld];
+  if (Array.isArray(liste) && liste.length === 0) return;
+  await writeCache(supabase, key, payload);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -532,7 +556,12 @@ Deno.serve(async (req) => {
       const payload = kind === "seasonFixtures"
         ? await seasonFixtures(supabase, leagueKey)
         : await standings(supabase, leagueKey);
-      await writeCache(supabase, ck, payload);
+      await writeCacheWennGefuellt(
+        supabase,
+        ck,
+        payload,
+        kind === "seasonFixtures" ? "fixtures" : "standings",
+      );
       return json(payload);
     }
     if (kind === "fixture") {
@@ -574,7 +603,7 @@ Deno.serve(async (req) => {
       const cached = await rc(ck, TTL.teamFixtures);
       if (cached) return json(cached);
       const payload = await teamFixtures(teamId);
-      await writeCache(supabase, ck, payload);
+      await writeCacheWennGefuellt(supabase, ck, payload, "fixtures");
       return json(payload);
     }
     return json({ error: "Unbekannter kind." }, 400);

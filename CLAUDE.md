@@ -5796,6 +5796,41 @@ sonst wächst die Liste und niemand räumt sie. Dasselbe Muster wie bei
 `punkte_formatierung_test.dart` — es hat sich als das einzige erwiesen, das
 eine Stilregel über Monate hält.
 
+### Eine leere Antwort wird nicht gemerkt
+
+Gemeldet: *„Warum liegt für Schalke 04 kein Spielplan vor? Vorhin hatte ich das
+auch bei Köln."*
+
+**Nicht nachgestellt.** Geprüft und in Ordnung: Der Favoriten-Schlüssel ist
+`sportmonks:67` (kein Altbestand — es gibt in `user_favorites` überhaupt keinen
+Team-Schlüssel ohne `sportmonks:`-Präfix), der Endpunkt liefert für 67 und für
+Köln (3320) je 20 Partien, auch im Achterpaket parallel, und die Antwort trägt
+weder eine fehlende Anstoßzeit noch ein fehlendes Team, an dem das Parsen
+scheitern könnte.
+
+Was auffiel: **Der Cache der Function merkt sich auch eine leere Liste.**
+`readCache` gibt `{fixtures: []}` zurück, und `if (cached)` ist darauf wahr —
+zwei Minuten lang bekommt danach **jeder** dieselbe leere Antwort. Aus einer
+Störung werden so zwei Minuten Störung. Genau die Sorte Verstärker, die zu
+einem Fehler passt, der mal den einen und mal den anderen Verein trifft und von
+selbst wieder verschwindet.
+
+`writeCacheWennGefuellt` schreibt deshalb nichts, wenn die Liste leer ist —
+für `teamFixtures`, `seasonFixtures` und `standings`. Ein Verein hat immer
+Spiele, eine Liga hat immer eine Tabelle.
+
+**Nicht für `topscorers`.** Dort ist leer eine gültige Auskunft: Der DFB-Pokal
+hat keine Torjägerliste, und genau diese Zeile stand beim Nachsehen im Cache.
+Wer die Regel dorthin ausweitet, holt sie bei jedem Aufruf neu.
+
+Nachgemessen: Ein Abruf mit einer ID, die es nicht gibt, liefert weiterhin
+`{fixtures: []}` — und legt **keine** Cache-Zeile mehr an. Die beiden
+Altlasten von dieser Sorte (`teamFixtures:100` und `:139`, IDs aus der
+OpenLigaDB-Zeit, seit dem 21.08. leer im Cache) sind gelöscht.
+
+**Offen bleibt die eigentliche Ursache.** Wenn es wieder auftritt: Bleibt es
+länger als zwei Minuten stehen, liegt es nicht am Cache.
+
 ### Verletzt und gesperrt
 
 Die Daten lagen die ganze Zeit im gebuchten Plan, nur hatte sie nie jemand
