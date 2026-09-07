@@ -86,6 +86,52 @@ void main() {
       );
       expect(list.map((f) => f.id), ['a', 'b']);
     });
+
+    test('ein abgepfiffenes Spiel kommt nicht auf die Kopfkarte', () {
+      // **Die Kopfkarte zeigt das nächste Spiel.** Seit das Fenster die ganze
+      // Fußballwoche umfasst, stehen auch gespielte Partien in der Liste —
+      // ohne diese Regel landete am Sonntagabend das Freitagsspiel des
+      // obersten Favoriten oben, während ein anderer Verein gerade noch
+      // spielte.
+      final list = favoritenSpielZuerst(
+        spiele: [
+          _fx('freitag', 'bs', 'x', DateTime(2026, 9, 11, 18, 30),
+              status: FixtureStatus.finished),
+          _fx('sonntag', 'hsv', 'y', DateTime(2026, 9, 13, 15, 30)),
+        ],
+        // Braunschweig steht oben in den Favoriten, hat aber schon gespielt.
+        rang: (f) => f.home.name == 'bs' ? 0 : 1,
+      );
+      expect(list.first.id, 'sonntag');
+    });
+
+    test('unter den offenen gewinnt weiter der oberste Favorit', () {
+      // Die alte Regel bleibt: Wer Bayern über Bochum stellt, will an einem
+      // Samstag mit beiden Bayern oben sehen — nicht den früheren Anstoß.
+      final list = favoritenSpielZuerst(
+        spiele: [
+          _fx('frueh', 'bochum', 'x', DateTime(2026, 9, 12, 13, 30)),
+          _fx('spaet', 'bayern', 'y', DateTime(2026, 9, 12, 18, 30)),
+        ],
+        rang: (f) => f.home.name == 'bayern' ? 0 : 1,
+      );
+      expect(list.first.id, 'spaet');
+    });
+
+    test('ist alles gespielt, bleibt das Wochenende oben stehen', () {
+      // Sonntagabend bis Montag 15:00: Es gibt kein nächstes Spiel mehr im
+      // Fenster. Eine leere Kopfkarte wäre schlechter als das Ergebnis.
+      final list = favoritenSpielZuerst(
+        spiele: [
+          _fx('a', 'bochum', 'x', DateTime(2026, 9, 12, 13, 30),
+              status: FixtureStatus.finished),
+          _fx('b', 'bayern', 'y', DateTime(2026, 9, 13, 18, 30),
+              status: FixtureStatus.finished),
+        ],
+        rang: (f) => f.home.name == 'bayern' ? 0 : 1,
+      );
+      expect(list.first.id, 'b');
+    });
   });
 
 }

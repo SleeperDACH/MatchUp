@@ -1,3 +1,4 @@
+import '../../../core/models/models.dart';
 import '../../../core/models/team_fixture.dart';
 
 /// **Die Fußballwoche endet Montag um 15:00.**
@@ -76,8 +77,8 @@ bool _imFenster(TeamFixture f, DateTime von, DateTime bis) {
 
 /// Stellt das Spiel des **obersten Favoriten** an den Anfang der Tagesliste.
 ///
-/// [naechsteFavoritenSpiele] sortiert nach Anstoß — die richtige Ordnung für
-/// eine Liste, die den Tag abbildet. Die Kopfkarte des Homescreens stellt aber
+/// [wochenendSpiele] sortiert nach Anstoß — die richtige Ordnung für eine
+/// Liste, die das Wochenende abbildet. Die Kopfkarte des Homescreens stellt aber
 /// eine andere Frage: Von vier Vereinen, die an einem Samstag spielen, gehört
 /// **meiner** nach oben, nicht der, der zufällig um 13:30 anfängt. „Meiner"
 /// ist dabei der, der in der Favoritenreihenfolge oben steht
@@ -95,9 +96,27 @@ List<TeamFixture> favoritenSpielZuerst({
   required int? Function(TeamFixture) rang,
 }) {
   if (spiele.length < 2) return spiele;
-  var besterIndex = 0;
+
+  // **Die Kopfkarte zeigt das nächste Spiel, kein abgepfiffenes.** Seit das
+  // Fenster die ganze Fußballwoche umfasst, stehen auch gespielte Partien in
+  // der Liste — und ohne diese Einschränkung landete am Sonntagabend das
+  // Freitagsspiel des obersten Favoriten oben, während ein anderer Verein
+  // gerade noch spielte.
+  //
+  // Ist alles gespielt (Sonntagabend bis Montag 15:00), bleibt die ganze
+  // Liste Kandidat: Dann soll das Wochenende oben stehen bleiben, mit
+  // Ergebnis, statt die Karte leer zu lassen.
+  final offen = [
+    for (var i = 0; i < spiele.length; i++)
+      if (spiele[i].status != FixtureStatus.finished) i,
+  ];
+  final kandidaten = offen.isEmpty
+      ? [for (var i = 0; i < spiele.length; i++) i]
+      : offen;
+
+  var besterIndex = kandidaten.first;
   int? bester;
-  for (var i = 0; i < spiele.length; i++) {
+  for (final i in kandidaten) {
     final r = rang(spiele[i]);
     if (r == null) continue;
     // Bei Gleichstand gewinnt der frühere Anstoß — die Liste ist danach

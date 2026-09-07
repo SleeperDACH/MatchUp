@@ -1289,6 +1289,15 @@ Drei Dinge, die daran hängen:
 - **Gespielte Partien bleiben stehen**, mit Ergebnis. Genau darum ging es. Die
   Kopfkarte trägt weiter das Spiel des obersten Favoriten und zeigt nach dem
   Abpfiff dessen Ergebnis (`hasScore` deckte den Fall schon ab).
+- **Die Kopfkarte zeigt das nächste Spiel, kein abgepfiffenes.** Das ist die
+  Regel, die der Umbau fast gekostet hätte: Seit das Fenster gespielte Partien
+  enthält, hätte am Sonntagabend das Freitagsspiel des obersten Favoriten oben
+  gestanden, während ein anderer Verein gerade noch spielt.
+  `favoritenSpielZuerst` wählt deshalb **unter den noch nicht beendeten**; die
+  alte Regel („der oberste Favorit, nicht der früheste Anstoß") gilt innerhalb
+  dieser Menge unverändert. Ist alles gespielt — Sonntagabend bis Montag
+  15:00 —, bleibt die ganze Liste Kandidat, und oben steht das Wochenende mit
+  Ergebnis statt einer leeren Karte.
 - **Die Liste ist vollständig, die Partie der Kopfkarte eingeschlossen.** Der
   erste Anlauf ließ sie unten weg, weil sie oben schon steht — nachgefragt:
   *„Ich hab ja gesagt, dass das erste Spiel trotzdem oben in dem Kästchen
