@@ -1289,6 +1289,14 @@ Drei Dinge, die daran hängen:
 - **Gespielte Partien bleiben stehen**, mit Ergebnis. Genau darum ging es. Die
   Kopfkarte trägt weiter das Spiel des obersten Favoriten und zeigt nach dem
   Abpfiff dessen Ergebnis (`hasScore` deckte den Fall schon ab).
+- **Die Liste ist vollständig, die Partie der Kopfkarte eingeschlossen.** Der
+  erste Anlauf ließ sie unten weg, weil sie oben schon steht — nachgefragt:
+  *„Ich hab ja gesagt, dass das erste Spiel trotzdem oben in dem Kästchen
+  angezeigt wird, sowohl als auch unten."* Die Kopfkarte **hebt** eine Partie
+  heraus, sie nimmt sie nicht weg. Unten steht deshalb das ganze Wochenende,
+  und zwar **nach Anstoß** — die Vorsortierung aus `favoritenSpielZuerst` gilt
+  nur für die Kopfkarte, eine Liste, die den Verlauf liest, braucht die
+  Chronologie.
 - **Die Zeile nennt den Wochentag.** Über vier Tage hinweg beantwortet ein
   alleinstehendes „15:30" nicht, welchen Tag es meint. Der Tag steht klein
   über der Zeit; sobald gespielt wird, steht dort das Ergebnis, rot solange es

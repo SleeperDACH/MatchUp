@@ -863,21 +863,32 @@ bool _istHeute(DateTime zeit) {
 /// Das war nach dem Abpfiff sofort vorbei: Sonntagabend sprang der Abschnitt
 /// auf den nächsten Spieltag, und das Wochenende, über das man gerade redet,
 /// war weg. Jetzt bleibt es bis Montag 15:00 stehen — mit Ergebnissen.
+///
+/// **Vollständig, die Partie der Kopfkarte eingeschlossen.** Sie hier
+/// wegzulassen, weil sie oben schon steht, nahm der Liste genau das Spiel, um
+/// das es an dem Wochenende geht.
 class _FavoritenSpiele extends ConsumerWidget {
   const _FavoritenSpiele();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final alle = ref.watch(favoritenSpieleProvider).valueOrNull;
-    // Das erste Spiel trägt die Kopfkarte — es ist das des **obersten
-    // Favoriten**, dafür sortiert `favoritenSpielZuerst` die Liste vor. Hier
-    // stehen die übrigen Partien desselben Tages, weiter nach Anstoß: An
-    // einem Bundesliga-Samstag will man nicht nur den 15:30-Anstoß sehen.
-    // Ohne Favoriten, solange nichts geladen ist oder wenn es bei dem einen
-    // Spiel bleibt, fällt der Abschnitt weg — eine leere Überschrift wäre
-    // schlechter als gar keine.
-    final spiele = alle?.skip(1).toList();
-    if (spiele == null || spiele.isEmpty) return const SizedBox.shrink();
+    // **Hier steht das ganze Wochenende, auch das Spiel der Kopfkarte.**
+    // Vorher fiel der erste Eintrag heraus, weil er oben schon steht. Das war
+    // falsch verstanden: Der Abschnitt soll den Spielplan des Wochenendes
+    // zeigen, und dazu gehört die Partie, um die es oben geht. Die Kopfkarte
+    // hebt eine davon heraus, sie nimmt sie nicht weg.
+    //
+    // **Nach Anstoß sortiert.** Der Provider stellt für die Kopfkarte das
+    // Spiel des obersten Favoriten nach vorn (`favoritenSpielZuerst`); für
+    // eine Liste, die den Verlauf des Wochenendes liest, ist das die falsche
+    // Ordnung. Also hier wieder chronologisch.
+    //
+    // Ohne Favoriten oder solange nichts geladen ist, fällt der Abschnitt weg
+    // — eine leere Überschrift wäre schlechter als gar keine.
+    if (alle == null || alle.isEmpty) return const SizedBox.shrink();
+    final spiele = [...alle]
+      ..sort((a, b) => a.kickoff.compareTo(b.kickoff));
     final scheme = Theme.of(context).colorScheme;
     // **Der Zusatz nennt die Spanne, nicht den Tag.** Der Abschnitt läuft über
     // vier Tage; ein einzelnes Datum darüber wäre für drei davon falsch.
