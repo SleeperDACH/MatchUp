@@ -8,6 +8,99 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.5.0+8 — 7. September 2026
+
+62 Commits seit 1.4.1+7 (2. September). Der Schwerpunkt liegt auf zwei Dingen,
+die im laufenden Betrieb aufgefallen sind: **Ladescreens, wo keine sein
+müssten**, und **Ausfälle, die die Quelle nicht meldet**. Dazu ein
+überarbeiteter Startbildschirm-Abschnitt und der neue dunkle Grund.
+
+### Neu
+
+- **Mein Wochenende.** Der Abschnitt „Meine Vereine" zeigte den Tag des
+  nächsten Spiels und sprang nach dem Abpfiff sofort weiter. Jetzt stehen dort
+  **alle** Partien deiner Vereine von Freitag bis Montag 15:00, mit
+  Ergebnissen — das Wochenende bleibt stehen, solange man darüber redet. Die
+  Kopfkarte oben zeigt den **nächsten Anpfiff**; stoßen zwei deiner Vereine
+  gleichzeitig an, entscheidet die Favoritenreihenfolge.
+- **Verletzt ausgewechselt zählt als Ausfall.** Die Ausfallliste der Quelle ist
+  löchrig: Von neun Spielern, die diese Saison verletzt vom Platz gingen,
+  standen **fünf** in keiner Meldung. Die App liest das jetzt aus dem
+  Wechsel-Ereignis selbst. Sie behauptet dabei keine Diagnose („Vermutlich
+  verletzt · Verletzt ausgewechselt in der 32. Minute"), und der Hinweis
+  verschwindet, sobald der Verein den Spieler wieder einplant.
+- **Voraussichtliche Rückkehr im Spielerprofil** — als Datum mit grober Spanne
+  („Zurück ab 30. September · in etwa 3 Wochen") und, wo der Spielplan es
+  hergibt, dem ersten Spieltag danach. Kennt die Quelle kein Datum, steht dort
+  **Rückkehr unbekannt**; das ist bei vier von fünf Ausfällen der Fall.
+- **Der Spielplan beginnt beim nächsten Spiel.** Favoriten- und Vereinsseite
+  öffnen an der Trennstelle; nach oben wischen führt über „Vorherige Spiele
+  anzeigen" in die Saison zurück, das jüngste Ergebnis unmittelbar über dem
+  nächsten Spiel.
+- **Ungelesene Nachrichten sind zu erkennen.** Die Gesprächsliste markiert sie,
+  und im Verlauf steht eine Linie „Neue Nachrichten" vor der ersten, die seit
+  dem letzten Besuch kam.
+
+### Schneller
+
+- **Dieselbe Frage wird nicht mehr sechsmal gestellt.** Der komplette
+  Bundesliga-Spielplan (137 KB) wurde von sechs Stellen unabhängig geholt, drei
+  davon nur, um eine einzige Zahl daraus zu rechnen. Fragen, die im selben
+  Moment anfallen, teilen sich jetzt eine Verbindung.
+- **Ein Ladekreis ersetzt den Inhalt nur, wenn es keinen gibt.** Sechs Schirme
+  tauschten ihre Tabelle gegen einen Kreis, sobald irgendetwas nachlud — an
+  einem Spieltag alle 30 Sekunden.
+- **Geladen wird eine Bewegung früher.** Beim Öffnen eines Schirms laufen alle
+  seine Reiter an, nicht nur der sichtbare; der Fantasy-Unterbau wird geholt,
+  während der Startbildschirm noch steht.
+- **Ein Verbindungsabbruch wirft nichts mehr weg.** Ligen, Mitglieder, Chats
+  und Freundschaften holen ihren Stand über eine gewöhnliche Abfrage und
+  verbinden sich im Hintergrund neu, statt eine Fehlerkarte zu zeigen.
+
+### Behoben
+
+- **Für sieben Vereine fehlte der Spielplan im Spielerprofil** — Köln,
+  Schalke, Mainz, Werder, Union, Elversberg und Paderborn. Kader und Spielplan
+  schreiben sie verschieden, und verglichen wurde buchstabengenau.
+- **„Keine Spielberechtigung" war keine Sperre.** 17 Spieler standen bis
+  Januar als gesperrt da; es ging um die Kaderliste eines europäischen
+  Wettbewerbs, nicht um die Bundesliga. Schlimmer noch: Die falsche Sperre
+  verdrängte die echte Verletzung — bei Emre Can standen fünf Monate Sperre,
+  wo Adduktorenbeschwerden hingehören.
+- **Bei zwei Ausfällen gewinnt nicht mehr der Zufall.** Die Quelle schließt
+  einen alten Eintrag oft nicht; angezeigt wurde, was zuerst kam. Jetzt: Sperre
+  vor Verletzung, und innerhalb derselben Art der jüngere Eintrag.
+- **Das MatchUp-Karussell springt nicht mehr zurück**, weder beim Nachladen
+  noch beim Reiterwechsel.
+- **Wer keinen Torwart im Kader hat, spielt mit zehn** statt gar nicht — und
+  die unbesetzte Position wird als solche angezeigt.
+- **Die Bilanz zählt erst nach dem Abpfiff** und liest sich Sieg –
+  Unentschieden – Niederlage.
+- **Die U20-Sperre gilt nur im Dynasty-Modus.** Im Redraft gibt es keinen
+  zweiten Draft, also auch nichts zu reservieren.
+- **Der Waiver-Knopf veraltet nicht mehr.** Die Free Agency hat eine Uhr und
+  wechselt beim Anpfiff selbst auf den Antrag.
+- **Aus dem Spielerprofil führt „Traden" auf den normalen Auswahlschirm.**
+
+### Aussehen
+
+- **Der Grund der App ist schwarz**, überall — auch die Startbildschirme des
+  Systems. Die Flächenleiter steigt in gleichen Kanälen.
+- **Die untere Leiste läuft von Kante zu Kante durch**, dunkles Glas, der
+  aktive Reiter trägt die helle Auswahlmarke.
+- **Der Live-Tab zerfällt in Anstoßzeiten**: je Uhrzeit ein Kopf, der sagt, was
+  der Block gerade tut. Die rote Wäsche über laufenden Zeilen ist weg.
+- **Der Rasen ist satter, nicht bunter.** Die Tiefe kommt aus Mähbahn,
+  Linienzeichnung und abgedunkelten Ecken, nicht aus mehr Farbe.
+- **Richtige Trikots** auf dem Prognosefeld: ein geschlossener Umriss statt
+  zusammengesetzter Kästchen.
+- **Der News-Feed läuft nach unten und zeigt Titelbilder.** Nur noch Quellen,
+  die welche liefern; Kicker und Google bleiben als Notnagel.
+- **Im MatchUp stehen die Profilbilder**, nicht Kreise mit Buchstaben. Die Bank
+  ist immer sichtbar, die Zeilen sind einzeilig, und die Tauschknöpfe auf dem
+  Feld tragen nur noch den Pfeil.
+- **Laufende Mannschaften tragen ihre Punkte in der Ligatabelle rot.**
+
 ## 1.4.1+7 — 2. September 2026
 
 31 Commits seit 1.4.0+6 (31. August) — ein kleines Update vor dem 2. Spieltag.
