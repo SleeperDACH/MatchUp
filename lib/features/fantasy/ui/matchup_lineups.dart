@@ -483,16 +483,12 @@ class _PlayerRow extends StatelessWidget {
             fontWeight: mine ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          player.position.label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.3,
-            color: pos,
-          ),
-        ),
+        // **Kein Positionskürzel je Zeile.** Über jedem Block steht die
+        // Position schon als Überschrift (Punkt und Wort), und die Zeilen
+        // darunter tragen ihre Farbe ohnehin im Verlauf. Dieselbe Regel wie
+        // beim „LIVE" in der Tipp-Tabelle und der Uhrzeit im Live-Tab: Eine
+        // Auskunft, die sich je Zeile nicht unterscheidet, gehört nicht in
+        // die Zeile — sie kostet nur Höhe.
       ],
     );
 
@@ -519,7 +515,9 @@ class _PlayerRow extends StatelessWidget {
       child: InkWell(
         onTap: () => onTap(player, mine),
         child: Container(
-          height: 60,
+          // Einzeilig statt zweizeilig: 60 auf 48. Bei elf Startern plus Bank
+          // sind das über zweihundert Punkte, die der Spieltag kürzer wird.
+          height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 9),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),

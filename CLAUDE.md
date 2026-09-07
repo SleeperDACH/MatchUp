@@ -3030,6 +3030,30 @@ Auskunft.
 Nachgemessen gegen die Produktions-DB (mit Rollback): Ein fälliger Trade wird
 ausgeführt und die Spieler wechseln, ein noch nicht fälliger bleibt unangetastet.
 
+### Kein Positionskürzel je Zeile
+
+Gewünscht: *„Können wir bei den Spieltag-Zeilen die Positionsbezeichnungen
+wegnehmen, damit die Kästen ein bisschen dünner sind?"*
+
+Jede Zeile im MatchUp trug unter dem Namen ihr Positionskürzel („ABW") — und
+**über jedem Block steht die Position ohnehin als Überschrift**, mit farbigem
+Punkt und ausgeschriebenem Wort. Die Zeilen darunter tragen ihre Positionsfarbe
+zusätzlich im Verlauf. Das Kürzel sagte damit zum dritten Mal dasselbe und
+kostete dafür eine ganze Textzeile Höhe.
+
+Dieselbe Regel wie beim „LIVE" in der Tipp-Tabelle und bei der Uhrzeit im
+Live-Tab: **Eine Auskunft, die sich je Zeile nicht unterscheidet, gehört nicht
+in die Zeile.**
+
+Die Zeile ist damit einzeilig, `height` geht von 60 auf **48**. Bei elf
+Startern plus Bank sind das über zweihundert Punkte, die der Spieltag kürzer
+wird.
+
+**Nicht betroffen ist die `SpielerKachel`.** Dort steht das Kürzel weiterhin,
+und aus gutem Grund: Sie steht in Trade-Angeboten und Transfers **ohne**
+Positionsüberschrift darüber, und für den, der Farben nicht unterscheidet, ist
+das Wort dort die einzige Auskunft.
+
 ### Die Bank steht immer da
 
 Gemeldet: *„Die Bank beim MatchUp soll nicht durch so einen Dropdown angezeigt
