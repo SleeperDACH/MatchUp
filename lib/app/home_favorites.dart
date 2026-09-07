@@ -6,7 +6,8 @@ import '../features/favorites/favorites.dart';
 import '../features/favorites/logic/favorite_order.dart';
 import '../features/favorites/logic/next_favorite_fixtures.dart';
 
-/// Die nächsten Spiele der favorisierten Vereine für den Homescreen.
+/// Die Spiele der favorisierten Vereine in dieser Fußballwoche (Freitag bis
+/// Montag 15:00) — für die Kopfkarte und den Abschnitt „Mein Wochenende".
 ///
 /// Liest über `teamFixturesProvider` — denselben Weg wie der Favoriten-Tab.
 /// Der erste Anlauf ging über die Saison-Spielpläne der Ligen, in denen die
@@ -41,14 +42,14 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
       continue; // Ein Verein ohne Spielplan darf die Zeile nicht leeren.
     }
   }
-  final tagesspiele = naechsteFavoritenSpiele(
+  final tagesspiele = wochenendSpiele(
     fixtures: alle,
     jetzt: DateTime.now(),
   );
 
   // Vorn steht das Spiel des **obersten Favoriten**, nicht das früheste: Die
   // Kopfkarte des Homescreens nimmt sich den ersten Eintrag, der Abschnitt
-  // „Meine Vereine" den Rest. An einem Samstag mit vier Vereinen wäre sonst
+  // „Mein Wochenende" den Rest. An einem Samstag mit vier Vereinen wäre sonst
   // der 13:30-Anstoß auf der Kopfkarte gelandet, egal wem er gehört.
   final raenge = favoritenRaenge(ref.watch(favoritesProvider));
   return favoritenSpielZuerst(

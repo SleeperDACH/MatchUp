@@ -1259,6 +1259,55 @@ Schirms, das hier ist Werkzeug.
 Dort trägt es die Auskunft, ohne Fläche zu kosten. Farbe trägt nur, was wartet
 — der rote Zähler ungelesener Nachrichten. Die Tastfläche bleibt 44 Punkte.
 
+### „Mein Wochenende" statt „Meine Vereine"
+
+Gewünscht: *„Statt einem Spiel an dem Tag den Bereich umbauen in ‚Mein
+Wochenende' und alle Spiele meiner Favoriten von Freitag bis einschließlich
+Montag anzeigen. Trotzdem werden die Spiele in der Box oben weiterhin
+angezeigt, bis Montag. Auch da gilt: Montag, 15:00 Uhr."*
+
+Vorher zeigte der Homescreen das früheste **noch nicht beendete** Spiel und
+alles vom selben Kalendertag. Das war nach dem Abpfiff sofort vorbei:
+Sonntagabend sprang der Abschnitt auf den nächsten Spieltag, und das
+Wochenende, über das man gerade redet, war weg.
+
+`fussballWoche(jetzt)` liefert jetzt das Fenster **Freitag 00:00 bis Montag
+15:00**. Es ist derselbe Schnitt, an dem in dieser App schon die
+Waiver-Anträge vergeben werden und der Fantasy-Spieltag wechselt — ein Termin
+in der Woche, nicht drei. Maßgeblich ist der **nächste** Montag 15:00 nach
+`jetzt`, und daraus folgt alles Übrige von selbst:
+
+| jetzt | Fenster |
+|---|---|
+| Samstag | das laufende Wochenende |
+| Montag 10:00 | immer noch das vergangene |
+| Montag 15:01 | schon das kommende |
+| Mittwoch | das kommende |
+
+Drei Dinge, die daran hängen:
+
+- **Gespielte Partien bleiben stehen**, mit Ergebnis. Genau darum ging es. Die
+  Kopfkarte trägt weiter das Spiel des obersten Favoriten und zeigt nach dem
+  Abpfiff dessen Ergebnis (`hasScore` deckte den Fall schon ab).
+- **Die Zeile nennt den Wochentag.** Über vier Tage hinweg beantwortet ein
+  alleinstehendes „15:30" nicht, welchen Tag es meint. Der Tag steht klein
+  über der Zeit; sobald gespielt wird, steht dort das Ergebnis, rot solange es
+  läuft.
+- **Der Zusatz am Kopf nennt die Spanne**, nicht den Tag. Erster Anlauf zog
+  vom Montag 15:00 einen Tag ab und ließ die Spanne am Sonntag enden — er
+  verschwieg damit genau den Tag, um den die Änderung ging. Im Bild sofort zu
+  sehen, im Code nicht.
+
+**Was bewusst herausfällt:** Partien am Dienstag und Mittwoch. Der Abschnitt
+heißt „Mein Wochenende", und ein englisches Spiel gehört nicht hinein; den
+vollständigen Spielplan zeigt der Favoriten-Tab. Wer das ändern will, ändert
+zuerst den Namen.
+
+Gerechnet wird in `test/mein_wochenende_test.dart`, mit dem Montag als
+Scharnier in vier Fällen (10:00, genau 15:00, 15:01, mitten in der Woche). Die
+alte Fensterregel ist samt Tests entfallen; `favoritenSpielZuerst` bleibt
+unverändert und behält seine.
+
 ### Der News-Feed läuft nach unten und zeigt Bilder
 
 Gewünscht: „Umbauen, sodass man nach unten scrollt statt zur Seite, und die

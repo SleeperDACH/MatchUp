@@ -1,43 +1,77 @@
-import '../../../core/models/models.dart';
 import '../../../core/models/team_fixture.dart';
 
-/// Die nächsten Spiele der favorisierten Vereine: das früheste noch nicht
-/// beendete — und **alle weiteren am selben Kalendertag**. Ein Fußball-
-/// Samstag mit vier Vereinen soll auf dem Homescreen vollständig stehen,
-/// nicht nur mit dem ersten Anstoß.
+/// **Die Fußballwoche endet Montag um 15:00.**
+///
+/// Gewünscht: *„Statt einem Spiel an dem Tag den Bereich umbauen in ‚Mein
+/// Wochenende' und alle Spiele meiner Favoriten von Freitag bis einschließlich
+/// Montag anzeigen. Trotzdem werden die Spiele in der Box oben weiterhin
+/// angezeigt, bis Montag. Auch da gilt: Montag, 15:00 Uhr."*
+///
+/// Es ist **derselbe Schnitt**, an dem in dieser App schon die Waiver-Anträge
+/// vergeben werden und der Fantasy-Spieltag wechselt (siehe
+/// `currentFantasyRound`). Ein Termin in der Woche, nicht drei.
+///
+/// Zurück kommt das Fenster [von, bis): Freitag 00:00 bis Montag 15:00.
+/// Maßgeblich ist der **nächste** Montag 15:00 nach [jetzt] — daraus folgt
+/// alles Übrige von selbst:
+///
+/// | [jetzt] | Fenster |
+/// |---|---|
+/// | Samstag | das laufende Wochenende |
+/// | Montag 10:00 | immer noch das vergangene |
+/// | Montag 16:00 | schon das kommende |
+/// | Mittwoch | das kommende |
+({DateTime von, DateTime bis}) fussballWoche(DateTime jetzt) {
+  final heute = DateTime(jetzt.year, jetzt.month, jetzt.day);
+  // `DateTime.monday` ist 1; bis zum nächsten Montag sind es (8 - weekday) % 7
+  // Tage, und 0 bedeutet „heute ist Montag".
+  final bisMontag = (DateTime.monday - jetzt.weekday + 7) % 7;
+  var bis = heute.add(Duration(days: bisMontag)).add(const Duration(hours: 15));
+  // Der Montag ist schon vorbei: dann gilt der übernächste.
+  if (!bis.isAfter(jetzt)) bis = bis.add(const Duration(days: 7));
+  final von = DateTime(bis.year, bis.month, bis.day).subtract(
+    const Duration(days: 3),
+  );
+  return (von: von, bis: bis);
+}
+
+/// Alle Spiele der favorisierten Vereine in dieser Fußballwoche.
+///
+/// **Auch die gespielten.** Genau darum ging es: Bis zum Montag soll das
+/// Wochenende stehen bleiben, mit Ergebnis. Vorher zeigte der Homescreen das
+/// früheste **noch nicht beendete** Spiel und alles vom selben Kalendertag —
+/// nach dem Abpfiff sprang er auf den nächsten Spieltag, und das gerade
+/// gespielte Wochenende war weg.
 ///
 /// Erwartet die zusammengeführten Spielpläne der Favoriten (ein Eintrag kann
 /// doppelt vorkommen, wenn zwei Favoriten gegeneinander spielen).
 ///
-/// Pur gehalten (keine Provider, kein Netz), damit die Auswahlregel testbar
-/// bleibt — sie hat mehr Kanten, als sie aussieht: Tagesgrenze in lokaler
-/// Zeit, Doppelzählung bei Favorit gegen Favorit, laufende Spiele.
-List<TeamFixture> naechsteFavoritenSpiele({
+/// **Was bewusst herausfällt:** Partien unter der Woche, also Dienstag und
+/// Mittwoch. Der Abschnitt heißt „Mein Wochenende", und ein englisches Spiel
+/// gehört nicht hinein; für den vollständigen Spielplan gibt es den
+/// Favoriten-Tab.
+///
+/// Pur gehalten (keine Provider, kein Netz), damit die Regel prüfbar bleibt —
+/// sie hat mehr Kanten, als sie aussieht: Fenstergrenze in lokaler Zeit,
+/// Doppelzählung bei Favorit gegen Favorit, der Montag als Scharnier.
+List<TeamFixture> wochenendSpiele({
   required List<TeamFixture> fixtures,
   required DateTime jetzt,
 }) {
+  final fenster = fussballWoche(jetzt);
   final gesehen = <String>{};
-  final kommend = <TeamFixture>[
+  final drin = <TeamFixture>[
     for (final f in fixtures)
-      // Wie im Favoriten-Tab: „noch nicht beendet" statt „Anstoß in der
-      // Zukunft" — ein laufendes Spiel ist das nächste, nicht ein vergangenes.
-      if (f.status != FixtureStatus.finished && gesehen.add(f.id)) f,
+      if (gesehen.add(f.id) && _imFenster(f, fenster.von, fenster.bis)) f,
   ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
-  if (kommend.isEmpty) return const [];
-
-  // Tag des nächsten Spiels — in lokaler Zeit, sonst rutscht ein Anstoß um
-  // 20:30 in UTC auf den Folgetag und der Samstag zerfiele in zwei Tage.
-  final erstes = kommend.first.kickoff.toLocal();
-  final tag = DateTime(erstes.year, erstes.month, erstes.day);
-  return [
-    for (final f in kommend)
-      if (_istAmTag(f, tag)) f,
-  ];
+  return drin;
 }
 
-bool _istAmTag(TeamFixture f, DateTime tag) {
+bool _imFenster(TeamFixture f, DateTime von, DateTime bis) {
+  // Ortszeit, sonst rutscht ein Anstoß um 20:30 in UTC auf den Folgetag und
+  // der Freitagabend fiele aus dem Fenster.
   final lt = f.kickoff.toLocal();
-  return lt.year == tag.year && lt.month == tag.month && lt.day == tag.day;
+  return !lt.isBefore(von) && lt.isBefore(bis);
 }
 
 /// Stellt das Spiel des **obersten Favoriten** an den Anfang der Tagesliste.

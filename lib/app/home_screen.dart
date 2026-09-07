@@ -39,6 +39,7 @@ import 'typografie.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/matchup_chevron.dart';
 import 'widgets/pulsing_dot.dart';
+import '../features/favorites/logic/next_favorite_fixtures.dart';
 
 /// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
 /// Tippspiel folgt als zweiter Bereich darunter.
@@ -853,13 +854,15 @@ bool _istHeute(DateTime zeit) {
       zeit.day == jetzt.day;
 }
 
-/// Nächste Spiele der favorisierten Vereine — zwischen den eigenen Ligen und
-/// den News. Es ist die einzige Stelle auf dem Screen, an der es um Fußball
-/// statt um die eigenen Runden geht; deshalb steht sie hinter den Ligen und
-/// vor den News.
+/// **Mein Wochenende** — alle Partien der favorisierten Vereine von Freitag
+/// bis Montag 15:00, zwischen den eigenen Ligen und den News. Es ist die
+/// einzige Stelle auf dem Screen, an der es um Fußball statt um die eigenen
+/// Runden geht; deshalb steht sie hinter den Ligen und vor den News.
 ///
-/// Gezeigt wird der **Tag** des nächsten Spiels mit allen Partien darauf: an
-/// einem Bundesliga-Samstag will man nicht nur den 15:30-Anstoß sehen.
+/// Vorher stand hier der **Tag** des nächsten Spiels mit allen Partien darauf.
+/// Das war nach dem Abpfiff sofort vorbei: Sonntagabend sprang der Abschnitt
+/// auf den nächsten Spieltag, und das Wochenende, über das man gerade redet,
+/// war weg. Jetzt bleibt es bis Montag 15:00 stehen — mit Ergebnissen.
 class _FavoritenSpiele extends ConsumerWidget {
   const _FavoritenSpiele();
 
@@ -876,7 +879,14 @@ class _FavoritenSpiele extends ConsumerWidget {
     final spiele = alle?.skip(1).toList();
     if (spiele == null || spiele.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    final tag = spiele.first.kickoff.toLocal();
+    // **Der Zusatz nennt die Spanne, nicht den Tag.** Der Abschnitt läuft über
+    // vier Tage; ein einzelnes Datum darüber wäre für drei davon falsch.
+    final woche = fussballWoche(DateTime.now());
+    // **Der Montag gehört dazu.** `bis` ist Montag 15:00, das Datum davon ist
+    // der Montag selbst — einen Tag abzuziehen ließ die Spanne am Sonntag
+    // enden und verschwieg genau den Tag, um den es ging.
+    final spanne = '${DateFormat('d.', 'de_DE').format(woche.von)} – '
+        '${DateFormat('d. MMM', 'de_DE').format(woche.bis)}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(
@@ -884,8 +894,8 @@ class _FavoritenSpiele extends ConsumerWidget {
         children: [
           abschnittsKopf(
             context,
-            'Meine Vereine',
-            zusatz: DateFormat('EEEE, d. MMM', 'de_DE').format(tag),
+            'Mein Wochenende',
+            zusatz: spanne,
             marke: _kVereinsBlau,
           ),
           Container(
@@ -928,10 +938,13 @@ class _FavoritSpielZeile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final anstoss = DateFormat(
-      'HH:mm',
-      'de_DE',
-    ).format(fixture.kickoff.toLocal());
+    final lokal = fixture.kickoff.toLocal();
+    final anstoss = DateFormat('HH:mm', 'de_DE').format(lokal);
+    // **Der Wochentag gehört dazu, seit der Abschnitt vier Tage umfasst.**
+    // Ein alleinstehendes „15:30" beantwortet über ein Wochenende hinweg
+    // nicht, welchen Tag es meint.
+    final tag = DateFormat('E', 'de_DE').format(lokal);
+    final laeuft = fixture.status == FixtureStatus.live;
     void oeffnen() => Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => MatchDetailScreen(fixtureId: fixture.id),
@@ -945,9 +958,12 @@ class _FavoritSpielZeile extends StatelessWidget {
     // und Liga nebeneinander.
     return Semantics(
       button: true,
-      label:
-          '${fixture.home.name} gegen ${fixture.away.name}, '
-          '$anstoss Uhr, ${fixture.leagueName}',
+      label: fixture.hasScore
+          ? '${fixture.home.name} gegen ${fixture.away.name}, '
+              '$tag, ${fixture.homeScore} zu ${fixture.awayScore}, '
+              '${fixture.leagueName}'
+          : '${fixture.home.name} gegen ${fixture.away.name}, '
+              '$tag $anstoss Uhr, ${fixture.leagueName}',
       onTap: oeffnen,
       excludeSemantics: true,
       child: Material(
@@ -990,16 +1006,40 @@ class _FavoritSpielZeile extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Anstoßzeit mittig zwischen beiden Mannschaften.
+                // Mittig zwischen beiden Mannschaften: der Tag über der
+                // Zeit — und sobald gespielt wird, das Ergebnis an ihrer
+                // Stelle. Rot heißt in dieser App „läuft gerade".
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    anstoss,
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        tag,
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          fontSize: Schrift.winzig,
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                        ),
+                      ),
+                      Text(
+                        fixture.hasScore
+                            ? '${fixture.homeScore}:${fixture.awayScore}'
+                            : anstoss,
+                        style: TextStyle(
+                          color: laeuft
+                              ? MatchUpColors.red
+                              : scheme.onSurfaceVariant,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                          fontFeatures: const [
+                            FontFeature.tabularFigures(),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(

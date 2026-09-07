@@ -83,10 +83,20 @@ TipRound _runde(String id, String name, List<String> ligen) => TipRound(
   createdBy: 'ich',
 );
 
-TeamFixture _spiel(DateTime anstoss) => TeamFixture(
-  id: 'sportmonks:1',
+TeamFixture _spiel(
+  DateTime anstoss, {
+  String id = 'sportmonks:1',
+  String heim = 'Borussia Dortmund',
+  String heimKurz = 'BVB',
+  String gast = 'Hamburger SV',
+  String gastKurz = 'HSV',
+  int? tore,
+}) => TeamFixture(
+  id: id,
   kickoff: anstoss,
-  status: FixtureStatus.scheduled,
+  status: tore == null ? FixtureStatus.scheduled : FixtureStatus.finished,
+  homeScore: tore,
+  awayScore: tore == null ? null : 1,
   leagueName: 'Bundesliga',
   round: 3,
   // **Dortmund gegen HSV** ist mit Bedacht gewählt: Genau an dieser Paarung
@@ -94,8 +104,8 @@ TeamFixture _spiel(DateTime anstoss) => TeamFixture(
   // zu hell für die Grundfarbe und das Trikotweiß des HSV trägt keinen
   // Farbton — die beiden Fälle, an denen `vereinsTon` scheiterte. Wer hier
   // eine ruhigere Paarung einsetzt, verliert die Probe.
-  home: const TeamRef(id: 'h', name: 'Borussia Dortmund', shortName: 'BVB'),
-  away: const TeamRef(id: 'a', name: 'Hamburger SV', shortName: 'HSV'),
+  home: TeamRef(id: 'h$id', name: heim, shortName: heimKurz),
+  away: TeamRef(id: 'a$id', name: gast, shortName: gastKurz),
 );
 
 void main() {
@@ -161,7 +171,31 @@ Future<void> _bauen(WidgetTester tester) async {
   // „HEUTE"-Marke, ohne dass die Vorschau von der Uhr abhängt.
   final heute = DateTime.now();
   final anstoss = DateTime(heute.year, heute.month, heute.day, 20, 30);
-  final spiel = _spiel(anstoss);
+  // **„Mein Wochenende" braucht mehr als eine Partie.** Die Kopfkarte nimmt
+  // sich die erste; ohne weitere fiele der ganze Abschnitt weg, und genau der
+  // soll hier zu sehen sein — mit einem gespielten Freitagsspiel, damit auch
+  // das Ergebnis in der Zeile im Bild steht.
+  final spiele = [
+    _spiel(anstoss),
+    _spiel(
+      anstoss.subtract(const Duration(days: 3)),
+      id: 'sportmonks:2',
+      heim: 'FC Bayern München',
+      heimKurz: 'FCB',
+      gast: 'RB Leipzig',
+      gastKurz: 'RBL',
+      tore: 3,
+    ),
+    _spiel(
+      anstoss.subtract(const Duration(days: 2, hours: 5)),
+      id: 'sportmonks:3',
+      heim: 'SC Freiburg',
+      heimKurz: 'SCF',
+      gast: 'Werder Bremen',
+      gastKurz: 'SVW',
+      tore: 1,
+    ),
+  ];
 
   final ligen = [
     _liga('l1', 'Draftest3', FantasyMode.liga),
@@ -185,7 +219,7 @@ Future<void> _bauen(WidgetTester tester) async {
         unreadDmCountProvider.overrideWith((ref) => 18),
         myFantasyLeaguesProvider.overrideWith((ref) => Stream.value(ligen)),
         myRoundsProvider.overrideWith((ref) async => runden),
-        favoritenSpieleProvider.overrideWith((ref) async => [spiel]),
+        favoritenSpieleProvider.overrideWith((ref) async => spiele),
         fantasyManagersProvider.overrideWith(
           (ref, id) => Stream.value(const []),
         ),
