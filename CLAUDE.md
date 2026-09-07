@@ -2441,11 +2441,21 @@ abgehackter Farbverlauf, vorne zu hell":
 | Wappen | 42, nackt auf dem Rasen | 48, weiter ohne Scheibe darunter |
 | Punkte | 10 Punkt, Ecke des Wappens | **13 Punkt**, Chip auf der Unterkante |
 | Name | 11 Punkt in einem grauen Kästchen | 12 Punkt, weiß mit Schatten, ohne Kasten |
-| Tauschknopf | Symbol im 21er-Kreis | 26er-Pille mit Symbol **und Kürzel** („ABW") |
+| Tauschknopf | Symbol im 21er-Kreis | 26er-Kreis, nur der Tauschpfeil |
 
-Der Knopf sagt jetzt auch, *welcher* Platz getauscht wird — auf einem Feld mit
-elf gleichen Knöpfen ist das der Unterschied zwischen „ein Knopf" und „mein
-Innenverteidiger". Das Feld ist dafür von 420 auf 470 Punkte gewachsen; der
+**Das Kürzel ist inzwischen wieder weg** (auf Ansage, 07.09.2026). Die
+Begründung dafür war, dass der Knopf sagt, *welcher* Platz getauscht wird — auf
+dem Feld ist das entbehrlich: Der Knopf sitzt an seinem Spieler, die Reihe sagt
+die Position, und die Farbe des Rings sagt sie ein zweites Mal. **Elf Kürzel
+auf dem Rasen sind elfmal dieselbe Auskunft.** Geblieben ist der Pfeil in einem
+26er-Kreis.
+
+Zwei Dinge, die dabei mitmussten: **Das Wort steht jetzt als `Semantics`-Label**
+(„Abwehr tauschen") — ohne Beschriftung hießen alle elf Knöpfe für die
+Vorlesehilfe „Schaltfläche", genau der Zustand, den `knopfnamen_test` für die
+`IconButton`s dieser App verbietet; hier steht es von Hand, weil der Knopf
+keiner ist. Und ohne Text ist der **`CircleBorder`** wieder gefahrlos: Er hatte
+dem Knopf früher die Enden abgeschnitten, aus „ABW" wurde „ABV". Das Feld ist dafür von 420 auf 470 Punkte gewachsen; der
 Platz kommt den Spielern zugute, nicht dem Rasen.
 
 **Und der Zustand, in dem nichts mehr geht, sieht jetzt danach aus.** Vorher

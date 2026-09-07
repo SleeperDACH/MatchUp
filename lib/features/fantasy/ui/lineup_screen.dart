@@ -1137,46 +1137,39 @@ class _Slot extends ConsumerWidget {
       // war (die Reihe sagt die Position) und als Zustandshinweis nichts sagte.
       return const GesperrtMarke(size: 26);
     }
-    // **Der Tauschknopf.** Größer als vorher (26 statt 21), mit dem Kürzel der
-    // Position statt eines nackten Symbols: Er sagt damit auch, *welcher*
-    // Platz getauscht wird — auf einem Feld mit elf gleichen Knöpfen ist das
-    // der Unterschied zwischen „ein Knopf" und „mein Innenverteidiger".
-    // **`StadiumBorder`, nicht `CircleBorder`.** Der Kreis-Clip schnitt dem
-    // Knopf die Enden ab: Aus „ABW" wurde „ABV". Ein Clip, der zur Form des
-    // Kindes passen muss, ist die Sorte Fehler, die man nur im Bild sieht.
-    return Material(
-      color: Colors.transparent,
-      shape: const StadiumBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onEditPosition,
-        // **Kein `alignment` an diesem Container.** Ein Container mit
-        // Ausrichtung nimmt sich, was die Eltern hergeben — er wurde damit so
-        // breit wie der Platz, aus dem Knopf ein Balken. Die Zeile darin ist
-        // ohnehin `MainAxisSize.min`.
-        child: Container(
-          height: 26,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: color.withValues(alpha: 0.9), width: 1.4),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.swap_horiz, size: 14, color: color),
-              const SizedBox(width: 3),
-              Text(
-                pos.short,
-                style: TextStyle(
-                  color: color,
-                  fontSize: Schrift.winzig,
-                  fontWeight: FontWeight.w800,
-                  height: 1.2,
-                ),
-              ),
-            ],
+    // **Der Tauschknopf trägt nur noch den Pfeil** (auf Ansage). Er hatte das
+    // Kürzel der Position dabei, mit der Begründung, dass er damit sagt,
+    // *welcher* Platz getauscht wird. Auf dem Feld ist das entbehrlich: Der
+    // Knopf sitzt an seinem Spieler, die Reihe sagt die Position, und die
+    // Farbe des Rings sagt sie ein zweites Mal. Elf Kürzel auf dem Rasen sind
+    // elfmal dieselbe Auskunft.
+    //
+    // **Das Wort bleibt für die Vorlesehilfe.** Ohne Beschriftung hießen alle
+    // elf Knöpfe „Schaltfläche" — genau der Zustand, den `knopfnamen_test`
+    // für die `IconButton`s dieser App verbietet. Hier steht er als
+    // `Semantics`, weil der Knopf keiner ist.
+    //
+    // Ohne Text ist der Kreis wieder gefahrlos: Der `CircleBorder`-Clip hatte
+    // dem Knopf früher die Enden abgeschnitten („ABW" wurde zu „ABV").
+    return Semantics(
+      button: true,
+      label: '${pos.label} tauschen',
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onEditPosition,
+          child: Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.55),
+              shape: BoxShape.circle,
+              border:
+                  Border.all(color: color.withValues(alpha: 0.9), width: 1.4),
+            ),
+            child: Icon(Icons.swap_horiz, size: 15, color: color),
           ),
         ),
       ),
