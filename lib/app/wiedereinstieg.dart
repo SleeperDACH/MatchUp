@@ -31,6 +31,11 @@ void beimZurueckkommenAktualisieren(WidgetRef ref) {
   ref.invalidate(myRoundsProvider);
   ref.invalidate(myTipStatsProvider);
 
+  // Ausfälle: Der Server holt sie stündlich, die App hing bis dahin am
+  // Schnappschuss vom Start. Eine Verletzung, die während der Pause gemeldet
+  // wurde, ist genau die Auskunft, die man beim Zurückkommen braucht.
+  ref.invalidate(absencesProvider);
+
   // Nachrichtenleiste auf dem Startbildschirm.
   ref.invalidate(newsProvider);
 }

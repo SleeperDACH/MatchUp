@@ -49,6 +49,7 @@ const POS_GK = 24;
 const EV_OWNGOAL = 15;
 const EV_PENALTY_GOAL = 16;
 const EV_PENALTY_MISSED = 17;
+const EV_SUBSTITUTION = 18;
 const EV_YELLOW = 19;
 const EV_RED = 20;
 const EV_YELLOW_RED = 21;
@@ -327,6 +328,13 @@ Deno.serve(async (req) => {
   }
 
   const rows: Record<string, unknown>[] = [];
+  // **Verletzt ausgewechselt.** Sportmonks markiert das Wechsel-Ereignis
+  // selbst (`type_id` 18, `injured: true`, `related_player_id` = der Spieler,
+  // der herausgeht). Es steht im selben Request wie die Statistik, kostet also
+  // nichts -- und ist die einzige Quelle, die es zuverlaessig meldet: Gemessen
+  // ueber die Saison fehlten fuenf von neun solchen Spielern komplett in
+  // `include=sidelined`. Siehe Migration 0122.
+  const verletzt: Record<string, unknown>[] = [];
   const now = new Date().toISOString();
   let requests = 0;
 
@@ -339,6 +347,24 @@ Deno.serve(async (req) => {
     for (const fixture of data?.data ?? []) {
       const m = meta.get(String(fixture.id));
       if (!m) continue;
+      for (const e of fixture.events ?? []) {
+        if (e.type_id !== EV_SUBSTITUTION || e.injured !== true) continue;
+        // `related_player_id` ist der Herausgehende, `player_id` der
+        // Hereinkommende. Wer die beiden verwechselt, markiert den Einwechsel-
+        // spieler als verletzt.
+        const raus = e.related_player_id as number | null;
+        if (raus == null) continue;
+        const playerId = `sportmonks:${raus}`;
+        if (!poolIds.has(playerId)) continue;
+        verletzt.push({
+          season: m.season,
+          round: m.round,
+          player_id: playerId,
+          fixture_id: `sportmonks:${fixture.id}`,
+          minute: typeof e.minute === "number" ? e.minute : null,
+          erkannt_am: now,
+        });
+      }
       for (const [pid, ev] of eventsForFixture(fixture)) {
         const playerId = `sportmonks:${pid}`;
         if (!poolIds.has(playerId)) continue;
@@ -400,11 +426,25 @@ Deno.serve(async (req) => {
     upserted += part.length;
   }
 
+  // **Nur schreiben, nie loeschen.** Ein Ereignis, das einmal stattgefunden
+  // hat, verschwindet nicht wieder; ob daraus noch ein Ausfall folgt,
+  // entscheidet die Sicht `player_absences_v` daran, ob der Spieler seither
+  // wieder gespielt hat.
+  if (verletzt.length > 0) {
+    const { error } = await supabase
+      .from("verletzt_ausgewechselt")
+      .upsert(verletzt, { onConflict: "season,round,player_id" });
+    if (error) {
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+  }
+
   return new Response(
     JSON.stringify({
       fixtures: smIds.length,
       sportmonksRequests: requests,
       upserted,
+      verletztAusgewechselt: verletzt.length,
     }),
     { headers: { "content-type": "application/json" } },
   );

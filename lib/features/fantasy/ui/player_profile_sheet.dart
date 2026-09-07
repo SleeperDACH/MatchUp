@@ -1767,7 +1767,7 @@ class _Ausfallzeile extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${a.gesperrt ? 'Gesperrt' : 'Verletzt'} · ${a.grund}',
+                    '${a.kopf} · ${a.grund}',
                     style: TextStyle(
                       color: farbe,
                       fontWeight: FontWeight.w700,

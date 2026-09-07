@@ -552,16 +552,28 @@ class FantasyLeagueRepository {
   // Waiver-Wire
   // ----------------------------------------------------------------
 
-  /// **Ausfälle** (verletzt oder gesperrt) je Spieler, in Echtzeit.
+  /// **Ausfälle** (verletzt oder gesperrt) je Spieler.
   ///
   /// Gelesen über `player_absences_v`, und **`ueberholt` fällt heraus**: Die
   /// Quelle führt Spieler teils jahrelang als ausgefallen, obwohl sie längst
   /// wieder spielen — gemessen waren es acht von 85. Ein „verletzt" an einem
   /// Spieler, der gerade neunzig Minuten gemacht hat, sähe aus wie eine
   /// Auskunft.
+  ///
+  /// **Die Klingel hängt an der Tabelle, die Auskunft an der Sicht.** Vorher
+  /// lief `.stream()` direkt auf `player_absences_v` — und eine Sicht steht
+  /// in keiner Realtime-Publication, das geht in Postgres gar nicht. Der erste
+  /// Schnappschuss kam damit an, **jede spätere Änderung nicht**: Die Ausfälle
+  /// standen auf dem Stand des App-Starts, während der Server stündlich neue
+  /// holte. Jetzt meldet die Basistabelle nur, *dass* sich etwas geändert hat,
+  /// und die vollständige Abfrage kommt hinterher — dieselbe Bauart wie bei
+  /// den Ligamitgliedern, die eine Sicht mit Join brauchen.
   Stream<Map<String, PlayerAbsence>> absencesStream() => _client
-      .from('player_absences_v')
+      .from('player_absences')
       .stream(primaryKey: ['id'])
+      .asyncMap((_) async =>
+          (await _client.from('player_absences_v').select())
+              .cast<Map<String, dynamic>>())
       .map((rows) {
         final out = <String, PlayerAbsence>{};
         for (final r in ohneDubletten(rows, const ['id'])) {

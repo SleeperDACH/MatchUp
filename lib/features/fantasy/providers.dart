@@ -608,6 +608,13 @@ final roundStatsProvider =
       // Die Spielpläne mit auffrischen: Ohne sie bliebe der Spieltag nach dem
       // Abpfiff für immer „live", und die App fragte bis zum Neustart weiter.
       ref.invalidate(fantasySeasonFixturesProvider);
+      // **Und die Ausfälle.** Wer verletzt vom Platz geht, steht Minuten
+      // später in `verletzt_ausgewechselt` — geschrieben von demselben
+      // `sync-stats`-Lauf, der auch diese Punkte liefert. Die Klingel im
+      // Repository hängt an `player_absences`, und die rührt sich dabei
+      // nicht; ohne diese Zeile käme die Verletzung erst beim nächsten
+      // App-Start an.
+      ref.invalidate(absencesProvider);
       ref.invalidateSelf();
     });
     ref.onDispose(timer.cancel);

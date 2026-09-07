@@ -11,6 +11,9 @@ class PlayerAbsence {
     this.grundQuelle,
     this.seit,
     this.spieleVerpasst,
+    this.ausgewechselt = false,
+    this.runde,
+    this.minute,
   });
 
   final String playerId;
@@ -27,12 +30,30 @@ class PlayerAbsence {
   final DateTime? seit;
   final int? spieleVerpasst;
 
+  /// **Nicht gemeldet, sondern gesehen.** Der Eintrag kommt nicht aus der
+  /// Ausfallliste der Quelle, sondern aus dem Wechsel-Ereignis des Spiels
+  /// (`injured: true`). Er sagt, dass jemand verletzt vom Platz ging — nicht,
+  /// woran. Der Wortlaut muss den Unterschied tragen: Eine Beobachtung darf
+  /// nicht aussehen wie eine Diagnose.
+  ///
+  /// Gemessen über die Saison 2026: Von neun so ausgewechselten Spielern
+  /// standen **fünf** in keiner Ausfallliste. Ohne diese zweite Quelle wäre
+  /// die App bei ihnen stumm geblieben (siehe Migration 0122).
+  final bool ausgewechselt;
+
+  /// Spieltag und Minute der Auswechslung — nur bei [ausgewechselt] gesetzt.
+  final int? runde;
+  final int? minute;
+
   factory PlayerAbsence.fromJson(Map<String, dynamic> j) => PlayerAbsence(
         playerId: j['player_id'] as String,
         gesperrt: (j['kategorie'] as String?) == 'suspended',
         grundQuelle: j['grund_quelle'] as String?,
         seit: DateTime.tryParse((j['seit'] as String?) ?? ''),
         spieleVerpasst: (j['spiele_verpasst'] as num?)?.toInt(),
+        ausgewechselt: (j['quelle'] as String?) == 'ausgewechselt',
+        runde: (j['runde'] as num?)?.toInt(),
+        minute: (j['minute'] as num?)?.toInt(),
       );
 
   /// Der Grund auf Deutsch.
@@ -44,10 +65,25 @@ class PlayerAbsence {
   /// für alles wäre der Verlust genau der Information, für die es den Eintrag
   /// gibt.
   String get grund {
+    // Die Beobachtung nennt, was man weiß: Spieltag und Minute. Einen Grund
+    // hat sie nicht, und einen zu erfinden wäre schlimmer als keiner.
+    if (ausgewechselt) {
+      final m = minute == null ? '' : ' in der $minute. Minute';
+      final r = runde == null ? '' : ' am $runde. Spieltag';
+      return 'Verletzt ausgewechselt$m$r';
+    }
     final q = grundQuelle;
     if (q == null || q.isEmpty) return gesperrt ? 'Sperre' : 'Verletzung';
     return _deutsch[q] ?? q;
   }
+
+  /// Was über dem Grund steht. Eine Beobachtung sagt nicht „Verletzt“ —
+  /// das behauptete eine Diagnose, die niemand gestellt hat.
+  String get kopf => gesperrt
+      ? 'Gesperrt'
+      : ausgewechselt
+          ? 'Vermutlich verletzt'
+          : 'Verletzt';
 
   static const _deutsch = <String, String>{
     'Achilles tendon problems': 'Achillessehnen-Probleme',
