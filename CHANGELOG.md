@@ -8,6 +8,41 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.6.0+9 — 9. September 2026
+
+Zwei Tage nach 1.5.0+8. Der Schwerpunkt liegt auf einer Lücke, die im Betrieb
+jede Woche auffiel: **drei bis fünf Tage ohne jede Aufstellung.**
+
+### Neu
+
+- **Die Elf des letzten Spieltags steht, bis die Prognose kommt.** Die
+  voraussichtliche Aufstellung gibt die Quelle erst ein bis zwei Tage vor
+  Anpfiff heraus — nachgemessen am 08.09. für alle neun Partien des kommenden
+  Spieltags: kein einziger Eintrag. Bis dahin steht im Spielerprofil jetzt die
+  zuletzt **gemeldete** Startelf des Vereins. Das ist kein Notbehelf: Über die
+  Saison 2025/26 gemessen trifft die gekaufte Prognose 77,0 % der echten
+  Startelf, „dieselbe Elf wie letzte Woche" 77,1 % — dieselbe Quote, nur Tage
+  früher.
+- **Ausfälle werden dabei ersetzt.** Verletzte, Gesperrte und Abgewanderte
+  weichen dem nominellen Ersatz: gleiche Position, meiste Einsatzminuten
+  dieser Saison. Er erbt den Platz im Raster und trägt ein Tauschzeichen am
+  Trikot. Gibt es keinen freien Ersatz, bleibt der Platz sichtbar offen statt
+  falsch besetzt.
+- **Und die Anzeige sagt, was sie ist.** Über dem Feld steht „Elf des N.
+  Spieltags", das Urteil heißt „Stand am N. Spieltag in der Startelf" statt
+  „voraussichtlich".
+
+### Geändert
+
+- **Die Tabelle hat ein Podest.** Platz 1 steht größer da als 2, 2 größer als
+  3, danach eine einheitliche Zeile. Dazu die Medaillenfarbe als Ring um das
+  Profilbild und als schmale Kante am linken Rand.
+- **Das Playoff-Bracket steht unten.** Es war die erste Zeile des
+  Tabellen-Tabs und nahm der Tabelle ihren Anfang.
+- **Farbige Rahmen sind weg** — im Aufstellungsbereich, an den Kacheln der
+  Liga-Übersicht und an der Liga-Einladung im Chat. Die App fasst Karten
+  überall mit derselben Haarlinie; Farbe trägt, was etwas will.
+
 ## 1.5.0+8 — 7. September 2026
 
 62 Commits seit 1.4.1+7 (2. September). Der Schwerpunkt liegt auf zwei Dingen,

@@ -420,6 +420,70 @@ gilt das Raster ab sofort.
     bliebe die Runde nach dem Abpfiff für immer „live".
   Dass der Server schreibt, heißt nicht, dass die App es zeigt; dass ein Cron
   „succeeded" meldet, heißt nicht, dass etwas ankam.
+- **Ein Deploy ohne `--no-verify-jwt` legt den Cron still — und zwar
+  lautlos.** Gemeldet am 11.09.2026, mitten im Spiel: *„Schalke gegen Union
+  läuft seit einer halben Stunde. Warum hat in der App immer noch keiner
+  Punkte?"* In `player_match_stats` standen für Spieltag 3 **null Zeilen**,
+  für die Spieltage 1 und 2 je rund 285.
+
+  Die Kette war intakt, bis auf das Tor davor: Function ausgespielt (Version 9
+  vom 07.09.), Cron aktiv im Minutentakt, Sportmonks erreichbar. Von Hand
+  aufgerufen lieferte sie sofort `{"fixtures":1,"upserted":23}`. Der Beweis
+  stand in `net._http_response`: **366 von 420 Antworten im
+  Aufbewahrungsfenster waren 401** — `UNAUTHORIZED_NO_AUTH_HEADER`.
+
+  Der Cron ruft über `net.http_post` mit `x-sync-secret` auf und schickt
+  **keinen** Authorization-Header. Wird die Function ohne `--no-verify-jwt`
+  ausgespielt, lehnt das Gateway jeden Aufruf ab, bevor sie überhaupt läuft.
+  Und `cron.job_run_details` meldet weiter „succeeded", weil pg_net den
+  Auftrag ja erfolgreich abgesetzt hat — dieselbe Falle wie beim
+  `timeout_milliseconds` darunter, nur eine Schicht weiter vorn.
+
+  **Der Unterschied ist in einer Zeile messbar:** 401 kommt vom Gateway, 403
+  aus der Function selbst (ihre eigene Secret-Prüfung). Wer mit absichtlich
+  falschem Secret anfragt und 401 statt 403 bekommt, hat die Flagge vergessen.
+  `tools/sync_torwaechter.sh` prüft alle fünf Sync-Functions auf einmal.
+
+  **Das allein war die falsche Antwort**, und der Nutzer hat es in vier
+  Wörtern gesagt: *„Das darf nicht vorkommen."* Ein Skript, das jemand nach
+  jedem Deploy laufen lassen *soll*, ist dieselbe Sorte Zusage wie die
+  Konvention, die Flagge nicht zu vergessen — und die hat der Fehler überlebt.
+  Migration **0125** stellt die Ursache ab, statt sie zu bewachen:
+
+  * **Jeder Cron-Aufruf trägt jetzt einen Authorization-Header** mit dem
+    Publishable-Key. Damit kommt er **mit und ohne** die Flagge durch, und die
+    Flagge ist eine Optimierung statt einer Voraussetzung. Nachgemessen, nicht
+    behauptet: `sync-stats` wurde am 11.09. absichtlich **mit** JWT-Prüfung
+    ausgespielt — ohne Header antwortete das Gateway 401, der Cron lieferte in
+    denselben Minuten weiter `{"fixtures":1,"upserted":23}`. Danach
+    zurückgedreht.
+  * Der Key steht dort **im Klartext**, und das ist Absicht: `sb_publishable_…`
+    liegt ohnehin in `AppConfig` und in jedem Build. Ihn in den Vault zu legen
+    hieße, einen weiteren Einrichtungsschritt zu schaffen, den jemand
+    vergessen kann — genau der Fehler, um den es hier geht. `x-sync-secret`
+    bleibt im Vault, der ist wirklich geheim.
+  * Die Migration liest **URL und Zeitlimit aus dem bestehenden Job** und
+    schreibt sie nicht neu hin. Sechs Kopien wären sechs Gelegenheiten, dass
+    eine beim nächsten Mal nicht mitgezogen wird.
+
+  **Und eine Wache, die das Symptom kennt, nicht die Ursache**
+  (`public.pruefe_sync()`, alle 10 Minuten): Läuft ein Bundesliga-Spiel länger
+  als 20 Minuten, ohne dass für seine Runde **eine einzige** Statistikzeile
+  existiert, wird das in `public.sync_stoerungen` festgehalten — einmal je
+  Vorfall, nicht im Takt der Wache. Dazu jede Nicht-2xx-Antwort unserer
+  eigenen Aufrufe, damit die Spur die sechs Stunden überlebt, die pg_net seine
+  Antworten aufhebt. Genau daran wäre die Ursachensuche fast gescheitert: Das
+  älteste `net._http_response` war vom selben Tag.
+
+  Die Wache ist **mit Rollback nachgestellt**, denn eine Wache, die nichts
+  meldet, sieht aus wie Ruhe: Ein `do $$ … raise exception $$` löscht die
+  Statistikzeilen der laufenden Runde, ruft `pruefe_sync()` und bricht ab —
+  Meldung „1 neue Störung", Daten unversehrt (23 Zeilen weiterhin da).
+
+  **Was offen bleibt: Es schaut niemand hin.** Die Wache schreibt ein
+  Protokoll, sie klingelt nicht. `select * from public.sync_wache` zeigt die
+  letzten sieben Tage.
+
 - **Jeder `net.http_post`-Cron braucht `timeout_milliseconds`.** Der
   pg_net-Standard ist 5000 ms, und `cron.job_run_details` meldet trotzdem
   „succeeded" — der Fehlschlag steht nur in `net._http_response`
@@ -1646,7 +1710,22 @@ Was sich daraus geändert hat:
   Auskunft, die die Navileiste gibt. Die Kopfzeile trägt jetzt den **gewählten
   Tag**, rechts daneben steht, was gerade läuft („2 live", pulsierender Punkt).
   Läuft nichts, bleibt die Seite leer — „0 live" wäre eine Meldung über nichts.
-- **Keine Liga-Karten.** Je Wettbewerb eine **Kapitelmarke** (`_LigaKopf`):
+- **Die Spiele eines Wettbewerbs stehen wieder auf einer eigenen Fläche**
+  (12.09.2026, auf Ansage: *„Können wir im Live-Tab die Spiele der Liga in
+  Boxen ein bisschen vom Hintergrund abheben, damit man das besser
+  erkennt?"*). Das ist eine Rücknahme, und die Begründung von damals sollte
+  kennen, wer sie wieder anfasst — sie steht im Punkt darunter: Die alten
+  Ligakarten flogen, weil **fünf Rahmen untereinander** standen und der
+  Wettbewerb **dreimal** darin genannt wurde (Logo, Name in Ligafarbe,
+  Anzahl).
+  **Von den drei Nennungen ist eine geblieben, und sie steht draußen.** Die
+  Kapitelmarke bleibt über der Fläche statt darin — dieselbe Gliederung wie in
+  der Fantasy-Tabelle, wo unter der Marke „Tabelle" eine gerahmte Fläche
+  steht. Die Kante ist die gewöhnliche Haarlinie, die Fläche der Kartengrund
+  (`kartenDeko`): kein farbiger Rand, kein getöntes Band — beides ist an
+  dieser Stelle schon einmal gescheitert.
+- **Keine Liga-Karten im alten Sinn.** Je Wettbewerb eine **Kapitelmarke**
+  (`_LigaKopf`):
   Wappen, Name, und eine Haarlinie bis an den rechten Rand; darunter die
   Spiele. Der Liganame steht **nicht** in der Ligafarbe — fünf farbige
   Überschriften untereinander riefen gleich laut, und die Farbe sagt ohnehin
@@ -1752,6 +1831,20 @@ wie Nachlässigkeit aussehen:
   klein und außen: Sie tragen das Wiedererkennen auf einen Blick, und über sie
   führt der **einzige** Weg vom Live-Tab auf eine Vereinsseite (`ClubLink`).
   Ohne sie wäre der still verschwunden.
+- **Die Datumszellen sind schmal, ihr Tippziel ist es nicht** (12.09.2026, auf
+  Ansage: *„Die Datumsboxen können wir um einiges schmaler machen"*). Der
+  sichtbare Kasten misst 34 statt 52 Punkte — für „Do." und eine zweistellige
+  Zahl reicht das bequem, und es passen sichtbar mehr Tage ins Bild. **Das
+  Tippziel bleibt bei `minTastflaeche`** (44 auf iOS, 48 auf Android); die
+  Differenz liegt als Luft neben dem Kasten. Die beiden Zahlen zu einer
+  zusammenzuziehen ist genau der Fehler, vor dem die Regel warnt.
+
+  **Gehalten von einer Messung, und die stand zuerst an der falschen Stelle.**
+  Sie lag unter `if (!autoUpdateGoldenFiles) return;` und lief damit nur mit
+  `--update-goldens` — die Gegenprobe mit einem zu kleinen Ziel kam grün
+  zurück, weil die Prüfung gar nicht ausgeführt wurde. Messungen gehören
+  **vor** den Wächter; darunter steht nur das Bild. Jetzt meldet sie
+  „Actual: 34.0", sobald jemand das Ziel mitschrumpfen lässt.
 - Die **Punkte in der Tagesleiste** standen nur in Richtung A. Sie sind
   trotzdem hier, weil sie einen eigenen Diagnosepunkt erledigen: Fünfzehn
   gleiche Zellen sagten nicht, an welchem Tag überhaupt gespielt wird. Jetzt
@@ -1760,10 +1853,50 @@ wie Nachlässigkeit aussehen:
   deren einzige Farbe „hier läuft etwas" heißt, wäre ein grüner Klotz ein
   Signal ohne Anlass.
 
-**Nicht entworfen: die Spielminute.** `FixtureStatus` kennt nur `scheduled`,
-`live`, `finished` — der Feed liefert keine Minute. Ein „67.'" wäre ein
-Versprechen, das die Daten nicht halten; wer es will, klärt das zuerst mit
-Sportmonks.
+**Die Spielminute steht seit dem 12.09.2026 in der Zeile** — und die Notiz,
+die vorher hier stand, war schlicht falsch. Sie lautete: „der Feed liefert
+keine Minute". Er liefert sie sehr wohl, nur nicht dort, wo `state` steht,
+sondern in **`periods`**. Nachgemessen an Union gegen Schalke: Die 1. Halbzeit
+trägt `minutes: 47` (45 plus 2 Nachspielzeit), die 2. `minutes: 103` — also
+**die Zahl, die man anzeigt**, nicht die Nettospielzeit. Maßgeblich ist der
+Abschnitt mit `ticking: true`.
+
+Die Lehre daran ist nicht die Minute, sondern der Satz davor: „Der Feed liefert
+das nicht" ist eine Behauptung über eine fremde Schnittstelle, und die hält
+sich hier monatelang, ohne dass sie jemand nachprüft. Ein Aufruf mit
+`include=periods` hat zwei Minuten gedauert.
+
+- **Im Kopf der Spieldetails steht sie anstelle von „LIVE".** Dort war sie
+  zuerst gemeint (*„Die Minute soll bei den Spieldetails angezeigt werden"*),
+  und das Wort war ohnehin überflüssig: Es sagt dasselbe wie der pulsierende
+  Punkt daneben. **In der Pause steht „Halbzeit"**, nicht die letzte Zahl.
+- **Dafür braucht die Oberfläche den rohen Spielzustand** (`MatchDetail.phase`).
+  `FixtureStatus` faltet ihn auf drei Werte zusammen, und die Pause zählt dabei
+  als `live` — sie hat aber keine laufende Uhr. Ohne den Rohwert ließe sich
+  „die Uhr steht" nicht von „die Auskunft fehlt" unterscheiden, und im Kopf
+  stünde „LIVE" ohne Zahl.
+- **In den Listen steht sie nicht** (auf Ansage nach einem ersten Anlauf, der
+  sie auch dort zeigte: *„Auf dem Live-Tab sollen die Minuten nicht angezeigt
+  werden, sondern nur in der Spielübersicht."*). Der Live-Tab, der
+  Favoriten-Tab und die Vereinsseite tragen sie deshalb nicht — und fragen
+  `periods` gar nicht erst ab.
+- **Das ist nicht nur Kosmetik, es spart Nutzlast.** `periods` im Include des
+  Saison-Spielplans kostete gemessen 17 % (143 auf 167 KB je Seite) — für eine
+  Zahl, die nur die Spielübersicht anzeigt. Ohne den Include liefert
+  `spielminute()` `null`, und in der Liste ist das genau richtig.
+  Nachgemessen nach dem Zurückdrehen: Detail eines laufenden Spiels
+  `minute: 2`, Saison-Spielplan 306 Partien, **davon keine mit Minute**.
+- **Fehlt sie, steht dort nichts.** `Fixture.minute` ist `null`, solange keine
+  Uhr läuft — in der Halbzeitpause und bei Unterbrechungen. Eine 45 stehen zu
+  lassen wäre eine Uhr, die lügt; dass das Spiel läuft, sagen der pulsierende
+  Punkt und der rote Stand ohnehin.
+- **Kein zusätzlicher Request.** `periods` ist ein Include, kein eigener
+  Aufruf — und im Spieldetail geht es ohnehin um genau eine Partie.
+
+Gehalten von `test/spielminute_test.dart`, das die vier Zustände des Kopfes
+einzeln abfragt — Minute, „Halbzeit", „LIVE" als Rückfallebene und „beendet" —
+und von `test/live_vorschau_test.dart`, das in der Liste **keine** Minute
+zulässt.
 
 - **Die Spielzeile ist bewusst groß**: Wappen 22, Namen 15,5, Ergebnis 19.
   Die Namen **schrumpfen statt zu kappen** (`FittedBox`, dieselbe Regel wie
@@ -1775,6 +1908,14 @@ Angesehen wird der Tab über `test/live_vorschau_test.dart`: Auf dem Gerät
 zeigt er nur, was der Kalender gerade hergibt — an einem spielfreien Mittwoch
 nichts.
 
+**Die Liga-Übersicht ist seit dem 13.09.2026 der dritte Fall dieser Art.** Ihre
+Fixtures tragen feste Daten (12./13. September), aber ihren **Zustand** rechnet
+der Schirm gegen `DateTime.now()`: Am 08.09. stand im Duell-Kasten „VS ·
+Anpfiff Sa., 20:30", am 13.09. ein laufendes 0:0 — dieselbe Eingabe, 29 %
+Pixelunterschied, ohne dass jemand Code angefasst hätte. Sie steht jetzt
+ebenfalls hinter `autoUpdateGoldenFiles`, mit vier Messungen darüber
+(Zeilengruppen und Spieltagsblock).
+
 **Der Bildvergleich beider Vorschauen (Home und Live) läuft nur mit
 `--update-goldens`.** Beide Schirme benutzen intern `DateTime.now()` — der
 Live-Tab wählt beim Öffnen heute, die Kopfkarte schreibt das Datum ihres
@@ -1783,6 +1924,43 @@ rot**, und das ist genau einmal passiert. Ein Test, der täglich rot wird,
 bringt niemandem etwas außer der Gewohnheit, ihn zu übergehen. Die Bilder sind
 zum Ansehen da; was gehalten werden muss, steht als **Messung** daneben (etwa
 die Zeilenhöhe der Kartennamen) und läuft bei jedem `flutter test`.
+
+### Im Live-Tab steht nur die gemeldete Aufstellung
+
+Gemeldet am 12.09.2026: *„Im Live-Tab haben wir das Problem, dass die
+voraussichtlichen Aufstellungen, die im Fantasy angezeigt werden, schon dort
+bei den Partien angezeigt werden. Im Live-Tab soll aber die Regel gelten, dass
+dort nur die offiziellen Aufstellungen angezeigt werden, die circa 45 Minuten
+vor Anpfiff herausgegeben werden."*
+
+Die Spieldetailseite reichte durch, was Sportmonks unter `lineups` liefert —
+und das sind **Tage vorher schon Typ-11-Zeilen**. Gemessen am 12.09. um 11 Uhr
+für Dortmund gegen Paderborn (Anpfiff 13:30): 22 Zeilen Startelf, **null**
+Bank. Im Fantasy-Bereich steht dieselbe Vorhersage mit dem Vorbehalt
+„voraussichtlich" und der Herkunft darüber; hier stand sie ohne jeden
+Vorbehalt als Aufstellung da.
+
+**Erkannt wird die Meldung an der Bank, nicht an der Elf** — dieselbe Regel,
+die `sync-predicted-lineups` seit dem 02.09. benutzt und die dort schon einmal
+nachgebessert werden musste. Eine echte Aufstellung bringt die Ersatzbank mit
+(gemessen an Union gegen Schalke: 22 plus 18), eine Vorhersage kennt keine.
+Wer nur auf Typ 11 prüft, hält die Erwartung für eine Meldung.
+
+**Geprüft wird je Mannschaft, nicht je Partie.** Meldet ein Verein früher als
+der andere, soll seine Elf stehen und die Gegenseite leer bleiben — statt dass
+eine Vorhersage mit durchrutscht, weil der Nachbar schon gemeldet hat.
+
+**Der Client brauchte dafür keine Zeile.** Der Reiter „Aufstellung" hängt
+ohnehin an `if (d.lineups.isNotEmpty)`; fällt die Vorhersage weg, verschwindet
+er, statt etwas Falsches zu zeigen. Nachgemessen über die ausgespielte
+Function: das ungespielte Spiel liefert 0 Zeilen, das gespielte unverändert 40
+(22 Startelf, 18 Bank).
+
+**Fallstrick beim Nachmessen:** `kind` heißt `fixture`, nicht `detail`, und
+`fixtureId` will die **nackte** Sportmonks-Nummer ohne `sportmonks:`-Präfix —
+den streift der Client selbst ab. Mit Präfix antwortet Sportmonks mit 422, und
+die Function reicht das als `error` durch; im ersten Prüflauf sah das aus, als
+hätte der Filter auch die gemeldete Aufstellung geschluckt.
 
 ## Die untere Navileiste
 
@@ -2262,6 +2440,81 @@ erste Aufruf einer Edge Function kostet gemessen 3 Sekunden statt 0,3. Und
 `player_match_stats` wächst mit der Saison (357 KB nach zwei Spieltagen, hochgerechnet
 rund 6 MB im Mai) — die Abfrage holt `select()`, also alle Spalten. Beides ist
 der nächste Schritt, wenn es wieder klemmt.
+
+### Das Draft-Board: Farbe als Akzent, nicht als Fläche
+
+Gemeldet am 12.09.2026: *„Das Draftboard müssen wir noch mal redesignen, weil
+das viel zu bunt ist. Man blickt gar nicht durch."*
+
+Zu Recht. Das Board trug **drei** Flächenfarben gleichzeitig:
+
+| Was | vorher |
+|---|---|
+| Kopfzeile je Team | volle grüne Fläche, das ziehende Team rot |
+| gedraftete Zelle | volle Positionsfarbe (TW blau, ABW gelb, MF grün, ST rot) |
+| eigene Zelle | zusätzlich dunkler Rahmen |
+
+Bei achtzehn Teams über sechzehn Runden sind das über zweihundert gesättigte
+Farbklötze nebeneinander. **Was überall leuchtet, hebt nichts hervor** — und
+genau das ist in dieser App schon dreimal repariert worden: die vier
+Farbflächen der Ligakarten, die durchgehend grüne Tipp-Tabelle und die rote
+Wäsche der Live-Zeile. Das Board war die vierte Stelle, nur die größte.
+
+**Der erste Umbau schoss übers Ziel hinaus.** Er nahm den Zellen die Fläche
+ganz und setzte die Position als 6-Punkt-Punkt daneben — Antwort: *„Das sieht
+auch alles so gleich aus. Der Hintergrund darf farbig sein, aber nicht so
+stark knallig. Diese Punkte sehen nämlich beschissen aus."* Auch das stimmt,
+und es ist die lehrreichere Hälfte:
+
+**Hier ist die Fläche keine Dekoration, sie ist die Auskunft.** Ein Board
+überfliegt man — die Frage lautet „woraus besteht dieser Kader?", und die
+beantwortet eine Farbfläche in einem Blick, ein Punkt am Rand nicht. Anders
+als bei den Ligakarten, wo die Farbe nur den Modus ansagte und die Karte auch
+ohne sie ihren Inhalt trug.
+
+Die Lösung ist deshalb **nicht** „keine Farbe", sondern **gedämpfte Farbe**:
+
+- **Die Positionsfarbe bei 22 % über dem Kartengrund**, nicht voll. Die Zellen
+  bleiben auf einen Blick unterscheidbar, und die Namen stehen wieder in der
+  gewöhnlichen hellen Textfarbe statt in Schwarz auf Gelb.
+- **Flach, nicht als Hauch aus der Ecke.** In einem 92 mal 52 Punkte großen
+  Feld wäre ein Verlauf Matsch statt Gliederung — der Hauch gehört auf Karten,
+  nicht in Rasterzellen.
+- **Kartengrund und Haarlinie für jede Kopfkarte.** Die grüne Fläche je Team
+  ist ersatzlos weg; sie sagte nichts, was der Name nicht schon sagt.
+- **Wer gerade zieht, wird hell.** Nicht grün und nicht rot: Der Zug läuft
+  nicht, er wartet auf eine Entscheidung. Hell ist in dieser App überall das
+  Zeichen für „gewählt / das bist du" — Navileiste, `PillChip`,
+  Fantasy-Tabelle.
+- **Die eigene Spalte legt Hell über ihre Positionsfarbe**, statt einen Rahmen
+  zu tragen — das wirkt über allen vier Tönen gleich.
+
+**Und die Zelle liest sich jetzt wie eine Spielerkarte** (auf Ansage: „die
+Picknummer etwas kleiner und ganz oben links in die Ecke, darunter den
+Vornamen, dann unten den Nachnamen"). Drei Zeilen statt zwei:
+
+| Zeile | Inhalt | Größe |
+|---|---|---|
+| oben links | Pick-Code, daneben „AUTO" | 9 (`mikro`) |
+| Mitte | Vorname | 11 (`klein`) |
+| unten | **Nachname** | 14 (`koerper`), fett |
+
+Die Nummer ordnet die Zelle ins Raster ein, der Name ist der Inhalt — und von
+einem Namen trägt der Nachname die Erkennung. Der Pick-Code in `mikro` ist
+dabei kein Ausreißer: Die Schriftleiter nennt ihn namentlich als einen der
+Fälle, für die es diese Stufe gibt.
+
+**Beide Namenszeilen schrumpfen, statt zu kappen** (`FittedBox`) — dieselbe
+Regel wie im Live-Tab und auf den Ligakarten. In 80 Punkten Breite wäre
+„Schlotterb…" keine Auskunft. Die Zeilenhöhe wächst dafür von 52 auf 60.
+
+**Die Vorschau hat dafür echte Namen bekommen.** Mit „Spieler 1" wäre von der
+Aufteilung nichts zu sehen gewesen; jetzt stehen dort bewusst ein langer
+Nachname (Schlotterbeck) und ein zweiteiliger (Sané), damit auch das
+Schrumpfen im Bild steht.
+
+`_cBoardGreen` und `_cBoardInk` sind damit weg; das Rot bleibt nur dort, wo es
+etwas meldet (Uhr abgelaufen, Auto-Pick-Warnung).
 
 ### Das Draft-Board bleibt erreichbar
 
@@ -3141,6 +3394,121 @@ und aus gutem Grund: Sie steht in Trade-Angeboten und Transfers **ohne**
 Positionsüberschrift darüber, und für den, der Farben nicht unterscheidet, ist
 das Wort dort die einzige Auskunft.
 
+### Minuspunkte stehen rot da
+
+Auf Ansage: *„Wenn Spieler Minuspunkte machen, die Zahl bitte rot anzeigen."*
+Ein Minuszeichen vor einer sonst gleich aussehenden Zahl überliest man in
+einer Spalte aus zwanzig Zeilen; die Farbe sieht man, bevor man liest. Die
+Aufschlüsselung benutzt dieselbe Auszeichnung für ihre Abzüge schon lange.
+
+`Punktzahl` hat dafür ein `negativRot` — und **bewusst keinen Standard**. Rot
+heißt in dieser App an zwei Stellen etwas anderes: der laufende Spielstand im
+Live-Tab und die führende Seite im Duell-Kopf tragen es als „läuft gerade".
+Die Trennlinie verläuft deshalb zwischen **Spieler** und **Mannschaft**:
+
+| Zahl | rot bei Minus? |
+|---|---|
+| Punktebox einer Zeile im MatchUp | ja |
+| Bankspieler im MatchUp | ja |
+| Spieler in der Free Agency | ja |
+| Spieltag und Bilanz im Spielerprofil | ja |
+| Summe im Duell-Kopf und im Detailkopf | nein |
+| Stand je Positionsblock | nein |
+
+Die beiden letzten sind Mannschaftssummen und tragen ihre Farbe für „führt".
+Drei Bedeutungen an einer Zahl wären zwei zu viel.
+
+Gehalten von `test/matchup_punktebox_test.dart`: Die Minuszahlen tragen
+`colorScheme.error`, **die positiven nicht** — eine Farbe, die alle Zahlen
+trifft, hebt nichts hervor, derselbe Fehler wie die rote Wäsche im Live-Tab.
+Der Test sucht dafür nur innerhalb von `Punktzahl`; ein Filter über den ganzen
+Baum träfe den Blockstand mit. Gegengeprüft: Ohne das Flag fällt er sofort.
+
+### Der Vergleich steht im Blockkopf, nicht in der Zeile
+
+Gefragt: *„Warum sind bei den MatchUps eigentlich manchmal die Boxen grün
+umrandet?"* — Antwort: Die punktbessere der beiden gegenübergestellten Zellen
+trug einen grünen Rahmen, „führt dieses Duell". Darauf die Einordnung des
+Nutzers, und sie trifft: *„Das macht wenig Sinn, wenn verschiedene Anzahl an
+jeweiligen Positionen existieren."*
+
+**Die Paarung entsteht über den Index innerhalb der Position, und der ist
+keine Rangfolge.** Er kommt aus der Reihenfolge, in der die Elf gespeichert
+wurde — der zweite Verteidiger ist nicht der zweitbeste. Spielt die eine Seite
+vier Verteidiger und die andere drei, wird zusätzlich willkürlich gepaart, und
+der vierte hat gar kein Gegenüber. Eine Hervorhebung auf dieser Grundlage
+behauptet einen Wettbewerb, den es nicht gibt.
+
+**Die Summe je Positionsblock ist dagegen unabhängig von der Anzahl
+definiert** und beantwortet dieselbe Frage besser: Wer gewinnt die Abwehr? Sie
+steht jetzt rechts im Kopf des Blocks (`_BlockStand`), die führende Seite in
+Grün — „ein führendes Team" ist die eine Verwendung, die die Farbregel diesem
+Signal ausdrücklich zugesteht.
+
+Drei Feinheiten:
+
+- **Verglichen wird nur, wo auf beiden Seiten gespielt wurde.** Sonst führte
+  die Seite, die zufällig früher angepfiffen hat.
+- **Ein Strich statt einer Null**, solange niemand angepfiffen hat — dieselbe
+  Unterscheidung wie in der Punktebox der Zeile.
+- **Die Zeile trägt jetzt die gewöhnliche Haarlinie.** Selbst als Signal
+  gehörte die Farbe in die Fläche und nicht an den Rand.
+
+**Und der Wächter hatte ein zweites Loch.** `kartenkanten_test.dart`
+übersprang jede Stelle, in deren Umfeld `dividerColor` oder `outlineVariant`
+vorkommt — bei „grün, wenn führend, sonst `outlineVariant`" machte der
+neutrale Zweig die ganze Stelle unsichtbar. Er prüft jetzt zusätzlich, ob in
+der Farbe eine Bedingung steckt. Damit kamen drei weitere Stellen ans Licht,
+alle drei echte Zustände und namentlich eingetragen: die ausgewählte
+`OptionTile`, die Ligakachel mit rotem Zähler und die Hülle der
+Trade-Angebotskarte. Die letzte trägt Hauch **und** getönte Kante; die Kante
+steht zur Regel quer und gehört beim nächsten Anfassen weg.
+
+Angesehen über `test/matchup_punktebox_test.dart`
+(`matchup_positionsstand.png`), mit Messungen daneben: vier Blockstände bei
+ungleichen Summen. Aufgenommen wird der `Scaffold`, nicht der Teilbaum —
+`MatchupLineups` malt keinen Grund, und ein weißes Bild ist als Urteil
+wertlos.
+
+### Die Punktebox öffnet die Aufschlüsselung, die Karte das Profil
+
+Gewünscht: *„Im MatchUp-Tab beim Drücken auf das Kästchen, wo die Punkte
+stehen, soll auch die Aufschlüsselung angezeigt werden — und wenn man auf die
+restliche Spielerkarte kommt, landet man wie gewohnt auf dem Spielerprofil."*
+
+Die Zeile hat damit **zwei Ziele mit sichtbarer Grenze**: Die Punktebox ist ein
+eigener Kasten, und die Frage „woher kommen die Punkte?" stellt sich beim
+Vergleich zweier Aufstellungen eher als im Profil, wo die Aufschlüsselung
+bisher allein zu Hause war.
+
+**Technisch gewinnt das innere `GestureDetector` gegen das umgebende
+`InkWell`** — die Karte behält ihren Weg ins Profil, ohne dass etwas
+umgebaut werden musste. Zwei Dinge waren daran zu entscheiden:
+
+- **Ohne Statistikzeile nimmt die Box den Tipp nicht an**, sondern reicht ihn
+  an die Karte durch. Vor dem Anpfiff steht dort ohnehin die Partie und keine
+  Punktzahl; ein leeres Blatt wäre schlechter als kein Blatt.
+- **Die Rohdaten kommen vom Aufrufer**, nicht aus einem eigenen Provider
+  (`MatchupLineups.stats`) — aus demselben Grund, aus dem `computeSideData`
+  sie bekommt: Die Zahl in der Box und die Aufschlüsselung dahinter müssen
+  dieselbe Rechnung zeigen. Zwei Quellen dafür wären zwei Wahrheiten.
+
+**Die Aufschlüsselung lag privat im Spielerprofil** und war für den
+MatchUp-Tab unerreichbar. Sie steht jetzt als `PunkteAufschluesselung` in
+`ui/punkte_aufschluesselung.dart`, beide Schirme öffnen sie über
+`zeigePunkteAufschluesselung`. Eine zweite Fassung daneben wäre die nächste
+Stelle, an der zwei Darstellungen derselben Rechnung auseinanderlaufen.
+
+**Die Bank bleibt unangetastet.** Dort steht die Punktzahl als nackte Zahl,
+nicht in einem Kasten — ein Tippziel ohne sichtbare Grenze wäre genau das
+Ratespiel, das die Trennung hier vermeidet.
+
+Gehalten von `test/matchup_punktebox_test.dart`: Box öffnet die
+Aufschlüsselung und **nicht** das Profil, Karte öffnet das Profil, ohne
+Statistik gibt es keinen Knopf. Gegengeprüft — ohne die Trennung fällt der
+erste Fall sofort. Ein Golden hätte das nicht gezeigt: Er sagt, wie es aussah,
+nicht wohin ein Tipp führt.
+
 ### Die Bank steht immer da
 
 Gemeldet: *„Die Bank beim MatchUp soll nicht durch so einen Dropdown angezeigt
@@ -3255,6 +3623,97 @@ Woche.
 Angesehen über `test/fantasy_tabelle_vorschau_test.dart`. Wichtig darin: **ohne
 Fixtures kein Rückblick** — welche Spieltage abgepfiffen sind, entscheidet der
 Spielplan, und mit leerer Liste fehlt der halbe Schirm.
+
+#### Das Podest steht oben, das Bracket unten
+
+Auf Ansage: *„Im Tabellentab einmal das Playoff-Bracket nach unten packen und
+dann Platz 1, 2, 3 größer machen als den Rest, sodass 1 größer als 2, größer
+als 3, und dann kommen die ganzen anderen."*
+
+**Der Bracket-Knopf war die erste Zeile des Reiters.** Er stand über der
+Kapitelmarke „Tabelle" und nahm der Tabelle damit ihren Anfang — dabei ist er
+der Ausblick aufs Saisonende und nicht die Auskunft, wegen der man den Reiter
+öffnet. Er sitzt jetzt hinter dem Rückblick, unter einer eigenen Marke
+**Playoffs**; ohne sie schwebte er dort ohne Bezug.
+
+**Die Rangfolge trägt jetzt die Größe, nicht nur die Ziffer.** Vier Stufen
+(1 · 2 · 3 · alle anderen) in `_Podest.fuer`, und größer wird nur, was zum
+Team gehört:
+
+| | Rang 1 | Rang 2 | Rang 3 | ab 4 |
+|---|---|---|---|---|
+| Zeilenpolster | 18 | 15 | 13 | 11 |
+| Rang-Badge | 38 | 33 | 29 | 26 |
+| Avatar | 44 | 37 | 32 | 28 |
+| Name | 24 (`h1`) | 20 (`h2`) | 18 (`h3`) | 16 (`titel`) |
+
+Drei Entscheidungen darin:
+
+- **Die Zahlenspalten wachsen nicht mit.** Bilanz und Punkte stehen auf festen
+  Breiten, damit sie über alle Zeilen fluchten; eine Tabelle, deren Spalten je
+  Zeile eine andere Größe haben, ist keine mehr. Was das Podest trägt, sind
+  Rang, Bild und Name.
+- **Die Schriftgrade kommen aus der Leiter.** Zwischen `titel` und `h1` liegen
+  genau zwei Stufen — mehr braucht ein Podest nicht, und ein Zwischenwert wäre
+  ohnehin am Wächter aus `typografie_test.dart` gescheitert.
+- **Das Badge ist links in einer festen Spalte** (`rangBreite` von 30 auf 38).
+  Wüchse die Spalte mit, schöben Bild und Name der obersten Zeile sich gegen
+  die übrigen, und der linke Rand der Tabelle wäre ausgefranst.
+
+**Der Name schrumpft, er kappt nicht** (`FittedBox`, dieselbe Regel wie im
+Live-Tab). Auf Platz 1 stehen 24 Punkt in einer Spalte, die auf einem
+402 Punkte breiten Schirm rund 140 hergibt — ein langer Name stünde sonst als
+„Spitzenr…" ausgerechnet dort, wo man ihn am ehesten liest. Der Preis: Ein
+sehr langer Name auf Platz 1 kann kleiner gerendert werden als ein kurzer auf
+Platz 2. Badge und Avatar tragen die Rangfolge dann allein.
+
+**Die Vorschau hat dafür Playoffs bekommen** (`playoffTeams: 4`). Ohne sie ist
+`hasPlayoffs` falsch, der Knopf erscheint gar nicht — und genau seine neue
+Stelle wäre nicht im Bild.
+
+**Die Größe allein grenzte zu wenig ab** (Rückfrage: *„Kann man das noch
+irgendwie extra abgrenzen, sodass z. B. ganz farbig ist der Platz 1, 2, 3?"*).
+Die drei tragen jetzt ihre Medaillenfarbe **als Ring um den Avatar und als
+3 Punkte breite Kante am linken Rand**, beides in voller Sättigung. Ab Platz 4
+gibt es nichts davon.
+
+**Zwei getönte Flächen davor sind gescheitert, und der Grund ist derselbe.**
+Erst bekam jede der drei Zeilen ihren eigenen Farbstreifen — zurück kam *„das
+sieht ein bisschen abgehackt aus"*, und das stimmte gleich doppelt: Drei
+Farbblöcke untereinander treffen sich an harten Kanten, und weil jeder für
+sich von links nach rechts verlief, lag in jeder Zeile zusätzlich eine
+senkrechte Naht. Dann lief **ein** Verlauf über alle drei durch, von Gold über
+Silber und Bronze in den Kartengrund — Urteil: *„Das sieht noch schlechter
+aus."* Auch richtig.
+
+**Die Lehre: Über nahezu Schwarz wird jede Medaillenfarbe als Fläche
+matschig.** Gold, Silber und Bronze bei 10 bis 30 Prozent Deckung laufen alle
+auf denselben braungrauen Schleier zusammen; was sie unterscheidbar macht, ist
+ihre Sättigung, und die ist genau das, was eine Tönung wegnimmt. Als **scharfe
+Kante** bleibt Gold Gold. Dieselbe Form trägt in dieser App auch die
+Kapitelmarke — der farbige Strich ist hier das eingeführte Mittel, die getönte
+Fläche nicht.
+
+**Vier Varianten lagen als Bild nebeneinander** (nur Größe · Kante · Ring ·
+beides), bevor entschieden wurde. Nach zwei Fehlgriffen war das der billigere
+Weg als ein dritter Versuch — und der Vergleich hat nebenbei einen Fehler
+gezeigt, den man im Einzelbild übersieht (siehe unten).
+
+**Die Kante liegt im `Stack` über der Zeile**, nicht als eigene Spalte davor.
+Sonst schöbe sie den Inhalt der ersten drei Zeilen um drei Punkte gegen die
+übrigen — genau der Grund, aus dem der 4-px-Streifen im Live-Tab wieder
+geflogen ist.
+
+**Der Ring wächst nach außen, nicht nach innen.** Der erste Versuch schnitt
+das Bild um die Ringstärke kleiner, damit der belegte Platz gleich blieb —
+damit war das Gesicht auf Platz 3 (24) kleiner als auf Platz 4 (28), und die
+Leiter stand für einen Moment auf dem Kopf. Dass die Namen dadurch versetzt
+anfangen, tun sie ohnehin: Die Avatare sind je Rang verschieden groß.
+
+**Und die eigene Zeile ist dabei von Grün auf Hell umgestellt.** Sie zog
+`scheme.primary` bei 10 % — Grün heißt in dieser App „hier läuft etwas", und
+in einer Tabellenzeile läuft nichts. Hell ist ohnehin das Zeichen, mit dem
+hier überall „gewählt / das bist du" gesagt wird.
 
 ### Das Wappen führt zum Spieler, nicht zum Verein
 
@@ -3523,6 +3982,80 @@ den es die meiste Zeit der Woche gibt; ohne eigenes Bild fiele genau der durch.
 Die Vorschau zeigt eine **vollständige** 4-2-3-1: An vier Spielern lässt sich
 nicht beurteilen, ob eine Formation steht. Gerechnet wird in
 `test/aufstellungs_prognose_test.dart`.
+
+### Die Elf der Vorwoche schließt die Lücke ohne Prognose
+
+Gemeldet: *„Kickbase hat schon nach 24 Stunden die voraussichtlichen
+Aufstellungen für den nächsten Spieltag. Wie bekommen wir die schneller, weil
+es stört, dass dann 3, 4 Tage keine Aufstellung zu sehen ist?"*
+
+**Die gekaufte Quelle lässt sich nicht beschleunigen.** Nachgemessen am
+08.09.2026, drei bis fünf Tage vor dem 3. Spieltag, direkt gegen Sportmonks:
+für **alle neun** Partien null Einträge, weder Prognose noch Meldung. Das
+Vorlauffenster (`VORLAUF_TAGE`) hochzudrehen kauft nur leere Antworten.
+
+**Die banalste Regel ist genauso gut wie die gekaufte** — das stand schon
+gemessen in dieser Datei, über die Saison 2025/26 und 306 Spiele:
+
+| Verfahren | Treffer |
+|---|---|
+| Sportmonks-Prognose | 77,0 % |
+| „dieselbe Elf wie letzte Woche" | 77,1 % |
+
+Die Fortschreibung ist also kein Notbehelf mit schlechteren Zahlen, sondern
+dieselbe Trefferquote — nur Tage früher verfügbar. `logic/fortschreibung.dart`
+nimmt die zuletzt **gemeldete** Elf und tauscht die Ausfälle.
+
+**Der nominelle Ersatz ist der Spieler mit den meisten Saisonminuten aus
+demselben Positionsraum**, der frei ist. Er erbt den Platz im Raster, damit
+die Formation stehen bleibt; ohne das fiele die Elf beim ersten Ausfall in
+eine einzige Reihe zusammen. Fünf Regeln halten das ehrlich:
+
+- **Nur aus einer gemeldeten Elf.** Eine Prognose fortzuschreiben hieße, eine
+  Schätzung als Tatsache auszugeben.
+- **Abgewanderte zählen wie Ausfälle**, ohne in der Ausfallliste zu stehen —
+  sie stehen für keinen Verein mehr auf dem Platz (0117). Im Test rückt der
+  Abgewanderte auch mit den meisten Minuten nicht nach.
+- **Niemand rückt auf zwei Plätze zugleich.** Wer schon in der Elf steht oder
+  eben nachgerückt ist, ist vergeben.
+- **Ohne freien Ersatz bleibt der Platz sichtbar leer** — mit Fragezeichen und
+  „frei". Lieber sichtbar leer als ein Stürmer im Tor, dieselbe Regel wie beim
+  unbesetzten Torwart im Duell (0120).
+- **Die Bank der Vorwoche wird nicht mitgeschleppt.** Sie war eine Aussage
+  über ein gelaufenes Spiel.
+
+**Und sie gibt sich nie als Prognose aus.** Über dem Feld steht eine Zeile
+„Elf des N. Spieltags" samt Grund und der Zahl der getauschten Plätze,
+das Urteil heißt „Stand am N. Spieltag in der Startelf" statt
+„voraussichtlich", und jeder Ersatz trägt ein Tauschzeichen am Trikot. Elf
+Trikots auf einem Feld sehen sonst aus wie eine Aufstellung, egal woher sie
+kommen — genau die Sorte stiller Behauptung, gegen die diese Datei an einem
+Dutzend Stellen argumentiert.
+
+**Der Hinweis trägt dabei keine Farbe** (auf Ansage: *„Das reicht, wenn das
+schwarz ist, mit weißer Schrift."*). Er stand zuerst in Gold — und das war
+derselbe Fehler, den diese Datei an anderen Stellen schon beschreibt: Farbe
+trägt in dieser App, was etwas **will**. Eine Herkunftsangabe will nichts, sie
+sagt nur, woher die Elf kommt. Kartengrund, Haarlinie, weiße Überschrift.
+Gold bleibt, wo es hingehört: am Tauschzeichen des Ersatzes, denn das ist eine
+Annahme über einen einzelnen Spieler.
+
+**Der Sync musste dafür sein Fenster öffnen.** Er filterte auf
+`status = 'scheduled'` und ließ sich damit etwa eine Stunde Zeit, die
+gemeldete Aufstellung einzusammeln — sie steht rund eine Stunde vor Anpfiff,
+danach ist das Spiel `live`. Verpasst er das Fenster, ist die Elf dieses
+Spiels für immer weg. Gemessen: Spieltag 1 steht mit **2 von 18** Vereinen in
+`predicted_lineups`, Spieltag 2 vollständig. Solange das nur die Anzeige eines
+gelaufenen Spiels betraf, war es ein Schönheitsfehler; als Grundlage der
+Fortschreibung ist es die Grundlage selbst. Jetzt gilt ein Nachlauf von 48
+Stunden ohne Status-Filter — Kosten: null zusätzliche Requests, der
+multi-Endpunkt nimmt 25 Spiele für einen.
+
+Angesehen über `test/spielerprofil_vorschau_test.dart`
+(`spielerprofil_vorwoche.png`), und zwar mit **Zusicherungen neben dem Bild**:
+Der Ausgefallene darf nicht mehr auf dem Feld stehen, sein Ersatz schon, und
+der Hinweis muss sagen, woher die Elf kommt. Ein Golden zeigt, wie es aussah,
+nicht dass die Regel greift. Gerechnet wird in `test/fortschreibung_test.dart`.
 
 ### „Der Waiver funktioniert nicht" — der Drop ließ ein Phantom in der Elf
 
@@ -5395,6 +5928,59 @@ bei jedem Durchlauf: dass Angebote und Anträge auf der eigenen Seite landen,
 dass der Draft aus der Liga-Liste fällt, und dass Zu- **und** Abgang darin
 vorkommen.
 
+### Tipps nachtragen: ein Speichern je Spieltag (0126)
+
+Gemeldet am 13.09.2026: *„Wenn man im Tippspiel nachträgliche Tipps nachträgt,
+muss man jedes einzelne speichern können. Das bitte so ändern, dass alle
+nachgetragenen Tipps pro Spieltag dann einmal nur gespeichert werden müssen."*
+
+Der Nachtrag-Schirm trug je Zeile einen eigenen Speichern-Knopf — bei einem
+Bundesliga-Spieltag **neun Knöpfe und neun Aufrufe**. Die Umständlichkeit war
+dabei nur die Hälfte:
+
+- **Neun Einzelaufrufe können halb durchlaufen.** Scheitert der fünfte, stehen
+  vier Tipps und fünf fehlen — und niemand sieht den Spieltag als halb
+  nachgetragen an.
+- **Jeder Aufruf prüfte dieselben drei Dinge neu**: Ersteller? Mitglied?
+  Spiel gespiegelt? Die ersten beiden hängen an der Runde, nicht am Spiel.
+
+`tip_admin_set_tips` nimmt deshalb ein JSON-Array und schreibt **alles oder
+nichts**; die Prüfungen stehen vor der Schleife. `tip_admin_set_tip` bleibt
+unverändert daneben — ein einzelner Nachtrag geht weiter, und eine ältere
+App-Version ruft ihn noch.
+
+**Ein unbekanntes Spiel bricht den ganzen Block ab**, statt übersprungen zu
+werden. Sonst stünde am Ende „gespeichert" und ein Tipp fehlte trotzdem —
+genau die Sorte stiller Teilerfolg, gegen die diese Datei an einem Dutzend
+Stellen argumentiert. Nachgemessen mit Rollback: Zwei Tipps, der zweite auf
+eine erfundene Fixture-ID, Ergebnis `Spiel gibtesnicht noch nicht
+gespiegelt` — und **null** Zeilen in `tips`.
+
+**Am Client sind die Eingabefelder nach oben gewandert.** Solange jede Zeile
+ihren eigenen Knopf trug, durfte sie ihre Controller selbst halten; ein Knopf
+für den Spieltag muss alle neun Felder gleichzeitig lesen. Ihr Schlüssel trägt
+Mitglied **und** Spiel — sonst schriebe ein stehen gebliebener Controller die
+Zahlen des vorigen Mitglieds in den nächsten Nachtrag.
+
+**Und die Frage „was geht überhaupt an den Server?" ist jetzt eine
+Entscheidung** (`logic/nachtrag.dart`, rein und getestet), wo sie vorher
+trivial war:
+
+| Zeile | was passiert |
+|---|---|
+| beide Felder leer | übersprungen — leer heißt „nicht getippt", nicht 0:0 |
+| **ein** Feld gefüllt | **Fehler**, nichts wird gespeichert |
+| unverändert zum gespeicherten Tipp | übersprungen, zählt aber im Bericht |
+| gefüllt und geändert | geht mit |
+
+Die halbe Zeile ist der Grund für die ganze Prüfung: Wer neun Spiele tippt und
+bei einem die zweite Zahl vergisst, bekäme sonst ein stilles „gespeichert" und
+einen fehlenden Tipp.
+
+Der Knopf sitzt unten als eigene Leiste, nicht am Ende der Liste — dieselbe
+Stelle wie in allen Formularen dieser App. Bei neun Spielen ist das Ende der
+Liste weit weg.
+
 ### Der Chat meldet keine Kaderbewegungen mehr (0106)
 
 Gewünscht, sobald der Transfers-Bereich stand: *„Die Trade Nachrichten und
@@ -5788,8 +6374,26 @@ plus farbige Kante bei 30–50 %.**
 
 Gehalten von `test/kartenkanten_test.dart`. Er liest `lib/` und sucht
 **kartenähnliche** Ränder mit Farbe: ein `Border.all`, dessen Farbe weder
-`dividerColor` noch `outlineVariant` ist, in einer Dekoration ab Radius 14 —
-kleinere Elemente fallen heraus. Jede verbleibende Stelle steht dort
+`dividerColor` noch `outlineVariant` ist, in einer Dekoration ab Radius 12 —
+kleinere Elemente fallen heraus.
+
+**Die Schwelle stand auf 14 und war damit zu grob** (gemeldet am 08.09.2026:
+*„einmal die Umrandung des Kastens in gelb, obwohl wir eine Regel festgelegt
+hatten … auch die kleinen Boxen auf der Übersicht"*). Radius 12 über die volle
+Breite ist eine Karte, keine Pille — der Wächter hat diese Klasse nie gesehen,
+und entsprechend hatte sich das verbotene Muster wieder eingenistet: **getönte
+Fläche bei 10 % plus farbige Kante bei 45 bis 55 %**, an sechs Stellen.
+Behoben an vier davon (Fortschreibungs-Hinweis und Urteil im
+Aufstellungsreiter, Ausfallzeile im Profil, Liga-Einladung im Chat), die
+Symbolkachel der Liga-Übersicht hat ihren Rand ersatzlos verloren — ihre
+getönte Fläche sagte dasselbe schon.
+
+**Und die Dekoration steht jetzt einmal da**, als `kartenDeko()` neben
+`Karte` (`app/widgets/karte.dart`). Sie war in der `Karte` eingebaut und damit
+für jeden Kasten unerreichbar, der keine `Karte` sein kann — eine
+Hinweiszeile mit eigenem Polster, ein Urteil, das im ruhigen Fall gar keine
+Fläche trägt. Genau die haben die Regel dann jedes Mal neu und falsch
+nachgebaut. Jede verbleibende Stelle steht dort
 **namentlich mit Anzahl und Grund**; kommt eine dazu, wird der Test rot, und
 wer sie einträgt, muss sagen warum. Verschwindet eine, fällt das auch auf,
 sonst wächst die Liste und niemand räumt sie. Dasselbe Muster wie bei
