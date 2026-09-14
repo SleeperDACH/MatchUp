@@ -8,6 +8,7 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
 import 'player_profile_sheet.dart';
+import 'punkte_aufschluesselung.dart';
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../logic/naechstes_spiel.dart';
 import '../../../core/models/models.dart';
@@ -149,6 +150,7 @@ class MatchupLineups extends ConsumerWidget {
     required this.awayId,
     required this.homeName,
     this.awayName,
+    this.stats = const {},
   });
 
   final FantasyLeague league;
@@ -161,6 +163,16 @@ class MatchupLineups extends ConsumerWidget {
   final String? awayId;
   final String homeName;
   final String? awayName;
+
+  /// **Die Roh-Statistik dieses Spieltags** — je Spieler-ID.
+  ///
+  /// Sie kommt vom Aufrufer und nicht aus einem eigenen Provider, und zwar
+  /// aus demselben Grund, aus dem [computeSideData] sie bekommt: Die Zahl in
+  /// der Punktebox und die Aufschlüsselung dahinter müssen **dieselbe**
+  /// Rechnung zeigen. Zwei Quellen dafür wären zwei Wahrheiten.
+  ///
+  /// Leer heißt: keine Aufschlüsselung, die Box bleibt eine Anzeige.
+  final Map<String, PlayerMatchStats> stats;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -188,6 +200,25 @@ class MatchupLineups extends ConsumerWidget {
       isMine: mine,
     );
 
+    // **Die Punktebox öffnet die Aufschlüsselung, die Karte das Profil.**
+    // Zwei Ziele in einer Zeile, aber mit sichtbarer Grenze: Die Box ist ein
+    // eigener Kasten, und die Frage „woher kommen die Punkte?" stellt sich
+    // beim Vergleich zweier Aufstellungen eher als im Profil.
+    //
+    // `null` heißt: kein Ziel. Ohne Statistikzeile gibt es nichts
+    // aufzuschlüsseln, und dann soll die Box den Tipp an die Karte
+    // durchreichen, statt ein leeres Blatt zu öffnen.
+    void Function()? openBreakdown(FantasyPlayer p) {
+      final st = stats[p.id];
+      if (st == null || !st.hasContribution) return null;
+      return () => zeigePunkteAufschluesselung(
+            context,
+            titel: '${p.name} · $runde. Spieltag',
+            score: scorePlayerDetailed(st, p.position, league.scoring),
+            gespielt: true,
+          );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -208,6 +239,7 @@ class MatchupLineups extends ConsumerWidget {
             spiele: spiele,
             angepfiffen: angepfiffen,
             onTap: openPlayer,
+            onPunkte: openBreakdown,
           ),
         const SizedBox(height: 12),
         // **Keine Bank über nichts.** Steht auf keiner Seite jemand auf der
@@ -242,6 +274,7 @@ class MatchupLineups extends ConsumerWidget {
     required List<Fixture> spiele,
     required bool Function(String verein) angepfiffen,
     required void Function(FantasyPlayer, bool) onTap,
+    required void Function()? Function(FantasyPlayer) onPunkte,
   }) {
     final hs = home.startersAt(pos);
     final as = away?.startersAt(pos) ?? const <FantasyPlayer>[];
@@ -285,9 +318,28 @@ class MatchupLineups extends ConsumerWidget {
           awayMine: awayMine,
           clubIcons: clubIcons,
           onTap: onTap,
+          onPunkte: onPunkte,
         ),
       );
     }
+    // **Der Vergleich steht im Kopf, nicht in der Zeile.**
+    //
+    // Vorher trug die punktbessere der beiden gegenübergestellten Zellen einen
+    // grünen Rahmen — „führt dieses Duell". Gemeldet, und zu Recht: *„Das
+    // macht wenig Sinn, wenn verschiedene Anzahl an jeweiligen Positionen
+    // existieren."* Die Paarung entsteht über den **Index innerhalb der
+    // Position**, und der ist keine Rangfolge: Er kommt aus der Reihenfolge,
+    // in der die Elf gespeichert wurde. Spielt die eine Seite mit vier
+    // Verteidigern und die andere mit dreien, wird zusätzlich willkürlich
+    // gepaart, und der vierte hat gar kein Gegenüber.
+    //
+    // Die **Summe je Positionsblock** ist dagegen unabhängig von der Anzahl
+    // definiert und beantwortet dieselbe Frage besser: Wer gewinnt die
+    // Abwehr? Grün trägt sie, weil „ein führendes Team" in dieser App eine
+    // erlaubte Verwendung des Signals ist — hier führt wirklich jemand.
+    final hSum = _summe(hs, home.points, angepfiffen);
+    final aSum = away == null ? null : _summe(as, away.points, angepfiffen);
+
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -302,13 +354,17 @@ class MatchupLineups extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 6),
-            Text(
-              pos.label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: positionColor(pos),
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Text(
+                pos.label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: positionColor(pos),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
+            if (hSum != null || aSum != null)
+              _BlockStand(heim: hSum, gast: aSum),
           ],
         ),
       ),
@@ -317,8 +373,81 @@ class MatchupLineups extends ConsumerWidget {
   }
 }
 
+/// Die Punktesumme eines Positionsblocks — `null`, wenn dort noch niemand
+/// angepfiffen hat.
+///
+/// **`null` statt 0**, denn beides sähe sonst gleich aus: „hat gespielt und
+/// nichts geholt" ist etwas anderes als „spielt erst noch". Dieselbe
+/// Unterscheidung wie in der Punktebox der Zeile.
+double? _summe(
+  List<FantasyPlayer> spieler,
+  Map<String, double> punkte,
+  bool Function(String verein) angepfiffen,
+) {
+  var gab = false;
+  var summe = 0.0;
+  for (final p in spieler) {
+    if (!angepfiffen(p.club)) continue;
+    gab = true;
+    summe += punkte[p.id] ?? 0;
+  }
+  return gab ? summe : null;
+}
+
+/// „34 : 21" im Kopf eines Positionsblocks, die führende Seite in Grün.
+///
+/// Steht rechts neben dem Positionsnamen und ersetzt die frühere
+/// Hervorhebung je Zeile. Ein Strich heißt „hier hat noch niemand gespielt" —
+/// eine 0 wäre an der Stelle eine Behauptung.
+class _BlockStand extends StatelessWidget {
+  const _BlockStand({required this.heim, required this.gast});
+
+  final double? heim;
+  final double? gast;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Verglichen wird nur, wo auf **beiden** Seiten gespielt wurde. Sonst
+    // führte die Seite, die zufällig früher angepfiffen hat.
+    final vergleichbar = heim != null && gast != null;
+    final heimFuehrt = vergleichbar && heim! > gast!;
+    final gastFuehrt = vergleichbar && gast! > heim!;
+
+    TextStyle stil(bool fuehrt) => TextStyle(
+          fontSize: 13,
+          fontWeight: fuehrt ? FontWeight.w800 : FontWeight.w600,
+          color: fuehrt ? scheme.primary : scheme.onSurfaceVariant,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        );
+
+    Widget zahl(double? wert, bool fuehrt) => Text(
+          wert == null ? '–' : formatPoints(wert),
+          style: stil(fuehrt),
+        );
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        zahl(heim, heimFuehrt),
+        if (gast != null || heim != null) ...[
+          Text(' : ',
+              style: TextStyle(
+                  fontSize: 13, color: scheme.onSurfaceVariant)),
+          zahl(gast, gastFuehrt),
+        ],
+      ],
+    );
+  }
+}
+
 /// Eine Vergleichszeile: links Heim-Spieler, rechts Gast-Spieler, die Punkte
-/// jeweils zur Mitte hin. Der punktbessere wird hervorgehoben.
+/// jeweils zur Mitte hin.
+///
+/// **Kein Sieger je Zeile.** Die Paarung entsteht über den Index innerhalb
+/// der Position und ist keine Rangfolge; bei verschiedenen Formationen wird
+/// zusätzlich willkürlich gepaart. Verglichen wird deshalb im Kopf des
+/// Positionsblocks, wo die Summe unabhängig von der Anzahl gilt.
 class _PlayerRow extends StatelessWidget {
   const _PlayerRow({
     required this.home,
@@ -333,6 +462,7 @@ class _PlayerRow extends StatelessWidget {
     required this.awayMine,
     required this.clubIcons,
     required this.onTap,
+    required this.onPunkte,
     this.homeFehlt,
     this.awayFehlt,
   });
@@ -362,6 +492,10 @@ class _PlayerRow extends StatelessWidget {
   final Map<String, String?> clubIcons;
   final void Function(FantasyPlayer, bool) onTap;
 
+  /// Liefert das Ziel für einen Tipp auf die Punktebox — oder `null`, wenn es
+  /// nichts aufzuschlüsseln gibt.
+  final void Function()? Function(FantasyPlayer) onPunkte;
+
   @override
   Widget build(BuildContext context) {
     // **Die Hervorhebung heißt „führt in dieser Paarung" — und das darf nur
@@ -370,13 +504,6 @@ class _PlayerRow extends StatelessWidget {
     // Verteidigers mit drei Gegentoren und Gelb. Also bekam der Umrahmung, der
     // noch gar nicht dran war, und der, der gespielt hatte, keine. Wer noch
     // nicht gespielt hat, führt nicht — er hat noch nicht angefangen.
-    final lead = (homePts != null && awayPts != null)
-        ? (homePts! > awayPts! && homeGespielt
-              ? 1
-              : awayPts! > homePts! && awayGespielt
-              ? -1
-              : 0)
-        : 0;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Row(
@@ -387,7 +514,6 @@ class _PlayerRow extends StatelessWidget {
               player: home,
               pts: homePts,
               mine: homeMine,
-              highlight: lead > 0,
               gespielt: homeGespielt,
               spiel: homeSpiel,
               start: true,
@@ -401,7 +527,6 @@ class _PlayerRow extends StatelessWidget {
               player: away,
               pts: awayPts,
               mine: awayMine,
-              highlight: lead < 0,
               gespielt: awayGespielt,
               spiel: awaySpiel,
               start: false,
@@ -418,7 +543,6 @@ class _PlayerRow extends StatelessWidget {
     required FantasyPlayer? player,
     required double? pts,
     required bool mine,
-    required bool highlight,
     required bool gespielt,
     required NaechstesSpiel? spiel,
     required bool start,
@@ -432,13 +556,16 @@ class _PlayerRow extends StatelessWidget {
       return _FehlendePosition(pos: fehltPos);
     }
     final pos = positionColor(player.position);
+    // **Die Box nimmt den Tipp selbst an**, wenn es etwas aufzuschlüsseln
+    // gibt. Ein inneres `GestureDetector` gewinnt gegen das umgebende
+    // `InkWell`, die Karte behält also ihren Weg ins Profil — zwei Ziele in
+    // einer Zeile, getrennt durch den sichtbaren Kasten.
+    final aufPunkte = onPunkte(player);
     final ptsBox = Container(
       constraints: const BoxConstraints(minWidth: 36),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: highlight
-            ? scheme.primary.withValues(alpha: 0.22)
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(10),
       ),
       // **Vor dem Anpfiff steht hier das Spiel, nicht ein Strich.** „Noch
@@ -457,11 +584,24 @@ class _PlayerRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: highlight ? scheme.primary : scheme.onSurface,
+                color: scheme.onSurface,
               ),
             )
           : _AnstossHinweis(spiel: spiel),
     );
+    // Ohne Ziel bleibt die Box eine Anzeige und reicht den Tipp durch — vor
+    // dem Anpfiff steht dort ohnehin die Partie und keine Punktzahl.
+    final ptsFeld = aufPunkte == null
+        ? ptsBox
+        : GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: aufPunkte,
+            child: Semantics(
+              button: true,
+              label: '${player.name}: Punkte aufschlüsseln',
+              child: ptsBox,
+            ),
+          );
     final badge = ClubBadge(
       club: player.club,
       iconUrl: clubIcons[player.club],
@@ -498,10 +638,10 @@ class _PlayerRow extends StatelessWidget {
             const SizedBox(width: 9),
             Expanded(child: info),
             const SizedBox(width: 8),
-            ptsBox,
+            ptsFeld,
           ]
         : [
-            ptsBox,
+            ptsFeld,
             const SizedBox(width: 8),
             Expanded(child: info),
             const SizedBox(width: 9),
@@ -526,25 +666,15 @@ class _PlayerRow extends StatelessWidget {
               begin: start ? Alignment.centerLeft : Alignment.centerRight,
               end: start ? Alignment.centerRight : Alignment.centerLeft,
               colors: [
-                pos.withValues(alpha: highlight ? 0.22 : 0.13),
+                pos.withValues(alpha: 0.13),
                 scheme.surfaceContainerHighest.withValues(alpha: 0.35),
               ],
             ),
-            border: Border.all(
-              color: highlight
-                  ? scheme.primary.withValues(alpha: 0.7)
-                  : scheme.outlineVariant.withValues(alpha: 0.5),
-              width: highlight ? 1.5 : 1,
-            ),
-            boxShadow: highlight
-                ? [
-                    BoxShadow(
-                      color: scheme.primary.withValues(alpha: 0.18),
-                      blurRadius: 8,
-                      spreadRadius: -2,
-                    ),
-                  ]
-                : null,
+            // **Eine Kante für alle.** Der grüne Rahmen markierte hier den
+            // Sieger des Zeilenduells — eine Paarung, die es so nicht gibt
+            // (siehe Kopf des Positionsblocks). Und selbst als Signal gehörte
+            // die Farbe in die Fläche, nicht an den Rand.
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Row(children: children),
         ),
@@ -715,6 +845,7 @@ class _BenchSection extends StatelessWidget {
                       Punktzahl(
                         points[p.id] ?? 0,
                         stil: const TextStyle(fontWeight: FontWeight.bold),
+                        negativRot: true,
                       ),
                     ],
                   ),
@@ -744,7 +875,7 @@ Widget _punkte(
     alignment: textAlign == TextAlign.center
         ? Alignment.center
         : Alignment.centerLeft,
-    child: Punktzahl(pts ?? 0, stil: style),
+    child: Punktzahl(pts ?? 0, stil: style, negativRot: true),
   );
 }
 

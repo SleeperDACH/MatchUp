@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
@@ -1375,12 +1374,31 @@ class _BoardCol {
   final bool autoPick;
 }
 
-// Board-Farben: beigetretene Teams grün, das aktuell ziehende Team rot.
-const _cBoardGreen = Color(0xFF4ADE6A);
+// **Das Board trägt keine Flächenfarben mehr.** Es hatte grün für jedes
+// beigetretene Team, rot für das ziehende und die volle Positionsfarbe in
+// jeder gedrafteten Zelle — gemeldet als „viel zu bunt, man blickt gar nicht
+// durch". Geblieben ist Hell für den Zustand und ein 6-Punkt-Punkt für die
+// Position.
 const _cBoardRed = Color(0xFFF23030);
-const _cBoardInk = MatchUpColors.base;
 
-/// Kopfzelle einer Board-Spalte: farbiger Hintergrund (grün beigetreten, rot am
+/// „Nico Schlotterbeck" → „Nico". Leer, wenn der Name nur aus einem Wort
+/// besteht — dann trägt die untere Zeile alles, und eine leere Zeile darüber
+/// wäre nur Luft.
+String _vorname(String voll) {
+  final teile = voll.trim().split(RegExp(r'\s+'));
+  return teile.length < 2 ? '' : teile.sublist(0, teile.length - 1).join(' ');
+}
+
+/// „Nico Schlotterbeck" → „Schlotterbeck". Bei einteiligen Namen der ganze.
+String _nachname(String voll) {
+  final teile = voll.trim().split(RegExp(r'\s+'));
+  return teile.isEmpty ? voll : teile.last;
+}
+
+/// Hell — das Zeichen dieser App für „gewählt / das bist du“.
+const _cSchnee = Color(0xFFEDEFF4);
+
+/// Kopfzelle einer Board-Spalte: Kartengrund und Haarlinie, hell für den
 /// Zug, neutral für Platzhalter) plus optionales „AUTO"-Badge.
 class _BoardHeaderCell extends StatelessWidget {
   const _BoardHeaderCell({
@@ -1400,9 +1418,19 @@ class _BoardHeaderCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final placeholder = col.userId == null;
-    final Color bg = placeholder
-        ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
-        : (isCurrent ? _cBoardRed : _cBoardGreen);
+    // **Kein grüner Block je Team.** Vorher trug jede beigetretene Spalte eine
+    // volle grüne Fläche und die ziehende eine rote — vier bis achtzehn
+    // Farbklötze nebeneinander, und der eine, auf den es ankam, ging darin
+    // unter. Dasselbe Urteil wie bei den Ligakarten auf dem Startbildschirm:
+    // Vier Farbflächen rufen gleich laut.
+    //
+    // Jetzt: Kartengrund und Haarlinie für alle, **hell** für den, der gerade
+    // zieht — dieselbe Auszeichnung, mit der diese App überall „gewählt / das
+    // bist du" sagt.
+    final grund = isCurrent
+        ? Color.alphaBlend(
+            _cSchnee.withValues(alpha: 0.16), Theme.of(context).cardColor)
+        : Theme.of(context).cardColor;
     // Einzeilig, damit alle Kopf-Karten gleich groß bleiben — Auto-Pick zeigt
     // ein kleines Roboter-Symbol inline (live, sobald ein Team abwesend ist).
     return Container(
@@ -1411,8 +1439,13 @@ class _BoardHeaderCell extends StatelessWidget {
       margin: const EdgeInsets.all(1.5),
       padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: bg,
+        color: placeholder ? null : grund,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isCurrent
+              ? _cSchnee.withValues(alpha: 0.55)
+              : Theme.of(context).dividerColor,
+        ),
       ),
       alignment: Alignment.center,
       child: Row(
@@ -1424,7 +1457,7 @@ class _BoardHeaderCell extends StatelessWidget {
               message: 'Auto-Pick (abwesend)',
               child: Icon(Icons.auto_mode,
                   size: 13,
-                  color: placeholder ? scheme.onSurfaceVariant : _cBoardInk),
+                  color: scheme.onSurfaceVariant),
             ),
             const SizedBox(width: 3),
           ],
@@ -1473,7 +1506,7 @@ class DraftBoard extends StatelessWidget {
   final bool showPlaceholders;
 
   static const _colW = 92.0;
-  static const _rowH = 52.0;
+  static const _rowH = 60.0;
   static const _labelW = 34.0;
 
   @override
@@ -1543,7 +1576,7 @@ class DraftBoard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: c.userId == null
                             ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
-                            : _cBoardInk,
+                            : scheme.onSurface,
                       ),
                     ),
                   ),
@@ -1603,9 +1636,32 @@ class DraftBoard extends StatelessWidget {
     final unbekannt = pick != null && player == null;
     final mine = col.mine;
     final placeholder = col.userId == null;
-    // Gedraftete Karte in ihrer Positionsfarbe (TW blau, ABW gelb, MF grün,
-    // ST rot); Text dann dunkel für Kontrast.
-    final onCard = player != null ? _cBoardInk : scheme.onSurfaceVariant;
+    // **Die Positionsfarbe trägt die Fläche — gedämpft.**
+    //
+    // Zwei Extreme lagen davor, und beide waren gemeldet. Erst die **volle**
+    // Positionsfarbe je Zelle: „viel zu bunt, man blickt gar nicht durch" —
+    // bei achtzehn Teams über sechzehn Runden über zweihundert gesättigte
+    // Farbklötze. Dann gar keine Fläche und ein 6-Punkt-Punkt als Akzent:
+    // „Das sieht auch alles so gleich aus … diese Punkte sehen beschissen
+    // aus." Auch richtig — auf einem Raster, das man **überfliegt**, ist ein
+    // Punkt zu wenig Signal, und die Zellen wurden ununterscheidbar.
+    //
+    // Die Fläche ist hier keine Dekoration, sie **ist** die Auskunft: Woraus
+    // besteht dieser Kader? Deshalb trägt sie die Farbe, aber bei 22 % über
+    // dem Kartengrund statt voll. Und deshalb flach statt als Hauch aus der
+    // Ecke: In einem 92 mal 52 Punkte großen Feld wäre ein Verlauf Matsch,
+    // nicht Gliederung.
+    final pos = player == null
+        ? null
+        : Color.alphaBlend(positionColor(player.position).withValues(alpha: 0.22),
+            Theme.of(context).cardColor);
+    final grund = pos == null
+        ? Theme.of(context).cardColor
+        // Die eigene Spalte eine Spur heller — hell heißt in dieser App „das
+        // bist du", und es legt sich über jede Positionsfarbe gleich.
+        : (mine
+            ? Color.alphaBlend(_cSchnee.withValues(alpha: 0.07), pos)
+            : pos);
 
     return Container(
       width: _colW,
@@ -1613,31 +1669,39 @@ class DraftBoard extends StatelessWidget {
       margin: const EdgeInsets.all(1),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
-        color: player != null
-            ? positionColor(player.position)
-            : scheme.surfaceContainerHighest.withValues(
-                alpha: unbekannt ? 0.75 : (placeholder ? 0.15 : 0.3)),
+        color: placeholder && player == null ? null : grund,
         borderRadius: BorderRadius.circular(8),
-        border: isCurrent
-            ? Border.all(color: scheme.primary, width: 1.6)
-            : (mine && player != null
-                ? Border.all(color: _cBoardInk.withValues(alpha: 0.35), width: 1)
-                : null),
+        // **Eine Kante für alle**, und Farbe nur für den Zustand „hier ist
+        // gerade jemand dran" — hell, nicht grün: Der Zug läuft nicht, er
+        // wartet auf eine Entscheidung.
+        border: Border.all(
+          color: isCurrent
+              ? _cSchnee.withValues(alpha: 0.65)
+              : Theme.of(context).dividerColor,
+          width: isCurrent ? 1.4 : 1,
+        ),
       ),
+      // **Drei Zeilen statt zwei, und der Nachname führt.** Auf Ansage: die
+      // Picknummer klein in die obere linke Ecke, darunter der Vorname, unten
+      // der Nachname. Das ist die Ordnung, in der man eine Spielerkarte liest
+      // — die Nummer ordnet die Zelle ins Raster ein, der Name ist der
+      // Inhalt, und von einem Namen trägt der Nachname die Erkennung.
+      //
+      // **Beide Namenszeilen schrumpfen, statt zu kappen** (`FittedBox`) —
+      // dieselbe Regel wie im Live-Tab und auf den Ligakarten. In 80 Punkten
+      // Breite wäre „Schlotterb…" keine Auskunft.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Row(
             children: [
               Text(code,
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: onCard.withValues(
-                          alpha: player != null
-                              ? 0.7
-                              : (placeholder ? 0.5 : 1.0)))),
+                      color: scheme.onSurfaceVariant
+                          .withValues(alpha: placeholder ? 0.5 : 0.85))),
               if (pick?.isAuto ?? false) ...[
                 const SizedBox(width: 3),
                 Text('AUTO',
@@ -1645,25 +1709,52 @@ class DraftBoard extends StatelessWidget {
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3,
-                        color: onCard.withValues(alpha: 0.7))),
+                        color:
+                            scheme.onSurfaceVariant.withValues(alpha: 0.6))),
               ],
             ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            player?.name ?? (unbekannt ? 'Wird geladen …' : ''),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              fontStyle: unbekannt ? FontStyle.italic : FontStyle.normal,
-              color: player != null
-                  ? _cBoardInk
-                  : scheme.onSurfaceVariant
-                      .withValues(alpha: unbekannt ? 0.9 : 0.5),
+          const Spacer(),
+          if (player != null) ...[
+            if (_vorname(player.name).isNotEmpty)
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _vorname(player.name),
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.1,
+                    color: scheme.onSurface.withValues(alpha: 0.75),
+                  ),
+                ),
+              ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _nachname(player.name),
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface,
+                ),
+              ),
             ),
-          ),
+          ] else if (unbekannt)
+            Text(
+              'Wird geladen …',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
+              ),
+            ),
         ],
       ),
     );

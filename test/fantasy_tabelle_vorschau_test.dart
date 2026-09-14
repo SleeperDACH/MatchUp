@@ -53,6 +53,10 @@ void main() {
       createdBy: 'm0',
       maxTeams: 4,
       tipEnabled: true,
+      // Mit Playoffs, damit der Bracket-Knopf im Bild steht — er ist auf
+      // Ansage ans **untere** Ende des Reiters gewandert, und ohne Playoffs
+      // waere genau das nicht zu sehen.
+      playoffTeams: 4,
     );
 
     const namen = ['SFV03', 'lennartruepke', 'Spitzenreiter04', 'ana'];

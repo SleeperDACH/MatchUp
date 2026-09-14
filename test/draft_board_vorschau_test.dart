@@ -54,6 +54,18 @@ void main() {
             userId: 'u$i', username: _teams[i], draftPosition: i + 1),
     ];
     // Vier Runden Snake: 1..4, dann 4..1, usw.
+    // **Echte Namen, nicht „Spieler 1".** Die Zelle teilt seit dem 12.09.2026
+    // in Vor- und Nachnamen auf, und an einem Platzhalter ohne Nachnamen
+    // sähe man von der Aufteilung nichts. Darunter bewusst ein langer
+    // (Schlotterbeck) und ein zweiteiliger (Sané), damit auch das Schrumpfen
+    // im Bild steht.
+    const namen = [
+      'Nico Schlotterbeck', 'Joshua Kimmich', 'Florian Wirtz',
+      'Manuel Neuer', 'Jamal Musiala', 'Leroy Sané',
+      'Serhou Guirassy', 'Robin Koch', 'Karim Adeyemi',
+      'Maximilian Beier', 'Felix Nmecha', 'Waldemar Anton',
+      'Gregor Kobel', 'Julian Brandt', 'Emre Can', 'Yan Couto',
+    ];
     final picks = <DraftPick>[];
     final spieler = <FantasyPlayer>[];
     var nr = 1;
@@ -65,7 +77,7 @@ void main() {
         final id = 'p$nr';
         spieler.add(FantasyPlayer(
           id: id,
-          name: 'Spieler $nr',
+          name: namen[(nr - 1) % namen.length],
           position: PlayerPosition.values[nr % PlayerPosition.values.length],
           club: 'FC Test',
           birthDate: DateTime(2000),

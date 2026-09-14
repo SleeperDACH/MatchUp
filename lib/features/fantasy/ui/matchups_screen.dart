@@ -470,6 +470,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                         awayId: aId,
                         homeName: nameOf[hId] ?? '?',
                         awayName: aId == null ? null : (nameOf[aId] ?? '?'),
+                        stats: weekStats,
                       );
                     }),
                   const SizedBox(height: 24),

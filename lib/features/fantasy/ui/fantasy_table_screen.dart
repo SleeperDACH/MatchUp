@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/typografie.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -119,12 +120,34 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
     final rueckblick =
         _rueckblick ?? (abgepfiffen.isEmpty ? null : abgepfiffen.last);
 
+    // Zeile und Trennlinie stehen als Helfer da, weil die Tabelle seit dem
+    // Podest **zwei** Schleifen hat (die ersten drei auf gemeinsamer Fläche,
+    // der Rest darunter) — zwei Kopien derselben Zeile wären die nächste
+    // Stelle, an der etwas auseinanderläuft.
+    Widget trenner() => Divider(
+          height: 1,
+          indent: 12,
+          endIndent: 12,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.07),
+        );
+
+    Widget zeile(int i, H2HRecord r) => _RecordRow(
+          rank: i + 1,
+          name: nameOf[r.managerId] ?? '?',
+          avatar: avatarOf[r.managerId],
+          record: r,
+          me: r.managerId == myId,
+          onTap: () => showManagerProfile(context,
+              league: league,
+              managerId: r.managerId,
+              managerName: nameOf[r.managerId] ?? '?'),
+        );
+
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
       children: [
         if (seasonStatsAsync.isLoading)
           const LinearProgressIndicator(minHeight: 2),
-        if (league.hasPlayoffs) _BracketButton(league: league),
         const _Marke('Tabelle'),
         if (nonePlayed)
           Padding(
@@ -155,27 +178,8 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
             child: Column(
               children: [
                 for (final (i, r) in standings.indexed) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: 12,
-                      endIndent: 12,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.07),
-                    ),
-                  _RecordRow(
-                    rank: i + 1,
-                    name: nameOf[r.managerId] ?? '?',
-                    avatar: avatarOf[r.managerId],
-                    record: r,
-                    me: r.managerId == myId,
-                    onTap: () => showManagerProfile(context,
-                        league: league,
-                        managerId: r.managerId,
-                        managerName: nameOf[r.managerId] ?? '?'),
-                  ),
+                  if (i > 0) trenner(),
+                  zeile(i, r),
                 ],
               ],
             ),
@@ -207,6 +211,17 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: WeeklyRecapCard(league: league, runde: rueckblick),
           ),
+        ],
+
+        // --- Playoffs ------------------------------------------------------
+        // **Das Bracket steht unten**, auf Ansage. Es war die erste Zeile des
+        // Reiters und nahm sie der Tabelle weg — dabei ist es der Ausblick
+        // aufs Saisonende und nicht die Auskunft, wegen der man hier
+        // hereinkommt. Mit eigener Kapitelmarke, sonst schwebte der Knopf
+        // hinter dem Rueckblick ohne Bezug.
+        if (league.hasPlayoffs) ...[
+          const _Marke('Playoffs'),
+          _BracketButton(league: league),
         ],
       ],
     );
@@ -256,7 +271,7 @@ class _Marke extends StatelessWidget {
 class _TabellenKopf extends StatelessWidget {
   const _TabellenKopf();
 
-  static const rangBreite = 30.0;
+  static const rangBreite = 38.0;
   static const bilanzBreite = 74.0;
   static const punkteBreite = 52.0;
 
@@ -386,6 +401,66 @@ class _BracketButton extends StatelessWidget {
   }
 }
 
+/// **Die ersten drei stehen groesser da.** Auf Ansage: Platz 1 groesser als 2,
+/// 2 groesser als 3, danach eine einheitliche Zeile.
+///
+/// Groesser wird nur, was zum Team gehoert — Rang, Bild, Name. Die
+/// **Zahlenspalten bleiben unangetastet**: Bilanz und Punkte stehen auf festen
+/// Breiten, damit sie ueber alle Zeilen fluchten. Eine Tabelle, deren Spalten
+/// je Zeile eine andere Groesse haben, ist keine Tabelle mehr.
+class _Podest {
+  const _Podest({
+    required this.polster,
+    required this.badge,
+    required this.rangSchrift,
+    required this.avatar,
+    required this.name,
+  });
+
+  /// Senkrechtes Polster der Zeile — daraus kommt die Zeilenhoehe.
+  final double polster;
+
+  /// Kantenlaenge des Rang-Badges. Nie groesser als
+  /// [_TabellenKopf.rangBreite], sonst schoebe es Bild und Name der obersten
+  /// Zeile gegen die uebrigen.
+  final double badge;
+
+  final double rangSchrift;
+  final double avatar;
+  final double name;
+
+
+  /// Vier Stufen: 1 · 2 · 3 · alle anderen. Die Schriftgrade kommen aus der
+  /// Leiter (`Schrift`); zwischen `titel` und `h1` liegen genau zwei Stufen,
+  /// und mehr braucht ein Podest nicht.
+  factory _Podest.fuer(int rank) => switch (rank) {
+        1 => const _Podest(
+            polster: 18,
+            badge: 38,
+            rangSchrift: Schrift.h2,
+            avatar: 44,
+            name: Schrift.h1),
+        2 => const _Podest(
+            polster: 15,
+            badge: 33,
+            rangSchrift: Schrift.h3,
+            avatar: 37,
+            name: Schrift.h2),
+        3 => const _Podest(
+            polster: 13,
+            badge: 29,
+            rangSchrift: Schrift.titel,
+            avatar: 32,
+            name: Schrift.h3),
+        _ => const _Podest(
+            polster: 11,
+            badge: 26,
+            rangSchrift: Schrift.koerper,
+            avatar: 28,
+            name: Schrift.titel),
+      };
+}
+
 class _RecordRow extends StatelessWidget {
   const _RecordRow({
     required this.rank,
@@ -407,48 +482,99 @@ class _RecordRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (badgeBg, badgeFg) = _rankColors(rank, scheme);
+    final podest = _Podest.fuer(rank);
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      // Die eigene Zeile bekommt nur eine getönte Fläche, keinen Rahmen: In
-      // einer Tabelle, die als **eine** Fläche steht, wäre ein Rahmen um eine
-      // Zeile ein Kasten im Kasten.
-      color: me ? scheme.primary.withValues(alpha: 0.10) : null,
+      child: Stack(children: [
+      Container(
+      padding:
+          EdgeInsets.symmetric(horizontal: 12, vertical: podest.polster),
+      // **Die Zeile trägt keine getönte Fläche.** Zwei Anläufe damit sahen
+      // schlecht aus — je Zeile ein Streifen (abgehackt), dann ein Verlauf
+      // über alle drei (ein brauner Schleier). Die Medaille sitzt jetzt in
+      // Ring und Kante, beide in voller Sättigung.
+      //
+      // **Die eigene Zeile wird hell, nicht grün.** Sie zog vorher
+      // `scheme.primary` bei 10 % — Grün heißt in dieser App „hier läuft
+      // etwas", und in einer Tabellenzeile läuft nichts. Hell ist ohnehin das
+      // Zeichen, mit dem hier überall „das bist du / das ist gewählt" gesagt
+      // wird. Gerahmt wird sie nicht: In einer Tabelle, die als *eine* Fläche
+      // steht, wäre ein Rahmen um eine Zeile ein Kasten im Kasten.
+      color: me ? Colors.white.withValues(alpha: 0.06) : null,
       child: Row(
         children: [
-          // Rang (Top 3 in Medaillenfarben).
-          Container(
+          // Rang (Top 3 in Medaillenfarben, und in Medaillengroesse).
+          // **Linksbuendig in einer festen Spalte**: Waechst das Badge, sollen
+          // Bild und Name der obersten Zeile trotzdem mit den uebrigen
+          // fluchten.
+          SizedBox(
             width: _TabellenKopf.rangBreite,
-            height: 26,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                width: podest.badge,
+                height: podest.badge,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('$rank',
+                    style: TextStyle(
+                        color: badgeFg,
+                        fontWeight: FontWeight.bold,
+                        fontSize: podest.rangSchrift)),
+              ),
             ),
-            child: Text('$rank',
-                style: TextStyle(
-                    color: badgeFg,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14)),
           ),
           const SizedBox(width: 10),
-          AppAvatar(
-            imageUrl: avatar?.url,
-            emoji: avatar?.emoji,
-            colorHex: avatar?.color,
-            fallbackText: name,
-            size: 28,
-          ),
+          // **Der Medaillenring liegt außen um das Bild, nicht darin.** Der
+          // erste Versuch schnitt das Bild um die Ringstärke kleiner, damit
+          // der Platz gleich blieb — damit war das Gesicht auf Platz 3 (24)
+          // kleiner als auf Platz 4 (28), und die Leiter stand für einen
+          // Moment auf dem Kopf. Der Ring wächst deshalb nach außen; dass die
+          // Namen dadurch versetzt anfangen, tun sie ohnehin, weil die
+          // Avatare je Rang verschieden groß sind.
+          if (rank <= 3)
+            Container(
+              width: podest.avatar + 8,
+              height: podest.avatar + 8,
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: badgeBg, width: 2),
+              ),
+              child: AppAvatar(
+                imageUrl: avatar?.url,
+                emoji: avatar?.emoji,
+                colorHex: avatar?.color,
+                fallbackText: name,
+                size: podest.avatar,
+              ),
+            )
+          else
+            AppAvatar(
+              imageUrl: avatar?.url,
+              emoji: avatar?.emoji,
+              colorHex: avatar?.color,
+              fallbackText: name,
+              size: podest.avatar,
+            ),
           const SizedBox(width: 9),
+          // **Der Name schrumpft, er kappt nicht** — dieselbe Regel wie im
+          // Live-Tab und in der Tipp-Tabelle. Auf Platz 1 steht er in 24
+          // Punkt; ein langer Name faende dort sonst als „Spitzenr…" statt.
           Expanded(
-            child: Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: me ? FontWeight.w800 : FontWeight.w600)),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(name,
+                  maxLines: 1,
+                  style: TextStyle(
+                      fontSize: podest.name,
+                      fontWeight: me ? FontWeight.w800 : FontWeight.w600)),
+            ),
           ),
           // Bilanz in ihrer eigenen Spalte — sie stand vorher als Kleintext
           // unter dem Namen und fluchtete mit nichts.
@@ -492,6 +618,27 @@ class _RecordRow extends StatelessWidget {
         ],
       ),
       ),
+      // **Die Medaillenkante am linken Rand.** Sie liegt im `Stack` über der
+      // Zeile statt in der `Row` davor: Als eigene Spalte schöbe sie den
+      // Inhalt der ersten drei Zeilen um drei Punkte gegen die übrigen —
+      // genau der Grund, aus dem der 4-px-Streifen im Live-Tab wieder
+      // geflogen ist.
+      //
+      // **Volle Sättigung, harte Kante.** Zwei getönte Flächen davor sahen
+      // beide schlecht aus: erst drei Streifen, die abgehackt aneinander
+      // stießen, dann ein Verlauf über alle drei, der zu einem braunen
+      // Schleier verlief. Über nahezu Schwarz wird jede Medaillenfarbe als
+      // Fläche matschig — als scharfer Strich bleibt sie Gold, Silber und
+      // Bronze. Dieselbe Form trägt in dieser App auch die Kapitelmarke.
+      if (rank <= 3)
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 3,
+          child: ColoredBox(color: badgeBg),
+        ),
+      ]),
     );
   }
 

@@ -137,6 +137,7 @@ class MatchupDetailScreen extends ConsumerWidget {
                 awayId: isBye ? null : awayId,
                 homeName: homeName,
                 awayName: isBye ? null : (awayName ?? '?'),
+                stats: stats,
               ),
               const SizedBox(height: 24),
             ],
