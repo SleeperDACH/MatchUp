@@ -274,6 +274,32 @@ class TipRoundRepository {
         'p_away': away,
       });
 
+  /// Mehrere Tipps eines Mitglieds **in einem Rutsch** nachtragen.
+  ///
+  /// Serverseitig alles oder nichts (`tip_admin_set_tips`, Migration 0126).
+  /// Neun Einzelaufrufe je Spieltag hätten die Runde halb nachgetragen
+  /// zurücklassen können, wenn einer davon scheitert — und niemand hätte es
+  /// gesehen.
+  ///
+  /// [tipps] je Eintrag `{fixtureId, home, away}`. Gibt zurück, wie viele
+  /// Zeilen geschrieben wurden.
+  Future<int> adminSetTips(
+    String roundId,
+    String userId,
+    List<({String fixtureId, int home, int away})> tipps,
+  ) async {
+    if (tipps.isEmpty) return 0;
+    final res = await _client.rpc('tip_admin_set_tips', params: {
+      'p_round_id': roundId,
+      'p_user': userId,
+      'p_tipps': [
+        for (final t in tipps)
+          {'fixture_id': t.fixtureId, 'home': t.home, 'away': t.away},
+      ],
+    });
+    return (res as num?)?.toInt() ?? tipps.length;
+  }
+
   /// Alle abgegebenen Bonustipp-Antworten der Runde (RLS: nur Mitglieder).
   Future<List<BonusAnswer>> bonusAnswers(String roundId) async {
     final rows = await _client

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
 import '../models/tip_round.dart';
+import '../logic/nachtrag.dart';
 import '../providers.dart';
 
 /// Admin-Funktion: Tipps für Mitglieder nachtragen (auch nach Anstoß). Nur der
@@ -22,13 +23,94 @@ class TipBackfillScreen extends ConsumerStatefulWidget {
 class _TipBackfillScreenState extends ConsumerState<TipBackfillScreen> {
   String? _memberId;
   int? _matchday;
+  bool _speichert = false;
 
-  Future<void> _save(String fixtureId, int home, int away) async {
+  /// **Die Eingabefelder gehören dem Schirm, nicht der Zeile.**
+  ///
+  /// Solange jede Zeile ihren eigenen Speichern-Knopf trug, konnte sie ihre
+  /// Controller auch selbst halten. Ein Knopf für den ganzen Spieltag muss
+  /// aber alle neun Felder gleichzeitig lesen können.
+  ///
+  /// Der Schlüssel trägt Mitglied **und** Spiel: Beim Wechsel des Mitglieds
+  /// sind es andere Tipps, und ein stehen gebliebener Controller schriebe die
+  /// Zahlen des Vorgängers in den nächsten Nachtrag.
+  final _felder = <String, ({TextEditingController heim, TextEditingController gast})>{};
+
+  ({TextEditingController heim, TextEditingController gast}) _feld(
+      String fixtureId, int? vorherHeim, int? vorherGast) {
+    final key = '$_memberId:$fixtureId';
+    return _felder.putIfAbsent(
+      key,
+      () => (
+        heim: TextEditingController(text: vorherHeim?.toString() ?? ''),
+        gast: TextEditingController(text: vorherGast?.toString() ?? ''),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (final f in _felder.values) {
+      f.heim.dispose();
+      f.gast.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Ein Speichern für den ganzen Spieltag.
+  Future<void> _speichern(List<Fixture> fixtures,
+      Map<String, MemberTip> memberTips) async {
     final messenger = ScaffoldMessenger.of(context);
-    await ref.read(tipRoundRepositoryProvider).adminSetTip(
-        widget.round.id, _memberId!, fixtureId, home, away);
-    ref.invalidate(allRoundTipsProvider(widget.round.id));
-    messenger.showSnackBar(const SnackBar(content: Text('Tipp nachgetragen.')));
+    final pruefung = pruefeNachtrag([
+      for (final f in fixtures)
+        NachtragZeile(
+          fixtureId: f.id,
+          heim: _feld(f.id, memberTips[f.id]?.homeGoals,
+                  memberTips[f.id]?.awayGoals)
+              .heim
+              .text,
+          gast: _feld(f.id, memberTips[f.id]?.homeGoals,
+                  memberTips[f.id]?.awayGoals)
+              .gast
+              .text,
+          vorherHeim: memberTips[f.id]?.homeGoals,
+          vorherGast: memberTips[f.id]?.awayGoals,
+        ),
+    ]);
+
+    // **Eine halbe Zeile ist ein Fehler, kein Überspringen.** Wer neun Spiele
+    // tippt und bei einem die zweite Zahl vergisst, bekäme sonst ein stilles
+    // „gespeichert" und einen fehlenden Tipp.
+    if (pruefung.hatFehler) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(pruefung.halbeZeilen.length == 1
+              ? 'Ein Spiel hat nur eine Zahl — bitte beide eintragen.'
+              : '${pruefung.halbeZeilen.length} Spiele haben nur eine Zahl '
+                  '— bitte beide eintragen.')));
+      return;
+    }
+    if (!pruefung.gibtEsWasZuTun) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Nichts geändert.')));
+      return;
+    }
+
+    setState(() => _speichert = true);
+    try {
+      final n = await ref.read(tipRoundRepositoryProvider).adminSetTips(
+          widget.round.id, _memberId!, pruefung.zuSpeichern);
+      ref.invalidate(allRoundTipsProvider(widget.round.id));
+      messenger.showSnackBar(SnackBar(
+          content: Text(n == 1
+              ? 'Ein Tipp nachgetragen.'
+              : '$n Tipps nachgetragen.')));
+    } catch (e) {
+      // Der Server schreibt alles oder nichts — es steht also nichts halb da.
+      messenger.showSnackBar(
+          SnackBar(content: Text('Nichts gespeichert: $e')));
+    } finally {
+      if (mounted) setState(() => _speichert = false);
+    }
   }
 
   @override
@@ -131,75 +213,56 @@ class _TipBackfillScreenState extends ConsumerState<TipBackfillScreen> {
           else
             for (final f in fixtures)
               _BackfillRow(
-                key: ValueKey('$_memberId:${f.id}'),
                 fixture: f,
-                initialHome: memberTips[f.id]?.homeGoals,
-                initialAway: memberTips[f.id]?.awayGoals,
-                onSave: (h, a) => _save(f.id, h, a),
+                felder: _feld(f.id, memberTips[f.id]?.homeGoals,
+                    memberTips[f.id]?.awayGoals),
               ),
         ],
       ),
+      // **Ein Knopf für den ganzen Spieltag**, und er steht unten statt am
+      // Ende der Liste — dieselbe Stelle wie in allen Formularen dieser App
+      // (`FormActionBar`). Bei neun Spielen ist das Ende der Liste weit weg.
+      bottomNavigationBar: _memberId == null || fixtures.isEmpty
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                child: FilledButton.icon(
+                  icon: _speichert
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.save_outlined, size: 18),
+                  label: Text(_speichert
+                      ? 'Speichere …'
+                      : 'Spieltag $md speichern'),
+                  onPressed: _speichert
+                      ? null
+                      : () => _speichern(fixtures, memberTips),
+                ),
+              ),
+            ),
     );
   }
 }
 
-/// Eine Nachtrag-Zeile: Teams, zwei Ergebnisfelder und Speichern. Eigener
-/// State (Controller), damit sie bei Mitgliederwechsel per Key frisch startet.
-class _BackfillRow extends StatefulWidget {
-  const _BackfillRow({
-    super.key,
-    required this.fixture,
-    required this.onSave,
-    this.initialHome,
-    this.initialAway,
-  });
+/// Eine Nachtrag-Zeile: Teams, zwei Ergebnisfelder, Anstoß bzw. Endstand.
+///
+/// **Ohne eigenen Speichern-Knopf und ohne eigenen State.** Beides lag hier,
+/// solange jede Zeile für sich gespeichert wurde; seit es einen Knopf für den
+/// ganzen Spieltag gibt, gehören die Controller dem Schirm — er muss alle
+/// neun Felder auf einmal lesen können.
+class _BackfillRow extends StatelessWidget {
+  const _BackfillRow({required this.fixture, required this.felder});
 
   final Fixture fixture;
-  final int? initialHome;
-  final int? initialAway;
-  final Future<void> Function(int home, int away) onSave;
-
-  @override
-  State<_BackfillRow> createState() => _BackfillRowState();
-}
-
-class _BackfillRowState extends State<_BackfillRow> {
-  late final _homeCtrl =
-      TextEditingController(text: widget.initialHome?.toString() ?? '');
-  late final _awayCtrl =
-      TextEditingController(text: widget.initialAway?.toString() ?? '');
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _homeCtrl.dispose();
-    _awayCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final h = int.tryParse(_homeCtrl.text.trim());
-    final a = int.tryParse(_awayCtrl.text.trim());
-    if (h == null || a == null) {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Bitte ein Ergebnis eingeben.')));
-      return;
-    }
-    setState(() => _saving = true);
-    try {
-      await widget.onSave(h, a);
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
+  final ({TextEditingController heim, TextEditingController gast}) felder;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final f = widget.fixture;
+    final f = fixture;
     final info = f.hasScore
         ? 'Endstand ${f.homeScore}:${f.awayScore}'
         : (f.hasStarted ? 'läuft / beendet' : _kickoff(f.kickoff));
@@ -217,12 +280,12 @@ class _BackfillRowState extends State<_BackfillRow> {
                     overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 8),
-              _numField(_homeCtrl),
+              _numField(felder.heim),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4),
                 child: Text(':', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
-              _numField(_awayCtrl),
+              _numField(felder.gast),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(f.away.shortName,
@@ -231,25 +294,13 @@ class _BackfillRowState extends State<_BackfillRow> {
             ],
           ),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              Text(info,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelSmall
-                      ?.copyWith(color: scheme.onSurfaceVariant)),
-              const Spacer(),
-              _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : TextButton.icon(
-                      icon: const Icon(Icons.save_outlined, size: 18),
-                      label: const Text('Speichern'),
-                      onPressed: _save,
-                    ),
-            ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(info,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(color: scheme.onSurfaceVariant)),
           ),
           const Divider(height: 8),
         ],
