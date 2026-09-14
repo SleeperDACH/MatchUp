@@ -174,6 +174,23 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
 
+    // **Was gehalten werden muss, steht als Messung — vor dem Wächter.** Die
+    // Zeilengruppen und der Spieltagsblock sind der Inhalt dieses Schirms;
+    // ob der Duell-Kasten „VS" oder einen Punktestand zeigt, hängt am
+    // Kalender und nicht am Code.
+    expect(find.text('Aufstellung'), findsOneWidget);
+    expect(find.text('Free Agency'), findsOneWidget);
+    expect(find.text('Liga-Chat'), findsOneWidget);
+    expect(find.text('3. SPIELTAG'), findsOneWidget);
+
+    // **Der Bildvergleich läuft nur mit `--update-goldens`.** Die Fixtures
+    // dieser Vorschau tragen feste Daten (12./13. September); ihr **Zustand**
+    // rechnet der Schirm gegen `DateTime.now()`. Am 08.09. stand im
+    // Duell-Kasten „VS · Anpfiff Sa., 20:30", am 13.09. ein laufendes 0:0 —
+    // dieselbe Eingabe, ein anderes Bild, ohne dass jemand Code angefasst
+    // hätte. Ein Test, der von selbst rot wird, ist einer, den man sich
+    // abgewöhnt zu lesen; dieselbe Entscheidung wie bei Home und Live.
+    if (!autoUpdateGoldenFiles) return;
     await expectLater(
       find.byType(FantasyLeagueScreen),
       matchesGoldenFile('goldens/liga_uebersicht_vorschau.png'),

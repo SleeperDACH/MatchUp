@@ -605,13 +605,13 @@ class _LigaZeile extends StatelessWidget {
               Container(
                 width: 38,
                 height: 38,
+                // **Nur Fläche, kein Rand.** Getönte Fläche *und* farbige
+                // Kante waren dasselbe Signal zweimal — gemeldet an den
+                // „kleinen Boxen auf der Übersicht". Die Gruppenfarbe sagt
+                // die Fläche, der Rand sagte nichts dazu.
                 decoration: BoxDecoration(
                   color: farbe.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: farbe.withValues(alpha: 0.38),
-                    width: 0.8,
-                  ),
                 ),
                 child: Icon(icon, size: 20, color: farbe),
               ),
@@ -914,11 +914,8 @@ class _VorgemerkteTradesZeile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: scheme.primary.withValues(alpha: 0.28)),
-          ),
+          decoration:
+              kartenDeko(context, hauch: scheme.primary, radius: 12),
           child: Row(
             children: [
               Icon(Icons.schedule, size: 18, color: scheme.primary),

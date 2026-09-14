@@ -23,9 +23,30 @@ import '../../features/fantasy/logic/fantasy_scoring_engine.dart';
 const List<FontFeature> gleichbreiteZiffern = [FontFeature.tabularFigures()];
 
 class Punktzahl extends StatelessWidget {
-  const Punktzahl(this.wert, {super.key, this.stil, this.bruchAnteil = 0.6});
+  const Punktzahl(
+    this.wert, {
+    super.key,
+    this.stil,
+    this.bruchAnteil = 0.6,
+    this.negativRot = false,
+  });
 
   final double wert;
+
+  /// **Eine negative Punktzahl steht rot da.**
+  ///
+  /// Auf Ansage: „Wenn Spieler Minuspunkte machen, die Zahl bitte rot
+  /// anzeigen." Ein Minuszeichen vor einer sonst gleich aussehenden Zahl
+  /// überliest man in einer Spalte aus zwanzig Zeilen; die Farbe sieht man,
+  /// bevor man liest. Dieselbe Auszeichnung benutzt die Aufschlüsselung schon
+  /// für ihre Abzüge.
+  ///
+  /// **Bewusst kein Standard.** Rot heißt in dieser App an zwei Stellen etwas
+  /// anderes — der laufende Spielstand im Live-Tab und die führende Seite im
+  /// Duell-Kopf tragen es als „läuft gerade". Wo eine Zahl **einen Spieler**
+  /// meint, ist die Bedeutung eindeutig; wo sie eine Mannschaftssumme meint,
+  /// bleibt es aus.
+  final bool negativRot;
 
   /// Stil der **ganzen** Zahl. Der Bruchteil leitet sich daraus ab.
   final TextStyle? stil;
@@ -44,6 +65,9 @@ class Punktzahl extends StatelessWidget {
   Widget build(BuildContext context) {
     final basis = (stil ?? DefaultTextStyle.of(context).style).copyWith(
       fontFeatures: gleichbreiteZiffern,
+      color: negativRot && wert < 0
+          ? Theme.of(context).colorScheme.error
+          : (stil ?? DefaultTextStyle.of(context).style).color,
     );
     final text = formatPoints(wert);
     final komma = text.indexOf(',');

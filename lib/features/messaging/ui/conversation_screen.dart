@@ -11,6 +11,7 @@ import '../../friends/ui/user_profile_screen.dart';
 import '../../tippspiel/providers.dart';
 import '../models/direct_message.dart';
 import '../providers.dart';
+import '../../../app/widgets/karte.dart';
 
 /// 1:1-Direktnachrichten mit einem Nutzer. Nutzt das geteilte
 /// [LeagueChat]-Widget; die eigenen Nachrichten werden aus dem globalen
@@ -207,11 +208,10 @@ class _LeagueInviteCardState extends ConsumerState<_LeagueInviteCard> {
     return Container(
       margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: scheme.primary.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
-      ),
+      // Die Einladung ist eine Karte im Chat, also Haarlinie plus Hauch aus
+      // der Ecke — getönte Fläche *und* farbige Kante waren dasselbe Signal
+      // zweimal („Eine Kante für alle Karten").
+      decoration: kartenDeko(context, hauch: scheme.primary, radius: 12),
       child: Row(
         children: [
           Icon(Icons.sports_esports, color: scheme.primary),

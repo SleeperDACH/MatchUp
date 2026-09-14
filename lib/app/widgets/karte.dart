@@ -19,6 +19,45 @@ import 'package:flutter/material.dart';
 /// Ecke, bei drei Vierteln der Diagonale verklungen — dasselbe Muster wie bei
 /// den Ligakarten auf dem Startbildschirm. Sie sagt „das gehört zu diesem
 /// Bereich", nicht „hier musst du hin".
+/// **Die Kartendekoration als eine Funktion** — Fläche, Hauch, Haarlinie.
+///
+/// Sie steht hier und nicht nur in [Karte], weil die Regel auch für Kästen
+/// gilt, die keine `Karte` sein können: eine Hinweiszeile mit eigenem Polster,
+/// ein Urteil, das im ruhigen Fall gar keine Fläche trägt. Die hatten alle
+/// dasselbe Muster — **getönte Fläche plus farbiger Rand** —, und genau das
+/// verbietet „Eine Kante für alle Karten". Gemeldet am 08.09.2026 an der
+/// goldenen Umrandung im Aufstellungsreiter und an den Kacheln der
+/// Liga-Übersicht.
+///
+/// [hauch] `null` heißt: keine Farbe, nur Fläche und Haarlinie.
+BoxDecoration kartenDeko(
+  BuildContext context, {
+  Color? hauch,
+  double radius = 16,
+  Color? grund,
+}) {
+  final flaeche = grund ?? Theme.of(context).cardColor;
+  return BoxDecoration(
+    color: hauch == null ? flaeche : null,
+    gradient: hauch == null
+        ? null
+        : LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            stops: const [0.0, 0.75],
+            colors: [
+              Color.alphaBlend(hauch.withValues(alpha: 0.12), flaeche),
+              flaeche,
+            ],
+          ),
+    borderRadius: BorderRadius.circular(radius),
+    // **Eine Kante für alle.** Kein farbiger Rand, auch nicht bei „läuft
+    // gerade" — dafür ist der Hauch da, und daneben sagen es Wort und Zeichen
+    // im Inhalt deutlicher, als eine Linie es je könnte.
+    border: Border.all(color: Theme.of(context).dividerColor),
+  );
+}
+
 enum KartenStufe {
   /// Der Normalfall: die Kartenfläche.
   ruhig,
@@ -58,25 +97,8 @@ class Karte extends StatelessWidget {
 
     final inhalt = Container(
       padding: padding,
-      decoration: BoxDecoration(
-        color: hauch == null ? grund : null,
-        gradient: hauch == null
-            ? null
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                stops: const [0.0, 0.75],
-                colors: [
-                  Color.alphaBlend(hauch!.withValues(alpha: 0.12), grund),
-                  grund,
-                ],
-              ),
-        borderRadius: BorderRadius.circular(radius),
-        // **Eine Kante für alle.** Kein farbiger Rand, auch nicht bei „läuft
-        // gerade" — dafür ist der Hauch da, und daneben sagen es Wort und
-        // Zeichen im Inhalt deutlicher, als eine Linie es je könnte.
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
+      decoration: kartenDeko(context,
+          hauch: hauch, radius: radius, grund: grund),
       // **Ein durchsichtiges `Material` um den Inhalt.** Ohne das läuft jedes
       // `ListTile` in der Karte in eine Zusicherung: Es malt seinen Grund und
       // seine Tinte auf das nächste `Material`, und die Kartendekoration

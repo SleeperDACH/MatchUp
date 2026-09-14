@@ -11,9 +11,15 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// Der Test liest `lib/` und sucht **kartenähnliche** Ränder mit Farbe: ein
 /// `Border.all`, dessen Farbe weder `dividerColor` noch `outlineVariant` ist,
-/// in einer Dekoration mit merklich runden Ecken (ab Radius 14). Kleine
+/// in einer Dekoration mit merklich runden Ecken (ab Radius 12). Kleine
 /// Elemente — Chips, Pillen, Avatare, Ringe — fallen darunter heraus; die
 /// dürfen Farbe tragen.
+///
+/// **Die Schwelle stand auf 14 und war damit zu grob.** Gemeldet am
+/// 08.09.2026: die goldene Umrandung im Aufstellungsreiter und die Kacheln
+/// der Liga-Übersicht — beide Radius 12, beide über die volle Breite, beide
+/// eindeutig Karten, und alle vom Wächter nie gesehen. Ein Kasten ist keine
+/// Pille, nur weil seine Ecken zwei Punkte weniger rund sind.
 ///
 /// **Jede verbleibende Stelle steht hier namentlich mit Grund.** Kommt eine
 /// dazu, wird der Test rot, und wer sie einträgt, muss sagen warum. Das ist
@@ -41,9 +47,29 @@ void main() {
       'Auto-Pick-Warnung — hier ist etwas kaputt, und das darf man sehen.'
     ),
     'features/fantasy/ui/lineup_screen.dart': (
-      2,
-      'Spieler-Slot auf dem Feld (Positionsfarbe) und der Free-Agency-Chip; '
-          'beides Zustand bzw. Chip, keine Karte.'
+      4,
+      'Spieler-Slot auf dem Feld, der Free-Agency-Chip und die beiden '
+          'Ablegeflächen beim Ziehen: alles Zustände („gewählt", „hier '
+          'loslassen"), keine Karten.'
+    ),
+    'app/live_screen.dart': (
+      1,
+      'Der heutige Tag in der Tagesleiste — ein Zustand an einer Zelle, keine '
+          'Karte.'
+    ),
+    'core/ui/form_section.dart': (
+      1,
+      '`FormError` — hier ist etwas kaputt, und das darf man sehen.'
+    ),
+    'features/fantasy/ui/roster_limit_banner.dart': (
+      1,
+      'Der Kader liegt über einem Limit — dieselbe Sorte wie `FormError`.'
+    ),
+    'features/fantasy/ui/playoff_bracket_screen.dart': (
+      1,
+      'Die eigene Zeile im Baum — ein Zustand. **Sie trägt dafür noch Grün**, '
+          'während Tabelle und Navileiste „das bist du" längst hell sagen; '
+          'wer den Baum das nächste Mal anfasst, zieht das mit.'
     ),
     'features/fantasy/ui/matchup_hero.dart': (
       1,
@@ -56,8 +82,21 @@ void main() {
           'Grün und Rot sagen die Richtung, das ist der Inhalt.'
     ),
     'features/fantasy/ui/trade_screen.dart': (
+      2,
+      'Der Richtungsblock („Kommt rein" / „wer macht Platz?"), und die Hülle '
+          'der Angebotskarte: Ein eingehendes, offenes Angebot will etwas von '
+          'mir und trägt dafür Hauch **und** getönte Kante. Die Kante ist der '
+          'Teil, der zur Regel quer steht — wer die Karte das nächste Mal '
+          'anfasst, lässt sie weg; der Hauch sagt es schon.'
+    ),
+    'core/ui/option_tile.dart': (
       1,
-      'Derselbe Block im Trade-Schirm, aus demselben Grund.'
+      'Die ausgewählte Option — ein Zustand, dieselbe Sorte wie `PillChip`.'
+    ),
+    'features/fantasy/ui/fantasy_league_screen.dart': (
+      1,
+      'Die Kachel mit rotem Zähler: Hier wartet etwas, und die rote Kante '
+          'trägt genau das. Ohne Zähler ist es die gewöhnliche Haarlinie.'
     ),
     'app/widgets/navi_kapsel.dart': (
       1,
@@ -82,7 +121,16 @@ void main() {
             (m.start - 420).clamp(0, t.length), m.start);
         final nach =
             t.substring(m.start, (m.start + 200).clamp(0, t.length));
-        if (nach.contains('dividerColor') || nach.contains('outlineVariant')) {
+        // **Neutral zählt nur, wenn es unbedingt gilt.** Die Prüfung sah
+        // vorher bloß nach, ob irgendwo im Umfeld `dividerColor` oder
+        // `outlineVariant` steht — und übersah damit jede Kante, deren Farbe
+        // in einer Bedingung steckt. Genau so ist der grüne Rahmen im
+        // MatchUp jahrelang durchgerutscht: „grün, wenn dieser Spieler
+        // führt, sonst outlineVariant". Der neutrale Zweig machte die ganze
+        // Stelle unsichtbar.
+        final neutral =
+            nach.contains('dividerColor') || nach.contains('outlineVariant');
+        if (neutral && !nach.substring(0, nach.indexOf(')') + 1).contains('?')) {
           continue;
         }
         final radien = RegExp(r'BorderRadius\.circular\((\d+)')
@@ -91,7 +139,7 @@ void main() {
             .toList();
         if (radien.isEmpty) continue;
         // Der letzte Radius vor der Kante gehört zu derselben Dekoration.
-        if (radien.last < 14) continue;
+        if (radien.last < 12) continue;
         final pfad = f.path.replaceFirst('lib/', '');
         gefunden[pfad] = (gefunden[pfad] ?? 0) + 1;
       }

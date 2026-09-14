@@ -305,6 +305,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                             const SizedBox(width: 8),
                             Punktzahl(
                               punkte[p.id]!,
+                              negativRot: true,
                               stil: Theme.of(context).textTheme.labelMedium
                                   ?.copyWith(
                                     fontWeight: FontWeight.w700,

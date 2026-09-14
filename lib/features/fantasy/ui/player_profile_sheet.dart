@@ -6,6 +6,7 @@ import '../../../app/typografie.dart';
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/team_fixture_list.dart';
 import '../../../app/widgets/jersey_icon.dart';
+import '../../../app/widgets/karte.dart';
 import '../../../core/util/club_colors.dart';
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/models/models.dart';
@@ -18,6 +19,7 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
 import 'pitch_painter.dart';
+import 'punkte_aufschluesselung.dart';
 import 'trade_screen.dart';
 import '../logic/waiver_fenster.dart';
 import 'player_action_buttons.dart';
@@ -492,14 +494,11 @@ class _PlayerProfileSheet extends ConsumerWidget {
     int runde,
     PlayerMatchStats stats,
   ) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => _Aufschluesselung(
-        titel: '${player.name} · $runde. Spieltag',
-        score: scorePlayerDetailed(stats, player.position, league.scoring),
-        gespielt: stats.hasContribution,
-      ),
+    zeigePunkteAufschluesselung(
+      context,
+      titel: '${player.name} · $runde. Spieltag',
+      score: scorePlayerDetailed(stats, player.position, league.scoring),
+      gespielt: stats.hasContribution,
     );
   }
 
@@ -615,7 +614,11 @@ class _Bilanzleiste extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    Widget feld(String wert, String wort, {bool leise = false}) => Expanded(
+    // **Minus steht rot da.** Ein Minuszeichen vor einer sonst gleich
+    // aussehenden Zahl überliest man; die Farbe sieht man, bevor man liest.
+    Widget feld(String wert, String wort,
+            {bool leise = false, double? zahl}) =>
+        Expanded(
           child: Column(
             children: [
               Text(
@@ -625,7 +628,9 @@ class _Bilanzleiste extends StatelessWidget {
                   fontSize: Schrift.h3,
                   fontWeight: FontWeight.w800,
                   fontFeatures: gleichbreiteZiffern,
-                  color: leise ? scheme.onSurfaceVariant : scheme.onSurface,
+                  color: (zahl ?? 0) < 0
+                      ? scheme.error
+                      : (leise ? scheme.onSurfaceVariant : scheme.onSurface),
                 ),
               ),
               const SizedBox(height: 2),
@@ -658,9 +663,10 @@ class _Bilanzleiste extends StatelessWidget {
       ),
       child: Row(
         children: [
-          feld(formatPoints(punkte), 'Punkte'),
+          feld(formatPoints(punkte), 'Punkte', zahl: punkte),
           trenner(),
-          feld(formatPoints(schnitt.punkteJeSpieltag), 'Ø je Spieltag'),
+          feld(formatPoints(schnitt.punkteJeSpieltag), 'Ø je Spieltag',
+              zahl: schnitt.punkteJeSpieltag),
           trenner(),
           feld('${schnitt.minutenJeSpieltag.round()}', 'Ø Minuten',
               leise: true),
@@ -763,120 +769,17 @@ class _LeistungZeile extends StatelessWidget {
               child: Text(
                 gespielt && punkte != null ? formatPoints(punkte!) : '–',
                 textAlign: TextAlign.right,
-                style: stil.copyWith(fontWeight: FontWeight.w800, fontSize: 14),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Die Punkte eines Spieltags im Einzelnen: jede Zeile der Wertung mit Anzahl,
-/// Einzelwert und Summe.
-///
-/// Eine Punktzahl allein sagt nicht, woher sie kommt — 6 Punkte können ein
-/// halbes Spiel sein oder ein Tor minus zwei Gegentore. Die Aufschlüsselung
-/// kommt aus derselben Funktion, die auch wertet (`scorePlayerDetailed`); eine
-/// zweite Rechnung fürs Anzeigen wäre eine zweite Wahrheit.
-class _Aufschluesselung extends StatelessWidget {
-  const _Aufschluesselung({
-    required this.titel,
-    required this.score,
-    required this.gespielt,
-  });
-
-  final String titel;
-  final PlayerScore score;
-  final bool gespielt;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              titel,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            if (!gespielt)
-              const _Leer('An diesem Spieltag nicht eingesetzt.')
-            else if (score.breakdown.isEmpty)
-              const _Leer('Keine wertbaren Aktionen.')
-            else
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final l in score.breakdown)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        child: Row(
-                          children: [
-                            Expanded(child: Text(l.label)),
-                            if (l.count != 1) ...[
-                              Text(
-                                '${l.count} ×',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            SizedBox(
-                              width: 56,
-                              child: Text(
-                                formatPoints(l.subtotal),
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontFeatures: const [
-                                    FontFeature.tabularFigures(),
-                                  ],
-                                  // Rot markiert den Abzug — die Ausnahme.
-                                  // Der Normalfall braucht keine Farbe.
-                                  color: l.subtotal < 0
-                                      ? scheme.error
-                                      : scheme.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    const Divider(height: 18),
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Gesamt',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                        Text(
-                          formatPoints(score.total),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: score.total < 0
-                                ? scheme.error
-                                : scheme.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                // Dieselbe Auszeichnung wie in der Aufschlüsselung darunter:
+                // Rot markiert den Abzug, der Normalfall braucht keine Farbe.
+                style: stil.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: gespielt && (punkte ?? 0) < 0
+                      ? Theme.of(context).colorScheme.error
+                      : stil.color,
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -1136,16 +1039,31 @@ class _Prognose extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) =>
           _Leer('Die Aufstellung konnte nicht geladen werden.\n$e'),
-      data: (elf) => ListView(
+      data: (elf) {
+        // **Solange es keine Prognose gibt, steht die Elf der Vorwoche da.**
+        // Sportmonks liefert erst ein bis zwei Tage vor Anpfiff; davor lagen
+        // hier drei bis fünf Tage ohne jede Auskunft. Die Fortschreibung
+        // trifft genauso gut (77 % gegen 77 %, gemessen über die Saison
+        // 2025/26) und ist Tage früher da.
+        final zeige = elf ??
+            ref.watch(fortgeschriebeneElfProvider(player.club)).valueOrNull;
+        return ListView(
         padding: const EdgeInsets.only(top: 8, bottom: 16),
         children: [
-          _PrognoseKopf(spiel: spiel, elf: elf),
-          if (elf == null)
+          _PrognoseKopf(spiel: spiel, elf: zeige),
+          if (zeige == null)
             _NochKeinePrognose(player: player, spiel: spiel)
           else ...[
+            if (zeige.ausRunde != null)
+              _FortschreibungHinweis(
+                ausRunde: zeige.ausRunde!,
+                ersetzt: zeige.elf.where((x) => x.ersatz).length,
+                offen: zeige.elf.where((x) => x.offen).length,
+              ),
             _Urteil(
-              drin: elf.enthaelt(player.id),
-              bank: elf.aufBank(player.id),
+              ausRunde: zeige.ausRunde,
+              drin: zeige.enthaelt(player.id),
+              bank: zeige.aufBank(player.id),
               // **Ein abgepfiffenes Spiel ist nie „voraussichtlich".** Seit
               // die Anzeige bis zum Ende des Spieltags auf der laufenden Runde
               // bleibt, steht hier auch eine gelaufene Partie. In aller Regel
@@ -1153,22 +1071,104 @@ class _Prognose extends ConsumerWidget {
               // einmal, stünde sonst „voraussichtlich in der Startelf" über
               // einem Spiel von gestern.
               bestaetigt:
-                  elf.bestaetigt || spiel.status == FixtureStatus.finished,
+                  zeige.bestaetigt || spiel.status == FixtureStatus.finished,
             ),
             _Formationsfeld(
-              elf: elf,
+              elf: zeige,
               ich: player.id,
               verein: player.club,
               oeffnet: (id) => _ausPool(ref, id) != null,
               onTip: (id) => _oeffne(context, ref, id),
             ),
             _NichtInDerElf(
-              uebrige: _uebrige(ref, elf, _minutenZuletzt(ref, spiele)),
+              uebrige: _uebrige(ref, zeige, _minutenZuletzt(ref, spiele)),
               minuten: _minutenZuletzt(ref, spiele),
               ich: player.id,
               onTip: (id) => _oeffne(context, ref, id),
             ),
           ],
+        ],
+      );
+      },
+    );
+  }
+}
+
+/// **Die Zeile, die sagt, woher diese Elf kommt.**
+///
+/// Ohne sie wäre die Fortschreibung eine Behauptung: elf Trikots auf einem
+/// Feld sehen aus wie eine Aufstellung, egal woher sie stammen. Hier steht
+/// deshalb der Spieltag, aus dem sie kommt, und wie viele Plätze neu besetzt
+/// werden mussten.
+///
+/// Gold, weil es kein Fehler ist, sondern eine Annahme, die man kennen muss —
+/// dieselbe Farbe wie „Aufstellung · noch nicht gestellt".
+class _FortschreibungHinweis extends StatelessWidget {
+  const _FortschreibungHinweis({
+    required this.ausRunde,
+    required this.ersetzt,
+    required this.offen,
+  });
+
+  final int ausRunde;
+  final int ersetzt;
+  final int offen;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final zusatz = [
+      if (ersetzt > 0)
+        ersetzt == 1
+            ? 'Ein Ausfall ist durch den nominellen Ersatz getauscht.'
+            : '$ersetzt Ausfälle sind durch den nominellen Ersatz getauscht.',
+      if (offen > 0)
+        offen == 1
+            ? 'Für einen Platz gibt es keinen freien Ersatz.'
+            : 'Für $offen Plätze gibt es keinen freien Ersatz.',
+    ].join(' ');
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      // **Ohne Hauch, ohne Farbe.** Auf Ansage (08.09.2026): „Das reicht, wenn
+      // das schwarz ist, mit weißer Schrift." Und es stimmt — hier ist nichts
+      // zu tun, es ist eine Auskunft darüber, woher die Elf kommt. Farbe
+      // trägt in dieser App, was etwas will; eine Herkunftsangabe will
+      // nichts. Der Kartengrund und die Haarlinie genügen.
+      decoration: kartenDeko(context, radius: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.history, size: 18, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Elf des $ausRunde. Spieltags',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                      fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    'Die voraussichtliche Aufstellung kommt ein bis zwei Tage '
+                        'vor Anpfiff. Bis dahin steht hier die zuletzt '
+                        'gemeldete Elf.',
+                    if (zusatz.isNotEmpty) zusatz,
+                  ].join(' '),
+                  style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.35,
+                      fontSize: 12),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1234,7 +1234,9 @@ class _Formationsfeld extends StatelessWidget {
                         Flexible(
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: s.playerId == ich || !oeffnet(s.playerId)
+                            onTap: s.offen ||
+                                    s.playerId == ich ||
+                                    !oeffnet(s.playerId)
                                 ? null
                                 : () => onTip(s.playerId),
                             child: _Feldspieler(
@@ -1254,6 +1256,11 @@ class _Formationsfeld extends StatelessWidget {
     );
   }
 }
+
+/// Das Gold, mit dem in dieser App „hier ist etwas zu tun / hier steht eine
+/// Annahme" markiert wird — dieselbe Farbe wie am Waiver und an „Aufstellung ·
+/// noch nicht gestellt".
+const _kErsatzGold = Color(0xFFFFC83D);
 
 /// Ein Spieler auf dem Feld: Rückennummer im Kreis, Name darunter.
 ///
@@ -1287,27 +1294,70 @@ class _Feldspieler extends StatelessWidget {
         // Spieler lesbar, und die Vereinsfarbe sagt vor dem Namen, welche
         // Mannschaft da steht — dasselbe `JerseyIcon` wie im Spielbericht,
         // kein zweiter Feldlook.
-        DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: hervor
-                ? [
-                    BoxShadow(
-                      color: schnee.withValues(alpha: 0.55),
-                      blurRadius: 12,
-                      spreadRadius: 1,
+        if (spieler.offen)
+          // **Ein unbesetzter Platz sagt, dass er unbesetzt ist.** Für die
+          // Position der Vorwoche gibt es im Kader keinen freien Ersatz —
+          // lieber sichtbar leer als ein Stürmer im Tor. Dieselbe Regel wie
+          // beim fehlenden Torwart im Duell (0120).
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.black.withValues(alpha: 0.35),
+              border: Border.all(
+                  color: schnee.withValues(alpha: 0.45), width: 1.2),
+            ),
+            child: Icon(Icons.question_mark,
+                size: 16, color: schnee.withValues(alpha: 0.7)),
+          )
+        else
+          DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: hervor
+                  ? [
+                      BoxShadow(
+                        color: schnee.withValues(alpha: 0.55),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : const [
+                      BoxShadow(color: Colors.black45, blurRadius: 4),
+                    ],
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                JerseyIcon(
+                  colors: clubColors(verein, fallback: _ersatz),
+                  number: spieler.nummer,
+                  size: hervor ? 38 : 34,
+                ),
+                // **Der Ersatz trägt ein Zeichen.** Er steht hier nur, weil
+                // der Mann der Vorwoche ausfällt; ohne Kennzeichen sähe eine
+                // Vermutung aus wie eine Meldung.
+                if (spieler.ersatz)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _kErsatzGold,
+                      ),
+                      child: const Icon(Icons.swap_horiz,
+                          size: 10, color: Colors.black),
                     ),
-                  ]
-                : const [
-                    BoxShadow(color: Colors.black45, blurRadius: 4),
-                  ],
+                  ),
+              ],
+            ),
           ),
-          child: JerseyIcon(
-            colors: clubColors(verein, fallback: _ersatz),
-            number: spieler.nummer,
-            size: hervor ? 38 : 34,
-          ),
-        ),
         const SizedBox(height: 3),
         // Der Name schrumpft, statt zu kappen — dieselbe Regel wie im
         // Live-Tab: „Schlotterb…" sagt nichts.
@@ -1316,13 +1366,14 @@ class _Feldspieler extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              _kurzerName(spieler.name),
+              spieler.offen ? 'frei' : _kurzerName(spieler.name),
               maxLines: 1,
               style: TextStyle(
                 fontSize: 10,
                 height: 1.15,
                 fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
-                color: schnee.withValues(alpha: hervor ? 1 : 0.85),
+                color: schnee.withValues(
+                    alpha: spieler.offen ? 0.6 : (hervor ? 1 : 0.85)),
               ),
             ),
           ),
@@ -1547,6 +1598,7 @@ class _Urteil extends StatelessWidget {
     required this.drin,
     required this.bank,
     required this.bestaetigt,
+    this.ausRunde,
   });
 
   final bool drin;
@@ -1560,6 +1612,12 @@ class _Urteil extends StatelessWidget {
   /// wäre eine Unsicherheit, die es nicht mehr gibt.
   final bool bestaetigt;
 
+  /// Die Elf ist **fortgeschrieben** und stammt aus diesem Spieltag. Dann darf
+  /// hier weder „voraussichtlich" noch „in der Startelf" stehen: Beides wäre
+  /// eine Aussage über das kommende Spiel, und die trifft niemand — die
+  /// einzige belegbare Auskunft ist, wo er zuletzt stand.
+  final int? ausRunde;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -1569,23 +1627,22 @@ class _Urteil extends StatelessWidget {
     // falsch: Es heißt in dieser App „hier läuft etwas", und es lief schon
     // einmal als Dauerfarbe durch dieses Profil.
     final farbe = drin ? scheme.onSurfaceVariant : const Color(0xFFFFC83D);
-    final text = drin
-        ? (bestaetigt ? 'In der Startelf' : 'Voraussichtlich in der Startelf')
-        : bank
-            ? 'Auf der Bank'
-            : bestaetigt
-                ? 'Nicht im Kader für dieses Spiel'
-                : 'Nicht in der voraussichtlichen Elf';
+    final text = ausRunde != null
+        ? (drin
+            ? 'Stand am $ausRunde. Spieltag in der Startelf'
+            : 'Stand am $ausRunde. Spieltag nicht in der Startelf')
+        : drin
+            ? (bestaetigt ? 'In der Startelf' : 'Voraussichtlich in der Startelf')
+            : bank
+                ? 'Auf der Bank'
+                : bestaetigt
+                    ? 'Nicht im Kader für dieses Spiel'
+                    : 'Nicht in der voraussichtlichen Elf';
     return Container(
       margin: EdgeInsets.fromLTRB(12, 0, 12, drin ? 2 : 8),
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: drin ? 6 : 10),
-      decoration: drin
-          ? null
-          : BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: farbe.withValues(alpha: 0.10),
-              border: Border.all(color: farbe.withValues(alpha: 0.55)),
-            ),
+      decoration:
+          drin ? null : kartenDeko(context, hauch: farbe, radius: 12),
       child: Row(
         children: [
           Icon(
@@ -1679,13 +1736,7 @@ class _NochKeinePrognose extends ConsumerWidget {
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: scheme.onSurface.withValues(alpha: 0.12),
-                  width: 0.8,
-                ),
-              ),
+              decoration: kartenDeko(context, radius: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1777,11 +1828,7 @@ class _Ausfallzeile extends ConsumerWidget {
       padding: const EdgeInsets.only(top: 8),
       child: Container(
         padding: const EdgeInsets.fromLTRB(10, 7, 10, 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: farbe.withValues(alpha: 0.10),
-          border: Border.all(color: farbe.withValues(alpha: 0.45)),
-        ),
+        decoration: kartenDeko(context, hauch: farbe, radius: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
