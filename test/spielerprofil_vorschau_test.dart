@@ -203,13 +203,21 @@ void main() {
           {PrognoseElf? elf,
           List<Fixture>? spielplan,
           PlayerAbsence? ausfall,
+          Map<String, PlayerAbsence>? ausfaelle,
+          // Prognose je Spieltag. Braucht der Fall „Elf der Vorwoche": Fuer
+          // den kommenden Spieltag gibt es keine, fuer den gelaufenen die
+          // gemeldete — genau aus diesem Unterschied entsteht die
+          // Fortschreibung.
+          PrognoseElf? Function(int runde)? elfJeRunde,
           List<FantasyManager> managers = const []}) =>
       ProviderScope(
         overrides: [
-          prognoseElfProvider.overrideWith((ref, k) async => elf),
+          prognoseElfProvider.overrideWith(
+              (ref, k) async => elfJeRunde == null ? elf : elfJeRunde(k.runde)),
           // **Ein Ausfall im Bild.** Sonst sieht man weder das Symbol an der
           // Kachel noch den Grund im Profil — und beides ist der Punkt.
-          absencesProvider.overrideWith((ref) => Stream.value({
+          absencesProvider.overrideWith((ref) => Stream.value(ausfaelle ??
+              {
                 'p1': ausfall ??
                     PlayerAbsence(
                       playerId: 'p1',
@@ -437,6 +445,78 @@ void main() {
     await expectLater(
       find.byType(BottomSheet),
       matchesGoldenFile('goldens/spielerprofil_ohne_prognose.png'),
+    );
+  });
+
+  testWidgets('Vorschau: Elf der Vorwoche, Ausfall ersetzt', (tester) async {
+    // **Der Zustand, der die Luecke schliesst.** Zwischen Abpfiff und
+    // Prognose lagen drei bis fuenf Tage ohne jede Auskunft; jetzt steht dort
+    // die zuletzt gemeldete Elf, Ausfaelle durch den nominellen Ersatz
+    // getauscht. Julian Brandt (p3) faellt aus, Emre Can (p7) rueckt auf
+    // seinen Platz — er hat von den freien Mittelfeldspielern die meisten
+    // Minuten.
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+
+    tester.view.physicalSize = const Size(402 * 3, 860 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final gemeldet = PrognoseElf(
+      club: prognose.club,
+      elf: prognose.elf,
+      formation: prognose.formation,
+      stand: prognose.stand,
+      bestaetigt: true,
+    );
+
+    await tester.pumpWidget(rahmen(
+      Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showPlayerProfile(
+              context,
+              league: liga,
+              player: held,
+              clubIcon: null,
+              isMine: true,
+            ),
+            child: const Text('öffnen'),
+          ),
+        ),
+      ),
+      // Spieltag 3 hat keine Prognose, Spieltag 2 die gemeldete Elf.
+      elfJeRunde: (runde) => runde == 2 ? gemeldet : null,
+      ausfaelle: {
+        'p3': PlayerAbsence(
+          playerId: 'p3',
+          gesperrt: false,
+          grundQuelle: 'Hamstring Injury',
+          seit: DateTime(2026, 9, 7),
+        ),
+      },
+    ));
+    await tester.tap(find.text('öffnen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.tap(find.text('Aufstellung'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // **Zusicherungen neben dem Bild.** Ein Golden zeigt, wie es aussah, nicht
+    // dass die Regel greift: Der Ausgefallene darf nicht mehr auf dem Feld
+    // stehen, sein Ersatz schon, und der Hinweis muss sagen, woher die Elf
+    // kommt.
+    expect(find.text('Elf des 2. Spieltags'), findsOneWidget);
+    expect(find.text('J. Brandt'), findsNothing);
+    expect(find.text('E. Can'), findsOneWidget);
+
+    await expectLater(
+      find.byType(BottomSheet),
+      matchesGoldenFile('goldens/spielerprofil_vorwoche.png'),
     );
   });
 

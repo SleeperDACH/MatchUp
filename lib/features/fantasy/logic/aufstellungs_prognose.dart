@@ -93,6 +93,9 @@ class PrognoseSpieler {
     this.reihe,
     this.spalte,
     this.bank = false,
+    this.ersatz = false,
+    this.offen = false,
+    this.fuer,
   });
 
   final String playerId;
@@ -113,6 +116,20 @@ class PrognoseSpieler {
   /// Er sitzt auf der Bank. Gibt es nur in einer **gemeldeten** Aufstellung:
   /// Sportmonks' Prognose kennt elf Namen und keine Ersatzbank.
   final bool bank;
+
+  /// Er steht hier nur, weil der Mann der Vorwoche ausfällt — der nominelle
+  /// Ersatz aus der Fortschreibung. Die Oberfläche muss das kennzeichnen: Ein
+  /// Ersatz, der aussieht wie eine Meldung, ist eine Behauptung.
+  final bool ersatz;
+
+  /// Der Platz ist **unbesetzt** — der Mann der Vorwoche fällt aus, und für
+  /// seine Position gibt es im Kader keinen freien Ersatz. Lieber sichtbar
+  /// leer als ein Stürmer im Tor.
+  final bool offen;
+
+  /// Wen er ersetzt beziehungsweise wessen Platz leer bleibt. Nur gesetzt,
+  /// wenn [ersatz] oder [offen] gilt.
+  final String? fuer;
 }
 
 /// Die voraussichtliche Elf eines Vereins für ein bestimmtes Spiel.
@@ -124,6 +141,7 @@ class PrognoseElf {
     this.bestaetigt = false,
     this.formation,
     this.stand,
+    this.ausRunde,
   });
 
   final String club;
@@ -143,6 +161,16 @@ class PrognoseElf {
   /// Wann die Prognose zuletzt geändert wurde. Sie wird bis kurz vor Anpfiff
   /// mehrfach nachgezogen; ohne den Stand wüsste niemand, wie frisch sie ist.
   final DateTime? stand;
+
+  /// Diese Elf ist **fortgeschrieben** und stammt aus diesem Spieltag — die
+  /// letzte gemeldete Aufstellung, Ausfälle ersetzt. `null` heißt: echte
+  /// Prognose oder Meldung für den gezeigten Spieltag.
+  ///
+  /// Der Unterschied gehört in die Oberfläche, nicht nur in die Daten: „Elf
+  /// des 2. Spieltags" ist eine andere Auskunft als „voraussichtliche Elf".
+  final int? ausRunde;
+
+  bool get fortgeschrieben => ausRunde != null;
 
   bool enthaelt(String playerId) =>
       elf.any((s) => s.playerId == playerId);

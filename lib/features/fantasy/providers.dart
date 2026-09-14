@@ -23,6 +23,7 @@ import 'data/seed_player_pool.dart';
 import 'logic/aufstellungs_prognose.dart';
 import 'logic/draft_ranking.dart';
 import 'logic/fantasy_scoring_engine.dart';
+import 'logic/fortschreibung.dart';
 import 'models/fantasy_models.dart';
 import 'models/player_absence.dart';
 import 'models/roster_move.dart';
@@ -378,6 +379,60 @@ final prognoseElfProvider =
       .eq('club', k.club);
   return PrognoseElf.ausZeilen(
       k.club, List<Map<String, dynamic>>.from(rows));
+});
+
+/// **Die fortgeschriebene Elf** eines Vereins — die Rückfallebene für die
+/// Tage, an denen es noch keine Prognose gibt.
+///
+/// Sportmonks liefert erst ein bis zwei Tage vor Anpfiff; nachgemessen am
+/// 08.09.2026, drei bis fünf Tage vor dem 3. Spieltag, standen für **alle
+/// neun** Partien null Einträge. Bis dahin zeigt die App die letzte gemeldete
+/// Elf, Ausfälle durch den nominellen Ersatz getauscht — dieselbe
+/// Trefferquote wie die gekaufte Prognose (77 % gegen 77 %, gemessen über die
+/// Saison 2025/26), nur Tage früher.
+///
+/// Gerechnet wird in `logic/fortschreibung.dart`; hier steht nur, woher die
+/// vier Zutaten kommen. `null` heißt: Es gibt keine gemeldete Elf, aus der
+/// sich etwas fortschreiben ließe.
+final fortgeschriebeneElfProvider =
+    FutureProvider.family<PrognoseElf?, String>((ref, club) async {
+  final spiele = await ref.watch(fantasySeasonFixturesProvider.future);
+  final zuletzt = letztesGespieltes(spiele, club);
+  if (zuletzt == null) return null;
+
+  final letzte =
+      await ref.watch(prognoseElfProvider((club: club, runde: zuletzt.round)).future);
+  if (letzte == null) return null;
+
+  final pool = await ref.watch(playerPoolProvider.future);
+  final kader = [
+    for (final p in pool)
+      if (vereinKanonisch(p.club) == vereinKanonisch(club)) p,
+  ];
+
+  final ausfaelle =
+      ref.watch(absencesProvider).valueOrNull ?? const <String, PlayerAbsence>{};
+
+  // **Minuten über die ganze Saison, nicht nur den letzten Spieltag.** Wer
+  // nominell der Ersatz ist, zeigt sich an der Einsatzzeit über mehrere
+  // Spiele; ein einzelner Spieltag, an dem der Stammspieler pausierte, würde
+  // sonst den Falschen nach vorn holen.
+  final saison = ref.watch(seasonStatsProvider).valueOrNull ??
+      const <int, Map<String, PlayerMatchStats>>{};
+  final minuten = <String, int>{};
+  for (final runde in saison.values) {
+    for (final e in runde.entries) {
+      minuten[e.key] = (minuten[e.key] ?? 0) + e.value.minutes;
+    }
+  }
+
+  return fortgeschriebeneElf(
+    letzte: letzte,
+    ausRunde: zuletzt.round,
+    vereinsKader: kader,
+    faelltAus: faelltAusFuer(ausfaelle, kader),
+    minuten: minuten,
+  );
 });
 
 /// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).

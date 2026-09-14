@@ -46,6 +46,20 @@ const LEAGUES = ["bundesliga", "dfb_pokal"];
 // Reserve ab.
 const VORLAUF_TAGE = 3;
 
+// **Und wie weit zurueck.** Die gemeldete Aufstellung steht erst rund eine
+// Stunde vor Anpfiff; bis dahin ist das Spiel `scheduled`, danach `live` und
+// `finished`. Der Filter auf `scheduled` liess dem Sync deshalb ein Fenster
+// von etwa einer Stunde, um sie einzusammeln — verpasst er es, ist die Elf
+// dieses Spiels fuer immer weg. Gemessen am 08.09.2026: Spieltag 1 steht mit
+// **2 von 18** Vereinen in `predicted_lineups`, Spieltag 2 vollstaendig.
+//
+// Das faellt jetzt ins Gewicht, weil die App die zuletzt gemeldete Elf
+// fortschreibt, solange es keine Prognose gibt (`logic/fortschreibung.dart`).
+// Ohne gespeicherte Elf gibt es nichts fortzuschreiben. Zwei Tage Nachlauf
+// kosten nichts: Der multi-Endpunkt nimmt 25 Spiele fuer einen Request, ein
+// Spieltag sind neun.
+const NACHLAUF_STUNDEN = 48;
+
 // Der multi-Endpunkt nimmt 25 Spiele fuer EINEN Request (gemessen: `remaining`
 // sinkt um 1, nicht um 25).
 const BATCH = 25;
@@ -88,12 +102,16 @@ Deno.serve(async (req) => {
 
   // 1) Welche Spiele stehen an? Aus der eigenen Spiegelung — kostet keinen
   //    API-Request.
+  //    **Ohne Status-Filter.** Er stand auf `scheduled` und schnitt damit
+  //    genau die Spiele weg, deren Aufstellung gerade gemeldet wurde.
   let q = supabase
     .from("fixtures")
     .select("id,kickoff,status")
     .in("league_id", LEAGUES)
-    .eq("status", "scheduled")
-    .gte("kickoff", new Date(Date.now() - 3 * 3600_000).toISOString())
+    .gte(
+      "kickoff",
+      new Date(Date.now() - NACHLAUF_STUNDEN * 3600_000).toISOString(),
+    )
     .lte("kickoff", new Date(Date.now() + tage * 86400_000).toISOString());
   if (nurFixture) q = supabase
     .from("fixtures").select("id,kickoff,status").eq("id", nurFixture);
