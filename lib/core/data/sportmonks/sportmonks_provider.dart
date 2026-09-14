@@ -260,6 +260,7 @@ class SupabaseSportmonksProvider implements SportsDataProvider {
 
   static MatchDetail matchDetailFromJson(Map<String, dynamic> j) {
     final status = statusFrom(j['state'] as String? ?? 'NS');
+    final phase = j['state'] as String?;
     final venue = j['venue'] as Map<String, dynamic>?;
     final goalsRaw =
         (j['goals'] as List? ?? const []).cast<Map<String, dynamic>>();
@@ -337,6 +338,8 @@ class SupabaseSportmonksProvider implements SportsDataProvider {
       away: _team(away ?? const {'id': 0, 'name': '?', 'short': '?'}),
       kickoff: DateTime.parse(j['starting_at'] as String).toUtc(),
       status: status,
+      minute: (j['minute'] as num?)?.toInt(),
+      phase: phase,
       homeScore: (j['home_score'] as num?)?.toInt(),
       awayScore: (j['away_score'] as num?)?.toInt(),
       goals: goals,

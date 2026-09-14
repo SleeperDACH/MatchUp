@@ -156,17 +156,29 @@ class _Header extends StatelessWidget {
                   Text('(${detail.halfTime!.$1}:${detail.halfTime!.$2})',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: scheme.onSurfaceVariant)),
+                // **Statt „LIVE" steht hier, wie weit das Spiel ist.**
+                // „LIVE" sagt dasselbe wie der pulsierende Punkt daneben; die
+                // Minute sagt etwas Neues. In der Pause läuft keine Uhr — dann
+                // steht dort „Halbzeit" statt einer Zahl, die stehen bliebe.
+                // Fehlt beides (Unterbrechung, Verlängerung ohne Uhr), bleibt
+                // es beim Wort.
                 if (live)
                   Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      PulsingDot(size: 7),
-                      SizedBox(width: 4),
-                      Text('LIVE',
-                          style: TextStyle(
+                    children: [
+                      const PulsingDot(size: 7),
+                      const SizedBox(width: 4),
+                      Text(
+                          d.minute != null
+                              ? "${d.minute}'"
+                              : d.istPause
+                                  ? 'Halbzeit'
+                                  : 'LIVE',
+                          style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: MatchUpColors.red)),
+                              color: MatchUpColors.red,
+                              fontFeatures: [FontFeature.tabularFigures()])),
                     ],
                   )
                 else if (d.status == FixtureStatus.finished)

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:matchup/app/live_screen.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
@@ -133,6 +134,31 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
+
+    // **Die Messungen stehen vor dem Wächter.** Was darunter steht, läuft nur
+    // mit `--update-goldens` — eine Zusicherung dort wäre im Alltag stumm.
+    // Genau das ist ihr beim ersten Anlauf passiert: Die Gegenprobe mit einem
+    // zu kleinen Tippziel lief grün durch, weil die Prüfung gar nicht
+    // ausgeführt wurde.
+    // **Keine Minute in der Liste.** Sie steht allein in der Spielübersicht;
+    // hier wäre sie eine dritte Zahl neben Stand und Anstoßzeit.
+    expect(find.textContaining("'"), findsNothing);
+
+    // **Die Datumszelle ist schmal, ihr Tippziel nicht.** Der sichtbare Kasten
+    // misst 34 Punkte; getroffen werden muss das Plattformmaß (48 auf
+    // Android, 44 auf iOS). Wer die Zelle weiter verschmälert, darf das nicht
+    // am Ziel tun — genau davor warnt `minTastflaeche`.
+    // **Der Tag wird gerechnet, nicht hingeschrieben.** Ein fester „Samstag,
+    // 12." stand drei Tage später nicht mehr in der Leiste — sie zeigt die
+    // letzten und nächsten sieben Tage um **heute**. Dieselbe Falle wie bei
+    // den Bildern, nur in einer Zusicherung.
+    final heuteLabel =
+        DateFormat('EEEE, d. MMMM', 'de_DE').format(DateTime.now());
+    final tag = find.byWidgetPredicate((w) =>
+        w is Semantics &&
+        (w.properties.label ?? '').startsWith(heuteLabel));
+    expect(tag, findsOneWidget);
+    expect(tester.getSize(tag).width, greaterThanOrEqualTo(44));
 
     if (!autoUpdateGoldenFiles) return;
     await expectLater(

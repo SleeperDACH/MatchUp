@@ -107,6 +107,8 @@ class MatchDetail {
     required this.goals,
     this.halfTime,
     this.afterExtraTime,
+    this.minute,
+    this.phase,
     this.penalties,
     this.stadium,
     this.city,
@@ -132,6 +134,25 @@ class MatchDetail {
   final (int, int)? halfTime;
   final (int, int)? afterExtraTime;
   final (int, int)? penalties;
+
+  /// **Die laufende Spielminute**, so wie sie angezeigt gehört — einschließlich
+  /// Nachspielzeit. `null`, solange keine Uhr läuft: vor dem Anpfiff, in der
+  /// Pause und nach dem Abpfiff.
+  final int? minute;
+
+  /// Der **rohe Spielzustand** der Quelle („INPLAY_1ST_HALF", „HT", „FT" …).
+  ///
+  /// [status] faltet ihn auf drei Werte zusammen, und das ist für fast alles
+  /// richtig. Die Pause geht dabei aber verloren: Sie zählt als `live`, hat
+  /// aber keine laufende Minute. Ohne den Rohwert stünde im Kopf dann „LIVE"
+  /// ohne Zahl, und niemand wüsste, ob die Uhr steht oder die Auskunft fehlt.
+  final String? phase;
+
+  /// Halbzeitpause — keine laufende Uhr, aber auch nicht unterbrochen.
+  bool get istPause {
+    final p = (phase ?? '').toUpperCase();
+    return p == 'HT' || p == 'BREAK' || p.contains('HALF_TIME');
+  }
 
   final List<MatchGoal> goals;
   final String? stadium;

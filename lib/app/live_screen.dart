@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../core/models/models.dart';
+import 'home_screen.dart' show minTastflaeche;
+import 'widgets/karte.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'club_screen.dart';
@@ -21,13 +23,13 @@ import '../core/data/neu_laden.dart';
 /// Signaturfarbe je Wettbewerb — im Quadrat vor dem Liganamen, in der
 /// Wettbewerbszeile unten und im Auswahl-Sheet.
 Color leagueColor(String leagueId) => switch (leagueId) {
-      'bundesliga' => const Color(0xFFD20515), // Bundesliga-Rot
-      'bundesliga2' => const Color(0xFF2E6BE6), // Blau
-      'liga3' => const Color(0xFFEF7D00), // Orange
-      'dfb_pokal' => const Color(0xFFFFC83D), // Pokal-Gold
-      'frauen_bundesliga' => const Color(0xFFE0218A), // Magenta
-      _ => const Color(0xFF4ADE6A),
-    };
+  'bundesliga' => const Color(0xFFD20515), // Bundesliga-Rot
+  'bundesliga2' => const Color(0xFF2E6BE6), // Blau
+  'liga3' => const Color(0xFFEF7D00), // Orange
+  'dfb_pokal' => const Color(0xFFFFC83D), // Pokal-Gold
+  'frauen_bundesliga' => const Color(0xFFE0218A), // Magenta
+  _ => const Color(0xFF4ADE6A),
+};
 
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -74,8 +76,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     // Eigener Takt (unabhängig von Rebuilds): lädt die Spieldaten neu,
     // solange ein Spiel live ist bzw. zeitnah ansteht/gerade lief — sonst
     // nur ein günstiger Check auf zwischengespeicherten Daten, kein Abruf.
-    _refreshTimer =
-        Timer.periodic(const Duration(seconds: 45), (_) => _maybeRefresh());
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 45),
+      (_) => _maybeRefresh(),
+    );
   }
 
   @override
@@ -92,9 +96,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     for (final l in Leagues.all) {
       final fx = ref.read(leagueSeasonFixturesProvider(l.id)).valueOrNull;
       if (fx == null) continue;
-      if (fx.any((f) =>
-          f.status != FixtureStatus.finished &&
-          f.kickoff.difference(now).abs() < const Duration(hours: 3))) {
+      if (fx.any(
+        (f) =>
+            f.status != FixtureStatus.finished &&
+            f.kickoff.difference(now).abs() < const Duration(hours: 3),
+      )) {
         hasNear = true;
         break;
       }
@@ -140,7 +146,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     final days = [for (var i = -7; i <= 7; i++) today.add(Duration(days: i))];
     // Heute (Index 7) beim ersten Aufbau etwa mittig einblenden.
     _dayController ??= ScrollController(
-        initialScrollOffset: (7 * _dayItemExtent - 120).clamp(0, 1e9));
+      initialScrollOffset: (7 * _dayItemExtent - 120).clamp(0, 1e9),
+    );
 
     // Tage, an denen überhaupt gespielt wird, und die mit laufendem Spiel —
     // die Tagesleiste soll zeigen, wo etwas los ist, statt fünfzehn gleiche
@@ -194,10 +201,12 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             // hier also selbst frei gehalten werden.
             SizedBox(
               height:
-                  math.max(MediaQuery.viewPaddingOf(context).bottom,
-                          navBarBottomInset) +
-                      navBarHeight +
-                      _navBarGap,
+                  math.max(
+                    MediaQuery.viewPaddingOf(context).bottom,
+                    navBarBottomInset,
+                  ) +
+                  navBarHeight +
+                  _navBarGap,
             ),
           ],
         ),
@@ -206,7 +215,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   }
 
   Widget _buildDay(
-      BuildContext context, List<_LiveItem> items, bool anyLoading, Object? error) {
+    BuildContext context,
+    List<_LiveItem> items,
+    bool anyLoading,
+    Object? error,
+  ) {
     if (items.isEmpty && anyLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -222,7 +235,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     // Kopf der Box statt als Kürzel an jeder einzelnen Begegnung.
     final list = [
       for (final it in items)
-        if (_sameDay(it.fixture.kickoff.toLocal(), _selectedDay)) it
+        if (_sameDay(it.fixture.kickoff.toLocal(), _selectedDay)) it,
     ];
 
     final byLeague = <String, List<_LiveItem>>{};
@@ -236,7 +249,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     // nicht die zufällige Reihenfolge der Anstoßzeiten.
     final leagueIds = [
       for (final l in Leagues.all)
-        if (byLeague.containsKey(l.id)) l.id
+        if (byLeague.containsKey(l.id)) l.id,
     ];
 
     return RefreshIndicator(
@@ -257,33 +270,65 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     league: Leagues.byId(id),
                     erster: id == leagueIds.first,
                   ),
-                  // **Je Anstoßzeit ein Block, nicht je Zeile eine Uhrzeit.**
-                  // An einem vollen Samstag standen fünfmal „15:30" und
-                  // dreimal „beendet" untereinander — eine Wiederholung, die
-                  // die Zeilen nicht unterscheidet und die Mitte jeder Zeile
-                  // besetzt hält. Dieselbe Entscheidung wie im Tippspiel-Tab.
-                  for (final block in _zeitbloecke(byLeague[id]!)) ...[
-                    _ZeitKopf(block: block),
-                    for (var i = 0; i < block.spiele.length; i++) ...[
-                      if (i > 0)
-                        Divider(
-                          height: 0.8,
-                          thickness: 0.8,
-                          indent: 12,
-                          endIndent: 12,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.07),
-                        ),
-                      _SpielZeile(
-                        item: block.spiele[i],
-                        // „beendet" steht schon im Kopf des Blocks; ein
-                        // zweites Mal je Zeile wäre genau die Wiederholung,
-                        // die hier gerade abgeschafft wird.
-                        zustandImKopf: block.zustand != _Blockzustand.offen,
+                  // **Die Spiele eines Wettbewerbs stehen auf einer eigenen
+                  // Fläche.** Auf Ansage (12.09.2026): „Können wir im Live-Tab
+                  // die Spiele der Liga in Boxen ein bisschen vom Hintergrund
+                  // abheben?"
+                  //
+                  // Das ist eine Rücknahme, und die Begründung von damals
+                  // sollte kennen, wer sie wieder anfasst: Der Tafel-Entwurf
+                  // hatte die Ligakarten abgeschafft, weil **fünf Rahmen
+                  // untereinander** standen und der Wettbewerb dreimal darin
+                  // genannt wurde (Logo, Name in Ligafarbe, Anzahl). Von den
+                  // drei Nennungen ist nur die Kapitelmarke geblieben, und sie
+                  // steht **über** der Fläche statt darin — dieselbe
+                  // Gliederung wie die Fantasy-Tabelle, wo unter der Marke
+                  // „Tabelle" eine gerahmte Fläche steht.
+                  //
+                  // Die Kante ist die gewöhnliche Haarlinie, die Fläche der
+                  // Kartengrund (`kartenDeko`). Kein farbiger Rand, kein
+                  // getöntes Band — beides ist hier schon einmal gescheitert.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                    child: Container(
+                      decoration: kartenDeko(context, radius: 16),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // **Je Anstoßzeit ein Block, nicht je Zeile eine
+                          // Uhrzeit.** An einem vollen Samstag standen fünfmal
+                          // „15:30" und dreimal „beendet" untereinander — eine
+                          // Wiederholung, die die Zeilen nicht unterscheidet
+                          // und die Mitte jeder Zeile besetzt hält. Dieselbe
+                          // Entscheidung wie im Tippspiel-Tab.
+                          for (final block in _zeitbloecke(byLeague[id]!)) ...[
+                            _ZeitKopf(block: block),
+                            for (var i = 0; i < block.spiele.length; i++) ...[
+                              if (i > 0)
+                                Divider(
+                                  height: 0.8,
+                                  thickness: 0.8,
+                                  indent: 12,
+                                  endIndent: 12,
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.07),
+                                ),
+                              _SpielZeile(
+                                item: block.spiele[i],
+                                // „beendet" steht schon im Kopf des Blocks;
+                                // ein zweites Mal je Zeile wäre genau die
+                                // Wiederholung, die hier abgeschafft wurde.
+                                zustandImKopf:
+                                    block.zustand != _Blockzustand.offen,
+                              ),
+                            ],
+                          ],
+                          const SizedBox(height: 4),
+                        ],
                       ),
-                    ],
-                  ],
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -339,8 +384,8 @@ List<_Zeitblock> _zeitbloecke(List<_LiveItem> spiele) {
     final zustand = offen.any((e) => e.fixture.status == FixtureStatus.live)
         ? _Blockzustand.laeuft
         : offen.every((e) => e.fixture.status == FixtureStatus.finished)
-            ? _Blockzustand.beendet
-            : _Blockzustand.offen;
+        ? _Blockzustand.beendet
+        : _Blockzustand.offen;
     blocks.add(_Zeitblock(aktuell!, offen, zustand));
     offen = <_LiveItem>[];
   }
@@ -596,7 +641,10 @@ class _SpielZeile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
           child: Row(
             children: [
-              ClubLink(team: f.home, child: TeamBadge(team: f.home, size: 22)),
+              ClubLink(
+                team: f.home,
+                child: TeamBadge(team: f.home, size: 22),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: FittedBox(
@@ -681,7 +729,10 @@ class _SpielZeile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              ClubLink(team: f.away, child: TeamBadge(team: f.away, size: 22)),
+              ClubLink(
+                team: f.away,
+                child: TeamBadge(team: f.away, size: 22),
+              ),
               // Der Live-Punkt sitzt an der Außenkante — kein 4-px-Streifen
               // mehr, der die Zeile gegen die anderen verschiebt.
               SizedBox(
@@ -739,7 +790,9 @@ class _WettbewerbsKacheln extends StatelessWidget {
       child: Row(
         children: [
           for (final l in Leagues.all) ...[
-            Expanded(child: _WettbewerbsKachel(league: l, onOpen: onOpen)),
+            Expanded(
+              child: _WettbewerbsKachel(league: l, onOpen: onOpen),
+            ),
             if (l != Leagues.all.last) const SizedBox(width: 7),
           ],
         ],
@@ -887,62 +940,78 @@ class _DateStrip extends StatelessWidget {
               if (hatLive) 'Spiele laufen' else if (hatSpiele) 'Spieltag',
             ].join(', '),
             excludeSemantics: true,
+            // **Die Zelle ist schmaler als ihr Tippziel.** Auf Ansage
+            // (12.09.2026: „Die Datumsboxen können wir um einiges schmaler
+            // machen") ist der sichtbare Kasten von 52 auf 34 Punkte
+            // geschrumpft — für „Do." und eine zweistellige Zahl reicht das
+            // bequem.
+            //
+            // **Das Tippziel schrumpft nicht mit.** Es bleibt bei
+            // `minTastflaeche` (44 auf iOS, 48 auf Android); die Differenz
+            // liegt als Luft neben dem Kasten. Eine 34 Punkte breite
+            // Schaltfläche wäre auf beiden Plattformen zu klein — und die
+            // beiden Zahlen zu einer zusammenzuziehen ist genau der Fehler,
+            // vor dem die Regel in `minTastflaeche` warnt.
             child: GestureDetector(
               onTap: () => onSelect(d),
               behavior: HitTestBehavior.opaque,
               child: Container(
-                width: 52,
-                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                decoration: BoxDecoration(
-                  // Ausgewählt ist hell, nicht grün: Auf einer Tafel, deren
-                  // einzige Farbe „hier läuft etwas" heißt, wäre ein grüner
-                  // Klotz ein Signal ohne Anlass.
-                  color: sel ? scheme.onSurface : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: isToday && !sel
-                      ? Border.all(
-                          color: scheme.onSurface.withValues(alpha: 0.35),
-                        )
-                      : null,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      DateFormat('EEE', 'de_DE').format(d),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: sel ? scheme.surface : scheme.onSurfaceVariant,
+                width: minTastflaeche(context),
+                alignment: Alignment.center,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: Container(
+                  width: 34,
+                  decoration: BoxDecoration(
+                    // Ausgewählt ist hell, nicht grün: Auf einer Tafel, deren
+                    // einzige Farbe „hier läuft etwas" heißt, wäre ein grüner
+                    // Klotz ein Signal ohne Anlass.
+                    color: sel ? scheme.onSurface : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: isToday && !sel
+                        ? Border.all(
+                            color: scheme.onSurface.withValues(alpha: 0.35),
+                          )
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        DateFormat('EEE', 'de_DE').format(d),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: sel ? scheme.surface : scheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      '${d.day}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: sel
-                            ? scheme.surface
-                            : (hatSpiele
-                                  ? scheme.onSurface
-                                  : scheme.onSurfaceVariant.withValues(
-                                      alpha: 0.55,
-                                    )),
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                      const SizedBox(height: 1),
+                      Text(
+                        '${d.day}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: sel
+                              ? scheme.surface
+                              : (hatSpiele
+                                    ? scheme.onSurface
+                                    : scheme.onSurfaceVariant.withValues(
+                                        alpha: 0.55,
+                                      )),
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: sel && punkt != Colors.transparent
-                            ? scheme.surface
-                            : punkt,
-                        shape: BoxShape.circle,
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: sel && punkt != Colors.transparent
+                              ? scheme.surface
+                              : punkt,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -966,14 +1035,19 @@ class _Empty extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 64, horizontal: 24),
           child: Column(
             children: [
-              Icon(Icons.event_busy,
-                  size: 48,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.event_busy,
+                size: 48,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(height: 12),
-              Text(text,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),

@@ -134,6 +134,20 @@ function cupStageOrder(stageName: string | undefined): number {
 }
 
 // deno-lint-ignore no-explicit-any
+// **Die laufende Spielminute.** `FixtureStatus` kennt nur scheduled/live/
+// finished, und in dieser Datei stand lange, der Feed liefere keine Minute.
+// Das war falsch: Sie steht in `periods`. Gemessen an Union gegen Schalke
+// (11.09.2026) trägt die 1. Halbzeit `minutes: 47` (45 + 2 Nachspielzeit) und
+// die 2. `minutes: 103` — also **die Zahl, die man anzeigt**, nicht die
+// Nettospielzeit. Maßgeblich ist der Abschnitt mit `ticking: true`; läuft
+// keiner, ist gerade Pause oder das Spiel steht still.
+// deno-lint-ignore no-explicit-any
+function spielminute(f: any): number | null {
+  const laufend = (f.periods ?? []).find((p: any) => p.ticking === true);
+  const m = laufend?.minutes;
+  return typeof m === "number" ? m : null;
+}
+
 function normFixture(f: any) {
   const parts = (f.participants ?? []).map(normParticipant);
   const home = parts.find((p: { location: string }) => p.location === "home") ??
@@ -155,6 +169,12 @@ function normFixture(f: any) {
     away,
     home_score: home ? currentScore(f.scores, "home") : null,
     away_score: away ? currentScore(f.scores, "away") : null,
+    // **Nur im Spieldetail gefüllt.** Die Listen (Live-Tab, Favoriten,
+    // Vereinsseite) fragen `periods` gar nicht erst ab — der Include kostet
+    // dort gemessen 17 % Nutzlast (143 auf 167 KB je Seite des
+    // Saison-Spielplans) für eine Zahl, die nur die Spielübersicht zeigt.
+    // Ohne `periods` liefert `spielminute` `null`, und das ist hier richtig.
+    minute: spielminute(f),
   };
 }
 
@@ -308,7 +328,7 @@ const STAT_ORDER: [string, string][] = [
 async function fixtureDetail(fixtureId: string) {
   const r = await smGet(
     `/fixtures/${fixtureId}` +
-      `?include=participants;scores;state;round;events.type;venue;` +
+      `?include=participants;scores;state;round;periods;events.type;venue;` +
       `lineups.player;statistics.type;league;formations`,
   );
   const f = r?.data;
@@ -339,17 +359,41 @@ async function fixtureDetail(fixtureId: string) {
         own_goal: dev.includes("OWNGOAL") || dev.includes("OWN_GOAL"),
       };
     });
-  // Aufstellungen: Startelf (type "Lineup") und Bank (type "Bench") je Team.
+  // Aufstellungen: Startelf (type 11) und Bank (type 12) je Team.
+  //
+  // **Nur die gemeldete Aufstellung, nie die Erwartung.** Gemeldet am
+  // 12.09.2026: „Im Live-Tab sollen nur die offiziellen Aufstellungen
+  // angezeigt werden, die circa 45 Minuten vor Anpfiff herausgegeben werden."
+  // Sportmonks liefert Typ-11-Zeilen aber schon **Tage** vorher — gemessen am
+  // 12.09. um 11 Uhr für Dortmund gegen Paderborn (Anpfiff 13:30): 22 Zeilen
+  // Startelf, **null** Bank. Das ist dieselbe Vorhersage, die im
+  // Fantasy-Bereich als „voraussichtlich" ausgewiesen wird; hier stand sie
+  // ohne jeden Vorbehalt als Aufstellung da.
+  //
+  // **Erkannt wird die Meldung an der Bank, nicht an der Elf** — dieselbe
+  // Regel, die `sync-predicted-lineups` seit dem 02.09. benutzt. Eine echte
+  // Aufstellung bringt die Ersatzbank mit (gemessen an der gespielten Partie
+  // Union gegen Schalke: 22 plus 18); eine Vorhersage kennt keine.
+  //
+  // **Je Mannschaft geprüft**, nicht je Partie: Meldet ein Verein früher als
+  // der andere, soll seine Elf stehen und die andere Seite leer bleiben,
+  // statt dass eine Vorhersage mit durchrutscht.
   // deno-lint-ignore no-explicit-any
-  const lineups = (f.lineups ?? []).map((l: any) => ({
-    for_home: l.team_id === homeId,
-    player_id: l.player_id ?? null,
-    name: l.player?.name ?? l.player_name ?? "?",
-    number: l.jersey_number ?? null,
-    position: l.formation_position ?? null,
-    field: l.formation_field ?? null, // "row:col" für die Feldaufstellung
-    starting: l.type_id === 11, // 11 = Startelf, 12 = Bank
-  }));
+  const alleZeilen = (f.lineups ?? []) as any[];
+  const hatBank = (teamId: unknown) =>
+    alleZeilen.some((l) => l.team_id === teamId && l.type_id === 12);
+
+  const lineups = alleZeilen
+    .filter((l) => hatBank(l.team_id))
+    .map((l: any) => ({
+      for_home: l.team_id === homeId,
+      player_id: l.player_id ?? null,
+      name: l.player?.name ?? l.player_name ?? "?",
+      number: l.jersey_number ?? null,
+      position: l.formation_position ?? null,
+      field: l.formation_field ?? null, // "row:col" für die Feldaufstellung
+      starting: l.type_id === 11, // 11 = Startelf, 12 = Bank
+    }));
 
   // Formationen (z. B. „4-2-3-1") je Team.
   // deno-lint-ignore no-explicit-any
