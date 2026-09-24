@@ -57,3 +57,14 @@ test/failures/
 # Inhalt). Die Quellen daneben — canvas.json und die .dc.html-Artboards —
 # sind die Wahrheit, das Bündel ist daraus erzeugt.
 design/**/matchup-*.html
+
+# **Echte Geheimnisse** — gehoeren nie ins Repo.
+# Die .p8 ist der APNs-Schluessel, das Dienstkonto-JSON hat Vollzugriff auf
+# Firebase. Beide lassen sich nicht widerrufen, ohne alles neu einzurichten.
+*.p8
+*firebase-adminsdk*.json
+
+# `google-services.json` und `GoogleService-Info.plist` stehen hier bewusst
+# NICHT: Sie sind keine Geheimnisse (sie liegen in jedem ausgelieferten Build)
+# und muessen mit, sonst baut das Projekt auf einem zweiten Rechner nicht.
+# Siehe PUSH.md.

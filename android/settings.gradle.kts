@@ -21,6 +21,10 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "9.0.1" apply false
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
+    // Liest android/app/google-services.json und erzeugt daraus die
+    // Firebase-Konfiguration für den Build (Projekt-ID, API-Key, App-ID).
+    // Ohne dieses Plugin startet die App mit "No Firebase App '[DEFAULT]'".
+    id("com.google.gms.google-services") version "4.5.0" apply false
 }
 
 include(":app")

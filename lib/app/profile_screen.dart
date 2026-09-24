@@ -7,6 +7,8 @@ import '../features/auth/providers.dart';
 import '../features/auth/user_profile.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/favorites/ui/favorites_manage_screen.dart';
+import '../features/push/push_dienst.dart';
+import '../features/push/ui/push_einstellungen_screen.dart';
 import '../features/tippspiel/logic/tip_stats.dart';
 import '../features/tippspiel/providers.dart';
 
@@ -196,6 +198,13 @@ class _Profile extends ConsumerWidget {
                 label: 'Favoriten',
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const FavoritesManageScreen())),
+              ),
+              const Divider(height: 1),
+              _SettingTile(
+                icon: Icons.notifications_outlined,
+                label: 'Benachrichtigungen',
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const PushEinstellungenScreen())),
               ),
               const Divider(height: 1),
               _SettingTile(
@@ -436,6 +445,11 @@ Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
     ),
   );
   if (ok != true) return;
+  // **Erst das Gerät abmelden, dann das Konto.** Die Zeile in `push_geraete`
+  // gehört dem angemeldeten Nutzer, und RLS lässt nur ihn sie löschen — nach
+  // `signOut` wäre sie unantastbar, und der Nächste auf diesem Gerät bekäme
+  // die Benachrichtigungen seines Vorgängers.
+  await ref.read(pushDienstProvider).abmelden();
   await ref.read(authRepositoryProvider).signOut();
 }
 

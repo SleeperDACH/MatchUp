@@ -70,6 +70,13 @@
 			</array>
 		</dict>
 	</dict>
+	<!-- Damit eine Benachrichtigung die App im Hintergrund kurz wecken darf
+	     (stille Datennachrichten, Zustellquittung). Ohne diesen Eintrag
+	     erreichen nur sichtbare Benachrichtigungen das Geraet. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

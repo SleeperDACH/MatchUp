@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Push-Benachrichtigungen. `development` gilt fuer Debug-Builds und
+	     TestFlight-Builds, die aus Xcode signiert werden; beim App-Store-Export
+	     ersetzt Xcode den Wert automatisch durch `production`, wenn das
+	     Distribution-Profil die Capability traegt. Wer hier von Hand
+	     `production` eintraegt, bekommt im Debug-Build stumm keine Push. -->
+	<key>aps-environment</key>
+	<string>development</string>
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>

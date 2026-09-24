@@ -1,4 +1,6 @@
 import 'package:app_links/app_links.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,12 +17,30 @@ import 'features/auth/password_recovery.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/update_password_screen.dart';
+import 'features/push/push_dienst.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   Intl.defaultLocale = 'de_DE';
   await initializeDateFormatting('de_DE');
+
+  // **Firebase nur für Push, nur nativ, und niemals fatal.**
+  //
+  // `firebase_core` liest die Projektdaten aus den Konfigurationsdateien
+  // (android/app/google-services.json, ios/Runner/GoogleService-Info.plist).
+  // Fehlt eine davon — frischer Checkout, Web-Build —, wirft `initializeApp`.
+  // Dasselbe Prinzip wie bei Supabase darunter: Die App startet weiter, sie
+  // kann dann nur keine Benachrichtigungen empfangen. Ein ungefangener Fehler
+  // hier bräche sie vor dem ersten Frame ab.
+  if (PushDienst.moeglich) {
+    try {
+      await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(_pushImHintergrund);
+    } catch (e, s) {
+      debugPrint('Firebase-Initialisierung fehlgeschlagen: $e\n$s');
+    }
+  }
 
   // Ohne Supabase-Konfiguration läuft die App im lokalen Modus
   // (siehe AppConfig) — praktisch für Entwicklung und das MVP.
@@ -66,6 +86,21 @@ Future<void> main() async {
   }
 
   runApp(const ProviderScope(child: FantasyApp()));
+}
+
+/// Läuft in einem **eigenen Isolate**, wenn eine Benachrichtigung eintrifft,
+/// während die App nicht im Vordergrund ist.
+///
+/// Zu tun ist hier nichts: MatchUp verschickt sichtbare Benachrichtigungen,
+/// die das Betriebssystem selbst anzeigt. Die Anmeldung muss trotzdem
+/// stehen — ohne registrierten Handler verwirft Android Datenanteile der
+/// Nachricht, und das Antippen käme ohne Ziel in der App an. Das eigene
+/// Isolate kennt nichts von `main()`, deshalb hier noch einmal
+/// `Firebase.initializeApp`.
+@pragma('vm:entry-point')
+Future<void> _pushImHintergrund(RemoteMessage nachricht) async {
+  await Firebase.initializeApp();
+  debugPrint('Push im Hintergrund: ${nachricht.data}');
 }
 
 /// Implicit-Flow: `#access_token=…&type=recovery`. Das Fragment ist kein

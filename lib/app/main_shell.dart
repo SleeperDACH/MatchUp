@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/favorites/ui/favorites_tab.dart';
+import '../features/push/push_dienst.dart';
+import '../features/push/push_ziel_oeffnen.dart';
 import 'home_screen.dart';
 import 'live_screen.dart';
 import 'wiedereinstieg.dart';
@@ -24,11 +26,28 @@ class _MainShellState extends ConsumerState<MainShell>
     with WidgetsBindingObserver {
   int _index = 0;
   bool _vorgewaermt = false;
+  bool _pushGestartet = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // **Push wird hier angemeldet, nicht in `main()`.** Die Hülle steht erst,
+    // wenn jemand angemeldet ist (das Gate lässt sonst den Login stehen) —
+    // und genau dann gehört der Token zu einem Konto. Vorher käme der
+    // Systemdialog auch noch vor dem ersten Blick auf die App.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pushAnmelden());
+  }
+
+  void _pushAnmelden() {
+    if (_pushGestartet || !mounted) return;
+    _pushGestartet = true;
+    ref.read(pushDienstProvider).starten(
+      beimAntippen: (ziel) {
+        if (!mounted) return;
+        pushZielOeffnen(context, ref, ziel);
+      },
+    );
   }
 
   @override

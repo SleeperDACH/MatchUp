@@ -51,6 +51,13 @@ dependencies:
   # Start-Link beim Kaltstart lesen (Passwort-Reset-Mail). Kommt ohnehin mit
   # supabase_flutter, wird hier aber direkt benutzt — siehe main.dart.
   app_links: ^7.0.0
+  # Push-Benachrichtigungen (Firebase Cloud Messaging). firebase_core ist die
+  # Grundlage jedes Firebase-Pakets und liest die Projektdaten aus
+  # android/app/google-services.json bzw. ios/Runner/GoogleService-Info.plist.
+  # Web bleibt außen vor: Dafür bräuchte es ein Web-Push-Zertifikat und einen
+  # Service Worker — die Demo-Seite soll keine Benachrichtigungen schicken.
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
   google_sign_in: ^7.2.0
   sign_in_with_apple: ^8.1.0
   crypto: ^3.0.7
