@@ -480,9 +480,60 @@ gilt das Raster ab sofort.
   Statistikzeilen der laufenden Runde, ruft `pruefe_sync()` und bricht ab —
   Meldung „1 neue Störung", Daten unversehrt (23 Zeilen weiterhin da).
 
-  **Was offen bleibt: Es schaut niemand hin.** Die Wache schreibt ein
-  Protokoll, sie klingelt nicht. `select * from public.sync_wache` zeigt die
-  letzten sieben Tage.
+  **Seit Migration 0127 greift sie selbst ein und klingelt.** Anlass: Von
+  Fr., 11.09., 21 Uhr bis Mo., 14.09., 15 Uhr stand in **jeder** Stunde ein
+  `sync-stats`-Aufruf mit „Gateway Timeout" im Protokoll (67 Einträge), und
+  niemand hat hingesehen.
+  * **Reparieren vor Melden:** „Live ohne Punkte" stößt `sync-fixtures` und
+    `sync-stats` sofort an (`wache_anstossen(job)` führt das Kommando des
+    Cron-Jobs selbst aus, ohne Kopie von URL oder Secret). Gemeldet wird erst,
+    wenn nach einer Wachrunde (8 Min.) immer noch keine Zeile da ist.
+  * **Push über ntfy.sh**, Topic im Vault als `ntfy_topic` (steht bewusst nicht
+    im Repo). Abonnieren: ntfy-App → Topic eintragen. `wache_push(titel, text,
+    prio)` schickt, ohne Topic kommt kein Push, und der Vorfall bleibt offen.
+  * **Schwellen:** HTTP-Fehler zählen je Stunde und Status
+    (`details.hoechststand` = meiste Fehlschläge in einem 15-Minuten-Fenster).
+    Gemeldet wird ab 5, danach ist dieselbe Art 6 Stunden lang still. Tor-
+    Kappungen und unbekannte Arten werden sofort gemeldet. Spalte
+    `gemeldet_am` markiert, was raus ist.
+  * Nebenbei behoben: Die Saison kam aus dem Jahr des Anpfiffs (Rückrunde
+    wäre ab Januar ein Fehlalarm je Spiel gewesen), und ein Timeout ohne
+    Statuscode machte die Art `null` und brach die ganze Wache ab.
+  * `pruefe_sync`, `wache_push` und `wache_anstossen` sind für `anon` und
+    `authenticated` gesperrt, der Cron läuft als `postgres`.
+
+  `select * from public.sync_wache` zeigt weiter die letzten sieben Tage.
+
+  **Und die Wache wird selbst bewacht (Migration 0128), von außen.** Ein
+  Wächter in derselben Datenbank fiele mit ihr zusammen aus.
+  * Der Cron ruft `wache_lauf()`: erst `pruefe_sync()`, **danach** der Puls in
+    `wache_puls`. Bricht die Prüfung ab, rollt der Puls mit zurück und bleibt
+    stehen, statt eine abgestürzte Wache als gesund zu melden.
+  * `wache_lebenszeichen()` ist per RPC mit dem Publishable-Key lesbar (nur die
+    Sekunden seit dem letzten Lauf), `wache_lauf`/`pruefe_sync` nicht (401).
+  * `.github/workflows/wache-der-wache.yml` fragt um :07 und :37 ab
+    (`tools/wache_der_wache.sh`, lokal lauffähig). Pusht mit Priorität 5, wenn
+    die API nicht antwortet oder die Wache über 30 Minuten still ist. **Das
+    Gedächtnis ist ntfy selbst:** Steht im Topic in den letzten 3 Stunden
+    schon eine Meldung mit demselben Titel, kommt kein zweiter Push. Der Lauf
+    wird trotzdem rot, und GitHub mailt fehlgeschlagene geplante Läufe.
+  * Secret `NTFY_TOPIC` liegt in den GitHub-Actions-Secrets. **Geplante
+    Workflows laufen nur von `main`.** Der Schritt „eingeschaltet halten" soll
+    verhindern, dass GitHub ihn nach 60 Tagen ohne Repo-Aktivität abschaltet.
+    Ob das greift, zeigt sich erst nach 60 Tagen.
+  * Was bleibt: Fallen Supabase **und** GitHub Actions gleichzeitig aus,
+    klingelt nichts.
+
+  **`sync-stats` wiederholt DB-Aufrufe** (`mitWiederholung`, zwei weitere
+  Versuche nach 1 s und 3 s bei 5xx oder Status 0). Die „Gateway Timeout" vom
+  Wochenende 11.–14.09. kamen aus allen drei Aufrufen (Fixtures, Pool,
+  Upsert), also nicht aus einer bestimmten Abfrage. Die DB war dabei nicht
+  ausgelastet: Alle Crons liefen unter 1 s ohne Fehlschlag, Realtime liegt bei
+  unter 0,5 % eines Kerns. Auffällig, aber nicht bewiesen: PostgREST hat seinen
+  Schema-Cache seit Juni rund 6.300-mal neu geladen (`pg_timezone_names` in
+  `pg_stat_statements`, im Mittel 617 ms), ausgelöst von den täglichen
+  Partitionen `realtime.messages_*` über `pgrst_ddl_watch`. Belegen ließe sich
+  das nur mit den Gateway-Logs. Die Antwort trägt jetzt `wiederholt`.
 
 - **Jeder `net.http_post`-Cron braucht `timeout_milliseconds`.** Der
   pg_net-Standard ist 5000 ms, und `cron.job_run_details` meldet trotzdem
@@ -626,11 +677,33 @@ gilt das Raster ab sofort.
     erzielt, seine `goals: 1` ist korrekt. Eine Regel „Tore minus Eigentore"
     hätte ihn fälschlich getroffen.
 
-  **Diese Sicht meldet weiterhin einen Fall, und zu Recht:** Sportmonks führt
-  Bornauw mit `goals: 1` **und** `own-goals: 1`, obwohl der HSV kein Tor
-  erzielt hat. In der Wertung bekommt er damit die vollen Torpunkte für ein
-  Eigentor. Offen — die Entscheidung, ob `goals` an den Teamtoren gedeckelt
-  wird, steht aus.
+  **Die Tore kommen seit dem 15.09.2026 gedeckelt an — an den
+  Tor-Ereignissen, nicht an den Teamtoren.** Die Lineup-Statistik rechnet ein
+  Eigentor mal als Tor mit, mal nicht, und die Ereignisse werden nachträglich
+  korrigiert, die Statistik nicht. Nachgemessen über alle 27 Spiele der
+  Spieltage 1–3, jede Abweichung gegen den offiziellen Spielbericht geprüft:
+
+  | Spieler | Statistik | Ereignisse | offiziell |
+  |---|---|---|---|
+  | Bornauw (BVB–HSV) | Tor + Eigentor | nichts — das 2:0 gehört Konstantelias | Tor Konstantelias, abgefälscht |
+  | Hendriks (VfB–Köln) | Tor + Eigentor | Eigentor | Eigentor Hendriks |
+  | Bülter (VfB–Köln) | Tor | nichts | am Eigentor beteiligt, kein Tor |
+  | Vagnoman (Bayern–VfB) | Tor + Eigentor | Tor + Eigentor | beides korrekt |
+
+  Die Teamtor-Regel aus `stats_widersprueche` hätte nur Bornauw gefunden — der
+  VfB traf viermal, Köln einmal, Hendriks und Bülter lagen darunter. Die
+  Ereignisse nennen dagegen jeden Torschützen beim Namen: `sync-stats` setzt
+  `goals` auf höchstens die Zahl der Ereignisse `goal` (14) und
+  `penalty` (16) des Spielers. Eigentore bleiben ein eigener Stat aus
+  Ereignis 15 (−12 Punkte). **Die Deckelung wirkt nur nach unten**, in der
+  Trockenprüfung gab es keinen Fall, in dem die Statistik weniger Tore
+  kannte als die Ereignisse.
+
+  Jede Kappung in einem beendeten Spiel steht als `tor_gekappt` in
+  `sync_stoerungen` (sichtbar in `sync_wache`), mit beiden Zahlen. Die Sicht
+  `stats_widersprueche` bleibt als zweite, gröbere Prüfung. Und der Satz aus
+  Migration 0104, Sportmonks verbuche das 2:0 „als Eigentor von Bornauw",
+  stimmt nicht mehr: Die Quelle hat ihre Ereignisse korrigiert.
 
   **`goals-conceded` und `goalkeeper-goals-conceded` sind zwei Zahlen, nicht
   eine.** Beide standen in `STAT_CODE_MAP` auf `goalsConceded`, und die
@@ -1010,6 +1083,62 @@ niemand füllen kann: Platzhalter sind virtuell und haben keine Mitgliedszeile
 machen, einen Surrogatschlüssel einzuführen und `fantasy_assign_team`
 umzustellen — eine Migration mit DB-Test, keine Client-Änderung.
 
+## Push-Benachrichtigungen
+
+Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
+
+    Ereignis (Trigger) → `push_auftraege` → Edge Function `push` → FCM → Gerät
+
+- **Der Trigger schreibt nur eine Zeile.** Kein `net.http_post` aus dem Trigger
+  heraus: Der Versand hinge sonst an der auslösenden Transaktion — ein Pick
+  würde langsamer, weil Google langsam antwortet, und ein Fehler bei Google
+  könnte einen Trade zurückrollen. Die Zeile im Ausgangskorb ist billig und
+  überlebt jeden Ausfall.
+- **`push_anlegen` ist das einzige Tor** (Migration 0129). Dort stehen die drei
+  Fragen, die man sonst neunmal beantworten müsste: Hat der Nutzer ein Gerät?
+  Will er diese Sorte? Gibt es den Auftrag schon? Der eindeutige Index auf
+  `schluessel` (nur für **offene** Aufträge) fasst zehn Chatnachrichten zu einer
+  Meldung zusammen und verhindert, dass ein erneuter Versandversuch doppelt
+  meldet.
+- **Fehlende Zeile in `push_einstellungen` heißt „alles an".** Wer Push erlaubt
+  hat, hat die Entscheidung getroffen; ihn danach durch sieben Schalter zu
+  schicken wäre eine zweite Hürde für dieselbe Sache. Die Regel steht zweimal —
+  in `push_anlegen` und in `PushEinstellungen` — und `test/push_einstellungen_test.dart`
+  hält beide zusammen.
+- **Der Draft-Trigger hängt an `fantasy_leagues`, nicht an `draft_picks`.**
+  `fantasy_advance` legt erst den Pick an und erhöht danach `picks_made`; ein
+  Trigger auf `draft_picks` liefe mit dem alten Zählerstand, und
+  `fantasy_current_manager` nennte den, der gerade gepickt hat. Auf dem Zähler
+  stimmt es — und der Draftbeginn ist gratis dabei, weil dort `draft_status`
+  auf `drafting` springt.
+- **Den Token meldet `push_geraet_melden`, kein direktes `upsert`.** Wechselt
+  auf einem Gerät der Nutzer, gehört die Zeile noch dem Vorgänger, und eine
+  RLS-`update`-Policy prüft die **alte** Zeile. Der Nachfolger käme lautlos
+  nicht an seinen Token — Push bliebe für ihn einfach aus.
+- **Ungültige Tokens räumt der Versand selbst weg.** FCM quittiert ein
+  deinstalliertes Gerät mit 404 `UNREGISTERED`; die Zeile fliegt sofort raus.
+  Sonst wüchse die Tabelle mit jedem Deinstallieren.
+- **Leerlauf kostet nichts.** Die Function fragt zuerst den eigenen Korb und
+  kehrt ohne einen einzigen Google-Request um, wenn er leer ist — dieselbe
+  Bauart wie `sync-stats`. Deshalb ist der Minutentakt vertretbar.
+- **Zwei Cron-Jobs:** `push-versand` (jede Minute, leert den Korb) und
+  `push-tipp-erinnerungen` (alle 15 Minuten, sucht offene Tipps 60–120 Minuten
+  vor Anstoß). Das Fenster ist breiter als der Takt, damit ein ausgefallener
+  Lauf vom nächsten aufgefangen wird; gegen Doppelungen steht der Schlüssel.
+- **Es gilt dieselbe Deploy-Regel wie für die Sync-Functions:** ausspielen mit
+  `--no-verify-jwt`, Secret `FIREBASE_DIENSTKONTO` setzen, und danach
+  `supabase functions list` fragen, was wirklich draußen ist. Die Datei im Repo
+  beweist gar nichts. Die vollständige Inbetriebnahme steht in `PUSH.md`.
+- **Firebase wird nur nativ und niemals fatal initialisiert** (`main.dart`):
+  Fehlt eine Konfigurationsdatei oder läuft die App im Web, startet sie ohne
+  Push weiter — dasselbe Prinzip wie bei Supabase. Angemeldet wird das Gerät
+  erst in der App-Hülle, wenn ein Nutzer da ist; aus `main()` käme der
+  Systemdialog vor dem ersten Blick auf die App und der Token gehörte zu
+  niemandem.
+- **Kein `channel_id` im Android-Teil der Nachricht.** Ein Kanal, den die App
+  nicht angelegt hat, kann dazu führen, dass Android 8+ die Benachrichtigung
+  gar nicht anzeigt; ohne Angabe nimmt das Firebase-SDK seinen Standardkanal.
+
 ## Befehle
 
 ```sh
@@ -1021,6 +1150,10 @@ flutter run                                # mit Server — Keys stecken in AppC
 flutter build ipa                          # TestFlight; braucht keine Flags mehr
 flutter build appbundle                    # Google Play (AAB), signiert per key.properties
 flutter build apk                          # ein APK zum Sideloaden/Testen
+
+supabase db push                           # Migrationen einspielen
+supabase functions deploy push --no-verify-jwt   # Push-Versand ausspielen
+supabase functions list                    # was wirklich draußen ist
 ```
 
 **Android-Release.** Drei Dinge, die am Flutter-Template fehlten und ohne die
