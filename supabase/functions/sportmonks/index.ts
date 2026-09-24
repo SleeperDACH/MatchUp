@@ -388,7 +388,23 @@ async function fixtureDetail(fixtureId: string) {
     .map((l: any) => ({
       for_home: l.team_id === homeId,
       player_id: l.player_id ?? null,
-      name: l.player?.name ?? l.player_name ?? "?",
+      // **`display_name` zuerst, nicht `name`.** Sportmonks führt zwei Namen:
+      // `name` ist der volle Registername, `display_name` der gebräuchliche.
+      // Gemeldet: „Bei Grönbeak wird der falsche Name angezeigt, innerhalb von
+      // Fantasy der richtige." Nachgemessen in derselben Antwort (HSV–Köln,
+      // Fixture 19735165):
+      //
+      //   player.name   'Albert Grønbæk Erlykke'   ← stand im Live-Tab
+      //   display_name  'Albert Grønbæk'           ← steht in Fantasy
+      //   player_name   'Albert Grønbæk'
+      //
+      // Dasselbe bei David Mokwa („David Mokwa Ntusu"). Der Rückfall auf
+      // `player_name` wäre richtig gewesen, kam aber nie zum Zug, weil
+      // `player.name` immer gesetzt ist. Die Reihenfolge ist jetzt dieselbe
+      // wie beim Kader-Weg oben und im Pool-Import
+      // (`tools/import_sportmonks_pool.py`) — damit heißt ein Spieler in der
+      // ganzen App gleich.
+      name: l.player?.display_name ?? l.player_name ?? l.player?.name ?? "?",
       number: l.jersey_number ?? null,
       position: l.formation_position ?? null,
       field: l.formation_field ?? null, // "row:col" für die Feldaufstellung
@@ -506,7 +522,9 @@ async function topScorers(leagueKey: string) {
     scorers: goals.map((t) => ({
       position: t.position,
       goals: t.total,
-      player_name: t.player?.name ?? "?",
+      // Dieselbe Reihenfolge wie bei den Aufstellungen: der gebräuchliche
+      // Name, nicht der volle Registername.
+      player_name: t.player?.display_name ?? t.player?.name ?? "?",
       player_img: t.player?.image_path ?? null,
       team_name: t.participant?.name ?? null,
       team_img: teamImg(t.participant?.image_path),
