@@ -1,0 +1,44 @@
+# Wache der Wache — prüft von außen, ob die Sync-Wache in Supabase noch läuft.
+# Hintergrund: Migration 0128, Skript: tools/wache_der_wache.sh.
+#
+# Geplante Workflows laufen nur vom Standard-Branch (main).
+name: Wache der Wache
+
+on:
+  schedule:
+    # Nicht zur vollen oder halben Stunde: Dann stauen sich GitHubs Zeitpläne
+    # und starten oft deutlich verspätet.
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: wache-der-wache
+  cancel-in-progress: false
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lebenszeichen der Sync-Wache prüfen
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SUPABASE_URL: https://zleuiewcydrazogkfafp.supabase.co
+          # Publishable-Key: steht ohnehin in AppConfig und in jedem Build.
+          SUPABASE_KEY: sb_publishable_lJBIlqeAYTILnQTInsK71Q_n2kCb7tN
+        run: bash tools/wache_der_wache.sh
+
+      # GitHub schaltet geplante Workflows in öffentlichen Repos nach 60 Tagen
+      # ohne Repo-Aktivität ab — und eine Wache, die still abgeschaltet wird,
+      # ist dieselbe Falle, gegen die sie gebaut ist.
+      - name: Workflow eingeschaltet halten
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/wache-der-wache.yml/enable"
