@@ -46,6 +46,7 @@ const BATCH = 25;
 const POS_GK = 24;
 
 // Ereignis-Typen (aus /v3/core/types, model_type = event).
+const EV_GOAL = 14;
 const EV_OWNGOAL = 15;
 const EV_PENALTY_GOAL = 16;
 const EV_PENALTY_MISSED = 17;
@@ -160,6 +161,38 @@ async function smGet(path: string): Promise<any> {
   return await res.json();
 }
 
+// Wie oft ein DB-Aufruf in diesem Lauf wiederholt werden musste — steht in der
+// Antwort, damit die Sync-Wache und wer nachsieht, es erkennt.
+let wiederholt = 0;
+
+/**
+ * **Ein DB-Aufruf bekommt zwei weitere Versuche**, wenn die Antwort 5xx ist
+ * oder gar keine kam (Status 0 = Netzfehler).
+ *
+ * Anlass: Von Fr., 11.09., bis Mo., 14.09.2026, stand in jeder Stunde ein Lauf
+ * mit „Gateway Timeout" aus der eigenen Datenbank-API im Protokoll — beim
+ * Lesen der Fixtures, des Pools und beim Upsert gleichermaßen, also nicht an
+ * einer bestimmten Abfrage. Jeder Lauf ist idempotent (Upsert auf
+ * `season,round,player_id`), eine Wiederholung ist deshalb gefahrlos; ohne sie
+ * fällt eine Spielminute Live-Punkte aus.
+ *
+ * `aufruf` baut die Abfrage jedes Mal neu: Ein bereits abgeschickter
+ * Query-Builder wird nicht zuverlässig ein zweites Mal ausgeführt.
+ */
+async function mitWiederholung<
+  // deno-lint-ignore no-explicit-any
+  R extends { error: any; status: number },
+>(aufruf: () => PromiseLike<R>): Promise<R> {
+  let res = await aufruf();
+  for (const pause of [1000, 3000]) {
+    if (!res.error || (res.status !== 0 && res.status < 500)) return res;
+    wiederholt += 1;
+    await new Promise((r) => setTimeout(r, pause));
+    res = await aufruf();
+  }
+  return res;
+}
+
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
@@ -173,10 +206,34 @@ function chunk<T>(items: T[], size: number): T[][] {
  * Aus den Ereignissen kommt nur, was in den Lineup-Statistiken **nicht** steht:
  * Elfmetertore, verschossene Elfmeter, Eigentore und die Karten. Alles andere
  * stammt aus `lineups.details`, sonst würde doppelt gezählt.
+ *
+ * **Eine Ausnahme: `goals` wird an den Tor-Ereignissen gedeckelt.** Die
+ * Lineup-Statistik rechnet Eigentore mal als Tor mit, mal nicht. Gemessen an
+ * den ersten drei Spieltagen: Hendriks (VfB–Köln) und Bornauw (BVB–HSV)
+ * standen dort mit `goals: 1`, obwohl keines ihrer Ereignisse ein Tor ist —
+ * Hendriks hat ein Eigentor, Bornauw gar nichts. Vagnoman (Bayern–VfB) hat
+ * dagegen Tor **und** Eigentor, und seine `goals: 1` stimmt. Eine Deckelung an
+ * den Teamtoren hätte Hendriks nicht erwischt (der VfB traf viermal); die
+ * Ereignisse nennen jeden Torschützen beim Namen. Gedeckelt wird nur nach
+ * unten — fehlt ein Ereignis, das die Statistik hat, gilt die kleinere Zahl.
  */
+type Kappung = {
+  playerId: number;
+  name: string | null;
+  lautStatistik: number;
+  lautEreignissen: number;
+};
+
 // deno-lint-ignore no-explicit-any
-function eventsForFixture(fixture: any): Map<number, Events> {
+function eventsForFixture(fixture: any): {
+  byPlayer: Map<number, Events>;
+  gekappt: Kappung[];
+} {
   const byPlayer = new Map<number, Events>();
+  // Tor-Ereignisse je Spieler, regulär und Elfmeter — die Obergrenze für
+  // `goals`. Eigentore zählen hier bewusst nicht.
+  const torEreignisse = new Map<number, number>();
+  const namen = new Map<number, string>();
   const get = (pid: number) => {
     let e = byPlayer.get(pid);
     if (!e) {
@@ -193,6 +250,7 @@ function eventsForFixture(fixture: any): Map<number, Events> {
     const pid = lu.player_id as number | null;
     if (pid == null) continue;
     const ev = get(pid);
+    if (typeof lu.player_name === "string") namen.set(pid, lu.player_name);
     // Die beiden Gegentor-Codes werden getrennt gesammelt und erst danach
     // aufgelöst — addieren wäre falsch, sie messen dasselbe zweimal.
     let gegentore: number | undefined;
@@ -228,7 +286,11 @@ function eventsForFixture(fixture: any): Map<number, Events> {
     const type = e.type_id as number;
     if (pid == null) continue;
     switch (type) {
+      case EV_GOAL:
+        torEreignisse.set(pid, (torEreignisse.get(pid) ?? 0) + 1);
+        break;
       case EV_PENALTY_GOAL:
+        torEreignisse.set(pid, (torEreignisse.get(pid) ?? 0) + 1);
         // `goals` aus der Lineup-Statistik enthält Elfmetertore bereits; hier
         // wird nur festgehalten, wie viele davon Elfmeter waren (die Wertung
         // zieht sie unten von den regulären Toren ab).
@@ -260,7 +322,20 @@ function eventsForFixture(fixture: any): Map<number, Events> {
     }
   }
 
-  return byPlayer;
+  const gekappt: Kappung[] = [];
+  for (const [pid, ev] of byPlayer) {
+    const obergrenze = torEreignisse.get(pid) ?? 0;
+    if (ev.goals <= obergrenze) continue;
+    gekappt.push({
+      playerId: pid,
+      name: namen.get(pid) ?? null,
+      lautStatistik: ev.goals,
+      lautEreignissen: obergrenze,
+    });
+    ev.goals = obergrenze;
+  }
+
+  return { byPlayer, gekappt };
 }
 
 Deno.serve(async (req) => {
@@ -285,18 +360,24 @@ Deno.serve(async (req) => {
   );
 
   // 1) Welche Spiele? Aus der eigenen Spiegelung — kostet keinen API-Request.
-  let q = supabase
-    .from("fixtures")
-    .select("id,season,round,status,kickoff")
-    .eq("league_id", FANTASY_LEAGUE);
-  if (roundParam) {
-    q = q.eq("round", Number(roundParam));
-    if (seasonParam) q = q.eq("season", Number(seasonParam));
-  } else {
-    const since = new Date(Date.now() - hours * 3600_000).toISOString();
-    q = q.in("status", ["live", "finished"]).gte("kickoff", since);
-  }
-  const { data: fixtures, error: fxErr } = await q;
+  wiederholt = 0;
+  const since = new Date(Date.now() - hours * 3600_000).toISOString();
+  const fixtureAbfrage = () => {
+    let q = supabase
+      .from("fixtures")
+      .select("id,season,round,status,kickoff")
+      .eq("league_id", FANTASY_LEAGUE);
+    if (roundParam) {
+      q = q.eq("round", Number(roundParam));
+      if (seasonParam) q = q.eq("season", Number(seasonParam));
+    } else {
+      q = q.in("status", ["live", "finished"]).gte("kickoff", since);
+    }
+    return q;
+  };
+  const { data: fixtures, error: fxErr } = await mitWiederholung(
+    fixtureAbfrage,
+  );
   if (fxErr) {
     return new Response(`Fixture-Fehler: ${fxErr.message}`, { status: 500 });
   }
@@ -308,22 +389,25 @@ Deno.serve(async (req) => {
 
   // 2) Nur Spieler aus dem Pool bekommen Zeilen — der Rest der Aufstellung ist
   //    für Fantasy bedeutungslos.
-  const { data: pool, error: poolErr } = await supabase
-    .from("players")
-    .select("id");
+  const { data: pool, error: poolErr } = await mitWiederholung(() =>
+    supabase.from("players").select("id")
+  );
   if (poolErr) {
     return new Response(`Pool-Fehler: ${poolErr.message}`, { status: 500 });
   }
   const poolIds = new Set((pool ?? []).map((p: { id: string }) => p.id));
 
   // Sportmonks-ID → unsere Fixture-Zeile (für season/round beim Upsert).
-  const meta = new Map<string, { season: number; round: number }>();
+  const meta = new Map<
+    string,
+    { season: number; round: number; status: string }
+  >();
   const smIds: string[] = [];
   for (const f of fixtures) {
     const raw = String(f.id);
     if (!raw.startsWith("sportmonks:")) continue; // Altbestand ignorieren
     const smId = raw.slice("sportmonks:".length);
-    meta.set(smId, { season: f.season, round: f.round });
+    meta.set(smId, { season: f.season, round: f.round, status: f.status });
     smIds.push(smId);
   }
 
@@ -335,6 +419,10 @@ Deno.serve(async (req) => {
   // ueber die Saison fehlten fuenf von neun solchen Spielern komplett in
   // `include=sidelined`. Siehe Migration 0122.
   const verletzt: Record<string, unknown>[] = [];
+  // Gedeckelte Tore (siehe `eventsForFixture`) landen in der Sync-Wache —
+  // eine stille Korrektur wäre in einem Jahr nicht mehr von einem Fehler zu
+  // unterscheiden.
+  const torGekappt: Record<string, unknown>[] = [];
   const now = new Date().toISOString();
   let requests = 0;
 
@@ -365,7 +453,24 @@ Deno.serve(async (req) => {
           erkannt_am: now,
         });
       }
-      for (const [pid, ev] of eventsForFixture(fixture)) {
+      const { byPlayer, gekappt } = eventsForFixture(fixture);
+      // Nur beendete Spiele protokollieren: Live kommen Statistik und
+      // Ereignisse nicht im selben Takt, eine Kappung dort ist Durchgangsstand.
+      if (m.status === "finished") {
+        for (const k of gekappt) {
+          torGekappt.push({
+            art: "tor_gekappt",
+            schluessel: `sportmonks:${fixture.id}:${k.playerId}`,
+            details: {
+              spieler: k.name,
+              runde: m.round,
+              laut_statistik: k.lautStatistik,
+              laut_ereignissen: k.lautEreignissen,
+            },
+          });
+        }
+      }
+      for (const [pid, ev] of byPlayer) {
         const playerId = `sportmonks:${pid}`;
         if (!poolIds.has(playerId)) continue;
         if (ev.minutes <= 0) continue; // nicht eingewechselt -> keine Zeile
@@ -417,9 +522,11 @@ Deno.serve(async (req) => {
 
   let upserted = 0;
   for (const part of chunk(rows, 500)) {
-    const { error } = await supabase
-      .from("player_match_stats")
-      .upsert(part, { onConflict: "season,round,player_id" });
+    const { error } = await mitWiederholung(() =>
+      supabase
+        .from("player_match_stats")
+        .upsert(part, { onConflict: "season,round,player_id" })
+    );
     if (error) {
       return new Response(`Upsert-Fehler: ${error.message}`, { status: 500 });
     }
@@ -431,9 +538,25 @@ Deno.serve(async (req) => {
   // entscheidet die Sicht `player_absences_v` daran, ob der Spieler seither
   // wieder gespielt hat.
   if (verletzt.length > 0) {
-    const { error } = await supabase
-      .from("verletzt_ausgewechselt")
-      .upsert(verletzt, { onConflict: "season,round,player_id" });
+    const { error } = await mitWiederholung(() =>
+      supabase
+        .from("verletzt_ausgewechselt")
+        .upsert(verletzt, { onConflict: "season,round,player_id" })
+    );
+    if (error) {
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+  }
+
+  if (torGekappt.length > 0) {
+    const { error } = await mitWiederholung(() =>
+      supabase
+        .from("sync_stoerungen")
+        .upsert(torGekappt, {
+          onConflict: "art,schluessel",
+          ignoreDuplicates: true,
+        })
+    );
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
     }
@@ -445,6 +568,8 @@ Deno.serve(async (req) => {
       sportmonksRequests: requests,
       upserted,
       verletztAusgewechselt: verletzt.length,
+      torGekappt: torGekappt.length,
+      wiederholt,
     }),
     { headers: { "content-type": "application/json" } },
   );
