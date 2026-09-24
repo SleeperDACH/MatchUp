@@ -137,14 +137,53 @@ void main() {
         ),
       ),
     );
+    // **Gesucht wird über die Vorlese-Beschriftung, nicht über den Text.**
+    // Das Wort steht seit dem Umbau nur noch unter dem aktiven Reiter; ein
+    // Test, der es bei allen dreien erwartet, prüft die Beschriftung statt
+    // der Tastfläche.
+    //
+    // **Und der `InkWell` liegt darunter, nicht darüber.** Das `Semantics`
+    // umschließt `Material` und `InkWell`; ein `find.ancestor` sucht also
+    // oberhalb des Knotens und findet nichts („Bad state: No element").
+    final handle = tester.ensureSemantics();
     for (final wort in ['Home', 'Live', 'Favoriten']) {
-      final feld = tester.getSize(
-          find.ancestor(of: find.text(wort), matching: find.byType(InkWell)));
+      final feld = tester.getSize(find.descendant(
+          of: find.bySemanticsLabel(wort), matching: find.byType(InkWell)));
       expect(feld.width, greaterThanOrEqualTo(44),
           reason: 'Tastfläche $wort zu schmal');
       expect(feld.height, greaterThanOrEqualTo(44),
           reason: 'Tastfläche $wort zu flach');
     }
+    handle.dispose();
+  });
+
+  testWidgets('Das Wort steht nur unter dem aktiven Reiter', (tester) async {
+    // Auf Ansage: „Die Schrift darunter nur dort haben, wenn man auf diesem
+    // Tab ist." Drei Wörter nebeneinander sagen dreimal dasselbe wie die
+    // Symbole; eines sagt, wo man steht.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: NaviKapsel(index: 1, onSelected: (_) {}),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Live'), findsOneWidget);
+    expect(find.text('Home'), findsNothing);
+    expect(find.text('Favoriten'), findsNothing);
+
+    // **Und die Vorlesehilfe kennt trotzdem alle drei.** Das Wort verschwindet
+    // nur optisch; ohne Beschriftung hießen zwei Ziele wieder „Schaltfläche".
+    final handle = tester.ensureSemantics();
+    for (final wort in ['Home', 'Live', 'Favoriten']) {
+      expect(find.bySemanticsLabel(wort), findsOneWidget, reason: wort);
+    }
+    handle.dispose();
   });
 
   test('Die reservierte Höhe passt zur Leiste', () {

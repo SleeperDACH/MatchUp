@@ -183,6 +183,12 @@ void main() {
     expect(find.text('Liga-Chat'), findsOneWidget);
     expect(find.text('3. SPIELTAG'), findsOneWidget);
 
+    // **Und zwar genau einmal.** Jeder Zeitblock trug den Wettbewerb samt
+    // Spieltag hinter dem Datum — bei sieben Anstoßzeiten siebenmal dieselbe
+    // Auskunft, die eine Zeile höher schon als Abschnittsmarke steht.
+    // Gemeldet als: „Das ist völlig unnötig, können wir wegmachen."
+    expect(find.textContaining('Bundesliga, 3. Spieltag'), findsNothing);
+
     // **Der Bildvergleich läuft nur mit `--update-goldens`.** Die Fixtures
     // dieser Vorschau tragen feste Daten (12./13. September); ihr **Zustand**
     // rechnet der Schirm gegen `DateTime.now()`. Am 08.09. stand im

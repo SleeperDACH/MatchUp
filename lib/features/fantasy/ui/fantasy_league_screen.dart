@@ -1078,7 +1078,9 @@ class _MatchdayFixtures extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Abschnittsmarke('$round. Spieltag'),
-        ...fixturesWithDateHeaders(umgewandelt),
+        // Ohne Wettbewerb: Die Marke direkt darüber sagt den Spieltag, und
+        // diese Liste zeigt nur die eine Liga der Fantasy-Runde.
+        ...fixturesWithDateHeaders(umgewandelt, mitWettbewerb: false),
       ],
     );
   }

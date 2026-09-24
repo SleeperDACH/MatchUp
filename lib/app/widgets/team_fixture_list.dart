@@ -221,7 +221,10 @@ class _VorherigeSpieleKnopf extends StatelessWidget {
 /// Für eine Vereins- oder Favoritenliste ändert sich dadurch nichts: Dort
 /// trägt jede Partie ihren eigenen Anstoß, also bekommt jede weiterhin ihren
 /// eigenen Kopf.
-List<Widget> fixturesWithDateHeaders(List<TeamFixture> list) {
+List<Widget> fixturesWithDateHeaders(
+  List<TeamFixture> list, {
+  bool mitWettbewerb = true,
+}) {
   final out = <Widget>[];
   DateTime? letzterAnstoss;
   for (var i = 0; i < list.length; i++) {
@@ -231,7 +234,11 @@ List<Widget> fixturesWithDateHeaders(List<TeamFixture> list) {
     final neuerBlock = letzterAnstoss == null || letzterAnstoss != anstoss;
     if (i > 0) out.add(const _Trennlinie());
     if (neuerBlock) {
-      out.add(FixtureDateHeader(date: anstoss, fixture: f, mitZeit: true));
+      out.add(FixtureDateHeader(
+        date: anstoss,
+        fixture: mitWettbewerb ? f : null,
+        mitZeit: true,
+      ));
       letzterAnstoss = anstoss;
     }
     out.add(TeamFixtureCard(fixture: f, zeitImKopf: true));
@@ -266,6 +273,14 @@ class FixtureDateHeader extends StatelessWidget {
   final DateTime date;
 
   /// Liefert Wettbewerb und Spieltag. Ohne Spiel bleibt es beim Datum.
+  ///
+  /// **Wo die Liste nur eine Liga zeigt, gehört er nicht her.** Gemeldet an
+  /// der Liga-Übersicht: *„Es steht immer wieder ‚Bundesliga, 4. Spieltag‘
+  /// dahinter bei jedem einzelnen Zeitslot. Das ist völlig unnötig."* Und das
+  /// stimmt: Über der Liste steht bereits „4. SPIELTAG" als Abschnittsmarke,
+  /// darunter siebenmal dasselbe. Wettbewerbsübergreifende Listen
+  /// (Vereinsseite, Favoriten) behalten ihn — dort wechselt er zwischen
+  /// Bundesliga und Pokal und ist die einzige Stelle, an der das steht.
   final TeamFixture? fixture;
 
   /// Setzt die **Anstoßzeit** neben das Datum. Sie steht dann nicht mehr in
@@ -287,18 +302,28 @@ class FixtureDateHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
+          // **Datum und Uhrzeit sind die Gliederung, nicht der Inhalt.** Sie
+          // standen in Weiß und fett wie die Mannschaftsnamen darunter und
+          // riefen damit genauso laut wie die Partie selbst. Jetzt tragen sie
+          // den gedämpften Ton der Nebenauskünfte; die Zeile bleibt lesbar,
+          // ohne den Blick als Erstes auf sich zu ziehen.
           Text(
             label[0].toUpperCase() + label.substring(1),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           if (mitZeit) ...[
             const SizedBox(width: 7),
             Text(
               DateFormat('HH:mm').format(date),
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                fontFeatures: [FontFeature.tabularFigures()],
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],

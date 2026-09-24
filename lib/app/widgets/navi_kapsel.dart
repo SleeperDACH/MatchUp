@@ -141,15 +141,16 @@ class _Ziel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // **Die Ruhenden dürfen lesbar sein.** Sie standen auf 0,45, weil der
-    // aktive Zustand allein aus dem Helligkeitsunterschied kam — je heller
-    // die Ruhenden, desto schwächer das Signal. Seit die helle Marke den
-    // aktiven Reiter trägt, muss die Helligkeit das nicht mehr leisten, und
-    // „Live" und „Favoriten" müssen nicht länger fast verschwinden, damit man
-    // „Home" findet.
+    // **Der aktive Reiter steht in vollem Weiß, die ruhenden gedämpft.**
+    //
+    // Seit die Marke weg ist, trägt der Helligkeitsunterschied den Zustand
+    // wieder allein — zusammen mit dem Wort, das nur unter dem aktiven Symbol
+    // steht. Die Ruhenden bleiben trotzdem lesbar: 0,55 ist gedämpft genug,
+    // dass das aktive Symbol heraussticht, und hell genug, dass „Live" und
+    // „Favoriten" nicht erraten werden müssen.
     final farbe = aktiv
         ? MatchUpColors.snow
-        : MatchUpColors.snow.withValues(alpha: 0.62);
+        : MatchUpColors.snow.withValues(alpha: 0.55);
 
     return Semantics(
       button: true,
@@ -174,40 +175,44 @@ class _Ziel extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
-                // **Die Tastfläche ist die Marke, nicht nur die Schrift.** 44
-                // Punkte sind auf iOS das Mindestmaß; bei drei Zielen ist Platz
-                // genug, ihn zu geben.
+                // **Keine Marke mehr um den aktiven Reiter.** Fläche und
+                // Kante trugen den Zustand; auf Ansage tragen ihn jetzt das
+                // hellere Symbol und das Wort darunter, das nur beim aktiven
+                // Reiter steht. Die Mindestbreite bleibt — sie ist die
+                // Tastfläche, nicht die Kapsel: 44 Punkte sind auf iOS das
+                // Mindestmaß.
                 constraints: const BoxConstraints(minWidth: 76),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: aktiv
-                      ? MatchUpColors.snow.withValues(alpha: 0.13)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: aktiv
-                        ? MatchUpColors.snow.withValues(alpha: 0.22)
-                        : Colors.transparent,
-                    width: 0.8,
-                  ),
-                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(aktiv ? symbolAktiv : symbol, size: 22, color: farbe),
-                    const SizedBox(height: 2),
-                    Text(
-                      wort,
-                      maxLines: 1,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: Schrift.winzig,
-                        fontWeight: aktiv ? FontWeight.w800 : FontWeight.w500,
-                        letterSpacing: 0.1,
-                        height: 1.1,
-                        color: farbe,
+                    // Vier Punkte größer als vorher (22 → 26): Ohne Kapsel
+                    // ist das Symbol das Einzige, was an drei von vier
+                    // Stellen dasteht.
+                    Icon(aktiv ? symbolAktiv : symbol, size: 26, color: farbe),
+                    // **Das Wort nur dort, wo man ist.** Drei Wörter
+                    // nebeneinander sagen dreimal dasselbe wie die Symbole;
+                    // eines sagt, wo man steht.
+                    //
+                    // Es verschwindet nur **optisch**: Die Beschriftung für
+                    // die Vorlesehilfe hängt am `Semantics` weiter oben und
+                    // bleibt an allen drei Zielen — sonst hießen zwei davon
+                    // wieder „Schaltfläche".
+                    if (aktiv) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        wort,
+                        maxLines: 1,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: Schrift.winzig,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.1,
+                          height: 1.1,
+                          color: farbe,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

@@ -111,6 +111,56 @@ void main() {
     expect(find.byType(TeamFixtureCard), findsNWidgets(3));
   });
 
+  testWidgets('eine Liste aus einer Liga nennt den Wettbewerb nicht',
+      (tester) async {
+    // **Wo über der Liste schon „N. Spieltag" steht, ist der Zusatz hinter
+    // jedem Datum dieselbe Auskunft ein zweites Mal.** Gemeldet an der
+    // Liga-Übersicht: „Es steht immer wieder ‚Bundesliga, 4. Spieltag‘
+    // dahinter bei jedem einzelnen Zeitslot."
+    tester.view.physicalSize = const Size(402 * 3, 1000 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: buildAppTheme(),
+      home: Scaffold(
+        backgroundColor: MatchUpColors.base,
+        body: ListView(
+          children:
+              fixturesWithDateHeaders(_spieltag(), mitWettbewerb: false),
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    // Die Köpfe stehen weiterhin — nur ohne den Zusatz.
+    expect(find.byType(FixtureDateHeader), findsNWidgets(3));
+    expect(find.textContaining('Bundesliga'), findsNothing);
+    expect(find.textContaining('2. Spieltag'), findsNothing);
+    expect(find.text('15:30'), findsOneWidget);
+  });
+
+  testWidgets('wettbewerbsübergreifend bleibt der Zusatz stehen',
+      (tester) async {
+    // **Die Gegenprobe.** Vereinsseite und Favoriten mischen Bundesliga und
+    // Pokal in einer Liste; dort ist der Wettbewerb die einzige Stelle, an
+    // der steht, worum es geht.
+    tester.view.physicalSize = const Size(402 * 3, 1000 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: buildAppTheme(),
+      home: Scaffold(
+        backgroundColor: MatchUpColors.base,
+        body: ListView(children: fixturesWithDateHeaders(_spieltag())),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.textContaining('Bundesliga, 2. Spieltag'), findsNWidgets(3));
+  });
+
   testWidgets('Vorschau: Spieltag in Zeitblöcken', (tester) async {
     tester.view.physicalSize = const Size(402 * 3, 1000 * 3);
     tester.view.devicePixelRatio = 3.0;
