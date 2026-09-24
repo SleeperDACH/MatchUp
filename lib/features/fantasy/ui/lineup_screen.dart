@@ -1,15 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import '../../../app/theme.dart';
 import 'package:flutter/services.dart';
+
+import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/typografie.dart';
 import '../../../app/widgets/pill_selector.dart';
 
+import '../../../core/logic/vereins_kuerzel.dart';
+import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
+import '../logic/naechstes_spiel.dart';
 import '../logic/aufstellung_sperre.dart';
 import '../logic/aufstellung_uebernahme.dart';
 import '../logic/formation_umbau.dart';
@@ -18,8 +22,8 @@ import '../data/fantasy_league_repository.dart';
 import '../models/fantasy_models.dart';
 import '../models/player_absence.dart';
 import '../providers.dart';
+import 'ausfall_zeichen.dart';
 import 'club_badge.dart';
-import 'gesperrt_marke.dart';
 import 'free_agency_screen.dart';
 import 'pitch_painter.dart';
 import 'player_profile_sheet.dart';
@@ -482,6 +486,12 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               onOpenProfile: _openProfile,
               gesperrt: gesperrt,
               allesZu: allesZu,
+              // Für die Kopfzeile der Kachel: gegen wen und wann er spielt,
+              // solange es noch keine Punkte gibt.
+              spiele:
+                  ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+                  const <Fixture>[],
+              runde: round,
               onTapSlot: allesZu
                   ? null
                   : (pos, i) =>
@@ -745,11 +755,21 @@ class _FormationChips extends StatelessWidget {
     };
     String? fehlt((int, int, int) fm) => formationLuecke(fm, imKader: imKader);
 
-    // **Nicht spielbare Formationen verschwinden nicht, sie stehen gedämpft
-    // da.** Vorher waren sie schlicht weg — und wer sie zählt, kommt auf
-    // sieben statt neun und hält das für einen Fehler. Ein Zustand „geht
-    // nicht" muss sich von „gibt es nicht" unterscheiden; das ist dieselbe
-    // Regel, an der in dieser App schon mehrfach etwas hing.
+    // **Jede Formation ist wählbar — auch die, für die der Kader nicht
+    // reicht.**
+    //
+    // Erst fehlten sie ganz, dann standen sie gedämpft da und wehrten den Tipp
+    // mit einem Hinweis ab. Beides war bevormundend. Auf Ansage: *„Wenn man
+    // keine fünf Verteidiger hat, darf die fünfte Kette trotzdem nicht
+    // ausgegraut sein. Da ist es dann halt leer, und wenn man in den Spieltag
+    // geht und einen weniger aufgestellt hat, hat man Pech, aber es soll
+    // auswählbar sein."*
+    //
+    // Der Umbau trägt das ohne Weiteres: `umbauAufFormation` rechnet rein
+    // positionsweise und lässt neue Plätze leer — die Lücke ist auf dem Feld
+    // als gestrichelter Kreis sichtbar und jederzeit zu füllen. Die gedämpfte
+    // Darstellung bleibt, sie sagt jetzt „hier bleibt etwas leer" statt „geht
+    // nicht".
     final formations = roster.validFormations();
     if (formations.length < 2) return const SizedBox.shrink();
     return SizedBox(
@@ -768,22 +788,22 @@ class _FormationChips extends StatelessWidget {
               // mehr auf als mit acht.
               child: PillChip(
                 label: '${fm.$1}-${fm.$2}-${fm.$3}',
-                gedaempft: fehlt(fm) != null,
+                // **Nicht gedämpft.** Die Dämpfung liegt bei 38 % Deckkraft
+                // und liest sich als „gesperrt" — und gesperrt ist hier nichts
+                // mehr. Dass ein Platz leer bleibt, sagt das Feld selbst: ein
+                // gestrichelter Kreis, wo niemand steht.
                 selected: fm == current,
-                // **Der Tipp erklärt, statt nichts zu tun.** Ein gedämpftes
-                // Element, das auf Berührung schweigt, ist genauso ratlos
-                // machend wie ein fehlendes.
+                // **Umstellen zuerst, Hinweis danach.** Der Hinweis sagt, was
+                // leer bleibt — er verhindert nichts mehr.
                 onTap: () {
+                  onSelected(fm);
                   final grund = fehlt(fm);
-                  if (grund == null) {
-                    onSelected(fm);
-                    return;
-                  }
+                  if (grund == null) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Für ${fm.$1}-${fm.$2}-${fm.$3} '
-                        'fehlt dir $grund.',
+                        '${fm.$1}-${fm.$2}-${fm.$3}: '
+                        'Dir fehlt $grund — der Platz bleibt frei.',
                       ),
                     ),
                   );
@@ -802,6 +822,8 @@ class _Pitch extends StatelessWidget {
     required this.playerById,
     required this.points,
     required this.clubIcons,
+    required this.spiele,
+    required this.runde,
     required this.onOpenProfile,
     required this.onTapSlot,
     required this.onDrop,
@@ -820,6 +842,11 @@ class _Pitch extends StatelessWidget {
   final Map<String, FantasyPlayer> playerById;
   final Map<FantasyPlayer, double> points;
   final Map<String, String?> clubIcons;
+
+  /// Spielplan der Saison und der aufzustellende Spieltag — daraus ergibt sich
+  /// je Spieler „gegen wen und wann".
+  final List<Fixture> spiele;
+  final int runde;
   final ValueChanged<FantasyPlayer> onOpenProfile;
   final void Function(PlayerPosition pos, int index)? onTapSlot;
   final void Function(_DragData data, PlayerPosition pos, int index)? onDrop;
@@ -844,7 +871,11 @@ class _Pitch extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 16, 4, 14),
+              // Vier Punkte weniger oben und unten: Sie fehlten den Reihen,
+              // seit die Kachel Gegner und Anstoß als eigene Zeilen trägt.
+              // Geholt werden sie am Rand des Rasens, nicht an der Schrift —
+              // kleiner setzen hieße, genau das aufzugeben, worum es ging.
+              padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
               child: Column(
                 children: [
                   for (final pos in _pitchOrder)
@@ -901,6 +932,9 @@ class _Pitch extends StatelessWidget {
           player: player,
           pos: pos,
           points: pts,
+          spiel: player == null
+              ? null
+              : naechstesSpiel(spiele, runde, player.club),
           alleZu: allesZu,
           iconUrl: player == null ? null : clubIcons[player.club],
           highlight: candidate.isNotEmpty,
@@ -937,6 +971,7 @@ class _Slot extends ConsumerWidget {
     required this.player,
     required this.pos,
     required this.points,
+    required this.spiel,
     required this.iconUrl,
     required this.onProfile,
     required this.onEditPosition,
@@ -959,6 +994,9 @@ class _Slot extends ConsumerWidget {
   final FantasyPlayer? player;
   final PlayerPosition pos;
   final double? points;
+
+  /// Sein Spiel an diesem Spieltag — `null`, wenn sein Verein frei hat.
+  final NaechstesSpiel? spiel;
   final String? iconUrl;
 
   /// Tippen auf den Spieler (Avatar/Name) → Profil.
@@ -970,19 +1008,42 @@ class _Slot extends ConsumerWidget {
   /// Hervorhebung, wenn ein passender Spieler über diesen Platz gezogen wird.
   final bool highlight;
 
+  /// **Jede Kachel ist gleich groß — und zwar so breit wie die engste Reihe
+  /// es zulässt.**
+  ///
+  /// Eine Reihe teilt ihre Breite unter ihren Plätzen auf: Beim Torwart ist
+  /// das die ganze Feldbreite, bei einer Fünferkette ein Fünftel davon. Mit
+  /// einer bloßen Obergrenze waren die Kacheln deshalb verschieden breit, und
+  /// der Inhalt musste sich in der Fünferkette zusammenschrumpfen lassen —
+  /// gemeldet als: *„Wenn ich auf eine Fünferkette umstelle, sieht man die
+  /// Uhrzeit und das Spiel ja kaum."*
+  ///
+  /// Gerechnet: 402 Punkte Schirmbreite − 2 × 12 Rand des Feldes − 2 × 4
+  /// Innenabstand = 370 für die Reihe, geteilt durch fünf = 74, minus Rand (2)
+  /// und Polster (4) der Kachel = **68**. Was hier hineinpasst, passt überall
+  /// hinein.
+  static const _kachelBreite = 68.0;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = player;
     final ausfall = _ausfall(ref, p);
+    // **Der einzige farbige Strich auf der Karte** — siehe Namensfeld unten.
+    final farbe = positionColor(pos);
+    // **Eine Zahl steht nur da, wenn sie etwas bedeutet.** Vor dem Anpfiff
+    // seines Vereins gibt es keine Leistung dieses Spieltags — angezeigt wurde
+    // trotzdem eine Zahl, und zwischen zwei Spieltagen kam sie aus der
+    // Ersatzrechnung eines fremden Spieltags (`LiveStatsSource` springt ein,
+    // solange `player_match_stats` für die Runde leer ist). Gemeldet als:
+    // „Die Punkte zwischen den Spieltagen brauchen wir nicht."
+    final zeigePunkte = gesperrt && p != null;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      // Keine feste Breite mehr — die Reihe teilt sie zu (siehe `_Pitch`).
-      // Innen bleibt alles mittig, damit vier Plätze nicht anders sitzen als
-      // fünf.
       margin: const EdgeInsets.symmetric(horizontal: 1),
       padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         color: highlight ? Colors.white.withValues(alpha: 0.18) : null,
         border: Border.all(
           color: highlight ? Colors.white : Colors.transparent,
@@ -993,185 +1054,284 @@ class _Slot extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Wappen + Punkte: Spieler antippen → Profil (leer → Spielerwahl).
+          // Karte antippen → Profil (leerer Platz → Spielerwahl).
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: p != null ? onProfile : onEditPosition,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (p == null)
-                  _LeererPlatz(pos: pos)
-                else
-                  SizedBox(
-                    height: 54,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.topCenter,
-                      children: [
-                        // **Das Wappen steht ohne Scheibe darunter.** Ein
-                        // dunkler Kreis dahinter sollte es vom Rasen abheben
-                        // und tat vor allem eins: Er lag als schwarzer Fleck
-                        // hinter jedem Verein. Der dunkle Rasen trägt die
-                        // Wappen von selbst.
-                        Opacity(
-                          opacity: gesperrt ? 0.6 : 1,
-                          child: ClubBadge(
-                            club: p.club,
-                            iconUrl: iconUrl,
-                            size: 48,
-                          ),
+            child: SizedBox(
+              width: _kachelBreite,
+              child: p == null
+                  ? _LeererPlatz(pos: pos)
+                  // **Alles in einer Karte statt lose übereinander.** Wappen,
+                  // Zahl und Name standen als drei einzelne Dinge auf dem
+                  // Rasen; zusammengefasst tritt der Spieler nach vorn, und
+                  // der Rasen bleibt Hintergrund. Der Name sitzt als Band am
+                  // Fuß und ist das Lauteste auf dem Feld — er ist die
+                  // Auskunft, nach der man sucht.
+                  : Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        // **Deckend, nicht durchscheinend.** Gemeldet: „Die
+                        // sehen so verschwommen aus." Und so war es auch
+                        // gebaut: ein Verlauf aus 13 % Positionsfarbe auf 35 %
+                        // Kartengrund — zusammen lag die Karte zu über der
+                        // Hälfte offen, der Rasen schien durch alle Lagen, und
+                        // Wappen wie Schrift standen auf wanderndem Grund.
+                        //
+                        // Jetzt eine volle Fläche aus der Flächenleiter der
+                        // App. Damit steht die Karte **auf** dem Rasen statt
+                        // in ihm, und die Kante ist eine Kante.
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                        // **Und ohne Positionsfarbe.** Sie sagte hier nichts,
+                        // was die Reihe nicht schon sagt — elf getönte Karten
+                        // nebeneinander waren genau das „zu bunt". Die Farbe
+                        // trägt der Tauschknopf darunter, einmal je Kachel.
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
                         ),
-                        // **Ausfall links, Spielsperre rechts.** Zwei
-                        // verschiedene Aussagen: „sein Spiel läuft schon" ist
-                        // eine Frist, „verletzt" ein Zustand. Sie dürfen nicht
-                        // dieselbe Ecke teilen.
-                        if (ausfall != null)
-                          Positioned(
-                            top: 0,
-                            left: 2,
-                            child: _Eckzeichen(
-                              icon: ausfall.gesperrt
-                                  ? Icons.block
-                                  : Icons.medical_services_outlined,
-                              grund: ausfall.gesperrt
-                                  ? const Color(0xFFF23030)
-                                  : const Color(0xFFFFC83D),
-                            ),
-                          ),
-                        if (gesperrt && !alleZu)
-                          const Positioned(
-                            top: 0,
-                            right: 2,
-                            child: _Eckzeichen(
-                              icon: Icons.lock,
-                              grund: Colors.white,
-                            ),
-                          ),
-                        // **Die Punktzahl sitzt auf der Unterkante des
-                        // Wappens** — und sie ist von 10 auf 13 Punkt
-                        // gewachsen. Sie ist die einzige Zahl auf diesem
-                        // Schirm; sie zu suchen war der Fehler.
-                        Positioned(
-                          bottom: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.86),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.16),
-                              ),
-                            ),
-                            child: Text(
-                              formatPoints(points ?? 0),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: Schrift.koerperKlein,
-                                fontWeight: FontWeight.w800,
-                                height: 1.2,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                // **Der Name ohne Kasten.** Er stand in einem grauen Kästchen,
-                // das ihn kleiner aussehen ließ, als er ist; auf dem dunklen
-                // Rasen trägt ihn ein Schatten besser als eine Fläche.
-                SizedBox(
-                  width: double.infinity,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      p == null ? 'frei' : _short(p.name),
-                      maxLines: 1,
-                      softWrap: false,
-                      style: TextStyle(
-                        color: p == null
-                            ? Colors.white.withValues(alpha: 0.75)
-                            : Colors.white,
-                        fontSize: Schrift.marke,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                        shadows: const [
-                          Shadow(color: Colors.black87, blurRadius: 4),
-                        ],
                       ),
-                    ),
-                  ),
-                ),
-              ],
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // **Jeder Punkt Höhe zählt.** Eine Reihe ist rund
+                            // 110 Punkte hoch, davon nimmt der Tauschknopf
+                            // schon 26. Mit Gegner und Anstoß als eigenen
+                            // Zeilen lief die Kachel um bis zu 9 Punkte über
+                            // — geholt werden sie hier, an den Polstern, nicht
+                            // an der Schriftgröße: Kleiner setzen hieße, genau
+                            // das wieder aufzugeben, worum es ging.
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(4, 4, 4, 2),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // **Das Wappen bleibt eine Marke.**
+                                  // Flächenfüllend über die ganze Karte
+                                  // gezogen war es, wie gemeldet,
+                                  // „katastrophal": Vereinslogos sind für
+                                  // kleine Flächen gezeichnet — hochskaliert,
+                                  // weichgezeichnet und abgedunkelt bleibt von
+                                  // ihnen ein Farbfleck, und elf davon
+                                  // nebeneinander machen aus dem Rasen einen
+                                  // Flickenteppich. Als 26er-Marke sagt es in
+                                  // einer Ecke dasselbe, ohne die Karte zu
+                                  // übernehmen.
+                                  // **Der gesperrte Zustand dämpft das
+                                  // Wappen, nicht die ganze Karte.** Ein
+                                  // `Opacity` über allem ließ auch Kante und
+                                  // Namensfeld ausbleichen — und trug seinen
+                                  // Teil zum verschwommenen Eindruck bei.
+                                  Opacity(
+                                    opacity: gesperrt ? 0.55 : 1,
+                                    child: ClubBadge(
+                                      club: p.club,
+                                      iconUrl: iconUrl,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  // **Ausfall und Spielsperre bleiben zwei
+                                  // Aussagen.** „Sein Spiel läuft" ist eine
+                                  // Frist, „verletzt" ein Zustand; sie stehen
+                                  // nebeneinander, nicht übereinander.
+                                  if (ausfall != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 3),
+                                      child: AusfallZeichen(
+                                        ausfall: ausfall,
+                                        size: 13,
+                                      ),
+                                    ),
+                                  // **Der Zustand des Platzes, oben rechts.**
+                                  //
+                                  // Der Tausch saß bis hierher als eigener
+                                  // Kreis **unter** der Karte — elf davon auf
+                                  // dem Rasen, jeder mit farbigem Ring, und
+                                  // jede Reihe rund 28 Punkte höher. Auf
+                                  // Ansage sitzt er jetzt in der Kachel, an
+                                  // derselben Stelle, an der bei laufendem
+                                  // Spiel das Schloss steht: Beides sagt, was
+                                  // mit diesem Platz geht — das eine „du
+                                  // kannst", das andere „nicht mehr".
+                                  if (gesperrt || onEditPosition == null)
+                                    Icon(
+                                      Icons.lock,
+                                      size: 13,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.75,
+                                      ),
+                                    )
+                                  else
+                                    // **Der Name bleibt für die
+                                    // Vorlesehilfe.** Ohne ihn hießen alle elf
+                                    // Knöpfe „Schaltfläche" — der Zustand, den
+                                    // `knopfnamen_test` verbietet.
+                                    Semantics(
+                                      button: true,
+                                      label: '${pos.label} tauschen',
+                                      child: InkResponse(
+                                        onTap: onEditPosition,
+                                        radius: 16,
+                                        child: Icon(
+                                          Icons.swap_horiz,
+                                          size: 16,
+                                          color: farbe,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            // **Die Punktzahl steht, wo sonst der Gegner
+                            // steht.** In der Kopfzeile teilte sie sich den
+                            // Platz mit Wappen und Zeichen; bei 68 Punkten
+                            // Breite geht das nicht mehr auf, seit der Tausch
+                            // dazugekommen ist. Hier trägt die Zeile immer
+                            // genau eine Auskunft: läuft sein Spiel, die
+                            // Punkte — sonst, gegen wen und wann.
+                            if (zeigePunkte)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 0, 4, 3),
+                                child: Text(
+                                  formatPoints(points ?? 0),
+                                  style: TextStyle(
+                                    color: (points ?? 0) < 0
+                                        ? const Color(0xFFF23030)
+                                        : MatchUpColors.snow,
+                                    fontSize: Schrift.koerperKlein,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.0,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            // **Gegner und Anstoß in voller Breite, nicht
+                            // gequetscht neben dem Wappen.**
+                            //
+                            // Vorher standen sie rechts neben dem Wappen und
+                            // mussten sich dafür schrumpfen lassen — in der
+                            // Fünferkette blieb von „So 21:15" ein Krümel.
+                            // Untereinander in der festen Kachelbreite haben
+                            // beide ihre volle Größe, in jeder Formation
+                            // dieselbe.
+                            if (!zeigePunkte && spiel != null)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(4, 0, 4, 3),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      // Das Zeichen sagt, wo gespielt wird:
+                                      // zu Hause oder auswärts.
+                                      '${spiel!.heim ? '' : '@'}'
+                                      '${vereinsKuerzel(spiel!.gegner)}',
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: Schrift.klein,
+                                        height: 1.0,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.2,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      anpfiffKurz(spiel!.anpfiff),
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: Schrift.winzig,
+                                        height: 1.1,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            // **Der Streifen ist dunkel, die Farbe nur
+                            // noch eine Kante.** Als volle Fläche in der
+                            // Positionsfarbe war er das Lauteste auf dem
+                            // Rasen — elfmal, in vier Farben. Der Name steht
+                            // jetzt weiß auf Dunkel und bleibt trotzdem das,
+                            // was man zuerst liest; die Position sagt ohnehin
+                            // schon die Reihe, in der er steht.
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                // Eine Stufe heller als die Karte, ebenfalls
+                                // deckend: Das Feld setzt sich ab, ohne eine
+                                // zweite Fläche einzufärben.
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
+                                // **Ein Strich in der Positionsfarbe, sonst
+                                // nichts.** Auf Ansage zurückgeholt: „Können
+                                // wir diesen Strich über dem Namen, so wie
+                                // davor, farbig machen? Ansonsten ist das ganz
+                                // gut mit dem Schwarz." Genau so ist es
+                                // gemeint — die Farbe als Akzent an einer
+                                // Kante, nicht als Fläche. Elf getönte Karten
+                                // waren „zu bunt", elf farbige Striche sind
+                                // eine Gliederung.
+                                border: Border(
+                                  top: BorderSide(
+                                    color: farbe.withValues(alpha: 0.85),
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                              // **Lange Namen schrumpfen, statt zu
+                              // verschwinden.** „Schlotterbeck" wurde mit
+                              // Auslassungspunkten abgeschnitten; eine Kachel,
+                              // die den Namen nicht zeigt, verfehlt ihren
+                              // einzigen Zweck.
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  _short(p.name).toUpperCase(),
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  style: TextStyle(
+                                    // Voller Kontrast statt gebrochenem Weiß:
+                                    // Der Name ist die Auskunft der Kachel.
+                                    color: gesperrt
+                                        ? MatchUpColors.snow.withValues(
+                                            alpha: 0.6,
+                                          )
+                                        : MatchUpColors.snow,
+                                    fontSize: Schrift.klein,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.2,
+                                    height: 1.15,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
             ),
           ),
-          const SizedBox(height: 4),
-          // Der Knopf zum Tauschen. Läuft sein Spiel schon, steht dort ein
-          // Schloss statt eines Knopfes, der nichts tut.
-          //
-          // **`Center`, sonst zieht er sich über den ganzen Platz.** Seit die
-          // Reihe ihre Breite aufteilt, ist der Platz mal 74 und mal 180 Punkte
-          // breit; ohne diese Klammer wurde aus dem Knopf ein Balken.
-          Center(child: _posPill(context)),
+          // **Kein Kreis mehr unter der Karte.** Tausch und Schloss stehen in
+          // der Kopfzeile der Kachel; der eigene Knopf darunter kostete jede
+          // Reihe rund 28 Punkte Höhe und trug elf farbige Ringe auf den
+          // Rasen, die dort nichts sagten.
         ],
-      ),
-    );
-  }
-
-  Widget _posPill(BuildContext context) {
-    final color = positionColor(pos);
-    if (gesperrt) {
-      // **Ein Schloss, kein toter Knopf.** Der Platz ist zu, und das sagt er
-      // an derselben Stelle, an der sonst der Tausch steht — statt „läuft" in
-      // 9 Punkt Grau, das man für eine Beschriftung halten konnte.
-      return const GesperrtMarke(size: 26);
-    }
-    if (onEditPosition == null) {
-      // Nicht bearbeitbar: **dieselbe Marke wie beim gesperrten Platz**.
-      // Vorher stand hier ein Farbpunkt, der als Positionshinweis überflüssig
-      // war (die Reihe sagt die Position) und als Zustandshinweis nichts sagte.
-      return const GesperrtMarke(size: 26);
-    }
-    // **Der Tauschknopf trägt nur noch den Pfeil** (auf Ansage). Er hatte das
-    // Kürzel der Position dabei, mit der Begründung, dass er damit sagt,
-    // *welcher* Platz getauscht wird. Auf dem Feld ist das entbehrlich: Der
-    // Knopf sitzt an seinem Spieler, die Reihe sagt die Position, und die
-    // Farbe des Rings sagt sie ein zweites Mal. Elf Kürzel auf dem Rasen sind
-    // elfmal dieselbe Auskunft.
-    //
-    // **Das Wort bleibt für die Vorlesehilfe.** Ohne Beschriftung hießen alle
-    // elf Knöpfe „Schaltfläche" — genau der Zustand, den `knopfnamen_test`
-    // für die `IconButton`s dieser App verbietet. Hier steht er als
-    // `Semantics`, weil der Knopf keiner ist.
-    //
-    // Ohne Text ist der Kreis wieder gefahrlos: Der `CircleBorder`-Clip hatte
-    // dem Knopf früher die Enden abgeschnitten („ABW" wurde zu „ABV").
-    return Semantics(
-      button: true,
-      label: '${pos.label} tauschen',
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onEditPosition,
-          child: Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.55),
-              shape: BoxShape.circle,
-              border:
-                  Border.all(color: color.withValues(alpha: 0.9), width: 1.4),
-            ),
-            child: Icon(Icons.swap_horiz, size: 15, color: color),
-          ),
-        ),
       ),
     );
   }
@@ -1208,25 +1368,6 @@ class _LeererPlatz extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Kleines Zeichen an der Ecke des Wappens (Ausfall, Sperre).
-class _Eckzeichen extends StatelessWidget {
-  const _Eckzeichen({required this.icon, required this.grund});
-
-  final IconData icon;
-  final Color grund;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(2.5),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: grund,
-          border: Border.all(color: Colors.black.withValues(alpha: 0.45)),
-        ),
-        child: Icon(icon, size: 10, color: MatchUpColors.base),
-      );
 }
 
 /// Das Band über dem Feld, wenn an der Elf nichts mehr zu ändern ist.
@@ -1298,7 +1439,7 @@ class _DragFeedback extends StatelessWidget {
   }
 }
 
-class _Bench extends StatelessWidget {
+class _Bench extends ConsumerWidget {
   const _Bench({
     required this.bench,
     required this.points,
@@ -1322,7 +1463,7 @@ class _Bench extends StatelessWidget {
   final void Function(_DragData data)? onDropToBench;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -1395,7 +1536,7 @@ class _Bench extends StatelessWidget {
                         runSpacing: 8,
                         children: [
                           for (final p in bench)
-                            if (p.position == pos) _benchChip(p),
+                            if (p.position == pos) _benchChip(ref, p),
                         ],
                       ),
                     ],
@@ -1430,12 +1571,29 @@ class _Bench extends StatelessWidget {
     );
   }
 
-  Widget _benchChip(FantasyPlayer p) {
+  Widget _benchChip(WidgetRef ref, FantasyPlayer p) {
     final color = positionColor(p.position);
+    // **Der Ausfall steht hinter dem Namen.** Die Bank ist die Liste, aus der
+    // man den Ersatz holt — wer dort erst ins Profil tippen muss, um zu
+    // sehen, dass der Ersatz selbst verletzt ist, stellt ihn auf.
+    final ausfall = ausfallFuer(ref, p.id);
     final chip = Chip(
       avatar: ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 22),
-      side: BorderSide(color: color.withValues(alpha: 0.6)),
-      label: Text('${_short(p.name)} · ${formatPoints(points[p] ?? 0)}'),
+      side: BorderSide(
+        color: ausfall == null
+            ? color.withValues(alpha: 0.6)
+            : ausfallFarbe(ausfall).withValues(alpha: 0.75),
+      ),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${_short(p.name)} · ${formatPoints(points[p] ?? 0)}'),
+          if (ausfall != null) ...[
+            const SizedBox(width: 5),
+            AusfallZeichen(ausfall: ausfall),
+          ],
+        ],
+      ),
     );
     // Tippen → Profil; langes Drücken → auf/vom Feld ziehen.
     final tappable = GestureDetector(
@@ -1491,7 +1649,7 @@ class _Bench extends StatelessWidget {
 }
 
 /// Bottom-Sheet: verfügbare Spieler einer Position auswählen (oder Slot leeren).
-class _PlayerPicker extends StatelessWidget {
+class _PlayerPicker extends ConsumerWidget {
   const _PlayerPicker({
     required this.position,
     required this.candidates,
@@ -1509,7 +1667,7 @@ class _PlayerPicker extends StatelessWidget {
   final bool canClear;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       child: ConstrainedBox(
@@ -1554,18 +1712,43 @@ class _PlayerPicker extends StatelessWidget {
                   itemBuilder: (context, i) {
                     final p = candidates[i];
                     final s = stats[p.id];
+                    // **Hier fällt die Entscheidung.** Wer einen Spieler auf
+                    // den Platz setzt, sieht in dieser Liste sonst nur Verein
+                    // und Punkte — und stellt einen Verletzten auf, dessen
+                    // Zustand eine Tippebene tiefer steht.
+                    final ausfall = ausfallFuer(ref, p.id);
                     final detail = <String>[
                       p.club,
                       if ((s?.goals ?? 0) > 0) '${s!.goals} Tor',
                       if (s?.cleanSheet ?? false) 'Zu Null',
+                      if (ausfall != null) ausfall.kurz,
                     ].join(' · ');
                     return ListTile(
                       leading: ClubBadge(
                         club: p.club,
                         iconUrl: clubIcons[p.club],
                       ),
-                      title: Text(p.name),
-                      subtitle: Text(detail),
+                      title: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              p.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (ausfall != null) ...[
+                            const SizedBox(width: 6),
+                            AusfallZeichen(ausfall: ausfall, size: 14),
+                          ],
+                        ],
+                      ),
+                      subtitle: Text(
+                        detail,
+                        style: ausfall == null
+                            ? null
+                            : TextStyle(color: ausfallFarbe(ausfall)),
+                      ),
                       trailing: Text(
                         formatPoints(points[p] ?? 0),
                         style: Theme.of(context).textTheme.titleMedium

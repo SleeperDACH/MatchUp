@@ -50,7 +50,14 @@ void main() {
       4,
       'Spieler-Slot auf dem Feld, der Free-Agency-Chip und die beiden '
           'Ablegeflächen beim Ziehen: alles Zustände („gewählt", „hier '
-          'loslassen"), keine Karten.'
+          'loslassen"), keine Karten.\n'
+          '    Nicht mitgezählt und bewusst so: der Strich in der '
+          'Positionsfarbe über dem Namensfeld der Spielerkachel (Ansage vom '
+          '17.09.2026). Er ist ein `Border(top: …)` ohne eigenen Radius und '
+          'fällt damit nicht unter die Regel — sie meint den Rahmen **um** '
+          'einen Behälter, nicht eine Trennlinie **in** ihm. Die Kachel selbst '
+          'ist schwarz und deckend; die erste Fassung färbte das ganze '
+          'Namensband ein und wurde als „sehr, sehr bunt" zurückgewiesen.'
     ),
     'app/live_screen.dart': (
       1,
@@ -98,13 +105,12 @@ void main() {
       'Die Kachel mit rotem Zähler: Hier wartet etwas, und die rote Kante '
           'trägt genau das. Ohne Zähler ist es die gewöhnliche Haarlinie.'
     ),
-    'app/widgets/navi_kapsel.dart': (
-      1,
-      'Der aktive Reiter in der Navi-Kapsel — ein Zustand, und zwar derselbe '
-          'helle, den `PillChip` und `SegmentedTabBar` für „gewählt" '
-          'benutzen. Die Kapsel selbst trägt ihre eigene Kante über '
-          '`LiquidGlass` und ist keine Karte.'
-    ),
+    // `app/widgets/navi_kapsel.dart` stand hier für die Marke um den aktiven
+    // Reiter. **Die gibt es seit dem 17.09.2026 nicht mehr** (Ansage: „Können
+    // wir in der Leiste diese Umrandung rausnehmen?"): Den Zustand tragen
+    // jetzt das hellere Symbol und das Wort, das nur unter dem aktiven Reiter
+    // steht. Ohne Kante kein Eintrag — der Test verlangt das Aufräumen selbst,
+    // sonst wächst die Liste und niemand räumt sie.
     'features/fantasy/ui/spieler_kachel.dart': (
       1,
       'Auswahl-Hervorhebung der Spielerkachel — ein Zustand.'

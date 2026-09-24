@@ -111,8 +111,32 @@ void main() {
 
   /// [gelaufen] nennt die Vereine, deren Spiel schon angepfiffen ist — daran
   /// hängt die Sperre je Spieler (Migration 0084).
+  ///
+  /// **Die Anstoßzeiten sind auf die volle Stunde gelegt, nicht auf `now()`.**
+  /// Seit die Kachel „Sa 15:30" trägt, steht die Uhrzeit **im Bild** — und
+  /// eine aus `DateTime.now()` abgeleitete Minute ist bei jedem Lauf eine
+  /// andere. Das Vergleichsbild wurde dadurch Minuten nach dem Nachziehen
+  /// wieder rot (gemessen: 0,5–0,7 % Unterschied, genau die Ziffern). Ein
+  /// Test, der von selbst rot wird, ist einer, den man sich abgewöhnt zu
+  /// lesen.
+  ///
+  /// Der **Abstand** zu jetzt bleibt erhalten, denn daran hängt die Sperre:
+  /// gelaufen = gut eine Stunde her, offen = übermorgen.
   List<Fixture> spiele({required Set<String> gelaufen}) {
-    final jetzt = DateTime.now();
+    // **Ein fester Tag, keine abgeleitete Stunde.** Die „volle Stunde" war zu
+    // schwach: Läuft der Durchgang über einen Stundenwechsel, steht auf den
+    // Kacheln doch eine andere Zeit, und das Bild wird rot, ohne dass jemand
+    // etwas geändert hat — gemessen 0,6 bis 0,9 % Unterschied, genau die
+    // Ziffern.
+    //
+    // Der **Abstand** zu jetzt muss trotzdem stimmen, denn daran hängt die
+    // Sperre: Deshalb steht das feste Datum in der Vergangenheit bzw. Zukunft,
+    // und nur die Uhrzeit ist gesetzt.
+    final heute = DateTime.now();
+    final gelaufenerAnstoss =
+        DateTime(heute.year, heute.month, heute.day - 1, 15, 30);
+    final offenerAnstoss =
+        DateTime(heute.year, heute.month, heute.day + 2, 15, 30);
     Fixture f(String heim, String gast) => Fixture(
           id: 'sportmonks:${heim.hashCode}',
           leagueId: 'bundesliga',
@@ -120,8 +144,8 @@ void main() {
           round: 1,
           roundName: 'Spieltag 1',
           kickoff: gelaufen.contains(heim)
-              ? jetzt.subtract(const Duration(minutes: 40))
-              : jetzt.add(const Duration(days: 2)),
+              ? gelaufenerAnstoss
+              : offenerAnstoss,
           home: TeamRef(id: heim, name: heim, shortName: heim),
           away: TeamRef(id: gast, name: gast, shortName: gast),
           status: FixtureStatus.scheduled,
@@ -215,6 +239,15 @@ void main() {
     // Solange nichts läuft, ist die Elf zu ändern — kein Sperrband.
     expect(find.text('Aufstellung steht — alle Spiele laufen'), findsNothing);
 
+    // **Und keine Punkte.** Vor dem Anpfiff gibt es keine Leistung dieses
+    // Spieltags; stand `player_match_stats` für die Runde noch leer, sprang
+    // die Ersatzrechnung ein und zeigte Zahlen aus einem *anderen* Spieltag.
+    // Gemeldet als: „Die Punkte zwischen den Spieltagen brauchen wir nicht."
+    for (final zahl in ['24', '54', '8,8', '-2']) {
+      expect(find.text(zahl), findsNothing,
+          reason: 'ohne Anpfiff steht auf keiner Karte eine Punktzahl');
+    }
+
     await expectLater(find.byType(LineupEditor),
         matchesGoldenFile('goldens/aufstellung_feld.png'));
   });
@@ -259,6 +292,12 @@ void main() {
     addTearDown(() => AppConfig.supabaseInitialized = vorher);
 
     await zeichne(tester, gelaufen: const {bvb, fcb});
+
+    // **Läuft sein Spiel, steht die Zahl auf der Karte** — die Gegenprobe zur
+    // Prüfung oben. Sonst hätte „keine Punkte zwischen den Spieltagen" auch
+    // dann bestanden, wenn die Zahl überhaupt nicht mehr erschiene.
+    expect(find.text('24'), findsOneWidget, reason: 'Kobel: 4 Paraden, zu Null');
+    expect(find.text('-2'), findsOneWidget, reason: 'Anton: zwei Gegentore, Gelb');
 
     // **Der wichtigste Zustand dieses Schirms**: Es geht nichts mehr, und das
     // muss man sehen, ohne es auszuprobieren.

@@ -140,13 +140,25 @@ Future<_MerkendesRepo> _aufbauen(WidgetTester tester,
 /// Der Tausch-Knopf **an genau diesem Platz**.
 ///
 /// Der Name auf dem Platz öffnet das Profil, nicht die Spielerwahl — dafür
-/// gibt es die Positions-Pille daneben. Deshalb erst den Platz über den Namen
-/// finden (`AnimatedContainer` ist die Wurzel von `_Slot`), dann darin den
-/// Knopf.
+/// gibt es das Tauschzeichen in der Kopfzeile der Kachel. Deshalb erst den
+/// Platz über den Namen finden (`AnimatedContainer` ist die Wurzel von
+/// `_Slot`), dann darin das Zeichen.
+///
+/// **Der Name wird ohne Rücksicht auf Groß- und Kleinschreibung gesucht.**
+/// Die Kachel setzt ihn seit dem Umbau in Versalien („def1" → „DEF1"), und
+/// `find.text` vergleicht buchstabengenau: Der Finder fand nichts mehr, und
+/// der Test scheiterte an einem `Bad state: No element` — an einer Stelle,
+/// die drei Zeilen weiter aussah wie ein Problem mit der Verschachtelung.
+/// Ein Test, der an der Schreibweise einer Beschriftung hängt, prüft nicht
+/// das, was er prüfen soll.
 Finder _tauschKnopf(String name) => find.descendant(
       of: find
           .ancestor(
-              of: find.text(name), matching: find.byType(AnimatedContainer))
+            of: find.byWidgetPredicate((w) =>
+                w is Text &&
+                (w.data ?? '').toLowerCase() == name.toLowerCase()),
+            matching: find.byType(AnimatedContainer),
+          )
           .first,
       matching: find.byIcon(Icons.swap_horiz),
     );
@@ -216,10 +228,27 @@ void main() {
     await _aufbauen(tester);
 
     /// Wer gerade auf dem Platz steht (kurze Namen).
+    ///
+    /// **Ohne Rücksicht auf die Schreibweise**, und klein abgelegt: Die Kachel
+    /// setzt den Namen in Versalien („def1" → „DEF1"). Ein Test, der die
+    /// Schreibweise einer Beschriftung mitprüft, meldet einen Fehler im
+    /// Formationswechsel, wo nur die Schrift anders geworden ist — genau das
+    /// ist hier passiert.
+    ///
+    /// **Die Versalien sind hier das Unterscheidungsmerkmal, kein Zufall.**
+    /// Die Kachel auf dem Feld setzt den Namen groß (`_short(p.name)
+    /// .toUpperCase()`), die Bankzeile lässt ihn, wie er ist. Seit die Bank
+    /// ihre Namen einzeln zeigt (vorher steckten sie in „name · punkte" eines
+    /// Chips und fielen durch das Muster), zählte ein Helfer ohne diese
+    /// Unterscheidung die vier Bankspieler mit: 15 statt 11.
+    ///
+    /// Über die Verschachtelung geht es **nicht** — die Bank liegt selbst in
+    /// einem `AnimatedContainer` (ihrer Ablegefläche), genau wie die Kacheln.
     Set<String> aufDemPlatz() => {
           for (final w in tester.widgetList<Text>(find.byType(Text)))
-            if (w.data != null && RegExp(r'^(gk|def|mid|fwd)\d$').hasMatch(w.data!))
-              w.data!,
+            if (w.data != null &&
+                RegExp(r'^(GK|DEF|MID|FWD)\d$').hasMatch(w.data!))
+              w.data!.toLowerCase(),
         };
 
     // Die Saat ist 3-4-3.
