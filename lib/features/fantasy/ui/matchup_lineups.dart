@@ -5,8 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
+import '../models/player_absence.dart';
 import '../providers.dart';
+import 'ausfall_zeichen.dart';
 import 'club_badge.dart';
+import 'manager_profile_screen.dart';
 import 'player_profile_sheet.dart';
 import 'punkte_aufschluesselung.dart';
 import '../../../core/logic/vereins_kuerzel.dart';
@@ -184,6 +187,11 @@ class MatchupLineups extends ConsumerWidget {
         ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
         const <Fixture>[];
     final jetzt = DateTime.now();
+    // **Auch hier, nicht nur auf dem Feld.** Das MatchUp ist der Schirm, den
+    // man am Spieltag offen hat; wer dort sieht, dass sein Stürmer gesperrt
+    // ist, kann noch tauschen.
+    final ausfaelle = ref.watch(absencesProvider).valueOrNull ??
+        const <String, PlayerAbsence>{};
     bool angepfiffen(String verein) {
       final s = naechstesSpiel(spiele, runde, verein);
       return s != null && !s.anpfiff.isAfter(jetzt);
@@ -236,6 +244,7 @@ class MatchupLineups extends ConsumerWidget {
             homeMine: homeMine,
             awayMine: awayMine,
             clubIcons: clubIcons,
+            ausfaelle: ausfaelle,
             spiele: spiele,
             angepfiffen: angepfiffen,
             onTap: openPlayer,
@@ -249,9 +258,13 @@ class MatchupLineups extends ConsumerWidget {
           _BenchSection(
             home: home,
             away: away,
+            league: league,
+            homeId: homeId,
+            awayId: awayId,
             homeName: homeName,
             awayName: awayName,
             clubIcons: clubIcons,
+            ausfaelle: ausfaelle,
             homeMine: homeMine,
             awayMine: awayMine,
             onTap: openPlayer,
@@ -271,6 +284,7 @@ class MatchupLineups extends ConsumerWidget {
     required bool homeMine,
     required bool awayMine,
     required Map<String, String?> clubIcons,
+    required Map<String, PlayerAbsence> ausfaelle,
     required List<Fixture> spiele,
     required bool Function(String verein) angepfiffen,
     required void Function(FantasyPlayer, bool) onTap,
@@ -317,6 +331,7 @@ class MatchupLineups extends ConsumerWidget {
           homeMine: homeMine,
           awayMine: awayMine,
           clubIcons: clubIcons,
+          ausfaelle: ausfaelle,
           onTap: onTap,
           onPunkte: onPunkte,
         ),
@@ -461,11 +476,15 @@ class _PlayerRow extends StatelessWidget {
     required this.homeMine,
     required this.awayMine,
     required this.clubIcons,
+    required this.ausfaelle,
     required this.onTap,
     required this.onPunkte,
     this.homeFehlt,
     this.awayFehlt,
   });
+
+  /// Ausfälle je Spieler-ID — verletzt oder gesperrt.
+  final Map<String, PlayerAbsence> ausfaelle;
 
   final FantasyPlayer? home;
   final FantasyPlayer? away;
@@ -556,18 +575,42 @@ class _PlayerRow extends StatelessWidget {
       return _FehlendePosition(pos: fehltPos);
     }
     final pos = positionColor(player.position);
+    final ausfall = ausfaelle[player.id];
     // **Die Box nimmt den Tipp selbst an**, wenn es etwas aufzuschlüsseln
     // gibt. Ein inneres `GestureDetector` gewinnt gegen das umgebende
     // `InkWell`, die Karte behält also ihren Weg ins Profil — zwei Ziele in
     // einer Zeile, getrennt durch den sichtbaren Kasten.
     final aufPunkte = onPunkte(player);
+    // **Die Zahl steht frei in der Karte, ohne Kasten darunter.** Auf Ansage:
+    // „Glaube die Zahlen brauchen da keinen Hintergrund, sondern können
+    // einfach so in der Karte stehen." Und das stimmt: Die Zeile ist schon
+    // eine Karte — Verlauf, Haarlinie, Radius 14. Ein zweiter Kasten darin
+    // umrandet etwas, das ohnehin abgegrenzt ist; auf dem Rasen (Feld im
+    // Kader-Tab) bleibt die Pille dagegen, dort liegt die Zahl auf Wappen und
+    // Gras und wäre ohne Grund stellenweise unlesbar.
+    //
+    // **Die Mindestbreite bleibt.** Ohne sie rutschte der Name bei jeder
+    // Aktualisierung hin und her, sobald aus „7" eine „12,5" wird — dieselbe
+    // Unruhe, gegen die die gleichbreiten Ziffern in [Punktzahl] gebaut sind.
     final ptsBox = Container(
-      constraints: const BoxConstraints(minWidth: 36),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(10),
-      ),
+      // **Feste Breite, nicht bloß eine Mindestbreite — und nur für die
+      // Zahl.** Gemeldet: „Die Punkte im MatchUp-Tab sind immer noch krumm
+      // und schief."
+      //
+      // Drei Dinge wirkten zusammen: Die Box wuchs mit ihrem Inhalt („12" ist
+      // breiter als „5"), sie trug beidseitig Polster, und die Zahl stand
+      // darin **zentriert**. Dadurch verschob sich jede Zahl je nach
+      // Stellenzahl — auf der Heimseite nach links, auf der Gastseite nach
+      // rechts. Rechtsbündig war nur die Box, nicht die Ziffer darin.
+      //
+      // Der Anstoß-Hinweis behält seine freie Breite: Er ist zweizeilig
+      // (Kürzel über Uhrzeit) und würde in 36 Punkten gequetscht.
+      constraints: gespielt
+          ? const BoxConstraints(minWidth: 40, maxWidth: 40)
+          : const BoxConstraints(minWidth: 36),
+      padding: gespielt
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       // **Vor dem Anpfiff steht hier das Spiel, nicht ein Strich.** „Noch
       // nicht gespielt" ist kein Nullpunktespiel — vorher stand in beiden
       // Fällen „0", dann ein Strich. Ein Strich sagt nichts Falsches, aber
@@ -580,7 +623,10 @@ class _PlayerRow extends StatelessWidget {
           ? _punkte(
               gespielt,
               pts,
-              textAlign: TextAlign.center,
+              // **Zur Außenkante hin, nicht mittig.** Heimseite rechts,
+              // Gastseite links — dann steht jede Zahl einer Spalte an
+              // derselben Stelle, unabhängig von ihrer Stellenzahl.
+              textAlign: start ? TextAlign.end : TextAlign.start,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -613,15 +659,32 @@ class _PlayerRow extends StatelessWidget {
           ? CrossAxisAlignment.start
           : CrossAxisAlignment.end,
       children: [
-        Text(
-          shortPlayerName(player.name),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: start ? TextAlign.start : TextAlign.end,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: mine ? FontWeight.w800 : FontWeight.w600,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          // Die Gastseite liest sich von rechts nach links — dort steht das
+          // Zeichen hinter dem Namen, sonst davor.
+          children: [
+            if (ausfall != null && !start) ...[
+              AusfallZeichen(ausfall: ausfall, size: 13),
+              const SizedBox(width: 4),
+            ],
+            Flexible(
+              child: Text(
+                shortPlayerName(player.name),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: start ? TextAlign.start : TextAlign.end,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: mine ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ),
+            if (ausfall != null && start) ...[
+              const SizedBox(width: 4),
+              AusfallZeichen(ausfall: ausfall, size: 13),
+            ],
+          ],
         ),
         // **Kein Positionskürzel je Zeile.** Über jedem Block steht die
         // Position schon als Überschrift (Punkt und Wort), und die Zeilen
@@ -706,13 +769,26 @@ class _BenchSection extends StatelessWidget {
   const _BenchSection({
     required this.home,
     required this.away,
+    required this.league,
+    required this.homeId,
+    required this.awayId,
     required this.homeName,
     required this.awayName,
     required this.clubIcons,
+    required this.ausfaelle,
     required this.homeMine,
     required this.awayMine,
     required this.onTap,
   });
+
+  /// Liga und Manager-IDs — dafür, dass der Name über der Spalte ins
+  /// Ligaprofil führt, genau wie im Duell-Kopf.
+  final FantasyLeague league;
+  final String homeId;
+  final String? awayId;
+
+  /// Ausfälle je Spieler-ID — verletzt oder gesperrt.
+  final Map<String, PlayerAbsence> ausfaelle;
 
   final MatchupSideData home;
   final MatchupSideData? away;
@@ -761,6 +837,7 @@ class _BenchSection extends StatelessWidget {
               child: _column(
                 context,
                 homeName,
+                homeId,
                 home.bench,
                 home.points,
                 homeMine,
@@ -771,6 +848,7 @@ class _BenchSection extends StatelessWidget {
                 child: _column(
                   context,
                   awayName!,
+                  awayId,
                   away!.bench,
                   away!.points,
                   awayMine,
@@ -785,24 +863,46 @@ class _BenchSection extends StatelessWidget {
   Widget _column(
     BuildContext context,
     String title,
+    String? managerId,
     List<FantasyPlayer> bench,
     Map<String, double> points,
     bool mine,
   ) {
     final scheme = Theme.of(context).colorScheme;
+    // **Auch hier führt der Name ins Ligaprofil** — dieselbe Regel wie im
+    // Duell-Kopf darüber (Ansage vom 19.09.2026). Über der Bank steht der
+    // Name des Managers; wer wissen will, wer das ist und was er sonst
+    // aufgestellt hat, tippt genau dort hin.
+    final kopf = Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(
+        context,
+      ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-          ),
+          if (managerId == null)
+            kopf
+          else
+            Semantics(
+              button: true,
+              label: 'Profil von $title',
+              child: InkWell(
+                onTap: () => showManagerProfile(
+                  context,
+                  league: league,
+                  managerId: managerId,
+                  managerName: title,
+                ),
+                borderRadius: BorderRadius.circular(6),
+                child: kopf,
+              ),
+            ),
           const SizedBox(height: 6),
           if (bench.isEmpty)
             Text(
@@ -834,18 +934,78 @@ class _BenchSection extends StatelessWidget {
                         size: 20,
                       ),
                       const SizedBox(width: 6),
+                      // **Ein `Expanded`, kein `Flexible` neben einem
+                      // `Spacer`.**
+                      //
+                      // Genau daran lag die schiefe Spalte — nachgemessen,
+                      // nicht geraten: Die Punktespalte war überall exakt 44
+                      // Punkte breit, saß aber an fünf verschiedenen Stellen
+                      // (rechte Kante 172,2 / 173,4 / 179,6 / 189,0). Ursache:
+                      // `Flexible` und `Spacer` teilen sich den freien Platz
+                      // je zur Hälfte. Was ein kurzer Name von seiner Hälfte
+                      // nicht braucht, **verfällt** — es geht nicht an den
+                      // `Spacer`. Die Zeile endete deshalb je nach
+                      // Namenslänge früher, und die Zahl wanderte mit.
+                      //
+                      // Mit einem `Expanded` nimmt der Namensblock den ganzen
+                      // Rest, und die Punktespalte steht am echten rechten
+                      // Rand — in jeder Zeile an derselben Stelle. Das
+                      // Zeichen bleibt darin direkt am Namen.
                       Expanded(
-                        child: Text(
-                          shortPlayerName(p.name),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                shortPlayerName(p.name),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (ausfaelle[p.id] != null) ...[
+                              const SizedBox(width: 4),
+                              AusfallZeichen(
+                                ausfall: ausfaelle[p.id]!,
+                                size: 12,
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Punktzahl(
-                        points[p.id] ?? 0,
-                        stil: const TextStyle(fontWeight: FontWeight.bold),
-                        negativRot: true,
+                      // **Die Spalte muss die breiteste Zahl tragen, sonst
+                      // fluchtet nur, was zufällig schmal genug ist.**
+                      //
+                      // Erst standen die Zahlen rechtsbündig ohne feste
+                      // Breite, dann in 36 Punkten — beides half nicht: Ein
+                      // `SizedBox` schneidet zu breiten Inhalt nicht ab, er
+                      // steht über. „6" und „12" saßen damit an der Kante,
+                      // „8,8" und „−2" ragten nach rechts heraus. Im
+                      // Vergleichsbild war das nicht zu sehen, weil dort
+                      // **jeder** Spieler 6,0 Punkte hatte; bei lauter
+                      // gleichen Zahlen ist eine schiefe Spalte unsichtbar.
+                      // Die Vorschau trägt deshalb jetzt 0, 12, 8,8, −2 und
+                      // 12,5.
+                      //
+                      // 44 Punkte fassen die breiteste vorkommende Zahl
+                      // („−12,5") bei fetter 14-Punkt-Schrift; `FittedBox`
+                      // fängt alles darüber ab, statt es überstehen zu
+                      // lassen. Die gleichbreiten Ziffern aus [Punktzahl]
+                      // halten die Spalte auch bei laufender Wertung ruhig.
+                      SizedBox(
+                        width: 44,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Punktzahl(
+                              points[p.id] ?? 0,
+                              stil:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                              negativRot: true,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -871,10 +1031,16 @@ Widget _punkte(
   if (!gespielt) {
     return Text('–', textAlign: textAlign, style: style);
   }
+  // **Die Ausrichtung folgt dem übergebenen `textAlign`.** Vorher kannte der
+  // Helfer nur „mittig oder links": Jedes `textAlign`, das nicht `center`
+  // war, landete links — auch `TextAlign.end`. Damit ließ sich eine Zahl gar
+  // nicht an die rechte Kante setzen, und die Spalte blieb schief.
   return Align(
-    alignment: textAlign == TextAlign.center
-        ? Alignment.center
-        : Alignment.centerLeft,
+    alignment: switch (textAlign) {
+      TextAlign.end || TextAlign.right => Alignment.centerRight,
+      TextAlign.start || TextAlign.left => Alignment.centerLeft,
+      _ => Alignment.center,
+    },
     child: Punktzahl(pts ?? 0, stil: style, negativRot: true),
   );
 }

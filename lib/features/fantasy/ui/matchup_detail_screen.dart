@@ -8,6 +8,7 @@ import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import 'manager_profile_screen.dart';
 import 'matchup_lineups.dart';
 
 // MatchUp-Palette (wie in der Übersicht): grün normal, rot solange live.
@@ -112,6 +113,9 @@ class MatchupDetailScreen extends ConsumerWidget {
                 accent: accent,
                 status: status,
                 live: live,
+                league: league,
+                homeId: homeId,
+                awayId: isBye ? null : awayId,
                 homeName: homeName,
                 awayName: isBye ? null : (awayName ?? '?'),
                 homeTotal: home.total,
@@ -155,6 +159,9 @@ class _Scoreboard extends StatelessWidget {
     required this.accent,
     required this.status,
     required this.live,
+    required this.league,
+    required this.homeId,
+    required this.awayId,
     required this.homeName,
     required this.awayName,
     required this.homeTotal,
@@ -167,6 +174,11 @@ class _Scoreboard extends StatelessWidget {
   final Color accent;
   final String status;
   final bool live;
+
+  /// Liga und Manager-IDs — nur dafür, dass der Name ins Ligaprofil führt.
+  final FantasyLeague league;
+  final String homeId;
+  final String? awayId;
   final String homeName;
   final String? awayName; // null = Bye
   final double homeTotal;
@@ -216,7 +228,9 @@ class _Scoreboard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                    child: _teamName(homeName, me: homeMe, win: false,
+                    child: _teamName(context, homeName, homeId,
+                        me: homeMe,
+                        win: false,
                         align: CrossAxisAlignment.start)),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10),
@@ -231,7 +245,7 @@ class _Scoreboard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                    child: _teamName(homeName,
+                    child: _teamName(context, homeName, homeId,
                         me: homeMe,
                         win: homeWin,
                         align: CrossAxisAlignment.start)),
@@ -261,7 +275,7 @@ class _Scoreboard extends StatelessWidget {
                   }),
                 ),
                 Expanded(
-                    child: _teamName(awayName!,
+                    child: _teamName(context, awayName!, awayId,
                         me: awayMe,
                         win: awayWin,
                         align: CrossAxisAlignment.end)),
@@ -272,10 +286,21 @@ class _Scoreboard extends StatelessWidget {
     );
   }
 
-  Widget _teamName(String name,
+  /// **Der Name führt ins Ligaprofil des Managers.**
+  ///
+  /// Auf Ansage: „Wenn man im MatchUp-Tab auf den Benutzernamen drückt, soll
+  /// man auf die Benutzerprofile kommen." Der Weg dorthin gibt es längst
+  /// ([showManagerProfile], bis hierher nur über die Tabelle erreichbar) — im
+  /// Duell stand der Name als toter Text, obwohl er die Frage „wer ist das,
+  /// und was hat der aufgestellt?" direkt aufwirft.
+  ///
+  /// **Auch der eigene Name reagiert.** Eine Fläche, die mal etwas tut und
+  /// mal nicht, ist schwerer zu begreifen als eine, die immer dasselbe tut;
+  /// das eigene Ligaprofil zeigt schlicht die eigene Elf.
+  Widget _teamName(BuildContext context, String name, String? managerId,
       {required bool me, required bool win, required CrossAxisAlignment align}) {
     final end = align == CrossAxisAlignment.end;
-    return Column(
+    final inhalt = Column(
       crossAxisAlignment: align,
       children: [
         Text(name,
@@ -291,6 +316,24 @@ class _Scoreboard extends StatelessWidget {
             style:
                 TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11)),
       ],
+    );
+    if (managerId == null) return inhalt;
+    return Semantics(
+      button: true,
+      label: 'Profil von $name',
+      child: InkWell(
+        onTap: () => showManagerProfile(
+          context,
+          league: league,
+          managerId: managerId,
+          managerName: name,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: inhalt,
+        ),
+      ),
     );
   }
 }

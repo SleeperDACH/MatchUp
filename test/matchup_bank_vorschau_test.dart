@@ -68,7 +68,15 @@ List<FantasyPlayer> _bank(String p) => [
 MatchupSideData _seite(String p) => MatchupSideData(
       _elf(p),
       _bank(p),
-      {for (final x in [..._elf(p), ..._bank(p)]) x.id: 6.0},
+      // **Unterschiedlich breite Zahlen, sonst prüft das Bild nichts.**
+      // Vorher trug jeder Spieler 6,0 — bei lauter gleichen Zahlen ist eine
+      // schiefe Spalte unsichtbar, und genau daran habe ich die Ausrichtung
+      // zweimal falsch beurteilt. Jetzt: einstellig, zweistellig, mit
+      // Nachkommastelle und negativ.
+      {
+        for (final (i, x) in [..._elf(p), ..._bank(p)].indexed)
+          x.id: const [0.0, 12.0, 8.8, -2.0, 12.5, 6.0][i % 6],
+      },
       66,
       {for (final x in [..._elf(p), ..._bank(p)]) x.id},
     );
