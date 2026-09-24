@@ -13,6 +13,7 @@ import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/models/player_absence.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/player_profile_sheet.dart';
+import 'package:matchup/features/tippspiel/providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import 'support/schrift.dart';
@@ -21,7 +22,7 @@ import 'package:matchup/features/fantasy/ui/trade_screen.dart';
 /// Vorschau des **Spielerprofils**.
 ///
 /// Seit das Wappen nicht mehr auf die Vereinsseite führt, muss das Profil
-/// hergeben, wofür man dorthin ging: Leistung, Spielplan und Kader. Die drei
+/// hergeben, wofür man dorthin ging: Leistung, Spielplan und Tabelle. Die drei
 /// Reiter stehen hier nebeneinander — auf dem Gerät sieht man immer nur einen.
 FantasyPlayer _p(String id, String name, PlayerPosition pos, String club) =>
     FantasyPlayer(
@@ -55,6 +56,49 @@ void main() {
   );
 
   const club = 'Borussia Dortmund';
+
+  /// **Eine kleine, echte Tabelle für den Tabellen-Reiter.**
+  ///
+  /// Sie ersetzt seit dem 19.09.2026 den Vereinskader im Profil. Ohne Daten
+  /// stünde dort „Tabelle konnte nicht geladen werden" — ein Vergleichsbild,
+  /// das nur den Fehlerfall festhält, sichert nichts. Dortmund ist dabei, weil
+  /// der Spieler des Profils dort spielt: Nur so ist im Bild zu sehen, dass
+  /// die eigene Mannschaft hervorgehoben wird.
+  const tabelle = <StandingRow>[
+    StandingRow(
+      rank: 1,
+      team: TeamRef(id: 'fcb', name: 'FC Bayern München', shortName: 'FCB'),
+      points: 12,
+      played: 4,
+      won: 4,
+      draw: 0,
+      lost: 0,
+      goalsFor: 14,
+      goalsAgainst: 3,
+    ),
+    StandingRow(
+      rank: 2,
+      team: TeamRef(id: 'bvb', name: club, shortName: 'BVB'),
+      points: 10,
+      played: 4,
+      won: 3,
+      draw: 1,
+      lost: 0,
+      goalsFor: 9,
+      goalsAgainst: 4,
+    ),
+    StandingRow(
+      rank: 3,
+      team: TeamRef(id: 'sge', name: 'Eintracht Frankfurt', shortName: 'SGE'),
+      points: 7,
+      played: 4,
+      won: 2,
+      draw: 1,
+      lost: 1,
+      goalsFor: 8,
+      goalsAgainst: 6,
+    ),
+  ];
   final held = _p('p1', 'Nico Schlotterbeck', PlayerPosition.def, club);
   final pool = [
     held,
@@ -250,6 +294,14 @@ void main() {
               .overrideWith((ref, id) => Stream.value(managers)),
           fantasySeasonFixturesProvider
               .overrideWith((ref) async => spielplan ?? spiele),
+          // **Der Tabellen-Reiter braucht eine Tabelle.** Ohne diese beiden
+          // Quellen zeigt er „Tabelle konnte nicht geladen werden" — ein
+          // Vergleichsbild, das nur den Fehlerfall festhält, sichert nichts.
+          // `liveLeagueTableProvider` rechnet aus beiden: Standings plus
+          // Spielplan, damit laufende Spiele überlagert werden.
+          leagueTableProvider.overrideWith((ref, id) async => tabelle),
+          leagueSeasonFixturesProvider
+              .overrideWith((ref, id) async => spielplan ?? spiele),
           // Für den Pick-up-Knopf im Profil eines freien Spielers.
           waiverPlayersProvider
               .overrideWith((ref, id) => Stream.value(const <String>{})),
@@ -309,7 +361,7 @@ void main() {
       matchesGoldenFile('goldens/spielerprofil_aufstellung.png'),
     );
 
-    // Spielplan und Kader — die beiden Reiter, die es ohne den Wegfall der
+    // Spielplan und Tabelle — die beiden Reiter, die es ohne den Wegfall der
     // Vereinsseite gar nicht bräuchte.
     await tester.tap(find.text('Spielplan'));
     for (var i = 0; i < 8; i++) {
@@ -320,13 +372,17 @@ void main() {
       matchesGoldenFile('goldens/spielerprofil_spielplan.png'),
     );
 
-    await tester.tap(find.text('Kader'));
+    // **Tabelle statt Kader** (Ansage vom 19.09.2026): Wo der Verein des
+    // Spielers steht, sucht man im Profil eher als die Liste seiner
+    // Mitspieler. Es ist dieselbe Tabelle wie auf der Vereinsseite —
+    // `LigaTabelle`, ein Widget für beide Schirme.
+    await tester.tap(find.text('Tabelle'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
     await expectLater(
       find.byType(BottomSheet),
-      matchesGoldenFile('goldens/spielerprofil_kader.png'),
+      matchesGoldenFile('goldens/spielerprofil_tabelle.png'),
     );
 
     await tester.tap(find.text('Leistung'));

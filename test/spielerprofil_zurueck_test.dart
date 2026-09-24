@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/auth/providers.dart';
+import 'package:matchup/features/fantasy/logic/aufstellungs_prognose.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/providers.dart';
@@ -16,7 +18,7 @@ import 'support/schrift.dart';
 /// Ein Profil, das aus einem Profil heraus geöffnet wird, legt sich **darüber**
 /// — es ersetzt es nicht.
 ///
-/// Gemeldet: „Wenn ich über die Aufstellung oder über den Kader in ein anderes
+/// Gemeldet: „Wenn ich über die Aufstellung in ein anderes
 /// Spielerprofil gehe und dann runterwische, bin ich komplett raus aus dem
 /// Tab." Der Grund war ein `pop` vor dem Öffnen: Das erste Blatt war weg,
 /// bevor das zweite kam, und die Wischgeste hatte nichts mehr, wohin sie
@@ -32,7 +34,19 @@ FantasyPlayer _p(String id, String name, PlayerPosition pos, String club) =>
     );
 
 void main() {
-  setUpAll(ladeSchrift);
+  // **Deutsche Datumsdaten, sonst wirft der Aufstellungs-Reiter.**
+  //
+  // Seit dieser Test über die Aufstellung statt über den Kader ins zweite
+  // Profil geht, baut er `_PrognoseKopf` — und der formatiert ein Datum auf
+  // Deutsch. Ohne diese Zeile scheitert er mit `LocaleDataException`.
+  //
+  // **Allein lief er trotzdem grün**, und das war die eigentliche Falle: Im
+  // Gesamtlauf hatte eine andere Datei die Daten im selben Prozess längst
+  // geladen. Ein grüner Einzellauf beweist hier also nichts.
+  setUpAll(() async {
+    await ladeSchrift();
+    await initializeDateFormatting('de_DE');
+  });
 
   const club = 'Borussia Dortmund';
   final held = _p('p1', 'Nico Schlotterbeck', PlayerPosition.def, club);
@@ -81,7 +95,29 @@ void main() {
           playerPoolProvider.overrideWith((ref) async => pool),
           clubIconsProvider.overrideWith((ref) async => const {}),
           seasonStatsProvider.overrideWith((ref) async => const {}),
-          prognoseElfProvider.overrideWith((ref, k) async => null),
+          // **Der Einstieg ins zweite Profil ist jetzt die Aufstellung.**
+          //
+          // Bis zum 19.09.2026 führte der Kader-Reiter dorthin; er ist durch
+          // die Tabelle ersetzt. Die Zusage, die dieser Test hält, gilt
+          // unverändert — ein aus einem Profil geöffnetes Profil legt sich
+          // **über** das erste —, nur der Weg dorthin ist ein anderer. Ohne
+          // gemeldete Elf stünde im Reiter kein Name zum Antippen.
+          prognoseElfProvider.overrideWith(
+            (ref, k) async => PrognoseElf(
+              club: club,
+              bestaetigt: true,
+              elf: [
+                for (final (i, p) in pool.indexed)
+                  PrognoseSpieler(
+                    playerId: p.id,
+                    name: p.name,
+                    formationsPosition: i + 1,
+                    reihe: i + 1,
+                    spalte: 1,
+                  ),
+              ],
+            ),
+          ),
           absencesProvider.overrideWith((ref) => Stream.value(const {})),
           leagueRosterProvider.overrideWith((ref, id) => Stream.value(const [
                 RosterEntry(
@@ -114,7 +150,7 @@ void main() {
         ),
       );
 
-  testWidgets('Aus dem Kader-Reiter heraus bleibt das erste Profil stehen',
+  testWidgets('Aus dem Aufstellungs-Reiter heraus bleibt das erste Profil stehen',
       (tester) async {
     final vorher = AppConfig.supabaseInitialized;
     AppConfig.supabaseInitialized = true;
@@ -131,11 +167,15 @@ void main() {
     }
     expect(find.byType(BottomSheet), findsOneWidget);
 
-    await tester.tap(find.text('Kader'));
+    await tester.tap(find.text('Aufstellung'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Gregor Kobel'));
+    // **Auf dem Feld steht der Name gekürzt** („Gregor Kobel" → „G.
+    // Kobel", siehe `_kurzerName`): In einen Kreis von 50 Punkten passt
+    // nichts Längeres. Der volle Name steht in der Kopfzeile des Blatts —
+    // darauf prüft die Erwartung unten.
+    await tester.tap(find.text('G. Kobel'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -158,7 +198,7 @@ void main() {
 
   testWidgets('Ein eigener Spieler behält seinen Droppen-Knopf',
       (tester) async {
-    // Die Kaderliste gab pauschal `isMine: false` weiter; damit fehlte am
+    // Die Liste gab pauschal `isMine: false` weiter; damit fehlte am
     // eigenen Spieler genau der Knopf, für den man hineingeht.
     final vorher = AppConfig.supabaseInitialized;
     AppConfig.supabaseInitialized = true;
@@ -174,19 +214,19 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
     // Vom eigenen Spieler zu Kobel und zurück zu sich selbst.
-    await tester.tap(find.text('Kader'));
+    await tester.tap(find.text('Aufstellung'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Gregor Kobel'));
+    await tester.tap(find.text('G. Kobel'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Kader').last);
+    await tester.tap(find.text('Aufstellung').last);
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Nico Schlotterbeck').last);
+    await tester.tap(find.text('N. Schlotterbeck').last);
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

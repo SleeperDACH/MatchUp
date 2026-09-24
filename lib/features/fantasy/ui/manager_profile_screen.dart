@@ -8,7 +8,9 @@ import '../../friends/ui/friend_action_button.dart';
 import '../../messaging/ui/conversation_screen.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
+import '../models/player_absence.dart';
 import '../providers.dart';
+import 'ausfall_zeichen.dart';
 import 'club_badge.dart';
 import 'gesperrt_marke.dart';
 import 'pitch_painter.dart';
@@ -208,12 +210,18 @@ class ManagerProfileScreen extends ConsumerWidget {
                 isMine: isMe,
               );
 
+          // **Auch der fremde Kader sagt, wer ausfällt.** Vor einem Trade ist
+          // das die erste Frage, und sie stand bisher nur im Profil jedes
+          // einzelnen Spielers.
+          final ausfaelle = ref.watch(absencesProvider).valueOrNull ??
+              const <String, PlayerAbsence>{};
+
           return ListView(
             children: [
               if (!isMe) _actions(context, ref, managers),
               if (!gestellt) _nochNichtGestellt(context),
-              _pitch(context, byPos, points, clubIcons, openPlayer),
-              _bench(context, bench, points, clubIcons, openPlayer),
+              _pitch(context, byPos, points, clubIcons, ausfaelle, openPlayer),
+              _bench(context, bench, points, clubIcons, ausfaelle, openPlayer),
               const SizedBox(height: 20),
             ],
           );
@@ -306,6 +314,7 @@ class ManagerProfileScreen extends ConsumerWidget {
     Map<PlayerPosition, List<FantasyPlayer>> byPos,
     Map<FantasyPlayer, double> points,
     Map<String, String?> clubIcons,
+    Map<String, PlayerAbsence> ausfaelle,
     void Function(FantasyPlayer) onTap,
   ) {
     return Container(
@@ -330,8 +339,8 @@ class ManagerProfileScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       for (final p in (byPos[pos] ?? const <FantasyPlayer>[]))
-                        _pitchPlayer(
-                            p, points[p] ?? 0.0, clubIcons[p.club], () => onTap(p)),
+                        _pitchPlayer(p, points[p] ?? 0.0, clubIcons[p.club],
+                            ausfaelle[p.id], () => onTap(p)),
                       // **Ein unbesetzter Torwartplatz ist keine leere Reihe.**
                       // Verlässt der einzige Torwart die Bundesliga, nimmt ihn
                       // der Abgangs-Lauf aus dem Kader (0117) und die Elf hat
@@ -354,8 +363,8 @@ class ManagerProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _pitchPlayer(
-      FantasyPlayer p, double pts, String? icon, VoidCallback onTap) {
+  Widget _pitchPlayer(FantasyPlayer p, double pts, String? icon,
+      PlayerAbsence? ausfall, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -391,10 +400,21 @@ class ManagerProfileScreen extends ConsumerWidget {
               color: Colors.black38,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text(_short(p.name),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 11)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (ausfall != null) ...[
+                  AusfallZeichen(ausfall: ausfall, size: 11),
+                  const SizedBox(width: 3),
+                ],
+                Flexible(
+                  child: Text(_short(p.name),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 11)),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 3),
           // **Ein Schloss, kein Farbpunkt.** Dieses Feld ist zum Ansehen da;
@@ -412,6 +432,7 @@ class ManagerProfileScreen extends ConsumerWidget {
     List<FantasyPlayer> bench,
     Map<FantasyPlayer, double> points,
     Map<String, String?> clubIcons,
+    Map<String, PlayerAbsence> ausfaelle,
     void Function(FantasyPlayer) onTap,
   ) {
     final scheme = Theme.of(context).colorScheme;
@@ -472,8 +493,19 @@ class ManagerProfileScreen extends ConsumerWidget {
                             side: BorderSide(
                                 color: positionColor(p.position)
                                     .withValues(alpha: 0.6)),
-                            label:
-                                Text('${_short(p.name)} · ${formatPoints(points[p] ?? 0)}'),
+                            // Zeichen hinter dem Namen — wie auf der Bank des
+                            // eigenen Kaders.
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                    '${_short(p.name)} · ${formatPoints(points[p] ?? 0)}'),
+                                if (ausfaelle[p.id] != null) ...[
+                                  const SizedBox(width: 5),
+                                  AusfallZeichen(ausfall: ausfaelle[p.id]!),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
                   ],

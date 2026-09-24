@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/typografie.dart';
 import '../../../app/widgets/leise_reiter.dart';
+import '../../../app/widgets/liga_tabelle.dart';
 import '../../../app/widgets/team_fixture_list.dart';
 import '../../../app/widgets/jersey_icon.dart';
 import '../../../app/widgets/karte.dart';
@@ -177,7 +178,12 @@ class _PlayerProfileSheet extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const LeiseReiter(
-                    titel: ['Leistung', 'Aufstellung', 'Spielplan', 'Kader'],
+                    // **Tabelle statt Vereinskader** (Ansage vom 19.09.2026).
+                    // Der Kader-Reiter listete den Pool-Kader des Vereins —
+                    // eine Auskunft, die man im Profil eines einzelnen
+                    // Spielers selten sucht. Wo sein Verein steht, dagegen
+                    // schon.
+                    titel: ['Leistung', 'Aufstellung', 'Spielplan', 'Tabelle'],
                     horizontal: 12,
                   ),
                   Flexible(
@@ -205,11 +211,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
                         ),
                         _Prognose(league: league, player: player),
                         _Spielplan(club: player.club),
-                        _Vereinskader(
-                          league: league,
-                          club: player.club,
-                          aktiv: player.id,
-                        ),
+                        _Tabelle(club: player.club),
                       ],
                     ),
                   ),
@@ -828,7 +830,9 @@ class _Spielplan extends ConsumerWidget {
     ];
     return ListView(
       padding: const EdgeInsets.only(top: 4, bottom: 12),
-      children: fixturesWithDateHeaders(umgewandelt),
+      // Ohne Wettbewerb: Der Spielplan eines Spielers zeigt die Liga, in der
+      // er spielt — in jeder Zeile dieselbe.
+      children: fixturesWithDateHeaders(umgewandelt, mitWettbewerb: false),
     );
   }
 }
@@ -837,74 +841,36 @@ class _Spielplan extends ConsumerWidget {
 ///
 /// Antippen öffnet **deren** Profil: Der Weg von einem Spieler zu seinen
 /// Mitspielern führte vorher über die Vereinsseite.
-class _Vereinskader extends ConsumerWidget {
-  const _Vereinskader({
-    required this.league,
-    required this.club,
-    required this.aktiv,
-  });
+/// **Die Tabelle seiner Liga**, mit seinem Verein hervorgehoben.
+///
+/// Sie ersetzt den Vereinskader (Ansage vom 19.09.2026). Liga und Team-ID
+/// stehen im Profil nicht bereit — es kennt nur den Vereins**namen** aus dem
+/// Spielerpool. Beides kommt deshalb aus dem Spielplan, genau wie im
+/// Spielplan-Reiter darüber: `spieleDesVereins` vergleicht kanonisch („1. FC
+/// Köln" im Kader gegen „FC Köln" im Spielplan — bei sieben von achtzehn
+/// Vereinen gehen die Schreibweisen auseinander), die erste Partie nennt die
+/// Liga, und Heim oder Gast liefert die `TeamRef`.
+class _Tabelle extends ConsumerWidget {
+  const _Tabelle({required this.club});
 
-  final FantasyLeague league;
   final String club;
-
-  /// Der Spieler, dessen Profil gerade offen ist — er wird hervorgehoben.
-  final String aktiv;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final pool = ref.watch(playerPoolProvider).valueOrNull;
-    if (pool == null) {
+    final alle = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
+    if (alle == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    final clubIcons =
-        ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
-    final kader =
-        [
-          for (final p in pool)
-            if (p.club == club) p,
-        ]..sort(
-          (a, b) => a.position.index != b.position.index
-              ? a.position.index.compareTo(b.position.index)
-              : a.name.compareTo(b.name),
-        );
-    if (kader.isEmpty) return _Leer('Für $club steht kein Kader im Pool.');
-
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 4, bottom: 12),
-      itemCount: kader.length,
-      itemBuilder: (context, i) {
-        final p = kader[i];
-        final ich = p.id == aktiv;
-        return ListTile(
-          dense: true,
-          leading: ClubBadge(
-            club: p.club,
-            iconUrl: clubIcons[p.club],
-            size: 28,
-          ),
-          title: Text(
-            p.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: ich ? FontWeight.w800 : FontWeight.w600,
-            ),
-          ),
-          subtitle: Text(
-            p.position.label,
-            style: TextStyle(color: scheme.onSurfaceVariant),
-          ),
-          // Kein Grün für „du bist hier" — das ist kein laufender Vorgang.
-          trailing: ich
-              ? Icon(Icons.person, size: 18, color: scheme.onSurfaceVariant)
-              : const Icon(Icons.chevron_right, size: 18),
-          onTap: ich
-              ? null
-              : () => _weiteresProfil(context, ref, league: league, ziel: p),
-        );
-      },
-    );
+    final seine = spieleDesVereins(alle, club);
+    if (seine.isEmpty) {
+      return _Leer('Für $club liegt keine Tabelle vor.');
+    }
+    final gesucht = vereinKanonisch(club);
+    final erste = seine.first;
+    final team = vereinKanonisch(erste.home.name) == gesucht
+        ? erste.home
+        : erste.away;
+    return LigaTabelle(leagueId: erste.leagueId, eigenesTeam: team.id);
   }
 }
 
