@@ -274,25 +274,10 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             ),
           ], farbe: _grpRegeln),
 
-          // Rollover in die nächste Saison: sobald die laufende Saison steht
-          // (Draft fertig). Danach steht der U20-Draft im Setup an.
-          if (l.mode == FantasyMode.dynasty &&
-              isOwner &&
-              l.draftStatus == DraftStatus.done) ...[
-            _Section('Neue Saison', farbe: _grpAdmin),
-            _settingsGroup(context, [
-              ListTile(
-                leading: Icon(Icons.calendar_month),
-                title: const Text('Saison-Rollover'),
-                subtitle: Text(
-                  'Startet Saison ${l.season + 1}/${(l.season + 2) % 100}: '
-                  'Kader bleibt, danach ein neuer U20-Draft für die Rookies.',
-                ),
-                trailing: const _Chevron(),
-                onTap: () => _confirmRollover(context, ref, l),
-              ),
-            ], farbe: _grpAdmin),
-          ],
+          // **Kein Saison-Rollover mehr.** Er führte eine Dynasty-Liga in die
+          // nächste Saison (Kader bleibt, danach U20-Draft) — beides gibt es
+          // seit dem 27.09.2026 nicht mehr. Im Redraft wird jede Saison neu
+          // gedraftet, dafür braucht es keine Aktion in den Einstellungen.
 
           if (isOwner) ...[
             _Section('Admin', farbe: _grpAdmin),
@@ -568,55 +553,9 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmRollover(
-    BuildContext context,
-    WidgetRef ref,
-    FantasyLeague l,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Saison ${l.season + 1}/${(l.season + 2) % 100} starten?'),
-        content: const Text(
-          'Der komplette Kader bleibt erhalten. Der bisherige Draft-Verlauf '
-          'und offene Waiver-Anträge werden zurückgesetzt. Danach kannst du '
-          'den neuen U20-Draft starten. Das kann nicht rückgängig gemacht '
-          'werden.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Saison starten'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    try {
-      await ref.read(draftRepositoryProvider).rolloverSeason(l.id);
-      ref.invalidate(draftLeagueProvider(l.id));
-      ref.invalidate(myFantasyLeaguesProvider);
-      navigator.pop();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Saison ${l.season + 1}/${(l.season + 2) % 100} gestartet — '
-            'jetzt den U20-Draft starten.',
-          ),
-        ),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Rollover fehlgeschlagen: $e')),
-      );
-    }
-  }
+  // Hier stand `_confirmRollover`: die Rückfrage vor dem Saison-Rollover einer
+  // Dynasty-Liga („Kader bleibt, danach ein neuer U20-Draft"). Mit dem Modus
+  // ist sie ersatzlos entfallen — im Redraft wird jede Saison neu gedraftet.
 
   /// Schaltet das ligainterne Tippspiel ein oder aus.
   ///
@@ -793,19 +732,14 @@ class DraftSettingsPage extends ConsumerStatefulWidget {
 class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
   static const _minRounds = 14;
   static const _maxRounds = 30;
-  static const _minU20Rounds = 1;
-  static const _maxU20Rounds = 10;
 
   late DraftPickTime _pickTime;
   late int _rounds;
-  late int _u20Rounds;
   late String _orderMode;
   late bool _pauseOn;
   late TimeOfDay _pauseStart;
   late TimeOfDay _pauseEnd;
   bool _saving = false;
-
-  bool get _isDynasty => widget.league.mode == FantasyMode.dynasty;
 
   @override
   void initState() {
@@ -813,7 +747,6 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
     final l = widget.league;
     _pickTime = l.pickTime;
     _rounds = l.rounds.clamp(_minRounds, _maxRounds);
-    _u20Rounds = l.u20Rounds.clamp(_minU20Rounds, _maxU20Rounds);
     _orderMode = l.draftOrderMode;
     _pauseOn = l.hasPause;
     _pauseStart = _fromMinute(l.pauseStart ?? 23 * 60);
@@ -834,7 +767,6 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
             pauseStart: _pauseOn ? _toMinute(_pauseStart) : null,
             pauseEnd: _pauseOn ? _toMinute(_pauseEnd) : null,
             orderMode: _orderMode,
-            u20Rounds: _isDynasty ? _u20Rounds : null,
           );
       ref.invalidate(draftLeagueProvider(widget.league.id));
       ref.invalidate(myFantasyLeaguesProvider);
@@ -897,27 +829,9 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                   : _ReadValue('$_rounds'),
             ),
           ]),
-          // U20-Draft nur im Dynasty-Modus: Anzahl der Rookie-Runden pro Saison.
-          if (_isDynasty) ...[
-            const SizedBox(height: 8),
-            _CardColumn([
-              _SettingRow(
-                icon: Icons.auto_awesome,
-                label: 'U20-Draft-Runden',
-                subtitle:
-                    'Rookies je Manager pro Saison (nach dem Saison-Rollover)',
-                child: editable
-                    ? WertStepper(
-                        label: 'U20-Draft-Runden',
-                        value: _u20Rounds,
-                        min: _minU20Rounds,
-                        max: _maxU20Rounds,
-                        onChanged: (v) => setState(() => _u20Rounds = v),
-                      )
-                    : _ReadValue('$_u20Rounds'),
-              ),
-            ]),
-          ],
+          // Die U20-Draft-Runden standen hier, solange es Dynasty gab. Im
+          // Redraft wird der ganze Kader in einem Draft gezogen — es gibt
+          // keine zweite Runde, deren Länge man einstellen könnte.
           const SizedBox(height: 8),
           _CardColumn([
             _SettingRow(

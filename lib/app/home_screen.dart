@@ -1690,11 +1690,13 @@ double leagueCardWidth(BuildContext context) {
   return frei / 3.75;
 }
 
-/// Eine Fantasy-Liga als schmale Karte: eigene Farbe, eigener Zustand.
-/// Die Farbe kommt deterministisch aus der Liga-ID — aber aus der Palette
-/// ihres Modus, damit Redraft (kühl) und Dynasty (warm) auf einen Blick
-/// auseinanderzuhalten sind. Vorher trugen alle Ligen dieselbe Marke in nur
-/// zwei Typ-Farben und waren dadurch gar nicht zu unterscheiden.
+/// Eine Fantasy-Liga als schmale Karte: Markenfarbe, eigener Zustand.
+///
+/// Die Farbe kam einmal deterministisch aus der Liga-ID und danach aus der
+/// Palette des Modus (Redraft kühl, Dynasty warm). Beides ist Geschichte:
+/// Seit dem Wegfall von Dynasty (27.09.2026) gibt es nur noch das Markengrün
+/// (`leagueColor`). Unterschieden werden zwei Ligen über Name, Zustand und
+/// ein eigenes Logo, dessen Farbe die hier sticht.
 class _FantasyLeagueCard extends ConsumerWidget {
   const _FantasyLeagueCard({required this.league});
 

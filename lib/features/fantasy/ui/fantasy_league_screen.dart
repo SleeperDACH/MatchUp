@@ -363,9 +363,7 @@ class _NaechsterSchritt extends ConsumerWidget {
             ),
                   ),
           DraftStatus.drafting => (
-            league.mode == FantasyMode.dynasty
-                ? 'Der ${league.draftPhase.label} läuft'
-                : 'Der Draft läuft',
+            'Der Draft läuft',
             'Wer an der Reihe ist, siehst du im Draft-Raum.',
             'Zum Draft',
             openRoom,

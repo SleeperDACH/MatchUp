@@ -59,7 +59,11 @@ void main() {
     });
   });
 
-  group('isRookieFor (Dynasty U20-Draft-Pool)', () {
+  // **Bleibt, obwohl Dynasty weg ist.** `isRookieFor` und `isU20On` sind reine
+  // Altersfunktionen am Spieler; sie behaupten nichts über eine Liga. Der
+  // U20-Draft, der sie einmal gebraucht hat, existiert nicht mehr — die
+  // Einordnung „ist das ein Rookie dieser Saison?" schon.
+  group('isRookieFor (Rookie-Einordnung nach Alter)', () {
     FantasyPlayer player(int birthYear, {bool foreign = false}) => FantasyPlayer(
           id: 'x',
           name: 'T',
@@ -161,7 +165,12 @@ void main() {
     });
 
     test('FantasyMode fromId Fallback', () {
-      expect(FantasyMode.fromId('dynasty'), FantasyMode.dynasty);
+      expect(FantasyMode.fromId('liga'), FantasyMode.liga);
+      // **Der Fall, auf den es jetzt ankommt.** Seit dem Wegfall von Dynasty
+      // (27.09.2026) darf keine Zeile mehr `'dynasty'` tragen — käme doch
+      // eine aus einer Sicherung oder einer alten Umgebung, darf sie den
+      // Ligaaufbau nicht zum Absturz bringen, sondern fällt auf Redraft.
+      expect(FantasyMode.fromId('dynasty'), FantasyMode.liga);
       expect(FantasyMode.fromId('quatsch'), FantasyMode.liga);
     });
   });
@@ -218,32 +227,26 @@ void main() {
     });
   });
 
-  group('roundsThisPhase (Aufbau-Draft = voller Kader, U20 separat)', () {
-    FantasyLeague league(FantasyMode mode, DraftPhase phase) => FantasyLeague(
-          id: 'l',
-          name: 'L',
-          mode: mode,
-          season: 2025,
-          pickTime: DraftPickTime.m1,
-          scoring: FantasyScoringRules.standard,
-          roster: const RosterConfig(), // squad 16
-          inviteCode: 'x',
-          draftStatus: DraftStatus.drafting,
-          createdBy: 'u',
-          draftPhase: phase,
-          u20Rounds: 3,
-        );
-
-    test('Liga: Haupt-Draft füllt den ganzen Kader', () {
-      expect(league(FantasyMode.liga, DraftPhase.startup).roundsThisPhase, 16);
-    });
-
-    test('Dynasty: Aufbau-Draft füllt den ganzen Kader, U20 separat', () {
-      // Aufbau-Draft draftet den kompletten Kader (U20 inkl.) …
-      expect(league(FantasyMode.dynasty, DraftPhase.startup).roundsThisPhase,
-          16);
-      // … der spätere U20-Draft läuft über die u20Rounds.
-      expect(league(FantasyMode.dynasty, DraftPhase.u20).roundsThisPhase, 3);
+  // **Der Draft füllt den ganzen Kader.** Die Gruppe prüfte früher den
+  // Unterschied zwischen Aufbau- und U20-Draft; seit dem Wegfall von Dynasty
+  // gibt es nur noch einen Draft, und `roundsThisPhase` ist schlicht die
+  // Kadergröße. Der Name der Eigenschaft erinnert noch an die Phasen — er
+  // bleibt, weil ihn mehrere Schirme lesen.
+  group('roundsThisPhase', () {
+    test('ein Draft über den vollen Kader', () {
+      final l = FantasyLeague(
+        id: 'l',
+        name: 'L',
+        mode: FantasyMode.liga,
+        season: 2025,
+        pickTime: DraftPickTime.m1,
+        scoring: FantasyScoringRules.standard,
+        roster: const RosterConfig(), // squad 16
+        inviteCode: 'x',
+        draftStatus: DraftStatus.drafting,
+        createdBy: 'u',
+      );
+      expect(l.roundsThisPhase, 16);
     });
   });
 }

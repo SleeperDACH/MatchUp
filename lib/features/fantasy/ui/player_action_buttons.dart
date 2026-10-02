@@ -83,11 +83,6 @@ class PlayerActionButton extends ConsumerWidget {
         onTap: () => _trade(context, ref),
       );
     }
-    if (player.istFuerU20Gesperrt(league)) {
-      return breit
-          ? const _WeiterChip(text: 'Für den U20-Draft gesperrt')
-          : const _LockedChip();
-    }
     // **Wire und laufendes Spiel führen zum selben Knopf.** Beides heißt
     // „jetzt nicht direkt, aber beantragen kannst du ihn" — und der Antrag
     // ist gefahrlos, weil das Waiver-Fenster zwei Tage vor dem nächsten
@@ -386,27 +381,9 @@ class _MiniChip extends StatelessWidget {
   }
 }
 
-class _LockedChip extends StatelessWidget {
-  const _LockedChip();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.lock_outline, size: 14, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 4),
-        Text(
-          'U20-Draft',
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      ],
-    );
-  }
-}
+// Hier stand `_LockedChip`: ein Schloss mit der Beschriftung „U20-Draft" an
+// einem Rookie, der für den zweiten Draft reserviert war. Die Reservierung gab
+// es nur in Dynasty; mit dem Modus ist sie samt Schloss entfallen.
 
 /// Ergebnis des Roster-Move-Sheets: gewählter Abgang (oder null = kein Drop).
 class _MoveConfirm {

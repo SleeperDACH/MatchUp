@@ -84,7 +84,6 @@ void main() {
           nationality: 'DE',
         ));
         picks.add(DraftPick(
-          phase: DraftPhase.startup,
           pickNumber: nr,
           round: r,
           managerId: 'u$slot',

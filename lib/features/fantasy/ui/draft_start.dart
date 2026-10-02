@@ -23,18 +23,14 @@ Future<bool> draftStartenMitBestaetigung(
   FantasyLeague league,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
-  final isU20 = league.draftPhase == DraftPhase.u20;
   final bestaetigt = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(isU20 ? 'U20-Draft starten?' : 'Draft starten?'),
+      title: const Text('Draft starten?'),
       content: Text(
-        isU20
-            ? 'Der U20-Draft startet mit der aktuellen Reihenfolge und kann '
-                  'nicht mehr geändert werden.'
-            : 'Der Draft startet mit der aktuellen Reihenfolge und kann nicht '
-                  'mehr geändert werden. '
-                  '${league.draftOrderMode == 'manual' ? '' : 'Die Reihenfolge wird beim Start zufällig ausgelost.'}',
+        'Der Draft startet mit der aktuellen Reihenfolge und kann nicht '
+        'mehr geändert werden. '
+        '${league.draftOrderMode == 'manual' ? '' : 'Die Reihenfolge wird beim Start zufällig ausgelost.'}',
       ),
       actions: [
         TextButton(
@@ -52,12 +48,7 @@ Future<bool> draftStartenMitBestaetigung(
 
   try {
     final repo = ref.read(draftRepositoryProvider);
-    // Im U20-Setup startet der U20-Draft, sonst der Haupt-Draft.
-    if (isU20) {
-      await repo.startU20Draft(league.id);
-    } else {
-      await repo.startDraft(league.id);
-    }
+    await repo.startDraft(league.id);
     ref.invalidate(draftLeagueProvider(league.id));
     ref.invalidate(fantasyManagersProvider(league.id));
     return true;

@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/form_section.dart';
-import '../../../core/ui/option_tile.dart';
 
 import '../../leagues/ui/visibility_picker.dart';
-import 'league_colors.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'kader_limits_editor.dart';
@@ -27,7 +25,9 @@ class CreateFantasyLeagueScreen extends ConsumerStatefulWidget {
 class _CreateFantasyLeagueScreenState
     extends ConsumerState<CreateFantasyLeagueScreen> {
   final _name = TextEditingController();
-  late FantasyMode _mode = widget.mode;
+  /// Fest: Es gibt nur noch Redraft. Bleibt als Feld, weil die Liga beim
+  /// Anlegen einen Modus mitbekommt — die Auswahl davor ist entfallen.
+  late final FantasyMode _mode = widget.mode;
 
   static const _minTeams = 2;
   static const _maxTeams = 18;
@@ -165,21 +165,10 @@ class _CreateFantasyLeagueScreenState
               ),
             ],
           ),
-          FormSection(
-            titel: 'Modus',
-            kinder: [
-              for (final mode in FantasyMode.values)
-                Padding(
-                  padding: EdgeInsets.only(
-                      bottom: mode == FantasyMode.values.last ? 0 : 10),
-                  child: _ModeCard(
-                    mode: mode,
-                    selected: _mode == mode,
-                    onTap: () => setState(() => _mode = mode),
-                  ),
-                ),
-            ],
-          ),
+          // **Keine Modusauswahl mehr.** Es gibt nur noch Redraft (Dynasty ist
+          // am 27.09.2026 entfernt worden), und eine Auswahl mit einem Eintrag
+          // ist keine — sie kostet einen Abschnitt und eine Entscheidung, die
+          // niemand treffen kann.
           FormSection(
             titel: 'Sichtbarkeit',
             kinder: [
@@ -262,34 +251,10 @@ class _CreateFantasyLeagueScreenState
   }
 }
 
-/// Auswahl des Modus. Die gewählte Option trägt die Farbe **ihres** Modus —
-/// Redraft grün, Dynasty rot, dieselbe Zuordnung wie auf dem Homescreen. So
-/// lernt man die Farbe schon beim Anlegen.
-class _ModeCard extends StatelessWidget {
-  const _ModeCard({
-    required this.mode,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final FantasyMode mode;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return OptionTile(
-      icon: mode == FantasyMode.dynasty
-          ? Icons.auto_awesome
-          : Icons.calendar_today,
-      titel: mode.label,
-      untertitel: mode.tagline,
-      selected: selected,
-      farbe: leagueColor(mode),
-      onTap: onTap,
-    );
-  }
-}
+// `_ModeCard` stand hier für die Auswahl zwischen Redraft und Dynasty. Mit
+// dem Wegfall des zweiten Modus (27.09.2026) hat sie keinen Aufrufer mehr —
+// und eine Auswahlkachel für genau eine Option wäre eine Entscheidung, die
+// niemand treffen kann.
 
 class _StepperRow extends StatelessWidget {
   const _StepperRow({

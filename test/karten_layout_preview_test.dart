@@ -59,7 +59,11 @@ class _Daten {
 const _ligen = [
   _Daten('Draftest3', 'Redraft', 'Kader steht', null, MatchUpColors.green),
   _Daten('BuLi 26/27', 'Redraft', 'Offen', null, MatchUpColors.green),
-  _Daten('DynastyTest', 'Dynasty', 'Offen', null, MatchUpColors.red),
+  // Vierte Karte bewusst mit langem Namen: Sie wird am rechten Rand
+  // angeschnitten, und genau dort zeigt sich, ob der Name schrumpft statt zu
+  // kappen. Der Eintrag hieß „DynastyTest" und trug Rot — den Modus gibt es
+  // seit dem 27.09.2026 nicht mehr, und damit auch die zweite Farbe nicht.
+  _Daten('Spitzenreiter04', 'Redraft', 'Offen', null, MatchUpColors.green),
   _Daten('testadmin', 'Redraft', 'Offen', null, MatchUpColors.green),
 ];
 

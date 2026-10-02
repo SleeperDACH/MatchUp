@@ -1,32 +1,36 @@
 /// Domainmodelle für den Fantasy-Modus.
 ///
-/// Bewusst sport-/ligaunabhängig gehalten: Ein Fantasy-Wettbewerb kennt
-/// einen Spielerpool (aktuell Bundesliga-Seed), zwei Modi (Liga = eine
-/// Saison / Dynasty = über Jahre) und einen Snake-Draft mit konfigurierbarer
-/// Pickzeit.
+/// Bewusst sport-/ligaunabhängig gehalten: Ein Fantasy-Wettbewerb kennt einen
+/// Spielerpool (aktuell Bundesliga-Seed) und einen Snake-Draft mit
+/// konfigurierbarer Pickzeit.
+///
+/// **Es gibt nur noch einen Modus** (Redraft, auf Ansage vom 27.09.2026).
+/// Dynasty — Kader über Jahre, U20-Draft je Saison — ist vollständig entfernt:
+/// Enum-Wert, Draft-Phasen, Rookie-Sperre und Saison-Rollover. Die Spalten
+/// `mode`, `draft_phase` und `u20_rounds` stehen in der Datenbank weiter, weil
+/// `phase` im Primärschlüssel von `draft_picks` sitzt und ein Umbau dort ohne
+/// Gewinn riskant wäre; gelesen werden sie nicht mehr.
 library;
 
 import '../logic/fantasy_scoring_rules.dart';
 
 /// Spielmodus einer Fantasy-Liga.
+///
+/// **Bewusst ein Enum mit einem Wert statt gar keinem.** Die Spalte `mode`
+/// bleibt in der Datenbank, das Modell trägt sie weiter, und eine spätere
+/// zweite Spielart bekommt hier ihren Platz, ohne dass die Signaturen von
+/// `FantasyLeague` noch einmal umgebaut werden müssen.
 enum FantasyMode {
   /// Redraft: Kader gilt nur für eine Saison, danach neuer Draft.
-  liga,
+  liga;
 
-  /// Dynasty: Kader wird über Saisons behalten; U20-Spieler werden nach
-  /// dem Erst-Draft gesperrt und vor der neuen Saison neu gedraftet.
-  dynasty;
+  String get label => 'Redraft';
 
-  String get label => switch (this) {
-        FantasyMode.liga => 'Redraft',
-        FantasyMode.dynasty => 'Dynasty',
-      };
+  String get tagline => 'Eine Saison · danach neuer Draft';
 
-  String get tagline => switch (this) {
-        FantasyMode.liga => 'Eine Saison · danach neuer Draft',
-        FantasyMode.dynasty => 'Kader über Jahre · U20-Draft jede Saison',
-      };
-
+  /// **Unbekanntes fällt auf Redraft zurück.** Altzeilen mit `'dynasty'` darf
+  /// es nach dem Aufräumen nicht mehr geben — käme doch eine, darf sie den
+  /// Ligaaufbau nicht zum Absturz bringen.
   static FantasyMode fromId(String id) =>
       values.firstWhere((m) => m.name == id, orElse: () => FantasyMode.liga);
 }
@@ -65,20 +69,6 @@ enum DraftStatus { setup, drafting, done }
 DraftStatus _draftStatusFromId(String id) =>
     DraftStatus.values.firstWhere((s) => s.name == id,
         orElse: () => DraftStatus.setup);
-
-/// Draft-Phase im Dynasty-Modus: Haupt-Draft (etablierte Spieler) und
-/// U20-Draft (U20-Spieler + Auslands-Neuzugänge). Liga-Modus bleibt
-/// immer in [startup].
-enum DraftPhase {
-  startup,
-  u20;
-
-  String get label =>
-      this == DraftPhase.u20 ? 'U20-Draft' : 'Haupt-Draft';
-
-  static DraftPhase fromId(String id) =>
-      values.firstWhere((p) => p.name == id, orElse: () => DraftPhase.startup);
-}
 
 enum PlayerPosition {
   gk('TW', 'Tor'),
@@ -463,24 +453,6 @@ class FantasyPlayer {
   bool isLockedNow(int season) =>
       isRookieFor(season) && !DateTime.now().isBefore(DateTime(season, 9, 5));
 
-  /// **Ist er in dieser Liga für den U20-Draft gesperrt?**
-  ///
-  /// Gemeldet: „Es macht keinen Sinn, dass hier einer für den U20-Draft
-  /// gesperrt ist, weil es im Redraft-Modus keinen U20-Draft gibt." Genau so
-  /// war es: Ab dem 5. September fiel jeder Rookie aus der Free Agency —
-  /// **auch in Ligen, in denen er nie wieder gedraftet wird**, und damit für
-  /// den Rest der Saison für niemanden mehr zu holen.
-  ///
-  /// In Dynasty bleibt die Sperre: Dort wird der Kader über Saisons behalten
-  /// und die Rookies werden vor der neuen Saison neu gedraftet — sie vorher
-  /// per Free Agency wegzuschnappen, hebelte den U20-Draft aus.
-  ///
-  /// **Dieselbe Regel steht ein zweites Mal in SQL** (`fantasy_u20_gesperrt`,
-  /// Migration 0121). Laufen sie auseinander, zeigt die App einen Knopf, den
-  /// der Server ablehnt — oder verschweigt einen, den er nähme.
-  bool istFuerU20Gesperrt(FantasyLeague liga) =>
-      liga.mode == FantasyMode.dynasty && isLockedNow(liga.season);
-
   factory FantasyPlayer.fromJson(Map<String, dynamic> json) => FantasyPlayer(
         id: json['id'] as String,
         name: json['name'] as String,
@@ -522,8 +494,6 @@ class FantasyLeague {
     required this.createdBy,
     this.picksMade = 0,
     this.currentPickDeadline,
-    this.draftPhase = DraftPhase.startup,
-    this.u20Rounds = 3,
     this.maxTeams,
     this.pauseStart,
     this.pauseEnd,
@@ -537,7 +507,6 @@ class FantasyLeague {
     this.visibility = 'private',
     this.joinPolicy = 'open',
     this.tipEnabled = false,
-    this.u20DraftPending = false,
   });
 
   final String id;
@@ -563,12 +532,6 @@ class FantasyLeague {
 
   /// Ablaufzeitpunkt des aktuellen Picks; null außerhalb des laufenden Drafts.
   final DateTime? currentPickDeadline;
-
-  /// Aktuelle Draft-Phase (Dynasty: Haupt- vs. U20-Draft).
-  final DraftPhase draftPhase;
-
-  /// Anzahl Runden im U20-Draft (Dynasty).
-  final int u20Rounds;
 
   /// Maximale Teilnehmerzahl (null = unbegrenzt).
   final int? maxTeams;
@@ -601,10 +564,6 @@ class FantasyLeague {
   /// Tippspiel-Option auf der Übersicht).
   final bool tipEnabled;
 
-  /// Dynasty: Nach dem Saison-Rollover steht der U20-Draft an (der Aufbau-Draft
-  /// löst KEINEN U20-Draft aus). Steuert die „U20-Draft starten"-Aktion.
-  final bool u20DraftPending;
-
   /// Anzahl Draft-Runden insgesamt (= Kadergröße = Startelf + Bank).
   int get rounds => roster.squadSize;
 
@@ -631,8 +590,8 @@ class FantasyLeague {
         currentPickDeadline: json['current_pick_deadline'] == null
             ? null
             : DateTime.parse(json['current_pick_deadline'] as String),
-        draftPhase: DraftPhase.fromId(json['draft_phase'] as String? ?? 'startup'),
-        u20Rounds: json['u20_rounds'] as int? ?? 3,
+        // `draft_phase`, `u20_rounds` und `u20_draft_pending` stehen in der
+        // Datenbank weiter, werden hier aber bewusst **nicht** mehr gelesen.
         maxTeams: json['max_teams'] as int?,
         pauseStart: json['draft_pause_start'] as int?,
         pauseEnd: json['draft_pause_end'] as int?,
@@ -646,16 +605,13 @@ class FantasyLeague {
         visibility: json['visibility'] as String? ?? 'private',
         joinPolicy: json['join_policy'] as String? ?? 'open',
         tipEnabled: json['tip_enabled'] as bool? ?? false,
-        u20DraftPending: json['u20_draft_pending'] as bool? ?? false,
       );
 
-  /// Picks pro Manager in der aktuellen Phase (= Anzahl Runden). Der
-  /// Aufbau-Draft draftet den kompletten Kader (auch im Dynasty-Modus); nur
-  /// der spätere U20-Draft läuft über [u20Rounds].
-  int get roundsThisPhase {
-    if (draftPhase == DraftPhase.u20) return u20Rounds;
-    return roster.squadSize;
-  }
+  /// Picks pro Manager im Draft (= Kadergröße).
+  ///
+  /// Hieß `roundsThisPhase`, solange es zwei Phasen gab; seit dem Wegfall von
+  /// Dynasty gibt es nur noch den einen Draft über den ganzen Kader.
+  int get roundsThisPhase => roster.squadSize;
 }
 
 /// Ein Kadereintrag (aktueller Besitz eines Spielers in einer Liga).
@@ -703,7 +659,6 @@ class FantasyLineup {
 /// Ein getätigter Draft-Pick.
 class DraftPick {
   const DraftPick({
-    required this.phase,
     required this.pickNumber,
     required this.round,
     required this.managerId,
@@ -711,7 +666,6 @@ class DraftPick {
     required this.isAuto,
   });
 
-  final DraftPhase phase;
   final int pickNumber;
   final int round;
   final String managerId;
@@ -719,7 +673,6 @@ class DraftPick {
   final bool isAuto;
 
   factory DraftPick.fromJson(Map<String, dynamic> json) => DraftPick(
-        phase: DraftPhase.fromId(json['phase'] as String? ?? 'startup'),
         pickNumber: json['pick_number'] as int,
         round: json['round'] as int,
         managerId: json['manager_id'] as String,

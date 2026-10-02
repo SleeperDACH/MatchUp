@@ -14,16 +14,6 @@ class DraftRepository {
   Future<void> startDraft(String leagueId) =>
       _client.rpc('start_fantasy_draft', params: {'p_league_id': leagueId});
 
-  /// Startet den U20-Draft (Dynasty, nach dem Haupt-Draft).
-  Future<void> startU20Draft(String leagueId) =>
-      _client.rpc('start_u20_draft', params: {'p_league_id': leagueId});
-
-  /// Führt die Dynasty-Liga in die neue Saison: Kader bleibt, Draft-Verlauf
-  /// und offene Waiver werden zurückgesetzt. Danach kann der Ersteller den
-  /// neuen U20-Draft starten.
-  Future<void> rolloverSeason(String leagueId) =>
-      _client.rpc('fantasy_rollover_season', params: {'p_league_id': leagueId});
-
   Future<void> makePick(String leagueId, String playerId) => _client.rpc(
         'fantasy_make_pick',
         params: {'p_league_id': leagueId, 'p_player_id': playerId},
@@ -75,10 +65,12 @@ class DraftRepository {
 
   /// Alle Picks der Liga in Echtzeit, nach Pick-Nummer sortiert.
   /// Der Schlüssel muss dem echten Primärschlüssel entsprechen
-  /// (`league_id, phase, pick_number`). Ohne `phase` hält der Supabase-Stream
-  /// Pick 1 des Aufbau-Drafts und Pick 1 des U20-Drafts für dieselbe Zeile und
-  /// überschreibt die eine mit der anderen — im Dynasty-Modus fängt die
-  /// Nummerierung je Phase wieder bei 1 an.
+  /// (`league_id, phase, pick_number`). **Die Spalte `phase` bleibt Teil des
+  /// Schlüssels**, auch wenn es seit dem Wegfall von Dynasty nur noch den
+  /// Wert `'startup'` gibt: Den Primärschlüssel einer Tabelle mit Hunderten
+  /// Picks umzubauen wäre eine riskante Migration ohne Gewinn. Wer ihn hier
+  /// kürzt, ohne das Schema zu ändern, bekommt den alten Fehler zurück —
+  /// Supabase hielte dann verschiedene Zeilen für dieselbe.
   Stream<List<DraftPick>> picksStream(String leagueId) => _client
       .from('draft_picks')
       .stream(primaryKey: ['league_id', 'phase', 'pick_number'])
@@ -87,7 +79,5 @@ class DraftRepository {
           (ohneDubletten(rows, ['league_id', 'phase', 'pick_number'])
               .map(DraftPick.fromJson)
               .toList())
-        ..sort((a, b) => a.phase == b.phase
-            ? a.pickNumber.compareTo(b.pickNumber)
-            : a.phase.index.compareTo(b.phase.index)));
+            ..sort((a, b) => a.pickNumber.compareTo(b.pickNumber)));
 }

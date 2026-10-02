@@ -290,8 +290,8 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     final playerById = {for (final p in pool) p.id: p};
     final pickedIds = {for (final p in picks) p.playerId};
 
-    // Eigener Kader (inkl. in Dynasty behaltener Spieler) nach Position — für
-    // die Feld-Übersicht. Live über den Roster-Stream, füllt sich beim Draften.
+    // Eigener Kader nach Position — für die Feld-Übersicht. Live über den
+    // Roster-Stream, füllt sich beim Draften.
     final roster = rosterAsync.valueOrNull ?? const <RosterEntry>[];
     final mySquad = <PlayerPosition, List<FantasyPlayer>>{};
     for (final r in roster) {
@@ -301,14 +301,11 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     }
     final mySquadSize = mySquad.values.fold<int>(0, (a, l) => a + l.length);
 
-    // Aufbau-Draft = ganzer Pool (alle Spieler, U20 inkl.). Nur der U20-Draft
-    // ist auf Rookies (U20 + Auslands-Neuzugänge) beschränkt.
+    // **Der Draft geht über den ganzen Pool.** Die Einschränkung auf Rookies
+    // galt nur im U20-Draft, den es mit dem Dynasty-Modus nicht mehr gibt.
     bool inPhasePool(FantasyPlayer p) {
-      // Wer die Bundesliga verlassen hat, ist in keiner Phase wählbar.
-      if (p.abgewandert) return false;
-      if (league.mode != FantasyMode.dynasty) return true;
-      if (league.draftPhase == DraftPhase.u20) return p.isRookieFor(league.season);
-      return true;
+      // Wer die Bundesliga verlassen hat, ist nicht wählbar.
+      return !p.abgewandert;
     }
 
     // Hochgerechnete Vorsaison-Punkte (mit dem Liga-Scoring) als Draft-Reihung
@@ -345,8 +342,8 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
         .where((p) => !pickedIds.contains(p.id) && inPhasePool(p))
         .toList()
       ..sort(byRank);
-    final phasePicks =
-        picks.where((p) => p.phase == league.draftPhase).toList();
+    // Seit dem Wegfall der Draft-Phasen sind das schlicht alle Picks.
+    final phasePicks = picks;
 
     // Eigene Draft-Queue (Wunschliste, nach Rang).
     final streamQueue =
@@ -459,9 +456,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
                     Expanded(
                       child: FilledButton.icon(
                         icon: const Icon(Icons.sports, size: 18),
-                        label: Text(league.draftPhase == DraftPhase.u20
-                            ? 'U20-Draft starten'
-                            : 'Draft starten'),
+                        label: const Text('Draft starten'),
                         onPressed:
                             managers.isEmpty ? null : () => _startDraft(league),
                       ),
@@ -806,7 +801,7 @@ class _StatusBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${league.mode == FantasyMode.dynasty ? '${league.draftPhase.label} · ' : ''}Runde $round · Pick ${league.picksMade + 1}/$total',
+                  'Runde $round · Pick ${league.picksMade + 1}/$total',
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall

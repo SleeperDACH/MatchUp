@@ -200,7 +200,7 @@ Future<void> _bauen(WidgetTester tester) async {
   final ligen = [
     _liga('l1', 'Draftest3', FantasyMode.liga),
     _liga('l2', 'BuLi 26/27', FantasyMode.liga, draft: DraftStatus.drafting),
-    _liga('l3', 'Übungsliga', FantasyMode.dynasty),
+    _liga('l3', 'Übungsliga', FantasyMode.liga),
     _liga('l4', 'testadmin', FantasyMode.liga),
   ];
   final runden = [
