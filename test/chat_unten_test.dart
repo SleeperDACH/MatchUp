@@ -50,7 +50,7 @@ void main() {
               myId: 'ich',
               names: const {'ich': 'SFV03', 'du': 'Eric'},
               avatars: const {},
-              onSend: (_, __) async {},
+              onSend: (_, _) async {},
               onRetry: () {},
             ),
           ),

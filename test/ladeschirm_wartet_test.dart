@@ -85,9 +85,9 @@ ProviderContainer _behaelter({
 /// die volle Grenze und ändert am Ergebnis nichts — was hängt, hängt auch nach
 /// hundert Runden.
 Future<bool> _bereit(ProviderContainer c) async {
-  const _grenze = 100;
+  const grenze = 100;
   c.listen(homeBereitProvider, (a, b) {}, fireImmediately: true);
-  for (var i = 0; i < _grenze; i++) {
+  for (var i = 0; i < grenze; i++) {
     if (c.read(homeBereitProvider)) return true;
     await Future<void>.delayed(const Duration(milliseconds: 1));
   }

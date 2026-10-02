@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
-import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/auth/providers.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
