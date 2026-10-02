@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/typografie.dart';
 import '../../../app/widgets/pill_selector.dart';
+import '../../../app/widgets/punktzahl.dart';
 
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/models/models.dart';
@@ -18,6 +19,7 @@ import '../logic/aufstellung_sperre.dart';
 import '../logic/aufstellung_uebernahme.dart';
 import '../logic/formation_umbau.dart';
 import '../logic/lineup_autosave.dart';
+import '../logic/projektion.dart';
 import '../data/fantasy_league_repository.dart';
 import '../models/fantasy_models.dart';
 import '../models/player_absence.dart';
@@ -446,6 +448,37 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
           99,
         );
 
+        // **Prognose der Startelf — nur zwischen den Spieltagen.**
+        //
+        // Sobald der erste Spieler festgenagelt ist, läuft der Spieltag: Dann
+        // tragen die Kacheln echte Punkte, und eine Schätzung daneben wäre
+        // eine zweite, schlechtere Antwort auf dieselbe Frage. Dasselbe
+        // Signal, an dem auch die Kachel zwischen „Gegner und Anstoß" und
+        // „Punktzahl" umschaltet.
+        final elf = [
+          for (final id in assigned)
+            if (playerById[id] != null) playerById[id]!,
+        ];
+        // **Unbedingt beobachten, nicht erst im Zweig.** Ein `ref.watch` in
+        // einem Ternär meldet die Abhängigkeit ab, sobald der andere Zweig
+        // greift — die Provider dieses Schirms wechselten dann mit dem
+        // Anpfiff, und ein nachgeladener Wert käme im falschen Moment nicht
+        // an. Beide hängen ohnehin schon am Vorwärmer, kosten hier also nichts.
+        final saison =
+            ref.watch(seasonStatsProvider).valueOrNull ??
+            const <int, Map<String, PlayerMatchStats>>{};
+        final ausfaelle =
+            ref.watch(absencesProvider).valueOrNull ??
+            const <String, PlayerAbsence>{};
+        final vorschau = gesperrt.isEmpty
+            ? projektion(
+                elf: elf,
+                saison: saison,
+                regeln: league.scoring,
+                ausfaelle: ausfaelle,
+              )
+            : null;
+
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -486,6 +519,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               onOpenProfile: _openProfile,
               gesperrt: gesperrt,
               allesZu: allesZu,
+              projektion: vorschau,
               // Für die Kopfzeile der Kachel: gegen wen und wann er spielt,
               // solange es noch keine Punkte gibt.
               spiele:
@@ -829,7 +863,11 @@ class _Pitch extends StatelessWidget {
     required this.onDrop,
     required this.gesperrt,
     required this.allesZu,
+    this.projektion,
   });
+
+  /// Prognose der Startelf, oder `null`, solange der Spieltag läuft.
+  final Projektion? projektion;
 
   /// IDs der Spieler, deren Spiel schon läuft — festgenagelt (Migration 0084).
   final Set<String> gesperrt;
@@ -883,12 +921,25 @@ class _Pitch extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
+                          // **Die Prognose steht links neben dem Torwart.**
+                          // Dort ist die einzige Reihe mit Platz: Ein Torwart
+                          // teilt sich die Breite mit niemandem. Der leere
+                          // Kasten auf der Gegenseite hält ihn trotzdem in der
+                          // Mitte — ohne ihn rutschte er um die halbe Boxbreite
+                          // nach rechts, und die Elf stünde schief auf dem Feld.
+                          if (pos == PlayerPosition.gk && projektion != null)
+                            SizedBox(
+                              width: _Slot._kachelBreite,
+                              child: _ProjektionsBox(werte: projektion!),
+                            ),
                           // **Jeder Platz nimmt seinen Anteil an der Reihe.**
                           // Vorher war er 76 Punkte breit, fest: Fünf davon
                           // sind 380 und passen auf keinen Telefonschirm — bei
                           // einer 3-5-2 lief die Mittelfeldreihe über.
                           for (var i = 0; i < (slots[pos]?.length ?? 0); i++)
                             Expanded(child: _slotTarget(pos, i)),
+                          if (pos == PlayerPosition.gk && projektion != null)
+                            const SizedBox(width: _Slot._kachelBreite),
                         ],
                       ),
                     ),
@@ -1346,6 +1397,109 @@ class _Slot extends ConsumerWidget {
 ///
 /// Er ist eine **Einladung**, kein Fehler — deshalb trägt er die Farbe seiner
 /// Position und ein Plus, nicht die stille graue Fläche von früher.
+/// **Die voraussichtliche Punktzahl der Startelf.**
+///
+/// Zwischen den Spieltagen ist der Rasen sonst eine Ansammlung von Kacheln
+/// ohne eine einzige Zahl — die Frage „reicht das am Samstag?" beantwortet
+/// nichts. Sie steht bewusst **auf** dem Feld und nicht in einer Kopfzeile
+/// darüber: Sie gehört zu dieser Elf, und sie ändert sich, sobald man einen
+/// Spieler tauscht.
+///
+/// **Leise gebaut.** Kartengrund und Haarlinie wie jede Karte dieser App,
+/// keine Signalfarbe: Eine Prognose meldet nichts, sie rechnet nur. Grün hieße
+/// „hier läuft etwas", und hier läuft gerade ausdrücklich nichts.
+class _ProjektionsBox extends StatelessWidget {
+  const _ProjektionsBox({required this.werte});
+
+  final Projektion werte;
+
+  @override
+  Widget build(BuildContext context) {
+    final grund = werte.ausgelassen == 0
+        ? 'Prognose aus dem Schnitt der ${werte.gezaehlt} aufgestellten Spieler'
+        : 'Prognose aus dem Schnitt von ${werte.gezaehlt} Spielern — '
+              '${werte.ausgelassen} fallen aus und zählen nicht mit';
+
+    return Tooltip(
+      message: werte.hatDaten
+          ? grund
+          : 'Noch keine gewerteten Spieltage — es gibt nichts zu mitteln',
+      child: Semantics(
+        label: werte.hatDaten
+            ? 'Voraussichtlich ${formatPoints(werte.punkte)} Punkte. $grund'
+            : 'Noch keine Prognose',
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            // Deckend wie die Spielerkacheln — auf dem Rasen ist alles
+            // Durchscheinende schon einmal als „verschwommen" gemeldet worden.
+            color: Theme.of(context).colorScheme.surfaceContainer,
+            border: Border.all(color: Theme.of(context).dividerColor),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                // **Deutsch wie der Rest der App.** Hieß „PROJECTED" nach dem
+                // Wort der Ansage; im MatchUp-Kopf steht dieselbe Sache als
+                // „PROGNOSE", und zwei Sprachen für eine Zahl sind eine zu
+                // viel.
+                'PROGNOSE',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: Schrift.mikro,
+                  height: 1.1,
+                  letterSpacing: 0.5,
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 2),
+              // **Ein Strich, keine Null.** Vor dem ersten gewerteten Spieltag
+              // gibt es keinen Schnitt; eine 0 wäre eine Aussage, die niemand
+              // gemacht hat — dieselbe Regel wie in der Punktebox im MatchUp.
+              if (!werte.hatDaten)
+                Text(
+                  '–',
+                  style: TextStyle(
+                    fontSize: Schrift.titel,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                )
+              else
+                Punktzahl(
+                  werte.punkte,
+                  stil: const TextStyle(
+                    fontSize: Schrift.h3,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              // Die Zahl beruht nicht immer auf elf Spielern — wer ausfällt,
+              // zählt nicht mit. Das muss an der Zahl stehen, sonst liest sie
+              // sich wie eine vollständige Elf.
+              if (werte.hatDaten && werte.ausgelassen > 0) ...[
+                const SizedBox(height: 1),
+                Text(
+                  '${werte.gezaehlt} von ${werte.gezaehlt + werte.ausgelassen}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: Schrift.mikro,
+                    height: 1.1,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LeererPlatz extends StatelessWidget {
   const _LeererPlatz({required this.pos});
 

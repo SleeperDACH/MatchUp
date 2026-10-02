@@ -132,11 +132,23 @@ void main() {
     // Der **Abstand** zu jetzt muss trotzdem stimmen, denn daran hängt die
     // Sperre: Deshalb steht das feste Datum in der Vergangenheit bzw. Zukunft,
     // und nur die Uhrzeit ist gesetzt.
+    // **Die feste Uhrzeit allein hat nicht gereicht.** Auf der Kachel steht
+    // der *Wochentag* („Sa 15:30"), und der kam aus `heute.day ± n` — also
+    // stand dort jeden Tag ein anderer. Gemessen: Ohne jede Codeänderung
+    // wurden drei dieser Bilder am Folgetag wieder rot, und der Unterschied
+    // waren genau diese zwei Zeichen. Verankert wird deshalb auf **Samstag**:
+    // Der Abstand zu jetzt darf schwanken, die Richtung nicht — nur daran
+    // hängt die Sperre (Vergangenheit = angepfiffen, Zukunft = offen).
     final heute = DateTime.now();
+    final zurueck = (heute.weekday - DateTime.saturday) % 7 == 0
+        ? 7
+        : (heute.weekday - DateTime.saturday) % 7;
     final gelaufenerAnstoss =
-        DateTime(heute.year, heute.month, heute.day - 1, 15, 30);
+        DateTime(heute.year, heute.month, heute.day - zurueck, 15, 30);
+    // Zwei Wochen später, damit der offene Anstoß auch an einem Samstag
+    // nachmittags noch sicher in der Zukunft liegt.
     final offenerAnstoss =
-        DateTime(heute.year, heute.month, heute.day + 2, 15, 30);
+        gelaufenerAnstoss.add(const Duration(days: 14));
     Fixture f(String heim, String gast) => Fixture(
           id: 'sportmonks:${heim.hashCode}',
           leagueId: 'bundesliga',
@@ -196,6 +208,12 @@ void main() {
                 ),
               ])),
           roundStatsProvider.overrideWith((ref, round) async => stats),
+          // **Ohne gewertete Spieltage zeigt die Prognose einen Strich.** Das
+          // ist richtig so (eine 0 wäre eine Aussage, die niemand gemacht
+          // hat) — als Vorschau wäre es aber wertlos: Zu beurteilen ist, wie
+          // die Zahl *mit* Daten aussieht. Zwei Spieltage, damit der Schnitt
+          // nicht zufällig gleich der Summe ist.
+          seasonStatsProvider.overrideWith((ref) async => {1: stats, 2: stats}),
           fantasySeasonFixturesProvider
               .overrideWith((ref) async => spiele(gelaufen: gelaufen)),
           absencesProvider.overrideWith((ref) => Stream.value({
