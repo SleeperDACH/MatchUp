@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>MatchUp · Push-Benachrichtigungen</title>
+<!--
+  Quelle für PUSH.pdf. Bauen mit: tools/push_pdf.sh
+
+  **Warum diese Datei im Repo liegt:** Die erste Fassung der PDFs entstand aus
+  einer HTML-Datei im Arbeitsverzeichnis des Agenten — das wird zwischen
+  Sitzungen geleert. Die PDFs lagen danach im Repo, ließen sich aber nicht mehr
+  erzeugen und veralteten still. Ein Artefakt ohne Quelle ist totes Gewicht.
+
+  Inhaltliche Quelle bleibt PUSH.md; diese Datei ist die gesetzte Fassung.
+  Wer den Stand ändert, ändert beide.
+-->
+<style>
+  @font-face {
+    font-family: 'Rajdhani';
+    src: url('../assets/fonts/Rajdhani-Regular.ttf');
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: 'Rajdhani';
+    src: url('../assets/fonts/Rajdhani-Medium.ttf');
+    font-weight: 500;
+  }
+  @font-face {
+    font-family: 'Rajdhani';
+    src: url('../assets/fonts/Rajdhani-Bold.ttf');
+    font-weight: 700;
+  }
+
+  @page { size: A4; margin: 18mm 16mm 16mm 16mm; }
+
+  :root {
+    --gruen: #2E9E4A;
+    --rot: #C42121;
+    --gold: #9A7100;
+    --grund: #111111;
+    --leise: #5F636E;
+    --linie: #DCDEE3;
+    --flaeche: #F5F6F8;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.5;
+    color: var(--grund);
+  }
+
+  h1, h2, h3, .marke, th, .schrittnr { font-family: 'Rajdhani', 'Helvetica Neue', sans-serif; }
+
+  .kopf { border-bottom: 2px solid var(--grund); padding-bottom: 10px; margin-bottom: 18px; }
+  .marke {
+    font-size: 11pt; font-weight: 700; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--leise);
+  }
+  h1 { font-size: 27pt; font-weight: 700; line-height: 1.1; margin: 4px 0 6px; }
+  .unterzeile { color: var(--leise); font-size: 10pt; margin: 0; }
+
+  h2 {
+    font-size: 15pt; font-weight: 700; margin: 22px 0 8px;
+    padding-bottom: 4px; border-bottom: 1px solid var(--linie);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  th {
+    text-align: left; font-size: 8.5pt; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--leise);
+    border-bottom: 1px solid var(--linie); padding: 5px 6px;
+  }
+  td { padding: 5px 6px; border-bottom: 1px solid var(--linie); vertical-align: top; }
+  td.nr { width: 22px; color: var(--leise); font-variant-numeric: tabular-nums; }
+  td.status { width: 108px; white-space: nowrap; font-weight: 700; }
+  td.wer { width: 52px; color: var(--leise); }
+  .ok { color: var(--gruen); }
+  .fehlt { color: var(--rot); }
+  .offen { color: var(--gold); }
+  code {
+    font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 9pt;
+    background: var(--flaeche); padding: 1px 4px; border-radius: 3px;
+  }
+
+  .schritt { break-inside: avoid; margin: 0 0 16px; padding-top: 2px; }
+
+  .schrittkopf {
+    display: flex; align-items: baseline; gap: 10px;
+    border-bottom: 2px solid var(--grund); padding-bottom: 5px; margin-bottom: 10px;
+  }
+  .schrittnr { font-size: 21pt; font-weight: 700; line-height: 1; min-width: 42px; }
+  .schritttitel { font-size: 14pt; font-weight: 700; font-family: 'Rajdhani', sans-serif; }
+  .zustaendig {
+    margin-left: auto; font-size: 8.5pt; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--leise); white-space: nowrap;
+  }
+  .erledigt {
+    margin-left: auto; font-size: 8.5pt; letter-spacing: 1px; text-transform: uppercase;
+    font-weight: 700; color: var(--gruen); white-space: nowrap;
+  }
+  .offenmarke {
+    margin-left: auto; font-size: 8.5pt; letter-spacing: 1px; text-transform: uppercase;
+    font-weight: 700; color: var(--gold); white-space: nowrap;
+  }
+  .pflicht {
+    margin-left: auto; font-size: 8.5pt; letter-spacing: 1px; text-transform: uppercase;
+    font-weight: 700; color: var(--rot); white-space: nowrap;
+  }
+
+  .warum {
+    background: var(--flaeche); border-left: 3px solid var(--leise);
+    padding: 7px 10px; margin: 0 0 10px; font-size: 9.5pt;
+  }
+  .okbox {
+    border-left: 3px solid var(--gruen); background: var(--flaeche);
+    padding: 7px 10px; margin: 0 0 10px; font-size: 9.5pt;
+  }
+  .okbox b { color: var(--gruen); }
+
+  ol.klicks { margin: 0 0 10px; padding-left: 20px; }
+  ol.klicks li { margin-bottom: 4px; }
+
+  pre {
+    background: var(--flaeche); border: 1px solid var(--linie); border-radius: 4px;
+    padding: 8px 10px; font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 8.5pt; line-height: 1.45; overflow-x: auto; margin: 8px 0;
+  }
+
+  .fertig {
+    border: 1px solid var(--gruen); border-radius: 4px;
+    padding: 7px 10px; font-size: 9.5pt; margin: 8px 0 0;
+  }
+  .fertig b { color: var(--gruen); }
+
+  .achtung {
+    border: 1px solid var(--rot); border-radius: 4px;
+    padding: 7px 10px; font-size: 9.5pt; margin: 8px 0 0;
+  }
+  .achtung b { color: var(--rot); }
+
+  ul.knapp { margin: 6px 0; padding-left: 18px; }
+  ul.knapp li { margin-bottom: 3px; }
+
+  .fuss {
+    margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--linie);
+    font-size: 8.5pt; color: var(--leise);
+  }
+</style>
+</head>
+<body>
+
+<div class="kopf">
+  <div class="marke">MatchUp · Einrichtung</div>
+  <h1>Push-Benachrichtigungen</h1>
+  <p class="unterzeile">Was steht, was fehlt und wie du es besorgst · Stand 2. Oktober 2026</p>
+</div>
+
+<p style="margin:0 0 14px; font-size:10pt;">
+  <b>So liest du das:</b> <span class="fehlt">Rot</span> musst du selbst machen —
+  es hängt an deinen Konten. <span class="ok">Grün</span> ist erledigt.
+  <span class="offen">Gelb</span> heißt: angefangen oder von hier aus nicht
+  nachprüfbar. <b>Der Server-Teil ist seit dem 24.09.2026 fertig und läuft</b> —
+  offen ist nur noch, was Apple-Konten und Stores betrifft.
+</p>
+
+<h2>Die Übersicht</h2>
+<table>
+  <thead>
+    <tr><th>#</th><th>Teil</th><th>Status</th><th>Wer</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="nr">1</td><td>Bezahlte Apple-Mitgliedschaft im Team <code>HACJC6623Z</code> auf diesem Mac</td><td class="status fehlt">fehlt</td><td class="wer">du</td></tr>
+    <tr><td class="nr">2</td><td>Push-Berechtigung für die App-ID <code>app.matchup.mobile</code></td><td class="status fehlt">offen</td><td class="wer">du</td></tr>
+    <tr><td class="nr">3</td><td>Key ID des APNs-Schlüssels — <code>9JF35BFS9Q</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">4</td><td>Schlüsseldatei <code>AuthKey_9JF35BFS9Q.p8</code> in <code>~/keys/</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">5</td><td>Team ID — <code>HACJC6623Z</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">6</td><td>Bundle ID — <code>app.matchup.mobile</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">7</td><td>Firebase-Projekt <code>matchup-f9e83</code>, Analytics aus</td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">8</td><td><code>GoogleService-Info.plist</code> + <code>google-services.json</code></td><td class="status ok">im Projekt</td><td class="wer">—</td></tr>
+    <tr><td class="nr">9</td><td>Dienstkonto-Schlüssel als Secret <code>FIREBASE_DIENSTKONTO</code></td><td class="status ok">gesetzt</td><td class="wer">—</td></tr>
+    <tr><td class="nr">10</td><td>APNs-Schlüssel bei Firebase hinterlegt</td><td class="status ok">seit 02.10.</td><td class="wer">du</td></tr>
+    <tr><td class="nr">11</td><td>Datenschutzerklärung veröffentlicht · Store-Angaben</td><td class="status offen">Seite live</td><td class="wer">du</td></tr>
+    <tr><td class="nr">12</td><td><code>aps-environment</code>, Berechtigungsabfrage, Geräte-Tokens</td><td class="status ok">fertig</td><td class="wer">🔧</td></tr>
+    <tr><td class="nr">13</td><td>Tabellen, Auslöser und Einstellungen je Nutzer</td><td class="status ok">Migration 0129</td><td class="wer">🔧</td></tr>
+    <tr><td class="nr">14</td><td>Edge Function <code>push</code> — ausgespielt, drei Cron-Jobs aktiv</td><td class="status ok">läuft</td><td class="wer">🔧</td></tr>
+  </tbody>
+</table>
+
+<div class="warum" style="margin-top:14px;">
+  <b>Am 24.09.2026 nachgemessen, nicht behauptet:</b> Die Tabellen
+  <code>push_geraete</code>, <code>push_einstellungen</code> und
+  <code>push_auftraege</code> stehen, die Function antwortet
+  <code>{"auftraege":0,"gesendet":0}</code>, und ihr Minutenlauf kommt mit
+  <code>200</code> am Gateway vorbei (kein 401). Am 02.10.2026 zusätzlich: Das
+  Dienstkonto holt einen OAuth-Token, FCM antwortet. Unverändert offen:
+  <code>security find-identity</code> kennt weiterhin nur ein
+  <i>Apple Development</i>-Zertifikat, kein Distribution-Zertifikat.
+</div>
+
+<h2>Vorher lesen — drei Regeln</h2>
+<ul class="knapp">
+  <li>Die <b>Key ID</b> (<code>9JF35BFS9Q</code>) ist keine Geheimnummer, die darfst du weitergeben.</li>
+  <li>Die <b>Datei <code>.p8</code> ist das Geheimnis.</b> Ihren Inhalt nirgends hineinkopieren — auch nicht in einen Chat. Wenn ich sie brauche, sag mir den <b>Dateipfad</b>.</li>
+  <li><b>Android geht ohne Apple.</b> Zieht sich Schritt 1, läuft Android schon — der Server-Teil ist derselbe.</li>
+</ul>
+
+<div class="schritt" style="break-before: page;">
+  <div class="schrittkopf">
+    <span class="schrittnr">1</span>
+    <span class="schritttitel">Apple-Mitgliedschaft auf diesem Mac</span>
+    <span class="pflicht">Pflicht · 10 Min</span>
+  </div>
+  <p class="warum"><b>Warum:</b> Ohne bezahltes Team darf die App keine Push-Benachrichtigungen
+  verwenden, und es gibt kein Distribution-Zertifikat — derselbe Grund, aus dem
+  <code>flutter build ipa</code> scheitert.</p>
+  <ol class="klicks">
+    <li>Xcode öffnen.</li>
+    <li>Menü <b>Xcode → Settings…</b> (oder <code>⌘</code> + <code>,</code>).</li>
+    <li>Reiter <b>Accounts</b>.</li>
+    <li>Unten links auf <b>+</b> → <b>Apple ID</b> → <b>Continue</b>.</li>
+    <li>Mit der Apple ID anmelden, die zum <b>bezahlten</b> Team <code>HACJC6623Z</code> gehört.</li>
+    <li>Links das Konto anklicken. Rechts muss <b>MatchUp</b> (<code>HACJC6623Z</code>) stehen —
+        Rolle <i>Account Holder</i>, <i>Admin</i> oder <i>App Manager</i>.</li>
+    <li>Rechts unten <b>Download Manual Profiles</b>.</li>
+  </ol>
+  <pre>security find-identity -v -p codesigning</pre>
+  <div class="fertig"><b>Fertig, wenn</b> dort eine Zeile mit <i>Apple Distribution</i> steht.
+  Steht weiterhin nur <i>Apple Development</i>, bist du im falschen Team angemeldet oder die
+  Mitgliedschaft ist abgelaufen — das ist der Stand von heute.</div>
+</div>
+
+<div class="schritt">
+  <div class="schrittkopf">
+    <span class="schrittnr">2</span>
+    <span class="schritttitel">Push für die App-ID einschalten</span>
+    <span class="pflicht">Pflicht · 3 Min</span>
+  </div>
+  <p class="warum"><b>Warum:</b> Apple muss wissen, dass genau diese App Push benutzen darf.
+  Ohne das Häkchen trägt das Provisioning-Profil kein <code>aps-environment</code>, und APNs
+  weist jede Nachricht ab.</p>
+  <ol class="klicks">
+    <li><code>developer.apple.com/account</code> öffnen, anmelden.</li>
+    <li>Oben rechts prüfen: Steht dort <b>MatchUp / HACJC6623Z</b>? Sonst umschalten —
+        mit dem persönlichen Team gibt es die Option nicht.</li>
+    <li>Links <b>Certificates, Identifiers &amp; Profiles</b> → <b>Identifiers</b>.</li>
+    <li>In der Liste <code>app.matchup.mobile</code> anklicken.</li>
+    <li>Häkchen bei <b>Push Notifications</b> setzen.</li>
+    <li>Oben rechts <b>Save</b>, Rückfrage mit <b>Confirm</b>.</li>
+    <li><b>Danach in Xcode</b> noch einmal <b>Download Manual Profiles</b> — sonst baut Xcode
+        weiter gegen das alte Profil ohne Push.</li>
+  </ol>
+  <div class="fertig"><b>Fertig, wenn</b> neben <i>Push Notifications</i> ein Häkchen steht
+  und die Seite <i>Enabled</i> anzeigt.</div>
+</div>
+
+<div class="schritt" style="break-before: page;">
+  <div class="schrittkopf">
+    <span class="schrittnr">3</span>
+    <span class="schritttitel">Die Schlüsseldatei <code style="font-size:12pt">.p8</code></span>
+    <span class="erledigt">erledigt</span>
+  </div>
+  <div class="okbox"><b>Steht seit dem 24.09.2026:</b>
+  <code>~/keys/AuthKey_9JF35BFS9Q.p8</code>. Die Anleitung bleibt stehen, falls der
+  Schlüssel je ersetzt werden muss.</div>
+  <p class="warum"><b>Warum:</b> Sie ist der eigentliche Schlüssel. Key ID und Team ID sind
+  nur die Kennnummern dazu.</p>
+  <div class="achtung"><b>Apple gibt eine <code>.p8</code> nur einmal heraus.</b> Ist sie weg,
+  legst du einen neuen Schlüssel an: <code>developer.apple.com/account</code> →
+  <b>Keys</b> → alten <b>Revoke</b> → <b>+</b> → Name <code>MatchUp Push</code> →
+  Häkchen <b>APNs</b> → <b>Continue</b> → <b>Register</b> → <b>Download</b>. Die neue
+  Key ID notieren und mir sagen.</div>
+  <pre>mkdir -p ~/keys &amp;&amp; mv ~/Downloads/AuthKey_*.p8 ~/keys/</pre>
+</div>
+
+<div class="schritt">
+  <div class="schrittkopf">
+    <span class="schrittnr">4</span>
+    <span class="schritttitel">Firebase-Projekt</span>
+    <span class="erledigt">erledigt</span>
+  </div>
+  <div class="okbox"><b>Steht seit dem 21.09.2026:</b> Projekt
+  <code>matchup-f9e83</code>, Spark-Tarif (kostenlos), Analytics aus.</div>
+  <p class="warum"><b>Warum:</b> Firebase Cloud Messaging verschickt an iOS <b>und</b> Android
+  über einen Weg. Ohne Firebase bräuchte es zwei Versandwege.</p>
+</div>
+
+<div class="schritt">
+  <div class="schrittkopf">
+    <span class="schrittnr">5</span>
+    <span class="schritttitel">Die beiden Apps in Firebase</span>
+    <span class="erledigt">erledigt</span>
+  </div>
+  <div class="okbox"><b>Beide Konfigdateien liegen im Projekt:</b>
+  <code>android/app/google-services.json</code> und
+  <code>ios/Runner/GoogleService-Info.plist</code>.</div>
+  <p class="warum"><b>Sie sind keine Geheimnisse</b> und gehören ins Repo — sie liegen in
+  jedem ausgelieferten Build, und ohne sie baut das Projekt auf einem zweiten Rechner nicht.
+  In <code>.gitignore</code> stehen nur die echten Geheimnisse: <code>*.p8</code> und
+  <code>*firebase-adminsdk*.json</code>.</p>
+</div>
+
+<div class="schritt" style="break-before: page;">
+  <div class="schrittkopf">
+    <span class="schrittnr">6</span>
+    <span class="schritttitel">APNs-Schlüssel bei Firebase</span>
+    <span class="erledigt">erledigt</span>
+  </div>
+  <div class="okbox"><b>Hinterlegt seit dem 02.10.2026</b> — auf deine Auskunft.</div>
+  <div class="warum"><b>Der einzige Punkt ohne eigene Messung, und das steht hier so.</b>
+  Die Firebase-Konsole gibt den Status eines APNs-Schlüssels über keine Schnittstelle
+  heraus. Ein Sendeversuch hilft nicht weiter: FCM weist einen erfundenen Token mit
+  <code>INVALID_ARGUMENT</code> ab, <b>bevor</b> es APNs befragt — am 02.10.2026
+  nachgemessen. Unterscheiden lässt sich der Fall erst mit einem echten Geräte-Token,
+  also in Schritt 8.</div>
+  <p class="warum"><b>Warum überhaupt:</b> Firebase spricht in deinem Namen mit Apple.
+  Dafür braucht es die <code>.p8</code> samt Kennnummern.</p>
+  <ol class="klicks">
+    <li>Firebase-Konsole → Zahnrad → <b>Projekteinstellungen</b> → Reiter <b>Cloud Messaging</b>.</li>
+    <li>Abschnitt <b>Apple-App-Konfiguration</b>, bei <code>app.matchup.mobile</code>:
+        <b>APNs-Authentifizierungsschlüssel</b> → <b>Hochladen</b>.</li>
+    <li><b>Datei</b>: die <code>.p8</code> aus <code>~/keys/</code>.
+        <b>Key ID</b>: <code>9JF35BFS9Q</code>. <b>Team ID</b>: <code>HACJC6623Z</code>.</li>
+  </ol>
+</div>
+
+<div class="schritt">
+  <div class="schrittkopf">
+    <span class="schrittnr">7</span>
+    <span class="schritttitel">Dienstkonto für den Versand</span>
+    <span class="erledigt">erledigt</span>
+  </div>
+  <div class="okbox"><b>Steht.</b> Die Datei liegt als
+  <code>~/keys/firebase-dienstkonto.json</code> und seit dem 24.09.2026 als
+  Supabase-Secret <code>FIREBASE_DIENSTKONTO</code> — im Klartext ist sie nirgends
+  aufgetaucht. Am 02.10.2026 nachgemessen: Sie holt einen OAuth-Token, FCM antwortet.</div>
+  <div class="achtung"><b>Vollzugriff-Schlüssel.</b> Nicht weitergeben, nicht ins Repo.</div>
+</div>
+
+<div class="schritt">
+  <div class="schrittkopf">
+    <span class="schrittnr">8</span>
+    <span class="schritttitel">Datenschutz</span>
+    <span class="offenmarke">Seite live · Stores offen</span>
+  </div>
+  <div class="okbox"><b>Am 25.09.2026 veröffentlicht:</b>
+  <code>sleeperdach.github.io/datenschutz.html</code> zeigt Abschnitt 6
+  („Push-Benachrichtigungen"), die Quelle liegt als <code>docs/datenschutz.html</code>
+  im Projekt. Beim Übernehmen wurde der <code>&lt;!DOCTYPE html&gt;</code> ergänzt — die
+  Fassung begann direkt mit <code>&lt;html&gt;</code>, was Browser in den Quirks-Modus
+  schickt; am Wortlaut wurde nichts geändert.</div>
+  <p><b>Offen bleiben die beiden Store-Angaben.</b> Push erhebt genau <b>eine</b>
+  zusätzliche Datenart — die Geräte-Kennung. Kein Tracking, keine Werbung.</p>
+  <table>
+    <thead><tr><th>App Store Connect → App-Datenschutz</th><th>Antwort</th></tr></thead>
+    <tbody>
+      <tr><td>Zusätzlicher Datentyp</td><td><b>Identifikatoren → Geräte-ID</b></td></tr>
+      <tr><td>Verwendungszweck</td><td><b>App-Funktionalität</b></td></tr>
+      <tr><td>Mit der Identität verknüpft?</td><td><b>Ja</b> — der Token hängt am Konto</td></tr>
+      <tr><td>Für Tracking verwendet?</td><td><b>Nein</b></td></tr>
+    </tbody>
+  </table>
+  <table style="margin-top:10px;">
+    <thead><tr><th>Play Console → Datensicherheit</th><th>Antwort</th></tr></thead>
+    <tbody>
+      <tr><td>Zusätzlicher Datentyp</td><td><b>Geräte- oder andere IDs</b></td></tr>
+      <tr><td>Erhoben? / Geteilt?</td><td><b>Ja</b> / <b>Nein</b> — Google ist Auftragsverarbeiter</td></tr>
+      <tr><td>Zweck</td><td><b>App-Funktionalität</b></td></tr>
+      <tr><td>Pflicht oder optional?</td><td><b>Optional</b> — der Nutzer kann Push ablehnen</td></tr>
+      <tr><td>Verschlüsselt? / Löschbar?</td><td><b>Ja</b> / <b>Ja</b></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 style="break-before: page;">Der Server läuft — nachgemessen</h2>
+<table>
+  <thead><tr><th>Was</th><th>Nachgemessen</th></tr></thead>
+  <tbody>
+    <tr><td>Migration 0129</td><td><code>push_geraete</code>, <code>push_einstellungen</code>, <code>push_auftraege</code> stehen</td></tr>
+    <tr><td>Secret</td><td><code>FIREBASE_DIENSTKONTO</code> gesetzt; holt einen OAuth-Token (02.10.)</td></tr>
+    <tr><td>Function</td><td>ausgespielt mit <code>--no-verify-jwt</code>, antwortet <code>{"auftraege":0,"gesendet":0}</code></td></tr>
+    <tr><td>Cron</td><td><code>push-versand</code> (jede Minute), <code>push-tipp-erinnerungen</code> (alle 15 Min), <code>push-korb-aufraeumen</code> (04:17) — alle drei aktiv</td></tr>
+    <tr><td>Auslöser</td><td>10 Trigger an Chats, Trades, Waivern, Ausfällen und Anfragen</td></tr>
+    <tr><td>Gateway</td><td>der Minutenlauf steht mit <code>200</code> in <code>net._http_response</code> — kein 401</td></tr>
+  </tbody>
+</table>
+<p style="font-size:9.5pt; color:var(--leise); margin-top:8px;">
+  <b>Dass <code>gesendet</code> auf 0 steht, ist kein Fehler:</b> Solange kein Gerät einen
+  Token gemeldet hat, bleibt der Korb leer. Dafür braucht es Schritt 1 und 2 — und ein
+  echtes iPhone.
+</p>
+
+<h2>Was Push auslösen soll</h2>
+<table>
+  <thead><tr><th>Ereignis</th><th>Quelle</th></tr></thead>
+  <tbody>
+    <tr><td>Du bist im Draft am Zug</td><td><code>fantasy_leagues</code> (Zählerstand)</td></tr>
+    <tr><td>Trade-Angebot: neu, angenommen, abgelehnt</td><td><code>fantasy_trades</code></td></tr>
+    <tr><td>Waiver durchgegangen oder nicht</td><td><code>fantasy_waiver_claims</code></td></tr>
+    <tr><td>Direktnachricht, Liga- oder Tipprunden-Chat</td><td><code>direct_messages</code>, <code>*_messages</code></td></tr>
+    <tr><td>Aufgestellter Spieler fällt aus</td><td><code>player_absences</code></td></tr>
+    <tr><td>Tipps offen, kurz vor Deadline</td><td><code>tip_rounds</code></td></tr>
+    <tr><td>Beitritts- oder Freundschaftsanfrage</td><td><code>*_join_requests</code>, <code>friendships</code></td></tr>
+  </tbody>
+</table>
+
+<div class="fuss">
+  MatchUp · Push-Benachrichtigungen · Stand 02.10.2026 ·
+  Quelle dieser Seite: <code>docs/push.html</code>, gebaut mit <code>tools/push_pdf.sh</code> ·
+  Inhaltlich gleich: <code>PUSH.md</code>
+</div>
+
+</body>
+</html>

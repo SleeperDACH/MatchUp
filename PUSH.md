@@ -1,8 +1,18 @@
 # Push-Benachrichtigungen in MatchUp — Stand und Anleitung
 
-> Dieselben Inhalte gibt es als **`PUSH.pdf`** — gesetzt, mit
-> Seitenumbrüchen je Schritt. Diese Datei hier bleibt die Quelle;
-> das PDF wird daraus erzeugt.
+> Dieselben Inhalte gibt es als **`PUSH.pdf`** — gesetzt, mit Seitenumbrüchen
+> je Schritt — und als **`PUSH-OFFEN.pdf`**, dem Auszug mit nur den offenen
+> Punkten. Beide werden aus `docs/push.html` bzw. `docs/push_offen.html`
+> gebaut:
+>
+> ```sh
+> tools/push_pdf.sh
+> ```
+>
+> **Wer den Stand ändert, ändert beide Seiten** — diese Datei und die
+> zugehörige HTML. Die erste Fassung der PDFs entstand aus Dateien außerhalb
+> des Repos; sie ließen sich danach nicht mehr erzeugen und zeigten tagelang
+> einen Schritt als offen, der längst erledigt war.
 
 Stand: 21.09.2026. Diese Datei sagt, **was schon da ist**, **was fehlt** und
 **wie du das Fehlende besorgst** — Schritt für Schritt, ohne Vorwissen.
