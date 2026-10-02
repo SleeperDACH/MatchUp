@@ -61,8 +61,10 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   — der kräftige Verlauf, weil vier Farbflächen gleich laut riefen und
   ausgerechnet den Modus ansagten, und das flache Grau danach, weil der Reihe
   damit jede Identität fehlte (siehe „Einfarbig ist auch kein Zustand"). Die
-  Modusfarbe (`ui/league_colors.dart`: Redraft grün, Dynasty rot) steckt in der
-  30er-Marke oben links; ein eigenes Liga-Logo sticht sie weiterhin.
+  Die Ligafarbe (`ui/league_colors.dart`) steckt in der 30er-Marke oben links;
+  ein eigenes Liga-Logo sticht sie weiterhin. **Es ist nur noch eine Farbe**
+  (Grün): Das Rot stand für den Dynasty-Modus, den es seit dem 27.09.2026
+  nicht mehr gibt.
   **Keine der beiden Karten hat noch einen Sockel** — beide zeigen Marke, Name
   und Untertitel, sonst nichts, und teilen sich deshalb ein Maß
   (`_kKartenHoehe`, 108 statt vorher 146 und 140). Was sie unterscheidet, sind
@@ -2295,10 +2297,16 @@ Drei Änderungen:
   im `build` ist verboten).
 - **`picksStream` trägt den vollständigen Primärschlüssel.** Er lautet
   `league_id, phase, pick_number`; der Client meldete nur zwei Spalten. Im
-  Dynasty-Modus fängt die Pick-Nummerierung je Phase wieder bei 1 an — der
+  Dynasty-Modus fing die Pick-Nummerierung je Phase wieder bei 1 an — der
   Supabase-Stream hätte Pick 1 des Aufbau-Drafts und Pick 1 des U20-Drafts für
   dieselbe Zeile gehalten und die eine mit der anderen überschrieben. Bisher
-  unentdeckt, weil noch keine Liga eine zweite Phase erreicht hat.
+  unentdeckt, weil nie eine Liga eine zweite Phase erreicht hat.
+
+  **Den Modus gibt es seit dem 27.09.2026 nicht mehr — den Schlüssel schon.**
+  `draft_picks.phase` bleibt Teil des Primärschlüssels (jetzt immer
+  `'startup'`), weil ein Umbau auf einer Tabelle mit Hunderten Picks riskant
+  wäre und nichts einbrächte. Wer ihn im Client kürzt, ohne das Schema zu
+  ändern, holt sich genau diesen Fehler zurück.
 
 Die Lehre über den Draft hinaus: **Wo ein Client eine Server-ID gegen einen
 gecachten Katalog auflöst, ist „nicht gefunden" ein eigener Zustand.** Ihn auf
@@ -2671,8 +2679,9 @@ Zwei Details, die beim Bauen aufkamen:
   neuen Schirm ein zweites Zuhause. Der Rest des Draft-Raums bleibt privat.
 - **Gezeichnet werden nur die Runden, die es gibt** (`max(round)` aus den
   Picks), nicht `roundsThisPhase`. Unter einem abgebrochenen Draft hingen
-  sonst leere Zeilen. Und im Dynasty-Modus erscheint ein `PillSelector` für
-  die Phase — aber nur, wenn wirklich in mehr als einer gedraftet wurde.
+  sonst leere Zeilen. Der `PillSelector` für die Draft-Phase ist mit dem
+  Dynasty-Modus entfallen (27.09.2026): Es gibt nur noch einen Draft, das
+  Board zeigt schlicht alle Picks.
 
 Angesehen über `test/draft_board_vorschau_test.dart` (fester Bildvergleich,
 kein Datum im Bild). Die Vorschau baut vier Runden Snake mit vier Teams: Genau
@@ -4569,7 +4578,15 @@ Angesehen über `test/free_agency_vorschau_test.dart`: die drei Zustände einer
 Zeile nebeneinander (Waiver, Spiel läuft, frei), die es auf dem Gerät nie
 gleichzeitig gibt. Gerechnet wird in `test/free_agent_sperre_test.dart`.
 
-### Die U20-Sperre gilt nur in Dynasty (0121)
+### Die U20-Sperre gilt nur in Dynasty (0121) — *entfallen*
+
+> **Überholt seit dem 27.09.2026.** Der Dynasty-Modus ist auf Ansage
+> vollständig entfernt (Migration 0130), und mit ihm die U20-Sperre samt
+> `fantasy_u20_gesperrt`, `fantasy_is_locked`, `start_u20_draft` und
+> `fantasy_rollover_season`. Der Abschnitt bleibt als **Historie** stehen: Er
+> erklärt, warum die Regel einmal zwei Stellen brauchte — und die Lehre daraus
+> („dieselbe Regel steht zweimal, sonst zeigt die App einen Knopf, den der
+> Server ablehnt") gilt unverändert für jede andere Regel dieser App.
 
 Gemeldet: *„Es macht keinen Sinn, dass hier einer für den U20-Draft gesperrt
 ist, weil es im Redraft-Modus keinen U20-Draft gibt. Das ist nur in Dynasty."*
@@ -5658,14 +5675,14 @@ jemand frei ist, und musste zurück in die Free Agency, um ihn zu holen.
 ein `breit`-Flag und rendert dann statt des runden Symbols einen beschrifteten
 Knopf. Damit gelten im Profil **dieselben Regeln wie in der Liste**, ohne sie zu
 wiederholen: Waiver-Antrag statt Holen, wenn er auf dem Wire liegt oder sein
-Verein angepfiffen hat; das Abgabe-Blatt bei vollem Kader; die U20-Sperre. Eine
-zweite Entscheidungslogik im Profil wäre genau die Sorte Doppelung, die in
-dieser Datei ein Dutzend Mal schiefgegangen ist.
+Verein angepfiffen hat; das Abgabe-Blatt bei vollem Kader. (Die U20-Sperre
+stand hier ebenfalls — sie ist mit dem Dynasty-Modus entfallen.) Eine zweite
+Entscheidungslogik im Profil wäre genau die Sorte Doppelung, die in dieser
+Datei ein Dutzend Mal schiefgegangen ist.
 
 Wo nichts zu tun ist, steht **ein Satz statt eines toten Knopfes**: „In deinem
-Kader", „Antrag läuft", „Für den U20-Draft gesperrt". Ein Knopf, der nichts
-kann, wäre schlechter als eine Auskunft — dieselbe Regel wie beim
-Tippspiel-Schalter im dritten Zustand.
+Kader", „Antrag läuft". Ein Knopf, der nichts kann, wäre schlechter als eine
+Auskunft — dieselbe Regel wie beim Tippspiel-Schalter im dritten Zustand.
 
 **Ein Schnitt im Bild, zwei in der Rechnung.**
 
