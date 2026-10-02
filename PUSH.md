@@ -35,10 +35,11 @@ mache ich, sobald das Nötige da ist.
 | App | `firebase_core`/`firebase_messaging`, Berechtigung, Token-Registrierung, Antippen öffnet den Schirm, Einstellungsschirm im Profil |
 | Tests | `test/push_ziel_test.dart`, `test/push_einstellungen_test.dart` |
 
-**Was noch bei dir liegt:** Schritt 1 und 2 (Apple-Mitgliedschaft im Team und
-Push-Häkchen für die App-ID), das Hochladen der `.p8` in die Firebase-Konsole
-(Schritt 6 — das sehe ich von hier aus nicht) und die beiden Store-Angaben.
-**Die Datenschutzseite ist seit dem 25.09.2026 veröffentlicht.**
+**Was noch bei dir liegt:** Schritt 1 und 2 — Apple-Mitgliedschaft im Team und
+das Push-Häkchen für die App-ID — sowie die beiden Store-Angaben.
+**Die Datenschutzseite ist seit dem 25.09.2026 veröffentlicht**, und **der
+APNs-Schlüssel liegt seit dem 02.10.2026 bei Firebase** (auf deine Auskunft;
+die Konsole gibt den Status über keine Schnittstelle heraus, siehe Schritt 6).
 
 **Die Inbetriebnahme unten ist erledigt** (24.09.2026): Migration eingespielt,
 Secret gesetzt, Function ausgespielt, drei Cron-Jobs aktiv. Der Server wartet
@@ -59,11 +60,12 @@ nur noch auf Geräte.
 | 7 | Firebase-Projekt | ✅ `matchup-f9e83`, Analytics aus | — |
 | 8 | `GoogleService-Info.plist` (iOS) + `google-services.json` (Android) | ✅ im Projekt | — |
 | 9 | Dienstkonto-Schlüssel (JSON) für den Versand | ✅ `~/keys/firebase-dienstkonto.json` | — |
-| 10 | Datenschutzerklärung veröffentlicht · Store-Angaben | 🟡 Seite seit 25.09.2026 live, Stores offen | du |
-| 11 | `aps-environment` + Hintergrundmodus in der App | ✅ fertig | 🔧 |
-| 12 | Push-Paket, Berechtigungsabfrage, Geräte-Tokens | ✅ fertig | 🔧 |
-| 13 | Tabelle für Tokens + Einstellungen je Nutzer | ✅ Migration 0129 | 🔧 |
-| 14 | Edge Function zum Versenden | ✅ `supabase/functions/push` | 🔧 |
+| 10 | **APNs-Schlüssel bei Firebase hinterlegt** | ✅ seit 02.10.2026 (deine Auskunft) | du |
+| 11 | Datenschutzerklärung veröffentlicht · Store-Angaben | 🟡 Seite seit 25.09.2026 live, Stores offen | du |
+| 12 | `aps-environment` + Hintergrundmodus in der App | ✅ fertig | 🔧 |
+| 13 | Push-Paket, Berechtigungsabfrage, Geräte-Tokens | ✅ fertig | 🔧 |
+| 14 | Tabelle für Tokens + Einstellungen je Nutzer | ✅ Migration 0129 | 🔧 |
+| 15 | Edge Function zum Versenden | ✅ `supabase/functions/push` | 🔧 |
 
 **Geprüft am 21.09.2026:** `security find-identity` kennt nur ein *Apple
 Development*-Zertifikat, kein Distribution-Zertifikat. In
@@ -244,14 +246,20 @@ ls ~/Projekte/MatchUp/ios/Runner/GoogleService-Info.plist
 
 ---
 
-## Schritt 6 — Den APNs-Schlüssel bei Firebase hinterlegen ❓
+## Schritt 6 — Den APNs-Schlüssel bei Firebase hinterlegen ✅
 
-**Das ist der eine Schritt, den ich von hier aus nicht sehen kann** — die
-Firebase-Konsole verrät mir nicht, ob der Schlüssel liegt. Sag mir, ob er
-dort steht; sonst nimmt Apple die Nachrichten nicht an.
+**Erledigt** (02.10.2026, auf deine Auskunft).
 
-**Warum:** Firebase spricht in deinem Namen mit Apple. Dafür braucht es die
-`.p8` samt Kennnummern.
+**Warum er hier als einziger ohne Messung abgehakt ist:** Die Firebase-Konsole
+gibt den Status eines APNs-Schlüssels über keine Schnittstelle heraus, und ein
+Sendeversuch hilft auch nicht weiter — FCM weist einen erfundenen Token mit
+`INVALID_ARGUMENT` ab, **bevor** es APNs überhaupt befragt. Nachgemessen am
+02.10.2026; zu unterscheiden ist der Fall also erst mit einem echten Token.
+Ob der Schlüssel wirklich greift, zeigt deshalb erst Schritt 8.
+
+**Warum überhaupt:** Firebase spricht in deinem Namen mit Apple. Dafür braucht
+es die `.p8` samt Kennnummern. Die Anleitung bleibt stehen, falls der
+Schlüssel je ersetzt wird.
 
 1. Firebase-Konsole → Zahnrad oben links → **Projekteinstellungen**.
 2. Reiter **Cloud Messaging**.
