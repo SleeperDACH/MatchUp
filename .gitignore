@@ -68,3 +68,10 @@ design/**/matchup-*.html
 # NICHT: Sie sind keine Geheimnisse (sie liegen in jedem ausgelieferten Build)
 # und muessen mit, sonst baut das Projekt auf einem zweiten Rechner nicht.
 # Siehe PUSH.md.
+
+# **macOS-SwiftPM-Stand.** Xcode legt diese Package.resolved bei jedem
+# `flutter clean` neu an; sie standen danach dauerhaft als „untracked" im
+# Status. macOS ist keine ausgelieferte Plattform dieser App (iOS, Android,
+# Web) — die iOS-Entsprechungen bleiben getrackt, weil sie zum Build gehoeren.
+macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+macos/Runner.xcworkspace/xcshareddata/swiftpm/
