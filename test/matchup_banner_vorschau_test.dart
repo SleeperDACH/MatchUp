@@ -22,7 +22,11 @@ void main() {
   });
 
   testWidgets('Vorschau: MatchUp-Banner', (tester) async {
-    tester.view.physicalSize = const Size(402 * 3, 1180 * 3);
+    // **Hoch genug für alle Zustände.** Bei 1180 lagen die drei neuen Kästen
+    // (Prognose, Prognose ohne Streuung, Vorher in Karussell-Höhe) unterhalb
+    // des Bildrands — der Test lief grün, und zu sehen war ausgerechnet der
+    // Fall nicht, für den der Kasten gebaut wurde.
+    tester.view.physicalSize = const Size(402 * 3, 1900 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
@@ -65,6 +69,56 @@ void main() {
                   // schreibt ihn unter das „VS", und ein gleitendes Datum
                   // machte das Bild von Tag zu Tag anders.
                   anpfiff: DateTime(2026, 9, 4, 20, 30),
+                  onTap: () {},
+                ),
+              ),
+              // **Derselbe Zeitpunkt, aber mit Grundlage.** Sobald es
+              // gewertete Spieltage gibt, wird aus der Ankündigung ein
+              // Vergleich: voraussichtliche Punkte beider Seiten und das Band
+              // der Siegchance. Ohne dieses zweite Bild ließe sich nicht
+              // beurteilen, was die Karte vor dem Spieltag eigentlich zeigt —
+              // auf dem Gerät sieht man immer nur den einen Zustand, den die
+              // eigene Liga gerade hat.
+              banner(
+                'VOR DEM SPIELTAG · MIT PROGNOSE',
+                MatchupBanner(
+                  round: 3,
+                  homeName: 'SFV03',
+                  awayName: 'lennartruepke',
+                  homePoints: 0,
+                  awayPoints: 0,
+                  homeMe: true,
+                  awayMe: false,
+                  live: false,
+                  started: false,
+                  mine: true,
+                  anpfiff: DateTime(2026, 9, 4, 20, 30),
+                  homeProjektion: 212.4,
+                  awayProjektion: 178.9,
+                  siegchanceHeim: 0.63,
+                  onTap: () {},
+                ),
+              ),
+              // **Prognose ja, Siegchance nein.** Nach dem ersten gewerteten
+              // Spieltag gibt es Schnitte, aber noch keine messbare Streuung —
+              // dann steht der Vergleich da und das Band bleibt weg, statt
+              // 50/50 zu behaupten.
+              banner(
+                'VOR DEM SPIELTAG · PROGNOSE OHNE STREUUNG',
+                MatchupBanner(
+                  round: 3,
+                  homeName: 'SFV03',
+                  awayName: 'lennartruepke',
+                  homePoints: 0,
+                  awayPoints: 0,
+                  homeMe: true,
+                  awayMe: false,
+                  live: false,
+                  started: false,
+                  mine: true,
+                  anpfiff: DateTime(2026, 9, 4, 20, 30),
+                  homeProjektion: 212.4,
+                  awayProjektion: 178.9,
                   onTap: () {},
                 ),
               ),
@@ -122,6 +176,38 @@ void main() {
                       live: true,
                       started: true,
                       mine: true,
+                      onTap: () {},
+                    ),
+                  ),
+                ),
+              ),
+              // **Derselbe Wächter für den Vorher-Zustand.** Der Kasten oben
+              // prüft die Karussell-Höhe nur mit angepfiffenem Spieltag — der
+              // Zweig davor war damit ungedeckt, und genau dort ist jetzt eine
+              // Zeile dazugekommen. Ein Überlauf hier hat schon einmal den
+              // schwarz-gelben Balken aufs Gerät gebracht.
+              banner(
+                'VOR DEM SPIELTAG IN KARUSSELL-HÖHE '
+                    '(${kMatchupBannerHoehe.toInt()} px)',
+                SizedBox(
+                  height: kMatchupBannerHoehe,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 6),
+                    child: MatchupBanner(
+                      round: 34,
+                      homeName: 'lennartruepke',
+                      awayName: 'Spitzenreiter04',
+                      homePoints: 0,
+                      awayPoints: 0,
+                      homeMe: true,
+                      awayMe: false,
+                      live: false,
+                      started: false,
+                      mine: true,
+                      anpfiff: DateTime(2026, 9, 4, 20, 30),
+                      homeProjektion: 1284.6,
+                      awayProjektion: 999.5,
+                      siegchanceHeim: 0.63,
                       onTap: () {},
                     ),
                   ),

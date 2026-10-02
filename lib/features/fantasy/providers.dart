@@ -24,6 +24,7 @@ import 'logic/aufstellungs_prognose.dart';
 import 'logic/draft_ranking.dart';
 import 'logic/fantasy_scoring_engine.dart';
 import 'logic/fortschreibung.dart';
+import 'logic/siegchance.dart';
 import 'models/fantasy_models.dart';
 import 'models/player_absence.dart';
 import 'models/roster_move.dart';
@@ -750,4 +751,59 @@ final myFantasyRankProvider =
   final idx = standings.indexWhere((r) => r.managerId == myId);
   if (idx < 0) return null;
   return (rank: idx + 1, total: managers.length);
+});
+
+/// **Wie stark die Wochensummen dieser Liga schwanken** — die Grundlage der
+/// Siegchance, oder `null`, solange sich nichts messen lässt.
+///
+/// Der Block, der die Summen je Spieltag rechnet, steht im Code an vier
+/// Stellen (oben, Fantasy-Tabelle, Playoff-Baum, MatchUp-Tab). Für die
+/// Streuung kommt er **nicht** ein fünftes Mal dazu: Sie wird hier einmal
+/// gemessen, und beide Karten — MatchUp-Tab und Liga-Übersicht — lesen
+/// dasselbe Ergebnis. Zwei Karten, die für dasselbe Duell verschiedene
+/// Wahrscheinlichkeiten zeigen, wären schlimmer als gar keine.
+///
+/// **Gemessen wird nur über abgepfiffene Spieltage.** Ein laufender trägt
+/// mittags Zwischenstände und ließe die Liga ruhiger aussehen, als sie ist —
+/// dieselbe Falle, wegen der die H2H-Bilanz schon auf `gewerteteRunden`
+/// filtert.
+final fantasyWochenStreuungProvider =
+    Provider.family<double?, String>((ref, leagueId) {
+  final league = ref
+      .watch(myFantasyLeaguesProvider)
+      .valueOrNull
+      ?.where((l) => l.id == leagueId)
+      .firstOrNull;
+  final managers = ref.watch(fantasyManagersProvider(leagueId)).valueOrNull;
+  final pool = ref.watch(playerPoolProvider).valueOrNull;
+  final roster = ref.watch(leagueRosterProvider(leagueId)).valueOrNull;
+  final lineups = ref.watch(leagueLineupsProvider(leagueId)).valueOrNull;
+  final seasonStats = ref.watch(seasonStatsProvider).valueOrNull;
+  final abgepfiffen = ref.watch(abgepfiffeneRundenProvider);
+
+  if (league == null ||
+      managers == null ||
+      pool == null ||
+      roster == null ||
+      seasonStats == null) {
+    return null;
+  }
+
+  final playerById = {for (final p in pool) p.id: p};
+  final fertig = gewerteteRunden(abgepfiffen, seasonStats.keys);
+  final totalsByRound = <int, Map<String, double>>{
+    for (final entry in seasonStats.entries)
+      if (fertig.contains(entry.key))
+        entry.key: effectiveTotalsForRound(
+          stats: entry.value,
+          round: entry.key,
+          managers: managers,
+          roster: roster,
+          playerById: playerById,
+          lineups: lineups ?? const <FantasyLineup>[],
+          scoring: league.scoring,
+          rosterConfig: league.roster,
+        ),
+  };
+  return streuung(totalsByRound);
 });

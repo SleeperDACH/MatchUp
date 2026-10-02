@@ -8,8 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
+import '../logic/projektion.dart';
+import '../logic/siegchance.dart';
 import '../../../core/logic/round_robin.dart';
+import 'matchup_lineups.dart';
 import '../models/fantasy_models.dart';
+import '../models/player_absence.dart';
 import '../providers.dart';
 import 'matchup_detail_screen.dart';
 import '../../../core/ui/app_avatar.dart';
@@ -153,6 +157,51 @@ class MatchupHero extends ConsumerWidget {
     );
     final myPts = totals[myId] ?? 0.0;
     final oppPts = totals[oppId] ?? 0.0;
+
+    // **Dieselbe Prognose wie im MatchUp-Tab, aus derselben Quelle.** Die
+    // Startelf kommt über `computeSideData` (die eine Stelle, die weiß, wer
+    // aufläuft), die Streuung aus `fantasyWochenStreuungProvider` — beide
+    // Karten zeigen damit für dasselbe Duell dieselbe Zahl.
+    //
+    // **Unbedingt beobachten, nicht im Zweig:** Ein `ref.watch` hinter einer
+    // Bedingung meldet die Abhängigkeit ab, sobald der andere Fall greift —
+    // die Provider dieses Schirms wechselten dann mit dem Anpfiff.
+    final byId = {for (final p in pool) p.id: p};
+    final roundStats = ref.watch(roundStatsProvider(round)).valueOrNull ??
+        const <String, PlayerMatchStats>{};
+    final saison = ref.watch(seasonStatsProvider).valueOrNull ??
+        const <int, Map<String, PlayerMatchStats>>{};
+    final ausfaelle = ref.watch(absencesProvider).valueOrNull ??
+        const <String, PlayerAbsence>{};
+    final wochenStreuung =
+        ref.watch(fantasyWochenStreuungProvider(league.id));
+
+    Projektion? prognoseFuer(String id) => started
+        ? null
+        : projektion(
+            elf: computeSideData(
+              league: league,
+              round: round,
+              managerId: id,
+              byId: byId,
+              roster: roster,
+              lineups: lineups,
+              stats: roundStats,
+            ).starters,
+            saison: saison,
+            regeln: league.scoring,
+            ausfaelle: ausfaelle,
+          );
+
+    final meine = prognoseFuer(myId);
+    final seine = prognoseFuer(oppId);
+    // **Beide Seiten brauchen eine Grundlage.** Fehlt sie einer, ist der
+    // Vergleich keiner — dann bleibt es bei „VS" und Anpfiff.
+    final vergleichbar = meine != null &&
+        seine != null &&
+        meine.hatDaten &&
+        seine.hatDaten;
+
     return MatchupBanner(
       round: round,
       homeName: nameOf[myId] ?? 'Du',
@@ -167,6 +216,15 @@ class MatchupHero extends ConsumerWidget {
       anpfiff: anpfiff,
       started: started,
       mine: true,
+      homeProjektion: vergleichbar ? meine.punkte : null,
+      awayProjektion: vergleichbar ? seine.punkte : null,
+      siegchanceHeim: vergleichbar
+          ? siegchance(
+              heim: meine.punkte,
+              gast: seine.punkte,
+              wochenStreuung: wochenStreuung,
+            )
+          : null,
       onTap: () => openDetail(oppId, nameOf[oppId]),
     );
   }
@@ -195,6 +253,9 @@ class MatchupBanner extends StatelessWidget {
     this.homeSub,
     this.awaySub,
     this.anpfiff,
+    this.homeProjektion,
+    this.awayProjektion,
+    this.siegchanceHeim,
   });
 
   final int round;
@@ -221,6 +282,22 @@ class MatchupBanner extends StatelessWidget {
   /// Erster Anpfiff des Spieltags — steht in der Vorschau unter dem „VS".
   /// Vor dem Spieltag ist das die einzige Zahl, die schon etwas bedeutet.
   final DateTime? anpfiff;
+
+  /// **Voraussichtliche Punkte beider Seiten, nur vor dem Spieltag.**
+  ///
+  /// `null` heißt „keine Grundlage" (noch kein gewerteter Spieltag) — dann
+  /// bleibt es bei der reinen Ankündigung. Sobald angepfiffen ist, tragen
+  /// Punktestand und Momentum-Balken die Auskunft, und eine Schätzung daneben
+  /// wäre die zweite, schlechtere Antwort auf dieselbe Frage.
+  final double? homeProjektion;
+  final double? awayProjektion;
+
+  /// Wahrscheinlichkeit, dass die **Heimseite** gewinnt (0–1), oder `null`.
+  ///
+  /// Kommt aus `logic/siegchance.dart` und beruht auf der gemessenen
+  /// Schwankung der Wochensummen dieser Liga. Ohne Historie gibt es sie nicht
+  /// — dann erscheint kein Band, statt 50/50 zu behaupten.
+  final double? siegchanceHeim;
 
   @override
   Widget build(BuildContext context) {
@@ -326,9 +403,45 @@ class MatchupBanner extends StatelessWidget {
             // „Punkteanteil" — zwei Anzeigen, die beide nichts messen: Es ist
             // noch kein Ball gerollt. Ein Duell vor dem Anpfiff ist eine
             // Ankündigung, und die sieht so aus.
-            const SizedBox(height: 14),
-            _VsPlatte(accent: accent, anpfiff: anpfiff),
-            const SizedBox(height: 6),
+            // **Mit Prognose wird aus der Ankündigung ein Vergleich.** Ohne
+            // sie bleibt es bei „VS" und Anpfiff — genau wie bisher; eine
+            // erfundene Zahl wäre schlechter als keine.
+            if (homeProjektion == null || awayProjektion == null) ...[
+              const SizedBox(height: 14),
+              _VsPlatte(accent: accent, anpfiff: anpfiff),
+              const SizedBox(height: 6),
+            ] else ...[
+              // **Zuerst die Kennzeichnung, dann die Zahlen.** Ohne sie sahen
+              // zwei große Zahlen mit „VS" dazwischen aus wie ein Spielstand
+              // — gemeldet als: „Man muss sehen, dass das Projected Points
+              // sind, sonst denkt man, das sind feste Punkte." Die Marke steht
+              // deshalb *über* den Zahlen und nicht als Fußnote darunter: Was
+              // eine Zahl ist, muss man wissen, **bevor** man sie liest.
+              const SizedBox(height: 6),
+              const Center(child: _PrognoseMarke()),
+              const SizedBox(height: 5),
+              _ProjektionsStand(
+                links: homeProjektion!,
+                rechts: awayProjektion!,
+              ),
+              const SizedBox(height: 8),
+              // **Die Prozentsätze stehen an ihrer Seite, nicht in einer
+              // Bildunterschrift.** Vorher lief eine zentrierte Zeile
+              // „SIEGCHANCE 63 % · 37 %" unter dem Band — man musste lesen,
+              // welche Zahl zu wem gehört. Links und rechts außen ist das
+              // ohne ein Wort klar, und das Wort selbst entfällt damit: Was
+              // eine Zahl in Prozent unter einem zweifarbigen Band ist, muss
+              // nicht angesagt werden.
+              //
+              // **Der Anpfiff ist hier raus** (auf Ansage). In der Karte ohne
+              // Prognose steht er weiter — dort ist er die einzige Zahl, die
+              // schon etwas bedeutet.
+              if (siegchanceHeim != null) ...[
+                _ChanceBar(heim: siegchanceHeim!),
+                const SizedBox(height: 6),
+                _ChanceProzente(heim: siegchanceHeim!),
+              ],
+            ],
           ] else ...[
             const SizedBox(height: 10),
             // **Der Punktestand steht mittig auf eigener Zeile, nicht zwischen
@@ -821,6 +934,219 @@ class HeroAvatar extends StatelessWidget {
 
 /// „Momentum"-Balken: zeigt den Punkteanteil beider Seiten als Tauziehen —
 /// meine Seite hell, der Gegner gedimmt. Rein visuell (kein Tap).
+/// **Die Kennzeichnung „Prognose".**
+///
+/// Gemeldet: *„Man muss sehen, dass das Projected Points sind, sonst denkt
+/// man, das sind feste Punkte."* Genau so war es gebaut — nachdem das Wort
+/// „Siegchance" auf Ansage weggefallen war, stand in der Karte kein einziges
+/// Wort mehr, und zwei große Zahlen mit „VS" dazwischen sind in dieser App
+/// sonst immer ein Spielstand.
+///
+/// **Eine gefüllte Pille, keine Überschrift und kein Rahmen.** Eine Zeile Text
+/// hätte man für eine Bereichsbeschriftung halten können; die Pille liest sich
+/// als Etikett an den Zahlen darunter. **Keine Signalfarbe** — eine Prognose
+/// meldet nichts, sie rechnet nur.
+///
+/// Gefüllt statt umrandet, und das ist kein Geschmack: Der erste Wurf trug
+/// eine weiße Kante bei Radius 20 und hat `kartenkanten_test` ausgelöst. Der
+/// Wächter kann einer Dekoration nicht ansehen, ob sie fünfzehn oder
+/// fünfhundert Punkte hoch ist — und seine Ausnahmeliste ist für Kanten
+/// gedacht, die einen **Zustand** tragen („wartet", „gewählt", „kaputt"). Eine
+/// Beschriftung trägt keinen. Die Fläche ist dieselbe Lösung, die die
+/// Status-Pille im Detailkopf (`matchup_detail_screen.dart`) längst benutzt:
+/// weiß auf 14 % Weiß, ohne Rahmen.
+class _PrognoseMarke extends StatelessWidget {
+  const _PrognoseMarke();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withValues(alpha: 0.14),
+      ),
+      child: Text(
+        'PROGNOSE',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.65),
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.6,
+          height: 1.1,
+        ),
+      ),
+    );
+  }
+}
+
+/// **Die beiden Prognosen mit einem „VS" dazwischen.**
+///
+/// Bewusst nicht der [ScoreBadge]: Der zeigt einen *Stand* und färbt den
+/// Führenden. Hier hat noch niemand etwas geholt — die Zahlen stehen deshalb
+/// in gleicher Helligkeit nebeneinander, und die Wertung („wer ist vorn?")
+/// trägt allein das Band darunter.
+class _ProjektionsStand extends StatelessWidget {
+  const _ProjektionsStand({
+    required this.links,
+    required this.rechts,
+  });
+
+  final double links;
+  final double rechts;
+
+  @override
+  Widget build(BuildContext context) {
+    // **Eine Spur leiser als ein echter Punktestand.** Der steht im
+    // [ScoreBadge] — gerahmt, größer und in der Farbe des Führenden. Diese
+    // Zahlen sind eine Rechnung, kein Ergebnis, und sollen auch so klingen.
+    final stil = TextStyle(
+      fontSize: Schrift.h2,
+      fontWeight: FontWeight.w800,
+      color: Colors.white.withValues(alpha: 0.82),
+      height: 1,
+    );
+    // **An den Rändern, nicht in der Mitte** (auf Ansage). Jede Zahl steht
+    // damit unter dem Namen und über dem Prozentsatz ihrer Seite — die Karte
+    // liest sich durchgehend in zwei Spalten, statt in der Mitte einen Block
+    // zu bilden, den man erst zuordnen muss.
+    //
+    // **Das „VS" ist entfallen.** Zwischen zwei auseinandergerückten Zahlen
+    // stünde es allein in der Mitte, und die Mitte markiert schon die
+    // Prognose-Pille darüber. Zwei Mittelanker wären einer zu viel.
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Punktzahl(links, stil: stil),
+        Punktzahl(rechts, stil: stil),
+      ],
+    );
+  }
+}
+
+/// Grau, solange niemand Favorit ist.
+const _cChanceNeutral = Color(0xFF9AA0AA);
+
+/// **Die Farbregel für Band und Prozentzahlen — an einer Stelle.**
+///
+/// Beide zeigen dieselbe Auskunft; liefe die Regel zweimal getrennt, könnte
+/// das Band grau bleiben, während die Zahlen einen Favoriten ausrufen. Genau
+/// diese Sorte Doppelung ist in diesem Projekt schon mehrfach auseinander-
+/// gelaufen.
+///
+/// **Unter drei Prozentpunkten Unterschied ist niemand Favorit.** 51 zu 49 ist
+/// ein Münzwurf, und ihn grün gegen rot zu stellen behauptet eine Überlegen-
+/// heit, die im Rauschen liegt.
+(Color, Color) _chanceFarben(int linksProzent) {
+  final rechtsProzent = 100 - linksProzent;
+  if ((linksProzent - rechtsProzent).abs() < 3) {
+    return (_cChanceNeutral, _cChanceNeutral);
+  }
+  return linksProzent > rechtsProzent
+      ? (_cGreen, _cRed)
+      : (_cRed, _cGreen);
+}
+
+/// **Die beiden Siegchancen, jede an ihrer Seite.**
+///
+/// Links die der linken Mannschaft, rechts die der rechten — in der Farbe, die
+/// auch ihre Hälfte des Bandes trägt. Ein Wort davor („Siegchance") braucht es
+/// nicht: Zwei Prozentzahlen unter einem zweifarbigen Band sind selbsterklärend,
+/// und die Karte hat eine feste Höhe, in der jede Zeile zählt.
+class _ChanceProzente extends StatelessWidget {
+  const _ChanceProzente({required this.heim});
+
+  /// Wahrscheinlichkeit der linken Seite, 0–1.
+  final double heim;
+
+  @override
+  Widget build(BuildContext context) {
+    final links = (heim * 100).round().clamp(1, 99);
+    final rechts = 100 - links;
+    final (linksFarbe, rechtsFarbe) = _chanceFarben(links);
+
+    TextStyle stil(Color farbe) => TextStyle(
+          color: farbe,
+          fontSize: Schrift.klein,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+          height: 1,
+        );
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text('$links %', style: stil(linksFarbe)),
+        Text('$rechts %', style: stil(rechtsFarbe)),
+      ],
+    );
+  }
+}
+
+/// **Das Band der Gewinnwahrscheinlichkeit.**
+///
+/// Dieselbe Form wie der [_MomentumBar] darunter — zwei Balken, acht hoch,
+/// drei Punkte Lücke, außen gerundet: Es ist dieselbe Sorte Auskunft, nur vor
+/// dem Anpfiff statt danach. Was sich unterscheidet, ist die **Quelle**: Der
+/// Momentum-Balken teilt erzielte Punkte auf, dieses Band eine gemessene
+/// Wahrscheinlichkeit.
+///
+/// **Farbe nur für die wahrscheinlichere Seite.** Bei nahezu gleichen Chancen
+/// bleiben beide Hälften neutral: Ein Favorit, den es nicht gibt, soll auch
+/// nicht behauptet werden — dieselbe Regel, nach der der Momentum-Balken bei
+/// Gleichstand grau bleibt.
+class _ChanceBar extends StatelessWidget {
+  const _ChanceBar({required this.heim});
+
+  /// Wahrscheinlichkeit der linken Seite, 0–1.
+  final double heim;
+
+  @override
+  Widget build(BuildContext context) {
+    // Flex verlangt ganze Zahlen; ein Prozentpunkt ist die feinste Stufe, die
+    // die Anzeige ohnehin nennt.
+    final l = (heim * 100).round().clamp(1, 99);
+    final r = 100 - l;
+    final (linksFarbe, rechtsFarbe) = _chanceFarben(l);
+
+    return Row(
+      children: [
+        Expanded(
+          flex: l,
+          child: Container(
+            height: 8,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                linksFarbe.withValues(alpha: 0.95),
+                linksFarbe.withValues(alpha: 0.7),
+              ]),
+              borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(4), right: Radius.circular(1)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 3),
+        Expanded(
+          flex: r,
+          child: Container(
+            height: 8,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                rechtsFarbe.withValues(alpha: 0.7),
+                rechtsFarbe.withValues(alpha: 0.95),
+              ]),
+              borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(1), right: Radius.circular(4)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MomentumBar extends StatelessWidget {
   const _MomentumBar({required this.left, required this.right});
 
