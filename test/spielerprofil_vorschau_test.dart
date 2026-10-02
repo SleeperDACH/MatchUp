@@ -34,6 +34,15 @@ FantasyPlayer _p(String id, String name, PlayerPosition pos, String club) =>
       nationality: 'DE',
     );
 
+/// **Eine gestellte Uhr für alle Vorschauen dieses Schirms.**
+///
+/// Der Standard-Ausfall im Rahmen trägt ein Rückkehrdatum, und die Zeile
+/// darunter rechnet „in N Tagen" gegen *heute*. Vier Bilder liefen ohne feste
+/// Uhr und wurden damit jeden Tag von selbst rot — gemessen 0,08 % Unterschied,
+/// und das waren genau diese Ziffern. Dasselbe Datum wie in den übrigen Tests
+/// dieser Datei, damit alle Bilder denselben Tag zeigen.
+final _festeUhr = DateTime(2026, 9, 7, 12);
+
 void main() {
   setUpAll(() async {
     await ladeSchrift();
@@ -484,6 +493,7 @@ void main() {
               player: held,
               clubIcon: null,
               isMine: true,
+              jetzt: _festeUhr,
             ),
             child: const Text('öffnen'),
           ),
@@ -608,6 +618,11 @@ void main() {
               player: held,
               clubIcon: null,
               isMine: true,
+              // **Feste Uhr.** Der Standard-Ausfall trägt ein Rückkehrdatum,
+              // und die Zeile darunter rechnet „in N Tagen" gegen heute —
+              // ohne gestellte Uhr war dieses Bild jeden Tag ein anderes
+              // (gemessen: 0,08 %, genau die Ziffern).
+              jetzt: _festeUhr,
             ),
             child: const Text('öffnen'),
           ),
@@ -704,6 +719,7 @@ void main() {
               player: held,
               clubIcon: null,
               isMine: true,
+              jetzt: _festeUhr,
             ),
             child: const Text('öffnen'),
           ),
@@ -858,6 +874,7 @@ void main() {
               player: held,
               clubIcon: null,
               isMine: true,
+              jetzt: _festeUhr,
             ),
             child: const Text('öffnen'),
           ),
