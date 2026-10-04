@@ -89,7 +89,7 @@
 <div class="kopf">
   <div class="marke">MatchUp · Push</div>
   <h1>Was noch fehlt</h1>
-  <p class="unterzeile">Nur die offenen Punkte, in der Reihenfolge, in der sie zu tun sind · Stand 2. Oktober 2026</p>
+  <p class="unterzeile">Nur die offenen Punkte, in der Reihenfolge, in der sie zu tun sind · Stand 4. Oktober 2026</p>
 </div>
 
 <div class="okbox" style="border-left-width:3px;">
@@ -105,10 +105,10 @@
     <tr><th>#</th><th>Was</th><th>Dringlichkeit</th><th>Wo</th></tr>
   </thead>
   <tbody>
-    <tr><td class="nr">1</td><td>Apple-Mitgliedschaft im Team <code>HACJC6623Z</code> auf dem Mac</td><td class="wann fehlt">Pflicht</td><td class="wo">Xcode</td></tr>
-    <tr><td class="nr">2</td><td>Push-Berechtigung für die App-ID <code>app.matchup.mobile</code></td><td class="wann fehlt">Pflicht</td><td class="wo">developer.apple.com</td></tr>
-    <tr><td class="nr">3</td><td>Den <code>.p8</code>-Schlüssel ersetzen (Kopien liegen in WhatsApp)</td><td class="wann">bewusst nein</td><td class="wo">entschieden</td></tr>
-    <tr><td class="nr">4</td><td>APNs-Schlüssel bei Firebase hinterlegen</td><td class="wann ok">erledigt</td><td class="wo">02.10.2026</td></tr>
+    <tr><td class="nr">1</td><td><b>APNs-Schlüssel bei Firebase prüfen</b> — greift nicht</td><td class="wann fehlt">hier hängt es</td><td class="wo">Firebase + Apple</td></tr>
+    <tr><td class="nr">2</td><td>Apple-Mitgliedschaft im Team <code>HACJC6623Z</code></td><td class="wann offen">wohl erledigt</td><td class="wo">Xcode</td></tr>
+    <tr><td class="nr">3</td><td>Push-Berechtigung für die App-ID <code>app.matchup.mobile</code></td><td class="wann offen">wohl erledigt</td><td class="wo">developer.apple.com</td></tr>
+    <tr><td class="nr">4</td><td>Den <code>.p8</code>-Schlüssel ersetzen (Kopien liegen in WhatsApp)</td><td class="wann">bewusst nein</td><td class="wo">entschieden</td></tr>
     <tr><td class="nr">5</td><td>Datenschutzseite veröffentlichen</td><td class="wann ok">erledigt</td><td class="wo">25.09.2026</td></tr>
     <tr><td class="nr">6</td><td>App-Datenschutz ausfüllen</td><td class="wann offen">vor Release</td><td class="wo">App Store Connect</td></tr>
     <tr><td class="nr">7</td><td>Datensicherheit ausfüllen</td><td class="wann offen">vor Release</td><td class="wo">Play Console</td></tr>
@@ -117,10 +117,46 @@
 </table>
 
 <div class="achtung" style="margin-top:14px;">
-  <b>Ohne 1 und 2 kommt keine einzige Nachricht an</b> — egal wie fertig der
-  Server ist. 6 und 7 brauchst du erst, bevor die App in die Stores geht.
-  Punkt 3 ist bewusst abgelehnt — in Schritt 4 gilt damit die Key ID
-  <code>9JF35BFS9Q</code>.
+  <b>Punkt 1 ist der einzige echte Blocker.</b> Am 04.10.2026 gemessen: Ein
+  Testpush an das registrierte iPhone scheitert mit
+  <code>Invalid APNs credential</code>. Alles andere steht oder ist sehr
+  wahrscheinlich erledigt; 6 und 7 brauchst du erst vor dem Store-Release.
+</div>
+
+<div class="schritt" style="break-before: page;">
+  <div class="schrittkopf">
+    <span class="schrittnr">1</span>
+    <span class="schritttitel">APNs-Schlüssel bei Firebase prüfen</span>
+    <span class="pflicht">hier hängt es · 5 Min</span>
+  </div>
+  <div class="achtung" style="margin:0 0 10px;"><b>Am 04.10.2026 gemessen:</b>
+  Ein Testpush an das seit dem 25.09. registrierte iOS-Gerät scheitert mit
+  <code>HTTP 401 · Invalid APNs credential</code>
+  (<code>THIRD_PARTY_AUTH_ERROR</code>).</div>
+  <p class="warum"><b>Was das genau heißt:</b> FCM hat den Geräte-Token
+  <b>angenommen</b> — sonst käme <code>UNREGISTERED</code>. Es ist dann mit Apple
+  ins Gespräch gegangen, und <b>Apple hat die Zugangsdaten abgelehnt</b>. Der
+  Fehler sitzt zwischen Firebase und Apple: nicht am Gerät, nicht in der App,
+  nicht am Server.</p>
+  <p class="warum"><b>Die Datei auf dem Mac ist in Ordnung</b> (ebenfalls am
+  04.10. geprüft): <code>~/keys/AuthKey_9JF35BFS9Q.p8</code> ist ein gültiger
+  privater Schlüssel, 256 Bit, PEM-Format, 257 Bytes — genau wie ein
+  APNs-Auth-Key aussehen muss.</p>
+  <ol class="klicks">
+    <li><b>Firebase-Konsole</b> → Zahnrad → <b>Projekteinstellungen</b> →
+        <b>Cloud Messaging</b> → <b>Apple-App-Konfiguration</b>: Steht dort
+        überhaupt ein Schlüssel?</li>
+    <li>Wenn ja: Lautet seine <b>Key ID</b> <code>9JF35BFS9Q</code>? Es gab
+        einen Vorgänger (<code>8887U4P9BH</code>) — ist der eingetragen oder die
+        alte Datei hochgeladen, erklärt das den Fehler genau so.</li>
+    <li>Steht als <b>Team ID</b> <code>HACJC6623Z</code> da? Ein Tippfehler
+        wirkt identisch.</li>
+    <li><b>developer.apple.com</b> → <b>Keys</b>: Ist <code>9JF35BFS9Q</code>
+        dort noch <b>aktiv</b> oder auf <i>Revoked</i>? Ein widerrufener
+        Schlüssel wird abgelehnt, auch wenn die Datei gültig bleibt.</li>
+  </ol>
+  <div class="fertig"><b>Fertig, wenn</b> der Testpush durchgeht. Sag Bescheid —
+  ich schicke ihn und lese die Antwort vor.</div>
 </div>
 
 <div class="schritt" style="break-before: page;">
@@ -280,7 +316,7 @@ select id, art, gesendet_at, fehler from push_auftraege order by id desc limit 5
 </div>
 
 <div class="fuss">
-  MatchUp · Was noch fehlt · Stand 02.10.2026 ·
+  MatchUp · Was noch fehlt · Stand 04.10.2026 ·
   Quelle dieser Seite: <code>docs/push_offen.html</code>, gebaut mit <code>tools/push_pdf.sh</code> ·
   Der vollständige Stand steht in <code>PUSH.md</code> und <code>PUSH.pdf</code>
 </div>

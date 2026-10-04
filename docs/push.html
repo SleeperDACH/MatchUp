@@ -156,7 +156,7 @@
 <div class="kopf">
   <div class="marke">MatchUp · Einrichtung</div>
   <h1>Push-Benachrichtigungen</h1>
-  <p class="unterzeile">Was steht, was fehlt und wie du es besorgst · Stand 2. Oktober 2026</p>
+  <p class="unterzeile">Was steht, was fehlt und wie du es besorgst · Stand 4. Oktober 2026</p>
 </div>
 
 <p style="margin:0 0 14px; font-size:10pt;">
@@ -173,8 +173,8 @@
     <tr><th>#</th><th>Teil</th><th>Status</th><th>Wer</th></tr>
   </thead>
   <tbody>
-    <tr><td class="nr">1</td><td>Bezahlte Apple-Mitgliedschaft im Team <code>HACJC6623Z</code> auf diesem Mac</td><td class="status fehlt">fehlt</td><td class="wer">du</td></tr>
-    <tr><td class="nr">2</td><td>Push-Berechtigung für die App-ID <code>app.matchup.mobile</code></td><td class="status fehlt">offen</td><td class="wer">du</td></tr>
+    <tr><td class="nr">1</td><td>Bezahlte Apple-Mitgliedschaft im Team <code>HACJC6623Z</code></td><td class="status offen">wohl erledigt</td><td class="wer">du</td></tr>
+    <tr><td class="nr">2</td><td>Push-Berechtigung für die App-ID <code>app.matchup.mobile</code></td><td class="status offen">wohl erledigt</td><td class="wer">du</td></tr>
     <tr><td class="nr">3</td><td>Key ID des APNs-Schlüssels — <code>9JF35BFS9Q</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
     <tr><td class="nr">4</td><td>Schlüsseldatei <code>AuthKey_9JF35BFS9Q.p8</code> in <code>~/keys/</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
     <tr><td class="nr">5</td><td>Team ID — <code>HACJC6623Z</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
@@ -182,7 +182,7 @@
     <tr><td class="nr">7</td><td>Firebase-Projekt <code>matchup-f9e83</code>, Analytics aus</td><td class="status ok">da</td><td class="wer">—</td></tr>
     <tr><td class="nr">8</td><td><code>GoogleService-Info.plist</code> + <code>google-services.json</code></td><td class="status ok">im Projekt</td><td class="wer">—</td></tr>
     <tr><td class="nr">9</td><td>Dienstkonto-Schlüssel als Secret <code>FIREBASE_DIENSTKONTO</code></td><td class="status ok">gesetzt</td><td class="wer">—</td></tr>
-    <tr><td class="nr">10</td><td>APNs-Schlüssel bei Firebase hinterlegt</td><td class="status ok">seit 02.10.</td><td class="wer">du</td></tr>
+    <tr><td class="nr">10</td><td><b>APNs-Schlüssel bei Firebase hinterlegt</b></td><td class="status fehlt">greift nicht</td><td class="wer">du</td></tr>
     <tr><td class="nr">11</td><td>Datenschutzerklärung veröffentlicht · Store-Angaben</td><td class="status offen">Seite live</td><td class="wer">du</td></tr>
     <tr><td class="nr">12</td><td><code>aps-environment</code>, Berechtigungsabfrage, Geräte-Tokens</td><td class="status ok">fertig</td><td class="wer">🔧</td></tr>
     <tr><td class="nr">13</td><td>Tabellen, Auslöser und Einstellungen je Nutzer</td><td class="status ok">Migration 0129</td><td class="wer">🔧</td></tr>
@@ -191,14 +191,20 @@
 </table>
 
 <div class="warum" style="margin-top:14px;">
-  <b>Am 24.09.2026 nachgemessen, nicht behauptet:</b> Die Tabellen
+  <b>Nachgemessen, nicht behauptet.</b> 24.09.: Die Tabellen
   <code>push_geraete</code>, <code>push_einstellungen</code> und
   <code>push_auftraege</code> stehen, die Function antwortet
-  <code>{"auftraege":0,"gesendet":0}</code>, und ihr Minutenlauf kommt mit
-  <code>200</code> am Gateway vorbei (kein 401). Am 02.10.2026 zusätzlich: Das
-  Dienstkonto holt einen OAuth-Token, FCM antwortet. Unverändert offen:
-  <code>security find-identity</code> kennt weiterhin nur ein
-  <i>Apple Development</i>-Zertifikat, kein Distribution-Zertifikat.
+  <code>{"auftraege":0,"gesendet":0}</code>, der Minutenlauf kommt mit
+  <code>200</code> am Gateway vorbei. 02.10.: Das Dienstkonto holt einen
+  OAuth-Token. 04.10.: In <code>push_geraete</code> liegt seit dem 25.09. ein
+  <b>iOS-Token</b> — der Testpush dorthin scheitert aber an Apple (Schritt 6).
+  <b>Zu Punkt 1 und 2:</b> Das Zertifikat auf diesem Mac trägt
+  <code>OU=HACJC6623Z</code>, also die richtige Team-ID, und es gab laut Projekt
+  schon einen TestFlight-Build — den gibt es nur mit bezahltem Programm. Dass
+  iOS überhaupt einen Push-Token ausgestellt hat, setzt zudem
+  <code>aps-environment</code> voraus. Beides bleibt dennoch unbewiesen, bis
+  der Testpush durchgeht. Ein <i>Distribution</i>-Zertifikat fehlt weiterhin —
+  das brauchst du aber erst für TestFlight und den Store, nicht zum Testen.
 </div>
 
 <h2>Vorher lesen — drei Regeln</h2>
@@ -307,15 +313,20 @@
   <div class="schrittkopf">
     <span class="schrittnr">6</span>
     <span class="schritttitel">APNs-Schlüssel bei Firebase</span>
-    <span class="erledigt">erledigt</span>
+    <span class="pflicht">hier hängt es</span>
   </div>
-  <div class="okbox"><b>Hinterlegt seit dem 02.10.2026</b> — auf deine Auskunft.</div>
-  <div class="warum"><b>Der einzige Punkt ohne eigene Messung, und das steht hier so.</b>
-  Die Firebase-Konsole gibt den Status eines APNs-Schlüssels über keine Schnittstelle
-  heraus. Ein Sendeversuch hilft nicht weiter: FCM weist einen erfundenen Token mit
-  <code>INVALID_ARGUMENT</code> ab, <b>bevor</b> es APNs befragt — am 02.10.2026
-  nachgemessen. Unterscheiden lässt sich der Fall erst mit einem echten Geräte-Token,
-  also in Schritt 8.</div>
+  <div class="achtung" style="margin:0 0 10px;"><b>Am 04.10.2026 gemessen: Der
+  Schlüssel greift nicht.</b> Ein Testpush an das registrierte iOS-Gerät scheitert mit
+  <code>HTTP 401 · Invalid APNs credential</code>
+  (<code>THIRD_PARTY_AUTH_ERROR</code>).</div>
+  <div class="warum"><b>Was das heißt:</b> FCM hat den Geräte-Token <b>angenommen</b> —
+  sonst käme <code>UNREGISTERED</code> — und ist dann bei Apple abgewiesen worden. Der
+  Fehler sitzt zwischen Firebase und Apple. <b>Die Datei auf dem Mac ist dabei in
+  Ordnung:</b> gültiger privater Schlüssel, 256 Bit, 257 Bytes.
+  <b>Nachzusehen ist zweierlei:</b> ob bei Firebase die Key ID
+  <code>9JF35BFS9Q</code> und die Team ID <code>HACJC6623Z</code> stehen (es gab einen
+  Vorgänger <code>8887U4P9BH</code>) — und ob der Schlüssel bei Apple noch aktiv ist
+  und nicht auf <i>Revoked</i> steht.</div>
   <p class="warum"><b>Warum überhaupt:</b> Firebase spricht in deinem Namen mit Apple.
   Dafür braucht es die <code>.p8</code> samt Kennnummern.</p>
   <ol class="klicks">
@@ -408,7 +419,7 @@
 </table>
 
 <div class="fuss">
-  MatchUp · Push-Benachrichtigungen · Stand 02.10.2026 ·
+  MatchUp · Push-Benachrichtigungen · Stand 04.10.2026 ·
   Quelle dieser Seite: <code>docs/push.html</code>, gebaut mit <code>tools/push_pdf.sh</code> ·
   Inhaltlich gleich: <code>PUSH.md</code>
 </div>

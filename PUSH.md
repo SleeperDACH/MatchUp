@@ -45,11 +45,21 @@ mache ich, sobald das Nötige da ist.
 | App | `firebase_core`/`firebase_messaging`, Berechtigung, Token-Registrierung, Antippen öffnet den Schirm, Einstellungsschirm im Profil |
 | Tests | `test/push_ziel_test.dart`, `test/push_einstellungen_test.dart` |
 
-**Was noch bei dir liegt:** Schritt 1 und 2 — Apple-Mitgliedschaft im Team und
-das Push-Häkchen für die App-ID — sowie die beiden Store-Angaben.
-**Die Datenschutzseite ist seit dem 25.09.2026 veröffentlicht**, und **der
-APNs-Schlüssel liegt seit dem 02.10.2026 bei Firebase** (auf deine Auskunft;
-die Konsole gibt den Status über keine Schnittstelle heraus, siehe Schritt 6).
+**Was noch bei dir liegt** (Stand 04.10.2026):
+
+- **Schritt 6 — der APNs-Schlüssel greift nicht.** Ein Testpush an das
+  registrierte iOS-Gerät scheitert mit `Invalid APNs credential`. Das ist der
+  eine Punkt, an dem es gerade hängt.
+- Die beiden Store-Angaben (Schritt 8).
+
+**Schritt 1 ist vermutlich erledigt**, anders als hier lange stand: Das
+Zertifikat auf diesem Mac trägt `OU=HACJC6623Z`, also die richtige Team-ID, und
+laut dieser Datei gab es schon einen TestFlight-Build — den gibt es nur mit
+bezahltem Programm. **Schritt 2 vermutlich auch:** Es liegt seit dem 25.09.2026
+ein iOS-Token in `push_geraete`, und den stellt iOS nur aus, wenn die App
+`aps-environment` trägt. Beides bleibt unbewiesen, bis der Testpush durchgeht.
+
+**Die Datenschutzseite ist seit dem 25.09.2026 veröffentlicht.**
 
 **Die Inbetriebnahme unten ist erledigt** (24.09.2026): Migration eingespielt,
 Secret gesetzt, Function ausgespielt, drei Cron-Jobs aktiv. Der Server wartet
@@ -70,7 +80,7 @@ nur noch auf Geräte.
 | 7 | Firebase-Projekt | ✅ `matchup-f9e83`, Analytics aus | — |
 | 8 | `GoogleService-Info.plist` (iOS) + `google-services.json` (Android) | ✅ im Projekt | — |
 | 9 | Dienstkonto-Schlüssel (JSON) für den Versand | ✅ `~/keys/firebase-dienstkonto.json` | — |
-| 10 | **APNs-Schlüssel bei Firebase hinterlegt** | ✅ seit 02.10.2026 (deine Auskunft) | du |
+| 10 | **APNs-Schlüssel bei Firebase hinterlegt** | ❌ greift nicht — `Invalid APNs credential` (04.10.2026) | du |
 | 11 | Datenschutzerklärung veröffentlicht · Store-Angaben | 🟡 Seite seit 25.09.2026 live, Stores offen | du |
 | 12 | `aps-environment` + Hintergrundmodus in der App | ✅ fertig | 🔧 |
 | 13 | Push-Paket, Berechtigungsabfrage, Geräte-Tokens | ✅ fertig | 🔧 |
@@ -256,16 +266,42 @@ ls ~/Projekte/MatchUp/ios/Runner/GoogleService-Info.plist
 
 ---
 
-## Schritt 6 — Den APNs-Schlüssel bei Firebase hinterlegen ✅
+## Schritt 6 — Den APNs-Schlüssel bei Firebase hinterlegen ❌
 
-**Erledigt** (02.10.2026, auf deine Auskunft).
+**Am 04.10.2026 gemessen: Der Schlüssel greift nicht.** Ein Testpush an das
+registrierte iOS-Gerät scheitert:
 
-**Warum er hier als einziger ohne Messung abgehakt ist:** Die Firebase-Konsole
-gibt den Status eines APNs-Schlüssels über keine Schnittstelle heraus, und ein
-Sendeversuch hilft auch nicht weiter — FCM weist einen erfundenen Token mit
-`INVALID_ARGUMENT` ab, **bevor** es APNs überhaupt befragt. Nachgemessen am
-02.10.2026; zu unterscheiden ist der Fall also erst mit einem echten Token.
-Ob der Schlüssel wirklich greift, zeigt deshalb erst Schritt 8.
+```
+HTTP 401 · UNAUTHENTICATED
+Invalid APNs credential
+errorCode: THIRD_PARTY_AUTH_ERROR
+```
+
+**Was das genau bedeutet:** FCM hat den Geräte-Token **angenommen** — sonst
+käme `UNREGISTERED`. Es ist dann mit Apple ins Gespräch gegangen, und Apple hat
+die Zugangsdaten abgelehnt. Der Fehler sitzt also zwischen Firebase und Apple,
+nicht beim Gerät und nicht in der App.
+
+**Die Datei auf dem Mac ist in Ordnung** (ebenfalls am 04.10. geprüft):
+`~/keys/AuthKey_9JF35BFS9Q.p8` ist ein gültiger privater Schlüssel, 256 Bit,
+PEM-Format, 257 Bytes — genau wie ein APNs-Auth-Key aussehen muss.
+
+**Zwei Dinge sind deshalb nachzusehen:**
+
+1. **Firebase-Konsole** → Projekteinstellungen → Cloud Messaging →
+   Apple-App-Konfiguration: Steht dort ein Schlüssel, und lautet seine Key ID
+   **`9JF35BFS9Q`**? Es gab einen Vorgänger (`8887U4P9BH`) — ist der alte
+   eingetragen oder die alte Datei hochgeladen, erklärt das den Fehler genau
+   so. Ebenso eine vertippte **Team ID**; sie muss `HACJC6623Z` lauten.
+2. **developer.apple.com** → Keys: Ist `9JF35BFS9Q` dort noch **aktiv**, oder
+   steht er auf *Revoked*? Ein widerrufener Schlüssel wird von Apple abgelehnt,
+   auch wenn die Datei technisch gültig bleibt.
+
+**Dieser Schritt stand zwischenzeitlich als erledigt da** (auf Auskunft vom
+02.10.), weil es keine Schnittstelle gibt, über die sich der Status abfragen
+ließe. Erst der Testpush mit einem echten Token hat es gezeigt — vorher ging es
+nicht: Ein erfundener Token wird mit `INVALID_ARGUMENT` abgewiesen, **bevor**
+APNs überhaupt befragt wird.
 
 **Warum überhaupt:** Firebase spricht in deinem Namen mit Apple. Dafür braucht
 es die `.p8` samt Kennnummern. Die Anleitung bleibt stehen, falls der
