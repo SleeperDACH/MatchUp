@@ -276,9 +276,14 @@
   nur die Kennnummern dazu.</p>
   <div class="achtung"><b>Apple gibt eine <code>.p8</code> nur einmal heraus.</b> Ist sie weg,
   legst du einen neuen Schlüssel an: <code>developer.apple.com/account</code> →
-  <b>Keys</b> → alten <b>Revoke</b> → <b>+</b> → Name <code>MatchUp Push</code> →
+  <b>Keys</b> → <b>+</b> → Name <code>MatchUp Push</code> →
   Häkchen <b>APNs</b> → <b>Continue</b> → <b>Register</b> → <b>Download</b>. Die neue
-  Key ID notieren und mir sagen.</div>
+  Key ID notieren und bei Firebase eintragen.
+  <br><br>
+  <b>Widerrufen nur, was wirklich verloren ist.</b> Hier stand bis zum 04.10.2026 die
+  Key ID des <i>aktiven</i> Schlüssels — sie war beim Nachziehen der neuen Nummer
+  versehentlich mitersetzt worden. Wer dem folgte, widerrief den Schlüssel, den er
+  gerade benutzt, und bekam danach <code>Invalid APNs credential</code>.</div>
   <pre>mkdir -p ~/keys &amp;&amp; mv ~/Downloads/AuthKey_*.p8 ~/keys/</pre>
 </div>
 

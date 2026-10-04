@@ -181,8 +181,16 @@ heraus; ein verlorener Schlüssel lässt sich nicht erneut laden.
 
 1. <https://developer.apple.com/account> → **Certificates, Identifiers &
    Profiles** → links **Keys**.
-2. Den alten Schlüssel `9JF35BFS9Q` anklicken → **Revoke** → bestätigen.
-   (Er ist ohne Datei nutzlos. Keine Sorge: Es benutzt ihn noch nichts.)
+2. **Nur den Schlüssel widerrufen, dessen Datei wirklich weg ist** — ihn
+   anklicken → **Revoke** → bestätigen. Ohne Datei ist er nutzlos.
+
+   > ⚠️ **Hier stand bis zum 04.10.2026 die Key ID des *aktiven* Schlüssels.**
+   > Sie war beim Nachziehen der neuen Nummer versehentlich mitersetzt worden,
+   > obwohl an dieser Stelle der verlorene Vorgänger gemeint ist. Wer dem
+   > folgte, widerrief den Schlüssel, den er gerade benutzt — und bekam
+   > danach `Invalid APNs credential`. **Nie den Schlüssel widerrufen, der
+   > bei Firebase eingetragen ist.**
+
 3. Oben auf **+** (Create a key).
 4. **Key Name**: `MatchUp Push`.
 5. Häkchen bei **Apple Push Notifications service (APNs)**.
