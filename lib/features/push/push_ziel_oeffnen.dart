@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/league_screen.dart';
+import '../../app/match_detail_screen.dart';
 import '../fantasy/providers.dart';
 import '../fantasy/ui/fantasy_league_screen.dart';
 import '../messaging/ui/conversation_screen.dart';
@@ -49,11 +50,17 @@ Future<void> pushZielOeffnen(
             // Liga-Reiter; sonst bleibt es bei der Tabelle.
             initialTab: switch (ziel.kategorie) {
               'tipps' => 0,
-              'nachrichten' => 2,
+              'runden_chat' || 'nachrichten' => 2,
               _ => 1,
             },
           ),
         ));
+
+      case 'spiel':
+        // Live-Meldungen tragen die Fixture-ID samt Präfix — genau die, die
+        // auch der Live-Tab an die Spieldetails gibt.
+        navigator.push(MaterialPageRoute(
+            builder: (_) => MatchDetailScreen(fixtureId: ziel.id)));
 
       case 'nachrichten':
         // Der Name des Partners steht nicht in der Benachrichtigung — der

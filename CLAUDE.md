@@ -1123,10 +1123,41 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
 - **Leerlauf kostet nichts.** Die Function fragt zuerst den eigenen Korb und
   kehrt ohne einen einzigen Google-Request um, wenn er leer ist — dieselbe
   Bauart wie `sync-stats`. Deshalb ist der Minutentakt vertretbar.
-- **Zwei Cron-Jobs:** `push-versand` (jede Minute, leert den Korb) und
-  `push-tipp-erinnerungen` (alle 15 Minuten, sucht offene Tipps 60–120 Minuten
-  vor Anstoß). Das Fenster ist breiter als der Takt, damit ein ausgefallener
-  Lauf vom nächsten aufgefangen wird; gegen Doppelungen steht der Schlüssel.
+- **Drei Cron-Jobs:** `push-versand` (jede Minute, leert den Korb),
+  `push-tipp-erinnerungen` (alle 15 Minuten, meldet ungetippte Spiele
+  **drei Stunden** vor Anpfiff — Fenster 150–180 Minuten, seit 0131) und
+  `sync-live` (jede Minute, siehe unten). Das Tipp-Fenster ist breiter als der
+  Takt, damit ein ausgefallener Lauf vom nächsten aufgefangen wird; gegen
+  Doppelungen steht der Schlüssel.
+- **Die Einstellungen sind nach Bereichen geschnitten** (0131): Fantasy,
+  Tippspiel, Live, Allgemein. Die Sammelsorten `nachrichten` und `anfragen`
+  aus 0129 sind zerlegt (Liga-Chat/Tipprunden-Chat/Direktnachrichten,
+  Liga-/Runden-Beitritt/Freunde); ihre Spalten bleiben für ältere
+  App-Versionen stehen und werden nicht mehr gelesen. `push_anlegen` liest den
+  Schalter **per Spaltenname** (`to_jsonb(e) -> kategorie`) — eine neue Sorte
+  braucht nur ihre Spalte, den Check-Eintrag und den Eintrag in
+  `PushKategorie.alle`.
+- **Ein angenommener Trade geht an die ganze Liga**: Anbieter „Trade
+  angenommen", alle übrigen außer dem Annehmenden „Trade in <Liga>" mit beiden
+  Seiten. Gemeldet beim Annehmen, nicht beim Vollzug nach dem Spieltag (0088).
+- **Live meldet nur an Fans** — wer einen der beiden Vereine als
+  `user_favorites`-Team hat; Liga-Favoriten zählen nicht. `sync-live` holt die
+  Spiele mit Anstoß von −4 h bis +5 min samt Ereignissen bei Sportmonks
+  (`fixtures` kennt weder Halbzeit noch Karten und wird nur alle 10 Minuten
+  gespiegelt) und reicht je Spiel einen Schnappschuss an `push_live_abgleich`.
+  **Was neu ist, entscheidet die Datenbank** (`push_live_stand`: letzter
+  Zustand plus gemeldete Ereignis-IDs) — Vergleich, Aufträge und neuer Stand in
+  einer Transaktion. Tore und Karten werden an der **Ereignis-ID** erkannt,
+  nicht am Spielstand; die **Erstsicht meldet nichts** (sonst bekäme jeder Fan
+  beim ersten Lauf alle Tore laufender Spiele). Der Versand verwirft
+  Live-Aufträge, die älter als 15 Minuten sind. Prüfen ohne zu schreiben:
+  `POST /functions/v1/sync-live?probe=<sportmonks-id>`.
+- **Nach fünf Fehlversuchen gibt der Versand auf** und setzt `gesendet_at`.
+  Vorher blieb so ein Auftrag ewig offen und hielt seinen Schlüssel belegt —
+  jeder weitere Chat desselben Absenders wäre still verschluckt worden.
+- **Nichts, was Aufträge anlegt, ist per RPC aufrufbar** (0131). `push_anlegen`
+  war für `anon` offen: Jeder hätte jedem Nutzer jeden Text aufs Handy legen
+  können. Offen bleibt nur `push_geraet_melden`.
 - **Es gilt dieselbe Deploy-Regel wie für die Sync-Functions:** ausspielen mit
   `--no-verify-jwt`, Secret `FIREBASE_DIENSTKONTO` setzen, und danach
   `supabase functions list` fragen, was wirklich draußen ist. Die Datei im Repo
@@ -1155,6 +1186,7 @@ flutter build apk                          # ein APK zum Sideloaden/Testen
 
 supabase db push                           # Migrationen einspielen
 supabase functions deploy push --no-verify-jwt   # Push-Versand ausspielen
+supabase functions deploy sync-live --no-verify-jwt  # Live-Abgleich für Push
 supabase functions list                    # was wirklich draußen ist
 ```
 

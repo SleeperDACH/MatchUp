@@ -37,6 +37,11 @@ const PRO_LAUF = 200;
 // diese Grenze zöge ein dauerhaft kaputter Auftrag jeden Lauf in die Länge.
 const MAX_VERSUCHE = 5;
 
+// Ein Tor von vor einer Stunde ist keine Nachricht mehr, sondern Lärm. Live-
+// Aufträge, die so lange liegen geblieben sind (Ausfall bei Google oder
+// Apple, Function nicht ausgespielt), werden verworfen statt nachgereicht.
+const LIVE_HALTBAR_MS = 15 * 60 * 1000;
+
 type Dienstkonto = {
   project_id: string;
   client_email: string;
@@ -126,6 +131,7 @@ type Auftrag = {
   text: string;
   ziel: Record<string, unknown>;
   versuche: number;
+  erstellt_at: string;
 };
 
 /// Eine Nachricht an ein Gerät. Gibt zurück, ob der Token weg darf.
@@ -194,7 +200,7 @@ Deno.serve(async (req) => {
   // Schritt eins ist immer die eigene Tabelle.
   const { data: auftraege, error } = await supabase
     .from("push_auftraege")
-    .select("id, user_id, kategorie, titel, text, ziel, versuche")
+    .select("id, user_id, kategorie, titel, text, ziel, versuche, erstellt_at")
     .is("gesendet_at", null)
     .lt("versuche", MAX_VERSUCHE)
     .order("erstellt_at", { ascending: true })
@@ -235,6 +241,17 @@ Deno.serve(async (req) => {
   const muell: string[] = [];
 
   for (const a of auftraege as Auftrag[]) {
+    if (
+      a.kategorie.startsWith("live_") &&
+      Date.now() - new Date(a.erstellt_at).getTime() > LIVE_HALTBAR_MS
+    ) {
+      await supabase.from("push_auftraege")
+        .update({ gesendet_at: new Date().toISOString(), fehler: "veraltet" })
+        .eq("id", a.id);
+      verworfen++;
+      continue;
+    }
+
     const tokens = proNutzer.get(a.user_id) ?? [];
     if (tokens.length === 0) {
       // Kein Gerät mehr: Der Auftrag ist erledigt, nicht gescheitert.
@@ -261,10 +278,22 @@ Deno.serve(async (req) => {
         .eq("id", a.id);
       gesendet++;
     } else {
-      // Nur der Zähler steigt — der nächste Lauf versucht es erneut, bis
-      // MAX_VERSUCHE erreicht ist.
+      // Der nächste Lauf versucht es erneut, bis MAX_VERSUCHE erreicht ist.
+      // Danach wird aufgegeben — und zwar mit `gesendet_at`: Der eindeutige
+      // Schlüssel gilt nur für offene Aufträge, ein ewig offener blockierte
+      // sonst jede künftige Meldung derselben Art (etwa jeden weiteren Chat
+      // desselben Absenders).
+      const versuche = a.versuche + 1;
       await supabase.from("push_auftraege")
-        .update({ versuche: a.versuche + 1, fehler: letzterFehler ?? null })
+        .update({
+          versuche,
+          fehler: versuche >= MAX_VERSUCHE
+            ? `aufgegeben: ${letzterFehler ?? ""}`
+            : letzterFehler ?? null,
+          ...(versuche >= MAX_VERSUCHE
+            ? { gesendet_at: new Date().toISOString() }
+            : {}),
+        })
         .eq("id", a.id);
     }
   }

@@ -4,40 +4,75 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/app_config.dart';
 import '../auth/providers.dart';
 
+/// Die vier Blöcke des Einstellungsschirms (Migration 0131).
+enum PushBereich {
+  fantasy('Fantasy'),
+  tippspiel('Tippspiel'),
+  live('Live'),
+  allgemein('Allgemein');
+
+  const PushBereich(this.titel);
+  final String titel;
+}
+
 /// Eine Sorte Benachrichtigung — Schlüssel, Name und der Satz darunter.
 ///
 /// Die Schlüssel sind dieselben wie die Spalten in `push_einstellungen` und
-/// die erlaubten Werte von `push_auftraege.kategorie` (Migration 0129). Wer
-/// hier eine Sorte ergänzt, ergänzt dort eine Spalte — sonst landet ein
-/// Auftrag mit unbekannter Kategorie im Check-Constraint.
+/// die erlaubten Werte von `push_auftraege.kategorie` (Migration 0131). Wer
+/// hier eine Sorte ergänzt, ergänzt dort eine Spalte und den Check — sonst
+/// landet ein Auftrag mit unbekannter Kategorie im Check-Constraint.
 class PushKategorie {
-  const PushKategorie(this.schluessel, this.name, this.hinweis);
+  const PushKategorie(this.schluessel, this.bereich, this.name, this.hinweis);
 
   final String schluessel;
+  final PushBereich bereich;
   final String name;
   final String hinweis;
 
   static const alle = [
-    PushKategorie('draft', 'Draft',
+    PushKategorie('draft', PushBereich.fantasy, 'Draft',
         'Wenn du im Draft am Zug bist.'),
-    PushKategorie('trades', 'Trades',
-        'Neue Angebote und ob deines angenommen wurde.'),
-    PushKategorie('waiver', 'Waiver',
+    PushKategorie('trades', PushBereich.fantasy, 'Trades',
+        'Angebote an dich, Antworten auf deine und jeder angenommene Trade '
+            'in deinen Ligen.'),
+    PushKategorie('waiver', PushBereich.fantasy, 'Waiver',
         'Ob dein Antrag durchgegangen ist.'),
-    PushKategorie('nachrichten', 'Nachrichten',
-        'Direktnachrichten sowie Liga- und Tipprunden-Chat.'),
-    PushKategorie('ausfaelle', 'Ausfälle',
+    PushKategorie('ausfaelle', PushBereich.fantasy, 'Ausfälle',
         'Wenn ein aufgestellter Spieler verletzt oder gesperrt ist.'),
-    PushKategorie('tipps', 'Offene Tipps',
-        'Erinnerung, solange vor Anstoß noch Tipps fehlen.'),
-    PushKategorie('anfragen', 'Anfragen',
-        'Beitritts- und Freundschaftsanfragen.'),
+    PushKategorie('liga_chat', PushBereich.fantasy, 'Liga-Chat',
+        'Neue Nachrichten im Chat deiner Fantasy-Ligen.'),
+    PushKategorie('liga_anfragen', PushBereich.fantasy, 'Beitrittsanfragen',
+        'Wenn jemand in eine Liga will, die du verwaltest.'),
+    PushKategorie('tipps', PushBereich.tippspiel, 'Offene Tipps',
+        'Drei Stunden vor Anpfiff, falls dein Tipp noch fehlt.'),
+    PushKategorie('runden_chat', PushBereich.tippspiel, 'Tipprunden-Chat',
+        'Neue Nachrichten im Chat deiner Tipprunden.'),
+    PushKategorie('runden_anfragen', PushBereich.tippspiel,
+        'Beitrittsanfragen',
+        'Wenn jemand in eine Tipprunde will, die du verwaltest.'),
+    PushKategorie('live_anpfiff', PushBereich.live, 'Anpfiff',
+        'Wenn ein Spiel deiner Lieblingsvereine beginnt.'),
+    PushKategorie('live_tore', PushBereich.live, 'Tore',
+        'Jedes Tor in den Spielen deiner Lieblingsvereine.'),
+    PushKategorie('live_rote_karten', PushBereich.live, 'Rote Karten',
+        'Rot und Gelb-Rot in den Spielen deiner Lieblingsvereine.'),
+    PushKategorie('live_halbzeit', PushBereich.live, 'Halbzeit',
+        'Der Stand zur Pause.'),
+    PushKategorie('live_endstand', PushBereich.live, 'Endstand',
+        'Das Ergebnis nach dem Abpfiff.'),
+    PushKategorie('direktnachrichten', PushBereich.allgemein,
+        'Direktnachrichten', 'Wenn dir jemand schreibt.'),
+    PushKategorie('freunde', PushBereich.allgemein, 'Freundschaften',
+        'Neue Anfragen und angenommene.'),
   ];
+
+  static List<PushKategorie> imBereich(PushBereich b) =>
+      [for (final k in alle) if (k.bereich == b) k];
 }
 
 /// Die Schalter eines Nutzers. **Fehlende Zeile heißt „alles an"** — dieselbe
 /// Regel wie in der Datenbank, und sie steht hier ein zweites Mal, weil der
-/// Schirm sonst beim ersten Öffnen sieben ausgeschaltete Schalter zeigte.
+/// Schirm sonst beim ersten Öffnen lauter ausgeschaltete Schalter zeigte.
 class PushEinstellungen {
   const PushEinstellungen(this._werte);
 

@@ -12,7 +12,7 @@ import '../../core/config/app_config.dart';
 ///
 /// Der Server schickt das Ziel als zwei Zeichenketten mit (`art`, `id`) —
 /// FCM lässt in `data` nichts anderes zu als Strings. Welche Arten es gibt,
-/// steht an genau dieser Stelle und in `push_anlegen` (Migration 0129);
+/// steht an genau dieser Stelle und in den Auslösern (Migrationen 0129, 0131);
 /// kommt eine unbekannte Art an, öffnet die App einfach nichts, statt zu
 /// scheitern.
 class PushZiel {
@@ -26,7 +26,7 @@ class PushZiel {
   /// offenen Tipps den Tippen-Reiter, im Chatfall den Liga-Reiter.
   final String kategorie;
 
-  static const arten = {'fantasy', 'tipprunde', 'nachrichten'};
+  static const arten = {'fantasy', 'tipprunde', 'nachrichten', 'spiel'};
 
   static PushZiel? ausDaten(Map<String, dynamic> daten) {
     final art = daten['art']?.toString() ?? '';

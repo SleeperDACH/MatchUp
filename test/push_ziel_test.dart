@@ -36,8 +36,19 @@ void main() {
   });
 
   test('alle Arten, die der Server schickt, sind bekannt', () {
-    // Gegenstück zu `push_anlegen` in Migration 0129: Dort stehen genau diese
-    // drei Werte in `jsonb_build_object('art', …)`.
-    expect(PushZiel.arten, {'fantasy', 'tipprunde', 'nachrichten'});
+    // Gegenstück zu den Auslösern in Migration 0129 und 0131: Dort stehen
+    // genau diese Werte in `jsonb_build_object('art', …)` — `spiel` für die
+    // Live-Meldungen.
+    expect(PushZiel.arten, {'fantasy', 'tipprunde', 'nachrichten', 'spiel'});
+  });
+
+  test('eine Live-Meldung führt aufs Spiel', () {
+    final ziel = PushZiel.ausDaten({
+      'art': 'spiel',
+      'id': 'sportmonks:19432112',
+      'kategorie': 'live_tore',
+    });
+    expect(ziel, isNotNull);
+    expect(ziel!.id, 'sportmonks:19432112');
   });
 }

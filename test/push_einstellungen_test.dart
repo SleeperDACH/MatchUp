@@ -4,8 +4,8 @@ import 'package:matchup/features/push/push_einstellungen.dart';
 /// **Fehlende Zeile heißt „alles an".**
 ///
 /// Die Regel steht zweimal — in der Datenbank (`push_anlegen`, Migration
-/// 0129) und hier. Liefe sie auseinander, zeigte der Einstellungsschirm beim
-/// ersten Öffnen sieben ausgeschaltete Schalter, während der Server munter
+/// 0131) und hier. Liefe sie auseinander, zeigte der Einstellungsschirm beim
+/// ersten Öffnen lauter ausgeschaltete Schalter, während der Server munter
 /// verschickt.
 void main() {
   test('ohne gespeicherte Zeile ist alles an', () {
@@ -22,8 +22,8 @@ void main() {
   });
 
   test('kopieMit ändert genau einen Schalter', () {
-    final e = const PushEinstellungen.allesAn().kopieMit('nachrichten', false);
-    expect(e.an('nachrichten'), isFalse);
+    final e = const PushEinstellungen.allesAn().kopieMit('liga_chat', false);
+    expect(e.an('liga_chat'), isFalse);
     expect(e.an('draft'), isTrue);
     expect(e.an('tipps'), isTrue);
   });
@@ -41,11 +41,34 @@ void main() {
   });
 
   test('die Schlüssel stimmen mit der Datenbank überein', () {
-    // Dieselbe Liste wie im Check-Constraint von `push_auftraege.kategorie`.
+    // Dieselbe Liste wie die Spalten von `push_einstellungen` und der Check
+    // von `push_auftraege.kategorie` (Migration 0131), ohne die beiden
+    // Altsorten `nachrichten` und `anfragen`.
     expect(
       PushKategorie.alle.map((k) => k.schluessel).toList(),
-      ['draft', 'trades', 'waiver', 'nachrichten', 'ausfaelle', 'tipps',
-       'anfragen'],
+      [
+        'draft', 'trades', 'waiver', 'ausfaelle', 'liga_chat', 'liga_anfragen',
+        'tipps', 'runden_chat', 'runden_anfragen',
+        'live_anpfiff', 'live_tore', 'live_rote_karten', 'live_halbzeit',
+        'live_endstand',
+        'direktnachrichten', 'freunde',
+      ],
     );
+  });
+
+  test('jeder Bereich hat Schalter, und keiner fehlt', () {
+    for (final b in PushBereich.values) {
+      expect(PushKategorie.imBereich(b), isNotEmpty, reason: b.name);
+    }
+    final summe = PushBereich.values
+        .map((b) => PushKategorie.imBereich(b).length)
+        .fold(0, (a, n) => a + n);
+    expect(summe, PushKategorie.alle.length);
+  });
+
+  test('die Altsorten aus 0129 stehen nicht mehr auf dem Schirm', () {
+    final schluessel = PushKategorie.alle.map((k) => k.schluessel).toSet();
+    expect(schluessel.contains('nachrichten'), isFalse);
+    expect(schluessel.contains('anfragen'), isFalse);
   });
 }

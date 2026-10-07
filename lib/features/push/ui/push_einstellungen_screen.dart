@@ -5,10 +5,11 @@ import '../../../app/widgets/karte.dart';
 import '../../../core/ui/form_section.dart';
 import '../push_einstellungen.dart';
 
-/// Ein Schalter je Sorte Benachrichtigung.
+/// Ein Schalter je Sorte Benachrichtigung, in vier Blöcken: Fantasy,
+/// Tippspiel, Live, Allgemein (Migration 0131).
 ///
 /// **Der Schirm schaltet nicht die Berechtigung**, sondern nur, was die App
-/// verschickt. Wer Push im Betriebssystem abgelehnt hat, sieht hier sieben
+/// verschickt. Wer Push im Betriebssystem abgelehnt hat, sieht hier lauter
 /// Schalter, die nichts bewirken — deshalb steht der Hinweis darüber und
 /// nicht in einer Fußnote.
 ///
@@ -76,28 +77,34 @@ class _PushEinstellungenScreenState
                 style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
               ),
               const SizedBox(height: 20),
-              FormSection(
-                titel: 'Wofür',
-                kinder: [
-                  for (final k in PushKategorie.alle) ...[
-                    Karte(
-                      hauch: stand.an(k.schluessel) ? scheme.primary : null,
-                      padding: EdgeInsets.zero,
-                      child: SwitchListTile(
-                        value: stand.an(k.schluessel),
-                        onChanged: _speichert
-                            ? null
-                            : (v) => _umschalten(k.schluessel, v),
-                        title: Text(k.name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(k.hinweis),
+              for (final b in PushBereich.values) ...[
+                FormSection(
+                  titel: b.titel,
+                  hinweis: b == PushBereich.live
+                      ? 'Für die Vereine unter deinen Favoriten.'
+                      : null,
+                  kinder: [
+                    for (final k in PushKategorie.imBereich(b)) ...[
+                      Karte(
+                        hauch: stand.an(k.schluessel) ? scheme.primary : null,
+                        padding: EdgeInsets.zero,
+                        child: SwitchListTile(
+                          value: stand.an(k.schluessel),
+                          onChanged: _speichert
+                              ? null
+                              : (v) => _umschalten(k.schluessel, v),
+                          title: Text(k.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold)),
+                          subtitle: Text(k.hinweis),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 8),
+                    ],
                   ],
-                ],
-              ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ],
           );
         },
