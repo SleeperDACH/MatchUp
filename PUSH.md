@@ -59,6 +59,25 @@ bezahltem Programm. **Schritt 2 vermutlich auch:** Es liegt seit dem 25.09.2026
 ein iOS-Token in `push_geraete`, und den stellt iOS nur aus, wenn die App
 `aps-environment` trägt. Beides bleibt unbewiesen, bis der Testpush durchgeht.
 
+> **Befund vom 05.10.2026: `HACJC6623Z` ist das falsche Team.** Das
+> Zertifikat auf diesem Mac trägt `OU=HACJC6623Z, O=Felix Sohrmann` — `O` ist
+> der Teamname, es ist also Felix' **kostenloses Personal Team**;
+> developer.apple.com zeigt dort „Jetzt Mitglied im Developer Program werden".
+> Bezahlt hat ein Bekannter, in dessen Team Felix nur über **App Store
+> Connect** (Admin) ist. Beide APNs-Schlüssel stammen aus jenem Team und
+> wurden mit `HACJC6623Z` direkt bei Apple geprüft: `403 InvalidProviderToken`,
+> Produktion und Sandbox. Der frühere Verdacht „Schlüssel widerrufen" ist
+> damit sehr wahrscheinlich falsch.
+>
+> **Prüfen ohne Firebase:** ES256-JWT (`kid` = Key ID, `iss` = Team ID) an
+> `https://api.push.apple.com/3/device/<64 Nullen>`. Stimmt das Paar, kommt
+> `400 BadDeviceToken`, sonst `403 InvalidProviderToken`.
+>
+> **06.10.2026: Team ID `LR3PYT6U2L`.** Direkt bei Apple geprüft: `9FJS77M728`
+> mit `LR3PYT6U2L` → `400 BadDeviceToken` in Produktion und Sandbox, das Paar
+> ist also gültig. Bei Firebase eingetragen; der Testpush an das iPhone ging
+> mit HTTP 200 durch (FCM-Nachricht `3796999a-…`).
+
 **Die Datenschutzseite ist seit dem 25.09.2026 veröffentlicht.**
 
 **Die Inbetriebnahme unten ist erledigt** (24.09.2026): Migration eingespielt,
@@ -71,16 +90,16 @@ nur noch auf Geräte.
 
 | # | Teil | Status | Wer |
 |---|------|--------|-----|
-| 1 | Bezahlte Apple-Mitgliedschaft im Team `HACJC6623Z` auf diesem Mac | ❌ fehlt | du |
+| 1 | Bezahlte Apple-Mitgliedschaft | 🟡 liegt beim Team eines Bekannten, nicht bei `HACJC6623Z` (siehe unten) | du |
 | 2 | Push-Berechtigung für die App-ID `app.matchup.mobile` | ❌ ungeprüft | du |
-| 3 | Key ID des APNs-Schlüssels | ✅ `9JF35BFS9Q` (neu erzeugt) | — |
-| 4 | Schlüsseldatei `AuthKey_9JF35BFS9Q.p8` | ✅ in `~/keys/` | — |
-| 5 | Team ID | ✅ `HACJC6623Z` | — |
+| 3 | Key ID des APNs-Schlüssels | ✅ `9FJS77M728` (05.10.2026; `9JF35BFS9Q` ist abgelöst) | — |
+| 4 | Schlüsseldatei `AuthKey_9FJS77M728.p8` | ✅ in `~/keys/` | — |
+| 5 | Team ID | ✅ `LR3PYT6U2L` (zahlendes Team; `HACJC6623Z` ist das kostenlose Personal Team) | — |
 | 6 | Bundle ID | ✅ `app.matchup.mobile` | — |
 | 7 | Firebase-Projekt | ✅ `matchup-f9e83`, Analytics aus | — |
 | 8 | `GoogleService-Info.plist` (iOS) + `google-services.json` (Android) | ✅ im Projekt | — |
 | 9 | Dienstkonto-Schlüssel (JSON) für den Versand | ✅ `~/keys/firebase-dienstkonto.json` | — |
-| 10 | **APNs-Schlüssel bei Firebase hinterlegt** | ❌ greift nicht — `Invalid APNs credential` (04.10.2026) | du |
+| 10 | **APNs-Schlüssel bei Firebase hinterlegt** | ✅ `9FJS77M728` / `LR3PYT6U2L` — Testpush 06.10.2026: HTTP 200 | — |
 | 11 | Datenschutzerklärung veröffentlicht · Store-Angaben | 🟡 Seite seit 25.09.2026 live, Stores offen | du |
 | 12 | `aps-environment` + Hintergrundmodus in der App | ✅ fertig | 🔧 |
 | 13 | Push-Paket, Berechtigungsabfrage, Geräte-Tokens | ✅ fertig | 🔧 |
