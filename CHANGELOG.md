@@ -8,6 +8,85 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.7.0+10 — 7. Oktober 2026
+
+24 Commits seit 1.6.0+9. Der Schwerpunkt: **Die App meldet sich jetzt von
+selbst** — mit Push-Benachrichtigungen, die man Sorte für Sorte abschalten
+kann. Dazu eine Prognose für die Woche, bevor ein Ball rollt.
+
+### Neu
+
+- **Push-Benachrichtigungen.** Im Profil unter *Benachrichtigungen*, in vier
+  Bereichen mit je einem Schalter pro Sorte:
+  - **Fantasy** — du bist im Draft am Zug, Trade-Angebote und -Antworten,
+    Ergebnis deines Waiver-Antrags, ein aufgestellter Spieler fällt aus,
+    Liga-Chat, Beitrittsanfragen an Ligen, die du verwaltest. Ein
+    angenommener Trade geht an die ganze Liga, nicht nur an die beiden
+    Beteiligten.
+  - **Tippspiel** — **drei Stunden vor Anpfiff**, wenn dein Tipp für dieses
+    Spiel noch fehlt; wer getippt hat, hört nichts. Dazu Tipprunden-Chat und
+    Beitrittsanfragen.
+  - **Live** für deine Lieblingsvereine — Anpfiff, jedes Tor, Rote und
+    Gelb-Rote Karten, der Stand zur Pause, der Endstand.
+  - **Allgemein** — Direktnachrichten und Freundschaftsanfragen.
+
+  Antippen öffnet den passenden Schirm, bei Live-Meldungen das Spiel. Zehn
+  Chatnachrichten hintereinander werden zu einer Meldung zusammengefasst, und
+  ein Tor, das wegen einer Störung über eine Viertelstunde liegen geblieben
+  ist, kommt gar nicht mehr statt verspätet. Wer nichts einstellt, bekommt
+  alles — wer Push erlaubt hat, hat die Entscheidung getroffen.
+- **Die voraussichtliche Punktzahl deiner Startelf.** Zwischen den
+  Spieltagen steht im Kader links neben dem Torwart, was die aufgestellte Elf
+  im Schnitt holt. Verletzte und Gesperrte zählen nicht mit, und die Box sagt,
+  auf wie vielen Spielern sie beruht („9 von 11"). Läuft der Spieltag, tragen
+  die Kacheln echte Punkte und die Schätzung verschwindet.
+- **MatchUp: Prognose beider Seiten und die Siegchance.** Vor dem Spieltag
+  zeigt die Duellkarte die voraussichtlichen Punkte beider Manager, darunter
+  ein Band mit der Gewinnwahrscheinlichkeit — im MatchUp-Tab und auf der
+  Liga-Übersicht. Die Chance hängt nicht nur am Vorsprung, sondern daran, wie
+  stark die Wochensummen **dieser** Liga schwanken: 30 Punkte sind in einer
+  ruhigen Liga fast sicher, in einer wilden kaum mehr als ein Münzwurf. Vor
+  dem zweiten gewerteten Spieltag fehlt die Grundlage, dann bleibt das Band
+  weg, statt 50:50 zu behaupten.
+- **Ausfälle direkt im Kader.** Verletzung und Sperre stehen als Zeichen an
+  der Spielerkarte auf dem Rasen und hinter dem Namen auf der Bank — ohne
+  Umweg über das Spielerprofil.
+- **Vom Namen ins Managerprofil.** Ein Tipp auf den Benutzernamen im MatchUp
+  führt ins Ligaprofil des Managers; bisher ging das nur über die Tabelle.
+
+### Geändert
+
+- **Eine Karte je Spieler auf dem Rasen.** Wappen, Name und Positionsfarbe
+  stehen in einer Kachel fester Breite, der Tauschknopf sitzt im Kopf der
+  Karte. Zwischen den Spieltagen zeigt sie Gegner und Anstoß statt einer
+  Punktzahl, die noch nichts misst.
+- **Formationen sind nie mehr ausgegraut.** Wer keine fünf Verteidiger hat,
+  kann die Fünferkette trotzdem wählen — dann bleibt ein Platz offen.
+- **Die Punkte auf der Bank stehen gerade**, rechtsbündig in einer festen
+  Spalte. Vorher verrutschten sie je Zeile verschieden weit.
+- **Spielerprofil: Tabelle statt Vereinskader.** Der Reiter zeigt jetzt, wo
+  der Verein des Spielers steht.
+- **Navigationsleiste ohne Umrandung.** Größere weiße Symbole, beschriftet ist
+  nur der Reiter, auf dem man steht.
+- **Ruhigere Spielplanzeilen.** „Bundesliga 4. Spieltag" stand über jeder
+  Anstoßzeit — jetzt einmal; Datum und Uhrzeit treten zurück.
+
+### Entfernt
+
+- **Der Dynasty-Modus.** Neue Ligen sind immer Redraft-Ligen; mit dem Modus
+  fallen der U20-Draft und der Saisonwechsel mit übernommenem Kader weg.
+
+### Behoben
+
+- **Spielernamen stimmen überall überein.** Live-Tab und Torjägerliste
+  zeigten bei manchen Spielern (etwa Grønbæk, Mokwa) eine andere Schreibweise
+  als die Aufstellung.
+- **Tore und Eigentore werden richtig gezählt.** Die Statistik der Quelle
+  schrieb manchem Spieler ein Tor gut, das ein anderer erzielt hatte, oder
+  zählte ein Eigentor doppelt. Tore richten sich jetzt nach den
+  Spielereignissen, Eigentore sind ein eigener Wert. Beides wirkt schon seit
+  dem 25. September, auch in älteren App-Versionen.
+
 ## 1.6.0+9 — 9. September 2026
 
 Zwei Tage nach 1.5.0+8. Der Schwerpunkt liegt auf einer Lücke, die im Betrieb
