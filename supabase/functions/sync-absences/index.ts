@@ -138,6 +138,15 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Die App zeigt nur Deutsch (Migration 0132). Ein Typ ohne `name_de`
+  // erscheint dort als „Verletzung"/„Sperre" -- hier wird er gemeldet, damit
+  // die Uebersetzung nachgetragen wird.
+  const { data: ohneDe } = await supabase
+    .from("sideline_types")
+    .select("id, name")
+    .is("name_de", null)
+    .in("id", [...typIds]);
+
   // 5) Schreiben und Aufraeumen. **Erst upserten, dann loeschen**, damit
   //    zwischen beiden Schritten nie eine leere Liste steht.
   if (gefiltert.length > 0) {
@@ -166,6 +175,9 @@ Deno.serve(async (req) => {
     verletzt: gefiltert.filter((z) => z.kategorie === "injury").length,
     gesperrt: gefiltert.filter((z) => z.kategorie === "suspended").length,
     neueTypen: neueTypen.length,
+    ohneDeutsch: (ohneDe ?? []).map((t: { id: number; name: string }) =>
+      `${t.id} ${t.name}`
+    ),
     requests,
   });
 });

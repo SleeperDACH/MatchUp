@@ -6689,13 +6689,20 @@ Sammelabruf für Typen, nur `/core/types/<id>`; deshalb die Tabelle
 `sideline_types`, die das Ergebnis behält. Gemessen: erster Lauf 38 Requests,
 jeder weitere **2**.
 
-**Übersetzt wird in der App, nicht in der Datenbank.** Die Liste in
-`PlayerAbsence.grund` enthält genau die 35 Gründe, die am 30.08.2026 in der
-Liga vorkamen — gemessen, nicht geraten. Ein unbekannter Grund fällt auf den
-englischen Wortlaut zurück: Eine Auskunft in der falschen Sprache ist besser
-als keine, und „Verletzung" für alles wäre der Verlust genau der Information,
-für die es den Eintrag gibt (zwischen einer Prellung und einem Kreuzbandriss
-entscheidet sich, ob man den Spieler hält).
+**Übersetzt wird am Server** (Migration 0132, seit dem 11.10.2026). Bis dahin
+stand die Übersetzung in der App — eine Liste der 35 Gründe vom 30.08.2026,
+mit dem englischen Wortlaut als Rückfall. Gemeldet: *„Warum stehen die
+Verletzungen auf Englisch drin, bitte nur deutsch."* Die Quelle bringt laufend
+neue Gründe; `sideline_types` war bis dahin auf **177** gewachsen, und jeder,
+den die Liste nicht kannte, stand englisch da.
+
+Jetzt trägt `sideline_types.name_de` die Übersetzung, und `player_absences_v`
+gibt sie als `grund_quelle` aus. Das greift **ohne Update** in jeder
+App-Version, weil `grund` einen Wortlaut, den seine Liste nicht kennt,
+unverändert durchreicht. Ein Typ ohne Übersetzung erscheint als „Verletzung"
+bzw. „Sperre" — **nie englisch**. `sync-absences` meldet solche Typen in seiner
+Antwort (`ohneDeutsch`); dann gehört eine Zeile `update sideline_types set
+name_de = …` in eine Migration.
 
 Wo es steht:
 

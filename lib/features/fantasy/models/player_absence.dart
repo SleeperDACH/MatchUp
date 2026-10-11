@@ -24,8 +24,10 @@ class PlayerAbsence {
   /// bekannten Tag, eine Verletzung nicht.
   final bool gesperrt;
 
-  /// Der Grund im Wortlaut der Quelle, englisch („Hamstring Injury").
-  /// [grund] übersetzt ihn, soweit er bekannt ist.
+  /// Der Grund, wie die Sicht ihn liefert — seit Migration 0132 **schon
+  /// deutsch** (`sideline_types.name_de`). Ältere Server-Stände lieferten den
+  /// englischen Wortlaut der Quelle; [grund] übersetzt den noch, soweit er
+  /// bekannt ist.
   final String? grundQuelle;
 
   final DateTime? seit;
@@ -95,12 +97,14 @@ class PlayerAbsence {
 
   /// Der Grund auf Deutsch.
   ///
-  /// **Die Liste ist gemessen, nicht geraten**: Sie enthält genau die 35
-  /// Gründe, die am 30.08.2026 in der Liga tatsächlich vorkamen. Ein
-  /// unbekannter Grund fällt auf den englischen Wortlaut zurück — eine
-  /// Auskunft in der falschen Sprache ist besser als keine, und „Verletzung"
-  /// für alles wäre der Verlust genau der Information, für die es den Eintrag
-  /// gibt.
+  /// **Übersetzt wird am Server** (Migration 0132): Die Sicht gibt den Grund
+  /// deutsch aus, und für einen Typ ohne Übersetzung „Verletzung" bzw.
+  /// „Sperre" — nie den englischen Wortlaut. Gemeldet: „Warum stehen die
+  /// Verletzungen auf Englisch drin, bitte nur deutsch." Die Liste hier
+  /// kannte nur die 35 Gründe vom 30.08.2026, die Quelle bringt laufend neue.
+  ///
+  /// [_deutsch] bleibt als Rückfall für einen englischen Wortlaut, falls er
+  /// doch einmal ankommt; ein deutscher Grund geht unverändert durch.
   String get grund {
     // Die Beobachtung nennt, was man weiß: Spieltag und Minute. Einen Grund
     // hat sie nicht, und einen zu erfinden wäre schlimmer als keiner.
