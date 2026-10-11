@@ -29,6 +29,8 @@ import 'trade_screen.dart';
 import 'transfers_screen.dart';
 import 'weekly_recap_screen.dart';
 import '../../../app/widgets/karte.dart';
+import '../../../app/typografie.dart';
+import '../../../app/widgets/kapitelmarke.dart';
 import '../../../app/widgets/leise_reiter.dart';
 import '../../../app/widgets/matchup_chevron.dart';
 import '../../../app/vorwaermen.dart';
@@ -211,7 +213,7 @@ class _OverviewTab extends ConsumerWidget {
 
         // --- Mein Team -----------------------------------------------------
         if (drafted) ...[
-          const _Abschnittsmarke('Mein Team'),
+          const _Abschnittsmarke('Mein Team', farbe: _cTeal),
           _Zeilengruppe([
           _LigaZeile(
             label: 'Aufstellung',
@@ -222,6 +224,7 @@ class _OverviewTab extends ConsumerWidget {
             hinweis: formation != null
                 ? 'Steht · $formation'
                 : 'Noch nicht gestellt',
+            dringend: formation == null,
             onTap: () => go(LineupScreen(league: league)),
           ),
           _LigaZeile(
@@ -249,7 +252,7 @@ class _OverviewTab extends ConsumerWidget {
         ],
 
         // --- Liga ----------------------------------------------------------
-        const _Abschnittsmarke('Liga'),
+        const _Abschnittsmarke('Liga', farbe: _cGreen),
         _Zeilengruppe([
           if (!draftFullyDone)
             _LigaZeile(
@@ -465,39 +468,22 @@ class _NaechsterSchritt extends ConsumerWidget {
   }
 }
 
-/// Kapitelmarke wie im Live-, Favoriten- und Menü-Schirm.
+/// Kapitelmarke wie im Live-, Favoriten- und Menü-Schirm — **mit dem
+/// farbigen Strich des Bereichs**. Grau auf Grau trennten die drei Rubriken
+/// der Übersicht nichts; der Strich gliedert, ohne eine Fläche einzufärben
+/// (dieselben Farben wie in den Fantasy-Einstellungen: Mein Team türkis,
+/// Liga grün).
 class _Abschnittsmarke extends StatelessWidget {
-  const _Abschnittsmarke(this.text);
+  const _Abschnittsmarke(this.text, {this.farbe});
 
   final String text;
+  final Color? farbe;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 24, 14, 6),
-      child: Row(
-        children: [
-          Text(
-            text.toUpperCase(),
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              height: 0.8,
-              color: scheme.onSurface.withValues(alpha: 0.12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Kapitelmarke(text, farbe: farbe),
+      );
 }
 
 /// Eine Aktion der Übersicht: farbiges Symbol, Beschriftung, optional ein
@@ -543,7 +529,7 @@ class _Zeilengruppe extends StatelessWidget {
               if (i > 0)
                 Divider(
                   height: 1,
-                  indent: 62,
+                  indent: 68,
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
@@ -567,11 +553,17 @@ class _LigaZeile extends StatelessWidget {
     required this.onTap,
     this.hinweis,
     this.zahl = 0,
+    this.dringend = false,
   });
 
   final String label;
   final IconData icon;
   final Color farbe;
+
+  /// Der Hinweis ist ein Auftrag („Noch nicht gestellt") — er steht dann in
+  /// Gold mit Punkt, derselben Farbe, die in dieser App „hier ist etwas zu
+  /// tun" heißt. Alles andere bleibt leise.
+  final bool dringend;
 
   /// `null` = die Zeile ist da, aber (noch) nicht bedienbar. Sie bekommt dann
   /// **kein** `InkWell`: Eine Zeile, die auf Tippen reagiert und nichts tut,
@@ -597,23 +589,31 @@ class _LigaZeile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
           child: Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
-                // **Nur Fläche, kein Rand.** Getönte Fläche *und* farbige
-                // Kante waren dasselbe Signal zweimal — gemeldet an den
-                // „kleinen Boxen auf der Übersicht". Die Gruppenfarbe sagt
-                // die Fläche, der Rand sagte nichts dazu.
+                width: 40,
+                height: 40,
+                // **Ein Kreis mit Licht aus der Ecke statt eines getönten
+                // Quadrats.** Das flache Quadrat las sich wie ein
+                // Einstellungsmenü; der Verlauf ist derselbe Hauch, den die
+                // Karten der App tragen, nur im Kleinen. Weiterhin ohne
+                // Rand — Fläche und Kante wären dasselbe Signal zweimal.
                 decoration: BoxDecoration(
-                  color: farbe.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(12),
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      farbe.withValues(alpha: 0.32),
+                      farbe.withValues(alpha: 0.08),
+                    ],
+                  ),
                 ),
                 child: Icon(icon, size: 20, color: farbe),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 // **Der Hinweis steht jetzt unter dem Wort, nicht daneben.**
                 // Rechtsbündig war er ein Zusatz, den man übersah; als zweite
@@ -633,15 +633,37 @@ class _LigaZeile extends StatelessWidget {
                       ),
                     ),
                     if (hinweis != null) ...[
-                      const SizedBox(height: 1),
-                      Text(
-                        hinweis!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (dringend) ...[
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: _cAmber,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                          ],
+                          Flexible(
+                            child: Text(
+                              hinweis!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: Schrift.marke,
+                                fontWeight: dringend
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: dringend
+                                    ? _cAmber
+                                    : scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -670,11 +692,21 @@ class _LigaZeile extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(width: 6),
-              Icon(
-                Icons.chevron_right,
-                size: 18,
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+              const SizedBox(width: 8),
+              // Der Pfeil sitzt in einer kleinen Mulde: Er bleibt leise, liest
+              // sich aber als Knopf statt als Satzzeichen.
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHigh,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -1075,10 +1107,26 @@ class _MatchdayFixtures extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Abschnittsmarke('$round. Spieltag'),
+        _Abschnittsmarke('$round. Spieltag', farbe: _cBlue),
         // Ohne Wettbewerb: Die Marke direkt darüber sagt den Spieltag, und
         // diese Liste zeigt nur die eine Liga der Fantasy-Runde.
-        ...fixturesWithDateHeaders(umgewandelt, mitWettbewerb: false),
+        //
+        // **Auf eigener Fläche**, wie die beiden Gruppen darüber und die
+        // Wettbewerbe im Live-Tab. Lose auf dem Grund war der Spieltag das
+        // Einzige auf dem Schirm ohne Kante und sah aus wie angehängt.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Karte(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: fixturesWithDateHeaders(
+                umgewandelt,
+                mitWettbewerb: false,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
