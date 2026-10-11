@@ -27,6 +27,12 @@ void beimZurueckkommenAktualisieren(WidgetRef ref) {
   ref.invalidate(pendingMembersProvider);
   ref.invalidate(vacantTeamsProvider);
 
+  // Kader und Aufstellungen: Sie standen hier nicht, und das war die Lücke
+  // hinter „gespeichert, aber im MatchUp steht die alte Elf". Der Server
+  // hatte die Änderung; das Gerät sah sie erst nach einem Kaltstart.
+  ref.invalidate(leagueRosterProvider);
+  ref.invalidate(leagueLineupsProvider);
+
   // Tippspiel: eigene Runden und deren Punktestand.
   ref.invalidate(myRoundsProvider);
   ref.invalidate(myTipStatsProvider);

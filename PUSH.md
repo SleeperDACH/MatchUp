@@ -14,7 +14,7 @@
 > des Repos; sie ließen sich danach nicht mehr erzeugen und zeigten tagelang
 > einen Schritt als offen, der längst erledigt war.
 
-Stand: 21.09.2026. Diese Datei sagt, **was schon da ist**, **was fehlt** und
+Stand: 11.10.2026. Diese Datei sagt, **was schon da ist**, **was fehlt** und
 **wie du das Fehlende besorgst** — Schritt für Schritt, ohne Vorwissen.
 
 Alles mit ❌ musst du selbst machen (es hängt an deinen Konten). Alles mit 🔧
@@ -37,7 +37,7 @@ mache ich, sobald das Nötige da ist.
 
 | Sache | Wo |
 |-------|-----|
-| APNs-Schlüssel | `~/keys/AuthKey_9JF35BFS9Q.p8`, Key ID `9JF35BFS9Q` |
+| APNs-Schlüssel | `~/keys/AuthKey_9FJS77M728.p8`, Key ID `9FJS77M728` (seit 05.10.2026; `9JF35BFS9Q` abgelöst) |
 | Firebase-Konfigdateien | `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist` (letztere auch im Xcode-Projekt eingetragen) |
 | Dienstkonto | `~/keys/firebase-dienstkonto.json` (nicht im Repo, `.gitignore` greift) |
 | Datenbank | Migration `0129_push_benachrichtigungen.sql` — Geräte, Einstellungen, Ausgangskorb, neun Auslöser, zwei Cron-Jobs |
@@ -45,19 +45,29 @@ mache ich, sobald das Nötige da ist.
 | App | `firebase_core`/`firebase_messaging`, Berechtigung, Token-Registrierung, Antippen öffnet den Schirm, Einstellungsschirm im Profil |
 | Tests | `test/push_ziel_test.dart`, `test/push_einstellungen_test.dart` |
 
-**Was noch bei dir liegt** (Stand 04.10.2026):
+**Push läuft auf beiden Plattformen** (Stand 11.10.2026). Bei dir liegen
+nur noch die beiden Store-Angaben (Schritt 8).
 
-- **Schritt 6 — der APNs-Schlüssel greift nicht.** Ein Testpush an das
-  registrierte iOS-Gerät scheitert mit `Invalid APNs credential`. Das ist der
-  eine Punkt, an dem es gerade hängt.
-- Die beiden Store-Angaben (Schritt 8).
-
-**Schritt 1 ist vermutlich erledigt**, anders als hier lange stand: Das
-Zertifikat auf diesem Mac trägt `OU=HACJC6623Z`, also die richtige Team-ID, und
-laut dieser Datei gab es schon einen TestFlight-Build — den gibt es nur mit
-bezahltem Programm. **Schritt 2 vermutlich auch:** Es liegt seit dem 25.09.2026
-ein iOS-Token in `push_geraete`, und den stellt iOS nur aus, wenn die App
-`aps-environment` trägt. Beides bleibt unbewiesen, bis der Testpush durchgeht.
+> **Befund vom 11.10.2026: Der Schlüssel fehlte im Platz „Produktion".**
+> Android kam durch, iOS nur auf einem einzigen Gerät — dem aus Xcode
+> installierten. Jede Zustellung an die sieben iOS-Nutzer mit TestFlight- oder
+> App-Store-Version scheiterte mit `401 Invalid APNs credential`
+> (`THIRD_PARTY_AUTH_ERROR`), 54 Benachrichtigungen in fünf Tagen.
+>
+> Die Ursache: Apple trennt **Sandbox** (Xcode-Builds, im Projekt steht
+> `aps-environment = development`) und **Produktion** (TestFlight und App
+> Store — Xcode schreibt den Eintrag beim Hochladen selbst um). Firebase hat
+> für den APNs-Schlüssel **zwei getrennte Plätze**, und `9FJS77M728` stand nur
+> im Platz für Entwicklung. Der Testpush vom 06.10. ging an ein Xcode-Gerät und
+> bewies deshalb nur die halbe Sache.
+>
+> Seit der Schlüssel auch unter **Produktion** eingetragen ist, geht es: Die
+> erste Direktnachricht an eine bis dahin betroffene Nutzerin (nur ein iPhone)
+> wurde am 11.10. um 11:39 im ersten Versuch zugestellt. Gescheiterte
+> Benachrichtigungen werden nicht nachgeholt.
+>
+> **Die Lehre:** Ein Testpush beweist nur die Umgebung, aus der das Testgerät
+> kommt. Geprüft wird an einem Gerät mit der App aus TestFlight oder dem Store.
 
 > **Befund vom 05.10.2026: `HACJC6623Z` ist das falsche Team.** Das
 > Zertifikat auf diesem Mac trägt `OU=HACJC6623Z, O=Felix Sohrmann` — `O` ist
@@ -91,7 +101,7 @@ nur noch auf Geräte.
 | # | Teil | Status | Wer |
 |---|------|--------|-----|
 | 1 | Bezahlte Apple-Mitgliedschaft | 🟡 liegt beim Team eines Bekannten, nicht bei `HACJC6623Z` (siehe unten) | du |
-| 2 | Push-Berechtigung für die App-ID `app.matchup.mobile` | ❌ ungeprüft | du |
+| 2 | Push-Berechtigung für die App-ID `app.matchup.mobile` | ✅ bewiesen durch zugestellte Pushes an Store-Geräte (11.10.2026) | — |
 | 3 | Key ID des APNs-Schlüssels | ✅ `9FJS77M728` (05.10.2026; `9JF35BFS9Q` ist abgelöst) | — |
 | 4 | Schlüsseldatei `AuthKey_9FJS77M728.p8` | ✅ in `~/keys/` | — |
 | 5 | Team ID | ✅ `LR3PYT6U2L` (zahlendes Team; `HACJC6623Z` ist das kostenlose Personal Team) | — |
@@ -99,7 +109,7 @@ nur noch auf Geräte.
 | 7 | Firebase-Projekt | ✅ `matchup-f9e83`, Analytics aus | — |
 | 8 | `GoogleService-Info.plist` (iOS) + `google-services.json` (Android) | ✅ im Projekt | — |
 | 9 | Dienstkonto-Schlüssel (JSON) für den Versand | ✅ `~/keys/firebase-dienstkonto.json` | — |
-| 10 | **APNs-Schlüssel bei Firebase hinterlegt** | ✅ `9FJS77M728` / `LR3PYT6U2L` — Testpush 06.10.2026: HTTP 200 | — |
+| 10 | **APNs-Schlüssel bei Firebase hinterlegt** | ✅ `9FJS77M728` / `LR3PYT6U2L`, **Entwicklung und Produktion** (Produktion seit 11.10.2026) | — |
 | 11 | Datenschutzerklärung veröffentlicht · Store-Angaben | 🟡 Seite seit 25.09.2026 live, Stores offen | du |
 | 12 | `aps-environment` + Hintergrundmodus in der App | ✅ fertig | 🔧 |
 | 13 | Push-Paket, Berechtigungsabfrage, Geräte-Tokens | ✅ fertig | 🔧 |
@@ -115,7 +125,7 @@ es keine Firebase-Dateien, und `pubspec.yaml` nennt Firebase kein einziges Mal.
 
 ## Wichtig, bevor du anfängst
 
-- Die **Key ID** (`9JF35BFS9Q`) ist keine Geheimnummer, die darfst du
+- Die **Key ID** (`9FJS77M728`) ist keine Geheimnummer, die darfst du
   weitergeben.
 - Die **Datei `.p8` ist das Geheimnis.** Ihren Inhalt nirgends hineinkopieren —
   auch nicht in einen Chat. Wenn ich sie brauche, sag mir den **Dateipfad**.
@@ -141,9 +151,9 @@ verwenden. Ein persönliches Team reicht nicht. Das ist derselbe Grund, aus dem
 2. Menü **Xcode → Settings…** (oder `⌘` + `,`).
 3. Reiter **Accounts**.
 4. Unten links auf **+** → **Apple ID** → **Continue**.
-5. Mit der Apple ID anmelden, die zum bezahlten Team **HACJC6623Z** gehört.
+5. Mit der Apple ID anmelden, die zum bezahlten Team **LR3PYT6U2L** gehört.
 6. Nach der Anmeldung links das Konto anklicken. Rechts muss **MatchUp**
-   (Team-ID `HACJC6623Z`) in der Liste stehen, Rolle *Account Holder*, *Admin*
+   (Team-ID `LR3PYT6U2L`) in der Liste stehen, Rolle *Account Holder*, *Admin*
    oder *App Manager*.
 7. Rechts unten **Download Manual Profiles** klicken.
 
@@ -164,7 +174,7 @@ angemeldet oder die Mitgliedschaft ist abgelaufen.
 **Warum:** Apple muss wissen, dass genau diese App Push benutzen darf.
 
 1. <https://developer.apple.com/account> öffnen, anmelden.
-2. Oben rechts prüfen: Steht dort das Team **MatchUp / HACJC6623Z**? Wenn nicht,
+2. Oben rechts prüfen: Steht dort das Team mit der ID **LR3PYT6U2L**? Wenn nicht,
    über das Auswahlfeld wechseln.
 3. Links **Certificates, Identifiers & Profiles** → **Identifiers**.
 4. In der Liste **app.matchup.mobile** anklicken.
@@ -293,7 +303,11 @@ ls ~/Projekte/MatchUp/ios/Runner/GoogleService-Info.plist
 
 ---
 
-## Schritt 6 — Den APNs-Schlüssel bei Firebase hinterlegen ❌
+## Schritt 6 — Den APNs-Schlüssel bei Firebase hinterlegen ✅
+
+**Erledigt am 11.10.2026**, nach zwei Fehlern hintereinander: erst die falsche
+Team ID (`HACJC6623Z` statt `LR3PYT6U2L`, behoben 06.10.), dann der fehlende
+Platz „Produktion" (siehe Befund oben). Was folgt, ist die Spur dahin.
 
 **Am 04.10.2026 gemessen: Der Schlüssel greift nicht.** Ein Testpush an das
 registrierte iOS-Gerät scheitert:
@@ -319,7 +333,7 @@ PEM-Format, 257 Bytes — genau wie ein APNs-Auth-Key aussehen muss.
    Apple-App-Konfiguration: Steht dort ein Schlüssel, und lautet seine Key ID
    **`9JF35BFS9Q`**? Es gab einen Vorgänger (`8887U4P9BH`) — ist der alte
    eingetragen oder die alte Datei hochgeladen, erklärt das den Fehler genau
-   so. Ebenso eine vertippte **Team ID**; sie muss `HACJC6623Z` lauten.
+   so. Ebenso eine vertippte **Team ID**; sie muss `LR3PYT6U2L` lauten.
 2. **developer.apple.com** → Keys: Ist `9JF35BFS9Q` dort noch **aktiv**, oder
    steht er auf *Revoked*? Ein widerrufener Schlüssel wird von Apple abgelehnt,
    auch wenn die Datei technisch gültig bleibt.
@@ -337,13 +351,16 @@ Schlüssel je ersetzt wird.
 1. Firebase-Konsole → Zahnrad oben links → **Projekteinstellungen**.
 2. Reiter **Cloud Messaging**.
 3. Abschnitt **Apple-App-Konfiguration** → bei `app.matchup.mobile`:
-   **APNs-Authentifizierungsschlüssel** → **Hochladen**.
-4. **Datei auswählen**: die `.p8` aus `~/keys/`.
-5. **Key ID**: `9JF35BFS9Q` (oder die neue aus Schritt 3).
-6. **Team ID**: `HACJC6623Z`.
+   **APNs-Authentifizierungsschlüssel** → **Hochladen** — und zwar **zweimal**,
+   einmal im Platz **Entwicklung** und einmal im Platz **Produktion**.
+4. **Datei auswählen**: `~/keys/AuthKey_9FJS77M728.p8`.
+5. **Key ID**: `9FJS77M728`.
+6. **Team ID**: `LR3PYT6U2L`.
 7. **Hochladen**.
 
-**Fertig, wenn** der Schlüssel mit seiner Key ID in der Liste steht.
+**Fertig, wenn** der Schlüssel in **beiden** Plätzen mit seiner Key ID steht.
+Fehlt Produktion, geht Push nur an Xcode-Builds — genau der Fehler vom
+11.10.2026.
 
 ---
 

@@ -156,7 +156,7 @@
 <div class="kopf">
   <div class="marke">MatchUp · Einrichtung</div>
   <h1>Push-Benachrichtigungen</h1>
-  <p class="unterzeile">Was steht, was fehlt und wie du es besorgst · Stand 4. Oktober 2026</p>
+  <p class="unterzeile">Was steht, was fehlt und wie du es besorgst · Stand 11. Oktober 2026</p>
 </div>
 
 <p style="margin:0 0 14px; font-size:10pt;">
@@ -173,16 +173,16 @@
     <tr><th>#</th><th>Teil</th><th>Status</th><th>Wer</th></tr>
   </thead>
   <tbody>
-    <tr><td class="nr">1</td><td>Bezahlte Apple-Mitgliedschaft im Team <code>HACJC6623Z</code></td><td class="status offen">wohl erledigt</td><td class="wer">du</td></tr>
-    <tr><td class="nr">2</td><td>Push-Berechtigung für die App-ID <code>app.matchup.mobile</code></td><td class="status offen">wohl erledigt</td><td class="wer">du</td></tr>
-    <tr><td class="nr">3</td><td>Key ID des APNs-Schlüssels — <code>9JF35BFS9Q</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
-    <tr><td class="nr">4</td><td>Schlüsseldatei <code>AuthKey_9JF35BFS9Q.p8</code> in <code>~/keys/</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
-    <tr><td class="nr">5</td><td>Team ID — <code>HACJC6623Z</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">1</td><td>Bezahlte Apple-Mitgliedschaft im Team <code>LR3PYT6U2L</code> (eines Bekannten; <code>HACJC6623Z</code> ist dein kostenloses Personal Team)</td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">2</td><td>Push-Berechtigung für die App-ID <code>app.matchup.mobile</code></td><td class="status ok">bewiesen</td><td class="wer">—</td></tr>
+    <tr><td class="nr">3</td><td>Key ID des APNs-Schlüssels — <code>9FJS77M728</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">4</td><td>Schlüsseldatei <code>AuthKey_9FJS77M728.p8</code> in <code>~/keys/</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
+    <tr><td class="nr">5</td><td>Team ID — <code>LR3PYT6U2L</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
     <tr><td class="nr">6</td><td>Bundle ID — <code>app.matchup.mobile</code></td><td class="status ok">da</td><td class="wer">—</td></tr>
     <tr><td class="nr">7</td><td>Firebase-Projekt <code>matchup-f9e83</code>, Analytics aus</td><td class="status ok">da</td><td class="wer">—</td></tr>
     <tr><td class="nr">8</td><td><code>GoogleService-Info.plist</code> + <code>google-services.json</code></td><td class="status ok">im Projekt</td><td class="wer">—</td></tr>
     <tr><td class="nr">9</td><td>Dienstkonto-Schlüssel als Secret <code>FIREBASE_DIENSTKONTO</code></td><td class="status ok">gesetzt</td><td class="wer">—</td></tr>
-    <tr><td class="nr">10</td><td><b>APNs-Schlüssel bei Firebase hinterlegt</b></td><td class="status fehlt">greift nicht</td><td class="wer">du</td></tr>
+    <tr><td class="nr">10</td><td><b>APNs-Schlüssel bei Firebase hinterlegt</b> — Entwicklung <b>und</b> Produktion</td><td class="status ok">läuft seit 11.10.</td><td class="wer">—</td></tr>
     <tr><td class="nr">11</td><td>Datenschutzerklärung veröffentlicht · Store-Angaben</td><td class="status offen">Seite live</td><td class="wer">du</td></tr>
     <tr><td class="nr">12</td><td><code>aps-environment</code>, Berechtigungsabfrage, Geräte-Tokens</td><td class="status ok">fertig</td><td class="wer">🔧</td></tr>
     <tr><td class="nr">13</td><td>Tabellen, Auslöser und Einstellungen je Nutzer</td><td class="status ok">Migration 0129</td><td class="wer">🔧</td></tr>
@@ -191,6 +191,12 @@
 </table>
 
 <div class="warum" style="margin-top:14px;">
+  <b>Stand 11.10.2026: Push läuft auf iOS und Android.</b> Der letzte Fehler
+  war, dass der APNs-Schlüssel bei Firebase nur im Platz <b>Entwicklung</b>
+  stand. Damit kam Push nur auf dem Xcode-Gerät an; alle iPhones mit der App aus
+  TestFlight oder dem Store bekamen <code>401 Invalid APNs credential</code>.
+  Seit er auch unter <b>Produktion</b> steht, wird zugestellt.
+  <br><br>
   <b>Nachgemessen, nicht behauptet.</b> 24.09.: Die Tabellen
   <code>push_geraete</code>, <code>push_einstellungen</code> und
   <code>push_auftraege</code> stehen, die Function antwortet
@@ -199,7 +205,7 @@
   OAuth-Token. 04.10.: In <code>push_geraete</code> liegt seit dem 25.09. ein
   <b>iOS-Token</b> — der Testpush dorthin scheitert aber an Apple (Schritt 6).
   <b>Zu Punkt 1 und 2:</b> Das Zertifikat auf diesem Mac trägt
-  <code>OU=HACJC6623Z</code>, also die richtige Team-ID, und es gab laut Projekt
+  <code>OU=HACJC6623Z</code> — das ist dein kostenloses Personal Team, nicht das zahlende (siehe Punkt 1). Es gab laut Projekt
   schon einen TestFlight-Build — den gibt es nur mit bezahltem Programm. Dass
   iOS überhaupt einen Push-Token ausgestellt hat, setzt zudem
   <code>aps-environment</code> voraus. Beides bleibt dennoch unbewiesen, bis
@@ -209,7 +215,7 @@
 
 <h2>Vorher lesen — drei Regeln</h2>
 <ul class="knapp">
-  <li>Die <b>Key ID</b> (<code>9JF35BFS9Q</code>) ist keine Geheimnummer, die darfst du weitergeben.</li>
+  <li>Die <b>Key ID</b> (<code>9FJS77M728</code>) ist keine Geheimnummer, die darfst du weitergeben.</li>
   <li>Die <b>Datei <code>.p8</code> ist das Geheimnis.</b> Ihren Inhalt nirgends hineinkopieren — auch nicht in einen Chat. Wenn ich sie brauche, sag mir den <b>Dateipfad</b>.</li>
   <li><b>Android geht ohne Apple.</b> Zieht sich Schritt 1, läuft Android schon — der Server-Teil ist derselbe.</li>
 </ul>
@@ -228,8 +234,8 @@
     <li>Menü <b>Xcode → Settings…</b> (oder <code>⌘</code> + <code>,</code>).</li>
     <li>Reiter <b>Accounts</b>.</li>
     <li>Unten links auf <b>+</b> → <b>Apple ID</b> → <b>Continue</b>.</li>
-    <li>Mit der Apple ID anmelden, die zum <b>bezahlten</b> Team <code>HACJC6623Z</code> gehört.</li>
-    <li>Links das Konto anklicken. Rechts muss <b>MatchUp</b> (<code>HACJC6623Z</code>) stehen —
+    <li>Mit der Apple ID anmelden, die zum <b>bezahlten</b> Team <code>LR3PYT6U2L</code> gehört.</li>
+    <li>Links das Konto anklicken. Rechts muss <b>MatchUp</b> (<code>LR3PYT6U2L</code>) stehen —
         Rolle <i>Account Holder</i>, <i>Admin</i> oder <i>App Manager</i>.</li>
     <li>Rechts unten <b>Download Manual Profiles</b>.</li>
   </ol>
@@ -250,7 +256,7 @@
   weist jede Nachricht ab.</p>
   <ol class="klicks">
     <li><code>developer.apple.com/account</code> öffnen, anmelden.</li>
-    <li>Oben rechts prüfen: Steht dort <b>MatchUp / HACJC6623Z</b>? Sonst umschalten —
+    <li>Oben rechts prüfen: Steht dort das Team <b>LR3PYT6U2L</b>? Sonst umschalten —
         mit dem persönlichen Team gibt es die Option nicht.</li>
     <li>Links <b>Certificates, Identifiers &amp; Profiles</b> → <b>Identifiers</b>.</li>
     <li>In der Liste <code>app.matchup.mobile</code> anklicken.</li>
@@ -318,8 +324,12 @@
   <div class="schrittkopf">
     <span class="schrittnr">6</span>
     <span class="schritttitel">APNs-Schlüssel bei Firebase</span>
-    <span class="pflicht">hier hängt es</span>
+    <span class="pflicht">erledigt 11.10.</span>
   </div>
+  <div class="okbox" style="margin:0 0 10px;"><b>Erledigt am 11.10.2026</b>, nach
+  zwei Fehlern: erst die falsche Team ID (<code>HACJC6623Z</code> statt
+  <code>LR3PYT6U2L</code>), dann der fehlende Platz <b>Produktion</b>. Was folgt,
+  ist die Spur dahin.</div>
   <div class="achtung" style="margin:0 0 10px;"><b>Am 04.10.2026 gemessen: Der
   Schlüssel greift nicht.</b> Ein Testpush an das registrierte iOS-Gerät scheitert mit
   <code>HTTP 401 · Invalid APNs credential</code>
@@ -329,7 +339,7 @@
   Fehler sitzt zwischen Firebase und Apple. <b>Die Datei auf dem Mac ist dabei in
   Ordnung:</b> gültiger privater Schlüssel, 256 Bit, 257 Bytes.
   <b>Nachzusehen ist zweierlei:</b> ob bei Firebase die Key ID
-  <code>9JF35BFS9Q</code> und die Team ID <code>HACJC6623Z</code> stehen (es gab einen
+  <code>9JF35BFS9Q</code> und die Team ID <code>LR3PYT6U2L</code> stehen (es gab einen
   Vorgänger <code>8887U4P9BH</code>) — und ob der Schlüssel bei Apple noch aktiv ist
   und nicht auf <i>Revoked</i> steht.</div>
   <p class="warum"><b>Warum überhaupt:</b> Firebase spricht in deinem Namen mit Apple.
@@ -337,9 +347,10 @@
   <ol class="klicks">
     <li>Firebase-Konsole → Zahnrad → <b>Projekteinstellungen</b> → Reiter <b>Cloud Messaging</b>.</li>
     <li>Abschnitt <b>Apple-App-Konfiguration</b>, bei <code>app.matchup.mobile</code>:
-        <b>APNs-Authentifizierungsschlüssel</b> → <b>Hochladen</b>.</li>
-    <li><b>Datei</b>: die <code>.p8</code> aus <code>~/keys/</code>.
-        <b>Key ID</b>: <code>9JF35BFS9Q</code>. <b>Team ID</b>: <code>HACJC6623Z</code>.</li>
+        <b>APNs-Authentifizierungsschlüssel</b> → <b>Hochladen</b> — <b>zweimal</b>,
+        im Platz <b>Entwicklung</b> und im Platz <b>Produktion</b>.</li>
+    <li><b>Datei</b>: <code>~/keys/AuthKey_9FJS77M728.p8</code>.
+        <b>Key ID</b>: <code>9FJS77M728</code>. <b>Team ID</b>: <code>LR3PYT6U2L</code>.</li>
   </ol>
 </div>
 
@@ -424,7 +435,7 @@
 </table>
 
 <div class="fuss">
-  MatchUp · Push-Benachrichtigungen · Stand 04.10.2026 ·
+  MatchUp · Push-Benachrichtigungen · Stand 11.10.2026 ·
   Quelle dieser Seite: <code>docs/push.html</code>, gebaut mit <code>tools/push_pdf.sh</code> ·
   Inhaltlich gleich: <code>PUSH.md</code>
 </div>

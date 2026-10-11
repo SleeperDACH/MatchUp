@@ -488,13 +488,29 @@ class FantasyLeagueRepository {
   }
 
   /// Aktuelle Kader der Liga in Echtzeit (Draft + Free Agency).
-  Stream<List<RosterEntry>> rosterStream(String leagueId) => _client
-      .from('fantasy_rosters')
-      .stream(primaryKey: ['league_id', 'player_id'])
-      .eq('league_id', leagueId)
-      .map((rows) => ohneDubletten(rows, ['league_id', 'player_id'])
-          .map(RosterEntry.fromJson)
-          .toList());
+  ///
+  /// **Hängt nicht an der Verbindung** — siehe [liveMitRueckfall]. Ein
+  /// abgerissener Kanal ließ den Kader sonst auf dem Stand des App-Starts
+  /// stehen, und ein Tausch schien nicht gespeichert.
+  Stream<List<RosterEntry>> rosterStream(String leagueId) => liveMitRueckfall(
+        abfrage: () => roster(leagueId),
+        strom: () => _client
+            .from('fantasy_rosters')
+            .stream(primaryKey: ['league_id', 'player_id'])
+            .eq('league_id', leagueId)
+            .map((rows) => ohneDubletten(rows, ['league_id', 'player_id'])
+                .map(RosterEntry.fromJson)
+                .toList()),
+      );
+
+  /// Derselbe Kader als gewöhnliche Abfrage.
+  Future<List<RosterEntry>> roster(String leagueId) async {
+    final rows = await _client
+        .from('fantasy_rosters')
+        .select()
+        .eq('league_id', leagueId);
+    return rows.map(RosterEntry.fromJson).toList();
+  }
 
   /// Live-Stream des ligainternen Chats (älteste zuerst, neue unten).
   ///
@@ -661,14 +677,34 @@ class FantasyLeagueRepository {
 
   /// Alle Aufstellungen der Liga in Echtzeit (für „Mein Team" & Tabelle);
   /// nach Spieltag wird im Client gefiltert.
-  Stream<List<FantasyLineup>> lineupsStream(String leagueId) => _client
-      .from('fantasy_lineups')
-      .stream(primaryKey: ['league_id', 'manager_id', 'season', 'round'])
-      .eq('league_id', leagueId)
-      .map((rows) => ohneDubletten(
-          rows, ['league_id', 'manager_id', 'season', 'round'])
-          .map(FantasyLineup.fromJson)
-          .toList());
+  ///
+  /// **Hängt nicht an der Verbindung** — siehe [liveMitRueckfall]. Gemeldet:
+  /// „Unten steht ‚gespeichert', aber im MatchUp-Tab sehe ich die alte
+  /// Mannschaft — nicht bei allen, nur bei manchen." Der Server hatte jede
+  /// Änderung, nur kam sie auf dem Gerät nie an: Riss die Realtime-Verbindung
+  /// ab, stand die Liste für den Rest der Sitzung auf dem Stand des Starts,
+  /// und der Aufstellungs-Schirm baute sich beim Wiederöffnen daraus neu auf.
+  Stream<List<FantasyLineup>> lineupsStream(String leagueId) =>
+      liveMitRueckfall(
+        abfrage: () => lineups(leagueId),
+        strom: () => _client
+            .from('fantasy_lineups')
+            .stream(primaryKey: ['league_id', 'manager_id', 'season', 'round'])
+            .eq('league_id', leagueId)
+            .map((rows) => ohneDubletten(
+                    rows, ['league_id', 'manager_id', 'season', 'round'])
+                .map(FantasyLineup.fromJson)
+                .toList()),
+      );
+
+  /// Dieselben Aufstellungen als gewöhnliche Abfrage.
+  Future<List<FantasyLineup>> lineups(String leagueId) async {
+    final rows = await _client
+        .from('fantasy_lineups')
+        .select()
+        .eq('league_id', leagueId);
+    return rows.map(FantasyLineup.fromJson).toList();
+  }
 
   /// Aufstellungs-Deadline (erster Anstoß des Spieltags); null, wenn der
   /// Spieltag (noch) nicht in den gespiegelten Fixtures liegt.

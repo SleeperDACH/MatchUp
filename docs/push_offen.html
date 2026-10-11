@@ -89,14 +89,15 @@
 <div class="kopf">
   <div class="marke">MatchUp · Push</div>
   <h1>Was noch fehlt</h1>
-  <p class="unterzeile">Nur die offenen Punkte, in der Reihenfolge, in der sie zu tun sind · Stand 4. Oktober 2026</p>
+  <p class="unterzeile">Nur die offenen Punkte, in der Reihenfolge, in der sie zu tun sind · Stand 11. Oktober 2026</p>
 </div>
 
 <div class="okbox" style="border-left-width:3px;">
-  <b>Der Server ist fertig und läuft.</b> Tabellen, Auslöser, Edge Function und
-  drei Cron-Jobs stehen und sind nachgemessen; der Minutenlauf kommt mit
-  <code>200</code> am Gateway vorbei, und das Dienstkonto holt einen OAuth-Token.
-  Alles, was hier steht, hängt an deinen Konten.
+  <b>Push läuft auf iOS und Android.</b> Seit der APNs-Schlüssel
+  <code>9FJS77M728</code> (Team <code>LR3PYT6U2L</code>) bei Firebase auch im
+  Platz <b>Produktion</b> steht, kommen die Benachrichtigungen auch auf iPhones
+  mit der App aus TestFlight oder dem App Store an — nachgemessen am
+  11.10.2026. Offen sind nur noch die beiden Store-Angaben.
 </div>
 
 <h2>Die offenen Punkte</h2>
@@ -105,141 +106,15 @@
     <tr><th>#</th><th>Was</th><th>Dringlichkeit</th><th>Wo</th></tr>
   </thead>
   <tbody>
-    <tr><td class="nr">1</td><td><b>APNs-Schlüssel bei Firebase prüfen</b> — greift nicht</td><td class="wann fehlt">hier hängt es</td><td class="wo">Firebase + Apple</td></tr>
-    <tr><td class="nr">2</td><td>Apple-Mitgliedschaft im Team <code>HACJC6623Z</code></td><td class="wann offen">wohl erledigt</td><td class="wo">Xcode</td></tr>
-    <tr><td class="nr">3</td><td>Push-Berechtigung für die App-ID <code>app.matchup.mobile</code></td><td class="wann offen">wohl erledigt</td><td class="wo">developer.apple.com</td></tr>
-    <tr><td class="nr">4</td><td>Den <code>.p8</code>-Schlüssel ersetzen (Kopien liegen in WhatsApp)</td><td class="wann">bewusst nein</td><td class="wo">entschieden</td></tr>
-    <tr><td class="nr">5</td><td>Datenschutzseite veröffentlichen</td><td class="wann ok">erledigt</td><td class="wo">25.09.2026</td></tr>
-    <tr><td class="nr">6</td><td>App-Datenschutz ausfüllen</td><td class="wann offen">vor Release</td><td class="wo">App Store Connect</td></tr>
-    <tr><td class="nr">7</td><td>Datensicherheit ausfüllen</td><td class="wann offen">vor Release</td><td class="wo">Play Console</td></tr>
-    <tr><td class="nr">8</td><td>Am echten iPhone prüfen</td><td class="wann">Beweis</td><td class="wo">Gerät + DB</td></tr>
+    <tr><td class="nr">1</td><td>App-Datenschutz ausfüllen</td><td class="wann offen">vor Release</td><td class="wo">App Store Connect</td></tr>
+    <tr><td class="nr">2</td><td>Datensicherheit ausfüllen</td><td class="wann offen">vor Release</td><td class="wo">Play Console</td></tr>
   </tbody>
 </table>
 
-<div class="achtung" style="margin-top:14px;">
-  <b>Punkt 1 ist der einzige echte Blocker.</b> Am 04.10.2026 gemessen: Ein
-  Testpush an das registrierte iPhone scheitert mit
-  <code>Invalid APNs credential</code>. Alles andere steht oder ist sehr
-  wahrscheinlich erledigt; 6 und 7 brauchst du erst vor dem Store-Release.
-</div>
-
-<div class="schritt" style="break-before: page;">
-  <div class="schrittkopf">
-    <span class="schrittnr">1</span>
-    <span class="schritttitel">APNs-Schlüssel bei Firebase prüfen</span>
-    <span class="pflicht">hier hängt es · 5 Min</span>
-  </div>
-  <div class="achtung" style="margin:0 0 10px;"><b>Am 04.10.2026 gemessen:</b>
-  Ein Testpush an das seit dem 25.09. registrierte iOS-Gerät scheitert mit
-  <code>HTTP 401 · Invalid APNs credential</code>
-  (<code>THIRD_PARTY_AUTH_ERROR</code>).</div>
-  <p class="warum"><b>Was das genau heißt:</b> FCM hat den Geräte-Token
-  <b>angenommen</b> — sonst käme <code>UNREGISTERED</code>. Es ist dann mit Apple
-  ins Gespräch gegangen, und <b>Apple hat die Zugangsdaten abgelehnt</b>. Der
-  Fehler sitzt zwischen Firebase und Apple: nicht am Gerät, nicht in der App,
-  nicht am Server.</p>
-  <p class="warum"><b>Die Datei auf dem Mac ist in Ordnung</b> (ebenfalls am
-  04.10. geprüft): <code>~/keys/AuthKey_9JF35BFS9Q.p8</code> ist ein gültiger
-  privater Schlüssel, 256 Bit, PEM-Format, 257 Bytes — genau wie ein
-  APNs-Auth-Key aussehen muss.</p>
-  <ol class="klicks">
-    <li><b>Firebase-Konsole</b> → Zahnrad → <b>Projekteinstellungen</b> →
-        <b>Cloud Messaging</b> → <b>Apple-App-Konfiguration</b>: Steht dort
-        überhaupt ein Schlüssel?</li>
-    <li>Wenn ja: Lautet seine <b>Key ID</b> <code>9JF35BFS9Q</code>? Es gab
-        einen Vorgänger (<code>8887U4P9BH</code>) — ist der eingetragen oder die
-        alte Datei hochgeladen, erklärt das den Fehler genau so.</li>
-    <li>Steht als <b>Team ID</b> <code>HACJC6623Z</code> da? Ein Tippfehler
-        wirkt identisch.</li>
-    <li><b>developer.apple.com</b> → <b>Keys</b>: Ist <code>9JF35BFS9Q</code>
-        dort noch <b>aktiv</b> oder auf <i>Revoked</i>? Ein widerrufener
-        Schlüssel wird abgelehnt, auch wenn die Datei gültig bleibt.</li>
-  </ol>
-  <div class="fertig"><b>Fertig, wenn</b> der Testpush durchgeht. Sag Bescheid —
-  ich schicke ihn und lese die Antwort vor.</div>
-</div>
-
-<div class="schritt" style="break-before: page;">
-  <div class="schrittkopf">
-    <span class="schrittnr">1</span>
-    <span class="schritttitel">Apple-Mitgliedschaft auf diesem Mac</span>
-    <span class="pflicht">Pflicht · 10 Min</span>
-  </div>
-  <p class="warum"><b>Warum:</b> Ohne bezahltes Team darf die App keine Push-Benachrichtigungen
-  verwenden, und es gibt kein Distribution-Zertifikat — derselbe Grund, aus dem
-  <code>flutter build ipa</code> scheitert. <b>Zum Testen auf dem eigenen iPhone reicht
-  ein Entwicklungs-Build</b>; das Distribution-Zertifikat brauchst du erst für TestFlight
-  und den Store. Die bezahlte Mitgliedschaft brauchst du trotzdem, weil nur sie die
-  Push-Berechtigung an der App-ID freischaltet.</p>
-  <ol class="klicks">
-    <li>Xcode öffnen.</li>
-    <li>Menü <b>Xcode → Settings…</b> (oder <code>⌘</code> + <code>,</code>).</li>
-    <li>Reiter <b>Accounts</b>.</li>
-    <li>Unten links auf <b>+</b> → <b>Apple ID</b> → <b>Continue</b>.</li>
-    <li>Mit der Apple ID anmelden, die zum <b>bezahlten</b> Team <code>HACJC6623Z</code> gehört.</li>
-    <li>Links das Konto anklicken. Rechts muss <b>MatchUp</b> (<code>HACJC6623Z</code>) stehen —
-        Rolle <i>Account Holder</i>, <i>Admin</i> oder <i>App Manager</i>.</li>
-    <li>Rechts unten <b>Download Manual Profiles</b>.</li>
-  </ol>
-  <pre>security find-identity -v -p codesigning</pre>
-  <div class="fertig"><b>Fertig, wenn</b> dort eine Zeile mit <i>Apple Distribution</i> steht.
-  Steht weiterhin nur <i>Apple Development</i>, bist du im falschen Team angemeldet oder die
-  Mitgliedschaft ist abgelaufen — das ist der Stand von heute.</div>
-</div>
 
 <div class="schritt">
   <div class="schrittkopf">
-    <span class="schrittnr">2</span>
-    <span class="schritttitel">Push für die App-ID einschalten</span>
-    <span class="pflicht">Pflicht · 3 Min</span>
-  </div>
-  <p class="warum"><b>Warum:</b> Apple muss wissen, dass genau diese App Push benutzen darf.
-  Ohne das Häkchen trägt das Provisioning-Profil kein <code>aps-environment</code>, und APNs
-  weist jede Nachricht ab.</p>
-  <ol class="klicks">
-    <li><code>developer.apple.com/account</code> öffnen, anmelden.</li>
-    <li>Oben rechts prüfen: Steht dort <b>MatchUp / HACJC6623Z</b>? Sonst umschalten —
-        mit dem persönlichen Team gibt es die Option gar nicht.</li>
-    <li>Links <b>Certificates, Identifiers &amp; Profiles</b> → <b>Identifiers</b>.</li>
-    <li>In der Liste <code>app.matchup.mobile</code> anklicken.</li>
-    <li>Häkchen bei <b>Push Notifications</b> setzen.</li>
-    <li>Oben rechts <b>Save</b>, Rückfrage mit <b>Confirm</b>.</li>
-    <li><b>Danach in Xcode</b> noch einmal <b>Download Manual Profiles</b> — sonst baut Xcode
-        weiter gegen das alte Profil ohne Push, und der Fehler ist später schwer zu finden.</li>
-  </ol>
-  <div class="fertig"><b>Fertig, wenn</b> neben <i>Push Notifications</i> ein Häkchen steht
-  und die Seite <i>Enabled</i> anzeigt.</div>
-</div>
-
-<div class="schritt" style="break-before: page;">
-  <div class="schrittkopf">
-    <span class="schrittnr">3</span>
-    <span class="schritttitel">Den Schlüssel ersetzen</span>
-    <span class="zustaendig">entschieden · bleibt</span>
-  </div>
-  <p class="warum"><b>Entschieden am 25.09.2026: Der Schlüssel wird nicht ersetzt.</b>
-  Damit gilt weiterhin die Key ID <code>9JF35BFS9Q</code>. Der Abschnitt bleibt als
-  Anleitung stehen — und als Notiz, dass das Risiko unten bekannt und bewusst getragen ist.</p>
-  <div class="achtung"><b>Der Grund:</b> Von
-  <code>AuthKey_9JF35BFS9Q.p8</code> liegen Kopien in WhatsApp-Containern auf diesem Mac.
-  <b>Wer diese Datei hat, kann Push-Nachrichten in deinem Namen verschicken</b> — an alle
-  Geräte, die die App installiert haben. Die Key ID ist harmlos, die Datei ist das
-  Geheimnis.</div>
-  <ol class="klicks" style="margin-top:10px;">
-    <li><code>developer.apple.com/account</code> → <b>Keys</b>.</li>
-    <li>Den Schlüssel <code>9JF35BFS9Q</code> anklicken → <b>Revoke</b> → bestätigen.</li>
-    <li><b>+</b> → <b>Key Name</b> <code>MatchUp Push</code> → Häkchen bei
-        <b>Apple Push Notifications service (APNs)</b> → <b>Continue</b> → <b>Register</b>
-        → <b>Download</b>.</li>
-    <li><b>Die neue Key ID notieren</b> und bei Firebase eintragen (sie steht im Dateinamen).</li>
-  </ol>
-  <pre>mkdir -p ~/keys &amp;&amp; mv ~/Downloads/AuthKey_*.p8 ~/keys/
-find ~ -name "AuthKey_*.p8" 2&gt;/dev/null   # alte Kopien aufspüren</pre>
-</div>
-
-<div class="schritt">
-  <div class="schrittkopf">
-    <span class="schrittnr">6</span>
+    <span class="schrittnr">1</span>
     <span class="schritttitel">App Store Connect → App-Datenschutz</span>
     <span class="empfohlen">vor Release · 10 Min</span>
   </div>
@@ -259,7 +134,7 @@ find ~ -name "AuthKey_*.p8" 2&gt;/dev/null   # alte Kopien aufspüren</pre>
 
 <div class="schritt">
   <div class="schrittkopf">
-    <span class="schrittnr">7</span>
+    <span class="schrittnr">2</span>
     <span class="schritttitel">Play Console → Datensicherheit</span>
     <span class="empfohlen">vor Release · 10 Min</span>
   </div>
@@ -279,44 +154,10 @@ find ~ -name "AuthKey_*.p8" 2&gt;/dev/null   # alte Kopien aufspüren</pre>
   </table>
 </div>
 
-<div class="schritt" style="break-before: page;">
-  <div class="schrittkopf">
-    <span class="schrittnr">8</span>
-    <span class="schritttitel">Am echten iPhone prüfen</span>
-    <span class="zustaendig">Beweis · 15 Min</span>
-  </div>
-  <p class="warum"><b>Warum:</b> Im Simulator ist Push mit Firebase unzuverlässig — ein
-  Fehlschlag dort beweist nichts. Android ginge auch im Emulator. <b>Dieser Schritt ist
-  zugleich der einzige echte Beweis für den APNs-Schlüssel</b> aus Punkt 4: Von außen
-  lässt sich sein Status nicht abfragen.</p>
-  <ol class="klicks">
-    <li>App aufs iPhone bringen (geht erst nach Schritt 1):
-        <code>flutter run --release -d &lt;iphone&gt;</code> oder über TestFlight.</li>
-    <li>App starten, die Nachfrage nach Benachrichtigungen <b>erlauben</b>.</li>
-    <li>Mit einem <b>zweiten Konto</b> eine Direktnachricht an dich schicken.</li>
-  </ol>
-  <pre>-- hat das Gerät sich gemeldet?
-select count(*) from push_geraete;
 
--- legt der Auslöser an, und geht es raus?
-select id, art, gesendet_at, fehler from push_auftraege order by id desc limit 5;</pre>
-  <div class="fertig"><b>Fertig, wenn</b> <code>push_geraete</code> mindestens eine Zeile hat,
-  binnen Sekunden ein Auftrag erscheint und er binnen einer Minute ein <code>gesendet_at</code>
-  trägt — und das Telefon klingelt.</div>
-  <p style="font-size:9.5pt; margin:10px 0 0;"><b>Wenn nichts ankommt</b>, in dieser
-  Reihenfolge:</p>
-  <ul class="knapp">
-    <li><code>push_geraete</code> leer → der Token wurde nie gemeldet. Berechtigung abgelehnt,
-        oder Firebase ist auf dem Gerät nicht hochgekommen.</li>
-    <li>Auftrag da, aber kein <code>gesendet_at</code> → die Spalte <code>fehler</code> derselben
-        Zeile lesen.</li>
-    <li><code>fehler</code> nennt APNs oder <i>Auth</i> → Schritt 2 fehlt, oder der Schlüssel
-        aus Punkt 4 liegt doch nicht richtig.</li>
-  </ul>
-</div>
 
 <div class="fuss">
-  MatchUp · Was noch fehlt · Stand 04.10.2026 ·
+  MatchUp · Was noch fehlt · Stand 11.10.2026 ·
   Quelle dieser Seite: <code>docs/push_offen.html</code>, gebaut mit <code>tools/push_pdf.sh</code> ·
   Der vollständige Stand steht in <code>PUSH.md</code> und <code>PUSH.pdf</code>
 </div>

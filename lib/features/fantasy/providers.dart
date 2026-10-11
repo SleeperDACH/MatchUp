@@ -291,6 +291,18 @@ final playerPoolProvider = FutureProvider<List<FantasyPlayer>>((ref) {
 /// Vereinslogos (kanonischer Name → Icon-URL) aus der Bundesliga-Tabelle,
 /// um bei Spielern das Vereinswappen zu zeigen. Fällt auf die Vorsaison
 /// zurück, falls die aktuelle Tabelle noch leer ist (Saisonstart).
+///
+/// **Die Wappen kommen von Sportmonks, OpenLigaDB ist nur noch Rückfall.**
+/// Gemeldet: „Das Bayer-Leverkusen-Logo fehlt." OpenLigaDB verweist für
+/// Leverkusen auf eine fremde Seite, die mit 403 antwortet — bei einer
+/// Gemeinschaftsdatenbank kann jede Bildadresse so verschwinden. Sportmonks
+/// liefert seine Wappen aus dem eigenen CDN und steckt ohnehin im Spielplan,
+/// den die App schon geladen hat; das kostet keinen Abruf.
+///
+/// Der Schlüssel bleibt der Vereinsname aus `players.club`
+/// (OpenLigaDB-Form), denn danach schlagen alle Aufrufer nach. Zugeordnet
+/// wird über [vereinKanonisch]: Sportmonks schreibt „FC Köln", der Kader
+/// „1. FC Köln".
 final clubIconsProvider = FutureProvider<Map<String, String?>>((ref) async {
   final season = ref.watch(fantasySeasonProvider);
   final provider = OpenLigaDbProvider();
@@ -298,7 +310,24 @@ final clubIconsProvider = FutureProvider<Map<String, String?>>((ref) async {
   if (rows.isEmpty) {
     rows = await provider.getTable(Leagues.bundesliga, season - 1);
   }
-  return {for (final r in rows) r.team.name: r.team.iconUrl};
+  final sportmonks = <String, String>{};
+  try {
+    final fixtures = await ref.watch(fantasySeasonFixturesProvider.future);
+    for (final f in fixtures) {
+      for (final t in [f.home, f.away]) {
+        final url = t.iconUrl;
+        if (url != null && url.isNotEmpty) {
+          sportmonks[vereinKanonisch(t.name)] = url;
+        }
+      }
+    }
+  } catch (_) {
+    // Ohne Spielplan bleibt es bei OpenLigaDB — lieber alte Wappen als keine.
+  }
+  return {
+    for (final r in rows)
+      r.team.name: sportmonks[vereinKanonisch(r.team.name)] ?? r.team.iconUrl,
+  };
 });
 
 // ------------------------------------------------------------------

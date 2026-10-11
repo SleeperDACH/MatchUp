@@ -114,6 +114,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   /// verlässlich zu benutzen.
   FantasyLeagueRepository? _repo;
 
+  /// Ebenso für den Flush: Nach dem Abschicken muss die Liste der
+  /// Aufstellungen neu geholt werden, und `ref` gibt es dann nicht mehr.
+  ProviderContainer? _container;
+
   /// Spieler, deren Spiel schon läuft — im `build` gesetzt, damit der
   /// Spielerwahl-Dialog sie nicht anbietet. Ein gesperrter Spieler im Dialog
   /// wäre ein Angebot, das der Server anschließend ablehnt.
@@ -126,6 +130,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
   void initState() {
     super.initState();
     _repo = ref.read(fantasyLeagueRepositoryProvider);
+    _container = ProviderScope.containerOf(context, listen: false);
   }
 
   @override
@@ -140,6 +145,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       unawaited(
         _repo!
             .setLineup(widget.league.id, _effRound!, _lastIds)
+            .then((_) => _container?.invalidate(
+                  leagueLineupsProvider(widget.league.id),
+                ))
             .catchError((Object e) => debugPrint('[AUFSTELLUNG] Flush: $e')),
       );
     }
@@ -274,6 +282,12 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       // Flush in dispose sie noch mitnimmt.
       _dirty = false;
       _fehlversuche = 0;
+      // **Den gespeicherten Stand frisch holen, nicht auf Realtime warten.**
+      // Kommt das Ereignis nicht an (abgerissener Kanal), zeigten MatchUp-Tab
+      // und der wiedergeöffnete Schirm sonst die alte Elf, obwohl hier
+      // „Gespeichert" stand. Die Auswahl auf diesem Schirm (`_slots`) bleibt
+      // dabei unangetastet.
+      if (mounted) ref.invalidate(leagueLineupsProvider(widget.league.id));
     } catch (e) {
       if (mounted) {
         _fehlversuche++;
@@ -1152,36 +1166,31 @@ class _Slot extends ConsumerWidget {
                             // — geholt werden sie hier, an den Polstern, nicht
                             // an der Schriftgröße: Kleiner setzen hieße, genau
                             // das wieder aufzugeben, worum es ging.
+                            // **Oben: Termin links, Zustand rechts — das
+                            // Wappen in der Mitte.** Auf Ansage: „bei den
+                            // Spielern die Wappen mittig machen und den
+                            // Spieltermin kleiner in die obere Ecke". Das
+                            // Wappen ist das, woran man einen Spieler auf
+                            // dem Feld zuerst erkennt; in der Ecke war es
+                            // eine Marke neben anderen. Gegner und Anstoß
+                            // sind Zusatz und stehen deshalb klein am Rand.
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 4, 4, 2),
+                              padding: const EdgeInsets.fromLTRB(4, 3, 4, 0),
                               child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // **Das Wappen bleibt eine Marke.**
-                                  // Flächenfüllend über die ganze Karte
-                                  // gezogen war es, wie gemeldet,
-                                  // „katastrophal": Vereinslogos sind für
-                                  // kleine Flächen gezeichnet — hochskaliert,
-                                  // weichgezeichnet und abgedunkelt bleibt von
-                                  // ihnen ein Farbfleck, und elf davon
-                                  // nebeneinander machen aus dem Rasen einen
-                                  // Flickenteppich. Als 26er-Marke sagt es in
-                                  // einer Ecke dasselbe, ohne die Karte zu
-                                  // übernehmen.
-                                  // **Der gesperrte Zustand dämpft das
-                                  // Wappen, nicht die ganze Karte.** Ein
-                                  // `Opacity` über allem ließ auch Kante und
-                                  // Namensfeld ausbleichen — und trug seinen
-                                  // Teil zum verschwommenen Eindruck bei.
-                                  Opacity(
-                                    opacity: gesperrt ? 0.55 : 1,
-                                    child: ClubBadge(
-                                      club: p.club,
-                                      iconUrl: iconUrl,
-                                      size: 22,
-                                    ),
+                                  Expanded(
+                                    child: !zeigePunkte && spiel != null
+                                        ? Align(
+                                            alignment: Alignment.topLeft,
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment: Alignment.topLeft,
+                                              child: _Termin(spiel: spiel!),
+                                            ),
+                                          )
+                                        : const SizedBox(height: 16),
                                   ),
-                                  const Spacer(),
                                   // **Ausfall und Spielsperre bleiben zwei
                                   // Aussagen.** „Sein Spiel läuft" ist eine
                                   // Frist, „verletzt" ein Zustand; sie stehen
@@ -1194,17 +1203,10 @@ class _Slot extends ConsumerWidget {
                                         size: 13,
                                       ),
                                     ),
-                                  // **Der Zustand des Platzes, oben rechts.**
-                                  //
-                                  // Der Tausch saß bis hierher als eigener
-                                  // Kreis **unter** der Karte — elf davon auf
-                                  // dem Rasen, jeder mit farbigem Ring, und
-                                  // jede Reihe rund 28 Punkte höher. Auf
-                                  // Ansage sitzt er jetzt in der Kachel, an
-                                  // derselben Stelle, an der bei laufendem
-                                  // Spiel das Schloss steht: Beides sagt, was
-                                  // mit diesem Platz geht — das eine „du
-                                  // kannst", das andere „nicht mehr".
+                                  // **Der Zustand des Platzes, oben rechts**:
+                                  // Tausch oder, bei laufendem Spiel, das
+                                  // Schloss. Beides sagt, was mit diesem
+                                  // Platz geht.
                                   if (gesperrt || onEditPosition == null)
                                     Icon(
                                       Icons.lock,
@@ -1232,6 +1234,22 @@ class _Slot extends ConsumerWidget {
                                       ),
                                     ),
                                 ],
+                              ),
+                            ),
+                            // **Das Wappen bleibt eine Marke**, nur jetzt in
+                            // der Mitte. Flächenfüllend war es „katastrophal"
+                            // — Vereinslogos sind für kleine Flächen
+                            // gezeichnet. Der gesperrte Zustand dämpft das
+                            // Wappen, nicht die ganze Karte.
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: Opacity(
+                                opacity: gesperrt ? 0.55 : 1,
+                                child: ClubBadge(
+                                  club: p.club,
+                                  iconUrl: iconUrl,
+                                  size: 26,
+                                ),
                               ),
                             ),
                             // **Die Punktzahl steht, wo sonst der Gegner
@@ -1268,48 +1286,6 @@ class _Slot extends ConsumerWidget {
                             // Untereinander in der festen Kachelbreite haben
                             // beide ihre volle Größe, in jeder Formation
                             // dieselbe.
-                            if (!zeigePunkte && spiel != null)
-                              Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(4, 0, 4, 3),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      // Das Zeichen sagt, wo gespielt wird:
-                                      // zu Hause oder auswärts.
-                                      '${spiel!.heim ? '' : '@'}'
-                                      '${vereinsKuerzel(spiel!.gegner)}',
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: Schrift.klein,
-                                        height: 1.0,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.2,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      anpfiffKurz(spiel!.anpfiff),
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: Schrift.winzig,
-                                        height: 1.1,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.7,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                             // **Der Streifen ist dunkel, die Farbe nur
                             // noch eine Kante.** Als volle Fläche in der
                             // Positionsfarbe war er das Lauteste auf dem
@@ -1496,6 +1472,50 @@ class _ProjektionsBox extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Gegner und Anstoß klein in der oberen Ecke einer Spielerkachel.
+///
+/// Zwei Zeilen statt einer: „@BVB Sa 15:30" nebeneinander passte neben dem
+/// Tauschknopf nicht in 68 Punkte Breite.
+class _Termin extends StatelessWidget {
+  const _Termin({required this.spiel});
+
+  final NaechstesSpiel spiel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          // Das Zeichen sagt, wo gespielt wird: zu Hause oder auswärts.
+          '${spiel.heim ? '' : '@'}${vereinsKuerzel(spiel.gegner)}',
+          maxLines: 1,
+          softWrap: false,
+          style: TextStyle(
+            fontSize: Schrift.winzig,
+            height: 1.0,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+            color: Colors.white.withValues(alpha: 0.85),
+          ),
+        ),
+        Text(
+          anpfiffKurz(spiel.anpfiff),
+          maxLines: 1,
+          softWrap: false,
+          style: TextStyle(
+            fontSize: Schrift.mikro,
+            height: 1.1,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.65),
+          ),
+        ),
+      ],
     );
   }
 }
