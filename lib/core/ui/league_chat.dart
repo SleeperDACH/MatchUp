@@ -71,10 +71,24 @@ class LeagueChat extends StatefulWidget {
 
 class _LeagueChatState extends State<LeagueChat> {
   final _textCtrl = TextEditingController();
-  bool _sending = false;
 
   /// Nachricht, auf die gerade geantwortet wird (`null` = normale Nachricht).
   ChatMessage? _replyTo;
+
+  /// **Eigene Nachrichten, die der Server noch nicht zurückgemeldet hat.**
+  ///
+  /// Gemeldet: „Wenn man eine Nachricht schickt, wird sie nicht direkt nach dem
+  /// Absenden angezeigt, sondern ein paar Sekunden verzögert." Der Verlauf
+  /// zeigte nur, was über die Realtime-Verbindung zurückkam — Senden,
+  /// Schreiben in die Datenbank, Ereignis an alle Zuhörer, und erst dann die
+  /// Blase. Jetzt steht sie im selben Moment da, in dem man tippt, und wird
+  /// gegen die echte Zeile getauscht, sobald die ankommt ([_zusammenfuehren]).
+  final _ausstehend = <ChatMessage>[];
+
+  /// Die davon, deren Speichern der Server schon bestätigt hat. Sie stehen
+  /// voll da; nur was noch unterwegs ist, ist gedämpft.
+  final _bestaetigt = <String>{};
+  var _laufendeNr = 0;
 
   @override
   void dispose() {
@@ -84,21 +98,72 @@ class _LeagueChatState extends State<LeagueChat> {
 
   Future<void> _send() async {
     final text = _textCtrl.text.trim();
-    if (text.isEmpty || _sending) return;
-    setState(() => _sending = true);
+    if (text.isEmpty) return;
+    final antwortAuf = _replyTo;
+    final lokal = ChatMessage(
+      id: 'ausstehend:${_laufendeNr++}',
+      userId: widget.myId,
+      body: text,
+      createdAt: DateTime.now(),
+      replyTo: antwortAuf?.id,
+    );
+    // **Sofort zeigen, dann senden.** Das Eingabefeld ist gleich wieder frei;
+    // wer drei Nachrichten hintereinander tippt, wartet auf keine davon.
+    setState(() {
+      _ausstehend.add(lokal);
+      _replyTo = null;
+    });
+    _textCtrl.clear();
     try {
-      await widget.onSend(text, _replyTo?.id);
-      _textCtrl.clear();
-      if (mounted) setState(() => _replyTo = null);
+      await widget.onSend(text, antwortAuf?.id);
+      if (mounted) setState(() => _bestaetigt.add(lokal.id));
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Nachricht konnte nicht gesendet werden: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      if (!mounted) return;
+      // **Ein Fehlschlag nimmt die Blase wieder weg und gibt den Text
+      // zurück.** Eine Nachricht, die im Verlauf steht, aber nie angekommen
+      // ist, wäre schlimmer als die Verzögerung, um die es ging.
+      setState(() {
+        _ausstehend.remove(lokal);
+        _replyTo ??= antwortAuf;
+      });
+      if (_textCtrl.text.isEmpty) _textCtrl.text = text;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nachricht konnte nicht gesendet werden: $e')),
+      );
     }
+  }
+
+  /// Server-Verlauf plus eigene Nachrichten, die er noch nicht kennt.
+  ///
+  /// Eine ausstehende Nachricht gilt als angekommen, sobald im Verlauf eine
+  /// eigene mit demselben Text steht, die nicht älter ist als sie (mit einer
+  /// Minute Spielraum für eine falsch gehende Uhr). Jede Server-Zeile löst
+  /// dabei höchstens **eine** ausstehende ab — zweimal „ok" hintereinander
+  /// sind zwei Nachrichten.
+  List<ChatMessage> _zusammenfuehren(List<ChatMessage> server) {
+    if (_ausstehend.isEmpty) return server;
+    final vergeben = <String>{};
+    final offen = <ChatMessage>[];
+    for (final a in _ausstehend) {
+      final treffer = server.where((m) =>
+          !vergeben.contains(m.id) &&
+          m.userId == a.userId &&
+          m.body == a.body &&
+          !m.createdAt.isBefore(
+              a.createdAt.subtract(const Duration(minutes: 1))));
+      if (treffer.isEmpty) {
+        offen.add(a);
+      } else {
+        vergeben.add(treffer.first.id);
+      }
+    }
+    // Angekommene aufräumen, ohne im `build` `setState` zu rufen.
+    if (offen.length != _ausstehend.length) {
+      _ausstehend
+        ..clear()
+        ..addAll(offen);
+    }
+    return [...server, ...offen];
   }
 
   @override
@@ -109,7 +174,9 @@ class _LeagueChatState extends State<LeagueChat> {
           child: widget.messages.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => _ChatError(error: e, onRetry: widget.onRetry),
-            data: (list) => list.isEmpty
+            data: (server) {
+              final list = _zusammenfuehren(server);
+              return list.isEmpty
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32),
@@ -119,6 +186,10 @@ class _LeagueChatState extends State<LeagueChat> {
                 : _MessageList(
                     neuAb: widget.neuAb,
                     messages: list,
+                    unterwegs: {
+                      for (final a in _ausstehend)
+                        if (!_bestaetigt.contains(a.id)) a.id,
+                    },
                     names: widget.names,
                     avatars: widget.avatars,
                     myId: widget.myId,
@@ -126,7 +197,8 @@ class _LeagueChatState extends State<LeagueChat> {
                     onReply: widget.enableReply
                         ? (m) => setState(() => _replyTo = m)
                         : null,
-                  ),
+                  );
+            },
           ),
         ),
         if (_replyTo != null)
@@ -139,7 +211,7 @@ class _LeagueChatState extends State<LeagueChat> {
           ),
         _Composer(
           controller: _textCtrl,
-          sending: _sending,
+          sending: false,
           hintText: widget.hintText,
           onSend: _send,
         ),
@@ -157,7 +229,12 @@ class _MessageList extends StatefulWidget {
     required this.onReply,
     this.extraBuilder,
     this.neuAb,
+    this.unterwegs = const {},
   });
+
+  /// IDs eigener Nachrichten, die gerade gesendet werden — sie stehen
+  /// gedämpft da, bis der Server sie bestätigt.
+  final Set<String> unterwegs;
 
   /// Siehe [LeagueChat.neuAb].
   final DateTime? neuAb;
@@ -241,7 +318,7 @@ class _MessageListState extends State<_MessageList> {
       }
       // Zitierte Original-Nachricht auflösen (falls noch vorhanden).
       final quoted = msg.replyTo == null ? null : byId[msg.replyTo];
-      rows.add(_MessageBubble(
+      final bubble = _MessageBubble(
         message: msg,
         author: widget.names[msg.userId] ?? '?',
         avatar: widget.avatars[msg.userId],
@@ -253,8 +330,15 @@ class _MessageListState extends State<_MessageList> {
                 ? 'Du'
                 : (widget.names[quoted.userId] ?? '?')),
         quotedBody: quoted?.body,
-        onReply: widget.onReply == null ? null : () => widget.onReply!(msg),
-      ));
+        // Auf eine Nachricht, die der Server noch nicht kennt, lässt sich
+        // nicht antworten — ihre ID ist nur eine lokale.
+        onReply: widget.onReply == null || msg.id.startsWith('ausstehend:')
+            ? null
+            : () => widget.onReply!(msg),
+      );
+      rows.add(widget.unterwegs.contains(msg.id)
+          ? Opacity(opacity: 0.6, child: bubble)
+          : bubble);
     }
     // **Die Liste ist umgedreht, nicht gescrollt.**
     //
