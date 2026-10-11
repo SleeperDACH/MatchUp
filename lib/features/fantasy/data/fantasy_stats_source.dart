@@ -84,8 +84,30 @@ class DbStatsSource implements FantasyStatsSource {
   Future<Map<int, Map<String, PlayerMatchStats>>> seasonStats({
     required int season,
   }) async {
-    final rows =
-        await _client.from('player_match_stats').select().eq('season', season);
+    // **Seitenweise, nicht in einem Rutsch.** PostgREST gibt je Abfrage
+    // höchstens `max_rows` Zeilen heraus (1000), und das **stillschweigend**:
+    // keine Fehlermeldung, nur eine kürzere Liste. Eine Saison hat rund 285
+    // Zeilen je Spieltag; ab dem vierten fehlten deshalb zufällig verteilte
+    // Spieler ganzer Runden — gemessen am 11.10.2026: 1000 von 1354 Zeilen,
+    // von Spieltag 5 nur 81 von 219. Betroffen war alles, was die Saison
+    // liest: Spielerprofil, Tabelle, Bilanz, Playoffs, Free Agency, Trades.
+    //
+    // Die Sortierung ist Pflicht: Ohne sie ist die Reihenfolge zwischen zwei
+    // Seiten nicht festgelegt, und eine Zeile könnte doppelt oder gar nicht
+    // kommen.
+    const seite = 1000;
+    final rows = <Map<String, dynamic>>[];
+    for (var ab = 0;; ab += seite) {
+      final teil = await _client
+          .from('player_match_stats')
+          .select()
+          .eq('season', season)
+          .order('round')
+          .order('player_id')
+          .range(ab, ab + seite - 1);
+      rows.addAll(teil);
+      if (teil.length < seite) break;
+    }
     final out = <int, Map<String, PlayerMatchStats>>{};
     for (final r in rows) {
       final round = r['round'] as int;

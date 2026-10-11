@@ -26,6 +26,7 @@ import '../logic/waiver_fenster.dart';
 import 'player_action_buttons.dart';
 import '../../../app/widgets/punktzahl.dart';
 import '../logic/spieler_schnitt.dart';
+import '../logic/laufende_runde.dart';
 import '../logic/rueckkehr.dart';
 import '../logic/naechstes_spiel.dart';
 
@@ -201,13 +202,31 @@ class _PlayerProfileSheet extends ConsumerWidget {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          data: (season) => _table(
-                            context,
-                            season,
-                            ref.watch(fantasySeasonFixturesProvider)
-                                    .valueOrNull ??
-                                const <Fixture>[],
-                          ),
+                          data: (season) {
+                            final spiele =
+                                ref.watch(fantasySeasonFixturesProvider)
+                                        .valueOrNull ??
+                                    const <Fixture>[];
+                            final runde = ref
+                                .watch(fantasyCurrentRoundProvider)
+                                .valueOrNull;
+                            return _table(
+                              context,
+                              mitLaufenderRunde(
+                                saison: season,
+                                runde: runde,
+                                spielerId: player.id,
+                                verein: player.club,
+                                spiele: spiele,
+                                live: runde == null
+                                    ? null
+                                    : ref
+                                        .watch(roundStatsProvider(runde))
+                                        .valueOrNull,
+                              ),
+                              spiele,
+                            );
+                          },
                         ),
                         _Prognose(league: league, player: player),
                         _Spielplan(club: player.club),
