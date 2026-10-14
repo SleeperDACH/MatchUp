@@ -8,6 +8,7 @@
 //         { "kind": "squad",          "teamId": "503" }
 //         { "kind": "standings",      "leagueKey": "82" }
 //         { "kind": "fixture",        "fixtureId": "19734892" }
+//         { "kind": "live" }   ← alle fünf Ligen, nur das Zeitfenster um jetzt
 //
 // leagueKey = Sportmonks-League-ID (LeagueInfo.providerLeagueKey der App).
 
@@ -29,14 +30,27 @@ const ALLOWED_LEAGUES = new Set(["82", "85", "88", "109", "1740"]);
 // `/v3/core/types/<id>` und schaut auf `model_type`.
 const ST_GOAL_TOPSCORER = 208;
 
-// TTL je Ressource (Sekunden): Fixtures kurz (Live), Tabelle länger.
+// TTL je Ressource (Sekunden).
+//
+// **Der Saison-Spielplan ist langlebig, die Spielstände kommen aus `live`.**
+// Bis Oktober 2026 stand `seasonFixtures` auf 60 s, und jeder Ablauf holte die
+// ganze Saison neu: 27 Seiten über die fünf Ligen. Gemessen am 07.08.2026 kam
+// der Live-Tab damit auf ~1.300 Abrufe je Stunde — bei 2.000 erlaubten je
+// Entity. Jetzt liefert **eine** Abfrage (`live`, alle fünf Ligen, nur die
+// Tage um jetzt) die Stände, und `seasonFixtures` legt sie beim Ausliefern
+// über den gemerkten Spielplan (`mitLiveStand`). Der Spielplan selbst ändert
+// sich nur bei Verlegungen; eine halbe Stunde reicht.
 const TTL = {
-  seasonFixtures: 60,
+  seasonFixtures: 1800,
+  // Bestimmt die Obergrenze an Abrufen, nicht die Zahl der Nutzer: höchstens
+  // ein Abruf je 8 s = 450 je Stunde, egal wie viele zusehen.
+  live: 8,
   standings: 300,
   fixture: 45,
   season: 21600,
   topscorers: 3600,
-  teamFixtures: 120,
+  // Die Stände kommen auch hier aus `live`.
+  teamFixtures: 900,
   // Kader ändert sich nur bei Transfers — ein Tag reicht völlig.
   squad: 86400,
 };
@@ -57,6 +71,19 @@ function json(body: unknown, status = 200): Response {
 
 const KEY = Deno.env.get("SPORTMONKS_API_KEY");
 
+/// Ein Fehler von Sportmonks, mit Status — der Aufrufer unterscheidet
+/// „zu viele Abrufe" (429) von allem anderen.
+class SmFehler extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+    /// Bei 429: Sekunden, bis das Kontingent zurückgesetzt wird.
+    readonly sperreSek: number | null = null,
+  ) {
+    super(message);
+  }
+}
+
 // deno-lint-ignore no-explicit-any
 async function smGet(path: string): Promise<any> {
   const sep = path.includes("?") ? "&" : "?";
@@ -64,7 +91,21 @@ async function smGet(path: string): Promise<any> {
     headers: { "User-Agent": UA, Accept: "application/json" },
   });
   if (!res.ok) {
-    throw new Error(`Sportmonks HTTP ${res.status} für ${path}`);
+    let sperreSek: number | null = null;
+    if (res.status === 429) {
+      // Sportmonks nennt die Restzeit im Körper (`rate_limit`), manche
+      // Antworten nur im Kopf.
+      const body = await res.json().catch(() => null);
+      const s = Number(
+        body?.rate_limit?.resets_in_seconds ?? res.headers.get("retry-after"),
+      );
+      sperreSek = Number.isFinite(s) && s > 0 ? Math.min(s, 3600) : 300;
+    }
+    throw new SmFehler(
+      res.status,
+      `Sportmonks HTTP ${res.status} für ${path}`,
+      sperreSek,
+    );
   }
   return await res.json();
 }
@@ -217,6 +258,82 @@ async function seasonFixtures(
     if (!pg?.has_more) break;
   }
   return { season, fixtures: all };
+}
+
+// Zustände, in denen sich an einem Spiel nichts mehr ändert. Alles andere im
+// Fenster um jetzt kann gerade laufen oder gleich anfangen.
+const ENDSTAND = new Set([
+  "FT", "AET", "FT_PEN", "AWARDED", "WALKOVER",
+  "CANCELLED", "POSTPONED", "ABANDONED", "DELETED",
+]);
+
+// Wie weit um jetzt ein Spiel als „vielleicht live" gilt: vier Stunden
+// zurück deckt ein Pokalspiel mit Verlängerung, Elfmeterschießen und
+// Unterbrechung ab; nach vorn genügen Minuten (Anpfiff kommt über `live`).
+const FENSTER_ZURUECK_MS = 4 * 3600 * 1000;
+const FENSTER_VOR_MS = 15 * 60 * 1000;
+
+/// **Die Spielstände aller fünf Ligen in einer Abfrage.** Statt je Liga die
+/// ganze Saison zu holen, fragt `live` nur die Kalendertage um jetzt — ein
+/// voller Samstag sind gemessen 18 Partien und 30 KB auf einer Seite
+/// (17.10.2026). `/livescores` wäre die naheliegende Wahl, zeigt ein
+/// beendetes Spiel aber nur eine Viertelstunde lang; danach bliebe ein
+/// gemerkter Spielplan auf „läuft" stehen.
+///
+/// `/fixtures/between` nimmt nur ganze Tage (`Y-m-d`, gemessen: Uhrzeiten
+/// werden mit 422 abgewiesen), in UTC wie alle Sportmonks-Zeiten.
+async function liveFenster() {
+  const now = Date.now();
+  const tag = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const von = tag(now - FENSTER_ZURUECK_MS);
+  const bis = tag(now + FENSTER_ZURUECK_MS);
+  const ligen = [...ALLOWED_LEAGUES].join(",");
+  // deno-lint-ignore no-explicit-any
+  const all: any[] = [];
+  for (let page = 1; page <= 4; page++) {
+    const r = await smGet(
+      `/fixtures/between/${von}/${bis}?filters=fixtureLeagues:${ligen}` +
+        `&include=participants;scores;state;round;stage&per_page=50&page=${page}`,
+    );
+    for (const f of r?.data ?? []) {
+      all.push({ ...normFixture(f), league_key: String(f.league_id) });
+    }
+    const pg = r?.pagination ?? r?.meta?.pagination;
+    if (!pg?.has_more) break;
+  }
+  return { fixtures: all };
+}
+
+/// Ob ein gemerkter Spielplan Spiele enthält, deren Stand sich gerade ändern
+/// kann. Nur dann lohnt es, `live` darüberzulegen.
+// deno-lint-ignore no-explicit-any
+function hatOffeneSpiele(fixtures: any[]): boolean {
+  const now = Date.now();
+  return fixtures.some((f) => {
+    if (ENDSTAND.has(f.state)) return false;
+    const t = Date.parse(f.starting_at ?? "");
+    return Number.isFinite(t) &&
+      t <= now + FENSTER_VOR_MS && t >= now - FENSTER_ZURUECK_MS;
+  });
+}
+
+/// Legt die frischen Stände aus `live` über einen gemerkten Spielplan.
+/// Ersetzt werden nur Stand, Zustand und Anstoß — alles, was die Liste
+/// sonst trägt (bei `teamFixtures` etwa Wettbewerb und Logo), bleibt.
+// deno-lint-ignore no-explicit-any
+function mitLiveStand(fixtures: any[], live: any[]): any[] {
+  const byId = new Map(live.map((f) => [f.id, f]));
+  return fixtures.map((f) => {
+    const l = byId.get(f.id);
+    if (!l) return f;
+    return {
+      ...f,
+      state: l.state,
+      starting_at: l.starting_at ?? f.starting_at,
+      home_score: l.home_score,
+      away_score: l.away_score,
+    };
+  });
 }
 
 /// Kader eines Vereins. Läuft bei Sportmonks über die Entity `PlayerTeam` und
@@ -533,8 +650,10 @@ async function topScorers(leagueKey: string) {
 }
 
 // --- Cache ---------------------------------------------------------------
+/// Die gemerkte Zeile samt Alter — gleich, ob abgelaufen. Für den Rückfall
+/// bei Störungen, wo eine alte Antwort besser ist als keine.
 // deno-lint-ignore no-explicit-any
-async function readCache(supabase: any, key: string, ttlSec: number) {
+async function readCacheRow(supabase: any, key: string) {
   const { data } = await supabase
     .from("sportmonks_cache")
     .select("fetched_at, payload")
@@ -542,7 +661,13 @@ async function readCache(supabase: any, key: string, ttlSec: number) {
     .maybeSingle();
   if (!data) return null;
   const ageSec = (Date.now() - new Date(data.fetched_at).getTime()) / 1000;
-  return ageSec < ttlSec ? data.payload : null;
+  // deno-lint-ignore no-explicit-any
+  return { payload: data.payload as any, ageSec };
+}
+// deno-lint-ignore no-explicit-any
+async function readCache(supabase: any, key: string, ttlSec: number) {
+  const row = await readCacheRow(supabase, key);
+  return row && row.ageSec < ttlSec ? row.payload : null;
 }
 // deno-lint-ignore no-explicit-any
 async function writeCache(supabase: any, key: string, payload: unknown) {
@@ -577,6 +702,90 @@ async function writeCacheWennGefuellt(
   await writeCache(supabase, key, payload);
 }
 
+// --- Ausliefern: Cache, Sperre, Rückfall ---------------------------------
+// Welche Abfragen sich ein Sportmonks-Kontingent teilen. Das Stundenlimit
+// gilt je Entity; Spielplan, Live-Stände und Spieldetail zählen alle auf
+// „Fixture" (gemessen: `rate_limit.requested_entity`).
+const KONTINGENT: Record<string, string> = {
+  seasonFixtures: "fixture",
+  live: "fixture",
+  fixture: "fixture",
+  teamFixtures: "fixture",
+  standings: "standings",
+  topscorers: "topscorers",
+  squad: "squad",
+};
+
+/// **Nach einem 429 wird nicht weiter gefragt.** Jede weitere Anfrage im
+/// gesperrten Zeitraum verlängert nichts und bringt nichts — sie verbrennt
+/// nur die Antwortzeit des Nutzers. Die Sperre steht in derselben Tabelle
+/// wie der Cache, damit alle Instanzen der Function sie sehen.
+// deno-lint-ignore no-explicit-any
+async function gesperrtBis(supabase: any, gruppe: string): Promise<number> {
+  const row = await readCacheRow(supabase, `sperre:${gruppe}`);
+  const bis = Date.parse(row?.payload?.bis ?? "");
+  return Number.isFinite(bis) && bis > Date.now() ? bis : 0;
+}
+
+/// Liefert aus dem Cache, sonst frisch von Sportmonks — und wenn das
+/// scheitert (429, 5xx, Netz), **die letzte gemerkte Antwort**, egal wie alt,
+/// mit `stale: true`. Vorher gab es bei jeder Störung einen 502, und der
+/// Live-Tab stand leer, obwohl der Spielplan von vor einer Minute noch dalag.
+async function bediene(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  kind: string,
+  ck: string,
+  ttl: number,
+  // deno-lint-ignore no-explicit-any
+  laden: () => Promise<any>,
+  opts: { leerFeld?: string; nocache?: boolean } = {},
+  // deno-lint-ignore no-explicit-any
+): Promise<any> {
+  if (!opts.nocache) {
+    const cached = await readCache(supabase, ck, ttl);
+    if (cached) return cached;
+  }
+  const gruppe = KONTINGENT[kind] ?? kind;
+  try {
+    const bis = await gesperrtBis(supabase, gruppe);
+    if (bis) {
+      throw new SmFehler(
+        429,
+        `Sportmonks-Kontingent erschöpft bis ${new Date(bis).toISOString()}`,
+      );
+    }
+    const payload = await laden();
+    if (opts.leerFeld) {
+      await writeCacheWennGefuellt(supabase, ck, payload, opts.leerFeld);
+    } else {
+      await writeCache(supabase, ck, payload);
+    }
+    return payload;
+  } catch (e) {
+    if (e instanceof SmFehler && e.sperreSek) {
+      await writeCache(supabase, `sperre:${gruppe}`, {
+        bis: new Date(Date.now() + e.sperreSek * 1000).toISOString(),
+      });
+    }
+    const alt = await readCacheRow(supabase, ck);
+    if (alt) return { ...alt.payload, stale: true };
+    throw e;
+  }
+}
+
+/// Legt `live` über eine Spielplan-Antwort, wenn darin gerade etwas laufen
+/// kann. Scheitert `live`, bleibt der Spielplan, wie er ist.
+// deno-lint-ignore no-explicit-any
+async function ueberlagert(supabase: any, payload: any) {
+  const fixtures = payload?.fixtures;
+  if (!Array.isArray(fixtures) || !hatOffeneSpiele(fixtures)) return payload;
+  const live = await bediene(supabase, "live", "live", TTL.live, liveFenster)
+    .catch(() => null);
+  if (!Array.isArray(live?.fixtures)) return payload;
+  return { ...payload, fixtures: mitLiveStand(fixtures, live.fixtures) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -601,72 +810,100 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  // Cache umgehen (Force-Refresh) — liest frisch, schreibt aber weiter.
-  const rc = (ck: string, ttl: number) =>
-    body.nocache === true
-      ? Promise.resolve(null)
-      : readCache(supabase, ck, ttl);
+  // `nocache` umgeht den Cache (Force-Refresh) — liest frisch, schreibt aber
+  // weiter.
+  const nocache = body.nocache === true;
 
   try {
+    if (kind === "live") {
+      return json(
+        await bediene(supabase, "live", "live", TTL.live, liveFenster, {
+          nocache,
+        }),
+      );
+    }
     if (kind === "seasonFixtures" || kind === "standings") {
       if (!leagueKey || !ALLOWED_LEAGUES.has(leagueKey)) {
         return json({ error: "Unbekannte Liga." }, 400);
       }
-      const ck = `${kind}:${leagueKey}`;
-      const cached = await rc(ck, TTL[kind]);
-      if (cached) return json(cached);
-      const payload = kind === "seasonFixtures"
-        ? await seasonFixtures(supabase, leagueKey)
-        : await standings(supabase, leagueKey);
-      await writeCacheWennGefuellt(
-        supabase,
-        ck,
-        payload,
-        kind === "seasonFixtures" ? "fixtures" : "standings",
+      if (kind === "seasonFixtures") {
+        const basis = await bediene(
+          supabase,
+          kind,
+          `${kind}:${leagueKey}`,
+          TTL.seasonFixtures,
+          () => seasonFixtures(supabase, leagueKey),
+          { leerFeld: "fixtures", nocache },
+        );
+        return json(await ueberlagert(supabase, basis));
+      }
+      return json(
+        await bediene(
+          supabase,
+          kind,
+          `${kind}:${leagueKey}`,
+          TTL.standings,
+          () => standings(supabase, leagueKey),
+          { leerFeld: "standings", nocache },
+        ),
       );
-      return json(payload);
     }
     if (kind === "fixture") {
       if (!fixtureId) return json({ error: "fixtureId fehlt." }, 400);
-      const ck = `fixture:${fixtureId}`;
-      const cached = await rc(ck, TTL.fixture);
-      if (cached) return json(cached);
-      const payload = await fixtureDetail(fixtureId);
-      await writeCache(supabase, ck, payload);
-      return json(payload);
+      return json(
+        await bediene(
+          supabase,
+          kind,
+          `fixture:${fixtureId}`,
+          TTL.fixture,
+          () => fixtureDetail(fixtureId),
+          { nocache },
+        ),
+      );
     }
     if (kind === "topscorers") {
       if (!leagueKey || !ALLOWED_LEAGUES.has(leagueKey)) {
         return json({ error: "Unbekannte Liga." }, 400);
       }
-      const ck = `topscorers:${leagueKey}`;
-      const cached = await rc(ck, TTL.topscorers);
-      if (cached) return json(cached);
-      const payload = await topScorers(leagueKey);
-      await writeCache(supabase, ck, payload);
-      return json(payload);
+      return json(
+        await bediene(
+          supabase,
+          kind,
+          `topscorers:${leagueKey}`,
+          TTL.topscorers,
+          () => topScorers(leagueKey),
+          { nocache },
+        ),
+      );
     }
     if (kind === "squad") {
       if (!teamId || !/^\d+$/.test(teamId)) {
         return json({ error: "Ungültige teamId." }, 400);
       }
-      const ck = `squad:${teamId}`;
-      const cached = await rc(ck, TTL.squad);
-      if (cached) return json(cached);
-      const payload = await squad(teamId);
-      await writeCache(supabase, ck, payload);
-      return json(payload);
+      return json(
+        await bediene(
+          supabase,
+          kind,
+          `squad:${teamId}`,
+          TTL.squad,
+          () => squad(teamId),
+          { nocache },
+        ),
+      );
     }
     if (kind === "teamFixtures") {
       if (!teamId || !/^\d+$/.test(teamId)) {
         return json({ error: "Ungültige teamId." }, 400);
       }
-      const ck = `teamFixtures:${teamId}`;
-      const cached = await rc(ck, TTL.teamFixtures);
-      if (cached) return json(cached);
-      const payload = await teamFixtures(teamId);
-      await writeCacheWennGefuellt(supabase, ck, payload, "fixtures");
-      return json(payload);
+      const basis = await bediene(
+        supabase,
+        kind,
+        `teamFixtures:${teamId}`,
+        TTL.teamFixtures,
+        () => teamFixtures(teamId),
+        { leerFeld: "fixtures", nocache },
+      );
+      return json(await ueberlagert(supabase, basis));
     }
     return json({ error: "Unbekannter kind." }, 400);
   } catch (e) {

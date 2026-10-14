@@ -116,6 +116,14 @@ final leagueSeasonFixturesProvider =
   return sportsProviderFor(league).getSeasonFixtures(league, season);
 });
 
+/// Die aktuellen Stände aller Sportmonks-Ligen, nach Fixture-ID — für den
+/// Takt im Live-Tab, der sie über die Saison-Spielpläne legt. Leer ohne
+/// Server-Verbindung.
+final liveFixturesProvider = FutureProvider<Map<String, Fixture>>((ref) {
+  if (!AppConfig.isSupabaseConfigured) return const <String, Fixture>{};
+  return SupabaseSportmonksProvider().getLiveFixtures();
+});
+
 /// Tabelle einer beliebigen Liga (per ID) — für die Liga-Übersicht.
 final leagueTableProvider =
     FutureProvider.family<List<StandingRow>, String>((ref, leagueId) {

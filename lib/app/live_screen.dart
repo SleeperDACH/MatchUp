@@ -73,13 +73,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     super.initState();
     final now = DateTime.now();
     _selectedDay = DateTime(now.year, now.month, now.day);
-    // Eigener Takt (unabhängig von Rebuilds): lädt die Spieldaten neu,
+    // Eigener Takt (unabhängig von Rebuilds): holt die Live-Stände neu,
     // solange ein Spiel live ist bzw. zeitnah ansteht/gerade lief — sonst
     // nur ein günstiger Check auf zwischengespeicherten Daten, kein Abruf.
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 45),
-      (_) => _maybeRefresh(),
-    );
+    _refreshTimer = Timer.periodic(_takt, (_) => _maybeRefresh());
   }
 
   @override
@@ -89,25 +86,43 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     super.dispose();
   }
 
+  /// **10 Sekunden, vorher 45.** Möglich, weil der Takt nicht mehr die
+  /// Saison-Spielpläne neu holt, sondern nur [liveFixturesProvider]: eine
+  /// Abfrage für alle fünf Ligen, die die Edge Function 8 s für alle Nutzer
+  /// teilt. Bei Sportmonks kommen so höchstens 450 Abrufe je Stunde an, egal
+  /// wie viele zusehen — vorher waren es gemessen ~1.300 (07.08.2026), bei
+  /// 2.000 erlaubten. Kürzer als die 8 s der Function bringt nichts.
+  static const _takt = Duration(seconds: 10);
+
+  /// Alle so viele Takte werden zusätzlich die Spielpläne der betroffenen
+  /// Ligen neu geholt (≈ 5 min). Die Function legt die Live-Stände selbst
+  /// darüber; das fängt Spiele, die aus dem Live-Fenster gefallen sind, und
+  /// Anstoßverlegungen.
+  static const _spielplanAlleTakte = 30;
+  int _takte = 0;
+
   void _maybeRefresh() {
     if (!mounted) return;
     final now = DateTime.now();
-    var hasNear = false;
+    final live = ref.read(liveFixturesProvider).valueOrNull ?? const {};
+    final betroffen = <String>[];
     for (final l in Leagues.all) {
       final fx = ref.read(leagueSeasonFixturesProvider(l.id)).valueOrNull;
       if (fx == null) continue;
-      if (fx.any(
-        (f) =>
-            f.status != FixtureStatus.finished &&
-            f.kickoff.difference(now).abs() < const Duration(hours: 3),
-      )) {
-        hasNear = true;
-        break;
+      if (fx.any((f) {
+        final aktuell = live[f.id] ?? f;
+        return aktuell.status != FixtureStatus.finished &&
+            aktuell.kickoff.difference(now).abs() < const Duration(hours: 3);
+      })) {
+        betroffen.add(l.id);
       }
     }
-    if (!hasNear) return;
-    for (final l in Leagues.all) {
-      ref.invalidate(leagueSeasonFixturesProvider(l.id));
+    if (betroffen.isEmpty) return;
+    ref.invalidate(liveFixturesProvider);
+    if (++_takte % _spielplanAlleTakte == 0) {
+      for (final id in betroffen) {
+        ref.invalidate(leagueSeasonFixturesProvider(id));
+      }
     }
   }
 
@@ -121,6 +136,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     final items = <_LiveItem>[];
     var anyLoading = false;
     Object? error;
+    // Die frischen Stände aus dem Takt, über die Spielpläne gelegt. Fehlt
+    // ein Spiel darin, gilt der Spielplan.
+    final live = ref.watch(liveFixturesProvider).valueOrNull ?? const {};
     for (final id in leagueIds) {
       final async = ref.watch(leagueSeasonFixturesProvider(id));
       final fixtures = async.valueOrNull;
@@ -132,7 +150,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       if (fixtures != null) {
         final league = Leagues.byId(id);
         for (final f in fixtures) {
-          items.add(_LiveItem(league, f));
+          items.add(_LiveItem(league, live[f.id] ?? f));
         }
       } else if (async.hasError) {
         error ??= async.error;

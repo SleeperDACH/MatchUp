@@ -22,6 +22,8 @@ final sportmonksBuendel = AbfrageBuendel();
 /// Geltung hielte den Spieltag „live", nachdem er beendet ist.
 Duration _gueltig(String kind) => switch (kind) {
       'fixture' => const Duration(seconds: 10),
+      // Der Live-Tab fragt alle 10 s; die Function merkt sich `live` 8 s.
+      'live' => const Duration(seconds: 5),
       'seasonFixtures' => const Duration(seconds: 20),
       'teamFixtures' => const Duration(seconds: 30),
       'standings' => const Duration(seconds: 30),
@@ -78,6 +80,27 @@ class SupabaseSportmonksProvider implements SportsDataProvider {
         .cast<Map<String, dynamic>>();
     return [for (final f in list) fixtureFromJson(f, league, season)]
       ..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+  }
+
+  /// **Die Spielstände aller fünf Ligen in einer Abfrage** — nur die Tage um
+  /// jetzt, keine ganze Saison. Für den Takt im Live-Tab: Der holte vorher
+  /// alle 45 s jeden Saison-Spielplan neu (je Bundesliga 137 KB), jetzt
+  /// genügt eine Antwort von ein paar Kilobyte. Schlüssel ist die Fixture-ID.
+  Future<Map<String, Fixture>> getLiveFixtures() async {
+    final data = await _call('live');
+    final list = (data['fixtures'] as List? ?? const [])
+        .cast<Map<String, dynamic>>();
+    final now = DateTime.now();
+    final out = <String, Fixture>{};
+    for (final j in list) {
+      final key = j['league_key']?.toString();
+      final league =
+          Leagues.all.where((l) => l.sportmonksKey == key).firstOrNull;
+      if (league == null) continue;
+      final f = fixtureFromJson(j, league, league.seasonFor(now));
+      out[f.id] = f;
+    }
+    return out;
   }
 
   @override
