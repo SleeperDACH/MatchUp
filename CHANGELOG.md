@@ -8,6 +8,46 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.7.1+11 — 14. Oktober 2026
+
+9 Commits seit 1.7.0+10. Der Schwerpunkt: **Der MatchUp-Tab erzählt das
+Duell** — Stand, Hochrechnung und Siegchance auf einen Blick, auch für die
+kommenden Wochen.
+
+### Neu
+
+- **MatchUp-Tab neu.** Oben ein Kasten mit beiden Managern, Stand,
+  Hochrechnung und Siegchance je Seite sowie Platz, Bilanz und Serie. Die
+  Siegchance schärft sich mit jedem Abpfiff.
+- **Kommende Spieltage ansehen.** Über der Startelf lässt sich die Woche
+  wechseln; künftige Duelle zeigen die Prognose.
+- **Mehr auf den Spielerkarten.** Gegner und Anstoß, laufender Stand oder
+  Endergebnis, dazu Minuten, Tore, Vorlagen und Karten — und der
+  Punkteschnitt, auch auf der Bank.
+- **Saison im Managerprofil.** Neuer Reiter mit Bilanz, Platz, Punkteschnitt,
+  allen Ergebnissen und dem restlichen Spielplan.
+- **Punkteschnitt in der Ligatabelle.**
+
+### Geändert
+
+- **Neue Schrift: Inter** in der ganzen App; „MATCHUP" oben und im
+  Ladebildschirm in Großbuchstaben und kursiv.
+- **Liga-Reiter** in Großbuchstaben, ohne Symbole.
+- **Der Duell-Kasten führt direkt in den MatchUp-Tab**, statt eine eigene
+  Detailseite zu öffnen. Ein Tipp auf einen Namen öffnet das Ligaprofil.
+- **Live-Stände aktualisieren sich schneller** (alle 10 Sekunden).
+
+### Behoben
+
+- **Falsche Bilanzen** (z. B. 4-0-1 statt 5-0): Die Saisonstatistik wurde
+  nach 1000 Einträgen abgeschnitten.
+- **Sperren aus anderen Wettbewerben** (z. B. Rot in der Champions League)
+  werden nicht mehr als Bundesliga-Sperre angezeigt; Gelb-Rot-Sperren heißen
+  jetzt so.
+- Ausfallgründe durchgehend auf Deutsch.
+- Eigene Chatnachrichten stehen sofort im Verlauf.
+- Aufstellungen und Kader laden auch ohne Echtzeit-Verbindung.
+
 ## 1.7.0+10 — 7. Oktober 2026
 
 24 Commits seit 1.6.0+9. Der Schwerpunkt: **Die App meldet sich jetzt von
