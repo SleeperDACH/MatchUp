@@ -156,7 +156,8 @@ class PlayerAbsence {
     'Hamstring Injury': 'Verletzung der hinteren Oberschenkelmuskulatur',
     'Hip Injury': 'Hüftverletzung',
     'Ill': 'Erkrankung',
-    'Indirect Card Suspension': 'Gelbsperre',
+    // 1610 ist die Sperre nach Gelb-Rot, nicht die Gelbsperre (1611).
+    'Indirect Card Suspension': 'Gelb-Rot-Sperre',
     'Infection': 'Infekt',
     'Inner Knee Ligament Tear': 'Innenbandriss im Knie',
     'Inner Ligament Injury': 'Innenbandverletzung',
