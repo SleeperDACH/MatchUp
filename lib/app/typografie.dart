@@ -12,10 +12,16 @@ import 'package:flutter/material.dart';
 /// 13 und 14 machen zusammen die Hälfte aller Vorkommen aus) — es ist keine
 /// erfundene Skala, sondern die vorhandene, aufgeräumt.
 ///
-/// **Rajdhani ist schmal**, deshalb liegen die Stufen enger
-/// beieinander als bei einer normalen Grotesk: Was bei 16 Punkt in Inter
-/// deutlich größer wirkt als 14, unterscheidet sich hier kaum.
+/// Die Stufen stammen aus der Zeit schmaler Schriften (Barlow Condensed,
+/// Rajdhani) und sind beim Wechsel auf **Inter** (14.10.2026) bewusst
+/// geblieben: Inter läuft breiter, die Leiter trägt trotzdem — wo es eng
+/// wurde, ist die einzelne Stelle angepasst, nicht die Skala.
 abstract final class Schrift {
+  /// **Die Schriftfamilie — an genau einer Stelle.** Jeder Stil im Theme
+  /// nennt sie über diese Konstante; ein Wechsel ist damit eine Zeile hier
+  /// plus `pubspec.yaml` und `test/support/schrift.dart`.
+  static const familie = 'Inter';
+
   /// Die große Zahl: Anstoßzeit auf der Kopfkarte, Punktestand im Duell.
   static const anzeige = 34.0;
 
@@ -90,7 +96,7 @@ TextTheme matchUpTextTheme(Color aufFlaeche, Color leise) {
   TextStyle s(double groesse, FontWeight gewicht,
           {Color? farbe, double? hoehe, double? sperrung}) =>
       TextStyle(
-        fontFamily: 'Rajdhani',
+        fontFamily: Schrift.familie,
         fontSize: groesse,
         fontWeight: gewicht,
         height: hoehe,

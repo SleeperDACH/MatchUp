@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:matchup/app/typografie.dart';
 
 /// Lädt die App-Schrift in eine Golden-Vorschau.
 ///
@@ -11,12 +12,14 @@ import 'package:flutter/services.dart';
 /// Fake-Async-Zone, in der echtes Datei-I/O nie zurückkommt. Der Aufruf hängt
 /// dort bis zum Timeout, statt mit einer Meldung zu scheitern.
 Future<void> ladeSchrift() async {
-  final loader = FontLoader('Rajdhani');
+  final loader = FontLoader(Schrift.familie);
   const dateien = [
-    'assets/fonts/Rajdhani-Regular.ttf',
-    'assets/fonts/Rajdhani-Medium.ttf',
-    'assets/fonts/Rajdhani-SemiBold.ttf',
-    'assets/fonts/Rajdhani-Bold.ttf',
+    'assets/fonts/Inter-Regular.ttf',
+    'assets/fonts/Inter-Medium.ttf',
+    'assets/fonts/Inter-SemiBold.ttf',
+    'assets/fonts/Inter-Bold.ttf',
+    'assets/fonts/Inter-ExtraBold.ttf',
+    'assets/fonts/Inter-ExtraBoldItalic.ttf',
   ];
   for (final d in dateien) {
     loader.addFont(File(d).readAsBytes().then((b) => ByteData.view(b.buffer)));

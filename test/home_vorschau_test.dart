@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:matchup/app/typografie.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/app/home_screen.dart';
 import 'package:matchup/app/home_favorites.dart';
@@ -133,8 +134,9 @@ void main() {
     // es gab keinen Überlauf und keine Warnung.
     await _bauen(tester);
 
-    // Eine volle Zeile bei 14 Punkt und `height: 1.2`.
-    const zeile = 14 * 1.2;
+    // Eine volle Zeile bei der Kartenschrift (13 Punkt seit Inter) und
+    // `height: 1.2`.
+    const zeile = Schrift.koerperKlein * 1.2;
     for (final name in ['Tipptest', 'TEST TIPP', 'BuLi 26/27', 'Draftest3']) {
       final box = tester.renderObject<RenderBox>(find.text(name));
       expect(

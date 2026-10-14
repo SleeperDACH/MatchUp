@@ -109,20 +109,31 @@ flutter:
     - assets/images/
 
   fonts:
-    # Rajdhani (Indian Type Foundry, OFL — Lizenz in assets/fonts/Rajdhani-OFL.txt).
-    # Schwerste Schnittstufe ist 700; die App setzt an vielen Stellen w800,
-    # Flutter nimmt dafür den nächsten vorhandenen Schnitt.
-    - family: Rajdhani
+    # Inter 4.1 (Rasmus Andersson, OFL — Lizenz in assets/fonts/Inter-OFL.txt).
+    # Statische Schnitte 300 bis 900: die App setzt w800 an rund 70 Stellen,
+    # die frühere Rajdhani endete bei 700. Kursiv nur in Regular, mehr wird
+    # nicht gebraucht — außer ExtraBold Kursiv für die Wortmarke.
+    - family: Inter
       fonts:
-        - asset: assets/fonts/Rajdhani-Light.ttf
+        - asset: assets/fonts/Inter-Light.ttf
           weight: 300
-        - asset: assets/fonts/Rajdhani-Regular.ttf
-        - asset: assets/fonts/Rajdhani-Medium.ttf
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Inter-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Rajdhani-SemiBold.ttf
+        - asset: assets/fonts/Inter-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Rajdhani-Bold.ttf
+        - asset: assets/fonts/Inter-Bold.ttf
           weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
+        # Für die Wortmarke auf dem Startbildschirm (Versalien, kursiv).
+        - asset: assets/fonts/Inter-ExtraBoldItalic.ttf
+          weight: 800
+          style: italic
+        - asset: assets/fonts/Inter-Black.ttf
+          weight: 900
 
   # To add assets to your application, add an assets section, like this:
   # assets:

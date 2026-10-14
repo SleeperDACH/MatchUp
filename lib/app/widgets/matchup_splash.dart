@@ -332,7 +332,10 @@ class _Haelfte extends CustomClipper<Rect> {
   bool shouldReclip(_Haelfte old) => old.links != links;
 }
 
-/// „MatchUp" wie im Logo — „Up" in Grün.
+/// „MATCHUP" wie oben auf dem Startbildschirm — Versalien, kursiv, „UP" in
+/// Grün (auf Ansage, 14.10.2026). Die Sperrung wächst mit der Größe: Oben
+/// stehen 0,4 bei 20 Punkt, hier dasselbe Verhältnis, damit beide Marken
+/// gleich aussehen und nicht nur gleich heißen.
 class _Wortmarke extends StatelessWidget {
   const _Wortmarke({required this.fontSize});
 
@@ -345,15 +348,17 @@ class _Wortmarke extends StatelessWidget {
         style: TextStyle(
           fontSize: fontSize,
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.5,
+          fontStyle: FontStyle.italic,
+          letterSpacing: fontSize * 0.02,
           color: MatchUpColors.snow,
           height: 1.0,
         ),
         children: const [
-          TextSpan(text: 'Match'),
-          TextSpan(text: 'Up', style: TextStyle(color: MatchUpColors.green)),
+          TextSpan(text: 'MATCH'),
+          TextSpan(text: 'UP', style: TextStyle(color: MatchUpColors.green)),
         ],
       ),
+      semanticsLabel: 'MatchUp',
     );
   }
 }

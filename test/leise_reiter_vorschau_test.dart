@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/app/widgets/leise_reiter.dart';
-import 'package:matchup/app/widgets/matchup_chevron.dart';
 
 import 'support/schrift.dart';
 
@@ -30,21 +29,10 @@ void main() {
             style: const TextStyle(color: Colors.white54, fontSize: 12)),
       );
 
-  // Liga-Leiste: Symbol **und** Wort bei allen vieren. An zweiter Stelle das
-  // Markenzeichen — aktiv in den Markenfarben, ruhend mitgedämpft.
-  final symbole = {
-    0: (bool aktiv, Color farbe) =>
-        Icon(Icons.grid_view_outlined, size: 17, color: farbe),
-    1: (bool aktiv, Color farbe) =>
-        MatchUpChevron(size: 17, color: aktiv ? null : farbe),
-    2: (bool aktiv, Color farbe) =>
-        Icon(Icons.people_outline, size: 19, color: farbe),
-    3: (bool aktiv, Color farbe) =>
-        Icon(Icons.leaderboard_outlined, size: 17, color: farbe),
-  };
-
+  // Liga-Leiste: nur Wörter, in Versalien (seit 14.10.2026; davor trug jeder
+  // Reiter ein Symbol darüber).
   Widget fall(String titel, List<String> reiter, int aktiv,
-          {bool mitLogo = false}) =>
+          {bool versalien = false}) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 18),
         child: Column(
@@ -62,7 +50,7 @@ void main() {
               child: LeiseReiter(
                 titel: reiter,
                 horizontal: 12,
-                symbole: mitLogo ? symbole : const {},
+                versalien: versalien,
               ),
             ),
             karte('Inhalt beginnt hier'),
@@ -87,19 +75,19 @@ void main() {
                 'MatchUp',
                 'Kader',
                 'Tabelle',
-              ], 0, mitLogo: true),
+              ], 0, versalien: true),
               fall('FANTASY-LIGA · DRITTER REITER', const [
                 'Übersicht',
                 'MatchUp',
                 'Kader',
                 'Tabelle',
-              ], 2, mitLogo: true),
-              fall('FANTASY-LIGA · MARKENREITER AKTIV', const [
+              ], 2, versalien: true),
+              fall('FANTASY-LIGA · MATCHUP AKTIV', const [
                 'Übersicht',
                 'MatchUp',
                 'Kader',
                 'Tabelle',
-              ], 1, mitLogo: true),
+              ], 1, versalien: true),
               fall('FAVORITEN-TAB', const ['Spielplan', 'News'], 0),
             ],
           ),

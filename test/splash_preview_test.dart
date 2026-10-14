@@ -4,6 +4,8 @@ import 'package:matchup/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:matchup/app/widgets/matchup_splash.dart';
 
+import 'support/schrift.dart';
+
 // Vorschau des Startbildschirms in vier Phasen (kein Regressionstest):
 //   flutter test --update-goldens test/splash_preview_test.dart
 // -> test/goldens/splash_<ms>.png
@@ -11,6 +13,10 @@ import 'package:matchup/app/widgets/matchup_splash.dart';
 // Die Wortmarke erscheint als Kästchen: Widget-Tests laden die App-Schrift
 // nicht. Geprüft wird hier die Bewegung der beiden Markenhälften.
 void main() {
+  // Ohne die App-Schrift stünde die Wortmarke als Kästchen da — und um genau
+  // deren Aussehen geht es in dieser Vorschau.
+  setUpAll(ladeSchrift);
+
   testWidgets('Vorschau: Startbildschirm fährt zusammen', (tester) async {
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1.0;

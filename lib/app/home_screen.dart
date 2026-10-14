@@ -1609,9 +1609,9 @@ double kartenHoehe(BuildContext context, double basis) =>
 /// lesbar „Tinntest". Gehalten wird das von der Messung in
 /// `test/home_vorschau_test.dart`.
 ///
-/// **116 statt 108 seit dem Wechsel auf Rajdhani.** Die Schrift baut höher als
-/// Barlow Condensed; bei 108 meldete die Karte einen Überlauf von 3,8 Punkten
-/// — diesmal laut, weil der Sockel weg ist und nichts mehr still nachgibt.
+/// **116 statt 108 seit dem Wechsel auf Rajdhani** (02.09.2026): Die Schrift
+/// baute höher als Barlow Condensed; bei 108 meldete die Karte einen Überlauf
+/// von 3,8 Punkten. Mit Inter (seit 14.10.2026) passt es weiterhin.
 const double _kKartenHoehe = 116;
 
 /// Blau der Abschnitte, die nicht mir gehören, sondern dem Fußball: die
@@ -1759,21 +1759,31 @@ class _FantasyLeagueCard extends ConsumerWidget {
                           // sitzt der Text am Sockel statt in der Mitte zu
                           // schweben, und eine zweite Namenszeile wächst nach
                           // oben in den freien Platz.
+                          //
+                          // **Der Name hat Vorrang vor dem Zwischenraum**
+                          // (`flex: 4` gegen 1). Bei gleichem Gewicht teilten
+                          // sich beide den Platz zur Hälfte; das reichte für
+                          // zwei Zeilen Rajdhani, aber nicht für zwei Zeilen
+                          // Inter — die zweite Zeile lag über dem Modus.
                           const Spacer(),
                           Flexible(
+                            flex: 4,
                             child: Text(
                               league.name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 14,
+                                // 13 statt 14 und leicht enger gesperrt:
+                                // Inter läuft breiter als Rajdhani, und bei
+                                // 14 brach schon „Übungsliga" mitten im Wort.
+                                fontSize: Schrift.koerperKlein,
                                 fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
                                 // 1.05 schnitt die Unterlängen ab: Aus
                                 // „Tipptest" wurde auf dem Gerät lesbar
-                                // „Tinntest". Rajdhani braucht mehr
-                                // als das, sobald p, g, j, q oder y
-                                // vorkommen — und Rundennamen kommen aus
-                                // freier Eingabe.
+                                // „Tinntest" — sobald p, g, j, q oder y
+                                // vorkommen. Rundennamen kommen aus freier
+                                // Eingabe.
                                 height: 1.2,
                               ),
                             ),
@@ -2231,22 +2241,29 @@ class _MatchUpTitle extends StatelessWidget {
       children: [
         const MatchUpChevron(size: 22),
         const SizedBox(width: 8),
+        // **Versalien und kursiv** (auf Ansage, 14.10.2026). Kursiv aus einer
+        // echten Schnittdatei (`Inter-ExtraBoldItalic.ttf`), nicht schräg
+        // gerechnet — ohne sie stellt Flutter die Buchstaben künstlich schief,
+        // und das sieht an einer Wortmarke verzogen aus. Versalien laufen
+        // breiter, deshalb leicht gesperrt statt eng wie vorher.
         Text.rich(
           TextSpan(
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+              fontStyle: FontStyle.italic,
+              letterSpacing: 0.4,
               color: MatchUpColors.snow,
             ),
             children: const [
-              TextSpan(text: 'Match'),
+              TextSpan(text: 'MATCH'),
               TextSpan(
-                text: 'Up',
+                text: 'UP',
                 style: TextStyle(color: MatchUpColors.green),
               ),
             ],
           ),
+          semanticsLabel: 'MatchUp',
         ),
       ],
     );

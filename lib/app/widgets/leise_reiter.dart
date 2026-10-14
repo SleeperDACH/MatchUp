@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../typografie.dart';
+
 /// Reiterleiste als **leise Textumschaltung**.
 ///
 /// Gegenstück zur `SegmentedTabBar`, die ihr aktives Segment in eine grüne
@@ -30,9 +32,17 @@ class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
     this.mitLinie = true,
     this.zeichen = const {},
     this.symbole = const {},
+    this.versalien = false,
   });
 
   final List<String> titel;
+
+  /// Wörter in **Großbuchstaben**, leicht gesperrt — die Schreibweise der
+  /// Kapitelmarken. Die Liga-Leiste trägt sie seit dem 14.10.2026 statt
+  /// Symbolen über den Wörtern (auf Ansage). Die Vorlesehilfe bekommt
+  /// weiterhin das Wort aus [titel]; Versalien liest VoiceOver sonst gern
+  /// Buchstabe für Buchstabe.
+  final bool versalien;
 
   /// Seitlicher Abstand; im `AppBar.bottom` sitzt die Leiste weiter außen als
   /// mitten in einem Schirm.
@@ -103,6 +113,7 @@ class LeiseReiter extends StatelessWidget implements PreferredSizeWidget {
                           text: titel[i],
                           zeichen: zeichen[i],
                           symbol: symbole[i],
+                          versalien: versalien,
                           aktiv: controller.index == i,
                           onTap: () => controller.animateTo(i),
                           scheme: scheme,
@@ -132,9 +143,11 @@ class _Reiter extends StatelessWidget {
     required this.scheme,
     this.zeichen,
     this.symbol,
+    this.versalien = false,
   });
 
   final String text;
+  final bool versalien;
   final bool aktiv;
   final VoidCallback onTap;
   final ColorScheme scheme;
@@ -178,20 +191,26 @@ class _Reiter extends StatelessWidget {
                           // `AnimatedDefaultTextStyle` *ersetzt* den Stil, es
                           // ergänzt ihn nicht — ein blankes `TextStyle`
                           // verliert damit die `fontFamily`, und die Reiter
-                          // fielen stumm auf Roboto zurück statt Barlow
-                          // Condensed zu benutzen. Dieselbe Falle wie bei
+                          // fielen stumm auf Roboto zurück statt der
+                          // App-Schrift zu benutzen. Dieselbe Falle wie bei
                           // `ListTileThemeData` in den Fantasy-Einstellungen.
                           style: (Theme.of(context).textTheme.titleSmall ??
                                   const TextStyle())
                               .copyWith(
-                            fontSize: 14,
+                            // Versalien laufen breiter; eine Stufe kleiner
+                            // und gesperrt, wie bei den Kapitelmarken.
+                            fontSize:
+                                versalien ? Schrift.koerperKlein : Schrift.koerper,
+                            letterSpacing: versalien ? 0.8 : null,
                             // Das Gewicht trägt die Auskunft mit; die Marke
                             // allein wäre bei vier Reitern zu wenig.
                             fontWeight:
                                 aktiv ? FontWeight.w800 : FontWeight.w600,
                             color: farbe,
                           ),
-                          child: Text(text, maxLines: 1),
+                          child: Text(
+                              versalien ? text.toUpperCase() : text,
+                              maxLines: 1),
                         ),
                       ),
               ),
