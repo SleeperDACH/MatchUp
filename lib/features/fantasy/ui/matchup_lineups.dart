@@ -3,7 +3,11 @@ import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers.dart';
+import '../logic/aufstellung_uebernahme.dart';
 import '../logic/fantasy_scoring_engine.dart';
+import '../../../app/theme.dart';
+import '../logic/spieler_schnitt.dart';
+import '../logic/spieler_kurzzeile.dart';
 import '../models/fantasy_models.dart';
 import '../models/player_absence.dart';
 import '../providers.dart';
@@ -12,7 +16,6 @@ import 'club_badge.dart';
 import 'manager_profile_screen.dart';
 import 'player_profile_sheet.dart';
 import 'punkte_aufschluesselung.dart';
-import '../../../core/logic/vereins_kuerzel.dart';
 import '../logic/naechstes_spiel.dart';
 import '../../../core/models/models.dart';
 import '../../../app/typografie.dart';
@@ -82,12 +85,28 @@ MatchupSideData computeSideData({
         league.scoring,
       ),
   };
+  // **Ein Spieltag ohne Daten bekommt die Elf, die der Server übernehmen
+  // wird** — die zuletzt gestellte (`uebernommeneElf`, dieselbe Regel wie
+  // `fantasy_aufstellung_uebernehmen`). Vorher nahm er `bestEleven` nach den
+  // Punkten **dieses** Spieltags; für einen Spieltag in der Zukunft sind die
+  // alle null, die Elf war also beliebig, und die Prognose für die nächsten
+  // MatchUps rechnete mit irgendwelchen elf Spielern.
+  //
+  // Für gespielte Spieltage ändert sich nichts: Dort gibt es Daten, und
+  // gewertet wird ohne gestellte Elf weiter die beste (`effectiveTotalsForRound`).
+  final uebernommen = (saved == null || saved.isEmpty) && stats.isEmpty
+      ? uebernommeneElf(
+          lineups.where((l) => l.managerId == managerId),
+          round,
+          {for (final p in rosterPlayers) p.id},
+        )
+      : null;
   final starterIds = (saved != null && saved.isNotEmpty)
       ? {
           for (final id in saved)
             if (byId.containsKey(id)) id,
         }
-      : bestEleven(kaderPunkte, league.roster).starterIds;
+      : uebernommen ?? bestEleven(kaderPunkte, league.roster).starterIds;
 
   // **Die gespeicherte Elf ist die Auskunft, nicht der heutige Kader.**
   //
@@ -200,6 +219,33 @@ class MatchupLineups extends ConsumerWidget {
     final homeMine = homeId == myId;
     final awayMine = awayId != null && awayId == myId;
 
+    // **Der Schnitt je Spieltag als kleine Zahl unter den Punkten** — wie die
+    // Projektion bei Sleeper. Gerechnet nur über abgepfiffene Spieltage, mit
+    // derselben Funktion wie Prognose und Hochrechnung im Kasten darüber.
+    final saison = ref.watch(seasonStatsProvider).valueOrNull ??
+        const <int, Map<String, PlayerMatchStats>>{};
+    final fertig =
+        gewerteteRunden(ref.watch(abgepfiffeneRundenProvider), saison.keys);
+    final saisonGewertet = {
+      for (final e in saison.entries)
+        if (fertig.contains(e.key)) e.key: e.value,
+    };
+    final schnitte = <String, double>{
+      if (saisonGewertet.isNotEmpty)
+        for (final p in [
+          ...home.starters,
+          ...home.bench,
+          ...?away?.starters,
+          ...?away?.bench,
+        ])
+          p.id: spielerSchnitt(
+            saison: saisonGewertet,
+            spielerId: p.id,
+            position: p.position,
+            regeln: league.scoring,
+          ).punkteJeSpieltag,
+    };
+
     void openPlayer(FantasyPlayer p, bool mine) => showPlayerProfile(
       context,
       league: league,
@@ -249,6 +295,8 @@ class MatchupLineups extends ConsumerWidget {
             angepfiffen: angepfiffen,
             onTap: openPlayer,
             onPunkte: openBreakdown,
+            schnitte: schnitte,
+            jetzt: jetzt,
           ),
         const SizedBox(height: 12),
         // **Keine Bank über nichts.** Steht auf keiner Seite jemand auf der
@@ -256,6 +304,7 @@ class MatchupLineups extends ConsumerWidget {
         // gesagt, dass sie leer ist.
         if (home.bench.isNotEmpty || (away?.bench.isNotEmpty ?? false))
           _BenchSection(
+            schnitte: schnitte,
             home: home,
             away: away,
             league: league,
@@ -289,6 +338,8 @@ class MatchupLineups extends ConsumerWidget {
     required bool Function(String verein) angepfiffen,
     required void Function(FantasyPlayer, bool) onTap,
     required void Function()? Function(FantasyPlayer) onPunkte,
+    required Map<String, double> schnitte,
+    required DateTime jetzt,
   }) {
     final hs = home.startersAt(pos);
     final as = away?.startersAt(pos) ?? const <FantasyPlayer>[];
@@ -334,6 +385,10 @@ class MatchupLineups extends ConsumerWidget {
           ausfaelle: ausfaelle,
           onTap: onTap,
           onPunkte: onPunkte,
+          stats: stats,
+          schnitte: schnitte,
+          jetzt: jetzt,
+          spielplanDa: spiele.isNotEmpty,
         ),
       );
     }
@@ -479,9 +534,27 @@ class _PlayerRow extends StatelessWidget {
     required this.ausfaelle,
     required this.onTap,
     required this.onPunkte,
+    required this.stats,
+    required this.schnitte,
+    required this.jetzt,
+    required this.spielplanDa,
     this.homeFehlt,
     this.awayFehlt,
   });
+
+  /// Rohdaten des Spieltags — für die Statistikzeile unter dem Namen.
+  final Map<String, PlayerMatchStats> stats;
+
+  /// Schnitt je Spieltag, nach Spieler-ID — die kleine Zahl unter den Punkten.
+  final Map<String, double> schnitte;
+
+  /// Für die Spielzeile: Ab wann gilt ein Spiel als laufend.
+  final DateTime jetzt;
+
+  /// **Ohne geladenen Spielplan gibt es keine Spielzeile.** Sonst stünde, solange
+  /// er lädt, bei jedem Spieler „spielfrei" — eine falsche Auskunft statt
+  /// keiner.
+  final bool spielplanDa;
 
   /// Ausfälle je Spieler-ID — verletzt oder gesperrt.
   final Map<String, PlayerAbsence> ausfaelle;
@@ -592,48 +665,49 @@ class _PlayerRow extends StatelessWidget {
     // **Die Mindestbreite bleibt.** Ohne sie rutschte der Name bei jeder
     // Aktualisierung hin und her, sobald aus „7" eine „12,5" wird — dieselbe
     // Unruhe, gegen die die gleichbreiten Ziffern in [Punktzahl] gebaut sind.
-    final ptsBox = Container(
-      // **Feste Breite, nicht bloß eine Mindestbreite — und nur für die
-      // Zahl.** Gemeldet: „Die Punkte im MatchUp-Tab sind immer noch krumm
-      // und schief."
-      //
-      // Drei Dinge wirkten zusammen: Die Box wuchs mit ihrem Inhalt („12" ist
-      // breiter als „5"), sie trug beidseitig Polster, und die Zahl stand
-      // darin **zentriert**. Dadurch verschob sich jede Zahl je nach
-      // Stellenzahl — auf der Heimseite nach links, auf der Gastseite nach
-      // rechts. Rechtsbündig war nur die Box, nicht die Ziffer darin.
-      //
-      // Der Anstoß-Hinweis behält seine freie Breite: Er ist zweizeilig
-      // (Kürzel über Uhrzeit) und würde in 36 Punkten gequetscht.
-      constraints: gespielt
-          ? const BoxConstraints(minWidth: 40, maxWidth: 40)
-          : const BoxConstraints(minWidth: 36),
-      padding: gespielt
-          ? EdgeInsets.zero
-          : const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      // **Vor dem Anpfiff steht hier das Spiel, nicht ein Strich.** „Noch
-      // nicht gespielt" ist kein Nullpunktespiel — vorher stand in beiden
-      // Fällen „0", dann ein Strich. Ein Strich sagt nichts Falsches, aber
-      // auch nichts; die Frage vor einem Spieltag ist „gegen wen und wann?".
-      //
-      // `formatPoints` statt roher Interpolation: Die Wertung kennt −0,4 je
-      // Foul, und `0.4`-Summen tragen sonst einen Fließkomma-Rattenschwanz
-      // hinter sich her.
-      child: gespielt
-          ? _punkte(
-              gespielt,
-              pts,
-              // **Zur Außenkante hin, nicht mittig.** Heimseite rechts,
-              // Gastseite links — dann steht jede Zahl einer Spalte an
-              // derselben Stelle, unabhängig von ihrer Stellenzahl.
-              textAlign: start ? TextAlign.end : TextAlign.start,
+    // **Groß die Punkte, klein darunter der Schnitt** — wie Stand und
+    // Projektion bei Sleeper. Vor dem Anpfiff steht groß ein Strich: Es ist
+    // noch kein Ball gerollt, und eine 0 sähe aus wie ein Ergebnis. Gegen wen
+    // und wann er spielt, steht seit dem Umbau in der Spielzeile unter dem
+    // Namen (vorher hier in der Box).
+    //
+    // **Feste Breite und zur Außenkante ausgerichtet**, damit jede Zahl einer
+    // Spalte an derselben Stelle steht, unabhängig von ihrer Stellenzahl.
+    final schnitt = schnitte[player.id];
+    final ptsBox = SizedBox(
+      width: 40,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment:
+            start ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          _punkte(
+            gespielt,
+            pts,
+            textAlign: start ? TextAlign.end : TextAlign.start,
+            style: TextStyle(
+              fontSize: Schrift.titel,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+              color: gespielt
+                  ? scheme.onSurface
+                  : scheme.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
+          ),
+          if (schnitt != null)
+            Text(
+              'Ø ${formatPoints(schnitt)}',
+              maxLines: 1,
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurface,
+                fontSize: Schrift.winzig,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+                color: scheme.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
-            )
-          : _AnstossHinweis(spiel: spiel),
+            ),
+        ],
+      ),
     );
     // Ohne Ziel bleibt die Box eine Anzeige und reicht den Tipp durch — vor
     // dem Anpfiff steht dort ohnehin die Partie und keine Punktzahl.
@@ -651,8 +725,9 @@ class _PlayerRow extends StatelessWidget {
     final badge = ClubBadge(
       club: player.club,
       iconUrl: clubIcons[player.club],
-      size: 34,
+      size: 28,
     );
+    final zeile = spielZeile(spiel, jetzt: jetzt);
     final info = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: start
@@ -668,15 +743,20 @@ class _PlayerRow extends StatelessWidget {
               AusfallZeichen(ausfall: ausfall, size: 13),
               const SizedBox(width: 4),
             ],
+            // **Schrumpfen statt kappen** — „Schlott…" sagt nichts. Dieselbe
+            // Regel wie im Live-Tab und auf dem Draft-Board.
             Flexible(
-              child: Text(
-                shortPlayerName(player.name),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: start ? TextAlign.start : TextAlign.end,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: mine ? FontWeight.w800 : FontWeight.w600,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment:
+                    start ? Alignment.centerLeft : Alignment.centerRight,
+                child: Text(
+                  shortPlayerName(player.name),
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: mine ? FontWeight.w800 : FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -686,6 +766,26 @@ class _PlayerRow extends StatelessWidget {
             ],
           ],
         ),
+        // **Zwei Zeilen mehr Auskunft, nach dem Vorbild Sleeper**
+        // (14.10.2026): wie das Spiel seines Vereins steht oder wann es
+        // anfängt, und was er selbst darin gemacht hat.
+        if (spielplanDa) _SpielZeileText(zeile: zeile, start: start),
+        // Dritte Zeile: nach dem Anpfiff die Statistik, davor der Anstoß.
+        if (statistikZeile(stats[player.id], player.position) ??
+                zeile?.anstoss
+            case final z?)
+          Text(
+            z,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: start ? TextAlign.start : TextAlign.end,
+            style: TextStyle(
+              fontSize: Schrift.winzig,
+              fontWeight: FontWeight.w500,
+              height: 1.3,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
         // **Kein Positionskürzel je Zeile.** Über jedem Block steht die
         // Position schon als Überschrift (Punkt und Wort), und die Zeilen
         // darunter tragen ihre Farbe ohnehin im Verlauf. Dieselbe Regel wie
@@ -698,16 +798,16 @@ class _PlayerRow extends StatelessWidget {
     final children = start
         ? [
             badge,
-            const SizedBox(width: 9),
+            const SizedBox(width: 7),
             Expanded(child: info),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             ptsFeld,
           ]
         : [
             ptsFeld,
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             Expanded(child: info),
-            const SizedBox(width: 9),
+            const SizedBox(width: 7),
             badge,
           ];
 
@@ -718,10 +818,14 @@ class _PlayerRow extends StatelessWidget {
       child: InkWell(
         onTap: () => onTap(player, mine),
         child: Container(
-          // Einzeilig statt zweizeilig: 60 auf 48. Bei elf Startern plus Bank
-          // sind das über zweihundert Punkte, die der Spieltag kürzer wird.
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 9),
+          // **66 statt 48**, seit die Karte Spielzeile und Statistik trägt
+          // (auf Ansage, 14.10.2026: „dass die Spielerkarten nochmal mehr
+          // Information bringen"). Davor war sie bewusst einzeilig — die
+          // Positionskürzel flogen, um den Spieltag kürzer zu machen. Die
+          // neuen Zeilen sagen je Spieler etwas anderes; das Kürzel tat es
+          // nicht.
+          height: 66,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             // Karten-Look: dezenter Verlauf mit Positions-Ton.
@@ -767,6 +871,7 @@ String shortPlayerName(String name) {
 /// nicht so laut sein wie sie.
 class _BenchSection extends StatelessWidget {
   const _BenchSection({
+    required this.schnitte,
     required this.home,
     required this.away,
     required this.league,
@@ -786,6 +891,10 @@ class _BenchSection extends StatelessWidget {
   final FantasyLeague league;
   final String homeId;
   final String? awayId;
+
+  /// Schnitt je Spieltag, nach Spieler-ID — klein unter der Punktzahl, wie
+  /// bei der Startelf (auf Ansage, 14.10.2026).
+  final Map<String, double> schnitte;
 
   /// Ausfälle je Spieler-ID — verletzt oder gesperrt.
   final Map<String, PlayerAbsence> ausfaelle;
@@ -998,11 +1107,34 @@ class _BenchSection extends StatelessWidget {
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerRight,
-                            child: Punktzahl(
-                              points[p.id] ?? 0,
-                              stil:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                              negativRot: true,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Punktzahl(
+                                  points[p.id] ?? 0,
+                                  stil: const TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                  negativRot: true,
+                                ),
+                                // **Klein darunter, nicht daneben**: In
+                                // einer halben Bildschirmbreite bliebe neben
+                                // einer eigenen Ø-Spalte für den Namen kaum
+                                // etwas übrig.
+                                if (schnitte[p.id] case final sn?)
+                                  Text(
+                                    'Ø ${formatPoints(sn)}',
+                                    style: TextStyle(
+                                      fontSize: Schrift.winzig,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.1,
+                                      color: scheme.onSurfaceVariant,
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures()
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
@@ -1053,53 +1185,51 @@ Widget _punkte(
 /// Namen, die ihren Platz brauchen. Übereinander bleibt sie so breit wie eine
 /// Punktzahl und wächst nur um wenige Punkte in der Höhe, die die Zeile
 /// ohnehin hat.
-class _AnstossHinweis extends StatelessWidget {
-  const _AnstossHinweis({required this.spiel});
+/// Die Spielzeile unter dem Namen: Gegner und Anstoß, laufender Stand in der
+/// Live-Farbe, nach dem Abpfiff der Ausgang als farbiger Buchstabe.
+///
+/// **Kein Spiel ist etwas anderes als „noch nicht angepfiffen"** — wessen
+/// Verein an diesem Spieltag frei hat, bei dem steht „spielfrei".
+class _SpielZeileText extends StatelessWidget {
+  const _SpielZeileText({required this.zeile, required this.start});
 
-  final NaechstesSpiel? spiel;
+  final SpielZeile? zeile;
+  final bool start;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final s = spiel;
-    // **Kein Spiel ist etwas anderes als „noch nicht angepfiffen".** Wessen
-    // Verein an diesem Spieltag frei hat, für den gibt es nichts anzukündigen.
-    if (s == null) {
-      return Text(
-        '–',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-          color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-        ),
-      );
+    final z = zeile;
+    final basis = TextStyle(
+      fontSize: Schrift.klein,
+      fontWeight: FontWeight.w600,
+      height: 1.3,
+      color: z?.laeuft ?? false ? scheme.error : scheme.onSurfaceVariant,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    if (z == null) {
+      return Text('spielfrei', style: basis);
     }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          vereinsKuerzel(s.gegner),
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: Schrift.klein,
-            height: 1.1,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.2,
-            color: scheme.onSurface,
-          ),
-        ),
-        Text(
-          anpfiffKurz(s.anpfiff),
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: Schrift.mikro,
-            height: 1.25,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
-      ],
+    final ausgang = z.ausgang;
+    final farbe = switch (ausgang) {
+      VereinsAusgang.sieg => MatchUpColors.green,
+      VereinsAusgang.niederlage => scheme.error,
+      _ => scheme.onSurfaceVariant,
+    };
+    return Text.rich(
+      ausgang == null
+          ? TextSpan(text: z.text)
+          : TextSpan(children: [
+              TextSpan(
+                text: z.text.substring(0, 1),
+                style: TextStyle(color: farbe, fontWeight: FontWeight.w800),
+              ),
+              TextSpan(text: z.text.substring(1)),
+            ]),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: start ? TextAlign.start : TextAlign.end,
+      style: basis,
     );
   }
 }

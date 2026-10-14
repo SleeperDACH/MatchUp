@@ -5,6 +5,7 @@ import '../../../app/typografie.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
+import '../logic/h2h_grundlage.dart';
 import '../../../core/logic/round_robin.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
@@ -83,36 +84,19 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
       );
     }
 
-    // Stabile Reihenfolge (Draft-Position, dann User-ID) für den Round-Robin.
-    final ids = managers.map((m) => m.userId).toList()
-      ..sort((a, b) {
-        final ma = managers.firstWhere((m) => m.userId == a);
-        final mb = managers.firstWhere((m) => m.userId == b);
-        final pa = ma.draftPosition ?? 1 << 30;
-        final pb = mb.draftPosition ?? 1 << 30;
-        return pa != pb ? pa.compareTo(pb) : a.compareTo(b);
-      });
-
-    // **Nur abgepfiffene Spieltage.** Dieselbe Regel wie im MatchUp-Bereich:
-    // Ein laufender Spieltag trägt schon mittags Zwischenstände, und eine
-    // Bilanz ist ein Ergebnis. Ohne das stand in der Tabelle eine Niederlage,
-    // die sich bis Sonntagabend noch drehen konnte.
-    final fertig = gewerteteRunden(
-        ref.watch(abgepfiffeneRundenProvider), seasonStats.keys);
-    final totalsByRound = <int, Map<String, double>>{
-      for (final entry in seasonStats.entries)
-        if (fertig.contains(entry.key))
-          entry.key: effectiveTotalsForRound(
-          stats: entry.value,
-          round: entry.key,
-          managers: managers,
-          roster: roster,
-          playerById: playerById,
-          lineups: lineups,
-            scoring: league.scoring,
-            rosterConfig: league.roster,
-          )
-    };
+    // Reihenfolge und gewertete Punkte kommen aus derselben Funktion wie im
+    // Saisonverlauf des Ligaprofils — sonst widersprächen sich die Bilanzen.
+    final grundlage = h2hGrundlage(
+      league: league,
+      managers: managers,
+      roster: roster,
+      lineups: lineups,
+      playerById: playerById,
+      seasonStats: seasonStats,
+      abgepfiffen: ref.watch(abgepfiffeneRundenProvider),
+    );
+    final ids = grundlage.ids;
+    final totalsByRound = grundlage.summen;
     final standings = h2hStandings(ids, totalsByRound);
     final nonePlayed = standings.every((r) => r.played == 0);
 
@@ -272,7 +256,13 @@ class _TabellenKopf extends StatelessWidget {
   const _TabellenKopf();
 
   static const rangBreite = 38.0;
-  static const bilanzBreite = 74.0;
+  static const bilanzBreite = 56.0;
+
+  /// **Der Schnitt je Duell in eigener Spalte** (auf Ansage, 14.10.2026:
+  /// „sodass man mit einem Blick sofort sieht"). Die Gesamtpunkte allein
+  /// vergleichen nur, solange alle gleich oft gespielt haben — mit einem
+  /// spielfreien Spieltag steht einer schon um eine Woche Punkte zurück.
+  static const schnittBreite = 42.0;
   static const punkteBreite = 52.0;
 
   @override
@@ -295,6 +285,13 @@ class _TabellenKopf extends StatelessWidget {
             width: bilanzBreite,
             child: Text('S · U · N', style: stil, textAlign: TextAlign.end),
           ),
+          SizedBox(
+            width: schnittBreite,
+            child: Text('Ø', style: stil, textAlign: TextAlign.end),
+          ),
+          // Dieselbe Lücke wie in den Zeilen, sonst stünde „Ø" neben seiner
+          // Spalte.
+          const SizedBox(width: 6),
           SizedBox(
             width: punkteBreite,
             child: Text('PUNKTE', style: stil, textAlign: TextAlign.end),
@@ -590,7 +587,24 @@ class _RecordRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          // Schnitt je Duell: erzielte Punkte durch gespielte Duelle —
+          // spielfreie Spieltage zählen nicht mit, sie sind kein Duell.
+          SizedBox(
+            width: _TabellenKopf.schnittBreite,
+            child: Text(
+              record.played == 0
+                  ? '–'
+                  : formatPoints(record.pointsFor / record.played),
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
           // Rechts: Tabellenpunkte groß, darunter die erzielten
           // Spielerpunkte (Tiebreak). Feste Spaltenbreite, damit die Zahlen
           // über alle Zeilen fluchten — vorher rutschte die Spalte je nach

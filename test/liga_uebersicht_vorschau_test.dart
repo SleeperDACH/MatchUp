@@ -13,6 +13,8 @@ import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/models/roster_move.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/fantasy_league_screen.dart';
+import 'package:matchup/features/fantasy/ui/matchup_detail_screen.dart';
+import 'package:matchup/features/fantasy/ui/matchup_hero.dart';
 import 'package:matchup/features/tippspiel/providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
@@ -362,15 +364,32 @@ void main() {
 
     // **Messungen vor dem Bild.** Ein Golden zeigt, wie es aussah, nicht dass
     // die Zahlen ankommen.
-    expect(find.text('PROGNOSE'), findsOneWidget,
+    // Seit dem Umbau nach Sleeper steht die Kennzeichnung an jeder Seite
+    // unter ihrer Zahl, nicht einmal als Pille in der Mitte.
+    expect(find.text('Prognose'), findsNWidgets(2),
         reason: 'ohne Kennzeichnung liest man die Zahlen als Punktestand');
     expect(find.textContaining('%'), findsWidgets,
         reason: 'die Siegchance steht an beiden Rändern');
 
-    if (!autoUpdateGoldenFiles) return;
-    await expectLater(
-      find.byType(FantasyLeagueScreen),
-      matchesGoldenFile('goldens/liga_uebersicht_prognose.png'),
-    );
+    if (autoUpdateGoldenFiles) {
+      await expectLater(
+        find.byType(FantasyLeagueScreen),
+        matchesGoldenFile('goldens/liga_uebersicht_prognose.png'),
+      );
+    }
+
+    // **Ein Tipp auf den Kasten führt in den MatchUp-Reiter**, nicht in die
+    // abgeschlossene Detailseite (auf Ansage, 14.10.2026). Ein Bild zeigt
+    // nicht, wohin ein Tipp führt — deshalb hier ausdrücklich.
+    final reiter = DefaultTabController.of(
+        tester.element(find.byType(TabBarView)));
+    expect(reiter.index, 0);
+    await tester.tap(find.byType(MatchupBanner));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(reiter.index, 1, reason: 'der MatchUp-Reiter ist offen');
+    expect(find.byType(MatchupDetailScreen), findsNothing,
+        reason: 'keine zweite, abgeschlossene Fassung desselben Duells');
   });
 }

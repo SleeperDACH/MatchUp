@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/app/theme.dart';
+import 'package:matchup/features/fantasy/logic/saisonverlauf.dart';
 import 'package:matchup/features/fantasy/ui/matchup_hero.dart';
 
 import 'support/schrift.dart';
@@ -93,8 +94,8 @@ void main() {
                   started: false,
                   mine: true,
                   anpfiff: DateTime(2026, 9, 4, 20, 30),
-                  homeProjektion: 212.4,
-                  awayProjektion: 178.9,
+                  homeErwartet: 212.4,
+                  awayErwartet: 178.9,
                   siegchanceHeim: 0.63,
                   onTap: () {},
                 ),
@@ -117,8 +118,8 @@ void main() {
                   started: false,
                   mine: true,
                   anpfiff: DateTime(2026, 9, 4, 20, 30),
-                  homeProjektion: 212.4,
-                  awayProjektion: 178.9,
+                  homeErwartet: 212.4,
+                  awayErwartet: 178.9,
                   onTap: () {},
                 ),
               ),
@@ -135,6 +136,19 @@ void main() {
                   live: true,
                   started: true,
                   mine: true,
+                  // Hochrechnung: Stand plus erwarteter Rest. SFV03 liegt
+                  // hinten, hat aber mehr Spieler offen.
+                  homeErwartet: 172.3,
+                  awayErwartet: 140.6,
+                  siegchanceHeim: 0.81,
+                  homeBilanz: (
+                    zeile: 'P1 · 4-0-1',
+                    serie: (ausgang: DuellAusgang.sieg, anzahl: 3),
+                  ),
+                  awayBilanz: (
+                    zeile: 'P6 · 2-0-3',
+                    serie: (ausgang: DuellAusgang.niederlage, anzahl: 2),
+                  ),
                   onTap: () {},
                 ),
               ),
@@ -151,6 +165,11 @@ void main() {
                   live: false,
                   started: true,
                   mine: true,
+                  homeBilanz: (
+                    zeile: 'P1 · 5-0-1',
+                    serie: (ausgang: DuellAusgang.sieg, anzahl: 4),
+                  ),
+                  awayBilanz: (zeile: 'P6 · 2-0-4', serie: null),
                   onTap: () {},
                 ),
               ),
@@ -176,6 +195,17 @@ void main() {
                       live: true,
                       started: true,
                       mine: true,
+                      homeErwartet: 1284.6,
+                      awayErwartet: 999.5,
+                      siegchanceHeim: 0.97,
+                      homeBilanz: (
+                        zeile: 'P12 · 10-1-11',
+                        serie: (ausgang: DuellAusgang.unentschieden, anzahl: 1),
+                      ),
+                      awayBilanz: (
+                        zeile: 'P18 · 1-0-21',
+                        serie: (ausgang: DuellAusgang.niederlage, anzahl: 12),
+                      ),
                       onTap: () {},
                     ),
                   ),
@@ -205,8 +235,8 @@ void main() {
                       started: false,
                       mine: true,
                       anpfiff: DateTime(2026, 9, 4, 20, 30),
-                      homeProjektion: 1284.6,
-                      awayProjektion: 999.5,
+                      homeErwartet: 1284.6,
+                      awayErwartet: 999.5,
                       siegchanceHeim: 0.63,
                       onTap: () {},
                     ),

@@ -208,32 +208,49 @@ hätte das nicht getan.
 dunkles Rasengrün an vier Stellen) und die Marken- und Signalfarben selbst.
 Verboten ist der **Stich** in Flächen, die neutral sein sollen.
 
-## Die Schrift: Rajdhani
+## Die Schrift: Inter
 
-Seit dem 02.09.2026 läuft die App in **Rajdhani** (Indian Type Foundry, OFL —
-die Lizenz liegt als `assets/fonts/Rajdhani-OFL.txt` im Repo, das Repo ist
-öffentlich). Davor war es Barlow Condensed; die Umstellung war eine
-Gestaltungsentscheidung, keine technische.
+Seit dem 14.10.2026 läuft die App in **Inter** 4.1 (Rasmus Andersson, OFL —
+die Lizenz liegt als `assets/fonts/Inter-OFL.txt` im Repo, das Repo ist
+öffentlich). Davor Rajdhani (02.09.–14.10.2026), davor Barlow Condensed; beide
+Wechsel waren Gestaltungsentscheidungen, keine technischen.
 
-Drei Dinge, die dabei anfielen und beim nächsten Schriftwechsel wieder
-anfallen:
+Eingebunden sind die statischen Schnitte **300 bis 900** plus Kursiv-Regular
+und **ExtraBold Kursiv** — Letzteres allein für die Wortmarke auf dem
+Startbildschirm („MATCHUP" in Versalien, kursiv; auf Ansage, 14.10.2026). Ohne
+die echte Schnittdatei stellt Flutter fetten Text künstlich schräg, und das
+sieht an einer Wortmarke verzogen aus. Der Ladeschirm (`matchup_splash.dart`)
+trägt dieselbe Wortmarke; `matchup_logo.dart` ist bewusst unverändert.
+Damit ist die alte Lücke zu: Rajdhani endete bei 700, und die rund siebzig
+`w800` der App fielen stumm auf Bold zurück. Jetzt ist w800 ein echter
+ExtraBold.
 
-- **Rajdhani endet bei 700.** Die App setzt an vielen Stellen `w800`; Flutter
-  nimmt dafür den nächsten vorhandenen Schnitt. Wer eine echte 800 braucht,
-  braucht eine andere Schrift.
-- **Sie baut höher als Barlow Condensed.** Die Ligakarten des Startbildschirms
-  liefen bei 108 Punkten um 3,8 über — `_kKartenHoehe` steht deshalb auf 116,
-  und die Vergleichsvorschau `karten_layout_preview_test.dart` hat dieselben
-  acht Punkte bekommen. **Das war der laute Fall**; der leise ist der aus dem
-  „Tinntest" (still gestauchte Unterlängen), und genau deshalb misst
-  `home_vorschau_test.dart` die Zeilenhöhe der Kartennamen.
-- **Ihr Zeichenvorrat ist ein anderer** — siehe die Tabelle unten. Wer eine
-  Schrift tauscht, rendert die Sonderzeichen der App einmal und sieht sie an.
+Was beim Wechsel anfiel, und beim nächsten wieder anfällt:
+
+- **Inter läuft deutlich breiter als Rajdhani.** Die Schriftleiter ist
+  trotzdem geblieben — alle Vorschauen neu aufgenommen und Bild für Bild gegen
+  den alten Stand gelegt. Überläufe meldete kein einziger Test; gebrochen hat
+  es **lautlos** an genau einer Stelle: den Ligakarten des Startbildschirms.
+  „Übungsliga" brach mitten im Wort, und ein zweizeiliger Name lag über dem
+  Untertitel, weil `Spacer` und `Flexible` sich den freien Platz hälftig
+  teilten. Der Name hat jetzt `flex: 4` und steht in 13 statt 14 Punkt bei
+  −0,2 Sperrung; `home_vorschau_test.dart` misst die Zeilenhöhe gegen
+  `Schrift.koerperKlein`.
+- **Die Familie steht jetzt an einer Stelle im Code** (`Schrift.familie` in
+  `typografie.dart`), Theme und Test-Lader lesen sie dort. Vorher stand der
+  Name als Literal sieben Mal in `theme.dart`/`typografie.dart`.
+- **Der Zeichenvorrat ist größer** — siehe die Tabelle unten. Die
+  Ausweichlösungen aus der Rajdhani-Zeit (Icon statt ✓, „frei" statt ∞, kein
+  ↔ im Text) bleiben trotzdem stehen; sie sind auch mit Inter richtig.
+- **Die Push-PDFs** (`docs/push*.html`, `tools/push_pdf.sh`) betten weiter
+  Rajdhani ein. Sie sind Dokumentation, nicht App, und wurden bewusst nicht
+  mitgezogen.
 
 Die Schrift steht an drei Stellen: `pubspec.yaml` (Asset-Deklaration),
-`theme.dart`/`typografie.dart` (`fontFamily`) und `test/support/schrift.dart`
-(damit die Vorschauen sie laden). Alle drei müssen denselben Familiennamen
-tragen.
+`Schrift.familie` in `typografie.dart` (Theme und alle Textstile lesen sie dort)
+und `test/support/schrift.dart` (lädt die Dateien für die Vorschauen, unter
+demselben Namen). `pubspec.yaml` und `Schrift.familie` müssen denselben
+Familiennamen tragen.
 
 ## Typografie: eine Leiter statt Einzelentscheidungen
 
@@ -3051,6 +3068,100 @@ reine Funktion in `logic/aufstellung_sperre.dart` (`anpfiffJeVerein`,
   statt pauschal „Aufstellung gesperrt" — das wäre ab dem Freitagsspiel schlicht
   falsch.
 
+### Der MatchUp-Tab nach dem Vorbild Sleeper
+
+Gewünscht am 14.10.2026, mit einem Screenshot aus Sleeper: *„Vor allem die Box
+oben mit den Namen, dem Ergebnis, der Gewinnwahrscheinlichkeit — denn wir
+werden das System der Prognose noch weiter ausbauen. Und dass man die Wochen
+wechseln kann auf die nächsten MatchUps, wo auch schon die Prognose angezeigt
+wird, und dass die Spielerkarten mehr Information bringen."*
+
+**Der Kasten** (`MatchupBanner`, `matchup_hero.dart`) hat jetzt je Seite eine
+eigene Spalte: Avatar, groß der Stand, klein darunter wohin es läuft, die
+Siegchance in Prozent mit einem Balken nur für diese Seite, Name, darunter
+Platz · Bilanz · Serie (▲3S, ▼2N). In der Mitte das MatchUp-Zeichen und der
+Zustand (Anstoß, LIVE, ENDE). Der Vorgänger stapelte Punktestand und ein
+gemeinsames Band in eigenen Zeilen — man musste jede Zahl erst ihrer Seite
+zuordnen. `kMatchupBannerHoehe` ist dadurch von 206 auf 176 gesunken.
+
+| Zustand | groß | klein | Siegchance |
+|---|---|---|---|
+| vor dem Anpfiff | Prognose, gedämpft | „Prognose" | aus der Prognose |
+| läuft | Stand | „Prognose 190,2" (Hochrechnung) | schärft sich mit jedem Abpfiff |
+| beendet | Endstand | „Endstand" | Wort: Sieg / Niederlage |
+
+**Die Hochrechnung ist neu** (`logic/hochrechnung.dart`). Vorher verschwand
+die Prognose mit dem ersten Anpfiff, und mitten im Spieltag stand nur ein
+Zwischenstand. Jetzt: Wer fertig ist, zählt mit seinen echten Punkten, wer
+noch spielt, mit seinen Punkten plus dem anteiligen Rest seines Schnitts (die
+Spielminute aus der Uhr geschätzt, 15 Minuten Pause abgezogen), wer noch nicht
+dran war, mit seinem Schnitt; ein Ausfall vor seinem Anpfiff mit null.
+`siegchanceLive` skaliert die gemessene Wochenstreuung mit der Wurzel des noch
+offenen Anteils — die Prozente gehen damit gegen Ende von selbst gegen 0 und
+100, und sind alle Spiele aus, steht es fest. **Jede Annahme steht benannt im
+Kopf der Datei**, weil das Prognosesystem ausdrücklich weiter ausgebaut werden
+soll; wer eine ändert, ändert dort.
+
+**Eine Funktion, zwei Orte:** `duellPrognose` und `bannerBilanz` stehen in
+`matchup_hero.dart` und werden von der Liga-Übersicht (`MatchupHero`) und dem
+Karussell gleich benutzt. Bilanz und Serie kommen aus `h2hGrundlage` und
+`saisonverlauf`, also aus derselben Rechnung wie Tabelle und Ligaprofil.
+
+**Künftige Spieltage hatten eine Zufallself.** `computeSideData` nahm ohne
+gespeicherte Aufstellung `bestEleven` nach den Punkten **dieses** Spieltags —
+für einen Spieltag in der Zukunft alle null, die Auswahl war also beliebig, und
+die Prognose für die nächsten MatchUps rechnete mit irgendwelchen elf Spielern.
+Jetzt gilt für einen Spieltag ohne Daten `uebernommeneElf`: die zuletzt
+gestellte, dieselbe Regel wie `fantasy_aufstellung_uebernehmen`. Für gespielte
+Spieltage bleibt es bei der besten Elf (`test/kuenftige_elf_test.dart`).
+
+**Der Kasten führt nicht mehr in die Detailseite** (auf Ansage, 14.10.2026).
+Im MatchUp-Tab ist er eine Anzeige ohne Tipp-Ziel (`onTap: null`) — man ist
+schon da. Auf der Liga-Übersicht wechselt er in den MatchUp-Reiter, und zwar
+auf das **eigene Duell des aktuellen Spieltags**: `matchupSprungProvider` ist
+ein Zähler, auf den der Tab hört (Woche zurück auf den aktuellen Spieltag,
+Karussell auf Seite 0). Ein Zähler statt eines Wahrheitswerts, damit zwei
+Sprünge hintereinander zweimal wirken. `MatchupDetailScreen` ist damit von
+keinem Kasten mehr erreichbar; gehalten von der Zusicherung in
+`liga_uebersicht_vorschau_test.dart`.
+
+**Bild und Name im Kasten führen ins Ligaprofil** (`onHomeName`/`onAwayName`
+am `MatchupBanner`, Ansage vom 19.09.2026 — beim Sleeper-Umbau verloren, am
+14.10.2026 wiederhergestellt). Eigene Tipp-Ziele (`_Tippbar`) innerhalb des
+Kastens; ohne Rückruf sind sie durchlässig. Dieselbe Regel wie über der Bank.
+Gehalten von `matchup_tab_vorschau_test.dart`.
+
+**Der Spieltagswechsel sitzt über der Startelf** (`MatchdayStepper(kompakt:
+true)` neben „STARTELF"), nicht mehr als eigene Zeile über dem Karussell.
+
+**Die Spielerkarten tragen drei Zeilen** (66 statt 48 Punkte hoch):
+
+* Name — schrumpft statt zu kappen;
+* **Spielzeile** (`spielZeile`, `logic/spieler_kurzzeile.dart`): vor dem
+  Anpfiff „@ M05", laufend der Stand in Rot („1:0 vs M05"), danach der Ausgang
+  seines Vereins als farbiger Buchstabe („S 2:1 vs BVB");
+* dritte Zeile: nach dem Anpfiff die **Statistik** (`statistikZeile`:
+  „90' · 2 Tore · Gelb", beim Torwart Paraden und zu Null), davor der
+  **Anstoß** („Sa 15:30"). In einer halben Kartenbreite stand „vs M05 · Sa
+  15:30" sonst abgeschnitten als „vs M05 · S…".
+
+Rechts groß die Punkte (vor dem Anpfiff ein Strich), klein darunter der
+Schnitt je Spieltag („Ø 8,4") als Erwartung. Gegner und Anstoß standen vorher
+**in** der Punktebox; sie sind in die Spielzeile gewandert. Solange der
+Spielplan nicht geladen ist, steht keine Spielzeile da — sonst hieße jeder
+Spieler „spielfrei".
+
+**Was wir von Sleeper nicht übernommen haben:** die Ticker-Zeile im Kasten
+(„P. Nacua 5 yd catch +1.5"). Dafür bräuchte es Ereignisse je Spieler mit
+Zeitstempel; `player_match_stats` hält nur Summen. Die Daten lägen in
+`sync-stats` vor (`events`), wären aber ein eigener Ausbau.
+
+Angesehen über `test/matchup_tab_vorschau_test.dart` (der ganze Tab mitten im
+Spieltag: ein Spiel beendet, eins läuft, eins offen) und
+`test/matchup_banner_vorschau_test.dart` (alle Zustände des Kastens).
+Gerechnet wird in `test/hochrechnung_test.dart` und
+`test/spieler_kurzzeile_test.dart`.
+
 ### Vor dem Spieltag steht ein „VS", kein 0:0
 
 Gemeldet: „Ich mag das Design der MatchUp-Box zwischen den Spieltagen nicht.
@@ -3342,14 +3453,15 @@ den aufgelösten Stil; ein blankes `TextStyle` verliert die Schriftfamilie — i
 der ersten Fassung standen im Knopf schwarze Kästchen. Der Stil im Theme nennt
 `fontFamily` deshalb ausdrücklich.
 
-### Welche Zeichen Rajdhani hat, und welche nicht
+### Welche Zeichen die Schrift hat, und welche nicht
 
-Gemessen am 02.09.2026, indem die Kandidaten einmal gerendert und angesehen
-wurden:
+Gemessen am 02.09.2026 durch Rendern, für Inter am 14.10.2026 über die
+Zeichentabelle der Schriftdatei:
 
 | | vorhanden | fehlt (leeres Kästchen) |
 |---|---|---|
-| Rajdhani (heute) | `Ø` `≥` `−` `€` `§` `«` `»` | `⌀` `✓` `★` `●` `↔` `∞` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
+| **Inter (heute)** | `Ø` `≥` `−` `€` `§` `«` `»` `✓` `★` `●` `↔` `∞` `→` | `⌀` `⚽` `⚡` `⚙` `✅` `⇄` |
+| Rajdhani (bis 14.10.2026) | `Ø` `≥` `−` `€` `§` `«` `»` | `⌀` `✓` `★` `●` `↔` `∞` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
 | Barlow Condensed (bis 02.09.2026) | `Ø` `≥` `∞` `−` | `⌀` `✓` `✔` `★` `●` `↔` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
 
 **Der Wechsel der Schrift ändert die Liste** — Rajdhani hat das `∞` nicht mehr,
@@ -4454,6 +4566,39 @@ Gemessen vorher und nachher:
 | Verletzungen mit Rückkehrdatum | 2 | 3 |
 
 Die drei verbliebenen Sperren sind echte Rotsperren mit Enddatum.
+
+### Kartensperren aus anderen Wettbewerben (0133)
+
+Gefragt: *„Warum wird bei Olise eine Gelbsperre angezeigt? Er ist in der
+Champions League vom Platz geflogen, das wird aber nicht in der Bundesliga
+gewertet."*
+
+Dieselbe Lücke wie bei „No Eligibility" (0123): **Sportmonks führt Sperren je
+Verein, ohne Wettbewerb** — `season_id` ist bei allen Kartensperren `null`. Die
+Gelb-Rote Karte aus der Champions League kam als „Indirect Card Suspension"
+und stand in der App wie eine Bundesliga-Sperre.
+
+**Gegenprobe aus den eigenen Daten:** Eine Kartensperre (1608 Rot, 1610
+Gelb-Rot, 1611 Gelb) zählt nur, wenn der Spieler die passende Karte in den
+zehn Tagen vor `seit` in einem **Bundesliga**-Spiel gesehen hat —
+`player_match_stats` kennt nur die. Sonst ist sie `ueberholt`. Nachgemessen:
+Bernardo und Suzuki (Gelb-Rot am 5. Spieltag) bleiben gesperrt, Olise (keine
+Bundesliga-Karte) und Bensebaini (Rotsperre, hat seither gespielt) fallen
+heraus. Sperren durch das Sportgericht (1615) bleiben unberührt; an ihnen gibt
+es keine Karte zu prüfen.
+
+**1610 ist Gelb-Rot, nicht Gelb.** 0132 und die App-Liste übersetzten
+„Indirect Card Suspension" mit „Gelbsperre" — daher das Wort in der Meldung.
+Nachgesehen über `/v3/core/types/<id>`: 1610 = `INDIRECT_CARD_SUSPENSION`
+(Gelb-Rot), 1611 = `YELLOW_CARD_SUSPENSION` (fünfte Gelbe). Jetzt
+„Gelb-Rot-Sperre".
+
+**Und 0132 war nie eingespielt.** Die Migration („Ausfallgründe auf Deutsch")
+lag seit dem 11.10. committet im Repo, `supabase migration list` zeigte sie
+nur lokal — die App bekam weiter englische Gründe und übersetzte sie mit ihrer
+alten Liste. Eingespielt am 14.10.2026 zusammen mit 0133. Dieselbe Falle wie
+bei den nie ausgespielten Edge Functions: **Was im Repo steht, beweist nicht,
+dass es läuft** — nach jeder neuen Migration `supabase migration list` fragen.
 
 ### Wieder eingeplant heißt wieder fit (0124)
 
@@ -5693,6 +5838,56 @@ unterscheiden müssen und es vorher nicht taten. Der Spielplan darin hat drei
 abgepfiffene Runden, damit die Aufstellungsrunde **fest** auf 3 steht: Ein
 Bild, das an `DateTime.now()` hängt, wird irgendwann von selbst rot.
 
+### Das Ligaprofil zeigt die Saison
+
+Gewünscht: *„In den Profilen der Mitspieler einen Tab, in dem man den Verlauf
+ihrer Saison sehen kann — die Ergebnisse der vorherigen Spiele und den
+Spielplan der zukünftigen."*
+
+Das Ligaprofil hat zwei Reiter: **Aufstellung** (wie bisher) und **Saison**
+(`ui/manager_saison_tab.dart`). Oben eine Leiste mit Bilanz (S-U-N), Platz und
+erzielten Punkten, darunter die **Ergebnisse** je Spieltag (Gegner, beide
+Punktzahlen, Marke S/U/N) und der **Spielplan** der kommenden Spieltage mit
+Gegner und Anpfifftag. Ein Tipp auf eine Zeile öffnet das Profil des Gegners.
+
+**Dieselbe Rechnung wie die Tabelle, nicht eine zweite.** Reihenfolge der
+Manager und Punkte je gewertetem Spieltag stehen jetzt in `h2hGrundlage`
+(`logic/h2h_grundlage.dart`), und **die Tabelle benutzt sie ebenfalls**.
+Vorher stand die Rechnung inline im Tabellen-Schirm; eine Kopie im Profil wäre
+die nächste Stelle gewesen, an der zwei Bilanzen auseinanderlaufen. Die
+Paarungen je Spieltag kommen aus `saisonverlauf` (`logic/saisonverlauf.dart`)
+über denselben `roundPairings`; `test/saisonverlauf_test.dart` prüft für jeden
+Manager, dass Siege, Unentschieden und Niederlagen genau `h2hStandings`
+entsprechen.
+
+Drei Regeln darin:
+
+- **Gewertet heißt abgepfiffen** (`gewerteteRunden`). Der laufende Spieltag
+  steht im Spielplan mit „läuft", nicht als Zwischenergebnis.
+- **Nur die reguläre Saison.** Ab dem Playoff-Start paart das Bracket, nicht
+  der Round-Robin; der Reiter endet davor und sagt das in einer Zeile.
+- **Spielfrei ist kein Duell.** Bei ungerader Teilnehmerzahl steht der
+  Spieltag als „spielfrei" da, ohne Punkte und ohne Marke — dieselbe Regel wie
+  in `h2hStandings`.
+
+Farbe tragen nur Sieg (grün) und Niederlage (rot), das Unentschieden bleibt
+neutral — dieselbe Regel wie bei den Trade-Ausgängen.
+
+**Der Kopf zeigt den Platz ohne Teilnehmerzahl** („2." statt „2. / 18") und
+neben den erzielten Punkten den **Schnitt je Duell** (auf Ansage,
+14.10.2026). Dieselbe Zahl steht seitdem als eigene Spalte **Ø** in der
+Liga-Tabelle, zwischen Bilanz und Punkten: Die Gesamtpunkte vergleichen nur,
+solange alle gleich oft gespielt haben — ein spielfreier Spieltag kostet
+sonst eine Woche Punkte. Gerechnet wird `pointsFor / played`, spielfreie
+Spieltage zählen nicht mit. Für die Spalte sind Bilanz (74 → 56) und Lücke
+(10 → 6) schmaler geworden; die Namen schrumpfen dadurch etwas früher, bleiben
+aber ganz stehen.
+
+Angesehen über `test/managerprofil_vorschau_test.dart`
+(`managerprofil_saison.png`), mit vier Managern, einem Sieg, einer Niederlage
+und einem offenen Spieltag. Der Test braucht `initializeDateFormatting`, weil
+der Spielplan die Anpfifftage deutsch schreibt.
+
 ### Das Spielerprofil handelt jetzt selbst
 
 Gewünscht: *„Ich möchte, dass direkt über die Profile ein Knopf für Trade, Drop
@@ -6761,6 +6956,11 @@ Zuständen keinen Kopf.
   scrollbaren Zeile, und rechts blieb Leere — die Leiste sah aus wie ein
   angefangener Satz. Damit ist auch das Scrollen weg: Passt ein Wort nicht,
   schrumpft es (`FittedBox`), wie überall sonst.
+  **Seit dem 14.10.2026 trägt die Liga-Leiste keine Symbole mehr**, sondern
+  nur die Wörter in Versalien (`versalien: true`, 13 Punkt, leicht gesperrt —
+  die Schreibweise der Kapitelmarken), auf Ansage. Die Leiste ist damit
+  wieder 52 statt 74 Punkte hoch. Der folgende Absatz beschreibt die
+  Fassung davor; die Regel „alle oder keiner" gilt weiter.
   **Symbole trägt eine Leiste entweder überall oder nirgends** — `symbole`
   ist ein Bauplan je Reiter, und `LeiseReiter` besteht per Zusicherung darauf,
   dass die Karte so viele Einträge hat wie es Reiter gibt. Der Anlass: Die

@@ -100,7 +100,7 @@ nur noch auf Geräte.
 
 | # | Teil | Status | Wer |
 |---|------|--------|-----|
-| 1 | Bezahlte Apple-Mitgliedschaft | 🟡 liegt beim Team eines Bekannten, nicht bei `HACJC6623Z` (siehe unten) | du |
+| 1 | Bezahlte Apple-Mitgliedschaft | ✅ iOS-Builds laufen (bestätigt 14.10.2026); zahlendes Team `LR3PYT6U2L` | — |
 | 2 | Push-Berechtigung für die App-ID `app.matchup.mobile` | ✅ bewiesen durch zugestellte Pushes an Store-Geräte (11.10.2026) | — |
 | 3 | Key ID des APNs-Schlüssels | ✅ `9FJS77M728` (05.10.2026; `9JF35BFS9Q` ist abgelöst) | — |
 | 4 | Schlüsseldatei `AuthKey_9FJS77M728.p8` | ✅ in `~/keys/` | — |
@@ -110,7 +110,7 @@ nur noch auf Geräte.
 | 8 | `GoogleService-Info.plist` (iOS) + `google-services.json` (Android) | ✅ im Projekt | — |
 | 9 | Dienstkonto-Schlüssel (JSON) für den Versand | ✅ `~/keys/firebase-dienstkonto.json` | — |
 | 10 | **APNs-Schlüssel bei Firebase hinterlegt** | ✅ `9FJS77M728` / `LR3PYT6U2L`, **Entwicklung und Produktion** (Produktion seit 11.10.2026) | — |
-| 11 | Datenschutzerklärung veröffentlicht · Store-Angaben | 🟡 Seite seit 25.09.2026 live, Stores offen | du |
+| 11 | Datenschutzerklärung veröffentlicht · Store-Angaben | ✅ Seite seit 25.09.2026 live, Store-Angaben gemacht (bestätigt 14.10.2026) | — |
 | 12 | `aps-environment` + Hintergrundmodus in der App | ✅ fertig | 🔧 |
 | 13 | Push-Paket, Berechtigungsabfrage, Geräte-Tokens | ✅ fertig | 🔧 |
 | 14 | Tabelle für Tokens + Einstellungen je Nutzer | ✅ Migration 0129 | 🔧 |
@@ -389,7 +389,7 @@ mir nur den Pfad, dann lege ich ihn als Supabase-Secret ab.
 
 ---
 
-## Schritt 8 — Datenschutz 🟡
+## Schritt 8 — Datenschutz ✅
 
 **Die Seite ist veröffentlicht** (25.09.2026):
 `sleeperdach.github.io/datenschutz.html` zeigt Abschnitt 6
@@ -398,7 +398,7 @@ Projekt. Beim Übernehmen wurde der `<!DOCTYPE html>` ergänzt — die eingereic
 Fassung begann direkt mit `<html>`, was Browser in den Quirks-Modus schickt; am
 Wortlaut wurde nichts geändert.
 
-**Offen bleiben die beiden Store-Angaben** — nur über deine Konten erreichbar.
+**Die beiden Store-Angaben sind gemacht** (bestätigt 14.10.2026).
 
 **Warum:** Firebase ist ein Google-Dienst und verarbeitet eine Geräte-Kennung.
 Das muss in der App und in beiden Stores stehen.

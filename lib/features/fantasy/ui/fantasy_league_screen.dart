@@ -32,7 +32,6 @@ import '../../../app/widgets/karte.dart';
 import '../../../app/typografie.dart';
 import '../../../app/widgets/kapitelmarke.dart';
 import '../../../app/widgets/leise_reiter.dart';
-import '../../../app/widgets/matchup_chevron.dart';
 import '../../../app/vorwaermen.dart';
 
 /// Vollwertiger Fantasy-Liga-Screen mit Tabs. Zeigt schon vor dem Draft
@@ -73,27 +72,14 @@ class FantasyLeagueScreen extends ConsumerWidget {
           // lauteste Element des Schirms und sagte nur, welcher Reiter offen
           // ist.
           //
-          // **Jeder Reiter trägt Symbol und Wort.** Davor stand an zweiter
-          // Stelle das Markenzeichen *anstelle* des Wortes — ein einzelner
-          // Reiter ohne Beschriftung zwischen drei beschrifteten, was den
-          // Fluss der Leiste brach. Entweder alle oder keiner; hier alle,
-          // damit die Marke ihren Platz behält.
-          bottom: LeiseReiter(
-            titel: const ['Übersicht', 'MatchUp', 'Kader', 'Tabelle'],
+          // **Nur Wörter, in Versalien** (14.10.2026, auf Ansage). Davor trug
+          // jeder Reiter ein Symbol über dem Wort, das MatchUp-Zeichen
+          // eingeschlossen; die Leiste war damit 74 statt 52 Punkte hoch für
+          // vier Auskünfte, die das Wort allein schon gibt.
+          bottom: const LeiseReiter(
+            titel: ['Übersicht', 'MatchUp', 'Kader', 'Tabelle'],
             horizontal: 12,
-            symbole: {
-              0: (aktiv, farbe) =>
-                  Icon(Icons.grid_view_outlined, size: 17, color: farbe),
-              // Aktiv in den Markenfarben (grün|rot), ruhend einfarbig
-              // mitgedämpft wie die Nachbarsymbole — sonst riefe das Logo
-              // als einziges Element dauerhaft laut.
-              1: (aktiv, farbe) =>
-                  MatchUpChevron(size: 17, color: aktiv ? null : farbe),
-              2: (aktiv, farbe) =>
-                  Icon(Icons.people_outline, size: 19, color: farbe),
-              3: (aktiv, farbe) =>
-                  Icon(Icons.leaderboard_outlined, size: 17, color: farbe),
-            },
+            versalien: true,
           ),
         ),
         body: Vorwaermer(
@@ -187,6 +173,18 @@ class _OverviewTab extends ConsumerWidget {
             child: MatchupHero(
               league: league,
               round: currentRound,
+              // **In den MatchUp-Reiter, nicht in eine Extra-Seite** (auf
+              // Ansage, 14.10.2026). Dort steht dasselbe Duell samt
+              // Aufstellungen; die Detailseite war eine zweite, abgeschlossene
+              // Fassung davon. Gesprungen wird auf das eigene Duell des
+              // aktuellen Spieltags.
+              onTap: () {
+                ref
+                    .read(matchupKarussellSeiteProvider(league.id).notifier)
+                    .state = 0;
+                ref.read(matchupSprungProvider(league.id).notifier).state++;
+                DefaultTabController.of(context).animateTo(1);
+              },
               fallback: _NaechsterSchritt(
                 league: league,
                 isAdmin: isAdmin,

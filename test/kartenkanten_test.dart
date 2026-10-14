@@ -78,11 +78,6 @@ void main() {
           'während Tabelle und Navileiste „das bist du" längst hell sagen; '
           'wer den Baum das nächste Mal anfasst, zieht das mit.'
     ),
-    'features/fantasy/ui/matchup_hero.dart': (
-      1,
-      'Element auf dem grünen Rasen, nicht auf Kartengrund — dort ist die '
-          'helle Kante die einzige, die sich abhebt.'
-    ),
     'features/fantasy/ui/player_action_buttons.dart': (
       1,
       'Die Blöcke „Kommt rein" und „wer macht Platz?" im Bestätigungsblatt: '

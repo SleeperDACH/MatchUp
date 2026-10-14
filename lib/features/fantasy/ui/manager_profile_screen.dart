@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/typografie.dart';
+import '../../../app/widgets/leise_reiter.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../../friends/ui/friend_action_button.dart';
@@ -13,6 +14,7 @@ import '../providers.dart';
 import 'ausfall_zeichen.dart';
 import 'club_badge.dart';
 import 'gesperrt_marke.dart';
+import 'manager_saison_tab.dart';
 import 'pitch_painter.dart';
 import 'player_profile_sheet.dart';
 import 'trade_screen.dart';
@@ -32,8 +34,9 @@ const _benchOrder = [
   PlayerPosition.fwd,
 ];
 
-/// Öffnet das Ligaprofil eines Mitspielers: dessen Aufstellung (Startelf auf
-/// dem Feld) und Bank für den aktuellen Spieltag — nur zum Ansehen.
+/// Öffnet das Ligaprofil eines Mitspielers: zwei Reiter — die Aufstellung
+/// (Startelf auf dem Feld, Bank) für den aktuellen Spieltag, nur zum Ansehen,
+/// und die Saison (Ergebnisse der gespielten Duelle, Spielplan der kommenden).
 void showManagerProfile(
   BuildContext context, {
   required FantasyLeague league,
@@ -98,7 +101,17 @@ class ManagerProfileScreen extends ConsumerWidget {
     final showUsername =
         manager != null && (manager.teamName?.trim().isNotEmpty ?? false);
 
-    return Scaffold(
+    final aufstellungsKopf = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Text(
+          round == null ? 'Aufstellung' : 'Aufstellung · Spieltag $round',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+    );
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -127,20 +140,12 @@ class ManagerProfileScreen extends ConsumerWidget {
             ),
           ],
         ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(22),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(
-                round == null
-                    ? 'Aufstellung'
-                    : 'Aufstellung · Spieltag $round',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ),
-        ),
+        // Zwei Reiter: was er diese Woche stellt, und wie seine Saison läuft.
+        bottom: const LeiseReiter(titel: ['Aufstellung', 'Saison']),
       ),
-      body: round == null
+      body: TabBarView(
+        children: [
+      round == null
           ? const Center(child: CircularProgressIndicator())
           : poolAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -218,6 +223,7 @@ class ManagerProfileScreen extends ConsumerWidget {
 
           return ListView(
             children: [
+              aufstellungsKopf,
               if (!isMe) _actions(context, ref, managers),
               if (!gestellt) _nochNichtGestellt(context),
               _pitch(context, byPos, points, clubIcons, ausfaelle, openPlayer),
@@ -226,6 +232,10 @@ class ManagerProfileScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+          ManagerSaisonTab(league: league, managerId: managerId),
+        ],
+      ),
       ),
     );
   }

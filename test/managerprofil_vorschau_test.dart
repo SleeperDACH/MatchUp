@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
@@ -119,10 +120,14 @@ List<Fixture> _spielplan() => [
 Widget _rahmen({
   required List<FantasyPlayer> kader,
   required List<FantasyLineup> elfen,
+  List<FantasyManager> managers = const [],
+  Map<String, FantasyPlayer> fremde = const {},
+  Map<int, Map<String, PlayerMatchStats>> saison = const {},
 }) =>
     ProviderScope(
       overrides: [
-        playerPoolProvider.overrideWith((ref) async => kader),
+        playerPoolProvider
+            .overrideWith((ref) async => [...kader, ...fremde.values]),
         leagueRosterProvider.overrideWith((ref, id) => Stream.value([
               for (final p in kader)
                 RosterEntry(
@@ -130,14 +135,21 @@ Widget _rahmen({
                   playerId: p.id,
                   acquiredVia: 'draft',
                 ),
+              for (final e in fremde.entries)
+                RosterEntry(
+                  managerId: e.key,
+                  playerId: e.value.id,
+                  acquiredVia: 'draft',
+                ),
             ])),
+        seasonStatsProvider.overrideWith((ref) async => saison),
         leagueLineupsProvider.overrideWith((ref, id) => Stream.value(elfen)),
         fantasySeasonFixturesProvider.overrideWith((ref) async => _spielplan()),
         roundStatsProvider.overrideWith(
             (ref, r) async => const <String, PlayerMatchStats>{}),
         clubIconsProvider.overrideWith((ref) async => const <String, String?>{}),
         fantasyManagersProvider
-            .overrideWith((ref, id) => Stream.value(const <FantasyManager>[])),
+            .overrideWith((ref, id) => Stream.value(managers)),
         // **Ohne diesen Ersatz greift der Schirm auf `Supabase.instance` zu**,
         // die es im Test nicht gibt — dieselbe Falle wie bei den
         // Fantasy-Einstellungen. `null` heißt hier „ein anderer schaut zu",
@@ -162,7 +174,11 @@ Future<void> _zeichne(WidgetTester tester, Widget w) async {
 }
 
 void main() {
-  setUpAll(ladeSchrift);
+  setUpAll(() async {
+    await ladeSchrift();
+    // Der Saison-Reiter schreibt die Anpfifftage deutsch hin.
+    await initializeDateFormatting('de_DE');
+  });
 
   setUp(() => AppConfig.supabaseInitialized = true);
   tearDown(() => AppConfig.supabaseInitialized = false);
@@ -244,5 +260,70 @@ void main() {
         reason: 'eine leere Torwartreihe ist sonst gar nicht zu sehen');
     await expectLater(find.byType(ManagerProfileScreen),
         matchesGoldenFile('goldens/managerprofil_ohne_torwart.png'));
+  });
+
+  testWidgets('Vorschau: Saisonverlauf', (tester) async {
+    tester.view.physicalSize = const Size(402 * 3, 874 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    // Vier Manager, Reihenfolge nach Draft-Position. Daraus folgen die
+    // Paarungen: Spieltag 1 gegen Benni030, 2 gegen tamara, 3 gegen ana.
+    const managers = [
+      FantasyManager(userId: 'mgr', username: 'Lewin9', draftPosition: 1),
+      FantasyManager(userId: 'b', username: 'ana', draftPosition: 2),
+      FantasyManager(userId: 'c', username: 'tamara', draftPosition: 3),
+      FantasyManager(userId: 'd', username: 'Benni030', draftPosition: 4),
+    ];
+    final fremde = {
+      'b': _p('xb', 'Harry Kane', PlayerPosition.fwd, 'FC Bayern München'),
+      'c': _p('xc', 'Serhou Guirassy', PlayerPosition.fwd, 'Borussia Dortmund'),
+      'd': _p('xd', 'Tim Kleindienst', PlayerPosition.fwd,
+          'Borussia Mönchengladbach'),
+    };
+    const neunzig = PlayerMatchStats(minutes: 90);
+    final saison = {
+      // Spieltag 1: Lewins Elf spielt durch, Benni030 hat nur einen Stürmer.
+      1: {
+        for (final p in [..._torhueter, ..._feldspieler]) p.id: neunzig,
+        'xd': const PlayerMatchStats(minutes: 90, goals: 1),
+      },
+      // Spieltag 2: Lewins Elf sitzt draußen, tamaras Stürmer trifft
+      // fünfmal — eine Niederlage, damit beide Ausgänge im Bild stehen.
+      2: {
+        'gk1': neunzig,
+        'xc': const PlayerMatchStats(minutes: 90, goals: 5),
+      },
+    };
+
+    await _zeichne(
+      tester,
+      _rahmen(
+        kader: [..._torhueter, ..._feldspieler],
+        elfen: const [],
+        managers: managers,
+        fremde: fremde,
+        saison: saison,
+      ),
+    );
+    await tester.tap(find.text('Saison'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+
+    // Dieselbe Bilanz wie in der Tabelle: ein Sieg, eine Niederlage.
+    expect(find.text('1-0-1'), findsOneWidget);
+    // Bei vier Managern wiederholt sich die Paarung alle drei Spieltage —
+    // die Namen stehen über die Saison also mehrfach da.
+    expect(find.text('Benni030'), findsWidgets);
+    expect(find.text('tamara'), findsWidgets);
+    expect(find.text('ana'), findsWidgets,
+        reason: 'der nächste Gegner steht im Spielplan');
+    expect(find.text('S'), findsOneWidget, reason: 'Sieg an Spieltag 1');
+    expect(find.text('N'), findsOneWidget, reason: 'Niederlage an Spieltag 2');
+    // Spieltag 3 ist noch nicht gewertet: kein Ergebnis, kein Ausgang.
+    expect(find.text('ST 3'), findsOneWidget);
+    await expectLater(find.byType(ManagerProfileScreen),
+        matchesGoldenFile('goldens/managerprofil_saison.png'));
   });
 }

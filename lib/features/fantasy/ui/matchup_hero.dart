@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/typografie.dart';
 import '../../../app/widgets/punktzahl.dart';
@@ -8,8 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
-import '../logic/projektion.dart';
-import '../logic/siegchance.dart';
+import '../logic/h2h_grundlage.dart';
+import '../logic/hochrechnung.dart';
+import '../logic/naechstes_spiel.dart';
+import '../logic/playoff.dart' show kRegularSeasonMatchdays;
+import '../logic/saisonverlauf.dart';
+import '../logic/spieler_schnitt.dart';
+import '../logic/fantasy_scoring_rules.dart';
+import '../../../app/widgets/matchup_chevron.dart';
 import '../../../core/logic/round_robin.dart';
 import 'matchup_lineups.dart';
 import '../models/fantasy_models.dart';
@@ -36,7 +41,11 @@ const _cRed = Color(0xFFF23030);
 // nicht im Karussell: Sie muss dem Inhalt folgen, und der Inhalt wohnt in
 // dieser Datei. Wächst er wieder, meldet die Vorschau
 // `matchup_banner_vorschau_test` den Überlauf, bevor es ein Gerät tut.
-const double kMatchupBannerHoehe = 206;
+//
+// **176 seit dem Umbau nach Sleeper** (14.10.2026): Jede Seite trägt ihre
+// Zahlen jetzt in der eigenen Spalte neben dem Avatar, statt einen
+// Punktestand und ein Band in eigenen Zeilen darunter zu stapeln.
+const double kMatchupBannerHoehe = 176;
 
 // Das große Chevron als halbtransparentes Wasserzeichen hinter dem Inhalt ist
 // **entfernt**. Es lag mit 45 % Deckung quer über Namen und Punktestand und
@@ -57,11 +66,18 @@ class MatchupHero extends ConsumerWidget {
     required this.league,
     required this.round,
     this.fallback = const SizedBox.shrink(),
+    this.onTap,
   });
 
   final FantasyLeague league;
   final int round;
   final Widget fallback;
+
+  /// Was ein Tipp auf den Kasten tut. Auf der Liga-Übersicht: in den
+  /// MatchUp-Reiter wechseln (auf Ansage, 14.10.2026) — nicht mehr in die
+  /// abgeschlossene Detailseite, die dasselbe Duell ein zweites Mal zeigte.
+  /// Ohne Angabe bleibt es bei der Detailseite.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -140,74 +156,80 @@ class MatchupHero extends ConsumerWidget {
         live: live,
         started: started,
         mine: true,
-        onTap: () => openDetail(null, null),
+        onTap: onTap ?? () => openDetail(null, null),
       );
     }
 
     final oppId = pairing.home == myId ? pairing.away! : pairing.home;
+    final byId = {for (final p in pool) p.id: p};
+    final roundStats = ref.watch(roundStatsProvider(round)).valueOrNull ??
+        const <String, PlayerMatchStats>{};
     final totals = effectiveTotalsForRound(
-      stats: ref.watch(roundStatsProvider(round)).valueOrNull ?? const {},
+      stats: roundStats,
       round: round,
       managers: managers,
       roster: roster,
-      playerById: {for (final p in pool) p.id: p},
+      playerById: byId,
       lineups: lineups,
       scoring: league.scoring,
       rosterConfig: league.roster,
     );
-    final myPts = totals[myId] ?? 0.0;
-    final oppPts = totals[oppId] ?? 0.0;
 
-    // **Dieselbe Prognose wie im MatchUp-Tab, aus derselben Quelle.** Die
-    // Startelf kommt über `computeSideData` (die eine Stelle, die weiß, wer
-    // aufläuft), die Streuung aus `fantasyWochenStreuungProvider` — beide
-    // Karten zeigen damit für dasselbe Duell dieselbe Zahl.
+    // **Dieselbe Rechnung wie im MatchUp-Tab, aus derselben Funktion.**
+    // `duellPrognose` und `bannerBilanz` stehen einmal da; beide Kästen zeigen
+    // damit für dasselbe Duell dieselben Zahlen.
     //
     // **Unbedingt beobachten, nicht im Zweig:** Ein `ref.watch` hinter einer
-    // Bedingung meldet die Abhängigkeit ab, sobald der andere Fall greift —
-    // die Provider dieses Schirms wechselten dann mit dem Anpfiff.
-    final byId = {for (final p in pool) p.id: p};
-    final roundStats = ref.watch(roundStatsProvider(round)).valueOrNull ??
-        const <String, PlayerMatchStats>{};
+    // Bedingung meldet die Abhängigkeit ab, sobald der andere Fall greift.
     final saison = ref.watch(seasonStatsProvider).valueOrNull ??
         const <int, Map<String, PlayerMatchStats>>{};
+    final abgepfiffen = ref.watch(abgepfiffeneRundenProvider);
     final ausfaelle = ref.watch(absencesProvider).valueOrNull ??
         const <String, PlayerAbsence>{};
     final wochenStreuung =
         ref.watch(fantasyWochenStreuungProvider(league.id));
+    final fertig = gewerteteRunden(abgepfiffen, saison.keys);
+    final saisonGewertet = {
+      for (final e in saison.entries)
+        if (fertig.contains(e.key)) e.key: e.value,
+    };
+    final grundlage = h2hGrundlage(
+      league: league,
+      managers: managers,
+      roster: roster,
+      lineups: lineups,
+      playerById: byId,
+      seasonStats: saison,
+      abgepfiffen: abgepfiffen,
+    );
 
-    Projektion? prognoseFuer(String id) => started
-        ? null
-        : projektion(
-            elf: computeSideData(
-              league: league,
-              round: round,
-              managerId: id,
-              byId: byId,
-              roster: roster,
-              lineups: lineups,
-              stats: roundStats,
-            ).starters,
-            saison: saison,
-            regeln: league.scoring,
-            ausfaelle: ausfaelle,
-          );
-
-    final meine = prognoseFuer(myId);
-    final seine = prognoseFuer(oppId);
-    // **Beide Seiten brauchen eine Grundlage.** Fehlt sie einer, ist der
-    // Vergleich keiner — dann bleibt es bei „VS" und Anpfiff.
-    final vergleichbar = meine != null &&
-        seine != null &&
-        meine.hatDaten &&
-        seine.hatDaten;
+    MatchupSideData seite(String id) => computeSideData(
+          league: league,
+          round: round,
+          managerId: id,
+          byId: byId,
+          roster: roster,
+          lineups: lineups,
+          stats: roundStats,
+        );
+    final prognose = duellPrognose(
+      round: round,
+      heim: seite(myId),
+      gast: seite(oppId),
+      spiele: all ?? const <Fixture>[],
+      saisonGewertet: saisonGewertet,
+      regeln: league.scoring,
+      ausfaelle: ausfaelle,
+      wochenStreuung: wochenStreuung,
+      jetzt: DateTime.now(),
+    );
 
     return MatchupBanner(
       round: round,
       homeName: nameOf[myId] ?? 'Du',
       awayName: nameOf[oppId] ?? '?',
-      homePoints: myPts,
-      awayPoints: oppPts,
+      homePoints: totals[myId] ?? 0.0,
+      awayPoints: totals[oppId] ?? 0.0,
       homeMe: true,
       awayMe: false,
       homeAvatar: avatarOf[myId],
@@ -216,340 +238,12 @@ class MatchupHero extends ConsumerWidget {
       anpfiff: anpfiff,
       started: started,
       mine: true,
-      homeProjektion: vergleichbar ? meine.punkte : null,
-      awayProjektion: vergleichbar ? seine.punkte : null,
-      siegchanceHeim: vergleichbar
-          ? siegchance(
-              heim: meine.punkte,
-              gast: seine.punkte,
-              wochenStreuung: wochenStreuung,
-            )
-          : null,
-      onTap: () => openDetail(oppId, nameOf[oppId]),
-    );
-  }
-}
-
-/// Ein MatchUp-Banner für eine **beliebige** Paarung (Heim vs. Gast) — die
-/// Präsentation von [MatchupHero], aber mit explizit übergebenen Daten. Für
-/// das Karussell im MatchUp-Tab. [mine] = eigene Paarung (zeigt „Du"/„Gegner");
-/// [awayName] == null ⇒ spielfrei (Bye).
-class MatchupBanner extends StatelessWidget {
-  const MatchupBanner({
-    super.key,
-    required this.round,
-    required this.homeName,
-    required this.awayName,
-    required this.homePoints,
-    required this.awayPoints,
-    required this.homeMe,
-    required this.awayMe,
-    this.homeAvatar,
-    this.awayAvatar,
-    required this.live,
-    required this.started,
-    required this.onTap,
-    this.mine = false,
-    this.homeSub,
-    this.awaySub,
-    this.anpfiff,
-    this.homeProjektion,
-    this.awayProjektion,
-    this.siegchanceHeim,
-  });
-
-  final int round;
-  final String homeName;
-  final String? awayName;
-  final double homePoints;
-  final double awayPoints;
-  final bool homeMe;
-  final bool awayMe;
-
-  /// Profilbild-Daten beider Seiten. Ohne Angabe zeichnet [AppAvatar] das
-  /// Standardbild aus dem Namen — eine Zeile ohne Bild ist damit nie leer.
-  final ManagerAvatar? homeAvatar;
-  final ManagerAvatar? awayAvatar;
-  final bool live;
-  final bool started;
-  final bool mine;
-  final VoidCallback onTap;
-
-  /// Optionale dritte Zeile je Seite (Saison-Kontext, z. B. „Platz 3 · 5-2-1").
-  final String? homeSub;
-  final String? awaySub;
-
-  /// Erster Anpfiff des Spieltags — steht in der Vorschau unter dem „VS".
-  /// Vor dem Spieltag ist das die einzige Zahl, die schon etwas bedeutet.
-  final DateTime? anpfiff;
-
-  /// **Voraussichtliche Punkte beider Seiten, nur vor dem Spieltag.**
-  ///
-  /// `null` heißt „keine Grundlage" (noch kein gewerteter Spieltag) — dann
-  /// bleibt es bei der reinen Ankündigung. Sobald angepfiffen ist, tragen
-  /// Punktestand und Momentum-Balken die Auskunft, und eine Schätzung daneben
-  /// wäre die zweite, schlechtere Antwort auf dieselbe Frage.
-  final double? homeProjektion;
-  final double? awayProjektion;
-
-  /// Wahrscheinlichkeit, dass die **Heimseite** gewinnt (0–1), oder `null`.
-  ///
-  /// Kommt aus `logic/siegchance.dart` und beruht auf der gemessenen
-  /// Schwankung der Wochensummen dieser Liga. Ohne Historie gibt es sie nicht
-  /// — dann erscheint kein Band, statt 50/50 zu behaupten.
-  final double? siegchanceHeim;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = live ? _cRed : _cGreen;
-
-    if (awayName == null) {
-      return HeroShell(
-        accent: accent,
-        live: live,
-        started: started,
-        onTap: onTap,
-        child: Row(
-          children: [
-            HeroAvatar(
-                name: homeName,
-                accent: accent,
-                imageUrl: homeAvatar?.url,
-                emoji: homeAvatar?.emoji,
-                colorHex: homeAvatar?.color,
-                userId: homeAvatar?.userId),
-            const SizedBox(width: 10),
-            Expanded(
-              child: HeroTeam(
-                  name: homeName,
-                  me: homeMe,
-                  showRole: mine,
-                  align: CrossAxisAlignment.start),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text('spielfrei',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontWeight: FontWeight.bold)),
-            ),
-            const Expanded(child: SizedBox()),
-          ],
-        ),
-      );
-    }
-
-    final homeWin = started && homePoints > awayPoints;
-    final awayWin = started && awayPoints > homePoints;
-    return HeroShell(
-      accent: accent,
-      live: live,
-      started: started,
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              HeroAvatar(
-                  name: homeName,
-                  accent: accent,
-                  dim: started && !homeWin,
-                  imageUrl: homeAvatar?.url,
-                  emoji: homeAvatar?.emoji,
-                  colorHex: homeAvatar?.color,
-                  userId: homeAvatar?.userId),
-              const SizedBox(width: 10),
-              Expanded(
-                child: HeroTeam(
-                    name: homeName,
-                    me: homeMe,
-                    win: homeWin,
-                    started: started,
-                    live: live,
-                    accent: accent,
-                    showRole: mine,
-                    subline: homeSub,
-                    align: CrossAxisAlignment.start),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: HeroTeam(
-                    name: awayName!,
-                    me: awayMe,
-                    win: awayWin,
-                    started: started,
-                    live: live,
-                    accent: accent,
-                    showRole: mine,
-                    subline: awaySub,
-                    align: CrossAxisAlignment.end),
-              ),
-              const SizedBox(width: 10),
-              // Gegner in Rot → „vs"-Kontrast.
-              HeroAvatar(
-                  name: awayName!,
-                  accent: _cRed,
-                  dim: started && !awayWin,
-                  imageUrl: awayAvatar?.url,
-                  emoji: awayAvatar?.emoji,
-                  colorHex: awayAvatar?.color,
-                  userId: awayAvatar?.userId),
-            ],
-          ),
-          if (!started) ...[
-            // **Vor dem Spieltag gibt es keinen Punktestand.** Dort stand ein
-            // „0 : 0" über einem halbierten grauen Balken mit der Beschriftung
-            // „Punkteanteil" — zwei Anzeigen, die beide nichts messen: Es ist
-            // noch kein Ball gerollt. Ein Duell vor dem Anpfiff ist eine
-            // Ankündigung, und die sieht so aus.
-            // **Mit Prognose wird aus der Ankündigung ein Vergleich.** Ohne
-            // sie bleibt es bei „VS" und Anpfiff — genau wie bisher; eine
-            // erfundene Zahl wäre schlechter als keine.
-            if (homeProjektion == null || awayProjektion == null) ...[
-              const SizedBox(height: 14),
-              _VsPlatte(accent: accent, anpfiff: anpfiff),
-              const SizedBox(height: 6),
-            ] else ...[
-              // **Zuerst die Kennzeichnung, dann die Zahlen.** Ohne sie sahen
-              // zwei große Zahlen mit „VS" dazwischen aus wie ein Spielstand
-              // — gemeldet als: „Man muss sehen, dass das Projected Points
-              // sind, sonst denkt man, das sind feste Punkte." Die Marke steht
-              // deshalb *über* den Zahlen und nicht als Fußnote darunter: Was
-              // eine Zahl ist, muss man wissen, **bevor** man sie liest.
-              const SizedBox(height: 6),
-              const Center(child: _PrognoseMarke()),
-              const SizedBox(height: 5),
-              _ProjektionsStand(
-                links: homeProjektion!,
-                rechts: awayProjektion!,
-              ),
-              const SizedBox(height: 8),
-              // **Die Prozentsätze stehen an ihrer Seite, nicht in einer
-              // Bildunterschrift.** Vorher lief eine zentrierte Zeile
-              // „SIEGCHANCE 63 % · 37 %" unter dem Band — man musste lesen,
-              // welche Zahl zu wem gehört. Links und rechts außen ist das
-              // ohne ein Wort klar, und das Wort selbst entfällt damit: Was
-              // eine Zahl in Prozent unter einem zweifarbigen Band ist, muss
-              // nicht angesagt werden.
-              //
-              // **Der Anpfiff ist hier raus** (auf Ansage). In der Karte ohne
-              // Prognose steht er weiter — dort ist er die einzige Zahl, die
-              // schon etwas bedeutet.
-              if (siegchanceHeim != null) ...[
-                _ChanceBar(heim: siegchanceHeim!),
-                const SizedBox(height: 6),
-                _ChanceProzente(heim: siegchanceHeim!),
-              ],
-            ],
-          ] else ...[
-            const SizedBox(height: 10),
-            // **Der Punktestand steht mittig auf eigener Zeile, nicht zwischen
-            // den Namen.** Dort nahm er genau die Breite weg, die die Namen
-            // brauchen: „lennartruepke" schrumpfte auf Winzgröße, und aus
-            // „FÜHRT" wurde „F…". Jetzt bekommt jede Seite die halbe
-            // Kastenbreite und die Namen stehen in voller Größe.
-            Center(
-              child: ScoreBadge(
-                left: homePoints,
-                right: awayPoints,
-                leftWin: homeWin,
-                rightWin: awayWin,
-                accent: accent,
-              ),
-            ),
-            const SizedBox(height: 10),
-            // „Momentum": Punkteanteil beider Seiten mit Label je nach Status.
-            _MomentumBar(left: homePoints, right: awayPoints),
-            const SizedBox(height: 5),
-            // Nur noch die Beschriftung. Links und rechts standen hier dieselben
-            // zwei Zahlen, die zwei Zeilen darüber schon groß im Punktestand
-            // stehen — dreimal dieselbe Auskunft in einem Kasten, der ohnehin
-            // zu voll war.
-            Center(
-              child: Text((live ? 'Live-Punkte' : 'Endpunkte').toUpperCase(),
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.5)),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// **Die Ankündigung: „VS" statt eines Punktestands von null.**
-///
-/// Zwei feine Linien laufen von den Seiten auf die Buchstaben zu und verlieren
-/// sich zum Rand hin — sie führen das Auge in die Mitte, ohne einen Kasten zu
-/// bauen. Darunter steht der Anpfiff des Spieltags: vor dem Spieltag die
-/// einzige Zahl, die schon etwas bedeutet.
-class _VsPlatte extends StatelessWidget {
-  const _VsPlatte({required this.accent, required this.anpfiff});
-
-  final Color accent;
-  final DateTime? anpfiff;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget linie({required bool nachRechts}) => Container(
-          height: 1,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: nachRechts ? Alignment.centerLeft : Alignment.centerRight,
-              end: nachRechts ? Alignment.centerRight : Alignment.centerLeft,
-              colors: [
-                Colors.white.withValues(alpha: 0.0),
-                Colors.white.withValues(alpha: 0.22),
-              ],
-            ),
-          ),
-        );
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Expanded(child: linie(nachRechts: true)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Text(
-                'VS',
-                style: TextStyle(
-                  // 24 statt 26: Die Leiter kennt keine 26, und für zwei
-                  // gesperrte Buchstaben braucht es keine eigene Stufe.
-                  fontSize: Schrift.h1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 4,
-                  height: 1,
-                  color: Colors.white.withValues(alpha: 0.92),
-                  shadows: [
-                    Shadow(color: accent.withValues(alpha: 0.55), blurRadius: 14),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(child: linie(nachRechts: false)),
-          ],
-        ),
-        if (anpfiff != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Anpfiff ${DateFormat('E, HH:mm', 'de_DE').format(anpfiff!.toLocal())} Uhr'
-                .toUpperCase(),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.5,
-            ),
-          ),
-        ],
-      ],
+      homeBilanz: bannerBilanz(grundlage, myId),
+      awayBilanz: bannerBilanz(grundlage, oppId),
+      homeErwartet: prognose.heimErwartet,
+      awayErwartet: prognose.gastErwartet,
+      siegchanceHeim: prognose.siegchanceHeim,
+      onTap: onTap ?? () => openDetail(oppId, nameOf[oppId]),
     );
   }
 }
@@ -571,7 +265,9 @@ class HeroShell extends StatelessWidget {
 
   /// Ist der Spieltag angepfiffen? Steuert, wie viel Farbe der Kasten trägt.
   final bool started;
-  final VoidCallback onTap;
+
+  /// `null` heißt: Der Kasten ist eine Anzeige, kein Knopf — ohne Tinte.
+  final VoidCallback? onTap;
   final Widget child;
 
   @override
@@ -642,206 +338,6 @@ class HeroShell extends StatelessWidget {
     );
   }
 }
-
-class HeroTeam extends StatelessWidget {
-  const HeroTeam({
-    super.key,
-    required this.name,
-    required this.me,
-    required this.align,
-    this.win = false,
-    this.started = false,
-    this.live = false,
-    this.accent = Colors.white,
-    this.showRole = true,
-    this.subline,
-  });
-
-  final String name;
-  final bool me;
-  final bool win;
-
-  /// „Du"/„Gegner" unter dem Namen zeigen (nur sinnvoll bei der eigenen
-  /// Paarung; bei fremden Paarungen im Karussell ausgeschaltet).
-  final bool showRole;
-
-  /// Dritte Zeile (z. B. „Platz 3 · 5-2-1") — Saison-Kontext, optional.
-  final String? subline;
-
-  /// Ist der Spieltag schon angepfiffen (dann Sieg-/Führt-Hinweis statt Rolle)?
-  final bool started;
-
-  /// Läuft der Spieltag noch (dann „Führt", sonst „Sieg")?
-  final bool live;
-
-  /// Banner-Akzent (grün, bzw. rot solange live) für den Sieger-Hinweis.
-  final Color accent;
-  final CrossAxisAlignment align;
-
-  @override
-  Widget build(BuildContext context) {
-    final end = align == CrossAxisAlignment.end;
-    final leads = started && win;
-    return Column(
-      crossAxisAlignment: align,
-      children: [
-        // **Der Name schrumpft, er wird nicht gekappt.** Dieselbe Regel wie
-        // auf der Ergebnistafel im Live-Tab: Der Verein bzw. Manager *ist* der
-        // Inhalt, und „lennartr…" ist keiner. Vorher fraß der Punktestand in
-        // der Mitte die Seiten auf — bei „92 : 78,5" blieb links „SF…" stehen,
-        // obwohl der Name fünf Zeichen hat.
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: end ? Alignment.centerRight : Alignment.centerLeft,
-          child: Text(
-            name,
-            maxLines: 1,
-            textAlign: end ? TextAlign.end : TextAlign.start,
-            style: TextStyle(
-                color: started && !win
-                    ? Colors.white.withValues(alpha: 0.72)
-                    : Colors.white,
-                fontSize: 18,
-                letterSpacing: 0.2,
-                fontWeight: win || me ? FontWeight.w800 : FontWeight.w600),
-          ),
-        ),
-        const SizedBox(height: 3),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (leads) ...[
-              Icon(live ? Icons.arrow_drop_up : Icons.emoji_events,
-                  size: live ? 16 : 13, color: _cGreen),
-              const SizedBox(width: 1),
-              // Beide Beschriftungen müssen schrumpfen können: Die Seite
-              // bekommt nur, was Avatare und Punktestand übrig lassen, und bei
-              // „92 : 78,5" ist das wenig. Ohne Flexible lief die Zeile über
-              // (gemessen: 14 px) — auf dem Gerät der schwarz-gelbe Balken.
-              Flexible(
-                child: Text(live ? 'FÜHRT' : 'SIEG',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: _cGreen,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2)),
-              ),
-            ] else if (showRole)
-              Flexible(
-                child: Text((me ? 'Du' : 'Gegner').toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.4)),
-              )
-            else
-              const SizedBox(height: 14),
-          ],
-        ),
-        if (subline != null) ...[
-          const SizedBox(height: 3),
-          Row(
-            mainAxisAlignment:
-                end ? MainAxisAlignment.end : MainAxisAlignment.start,
-            children: [
-              Icon(Icons.leaderboard_outlined,
-                  size: 11, color: Colors.white.withValues(alpha: 0.55)),
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(subline!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Ergebnis-Feld in der Banner-Mitte: immer die beiden Punktzahlen als
-/// Scoreboard (vor Anpfiff 0:0). Ein leicht abgedunkelter, gerundeter Chip
-/// hebt das Ergebnis vom Marken-Logo dahinter ab; die Siegerzahl wird im
-/// Akzent hervorgehoben, die des Verlierers gedimmt.
-class ScoreBadge extends StatelessWidget {
-  const ScoreBadge({
-    super.key,
-    required this.left,
-    required this.right,
-    required this.leftWin,
-    required this.rightWin,
-    required this.accent,
-  });
-
-  final double left;
-  final double right;
-  final bool leftWin;
-  final bool rightWin;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    // Führender grün, Zurückliegender rot; bei Gleichstand/vor Anpfiff weiß.
-    Color numColor(bool win, bool otherWin) => win
-        ? _cGreen
-        : (otherWin ? _cRed : Colors.white);
-    Widget number(double v, bool win, bool otherWin) => Punktzahl(v,
-        stil: TextStyle(
-            color: numColor(win, otherWin),
-            fontSize: 32,
-            height: 1,
-            letterSpacing: -0.5,
-            fontWeight: FontWeight.w900));
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.black.withValues(alpha: 0.38),
-            Colors.black.withValues(alpha: 0.22),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          number(left, leftWin, rightWin),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 7),
-            child: Text(':',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800)),
-          ),
-          number(right, rightWin, leftWin),
-        ],
-      ),
-    );
-  }
-}
-
 /// Die Profildaten eines Managers, so wie sie im Banner gebraucht werden.
 ///
 /// Ein eigener kleiner Typ statt vier loser Parameter je Seite: Acht
@@ -932,100 +428,6 @@ class HeroAvatar extends StatelessWidget {
   }
 }
 
-/// „Momentum"-Balken: zeigt den Punkteanteil beider Seiten als Tauziehen —
-/// meine Seite hell, der Gegner gedimmt. Rein visuell (kein Tap).
-/// **Die Kennzeichnung „Prognose".**
-///
-/// Gemeldet: *„Man muss sehen, dass das Projected Points sind, sonst denkt
-/// man, das sind feste Punkte."* Genau so war es gebaut — nachdem das Wort
-/// „Siegchance" auf Ansage weggefallen war, stand in der Karte kein einziges
-/// Wort mehr, und zwei große Zahlen mit „VS" dazwischen sind in dieser App
-/// sonst immer ein Spielstand.
-///
-/// **Eine gefüllte Pille, keine Überschrift und kein Rahmen.** Eine Zeile Text
-/// hätte man für eine Bereichsbeschriftung halten können; die Pille liest sich
-/// als Etikett an den Zahlen darunter. **Keine Signalfarbe** — eine Prognose
-/// meldet nichts, sie rechnet nur.
-///
-/// Gefüllt statt umrandet, und das ist kein Geschmack: Der erste Wurf trug
-/// eine weiße Kante bei Radius 20 und hat `kartenkanten_test` ausgelöst. Der
-/// Wächter kann einer Dekoration nicht ansehen, ob sie fünfzehn oder
-/// fünfhundert Punkte hoch ist — und seine Ausnahmeliste ist für Kanten
-/// gedacht, die einen **Zustand** tragen („wartet", „gewählt", „kaputt"). Eine
-/// Beschriftung trägt keinen. Die Fläche ist dieselbe Lösung, die die
-/// Status-Pille im Detailkopf (`matchup_detail_screen.dart`) längst benutzt:
-/// weiß auf 14 % Weiß, ohne Rahmen.
-class _PrognoseMarke extends StatelessWidget {
-  const _PrognoseMarke();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: Colors.white.withValues(alpha: 0.14),
-      ),
-      child: Text(
-        'PROGNOSE',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.65),
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.6,
-          height: 1.1,
-        ),
-      ),
-    );
-  }
-}
-
-/// **Die beiden Prognosen mit einem „VS" dazwischen.**
-///
-/// Bewusst nicht der [ScoreBadge]: Der zeigt einen *Stand* und färbt den
-/// Führenden. Hier hat noch niemand etwas geholt — die Zahlen stehen deshalb
-/// in gleicher Helligkeit nebeneinander, und die Wertung („wer ist vorn?")
-/// trägt allein das Band darunter.
-class _ProjektionsStand extends StatelessWidget {
-  const _ProjektionsStand({
-    required this.links,
-    required this.rechts,
-  });
-
-  final double links;
-  final double rechts;
-
-  @override
-  Widget build(BuildContext context) {
-    // **Eine Spur leiser als ein echter Punktestand.** Der steht im
-    // [ScoreBadge] — gerahmt, größer und in der Farbe des Führenden. Diese
-    // Zahlen sind eine Rechnung, kein Ergebnis, und sollen auch so klingen.
-    final stil = TextStyle(
-      fontSize: Schrift.h2,
-      fontWeight: FontWeight.w800,
-      color: Colors.white.withValues(alpha: 0.82),
-      height: 1,
-    );
-    // **An den Rändern, nicht in der Mitte** (auf Ansage). Jede Zahl steht
-    // damit unter dem Namen und über dem Prozentsatz ihrer Seite — die Karte
-    // liest sich durchgehend in zwei Spalten, statt in der Mitte einen Block
-    // zu bilden, den man erst zuordnen muss.
-    //
-    // **Das „VS" ist entfallen.** Zwischen zwei auseinandergerückten Zahlen
-    // stünde es allein in der Mitte, und die Mitte markiert schon die
-    // Prognose-Pille darüber. Zwei Mittelanker wären einer zu viel.
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Punktzahl(links, stil: stil),
-        Punktzahl(rechts, stil: stil),
-      ],
-    );
-  }
-}
-
 /// Grau, solange niemand Favorit ist.
 const _cChanceNeutral = Color(0xFF9AA0AA);
 
@@ -1049,166 +451,667 @@ const _cChanceNeutral = Color(0xFF9AA0AA);
       : (_cRed, _cGreen);
 }
 
-/// **Die beiden Siegchancen, jede an ihrer Seite.**
-///
-/// Links die der linken Mannschaft, rechts die der rechten — in der Farbe, die
-/// auch ihre Hälfte des Bandes trägt. Ein Wort davor („Siegchance") braucht es
-/// nicht: Zwei Prozentzahlen unter einem zweifarbigen Band sind selbsterklärend,
-/// und die Karte hat eine feste Höhe, in der jede Zeile zählt.
-class _ChanceProzente extends StatelessWidget {
-  const _ChanceProzente({required this.heim});
 
-  /// Wahrscheinlichkeit der linken Seite, 0–1.
-  final double heim;
+// ---------------------------------------------------------------------------
+// Prognose und Bilanz eines Duells — einmal gerechnet, an beiden Orten benutzt
+// ---------------------------------------------------------------------------
+
+/// Hochrechnung beider Seiten und die Siegchance der Heimseite.
+typedef DuellPrognose = ({
+  double? heimErwartet,
+  double? gastErwartet,
+  double? siegchanceHeim,
+});
+
+/// **Was der Kasten über ein Duell sagt, das noch nicht entschieden ist.**
+///
+/// Vor dem Anpfiff ist das die Prognose (Summe der Schnitte), währenddessen
+/// die Hochrechnung (echte Punkte plus erwarteter Rest, `hochrechnung.dart`),
+/// nach dem letzten Abpfiff der Endstand. Die Siegchance folgt derselben
+/// Rechnung und schärft sich mit jedem Abpfiff.
+///
+/// **Steht hier und nicht in zwei Schirmen**, weil der Kasten an zwei Orten
+/// erscheint (Liga-Übersicht, MatchUp-Karussell) und für dasselbe Duell
+/// dieselbe Zahl zeigen muss.
+///
+/// [saisonGewertet] sind nur **abgepfiffene** Spieltage (`gewerteteRunden`) —
+/// der laufende trägt Zwischenstände und würde jeden Schnitt drücken. Ohne
+/// einen einzigen gewerteten Spieltag gibt es keine Grundlage, und alles ist
+/// `null`: eine erfundene Zahl wäre schlechter als keine.
+DuellPrognose duellPrognose({
+  required int round,
+  required MatchupSideData heim,
+  required MatchupSideData? gast,
+  required List<Fixture> spiele,
+  required Map<int, Map<String, PlayerMatchStats>> saisonGewertet,
+  required FantasyScoringRules regeln,
+  required Map<String, PlayerAbsence> ausfaelle,
+  required double? wochenStreuung,
+  required DateTime jetzt,
+}) {
+  const nichts = (heimErwartet: null, gastErwartet: null, siegchanceHeim: null);
+  if (gast == null || saisonGewertet.values.every((r) => r.isEmpty)) {
+    return nichts;
+  }
+  Hochrechnung rechne(MatchupSideData seite) => hochrechnung(
+        [
+          for (final p in seite.starters)
+            () {
+              final spiel = naechstesSpiel(spiele, round, p.club);
+              final lage = spiel == null
+                  ? SpielLage.ohneSpiel
+                  : spiel.status == FixtureStatus.finished
+                      ? SpielLage.fertig
+                      : !spiel.anpfiff.isAfter(jetzt)
+                          ? SpielLage.laeuft
+                          : SpielLage.offen;
+              return HochrechnungsPosten(
+                lage: lage,
+                punkte: seite.points[p.id] ?? 0,
+                schnitt: spielerSchnitt(
+                  saison: saisonGewertet,
+                  spielerId: p.id,
+                  position: p.position,
+                  regeln: regeln,
+                ).punkteJeSpieltag,
+                anpfiff: spiel?.anpfiff,
+                faellt: ausfaelle.containsKey(p.id),
+              );
+            }(),
+        ],
+        jetzt: jetzt,
+      );
+  final h = rechne(heim);
+  final g = rechne(gast);
+  return (
+    heimErwartet: h.erwartet,
+    gastErwartet: g.erwartet,
+    siegchanceHeim: siegchanceLive(
+      heim: h,
+      gast: g,
+      wochenStreuung: wochenStreuung,
+    ),
+  );
+}
+
+/// Die Zeile unter dem Namen: Platz und Bilanz, dazu die Serie.
+typedef BannerBilanz = ({String? zeile, BannerSerie? serie});
+
+/// Serie: Ausgang und wie oft hintereinander.
+typedef BannerSerie = ({DuellAusgang ausgang, int anzahl});
+
+/// Platz, Bilanz (S-U-N) und Serie eines Managers — aus derselben
+/// [h2hGrundlage] wie die Tabelle, damit beide dasselbe sagen.
+BannerBilanz bannerBilanz(H2HGrundlage g, String managerId) {
+  final standings = h2hStandings(g.ids, g.summen);
+  if (standings.every((r) => r.played == 0)) return (zeile: null, serie: null);
+  final i = standings.indexWhere((r) => r.managerId == managerId);
+  if (i < 0) return (zeile: null, serie: null);
+  final r = standings[i];
+  final verlauf = saisonverlauf(
+    ids: g.ids,
+    managerId: managerId,
+    gewertet: g.summen,
+    letzteRunde: kRegularSeasonMatchdays,
+  );
+  return (
+    zeile: 'P${i + 1} · ${r.wins}-${r.ties}-${r.losses}',
+    serie: serie(verlauf),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Der Kasten
+// ---------------------------------------------------------------------------
+
+/// Ein MatchUp-Kasten für eine **beliebige** Paarung (Heim gegen Gast).
+///
+/// **Aufbau nach dem Vorbild Sleeper** (Screenshot vom 14.10.2026): Jede Seite
+/// trägt ihre eigene Spalte — Avatar, groß der Stand, klein darunter, wo es
+/// hinläuft, dann die Siegchance in Prozent mit einem Balken nur für diese
+/// Seite, zuletzt Name, Platz, Bilanz und Serie. In der Mitte steht das
+/// MatchUp-Zeichen und der Zustand des Spieltags.
+///
+/// Der Vorgänger stellte den Punktestand mittig auf eine eigene Zeile und die
+/// Siegchance als ein gemeinsames Band darunter. Das las sich als Tauziehen,
+/// aber man musste jede Zahl erst ihrer Seite zuordnen. Hier gehört alles,
+/// was über eine Mannschaft gesagt wird, in ihre Spalte.
+///
+/// **Was groß steht, hängt am Zustand:**
+///
+/// | Zustand | groß | klein |
+/// |---|---|---|
+/// | vor dem Anpfiff | Prognose, gedämpft | „Prognose" |
+/// | läuft | Stand | „Prognose 190,2" (Hochrechnung) |
+/// | beendet | Endstand | „Endstand" |
+///
+/// Vor dem Anpfiff steht **keine 0** groß da: Es ist noch kein Ball gerollt,
+/// und eine Null sähe aus wie ein Ergebnis. Die Prognose dagegen ist gedämpft
+/// und beschriftet — gemeldet war einmal, dass man sie sonst für feste Punkte
+/// hält.
+class MatchupBanner extends StatelessWidget {
+  const MatchupBanner({
+    super.key,
+    required this.round,
+    required this.homeName,
+    required this.awayName,
+    required this.homePoints,
+    required this.awayPoints,
+    required this.homeMe,
+    required this.awayMe,
+    this.homeAvatar,
+    this.awayAvatar,
+    required this.live,
+    required this.started,
+    this.onTap,
+    this.mine = false,
+    this.homeBilanz,
+    this.awayBilanz,
+    this.anpfiff,
+    this.homeErwartet,
+    this.awayErwartet,
+    this.siegchanceHeim,
+    this.onHomeName,
+    this.onAwayName,
+  });
+
+  final int round;
+  final String homeName;
+
+  /// `null` heißt spielfrei.
+  final String? awayName;
+  final double homePoints;
+  final double awayPoints;
+  final bool homeMe;
+  final bool awayMe;
+  final ManagerAvatar? homeAvatar;
+  final ManagerAvatar? awayAvatar;
+  final bool live;
+  final bool started;
+  final bool mine;
+
+  /// `null` im MatchUp-Tab: Dort ist man schon, ein Tipp führt nirgendwohin.
+  final VoidCallback? onTap;
+
+  /// Platz, Bilanz und Serie je Seite — `null`, solange nichts gewertet ist.
+  final BannerBilanz? homeBilanz;
+  final BannerBilanz? awayBilanz;
+
+  /// Erster Anpfiff des Spieltags — steht vor dem Spieltag in der Mitte.
+  final DateTime? anpfiff;
+
+  /// Prognose (vor dem Anpfiff) bzw. Hochrechnung (während des Spieltags).
+  final double? homeErwartet;
+  final double? awayErwartet;
+
+  /// Wahrscheinlichkeit, dass die **Heimseite** gewinnt (0–1), oder `null`.
+  final double? siegchanceHeim;
+
+  /// Tipp auf Bild oder Name einer Seite — im MatchUp-Tab das Ligaprofil des
+  /// Teilnehmers. `null`: Bild und Name gehören zum Tipp-Ziel des Kastens.
+  final VoidCallback? onHomeName;
+  final VoidCallback? onAwayName;
 
   @override
   Widget build(BuildContext context) {
-    final links = (heim * 100).round().clamp(1, 99);
-    final rechts = 100 - links;
-    final (linksFarbe, rechtsFarbe) = _chanceFarben(links);
+    final accent = live ? _cRed : _cGreen;
+    final beendet = started && !live;
 
-    TextStyle stil(Color farbe) => TextStyle(
-          color: farbe,
-          fontSize: Schrift.klein,
+    if (awayName == null) {
+      return HeroShell(
+        accent: accent,
+        live: live,
+        started: started,
+        onTap: onTap,
+        child: Row(
+          children: [
+            _Tippbar(
+              onTap: onHomeName,
+              child: HeroAvatar(
+                  name: homeName,
+                  accent: accent,
+                  imageUrl: homeAvatar?.url,
+                  emoji: homeAvatar?.emoji,
+                  colorHex: homeAvatar?.color,
+                  userId: homeAvatar?.userId),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _Tippbar(
+                onTap: onHomeName,
+                child: _NameZeilen(
+                  name: homeName,
+                  me: homeMe,
+                  bilanz: homeBilanz,
+                  links: true,
+                ),
+              ),
+            ),
+            Text('spielfrei',
+                style: TextStyle(
+                    fontSize: Schrift.titel,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: 0.7))),
+          ],
+        ),
+      );
+    }
+
+    final chanceLinks = siegchanceHeim;
+    final chanceRechts = chanceLinks == null ? null : 1 - chanceLinks;
+    return HeroShell(
+      accent: accent,
+      live: live,
+      started: started,
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _Seite(
+              links: true,
+              name: homeName,
+              me: homeMe,
+              avatar: homeAvatar,
+              punkte: homePoints,
+              gegnerPunkte: awayPoints,
+              erwartet: homeErwartet,
+              chance: chanceLinks,
+              started: started,
+              beendet: beendet,
+              bilanz: homeBilanz,
+              onName: onHomeName,
+            ),
+          ),
+          _Mitte(
+            live: live,
+            started: started,
+            anpfiff: anpfiff,
+          ),
+          Expanded(
+            child: _Seite(
+              links: false,
+              name: awayName!,
+              me: awayMe,
+              avatar: awayAvatar,
+              punkte: awayPoints,
+              gegnerPunkte: homePoints,
+              erwartet: awayErwartet,
+              chance: chanceRechts,
+              started: started,
+              beendet: beendet,
+              bilanz: awayBilanz,
+              onName: onAwayName,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Eine Spalte des Kastens — alles, was über eine Mannschaft gesagt wird.
+class _Seite extends StatelessWidget {
+  const _Seite({
+    required this.links,
+    required this.name,
+    required this.me,
+    required this.avatar,
+    required this.punkte,
+    required this.gegnerPunkte,
+    required this.erwartet,
+    required this.chance,
+    required this.started,
+    required this.beendet,
+    required this.bilanz,
+    this.onName,
+  });
+
+  final bool links;
+  final String name;
+  final bool me;
+  final VoidCallback? onName;
+  final ManagerAvatar? avatar;
+  final double punkte;
+  final double gegnerPunkte;
+  final double? erwartet;
+  final double? chance;
+  final bool started;
+  final bool beendet;
+  final BannerBilanz? bilanz;
+
+  @override
+  Widget build(BuildContext context) {
+    final verloren = beendet && punkte < gegnerPunkte;
+    final ausrichtung =
+        links ? CrossAxisAlignment.start : CrossAxisAlignment.end;
+
+    // Groß: der Stand — vor dem Anpfiff die Prognose, gedämpft.
+    final Widget gross;
+    if (started) {
+      gross = Punktzahl(
+        punkte,
+        stil: TextStyle(
+          fontSize: Schrift.h1,
           fontWeight: FontWeight.w800,
-          letterSpacing: 0.3,
           height: 1,
-        );
+          color: Colors.white.withValues(alpha: verloren ? 0.6 : 1),
+        ),
+      );
+    } else if (erwartet != null) {
+      gross = Punktzahl(
+        erwartet!,
+        stil: TextStyle(
+          fontSize: Schrift.h1,
+          fontWeight: FontWeight.w800,
+          height: 1,
+          color: Colors.white.withValues(alpha: 0.55),
+        ),
+      );
+    } else {
+      gross = Text('–',
+          style: TextStyle(
+              fontSize: Schrift.h1,
+              fontWeight: FontWeight.w800,
+              height: 1,
+              color: Colors.white.withValues(alpha: 0.4)));
+    }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    // Klein darunter: was die große Zahl ist, bzw. wo es hinläuft.
+    final klein = beendet
+        ? 'Endstand'
+        : started
+            ? (erwartet == null ? 'Live' : 'Prognose ${formatPoints(erwartet!)}')
+            : (erwartet == null ? '' : 'Prognose');
+
+    final zahlen = Column(
+      crossAxisAlignment: ausrichtung,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$links %', style: stil(linksFarbe)),
-        Text('$rechts %', style: stil(rechtsFarbe)),
+        FittedBox(fit: BoxFit.scaleDown, child: gross),
+        const SizedBox(height: 4),
+        // **Verkleinern statt abschneiden** — „Prognose 1284,6" ist die
+        // längste Zeile, und abgeschnitten hieße sie „Prognose 128".
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+          klein,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: Schrift.winzig,
+            fontWeight: FontWeight.w600,
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.5),
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        ),
+      ],
+    );
+
+    final bild = _Tippbar(
+      onTap: onName,
+      child: HeroAvatar(
+        name: name,
+        accent: me ? _cGreen : Colors.white.withValues(alpha: 0.35),
+        dim: verloren,
+        imageUrl: avatar?.url,
+        emoji: avatar?.emoji,
+        colorHex: avatar?.color,
+        userId: avatar?.userId,
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: ausrichtung,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment:
+              links ? MainAxisAlignment.start : MainAxisAlignment.end,
+          children: links
+              ? [bild, const SizedBox(width: 10), Flexible(child: zahlen)]
+              : [Flexible(child: zahlen), const SizedBox(width: 10), bild],
+        ),
+        const SizedBox(height: 10),
+        _ChanceZeile(
+          links: links,
+          chance: chance,
+          beendet: beendet,
+          sieg: beendet && punkte > gegnerPunkte,
+          niederlage: verloren,
+        ),
+        const SizedBox(height: 10),
+        _Tippbar(
+          onTap: onName,
+          child: _NameZeilen(name: name, me: me, bilanz: bilanz, links: links),
+        ),
       ],
     );
   }
 }
 
-/// **Das Band der Gewinnwahrscheinlichkeit.**
+/// Siegchance einer Seite: „63 % Sieg" und ein Balken, der nur ihr gehört.
 ///
-/// Dieselbe Form wie der [_MomentumBar] darunter — zwei Balken, acht hoch,
-/// drei Punkte Lücke, außen gerundet: Es ist dieselbe Sorte Auskunft, nur vor
-/// dem Anpfiff statt danach. Was sich unterscheidet, ist die **Quelle**: Der
-/// Momentum-Balken teilt erzielte Punkte auf, dieses Band eine gemessene
-/// Wahrscheinlichkeit.
-///
-/// **Farbe nur für die wahrscheinlichere Seite.** Bei nahezu gleichen Chancen
-/// bleiben beide Hälften neutral: Ein Favorit, den es nicht gibt, soll auch
-/// nicht behauptet werden — dieselbe Regel, nach der der Momentum-Balken bei
-/// Gleichstand grau bleibt.
-class _ChanceBar extends StatelessWidget {
-  const _ChanceBar({required this.heim});
+/// **Grün für den Favoriten, rot für den anderen, grau bei einem Münzwurf** —
+/// dieselbe Farbregel wie zuvor (`_chanceFarben`), nur je Seite angewandt.
+/// Ist der Spieltag beendet, steht dort das Ergebnis als Wort.
+class _ChanceZeile extends StatelessWidget {
+  const _ChanceZeile({
+    required this.links,
+    required this.chance,
+    required this.beendet,
+    required this.sieg,
+    required this.niederlage,
+  });
 
-  /// Wahrscheinlichkeit der linken Seite, 0–1.
-  final double heim;
+  final bool links;
+  final double? chance;
+  final bool beendet;
+  final bool sieg;
+  final bool niederlage;
 
   @override
   Widget build(BuildContext context) {
-    // Flex verlangt ganze Zahlen; ein Prozentpunkt ist die feinste Stufe, die
-    // die Anzeige ohnehin nennt.
-    final l = (heim * 100).round().clamp(1, 99);
-    final r = 100 - l;
-    final (linksFarbe, rechtsFarbe) = _chanceFarben(l);
+    final String text;
+    final double anteil;
+    final Color farbe;
+    if (beendet) {
+      text = sieg ? 'Sieg' : (niederlage ? 'Niederlage' : 'Unentschieden');
+      anteil = sieg ? 1 : (niederlage ? 0 : 0.5);
+      farbe = sieg ? _cGreen : (niederlage ? _cRed : _cChanceNeutral);
+    } else if (chance != null) {
+      final prozent = (chance! * 100).round().clamp(0, 100);
+      text = '$prozent % Sieg';
+      anteil = chance!;
+      farbe = _chanceFarben(prozent.clamp(1, 99)).$1;
+    } else {
+      // Ohne Grundlage keine Zahl — aber dieselbe Höhe, damit beide Seiten
+      // und alle Karten des Karussells gleich stehen.
+      return const SizedBox(height: 18);
+    }
+    return SizedBox(
+      height: 18,
+      child: Column(
+        crossAxisAlignment:
+            links ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+        children: [
+          Text(
+            text.toUpperCase(),
+            style: TextStyle(
+              fontSize: Schrift.winzig,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              height: 1,
+              color: farbe,
+            ),
+          ),
+          const Spacer(),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: SizedBox(
+              height: 4,
+              child: Stack(
+                children: [
+                  Container(color: Colors.white.withValues(alpha: 0.08)),
+                  // Der Balken wächst von der Außenkante nach innen.
+                  Align(
+                    alignment:
+                        links ? Alignment.centerLeft : Alignment.centerRight,
+                    child: FractionallySizedBox(
+                      widthFactor: anteil.clamp(0.0, 1.0),
+                      child: Container(color: farbe),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-    return Row(
+/// Eigenes Tipp-Ziel innerhalb des Kastens — ohne [onTap] durchlässig, dann
+/// gilt der Tipp dem ganzen Kasten.
+class _Tippbar extends StatelessWidget {
+  const _Tippbar({required this.onTap, required this.child});
+
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (onTap == null) return child;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: child,
+    );
+  }
+}
+
+/// Name und darunter Platz · Bilanz · Serie.
+class _NameZeilen extends StatelessWidget {
+  const _NameZeilen({
+    required this.name,
+    required this.me,
+    required this.bilanz,
+    required this.links,
+  });
+
+  final String name;
+  final bool me;
+  final BannerBilanz? bilanz;
+  final bool links;
+
+  @override
+  Widget build(BuildContext context) {
+    final leise = Colors.white.withValues(alpha: 0.55);
+    final serie = bilanz?.serie;
+    final (pfeil, buchstabe, farbe) = switch (serie?.ausgang) {
+      DuellAusgang.sieg => ('▲', 'S', _cGreen),
+      DuellAusgang.niederlage => ('▼', 'N', _cRed),
+      _ => ('■', 'U', _cChanceNeutral),
+    };
+    return Column(
+      crossAxisAlignment:
+          links ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          flex: l,
-          child: Container(
-            height: 8,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                linksFarbe.withValues(alpha: 0.95),
-                linksFarbe.withValues(alpha: 0.7),
-              ]),
-              borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(4), right: Radius.circular(1)),
-            ),
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: links ? TextAlign.start : TextAlign.end,
+          style: TextStyle(
+            fontSize: Schrift.titel,
+            fontWeight: me ? FontWeight.w800 : FontWeight.w700,
+            height: 1.15,
+            color: Colors.white,
           ),
         ),
-        const SizedBox(width: 3),
-        Expanded(
-          flex: r,
-          child: Container(
-            height: 8,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                rechtsFarbe.withValues(alpha: 0.7),
-                rechtsFarbe.withValues(alpha: 0.95),
-              ]),
-              borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(1), right: Radius.circular(4)),
+        if (bilanz?.zeile != null) ...[
+          const SizedBox(height: 3),
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(text: bilanz!.zeile),
+              if (serie != null) ...[
+                const TextSpan(text: ' · '),
+                TextSpan(
+                  text: '$pfeil${serie.anzahl}$buchstabe',
+                  style: TextStyle(color: farbe, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ]),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: links ? TextAlign.start : TextAlign.end,
+            style: TextStyle(
+              fontSize: Schrift.klein,
+              fontWeight: FontWeight.w600,
+              height: 1.1,
+              color: leise,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
-        ),
+        ],
       ],
     );
   }
 }
 
-class _MomentumBar extends StatelessWidget {
-  const _MomentumBar({required this.left, required this.right});
+/// Die Mitte: das MatchUp-Zeichen und darunter der Zustand des Spieltags.
+class _Mitte extends StatelessWidget {
+  const _Mitte({
+    required this.live,
+    required this.started,
+    required this.anpfiff,
+  });
 
-  final double left;
-  final double right;
-
-  /// Unentschieden und vor dem Anpfiff: **keine** Seite bekommt eine Wertung.
-  /// Vorher stand hier grün gegen rot, auch bei 0:0 — das behauptete einen
-  /// Führenden, den es nicht gab.
-  static const _neutral = Color(0xFF9AA0AA);
+  final bool live;
+  final bool started;
+  final DateTime? anpfiff;
 
   @override
   Widget build(BuildContext context) {
-    // Flex nie 0 (sonst kollabiert die Seite komplett); min. schmaler Rest.
-    // Flex verlangt ganze Zahlen; die Dezimalpunkte der Wertung sind für
-    // die Balkenbreite ohne Belang.
-    final l = left < 1 ? 1 : left.round();
-    final r = right < 1 ? 1 : right.round();
-
-    // **Grün heißt „führt", nicht „Heim".** Vorher trug die linke Seite den
-    // Banner-Akzent — und der ist solange live rot, genau wie die rechte
-    // Seite. Im laufenden Spieltag, also dann, wenn man am genauesten
-    // hinsieht, waren beide Hälften rot und die Grenze verschwand.
-    final linksVorn = left > right;
-    final rechtsVorn = right > left;
-    final linksFarbe =
-        linksVorn ? _cGreen : (rechtsVorn ? _cRed : _neutral);
-    final rechtsFarbe =
-        rechtsVorn ? _cGreen : (linksVorn ? _cRed : _neutral);
-
-    return Row(
-      children: [
-        Expanded(
-          flex: l,
-          child: Container(
-            height: 8,
+    final String? zustand = live
+        ? 'LIVE'
+        : started
+            ? 'ENDE'
+            : (anpfiff == null ? null : anpfiffKurz(anpfiff!.toLocal()));
+    return SizedBox(
+      width: 46,
+      child: Column(
+        children: [
+          const SizedBox(height: 4),
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                linksFarbe.withValues(alpha: 0.95),
-                linksFarbe.withValues(alpha: 0.7),
-              ]),
-              borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(4), right: Radius.circular(1)),
+              color: Colors.white.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: const MatchUpChevron(size: 18),
           ),
-        ),
-        const SizedBox(width: 3),
-        Expanded(
-          flex: r,
-          child: Container(
-            height: 8,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [
-                rechtsFarbe.withValues(alpha: 0.7),
-                rechtsFarbe.withValues(alpha: 0.95),
-              ]),
-              borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(1), right: Radius.circular(4)),
+          if (zustand != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              zustand,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: Schrift.mikro,
+                fontWeight: FontWeight.w800,
+                letterSpacing: live ? 1 : 0.3,
+                height: 1.2,
+                color: live ? _cRed : Colors.white.withValues(alpha: 0.5),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 }

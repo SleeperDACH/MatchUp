@@ -19,6 +19,9 @@ class NaechstesSpiel {
     required this.gegner,
     required this.anpfiff,
     required this.heim,
+    this.status = FixtureStatus.scheduled,
+    this.eigeneTore,
+    this.gegnerTore,
   });
 
   /// Vereinsname des Gegners (nicht das Kürzel — das macht die Anzeige).
@@ -27,6 +30,12 @@ class NaechstesSpiel {
 
   /// Spielt der eigene Verein zu Hause?
   final bool heim;
+
+  /// Zustand der Partie und — sobald es ihn gibt — der Stand aus Sicht des
+  /// eigenen Vereins. Für die Spielzeile der MatchUp-Karte („S 2:1 vs BVB").
+  final FixtureStatus status;
+  final int? eigeneTore;
+  final int? gegnerTore;
 }
 
 /// Das Spiel dieses Vereins in [runde] — `null`, wenn er nicht angesetzt ist.
@@ -43,11 +52,21 @@ NaechstesSpiel? naechstesSpiel(
     if (f.round != runde) continue;
     if (vereinKanonisch(f.home.name) == vereinKanonisch(verein)) {
       return NaechstesSpiel(
-          gegner: f.away.name, anpfiff: f.kickoff.toLocal(), heim: true);
+          gegner: f.away.name,
+          anpfiff: f.kickoff.toLocal(),
+          heim: true,
+          status: f.status,
+          eigeneTore: f.homeScore,
+          gegnerTore: f.awayScore);
     }
     if (vereinKanonisch(f.away.name) == vereinKanonisch(verein)) {
       return NaechstesSpiel(
-          gegner: f.home.name, anpfiff: f.kickoff.toLocal(), heim: false);
+          gegner: f.home.name,
+          anpfiff: f.kickoff.toLocal(),
+          heim: false,
+          status: f.status,
+          eigeneTore: f.awayScore,
+          gegnerTore: f.homeScore);
     }
   }
   return null;

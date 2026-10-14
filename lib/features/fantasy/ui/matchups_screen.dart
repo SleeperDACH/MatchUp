@@ -6,13 +6,12 @@ import '../../../core/models/models.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
-import '../logic/projektion.dart';
-import '../logic/siegchance.dart';
 import '../models/fantasy_models.dart';
+import '../logic/h2h_grundlage.dart';
 import '../providers.dart';
 import 'matchday_stepper.dart';
-import 'matchup_detail_screen.dart';
 import 'matchup_hero.dart';
+import 'manager_profile_screen.dart';
 import 'matchup_lineups.dart';
 import 'roster_limit_banner.dart';
 
@@ -48,6 +47,15 @@ class MatchupsScreen extends StatelessWidget {
 /// Zwei Merker fuer eine Sache waren der Fehler. Jetzt gibt es einen, und der
 /// ueberlebt auch einen Reiterwechsel.
 final matchupKarussellSeiteProvider =
+    StateProvider.family<int, String>((ref, ligaId) => 0);
+
+/// **Sprung aus der Liga-Übersicht:** Ein Tipp auf den MatchUp-Kasten dort
+/// zählt diesen Zähler hoch und wechselt in den Reiter. Der MatchUp-Tab hört
+/// darauf und stellt sich auf das **eigene** Duell des **aktuellen** Spieltags —
+/// auch wenn man vorher weitergewischt oder eine andere Woche gewählt hatte.
+/// Ein Zähler statt eines Wahrheitswerts, damit zwei Sprünge hintereinander
+/// zweimal wirken.
+final matchupSprungProvider =
     StateProvider.family<int, String>((ref, ligaId) => 0);
 
 class MatchupsBody extends ConsumerStatefulWidget {
@@ -114,6 +122,10 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
   @override
   Widget build(BuildContext context) {
     final league = widget.league;
+    ref.listen(matchupSprungProvider(league.id), (_, _) {
+      setState(() => _round = null);
+      if (_pageController.hasClients) _pageController.jumpToPage(_loopBase);
+    });
     final current = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final round = _round ?? current ?? 1;
 
@@ -300,68 +312,42 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                 return (p.home, p.away);
               }
 
-              // **Bilanz nur über abgepfiffene Spieltage.** Vorher zählte
-              // jede Runde mit Statistikzeilen — auch die laufende, und die
-              // trägt schon mittags Zwischenstände. Im Kasten stand damit am
-              // Samstagnachmittag eine Niederlage, obwohl der Spieltag noch
-              // lief. Eine Bilanz ist ein Ergebnis, kein Zwischenstand; der
-              // laufende Spieltag hat seinen eigenen Ort, nämlich die
-              // Live-Punkte darüber.
-              final fertig = gewerteteRunden(
-                  ref.watch(abgepfiffeneRundenProvider), seasonStats.keys);
-              final totalsByRound = <int, Map<String, double>>{
-                for (final entry in seasonStats.entries)
-                  if (fertig.contains(entry.key))
-                    entry.key: _totals(entry.value, entry.key,
-                      managers: managers,
-                      roster: roster,
-                        playerById: playerById,
-                        lineups: lineups)
-              };
-              final standings = h2hStandings(ids, totalsByRound);
-              // **Sieg – Unentschieden – Niederlage**, in dieser Reihenfolge
-              // (auf Ansage, 05.09.2026). Vorher stand hier S-N-U; jede
-              // Tabelle dieser App und jede Sportsendung liest sich S-U-N,
-              // und wer eine „2-1-3" sieht, rechnet sie automatisch so.
-              final subOf = <String, String>{
-                for (final (i, r) in standings.indexed)
-                  r.managerId: 'P${i + 1} · ${r.wins}-${r.ties}-${r.losses}',
-              };
-
-              // **Prognose und Siegchance — nur vor dem Spieltag.**
+              // **Bilanz und Prognose aus denselben Funktionen wie der Kasten
+              // auf der Liga-Übersicht** (`bannerBilanz`, `duellPrognose`) —
+              // für dasselbe Duell stehen an beiden Orten dieselben Zahlen.
               //
-              // Die Streuung wird an derselben Menge gemessen, aus der auch
-              // die Bilanz kommt: abgepfiffene Spieltage. Ein laufender trägt
-              // mittags Zwischenstände und ließe die Liga ruhiger aussehen,
-              // als sie ist — dieselbe Falle, wegen der die Bilanz oben schon
-              // auf `fertig` filtert.
+              // Bilanz und Schnitte rechnen nur über **abgepfiffene**
+              // Spieltage: Der laufende trägt Zwischenstände, und eine Bilanz
+              // ist ein Ergebnis.
+              final abgepfiffen = ref.watch(abgepfiffeneRundenProvider);
+              final grundlage = h2hGrundlage(
+                league: league,
+                managers: managers,
+                roster: roster,
+                lineups: lineups,
+                playerById: playerById,
+                seasonStats: seasonStats,
+                abgepfiffen: abgepfiffen,
+              );
+              final fertig = gewerteteRunden(abgepfiffen, seasonStats.keys);
+              final saisonGewertet = {
+                for (final e in seasonStats.entries)
+                  if (fertig.contains(e.key)) e.key: e.value,
+              };
               final ausfaelle =
                   ref.watch(absencesProvider).valueOrNull ?? const {};
-              // **Die Streuung kommt aus dem Provider, nicht von hier.** Sie
-              // hing zuerst an dem `totalsByRound` oben — dann hätte die
-              // Liga-Übersichtskarte sie ein zweites Mal rechnen müssen, und
-              // zwei Karten könnten für dasselbe Duell verschiedene
-              // Wahrscheinlichkeiten zeigen.
               final wochenStreuung =
                   ref.watch(fantasyWochenStreuungProvider(league.id));
-              Projektion? prognoseFuer(String? id) {
-                if (id == null || started) return null;
-                final seite = computeSideData(
-                  league: league,
-                  round: round,
-                  managerId: id,
-                  byId: playerById,
-                  roster: roster,
-                  lineups: lineups,
-                  stats: weekStats,
-                );
-                return projektion(
-                  elf: seite.starters,
-                  saison: seasonStats,
-                  regeln: league.scoring,
-                  ausfaelle: ausfaelle,
-                );
-              }
+              final jetzt = DateTime.now();
+              MatchupSideData seite(String id) => computeSideData(
+                    league: league,
+                    round: round,
+                    managerId: id,
+                    byId: playerById,
+                    roster: roster,
+                    lineups: lineups,
+                    stats: weekStats,
+                  );
 
               final gemerkt =
                   ref.watch(matchupKarussellSeiteProvider(league.id));
@@ -374,18 +360,6 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                     RosterLimitBanner(
                         count: rosterCountOf(myId, roster),
                         limit: league.roster.squadSize),
-                  MatchdayStepper(
-                    round: round,
-                    onChanged: (r) {
-                      if (_pageController.hasClients) {
-                        _pageController.jumpToPage(_loopBase);
-                      }
-                      ref
-                          .read(matchupKarussellSeiteProvider(league.id).notifier)
-                          .state = 0;
-                      setState(() => _round = r);
-                    },
-                  ),
                   if (ref.watch(roundStatsProvider(round)).isLoading)
                     const LinearProgressIndicator(minHeight: 2),
                   // Wischbares Banner-Karussell: eigene Paarung auf Platz 1.
@@ -427,6 +401,17 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                                 ordered.length;
                         final p = ordered[logical];
                         final (hId, aId) = sidesOf(p);
+                        final prognose = duellPrognose(
+                          round: round,
+                          heim: seite(hId),
+                          gast: aId == null ? null : seite(aId),
+                          spiele: allFx,
+                          saisonGewertet: saisonGewertet,
+                          regeln: league.scoring,
+                          ausfaelle: ausfaelle,
+                          wochenStreuung: wochenStreuung,
+                          jetzt: jetzt,
+                        );
                         return Padding(
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
                           child: MatchupBanner(
@@ -455,44 +440,36 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                             live: live,
                             started: started,
                             mine: hId == myId || aId == myId,
-                            homeSub: subOf[hId],
-                            awaySub: aId == null ? null : subOf[aId],
+                            homeBilanz: bannerBilanz(grundlage, hId),
+                            awayBilanz: aId == null
+                                ? null
+                                : bannerBilanz(grundlage, aId),
                             anpfiff: anpfiff,
-                            // Beide Seiten brauchen eine Grundlage: Fehlt sie
-                            // einer, ist der Vergleich keiner, und die Karte
-                            // bleibt bei „VS".
-                            homeProjektion: () {
-                              final p = prognoseFuer(hId);
-                              return p != null && p.hatDaten ? p.punkte : null;
-                            }(),
-                            awayProjektion: () {
-                              final p = prognoseFuer(aId);
-                              return p != null && p.hatDaten ? p.punkte : null;
-                            }(),
-                            siegchanceHeim: () {
-                              final h = prognoseFuer(hId);
-                              final a = prognoseFuer(aId);
-                              if (h == null ||
-                                  a == null ||
-                                  !h.hatDaten ||
-                                  !a.hatDaten) {
-                                return null;
-                              }
-                              return siegchance(
-                                heim: h.punkte,
-                                gast: a.punkte,
-                                wochenStreuung: wochenStreuung,
-                              );
-                            }(),
-                            onTap: aId == null
-                                ? () {}
-                                : () => showMatchupDetail(context,
-                                    league: league,
-                                    round: round,
-                                    homeId: hId,
-                                    homeName: nameOf[hId] ?? '?',
-                                    awayId: aId,
-                                    awayName: nameOf[aId] ?? '?'),
+                            homeErwartet: prognose.heimErwartet,
+                            awayErwartet: prognose.gastErwartet,
+                            siegchanceHeim: prognose.siegchanceHeim,
+                            // **Kein Tipp-Ziel im MatchUp-Tab.** Er öffnete
+                            // die Detailseite — dasselbe Duell noch einmal,
+                            // in einem abgeschlossenen Bereich. Man ist hier
+                            // schon (auf Ansage, 14.10.2026).
+                            onTap: null,
+                            // **Bild und Name führen ins Ligaprofil** —
+                            // dieselbe Regel wie über der Bank (Ansage vom
+                            // 19.09.2026, nach dem Umbau erneut 14.10.2026).
+                            onHomeName: () => showManagerProfile(
+                              context,
+                              league: league,
+                              managerId: hId,
+                              managerName: nameOf[hId] ?? '?',
+                            ),
+                            onAwayName: aId == null
+                                ? null
+                                : () => showManagerProfile(
+                                      context,
+                                      league: league,
+                                      managerId: aId,
+                                      managerName: nameOf[aId] ?? '?',
+                                    ),
                           ),
                         );
                       },
@@ -500,7 +477,41 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                   ),
                   if (ordered.length > 1)
                     _Dots(count: ordered.length, active: page),
-                  const SizedBox(height: 8),
+                  // **Der Spieltagswechsel sitzt über der Startelf**, wie bei
+                  // Sleeper: Was man wechselt, sind die Aufstellungen darunter
+                  // und der Kasten darüber. Vor der Kopfzeile stand er ganz
+                  // oben über dem Karussell — als eigene Zeile, die mit dem
+                  // Kasten um die Führung rang. Auch künftige Spieltage
+                  // lassen sich so ansehen; der Kasten zeigt dort die Prognose.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 4, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'STARTELF',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(letterSpacing: 1.2),
+                          ),
+                        ),
+                        MatchdayStepper(
+                                kompakt: true,
+                                round: round,
+                          onChanged: (r) {
+                            if (_pageController.hasClients) {
+                              _pageController.jumpToPage(_loopBase);
+                            }
+                            ref
+                                .read(matchupKarussellSeiteProvider(league.id).notifier)
+                                .state = 0;
+                            setState(() => _round = r);
+                          },
+                  ),
+                      ],
+                    ),
+                  ),
                   // Aufstellungen der aktuell gewischten Paarung.
                   if (ordered.isNotEmpty)
                     Builder(builder: (context) {
