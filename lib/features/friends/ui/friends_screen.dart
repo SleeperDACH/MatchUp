@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -47,7 +48,7 @@ class FriendsScreen extends ConsumerWidget {
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Skelett()
           : (incoming.isEmpty && outgoing.isEmpty && friends.isEmpty)
               ? _Empty(onAdd: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const FriendSearchScreen())))
@@ -256,17 +257,16 @@ class _Empty extends StatelessWidget {
             Icon(Icons.group_outlined, size: 56, color: scheme.onSurfaceVariant),
             const SizedBox(height: 14),
             const Text('Noch keine Freunde',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text('Füge Freunde per Benutzername hinzu — dann kannst du sie in '
                 'Ligen einladen und ihnen schreiben.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: scheme.onSurfaceVariant)),
             const SizedBox(height: 18),
-            FilledButton.icon(
+            FilledButton(
               onPressed: onAdd,
-              icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Freund hinzufügen'),
+              child: const Text('Freund hinzufügen'),
             ),
           ],
         ),
@@ -370,7 +370,7 @@ class _SearchResultRow extends ConsumerWidget {
           ),
           onPressed: () => repo.accept(user.id),
           child: const Text('Annehmen')),
-      FriendStatus.none => FilledButton.icon(
+      FriendStatus.none => FilledButton(
           onPressed: () async {
             await repo.sendRequest(user.id);
             if (context.mounted) {
@@ -378,8 +378,7 @@ class _SearchResultRow extends ConsumerWidget {
                   const SnackBar(content: Text('Anfrage gesendet')));
             }
           },
-          icon: const Icon(Icons.person_add_alt_1, size: 18),
-          label: const Text('Hinzufügen')),
+          child: const Text('Hinzufügen')),
     };
     return ListTile(
       leading: CircleAvatar(

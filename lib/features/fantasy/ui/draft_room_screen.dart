@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
+import '../../../app/widgets/info_knopf.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
@@ -279,7 +281,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     final managersV = managersAsync.valueOrNull;
     final poolV = poolAsync.valueOrNull;
     if (managersV == null || poolV == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Skelett());
     }
 
     final managers = [...managersV]
@@ -446,19 +448,17 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
                     Expanded(
                       // Immer tippbar (nicht ausgegraut); erklärt, falls noch
                       // nicht genug Teams beigetreten sind.
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.shuffle, size: 18),
-                        label: const Text('Order mischen'),
+                      child: OutlinedButton(
+                        child: const Text('Order mischen'),
                         onPressed: () => _shuffleOrder(managers),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.sports, size: 18),
-                        label: const Text('Draft starten'),
+                      child: FilledButton(
                         onPressed:
                             managers.isEmpty ? null : () => _startDraft(league),
+                        child: const Text('Draft starten'),
                       ),
                     ),
                   ],
@@ -652,7 +652,7 @@ class _AutoPickBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.auto_mode, color: _cBoardRed, size: 24),
+            const Icon(Icons.auto_mode_outlined, color: _cBoardRed, size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -665,7 +665,7 @@ class _AutoPickBar extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text('Der Server pickt für dich.',
                       style: TextStyle(
-                          fontSize: 12, color: scheme.onSurfaceVariant)),
+                          fontSize: 11, color: scheme.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -682,9 +682,8 @@ class _AutoPickBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
       child: Align(
         alignment: Alignment.centerRight,
-        child: TextButton.icon(
-          icon: const Icon(Icons.auto_mode, size: 16),
-          label: const Text('Auto-Pick aktivieren'),
+        child: TextButton(
+          child: const Text('Auto-Pick aktivieren'),
           onPressed: () => onChanged(true),
         ),
       ),
@@ -716,7 +715,7 @@ class _StatusBanner extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.emoji_events, color: scheme.primary),
+              Icon(Icons.emoji_events_outlined, color: scheme.primary),
               const SizedBox(width: 8),
               const Text('Draft abgeschlossen',
                   style: TextStyle(fontWeight: FontWeight.bold)),
@@ -728,7 +727,7 @@ class _StatusBanner extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.hourglass_empty,
+              Icon(Icons.hourglass_empty_outlined,
                   size: 18, color: scheme.onSurfaceVariant),
               const SizedBox(width: 8),
               const Flexible(
@@ -781,7 +780,7 @@ class _StatusBanner extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(myTurn ? Icons.sports_soccer : Icons.arrow_right_alt,
+                    Icon(myTurn ? Icons.sports_soccer_outlined : Icons.arrow_right_alt,
                         size: 16,
                         color:
                             myTurn ? scheme.primary : scheme.onSurfaceVariant),
@@ -939,7 +938,7 @@ class _AvailableTabState extends State<_AvailableTab> {
                                 : 'Zur Queue hinzufügen',
                             icon: Icon(
                               inQueue
-                                  ? Icons.bookmark_added
+                                  ? Icons.bookmark_added_outlined
                                   : Icons.bookmark_add_outlined,
                               color: inQueue ? scheme.primary : null,
                             ),
@@ -1007,16 +1006,28 @@ class _QueueTab extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
           child: Row(
             children: [
-              Icon(Icons.info_outline, size: 16, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Ziehen zum Sortieren. Bist du abwesend oder verpasst deinen '
-                  'Pick, wird von oben automatisch gedraftet.',
+                  'Ziehen zum Sortieren',
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
                       ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ),
+              // Die Regel dahinter steht auf Nachfrage (Design-Ideen
+              // Punkt 4).
+              const SizedBox(
+                height: 20,
+                width: 28,
+                child: OverflowBox(
+                  maxHeight: 44,
+                  maxWidth: 44,
+                  child: InfoKnopf(
+                    titel: 'Wunschliste',
+                    text: 'Bist du abwesend oder verpasst deinen Pick, wird '
+                        'von oben automatisch gedraftet.',
+                  ),
                 ),
               ),
             ],
@@ -1040,7 +1051,7 @@ class _QueueTab extends StatelessWidget {
                   radius: 14,
                   backgroundColor: scheme.primary.withValues(alpha: 0.15),
                   child: Text('${i + 1}',
-                      style: TextStyle(fontSize: 12, color: scheme.primary)),
+                      style: TextStyle(fontSize: 11, color: scheme.primary)),
                 ),
                 title: Text(p.name),
                 subtitle: Row(
@@ -1220,7 +1231,7 @@ class _MyTeamTab extends StatelessWidget {
             children: [
               Text(_short(p.name),
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: positionColor(pos))),
               const SizedBox(height: 2),
@@ -1249,7 +1260,7 @@ class _MyTeamTab extends StatelessWidget {
           const SizedBox(width: 6),
           Text('Bank frei',
               style: TextStyle(
-                  fontSize: 12, color: scheme.onSurfaceVariant)),
+                  fontSize: 11, color: scheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -1310,7 +1321,7 @@ class _MyTeamTab extends StatelessWidget {
               // Name/Positionskürzel in der Positionsfarbe.
               style: TextStyle(
                   color: positionColor(pos),
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700),
             ),
           ),
@@ -1450,7 +1461,7 @@ class _BoardHeaderCell extends StatelessWidget {
           if (col.autoPick) ...[
             Tooltip(
               message: 'Auto-Pick (abwesend)',
-              child: Icon(Icons.auto_mode,
+              child: Icon(Icons.auto_mode_outlined,
                   size: 13,
                   color: scheme.onSurfaceVariant),
             ),

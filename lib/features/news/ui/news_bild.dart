@@ -35,7 +35,7 @@ class NewsBild extends StatelessWidget {
     final ersatz = ColoredBox(
       color: _blau.withValues(alpha: 0.14),
       child: Center(
-        child: Icon(Icons.newspaper,
+        child: Icon(Icons.newspaper_outlined,
             size: hoehe.isFinite ? hoehe * 0.32 : 34,
             color: _blau.withValues(alpha: 0.75)),
       ),

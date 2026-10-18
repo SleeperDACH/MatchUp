@@ -42,7 +42,7 @@ class VisibilityPicker extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         OptionTile(
-          icon: Icons.public,
+          icon: Icons.public_outlined,
           titel: 'Öffentlich',
           untertitel: 'In der Suche findbar.',
           selected: isPublic,

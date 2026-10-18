@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
+import '../../../app/widgets/mit_ladekreis.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
@@ -41,7 +43,7 @@ class _BonusTipsScreenState extends ConsumerState<BonusTipsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Bonustipps')),
       body: fixturesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (fixtures) {
           final teamsById = <String, TeamRef>{};
@@ -119,7 +121,7 @@ class _BonusTipsScreenState extends ConsumerState<BonusTipsScreen> {
                   left: 16,
                   right: 16,
                   bottom: 16,
-                  child: FilledButton.icon(
+                  child: FilledButton(
                     style: _saved
                         ? FilledButton.styleFrom(
                             backgroundColor: Theme.of(
@@ -127,17 +129,11 @@ class _BonusTipsScreenState extends ConsumerState<BonusTipsScreen> {
                             ).colorScheme.primary,
                           )
                         : null,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            _saved ? Icons.check_circle : Icons.save_outlined,
-                          ),
-                    label: Text(_saved ? 'Gespeichert ✓' : 'Speichern'),
                     onPressed: _saving ? null : _save,
+                    child: MitLadekreis(
+                      laedt: _saving,
+                      child: Text(_saved ? 'Gespeichert ✓' : 'Speichern'),
+                    ),
                   ),
                 ),
             ],
@@ -233,13 +229,14 @@ class _DeadlineBanner extends StatelessWidget {
     // **Hauch statt Farbfläche mit farbigem Rand.** Der Balken trug beides
     // und war damit das lauteste Element des Schirms — für einen Hinweis, der
     // nur eine Frist nennt.
-    return Karte(
-      hauch: color,
-      padding: const EdgeInsets.all(12),
+    // **Eine Zeile, kein Kasten** (Design-Ideen Punkt 1, 15.10.2026) — die
+    // Frist ist eine Auskunft, kein Tipp-Ziel.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Icon(
-            open ? Icons.timelapse : Icons.lock_outline,
+            open ? Icons.timelapse_outlined : Icons.lock_outline,
             size: 18,
             color: color,
           ),

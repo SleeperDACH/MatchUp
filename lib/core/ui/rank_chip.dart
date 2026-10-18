@@ -24,12 +24,12 @@ class RankChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(top ? Icons.emoji_events : Icons.leaderboard_outlined,
+          Icon(top ? Icons.emoji_events_outlined : Icons.leaderboard_outlined,
               size: 13, color: color),
           const SizedBox(width: 4),
           Text('$rank/$total',
               style: TextStyle(
-                  color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+                  color: color, fontSize: 11, fontWeight: FontWeight.bold)),
         ],
       ),
     );

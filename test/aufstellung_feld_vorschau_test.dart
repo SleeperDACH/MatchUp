@@ -171,7 +171,11 @@ void main() {
   /// Bild.
   Set<String> elfIds({bool fuenferreihe = false}) => fuenferreihe
       ? {'gk1', 'd1', 'd2', 'd3', 'm1', 'm2', 'm3', 'm4', 'b2', 'f1', 'f2'}
-      : {for (final p in elf.take(10)) p.id};
+      // Alle elf. Vorher standen hier zehn, und der Editor füllte den elften
+      // still auf — genau das Verhalten, das am 17.10.2026 einen schon
+      // gespielten Bankspieler in eine Elf setzte. Eine Lücke bleibt jetzt
+      // leer, also muss die Vorschau die volle Elf speichern.
+      : {for (final p in elf) p.id};
 
   Widget rahmen({required Set<String> gelaufen, bool fuenferreihe = false}) =>
       ProviderScope(
@@ -225,6 +229,17 @@ void main() {
                     playerId: 'm2',
                     gesperrt: true,
                     grundQuelle: 'Red Card Suspension'),
+                // Auf der Bank trägt der Ausfall die ganze Kachel (gold
+                // verletzt, rot gesperrt) — je einer, damit beide im Bild
+                // stehen.
+                'b3': const PlayerAbsence(
+                    playerId: 'b3',
+                    gesperrt: false,
+                    grundQuelle: 'Knee Injury'),
+                'b4': const PlayerAbsence(
+                    playerId: 'b4',
+                    gesperrt: true,
+                    grundQuelle: 'Yellow Card Suspension'),
               })),
         ],
         child: MaterialApp(
@@ -299,6 +314,18 @@ void main() {
 
     expect(find.text('Aufstellung steht — alle Spiele laufen'), findsNothing);
     expect(find.textContaining('Spieler sind gesperrt'), findsOneWidget);
+
+    // **Jede Kachel gleich hoch** — mit Punkten (Spiel läuft) wie mit
+    // Anstoßzeit (Spiel kommt). Gemeldet am 17.10.2026: „die Boxen sehen
+    // verschoben aus, wenn das Spiel läuft".
+    final hoehen = {
+      for (final e in find
+          .byWidgetPredicate(
+              (w) => w.runtimeType.toString() == '_SpielerKachelFeld')
+          .evaluate())
+        (e.renderObject! as RenderBox).size.height,
+    };
+    expect(hoehen, hasLength(1), reason: 'verschiedene Höhen: $hoehen');
 
     await expectLater(find.byType(LineupEditor),
         matchesGoldenFile('goldens/aufstellung_feld_teilweise.png'));

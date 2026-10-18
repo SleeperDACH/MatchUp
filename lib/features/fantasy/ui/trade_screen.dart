@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
+import '../../../app/widgets/info_knopf.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
@@ -113,7 +115,7 @@ class TradePartnerList extends ConsumerWidget {
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
 
     return managersAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (e, _) => Center(child: Text('Fehler: $e')),
       data: (managers) {
         final others = managers.where((m) => m.userId != myId).toList();
@@ -301,7 +303,7 @@ class _ParticipantColumn extends StatelessWidget {
                       maxLines: 1,
                       softWrap: false,
                       style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700)),
+                          fontSize: 11, fontWeight: FontWeight.w700)),
                 ),
                 Text(p.position.label,
                     style: TextStyle(
@@ -464,7 +466,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
         ),
       ),
       body: poolAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (pool) {
           final byId = {for (final p in pool) p.id: p};
@@ -502,7 +504,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                   spielerId: p.id,
                   position: p.position,
                   regeln: widget.league.scoring,
-                ).punkteJeSpieltag,
+                ).schnitt,
           };
           final offerSel = mine.where((p) => _offer.contains(p.id)).toList();
           final requestSel =
@@ -524,15 +526,12 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                 children: [
                   Expanded(
                     child: _Spaltenmarke(
-                        wort: 'Du gibst',
-                        anzahl: _offer.length,
-                        farbe: scheme.primary),
+                        wort: 'Du gibst', anzahl: _offer.length),
                   ),
                   Expanded(
                     child: _Spaltenmarke(
                         wort: widget.partner.display,
-                        anzahl: _request.length,
-                        farbe: scheme.tertiary),
+                        anzahl: _request.length),
                   ),
                 ],
               ),
@@ -661,10 +660,9 @@ class _ConfirmOfferSheet extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: FilledButton.icon(
+                  child: FilledButton(
                     onPressed: () => Navigator.of(context).pop(true),
-                    icon: const Icon(Icons.send),
-                    label: const Text('Senden'),
+                    child: const Text('Senden'),
                   ),
                 ),
               ],
@@ -752,6 +750,17 @@ class VorgemerkteTradesScreen extends ConsumerWidget {
             ),
           ],
         ),
+        actions: const [
+          // Warum die Kader erst später wechseln, stand als Absatz über der
+          // Liste (Design-Ideen Punkt 4).
+          InfoKnopf(
+            titel: 'Warum erst nach dem Spieltag?',
+            text: 'Diese Trades sind beschlossen. Damit ein Tausch niemandem '
+                'mitten in der Wertung einen Spieler aus der Elf nimmt, '
+                'wechseln die Kader erst 12 Stunden nach dem letzten Spiel '
+                'des Spieltags.',
+          ),
+        ],
       ),
       body: trades.isEmpty
           ? Center(
@@ -767,19 +776,6 @@ class VorgemerkteTradesScreen extends ConsumerWidget {
           : ListView(
               padding: const EdgeInsets.only(top: 8, bottom: 24),
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                  child: Text(
-                    'Diese Trades sind beschlossen. Damit ein Tausch niemandem '
-                    'mitten in der Wertung einen Spieler aus der Elf nimmt, '
-                    'wechseln die Kader erst 12 Stunden nach dem letzten Spiel '
-                    'des Spieltags.',
-                    style: TextStyle(
-                        fontSize: 13,
-                        height: 1.35,
-                        color: scheme.onSurfaceVariant),
-                  ),
-                ),
                 for (final t in trades) TradeCard(tradeId: t.id, inList: true),
               ],
             ),
@@ -822,7 +818,7 @@ class _VorgemerktHinweis extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.schedule, size: 16, color: scheme.primary),
+          Icon(Icons.schedule_outlined, size: 16, color: scheme.primary),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -830,7 +826,7 @@ class _VorgemerktHinweis extends StatelessWidget {
               '(${_zeitpunkt()}). Bis dahin zählen sie für ihre bisherigen '
               'Teams.',
               style: TextStyle(
-                  fontSize: 12, color: scheme.onSurfaceVariant, height: 1.3),
+                  fontSize: 11, color: scheme.onSurfaceVariant, height: 1.3),
             ),
           ),
         ],
@@ -839,17 +835,16 @@ class _VorgemerktHinweis extends StatelessWidget {
   }
 }
 
-/// Kapitelmarke über einer Kaderspalte: farbiger Strich, Wort, Haarlinie bis
-/// an den Rand — dieselbe Gliederung wie auf dem Startbildschirm und im
+/// Kapitelmarke über einer Kaderspalte: Wort, Haarlinie bis an den Rand —
+/// **ohne farbigen Strich** (Design-Ideen Punkt 3, 15.10.2026: Grün und Blau
+/// sagten hier nur „links" und „rechts") — dieselbe Gliederung wie auf dem Startbildschirm und im
 /// Live-Tab. Rechts steht die Anzahl, aber **nur wenn etwas gewählt ist**:
 /// „0 gewählt" ist eine Meldung über nichts.
 class _Spaltenmarke extends StatelessWidget {
-  const _Spaltenmarke(
-      {required this.wort, required this.anzahl, required this.farbe});
+  const _Spaltenmarke({required this.wort, required this.anzahl});
 
   final String wort;
   final int anzahl;
-  final Color farbe;
 
   @override
   Widget build(BuildContext context) {
@@ -858,8 +853,6 @@ class _Spaltenmarke extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
       child: Row(
         children: [
-          Container(width: 3, height: 12, color: farbe),
-          const SizedBox(width: 6),
           Flexible(
             flex: 0,
             child: Text(
@@ -880,7 +873,7 @@ class _Spaltenmarke extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: farbe)),
+                    color: scheme.onSurfaceVariant)),
           ],
           const SizedBox(width: 8),
           Expanded(child: Container(height: 1, color: scheme.outlineVariant)),
@@ -959,7 +952,7 @@ class _Geschaeft extends StatelessWidget {
     if (spieler.isEmpty) {
       return Text('nichts',
           textAlign: links ? TextAlign.start : TextAlign.end,
-          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant));
+          style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant));
     }
     return Column(
       crossAxisAlignment:
@@ -971,7 +964,7 @@ class _Geschaeft extends StatelessWidget {
         Text(
           'Ø ${formatPoints(summe)} Punkte',
           style: TextStyle(
-            fontSize: Schrift.klein,
+            fontSize: Schrift.label,
             fontWeight: FontWeight.w700,
             fontFeatures: const [FontFeature.tabularFigures()],
             color: scheme.onSurfaceVariant,
@@ -993,7 +986,10 @@ class _Geschaeft extends StatelessWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(3, 2, 7, 2),
             decoration: BoxDecoration(
-              color: positionColor(p.position).withValues(alpha: 0.16),
+              // Neutral — die Position sagt das Wappen-Umfeld nicht, aber
+              // eine Farbfläche je Pille sagte sie zu laut (Design-Ideen
+              // Punkt 3).
+              color: scheme.onSurface.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -1052,7 +1048,7 @@ class _SendeKnopf extends StatelessWidget {
                     strokeWidth: 2, color: MatchUpColors.base),
               )
             else
-              Icon(Icons.send_rounded,
+              Icon(Icons.send,
                   size: 18,
                   color: an ? MatchUpColors.base : scheme.onSurfaceVariant),
             const SizedBox(width: 8),
@@ -1189,7 +1185,7 @@ class _TradeHistory extends ConsumerWidget {
 
     if (list.isEmpty) {
       return const _EmptyState(
-        icon: Icons.history,
+        icon: Icons.history_outlined,
         text: 'Noch keine abgeschlossenen Trades.',
       );
     }
@@ -1482,10 +1478,9 @@ class TradeCard extends ConsumerWidget {
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
+                  child: OutlinedButton(
                     onPressed: () => _counter(context, ref, trade, d.items),
-                    icon: const Icon(Icons.swap_calls, size: 18),
-                    label: const Text('Kontern'),
+                    child: const Text('Kontern'),
                   ),
                 ),
               ] else if (trade.wartetAufAusfuehrung) ...[
@@ -1502,11 +1497,10 @@ class TradeCard extends ConsumerWidget {
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: scheme.onSurfaceVariant)),
                     const Spacer(),
-                    TextButton.icon(
+                    TextButton(
                       style: TextButton.styleFrom(foregroundColor: scheme.error),
                       onPressed: () => _cancel(context, ref, trade),
-                      icon: const Icon(Icons.undo, size: 18),
-                      label: const Text('Zurückziehen'),
+                      child: const Text('Zurückziehen'),
                     ),
                   ],
                 ),

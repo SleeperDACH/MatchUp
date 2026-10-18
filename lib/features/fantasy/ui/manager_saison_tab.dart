@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -42,7 +43,7 @@ class ManagerSaisonTab extends ConsumerWidget {
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
     final pool = ref.watch(playerPoolProvider).valueOrNull;
     if (managers == null || pool == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Skelett();
     }
     final roster =
         ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
@@ -86,6 +87,7 @@ class ManagerSaisonTab extends ConsumerWidget {
       managerId: managerId,
       gewertet: grundlage.summen,
       letzteRunde: letzteRunde,
+      remisGrenze: grundlage.remis,
     );
     if (verlauf.isEmpty) {
       return const Center(
@@ -100,7 +102,8 @@ class ManagerSaisonTab extends ConsumerWidget {
     }
 
     final byId = {for (final m in managers) m.userId: m};
-    final standings = h2hStandings(grundlage.ids, grundlage.summen);
+    final standings = h2hStandings(grundlage.ids, grundlage.summen,
+        remisGrenze: grundlage.remis);
     final platzIndex = standings.indexWhere((r) => r.managerId == managerId);
     final record = platzIndex < 0 ? null : standings[platzIndex];
     final nochNichtsGewertet = standings.every((r) => r.played == 0);
@@ -208,8 +211,7 @@ class ManagerSaisonTab extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(top: Abstand.m),
             child: Text(
-              'Ab Spieltag $playoffStart: Playoffs — die Gegner bestimmt '
-              'das Bracket.',
+              'Ab Spieltag $playoffStart: Playoffs',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
@@ -240,7 +242,7 @@ class _Bilanz extends StatelessWidget {
               wert,
               maxLines: 1,
               style: TextStyle(
-                fontSize: Schrift.h2,
+                fontSize: Schrift.titel,
                 fontWeight: FontWeight.w800,
                 color: scheme.onSurface,
                 fontFeatures: const [FontFeature.tabularFigures()],
@@ -251,7 +253,7 @@ class _Bilanz extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: Schrift.klein,
+              fontSize: Schrift.label,
               fontWeight: FontWeight.w600,
               color: scheme.onSurfaceVariant,
             ),
@@ -262,8 +264,10 @@ class _Bilanz extends StatelessWidget {
     Widget linie() =>
         Container(width: 1, height: 32, color: Theme.of(context).dividerColor);
     final r = record;
-    return Karte(
-      padding: const EdgeInsets.symmetric(vertical: Abstand.m),
+    // **Ohne Kasten** (Design-Ideen Punkt 1): Die Leiste ist Auskunft, kein
+    // Tipp-Ziel — Karten tragen in dieser App nur, was man antippt.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Abstand.s),
       child: Row(
         children: [
           // Reihenfolge Sieg – Unentschieden – Niederlage, wie in der Tabelle.
@@ -317,7 +321,7 @@ class _DuellZeile extends StatelessWidget {
           Text(
             '${formatPoints(spiel.eigene!)} : ${formatPoints(spiel.gegner!)}',
             style: TextStyle(
-              fontSize: Schrift.koerperKlein,
+              fontSize: Schrift.text,
               fontWeight: FontWeight.w700,
               color: scheme.onSurface,
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -331,7 +335,7 @@ class _DuellZeile extends StatelessWidget {
       rechts = Text(
         'läuft',
         style: TextStyle(
-          fontSize: Schrift.marke,
+          fontSize: Schrift.label,
           fontWeight: FontWeight.w700,
           color: scheme.error,
         ),
@@ -341,7 +345,7 @@ class _DuellZeile extends StatelessWidget {
       rechts = Text(
         a == null ? '' : DateFormat('EE, d. MMM', 'de_DE').format(a),
         style: TextStyle(
-          fontSize: Schrift.marke,
+          fontSize: Schrift.label,
           fontWeight: FontWeight.w600,
           color: leise,
         ),
@@ -362,7 +366,7 @@ class _DuellZeile extends StatelessWidget {
               child: Text(
                 'ST ${spiel.runde}',
                 style: TextStyle(
-                  fontSize: Schrift.klein,
+                  fontSize: Schrift.label,
                   fontWeight: FontWeight.w700,
                   color: leise,
                   fontFeatures: const [FontFeature.tabularFigures()],
@@ -387,7 +391,7 @@ class _DuellZeile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: Schrift.koerper,
+                  fontSize: Schrift.text,
                   fontWeight: FontWeight.w600,
                   color: spiel.spielfrei ? leise : scheme.onSurface,
                 ),
@@ -436,7 +440,7 @@ class _AusgangMarke extends StatelessWidget {
         child: Text(
           buchstabe,
           style: TextStyle(
-            fontSize: Schrift.marke,
+            fontSize: Schrift.label,
             fontWeight: FontWeight.w800,
             color: farbe,
           ),

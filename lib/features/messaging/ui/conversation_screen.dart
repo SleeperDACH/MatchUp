@@ -214,7 +214,7 @@ class _LeagueInviteCardState extends ConsumerState<_LeagueInviteCard> {
       decoration: kartenDeko(context, hauch: scheme.primary, radius: 12),
       child: Row(
         children: [
-          Icon(Icons.sports_esports, color: scheme.primary),
+          Icon(Icons.sports_esports_outlined, color: scheme.primary),
           const SizedBox(width: 10),
           const Expanded(
             child: Text('Liga-Einladung',

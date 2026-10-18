@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/typografie.dart';
@@ -146,9 +147,9 @@ class ManagerProfileScreen extends ConsumerWidget {
       body: TabBarView(
         children: [
       round == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Skelett()
           : poolAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (pool) {
           final byId = {for (final p in pool) p.id: p};
@@ -262,26 +263,24 @@ class ManagerProfileScreen extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: FilledButton.icon(
+                child: FilledButton(
                   onPressed: m == null
                       ? null
                       : () => Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) =>
                               TradeComposeScreen(league: league, partner: m!))),
-                  icon: const Icon(Icons.swap_horiz),
-                  label: const Text('Trade'),
+                  child: const Text('Trade'),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: OutlinedButton.icon(
+                child: OutlinedButton(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => ConversationScreen(
                             partnerId: managerId,
                             partnerName: managerName,
                           ))),
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  label: const Text('Nachricht'),
+                  child: const Text('Nachricht'),
                 ),
               ),
             ],
@@ -303,13 +302,13 @@ class ManagerProfileScreen extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       child: Row(
         children: [
-          const Icon(Icons.schedule, size: 16, color: gold),
+          const Icon(Icons.schedule_outlined, size: 16, color: gold),
           const SizedBox(width: 7),
           Expanded(
             child: Text(
               'Noch nicht gestellt — gezeigt wird die beste Elf',
               style: TextStyle(
-                fontSize: Schrift.koerperKlein,
+                fontSize: Schrift.text,
                 color: gold.withValues(alpha: 0.9),
               ),
             ),
@@ -398,7 +397,7 @@ class ManagerProfileScreen extends ConsumerWidget {
                 child: Text(formatPoints(pts),
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold)),
               ),
             ],
@@ -482,7 +481,7 @@ class ManagerProfileScreen extends ConsumerWidget {
                               .textTheme
                               .labelMedium
                               ?.copyWith(
-                                  color: positionColor(pos),
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.bold)),
                     ],
                   ),
@@ -556,14 +555,14 @@ class _LeereFeldposition extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.45),
               border: Border.all(color: gold.withValues(alpha: 0.7), width: 2),
             ),
-            child: const Icon(Icons.priority_high, color: gold, size: 20),
+            child: const Icon(Icons.priority_high_outlined, color: gold, size: 20),
           ),
           const SizedBox(height: 4),
           const Text(
             'Kein Torwart',
             maxLines: 1,
             style: TextStyle(
-              fontSize: Schrift.klein,
+              fontSize: Schrift.label,
               fontWeight: FontWeight.w700,
               color: gold,
               shadows: [Shadow(color: Colors.black, blurRadius: 3)],

@@ -35,28 +35,24 @@ class FriendActionButton extends ConsumerWidget {
         .showSnackBar(SnackBar(content: Text(text)));
 
     return switch (status) {
-      FriendStatus.friends => OutlinedButton.icon(
+      FriendStatus.friends => OutlinedButton(
           onPressed: () => repo.remove(userId),
-          icon: const Icon(Icons.how_to_reg, size: 18),
-          label: const Text('Befreundet'),
+          child: const Text('Befreundet'),
         ),
-      FriendStatus.outgoing => OutlinedButton.icon(
+      FriendStatus.outgoing => OutlinedButton(
           onPressed: () => repo.remove(userId),
-          icon: const Icon(Icons.hourglass_top, size: 18),
-          label: const Text('Anfrage gesendet'),
+          child: const Text('Anfrage gesendet'),
         ),
-      FriendStatus.incoming => FilledButton.icon(
+      FriendStatus.incoming => FilledButton(
           onPressed: () => repo.accept(userId),
-          icon: const Icon(Icons.check, size: 18),
-          label: const Text('Anfrage annehmen'),
+          child: const Text('Anfrage annehmen'),
         ),
-      FriendStatus.none => FilledButton.icon(
+      FriendStatus.none => FilledButton(
           onPressed: () async {
             await repo.sendRequest(userId);
             if (context.mounted) snack('Anfrage gesendet');
           },
-          icon: const Icon(Icons.person_add_alt_1, size: 18),
-          label: const Text('Freund hinzufügen'),
+          child: const Text('Freund hinzufügen'),
         ),
     };
   }

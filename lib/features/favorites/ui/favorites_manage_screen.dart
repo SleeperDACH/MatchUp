@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widgets/competition_emblem.dart';
@@ -75,7 +76,7 @@ class _LeagueTeamsPicker extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(centerTitle: true, title: Text(league.name)),
       body: teamsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (_, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

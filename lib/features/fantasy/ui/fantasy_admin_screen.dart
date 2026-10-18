@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/app_avatar.dart';
@@ -346,7 +347,7 @@ class AdminRosterEditor extends ConsumerWidget {
         label: const Text('Spieler hinzufügen'),
       ),
       body: poolAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (pool) {
           final byId = {for (final p in pool) p.id: p};
@@ -441,7 +442,7 @@ class _FreePlayerPickerState extends ConsumerState<_FreePlayerPicker> {
     return Scaffold(
       appBar: AppBar(title: const Text('Freien Spieler wählen')),
       body: poolAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (pool) {
           final free = [

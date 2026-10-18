@@ -13,6 +13,12 @@ import 'fantasy_scoring_engine.dart';
 typedef H2HGrundlage = ({
   List<String> ids,
   Map<int, Map<String, double>> summen,
+
+  /// Höchster Abstand, der noch Unentschieden ist — 0 heißt: nur bei
+  /// Punktgleichheit (Ligaeinstellung `remis_grenze`, 16.10.2026). Steht
+  /// hier, damit jede Ansicht, die aus der Grundlage wertet, dieselbe Regel
+  /// bekommt.
+  num remis,
 });
 
 H2HGrundlage h2hGrundlage({
@@ -51,5 +57,5 @@ H2HGrundlage h2hGrundlage({
           rosterConfig: league.roster,
         ),
   };
-  return (ids: ids, summen: summen);
+  return (ids: ids, summen: summen, remis: league.remisGrenze ?? 0);
 }

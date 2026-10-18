@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 
 import '../../../app/widgets/karte.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -103,7 +104,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
       // Nur wenn nichts dasteht — ein Nachladen darf den Rückblick nicht
       // gegen einen leeren Kreis tauschen.
       body: (managersAsync.valueOrNull == null || poolAsync.valueOrNull == null)
-          ? const Center(child: CircularProgressIndicator())
+          ? const Skelett()
           : Builder(
               builder: (context) {
                 final managers = managersAsync.requireValue;
@@ -147,6 +148,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
                   stats: stats,
                   scoring: league.scoring,
                   rosterConfig: league.roster,
+                  remisGrenze: league.remisGrenze ?? 0,
                 );
 
                 void openManager(String id) => showManagerProfile(
@@ -270,7 +272,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     if (recap.topScore != null) {
       managerAward(
         color: _cGold,
-        icon: Icons.emoji_events,
+        icon: Icons.emoji_events_outlined,
         title: 'Team der Woche',
         managerId: recap.topScore!.managerId,
         points: recap.topScore!.points,
@@ -288,7 +290,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     if (recap.benchHero != null) {
       playerAward(
         color: _cTeal,
-        icon: Icons.event_seat,
+        icon: Icons.event_seat_outlined,
         title: 'Bank-Held',
         award: recap.benchHero!,
       );
@@ -298,7 +300,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
       cards.add(
         _AwardCard(
           color: _cBlue,
-          icon: Icons.bolt,
+          icon: Icons.bolt_outlined,
           title: 'Nervenkrimi',
           primary: name(m.winnerId),
           secondary: 'schlägt ${name(m.loserId)} · +${formatPoints(m.margin)}',
@@ -315,7 +317,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
       cards.add(
         _AwardCard(
           color: _cRed,
-          icon: Icons.local_fire_department,
+          icon: Icons.local_fire_department_outlined,
           title: 'Klatsche',
           primary: name(m.winnerId),
           secondary:
@@ -330,7 +332,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     if (recap.benchBlunder != null) {
       managerAward(
         color: _cViolet,
-        icon: Icons.sentiment_dissatisfied,
+        icon: Icons.sentiment_dissatisfied_outlined,
         title: 'Vergeigte Bank',
         managerId: recap.benchBlunder!.managerId,
         points: recap.benchBlunder!.pointsLeft,
@@ -340,7 +342,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     if (recap.lowScore != null) {
       managerAward(
         color: _cGrey,
-        icon: Icons.trending_down,
+        icon: Icons.trending_down_outlined,
         title: 'Griff ins Klo',
         managerId: recap.lowScore!.managerId,
         points: recap.lowScore!.points,
@@ -600,6 +602,7 @@ class WeeklyRecapCard extends ConsumerWidget {
       stats: stats,
       scoring: league.scoring,
       rosterConfig: league.roster,
+      remisGrenze: league.remisGrenze ?? 0,
     );
     if (!recap.hasData) return const SizedBox.shrink();
 
@@ -623,7 +626,7 @@ class WeeklyRecapCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.emoji_events, color: _cGold, size: 18),
+                Icon(Icons.emoji_events_outlined, color: _cGold, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   'RECAP · SPIELTAG ${recap.round}',

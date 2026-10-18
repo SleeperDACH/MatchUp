@@ -3,6 +3,7 @@ import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/typografie.dart';
+import '../../../app/widgets/positions_strich.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
@@ -95,30 +96,18 @@ class SpielerKachel extends ConsumerWidget {
     final wappen = klein ? 20.0 : 28.0;
     final rand = klein ? 8.0 : 10.0;
 
-    // Hervorgehoben: kräftige Positionsfarbe (Sticker-Optik), Text lesbar (auf
-    // Gelb schwarz). Sonst ein dunkler Ton derselben Farbe — kein aufgesetztes
-    // Overlay, damit die Ränder nicht „durchleuchten".
-    final vg = hervor
-        ? (spieler.position == PlayerPosition.def ? Colors.black : Colors.white)
-        : Colors.white.withValues(alpha: 0.86);
-    final verlauf = hervor
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(farbe, Colors.white, 0.14)!,
-              farbe,
-              Color.lerp(farbe, Colors.black, 0.36)!,
-            ],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(farbe, MatchUpColors.base, 0.72)!,
-              Color.lerp(farbe, MatchUpColors.base, 0.86)!,
-            ],
-          );
+    // **Neutrale Fläche, die Position als Strich** (Design-Ideen Punkt 3,
+    // 15.10.2026). Vorher trug die Kachel ihre Positionsfarbe als Fläche —
+    // gewählt kräftig, sonst gedämpft. Auf dem Trade-Schirm standen damit
+    // zwei Spalten voller Farbklötze. Jetzt: Kartengrund, an der linken Kante
+    // ein Strich in der Positionsfarbe. **Gewählt heißt hell** — dieselbe
+    // Marke wie bei Pillen und Navileiste: hellere Fläche, weiße Kante.
+    final scheme = Theme.of(context).colorScheme;
+    final vg = scheme.onSurface;
+    final flaeche = hervor
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.10),
+            Theme.of(context).cardColor)
+        : Theme.of(context).cardColor;
 
     final karte = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -126,14 +115,14 @@ class SpielerKachel extends ConsumerWidget {
       width: breite,
       padding: EdgeInsets.symmetric(horizontal: rand),
       decoration: BoxDecoration(
-        gradient: verlauf,
+        color: flaeche,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          // Die Kante sagt „gewählt", sonst hält sie die Karte nur zusammen.
+          // Die Kante sagt „gewählt", sonst ist es die Haarlinie aller Karten.
           color: hervor && mitHaken
-              ? Colors.white
-              : Colors.white.withValues(alpha: 0.06),
-          width: hervor && mitHaken ? 2 : 1,
+              ? Colors.white.withValues(alpha: 0.85)
+              : Theme.of(context).dividerColor,
+          width: hervor && mitHaken ? 1.5 : 1,
         ),
       ),
       child: Row(
@@ -154,15 +143,10 @@ class SpielerKachel extends ConsumerWidget {
                     maxLines: 1,
                     softWrap: false,
                     style: TextStyle(
-                      fontSize: klein ? Schrift.koerperKlein : Schrift.koerper,
+                      fontSize: klein ? Schrift.text : Schrift.text,
                       fontWeight: FontWeight.w800,
                       height: 1.05,
                       color: vg,
-                      shadows: hervor && spieler.position == PlayerPosition.def
-                          ? null
-                          : const [
-                              Shadow(color: Colors.black38, blurRadius: 3),
-                            ],
                     ),
                   ),
                 ),
@@ -172,7 +156,7 @@ class SpielerKachel extends ConsumerWidget {
                     // **Die Kurzform, nicht das Wort.** „Mittelfeld" neben
                     // dem Schnitt lässt in einer halben Bildschirmbreite
                     // beides nicht mehr stehen — in der ersten Fassung stand
-                    // dort „Mitt…". Die Fläche sagt die Position ohnehin;
+                    // dort „Mitt…". Der Strich sagt die Position ohnehin;
                     // dieser Text ist die Absicherung für den, der Farben
                     // nicht unterscheidet, und dafür genügt „MF".
                     // Schrumpfen statt kappen — „A…" ist keine Position.
@@ -185,10 +169,10 @@ class SpielerKachel extends ConsumerWidget {
                           maxLines: 1,
                           softWrap: false,
                           style: TextStyle(
-                            fontSize: klein ? Schrift.winzig : Schrift.klein,
+                            fontSize: klein ? Schrift.label : Schrift.label,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.4,
-                            color: vg.withValues(alpha: 0.9),
+                            color: scheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -202,7 +186,7 @@ class SpielerKachel extends ConsumerWidget {
                       const SizedBox(width: 5),
                       Icon(
                         ausfall.gesperrt
-                            ? Icons.block
+                            ? Icons.block_outlined
                             : Icons.medical_services_outlined,
                         size: klein ? 11 : 13,
                         color: ausfall.gesperrt
@@ -219,7 +203,7 @@ class SpielerKachel extends ConsumerWidget {
                       Text(
                         'Ø ${formatPoints(punkte!)}',
                         style: TextStyle(
-                          fontSize: klein ? Schrift.winzig : Schrift.klein,
+                          fontSize: klein ? Schrift.label : Schrift.label,
                           fontWeight: FontWeight.w800,
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: vg.withValues(alpha: 0.95),
@@ -241,9 +225,9 @@ class SpielerKachel extends ConsumerWidget {
                 ),
                 padding: const EdgeInsets.all(2),
                 child: Icon(
-                  Icons.check_rounded,
+                  Icons.check,
                   size: 15,
-                  color: farbe,
+                  color: MatchUpColors.base,
                   weight: 900,
                 ),
               ),
@@ -274,7 +258,10 @@ class SpielerKachel extends ConsumerWidget {
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
-      child: onTap == null ? karte : InkWell(onTap: onTap, child: karte),
+      child: PositionsStrich(
+        farbe: farbe,
+        child: onTap == null ? karte : InkWell(onTap: onTap, child: karte),
+      ),
     );
   }
 }

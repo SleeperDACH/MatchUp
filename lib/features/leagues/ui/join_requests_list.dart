@@ -171,7 +171,7 @@ class _JoinRequestRowState extends ConsumerState<_JoinRequestRow> {
                 ),
                 IconButton(
                   tooltip: 'Ablehnen',
-                  icon: Icon(Icons.cancel,
+                  icon: Icon(Icons.cancel_outlined,
                       color: Theme.of(context).colorScheme.error),
                   onPressed: () => _respond(false),
                 ),

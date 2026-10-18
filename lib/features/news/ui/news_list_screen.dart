@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
@@ -46,7 +47,7 @@ class NewsListScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(newsProvider(topic)),
         child: newsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Skelett(),
           error: (e, _) =>
               centered('News konnten nicht geladen werden.\n$e'),
           data: (items) {

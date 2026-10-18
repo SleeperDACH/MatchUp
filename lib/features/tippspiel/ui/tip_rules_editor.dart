@@ -140,7 +140,7 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
             // (DFB-Pokal: keine Quoten → Modus ausgeblendet).
             if (widget.oddsAvailable) ...[
               _ModeSwitch(
-                icon: Icons.trending_up,
+                icon: Icons.trending_up_outlined,
                 title: 'Quoten-Bonus',
                 subtitle:
                     'Extrapunkte für richtig getippte Außenseiter — je höher die Quote, desto mehr.',

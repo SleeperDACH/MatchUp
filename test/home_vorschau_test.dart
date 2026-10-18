@@ -134,9 +134,9 @@ void main() {
     // es gab keinen Überlauf und keine Warnung.
     await _bauen(tester);
 
-    // Eine volle Zeile bei der Kartenschrift (13 Punkt seit Inter) und
+    // Eine volle Zeile bei der Kartenschrift (`Schrift.text`) und
     // `height: 1.2`.
-    const zeile = Schrift.koerperKlein * 1.2;
+    const zeile = Schrift.text * 1.2;
     for (final name in ['Tipptest', 'TEST TIPP', 'BuLi 26/27', 'Draftest3']) {
       final box = tester.renderObject<RenderBox>(find.text(name));
       expect(
@@ -147,6 +147,14 @@ void main() {
             'die Karte ist zu kurz, und der Name wird beschnitten',
       );
     }
+
+    // **Nie mitten im Wort.** „Übungsliga" brach zweimal, jedes Mal nach
+    // einer Schriftänderung (Inter, dann die Vier-Stufen-Leiter). Ein Wort
+    // steht auf **einer** Zeile — höher als anderthalb Zeilen darf es nicht
+    // sein.
+    final wort = tester.renderObject<RenderBox>(find.text('Übungsliga'));
+    expect(wort.size.height, lessThan(zeile * 1.5),
+        reason: '„Übungsliga" bricht mitten im Wort um');
   });
 }
 

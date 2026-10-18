@@ -507,11 +507,20 @@ class FantasyLeague {
     this.visibility = 'private',
     this.joinPolicy = 'open',
     this.tipEnabled = false,
+    this.remisGrenze,
   });
 
   final String id;
   final String name;
   final FantasyMode mode;
+
+  /// **Unentschieden bei knappem Ausgang**: Liegen beide Wochensummen
+  /// höchstens so viele Punkte auseinander, endet das Duell unentschieden.
+  /// `null` = aus, nur Punktgleichheit (Stand aller Ligen vor dem
+  /// 16.10.2026). Neue Ligen starten mit [remisGrenzeStandard].
+  final double? remisGrenze;
+
+  static const remisGrenzeStandard = 5.0;
 
   /// Liga-Logo ("Beides kombiniert"): Bild-URL oder Emoji + Farbe.
   final String? logoUrl;
@@ -605,6 +614,7 @@ class FantasyLeague {
         visibility: json['visibility'] as String? ?? 'private',
         joinPolicy: json['join_policy'] as String? ?? 'open',
         tipEnabled: json['tip_enabled'] as bool? ?? false,
+        remisGrenze: (json['remis_grenze'] as num?)?.toDouble(),
       );
 
   /// Picks pro Manager im Draft (= Kadergröße).

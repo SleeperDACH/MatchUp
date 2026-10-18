@@ -10,7 +10,11 @@ class SaisonSpiel {
     required this.gegnerId,
     this.eigene,
     this.gegner,
+    this.remisGrenze = 0,
   });
+
+  /// Höchster Abstand, der noch Unentschieden ist (Ligaeinstellung).
+  final num remisGrenze;
 
   final int runde;
 
@@ -27,9 +31,11 @@ class SaisonSpiel {
 
   DuellAusgang? get ausgang {
     if (!gewertet) return null;
-    if (eigene! > gegner!) return DuellAusgang.sieg;
-    if (eigene! < gegner!) return DuellAusgang.niederlage;
-    return DuellAusgang.unentschieden;
+    return switch (duellErgebnis(eigene!, gegner!, remisGrenze: remisGrenze)) {
+      > 0 => DuellAusgang.sieg,
+      < 0 => DuellAusgang.niederlage,
+      _ => DuellAusgang.unentschieden,
+    };
   }
 }
 
@@ -49,6 +55,7 @@ List<SaisonSpiel> saisonverlauf({
   required String managerId,
   required Map<int, Map<String, num>> gewertet,
   required int letzteRunde,
+  num remisGrenze = 0,
 }) {
   if (!ids.contains(managerId)) return const [];
   final out = <SaisonSpiel>[];
@@ -77,6 +84,7 @@ List<SaisonSpiel> saisonverlauf({
         gegnerId: gegnerId,
         eigene: mitPunkten ? (totals[managerId] ?? 0).toDouble() : null,
         gegner: mitPunkten ? (totals[gegnerId] ?? 0).toDouble() : null,
+        remisGrenze: remisGrenze,
       ),
     );
   }

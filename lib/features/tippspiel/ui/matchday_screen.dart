@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
+import '../../../app/widgets/skelett.dart';
+import '../../../app/widgets/mit_ladekreis.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -42,7 +45,7 @@ class _MatchdayTipView extends ConsumerWidget {
     final currentRound = ref.watch(currentRoundProvider);
 
     return currentRound.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (e, _) => _ErrorView(
         message: 'Spieltag konnte nicht geladen werden.\n$e',
         onRetry: () => ref.invalidate(currentRoundProvider),
@@ -69,7 +72,7 @@ class _WeekTipView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final weeksAsync = ref.watch(roundWeeksProvider);
     return weeksAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (e, _) => _ErrorView(
         message: 'Spiele konnten nicht geladen werden.\n$e',
         onRetry: () => ref.invalidate(roundWeeksProvider),
@@ -129,7 +132,7 @@ class _FixtureList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final fixtures = ref.watch(roundFixturesProvider(round));
     return fixtures.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (e, _) => _ErrorView(
         message: 'Spiele konnten nicht geladen werden.\n$e',
         onRetry: () => ref.invalidate(roundFixturesProvider(round)),
@@ -393,7 +396,7 @@ class _FixtureHeaderRow extends StatelessWidget {
         if (dayLabel != null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Kapitelmarke(dayLabel!, farbe: scheme.primary),
+            child: Kapitelmarke(dayLabel!),
           ),
         if (right != null)
           Padding(
@@ -466,7 +469,7 @@ class _OddChip extends StatelessWidget {
           TextSpan(
             text: value.toStringAsFixed(2),
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               height: 1.1,
               fontWeight: FontWeight.w600,
               color: scheme.onSurface,
@@ -593,16 +596,10 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilledButton.icon(
+            FilledButton(
               onPressed: _saving ? null : _save,
-              icon: _saving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: const Text('Tipps speichern'),
+              child: MitLadekreis(
+                  laedt: _saving, child: const Text('Tipps speichern')),
             ),
             if (_errors.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -666,7 +663,7 @@ class _TeamLabel extends StatelessWidget {
     // es außerhalb des flexiblen Teils.
     final name = Flexible(
       child: Text(
-        team.name,
+        vereinsKurzname(team.name),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         textAlign: alignEnd ? TextAlign.right : TextAlign.left,
@@ -712,7 +709,7 @@ class _CenterInfo extends StatelessWidget {
             Text(
               'LIVE',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: scheme.primary,
               ),
@@ -776,7 +773,7 @@ class _SavedHint extends StatelessWidget {
     final (IconData icon, Color? color, String label) = dirty
         ? (Icons.edit_outlined, const Color(0xFFF23030), 'Nicht gespeichert')
         : saved
-        ? (Icons.check_rounded, null, 'Gespeichert')
+        ? (Icons.check, null, 'Gespeichert')
         : (Icons.remove, Colors.transparent, '');
     if (label.isEmpty) return const SizedBox(height: 6);
     return Padding(
@@ -793,7 +790,7 @@ class _SavedHint extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: Schrift.klein,
+              fontSize: Schrift.label,
               fontWeight: FontWeight.w600,
               color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -887,7 +884,7 @@ class _PointsChip extends StatelessWidget {
       child: Text(
         '+$points',
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
           color: color,
         ),

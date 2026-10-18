@@ -52,30 +52,6 @@ void main() {
     });
   });
 
-  group('Statistikzeile', () {
-    test('Minuten zuerst, dann was punktet, dann Karten', () {
-      expect(
-        statistikZeile(
-          const PlayerMatchStats(minutes: 90, goals: 2, assists: 1, yellow: 1),
-          PlayerPosition.fwd,
-        ),
-        "90' · 2 Tore · 1 Vorlage · Gelb",
-      );
-    });
-
-    test('Paraden und zu Null nur, wo sie etwas sagen', () {
-      const s = PlayerMatchStats(minutes: 90, saves: 4, cleanSheet: true);
-      expect(statistikZeile(s, PlayerPosition.gk), "90' · 4 Paraden · zu Null");
-      expect(statistikZeile(s, PlayerPosition.fwd), "90'");
-    });
-
-    test('nicht gespielt ergibt keine Zeile', () {
-      expect(statistikZeile(null, PlayerPosition.mid), isNull);
-      expect(statistikZeile(const PlayerMatchStats(), PlayerPosition.mid),
-          isNull);
-    });
-  });
-
   test('Serie zählt den letzten Ausgang rückwärts, spielfrei unterbricht nicht',
       () {
     SaisonSpiel s(int r, String? g, double? a, double? b) =>

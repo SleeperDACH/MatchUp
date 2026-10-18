@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/data/odds/frozen_odds.dart';
@@ -50,7 +51,7 @@ class TipsTableTab extends ConsumerWidget {
     final currentRound = ref.watch(currentRoundProvider);
 
     return currentRound.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (e, _) => Center(child: Text('Fehler: $e')),
       data: (current) {
         final matchday = ref.watch(selectedRoundProvider) ?? current;
@@ -79,7 +80,7 @@ class _WeekTable extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final weeksAsync = ref.watch(roundWeeksProvider);
     return weeksAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (e, _) => Center(child: Text('Fehler: $e')),
       data: (weeks) {
         if (weeks.isEmpty) {
@@ -198,7 +199,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         tipsAsync.valueOrNull == null ||
         (fixturesAsync != null && fixturesAsync.valueOrNull == null) ||
         seasonFehlt) {
-      return const Center(child: CircularProgressIndicator());
+      return const Skelett();
     }
     final error =
         membersAsync.error ??
@@ -506,7 +507,7 @@ class _NameCell extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: 11,
                 color: rank == 1 ? _gold : scheme.onSurfaceVariant,
               ),
             ),
@@ -688,7 +689,7 @@ class _TipCell extends StatelessWidget {
             // Der Quoten-Bonus wird mit einem Stern markiert (z. B. „+9 ★").
             bonus > 0 ? '+$points ★' : '+$points',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: color,
             ),

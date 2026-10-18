@@ -83,7 +83,7 @@ class PunkteAufschluesselung extends StatelessWidget {
                               Text(
                                 '${l.count} ×',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: scheme.onSurfaceVariant,
                                 ),
                               ),
@@ -122,7 +122,7 @@ class PunkteAufschluesselung extends StatelessWidget {
                         Text(
                           formatPoints(score.total),
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: score.total < 0
                                 ? scheme.error

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -186,7 +187,7 @@ class _TipBackfillScreenState extends ConsumerState<TipBackfillScreen> {
                 alignment: Alignment.center,
                 child: Text('$md',
                     style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                        fontSize: 17, fontWeight: FontWeight.bold)),
               ),
               IconButton(
                 tooltip:
@@ -208,7 +209,7 @@ class _TipBackfillScreenState extends ConsumerState<TipBackfillScreen> {
           else if (fixtures.isEmpty)
             const Padding(
               padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
+              child: Skelett(),
             )
           else
             for (final f in fixtures)
@@ -227,19 +228,13 @@ class _TipBackfillScreenState extends ConsumerState<TipBackfillScreen> {
           : SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-                child: FilledButton.icon(
-                  icon: _speichert
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.save_outlined, size: 18),
-                  label: Text(_speichert
-                      ? 'Speichere …'
-                      : 'Spieltag $md speichern'),
+                child: FilledButton(
                   onPressed: _speichert
                       ? null
                       : () => _speichern(fixtures, memberTips),
+                  child: Text(_speichert
+                      ? 'Speichere …'
+                      : 'Spieltag $md speichern'),
                 ),
               ),
             ),

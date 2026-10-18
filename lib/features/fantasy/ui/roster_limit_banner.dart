@@ -30,7 +30,7 @@ class RosterLimitBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: red, size: 20),
+          const Icon(Icons.warning_amber, color: red, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/config/app_config.dart';
 import '../core/ui/app_avatar.dart';
@@ -7,10 +8,15 @@ import '../features/auth/providers.dart';
 import '../features/auth/user_profile.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/favorites/ui/favorites_manage_screen.dart';
+import '../features/friends/providers.dart';
+import '../features/friends/ui/friends_screen.dart';
 import '../features/push/push_dienst.dart';
 import '../features/push/ui/push_einstellungen_screen.dart';
 import '../features/tippspiel/logic/tip_stats.dart';
 import '../features/tippspiel/providers.dart';
+import 'impressum_screen.dart';
+import 'typografie.dart';
+import 'widgets/kapitelmarke.dart';
 
 /// Profil-Tab: Konto-Übersicht und -Aktionen (Abmelden, App-Info).
 class ProfileScreen extends ConsumerWidget {
@@ -119,6 +125,7 @@ class _Profile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final anfragen = ref.watch(incomingRequestsProvider).length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 96),
@@ -150,7 +157,7 @@ class _Profile extends ConsumerWidget {
                           border: Border.all(
                               color: scheme.surface, width: 2),
                         ),
-                        child: Icon(Icons.photo_camera,
+                        child: Icon(Icons.photo_camera_outlined,
                             size: 16, color: scheme.onPrimary),
                       ),
                     ),
@@ -166,71 +173,93 @@ class _Profile extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        // Kompakte Einstellungsliste (eine Karte, dünne Trenner).
-        Card(
-          clipBehavior: Clip.antiAlias,
-          margin: EdgeInsets.zero,
-          child: Column(
-            children: [
-              _SettingTile(
-                icon: Icons.badge_outlined,
-                label: 'Name ändern',
-                subtitle: username,
-                onTap: () => _editName(context, ref),
+        // **Gruppen statt einer Karte.** Die Zeilen standen in einem
+        // Kasten; gegliedert wird jetzt mit Kapitelmarke und Luft — ein
+        // Rahmen um eine Liste, die ohnehin nur aus antippbaren Zeilen
+        // besteht, sagt nichts (Design-Ideen Punkt 1, 15.10.2026).
+        // Nachrichten stehen seit dem 17.10.2026 nicht mehr hier (auf
+        // Ansage) — man erreicht sie über die Grußzeile der Startseite. Die
+        // Freunde kamen am selben Tag zurück: Sie haben keinen anderen Weg.
+        const Kapitelmarke('Freunde', obenLuft: Abstand.l),
+        _SettingTile(
+          icon: Icons.people_outline,
+          label: 'Freunde',
+          zaehler: anfragen,
+          onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FriendsScreen())),
+        ),
+        const Kapitelmarke('App'),
+        _SettingTile(
+          icon: Icons.star_border,
+          label: 'Favoriten',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const FavoritesManageScreen())),
+        ),
+        _SettingTile(
+          icon: Icons.notifications_outlined,
+          label: 'Benachrichtigungen',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const PushEinstellungenScreen())),
+        ),
+        _SettingTile(
+          icon: Icons.leaderboard_outlined,
+          label: 'Tippbilanz',
+          onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TipStatsScreen())),
+        ),
+        const Kapitelmarke('Konto'),
+        _SettingTile(
+          icon: Icons.badge_outlined,
+          label: 'Name ändern',
+          subtitle: username,
+          onTap: () => _editName(context, ref),
+        ),
+        _SettingTile(
+          icon: Icons.lock_outline,
+          label: 'Passwort ändern',
+          onTap: () => _editPassword(context, ref),
+        ),
+        _SettingTile(
+          icon: Icons.alternate_email,
+          label: 'E-Mail ändern',
+          subtitle: email,
+          onTap: () => _editEmail(context, ref),
+        ),
+        _SettingTile(
+          icon: Icons.logout_outlined,
+          label: 'Abmelden',
+          color: scheme.error,
+          showChevron: false,
+          onTap: () => _confirmSignOut(context, ref),
+        ),
+        _SettingTile(
+          icon: Icons.delete_forever_outlined,
+          label: 'Konto löschen',
+          color: scheme.error,
+          showChevron: false,
+          onTap: () => _confirmDeleteAccount(context, ref),
+        ),
+        // Rechtliches, bewusst leise — stand vorher am Fuß des Seitenmenüs,
+        // das es nicht mehr gibt. Datenschutz vor Impressum: beide Stores
+        // verlangen ihn, und er wird häufiger gesucht.
+        const SizedBox(height: Abstand.l),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: Abstand.m,
+          children: [
+            _RechtlichesLink(
+              label: 'Datenschutz',
+              onTap: () => launchUrl(
+                Uri.parse(AppConfig.privacyUrl),
+                mode: LaunchMode.externalApplication,
               ),
-              const Divider(height: 1),
-              _SettingTile(
-                icon: Icons.lock_outline,
-                label: 'Passwort ändern',
-                onTap: () => _editPassword(context, ref),
-              ),
-              const Divider(height: 1),
-              _SettingTile(
-                icon: Icons.alternate_email,
-                label: 'E-Mail ändern',
-                subtitle: email,
-                onTap: () => _editEmail(context, ref),
-              ),
-              const Divider(height: 1),
-              _SettingTile(
-                icon: Icons.star_outline,
-                label: 'Favoriten',
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const FavoritesManageScreen())),
-              ),
-              const Divider(height: 1),
-              _SettingTile(
-                icon: Icons.notifications_outlined,
-                label: 'Benachrichtigungen',
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const PushEinstellungenScreen())),
-              ),
-              const Divider(height: 1),
-              _SettingTile(
-                icon: Icons.leaderboard_outlined,
-                label: 'Tippbilanz',
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const TipStatsScreen())),
-              ),
-              const Divider(height: 1),
-              _SettingTile(
-                icon: Icons.logout,
-                label: 'Abmelden',
-                color: scheme.error,
-                showChevron: false,
-                onTap: () => _confirmSignOut(context, ref),
-              ),
-              const Divider(height: 1),
-              _SettingTile(
-                icon: Icons.delete_forever,
-                label: 'Konto löschen',
-                color: scheme.error,
-                showChevron: false,
-                onTap: () => _confirmDeleteAccount(context, ref),
-              ),
-            ],
-          ),
+            ),
+            _RechtlichesLink(
+              label: 'Impressum',
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ImpressumScreen())),
+            ),
+          ],
         ),
       ],
     );
@@ -246,7 +275,12 @@ class _SettingTile extends StatelessWidget {
     this.subtitle,
     this.color,
     this.showChevron = true,
+    this.zaehler = 0,
   });
+
+  /// Roter Zähler am rechten Rand — offene Freundschaftsanfragen. Farbe
+  /// trägt nur, was ansteht.
+  final int zaehler;
 
   final IconData icon;
   final String label;
@@ -263,7 +297,10 @@ class _SettingTile extends StatelessWidget {
       dense: true,
       visualDensity: const VisualDensity(vertical: -1),
       minLeadingWidth: 0,
-      leading: Icon(icon, color: color ?? scheme.primary, size: 22),
+      // Grau, nicht Grün: Grün heißt in dieser App „ich / gut", und eine
+      // Einstellungszeile ist keins von beidem.
+      leading:
+          Icon(icon, color: color ?? scheme.onSurfaceVariant, size: 22),
       title: Text(label,
           style: TextStyle(
               color: color, fontWeight: FontWeight.w600, fontSize: 14)),
@@ -272,12 +309,25 @@ class _SettingTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                  fontSize: 12, color: scheme.onSurfaceVariant))
+                  fontSize: 11, color: scheme.onSurfaceVariant))
           : null,
-      trailing: showChevron
-          ? Icon(Icons.chevron_right,
-              size: 20, color: scheme.onSurfaceVariant)
-          : null,
+      trailing: zaehler > 0
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: scheme.error,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text('$zaehler',
+                  style: TextStyle(
+                      color: scheme.onError,
+                      fontSize: Schrift.label,
+                      fontWeight: FontWeight.w800)),
+            )
+          : showChevron
+              ? Icon(Icons.chevron_right,
+                  size: 20, color: scheme.onSurfaceVariant)
+              : null,
       onTap: onTap,
     );
   }
@@ -392,7 +442,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             Text(_error!,
                 style: TextStyle(
                     color: Theme.of(context).colorScheme.error,
-                    fontSize: 12)),
+                    fontSize: 11)),
           ],
         ],
       ),
@@ -484,9 +534,14 @@ Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
   showDialog<void>(
     context: context,
     barrierDismissible: false,
+    // Ein sperrender Vorgang über dem Schirm, kein ladender Schirm — hier
+    // gehört der Kreis hin, nicht das Skelett.
     builder: (_) => const PopScope(
       canPop: false,
-      child: Center(child: CircularProgressIndicator()),
+      child: Center(
+        child: SizedBox(
+            width: 36, height: 36, child: CircularProgressIndicator()),
+      ),
     ),
   );
   try {
@@ -716,14 +771,40 @@ class _SignedOut extends StatelessWidget {
             ),
             if (configured) ...[
               const SizedBox(height: 20),
-              FilledButton.icon(
-                icon: const Icon(Icons.login),
-                label: const Text('Anmelden'),
+              FilledButton(
+                child: const Text('Anmelden'),
                 onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const LoginScreen())),
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Leiser Rechtslink am Fuß des Profils.
+class _RechtlichesLink extends StatelessWidget {
+  const _RechtlichesLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: Schrift.label,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
         ),
       ),
     );

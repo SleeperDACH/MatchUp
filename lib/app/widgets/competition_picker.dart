@@ -43,7 +43,7 @@ class CompetitionPicker extends StatelessWidget {
             onTap: () => onToggle(league.id),
             leading: _Wappen(leagueId: league.id),
             trailing: selected.contains(league.id)
-                ? const Icon(Icons.check_rounded,
+                ? const Icon(Icons.check,
                     size: 16, color: MatchUpColors.green)
                 : null,
           ),

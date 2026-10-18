@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'remis_grenze_editor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/form_section.dart';
@@ -36,6 +37,10 @@ class _CreateFantasyLeagueScreenState
   String _visibility = 'private';
   String _joinPolicy = 'open';
   bool _tipEnabled = false;
+
+  /// Unentschieden bei knappem Ausgang — neue Ligen starten mit 5,0
+  /// (16.10.2026), änderbar oder abschaltbar.
+  double? _remisGrenze = FantasyLeague.remisGrenzeStandard;
 
   /// **Kader-Limits, schon beim Anlegen.** `null` = keine Einschränkung, und
   /// das ist der Standard: Eine stillschweigend eingeführte Obergrenze wäre
@@ -113,6 +118,7 @@ class _CreateFantasyLeagueScreenState
                 visibility: _visibility,
                 joinPolicy: _joinPolicy,
                 tipEnabled: _tipEnabled,
+                remisGrenze: _remisGrenze,
               );
       ref.invalidate(myFantasyLeaguesProvider);
       if (!mounted) return;
@@ -183,10 +189,19 @@ class _CreateFantasyLeagueScreenState
             ],
           ),
           FormSection(
+            titel: 'Unentschieden',
+            kinder: [
+              RemisGrenzeEditor(
+                wert: _remisGrenze,
+                onChanged: (v) => setState(() => _remisGrenze = v),
+              ),
+            ],
+          ),
+          FormSection(
             titel: 'Kader-Limits',
             hinweis:
                 'Höchstens so viele Spieler einer Position im Kader. Gilt beim '
-                'Draften, in der Free Agency, bei Waivern und Trades — nicht '
+                'Draften, beim Holen von Spielern, bei Waivern und Trades — nicht '
                 'für die Aufstellung, die regelt die Formation. Jede Position '
                 'steht für sich; ohne Limit ist der Standard.',
             kinder: [
@@ -203,7 +218,7 @@ class _CreateFantasyLeagueScreenState
               Text(
                 KaderLimitsEditor.hinweisText(RosterConfig.standard, _limits),
                 style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: _limitsTragenDenKader
                         ? scheme.onSurfaceVariant
                         : scheme.error),
@@ -230,7 +245,7 @@ class _CreateFantasyLeagueScreenState
             child: Text(
               'Draft- und Playoff-Einstellungen legst du später in den '
               'Liga-Einstellungen fest.',
-              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
             ),
           ),
           if (_error != null) ...[
@@ -299,7 +314,7 @@ class _StepperRow extends StatelessWidget {
               child: Text('$value',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16)),
+                      fontWeight: FontWeight.bold, fontSize: 17)),
             ),
           ),
           IconButton(

@@ -73,3 +73,20 @@ List<FantasyPlayer> freieZuerst(
     });
   return sortiert;
 }
+
+/// **Einsätze je Spieler** — Spieltage mit Spielzeit (Minuten über 0).
+///
+/// Der Nenner für den Schnitt in der Spielerliste (16.10.2026). Vorher teilte
+/// sie die Saisonsumme durch [gewerteteSpieltage], also durch alle Spieltage
+/// — ein Spieler mit zwei Einsätzen à 25 Punkten stand nach sechs Spieltagen
+/// bei 8,3 statt 25. Dieselbe Regel wie `SpielerSchnitt.schnitt`.
+Map<String, int> einsaetzeJeSpieler(
+    Map<int, Map<String, PlayerMatchStats>> saison) {
+  final n = <String, int>{};
+  for (final runde in saison.values) {
+    for (final MapEntry(key: id, value: stats) in runde.entries) {
+      if (stats.minutes > 0) n[id] = (n[id] ?? 0) + 1;
+    }
+  }
+  return n;
+}

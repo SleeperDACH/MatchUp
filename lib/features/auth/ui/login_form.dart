@@ -393,7 +393,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _biometricLogin,
-                    icon: const Icon(Icons.fingerprint),
+                    icon: const Icon(Icons.fingerprint_outlined),
                     label: Text('Mit $_bioLabel anmelden'),
                   ),
                 ],

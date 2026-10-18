@@ -74,23 +74,31 @@ class PositionPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // **Ein Punkt in der Positionsfarbe, das Kürzel in Grau** (Design-Ideen
+    // Punkt 3, 15.10.2026). Die Pille war eine volle Farbfläche — in einer
+    // Liste mit zwanzig Spielern zwanzig bunte Klötze, die nichts anderes
+    // sagten als die Spalte daneben.
     final color = positionColor(pos);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        pos.short,
-        style: const TextStyle(
-          // Positions-Kürzel einheitlich schwarz.
-          color: Colors.black,
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.3,
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-      ),
+        const SizedBox(width: 4),
+        Text(
+          pos.short,
+          style: TextStyle(
+            color: scheme.onSurfaceVariant,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
     );
   }
 }

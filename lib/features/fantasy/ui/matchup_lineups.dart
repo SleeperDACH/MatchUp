@@ -19,6 +19,9 @@ import 'punkte_aufschluesselung.dart';
 import '../logic/naechstes_spiel.dart';
 import '../../../core/models/models.dart';
 import '../../../app/typografie.dart';
+import '../../../app/widgets/karte.dart';
+import '../../../app/widgets/positions_strich.dart';
+import '../../../app/widgets/aufleuchten.dart';
 
 // Reihenfolge der Positionsblöcke (TW zuerst).
 const _order = [
@@ -243,7 +246,7 @@ class MatchupLineups extends ConsumerWidget {
             spielerId: p.id,
             position: p.position,
             regeln: league.scoring,
-          ).punkteJeSpieltag,
+          ).schnitt,
     };
 
     void openPlayer(FantasyPlayer p, bool mine) => showPlayerProfile(
@@ -428,7 +431,7 @@ class MatchupLineups extends ConsumerWidget {
               child: Text(
                 pos.label,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: positionColor(pos),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -485,7 +488,7 @@ class _BlockStand extends StatelessWidget {
     final gastFuehrt = vergleichbar && gast! > heim!;
 
     TextStyle stil(bool fuehrt) => TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: fuehrt ? FontWeight.w800 : FontWeight.w600,
           color: fuehrt ? scheme.primary : scheme.onSurfaceVariant,
           fontFeatures: const [FontFeature.tabularFigures()],
@@ -503,7 +506,7 @@ class _BlockStand extends StatelessWidget {
         if (gast != null || heim != null) ...[
           Text(' : ',
               style: TextStyle(
-                  fontSize: 13, color: scheme.onSurfaceVariant)),
+                  fontSize: 14, color: scheme.onSurfaceVariant)),
           zahl(gast, gastFuehrt),
         ],
       ],
@@ -694,18 +697,10 @@ class _PlayerRow extends StatelessWidget {
                   : scheme.onSurfaceVariant.withValues(alpha: 0.6),
             ),
           ),
-          if (schnitt != null)
-            Text(
-              'Ø ${formatPoints(schnitt)}',
-              maxLines: 1,
-              style: TextStyle(
-                fontSize: Schrift.winzig,
-                fontWeight: FontWeight.w600,
-                height: 1.2,
-                color: scheme.onSurfaceVariant,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
+          // **Der Schnitt steht nicht mehr hier** (17.10.2026, auf Ansage):
+          // Punkte und Ø standen übereinander in derselben Box und lasen sich
+          // wie eine Zahl mit Fußnote. Die Box trägt jetzt nur die Punkte; der
+          // Schnitt steht in der dritten Zeile unter dem Namen.
         ],
       ),
     );
@@ -770,25 +765,36 @@ class _PlayerRow extends StatelessWidget {
         // (14.10.2026): wie das Spiel seines Vereins steht oder wann es
         // anfängt, und was er selbst darin gemacht hat.
         if (spielplanDa) _SpielZeileText(zeile: zeile, start: start),
-        // Dritte Zeile: nach dem Anpfiff die Statistik, davor der Anstoß.
-        if (statistikZeile(stats[player.id], player.position) ??
-                zeile?.anstoss
-            case final z?)
-          Text(
-            z,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: start ? TextAlign.start : TextAlign.end,
-            style: TextStyle(
-              fontSize: Schrift.winzig,
-              fontWeight: FontWeight.w500,
-              height: 1.3,
-              color: scheme.onSurfaceVariant,
+        // **Dritte Zeile: Anstoß (vor dem Spiel) und der Schnitt.** Die
+        // Statistik („90' · 4 Paraden") stand hier bis zum 17.10.2026 und ist
+        // auf Ansage raus — sie machte die Karte unruhig; wer wissen will,
+        // woher die Punkte kommen, tippt auf die Zahl.
+        if ([
+          ?zeile?.anstoss,
+          if (schnitt != null) 'Ø ${formatPoints(schnitt)}',
+        ].join(' · ')
+            case final z when z.isNotEmpty)
+          // Schrumpfen statt kappen — „Sa 20:16 · Ø …" sagte den Schnitt
+          // gerade nicht.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: start ? Alignment.centerLeft : Alignment.centerRight,
+            child: Text(
+              z,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                fontSize: Schrift.label,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+                color: scheme.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         // **Kein Positionskürzel je Zeile.** Über jedem Block steht die
         // Position schon als Überschrift (Punkt und Wort), und die Zeilen
-        // darunter tragen ihre Farbe ohnehin im Verlauf. Dieselbe Regel wie
+        // darunter tragen ihren Strich an der Außenkante. Dieselbe Regel wie
         // beim „LIVE" in der Tipp-Tabelle und der Uhrzeit im Live-Tab: Eine
         // Auskunft, die sich je Zeile nicht unterscheidet, gehört nicht in
         // die Zeile — sie kostet nur Höhe.
@@ -817,33 +823,28 @@ class _PlayerRow extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => onTap(player, mine),
-        child: Container(
-          // **66 statt 48**, seit die Karte Spielzeile und Statistik trägt
-          // (auf Ansage, 14.10.2026: „dass die Spielerkarten nochmal mehr
-          // Information bringen"). Davor war sie bewusst einzeilig — die
-          // Positionskürzel flogen, um den Spieltag kürzer zu machen. Die
-          // neuen Zeilen sagen je Spieler etwas anderes; das Kürzel tat es
-          // nicht.
-          height: 66,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            // Karten-Look: dezenter Verlauf mit Positions-Ton.
-            gradient: LinearGradient(
-              begin: start ? Alignment.centerLeft : Alignment.centerRight,
-              end: start ? Alignment.centerRight : Alignment.centerLeft,
-              colors: [
-                pos.withValues(alpha: 0.13),
-                scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-              ],
+        // **Neutrale Fläche, die Position als Strich an der Außenkante**
+        // (Design-Ideen Punkt 3, 15.10.2026). Vorher lag die Positionsfarbe
+        // als Verlauf unter jeder Zeile — elf Zeilen, vier Farbtöne.
+        // **Ein Tor lässt die Zeile kurz aufleuchten** (Design-Ideen
+        // Punkt 6) — grün auf der eigenen Seite, sonst neutral. Der Schlüssel
+        // hängt am Spieler: Wechselt die Zeile ihren Spieler, ist das kein Tor.
+        child: Aufleuchten(
+          key: ValueKey(player.id),
+          zaehler: stats[player.id]?.goals ?? 0,
+          farbe: mine ? MatchUpColors.green : null,
+          child: PositionsStrich(
+            farbe: pos,
+            links: start,
+            child: Container(
+              // **66 statt 48**, seit die Karte Spielzeile und Statistik trägt
+              // (auf Ansage, 14.10.2026).
+              height: 66,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: kartenDeko(context, radius: 14),
+              child: Row(children: children),
             ),
-            // **Eine Kante für alle.** Der grüne Rahmen markierte hier den
-            // Sieger des Zeilenduells — eine Paarung, die es so nicht gibt
-            // (siehe Kopf des Positionsblocks). Und selbst als Signal gehörte
-            // die Farbe in die Fläche, nicht an den Rand.
-            border: Border.all(color: Theme.of(context).dividerColor),
           ),
-          child: Row(children: children),
         ),
       ),
     );
@@ -1125,7 +1126,7 @@ class _BenchSection extends StatelessWidget {
                                   Text(
                                     'Ø ${formatPoints(sn)}',
                                     style: TextStyle(
-                                      fontSize: Schrift.winzig,
+                                      fontSize: Schrift.label,
                                       fontWeight: FontWeight.w600,
                                       height: 1.1,
                                       color: scheme.onSurfaceVariant,
@@ -1201,7 +1202,7 @@ class _SpielZeileText extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final z = zeile;
     final basis = TextStyle(
-      fontSize: Schrift.klein,
+      fontSize: Schrift.label,
       fontWeight: FontWeight.w600,
       height: 1.3,
       color: z?.laeuft ?? false ? scheme.error : scheme.onSurfaceVariant,
@@ -1266,7 +1267,7 @@ class _FehlendePosition extends StatelessWidget {
               color: gold.withValues(alpha: 0.12),
               border: Border.all(color: gold.withValues(alpha: 0.55)),
             ),
-            child: const Icon(Icons.priority_high, size: 17, color: gold),
+            child: const Icon(Icons.priority_high_outlined, size: 17, color: gold),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1286,7 +1287,7 @@ class _FehlendePosition extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: Schrift.koerperKlein,
+                    fontSize: Schrift.text,
                     fontWeight: FontWeight.w700,
                     color: gold,
                   ),
@@ -1296,7 +1297,7 @@ class _FehlendePosition extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: Schrift.klein,
+                    fontSize: Schrift.label,
                     color: gold.withValues(alpha: 0.75),
                   ),
                 ),

@@ -191,6 +191,6 @@ void main() {
     // Platz selbst frei und liest dafür dieselbe Zahl. Sie muss die
     // tatsächliche Höhe treffen, sonst klebt der Inhalt darunter.
     expect(navBarHeight, 58);
-    expect(Schrift.winzig, 10);
+    expect(Schrift.label, 11);
   });
 }

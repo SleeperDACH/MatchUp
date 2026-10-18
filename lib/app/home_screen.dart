@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../core/logic/vereins_kuerzel.dart';
+import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -10,6 +12,7 @@ import '../core/models/team_fixture.dart';
 import '../core/util/club_colors.dart';
 import '../core/ui/app_avatar.dart';
 import '../features/auth/providers.dart';
+import '../features/friends/providers.dart' show incomingRequestsProvider;
 import '../features/fantasy/models/fantasy_models.dart';
 import '../features/fantasy/providers.dart';
 import '../features/fantasy/ui/create_fantasy_league.dart';
@@ -31,7 +34,8 @@ import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/create_tip_round.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'home_favorites.dart';
-import 'home_menu_drawer.dart';
+import 'profile_screen.dart';
+import 'widgets/ganze_woerter.dart';
 import 'league_screen.dart';
 import 'match_detail_screen.dart';
 import 'theme.dart';
@@ -52,20 +56,13 @@ class HomeScreen extends ConsumerWidget {
     final configured = AppConfig.isSupabaseConfigured;
 
     return Scaffold(
-      // Seitenmenü (Profil · Freunde · Chats) über das Hamburger-Symbol.
-      drawer: (configured && user != null) ? const HomeMenuDrawer() : null,
       appBar: AppBar(
         centerTitle: true,
-        // Hamburger oben links öffnet das schmale Seitenmenü.
-        leading: (configured && user != null)
-            ? Builder(
-                builder: (context) => IconButton(
-                  tooltip: 'Menü',
-                  icon: const Icon(Icons.menu),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              )
-            : null,
+        // **Kein Seitenmenü mehr** (Design-Ideen Punkt 5, 15.10.2026). Es
+        // war die dritte Navigationsebene neben unterer Leiste und
+        // Liga-Reitern. Oben links steht jetzt das eigene Profilbild und führt
+        // ins Profil; Freunde, Nachrichten und Rechtliches stehen dort.
+        leading: (configured && user != null) ? const _ProfilKnopf() : null,
         title: const _MatchUpTitle(),
         // **Keine Aktionen mehr in der Kopfleiste.** Suchen und Erstellen
         // standen dort als nackte Symbole, Transfers und Nachrichten eine
@@ -191,7 +188,7 @@ class HomeScreen extends ConsumerWidget {
       else if (list == null)
         SizedBox(
           height: kartenHoehe(context, _kKartenHoehe),
-          child: const Center(child: CircularProgressIndicator()),
+          child: const Skelett(),
         )
       else if (list.isEmpty)
         // Wer noch keine Liga hat, braucht den Einstieg — sonst stünde hier
@@ -252,7 +249,7 @@ class HomeScreen extends ConsumerWidget {
       else if (standalone == null)
         SizedBox(
           height: kartenHoehe(context, _kKartenHoehe),
-          child: const Center(child: CircularProgressIndicator()),
+          child: const Skelett(),
         )
       else if (standalone.isEmpty)
         const _CreateRow(
@@ -317,7 +314,7 @@ Widget abschnittsKopf(
   final scheme = Theme.of(context).colorScheme;
   final versalien = TextStyle(
     color: scheme.onSurface.withValues(alpha: 0.92),
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: FontWeight.w800,
     letterSpacing: 1.2,
   );
@@ -390,7 +387,7 @@ Widget abschnittsKopf(
                 textAlign: TextAlign.right,
                 style: TextStyle(
                   color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -439,7 +436,7 @@ class _MehrLink extends StatelessWidget {
             '$label ›',
             style: TextStyle(
               color: scheme.onSurfaceVariant,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -671,7 +668,7 @@ class _NaechstesSpiel extends ConsumerWidget {
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: scheme.onSurfaceVariant,
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -719,10 +716,10 @@ class _HeroVerein extends StatelessWidget {
       TeamBadge(team: team, size: 56),
       const SizedBox(height: 3),
       Text(
-        // Ausgeschrieben und zweizeilig: „Borussia Mönchengladbach" soll
-        // nicht zu „Borussia M…" werden, und die Kurzform („ENE") sagt
-        // ohne Tabelle daneben wenig.
-        team.name,
+        // **Ein Wort je Verein** (auf Ansage, 16.10.2026): „Gladbach",
+        // „Hamburg", „Schalke" — nicht „Borussia Mönchengladbach". Zwei
+        // Zeilen bleiben erlaubt für den seltenen langen Namen.
+        vereinsKurzname(team.name),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
@@ -907,7 +904,6 @@ class _FavoritenSpiele extends ConsumerWidget {
             context,
             'Mein Wochenende',
             zusatz: spanne,
-            marke: _kVereinsBlau,
           ),
           Container(
             decoration: BoxDecoration(
@@ -1007,11 +1003,11 @@ class _FavoritSpielZeile extends StatelessWidget {
                 // „Borussia Mönchengladbach" nicht zu „Borussia M…" wird.
                 Expanded(
                   child: Text(
-                    fixture.home.name,
+                    vereinsKurzname(fixture.home.name),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       height: 1.1,
                     ),
@@ -1029,7 +1025,7 @@ class _FavoritSpielZeile extends StatelessWidget {
                         tag,
                         style: TextStyle(
                           color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
-                          fontSize: Schrift.winzig,
+                          fontSize: Schrift.label,
                           fontWeight: FontWeight.w700,
                           height: 1.1,
                         ),
@@ -1042,7 +1038,7 @@ class _FavoritSpielZeile extends StatelessWidget {
                           color: laeuft
                               ? MatchUpColors.red
                               : scheme.onSurfaceVariant,
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           height: 1.2,
                           fontFeatures: const [
@@ -1055,12 +1051,12 @@ class _FavoritSpielZeile extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    fixture.away.name,
+                    vereinsKurzname(fixture.away.name),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       height: 1.1,
                     ),
@@ -1118,8 +1114,7 @@ class _NewsSection extends ConsumerWidget {
               context,
               'News',
               onMore: () => _openList(context),
-              marke: _kVereinsBlau,
-            ),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
               child: Column(
@@ -1204,8 +1199,8 @@ class _NewsCard extends StatelessWidget {
                     const SizedBox(height: 5),
                     Row(
                       children: [
-                        const Icon(Icons.newspaper,
-                            size: 12, color: _kVereinsBlau),
+                        Icon(Icons.newspaper_outlined,
+                            size: 12, color: scheme.onSurfaceVariant),
                         const SizedBox(width: 5),
                         Expanded(
                           child: Text(
@@ -1214,7 +1209,7 @@ class _NewsCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: scheme.onSurfaceVariant,
-                              fontSize: Schrift.klein,
+                              fontSize: Schrift.label,
                             ),
                           ),
                         ),
@@ -1254,7 +1249,7 @@ class _MehrNews extends StatelessWidget {
                 'Alle News',
                 style: TextStyle(
                   color: scheme.onSurfaceVariant,
-                  fontSize: Schrift.koerperKlein,
+                  fontSize: Schrift.text,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1293,11 +1288,10 @@ class _NoLeaguesHero extends ConsumerWidget {
             constraints: const BoxConstraints(minHeight: 64),
             child: SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
-                icon: const Icon(Icons.add, size: 26),
-                label: const Text(
+              child: FilledButton(
+                child: const Text(
                   'Liga erstellen',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                 ),
                 onPressed: () => showCreateOrJoin(context, ref),
               ),
@@ -1308,11 +1302,10 @@ class _NoLeaguesHero extends ConsumerWidget {
             constraints: const BoxConstraints(minHeight: 52),
             child: SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.search),
-                label: const Text(
+              child: OutlinedButton(
+                child: const Text(
                   'Liga suchen',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 17),
                 ),
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LeagueSearchScreen()),
@@ -1541,7 +1534,7 @@ class _CreateRow extends ConsumerWidget {
                     color: farbe.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.add_rounded, size: 20, color: farbe),
+                  child: Icon(Icons.add, size: 20, color: farbe),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1559,7 +1552,7 @@ class _CreateRow extends ConsumerWidget {
                         hint,
                         style: TextStyle(
                           color: scheme.onSurfaceVariant,
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -1614,10 +1607,6 @@ double kartenHoehe(BuildContext context, double basis) =>
 /// von 3,8 Punkten. Mit Inter (seit 14.10.2026) passt es weiterhin.
 const double _kKartenHoehe = 116;
 
-/// Blau der Abschnitte, die nicht mir gehören, sondern dem Fußball: die
-/// Spiele meiner Vereine und die News. Grün und Rot sind vergeben (Marke und
-/// Modusfarben), Gold gehört dem Tippspiel.
-const Color _kVereinsBlau = Color(0xFF5B9DF9);
 
 /// Marken-Gold des Tippspiels (Fallback, wenn die Runde kein Logo hat).
 const Color _kTipGold = Color(0xFFFFC83D);
@@ -1768,15 +1757,14 @@ class _FantasyLeagueCard extends ConsumerWidget {
                           const Spacer(),
                           Flexible(
                             flex: 4,
-                            child: Text(
+                            // **Nie mitten im Wort** — ein Wort, das nicht
+                            // passt, schrumpft (`GanzeWoerter`). Zweimal
+                            // brach hier „Übungsliga", jedes Mal nach einer
+                            // Schriftänderung.
+                            child: GanzeWoerter(
                               league.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                // 13 statt 14 und leicht enger gesperrt:
-                                // Inter läuft breiter als Rajdhani, und bei
-                                // 14 brach schon „Übungsliga" mitten im Wort.
-                                fontSize: Schrift.koerperKlein,
+                                fontSize: Schrift.text,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.2,
                                 // 1.05 schnitt die Unterlängen ab: Aus
@@ -1797,7 +1785,7 @@ class _FantasyLeagueCard extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: scheme.onSurface.withValues(alpha: 0.78),
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1941,7 +1929,7 @@ class _TipRoundStreifen extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: scheme.onSurface.withValues(alpha: 0.72),
-                            fontSize: Schrift.klein,
+                            fontSize: Schrift.label,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -2032,7 +2020,7 @@ class _CountBadge extends StatelessWidget {
           style: TextStyle(
             color: scheme.onError,
             fontWeight: FontWeight.bold,
-            fontSize: 12,
+            fontSize: 11,
           ),
         ),
       ),
@@ -2249,7 +2237,7 @@ class _MatchUpTitle extends StatelessWidget {
         Text.rich(
           TextSpan(
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 17,
               fontWeight: FontWeight.w800,
               fontStyle: FontStyle.italic,
               letterSpacing: 0.4,
@@ -2334,7 +2322,7 @@ class _CreateOrJoinScreen extends StatelessWidget {
             Text(
               'Beides geht mit denselben Freunden — und beides kannst du '
               'mehrfach haben.',
-              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
             ),
             const SizedBox(height: 18),
             _StartKarte(
@@ -2499,14 +2487,14 @@ class _StartKarte extends StatelessWidget {
                                       color: Colors.white.withValues(
                                         alpha: 0.82,
                                       ),
-                                      fontSize: 13,
+                                      fontSize: 14,
                                       height: 1.2,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Icon(
-                                  Icons.arrow_forward_rounded,
+                                  Icons.arrow_forward,
                                   size: 20,
                                   color: farbe,
                                 ),
@@ -2574,7 +2562,7 @@ class _BeitretenKarte extends StatelessWidget {
                         'Mit dem Einladungscode von Freunden',
                         style: TextStyle(
                           color: scheme.onSurfaceVariant,
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -2588,6 +2576,54 @@ class _BeitretenKarte extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Das eigene Profilbild oben links — der Weg ins Profil.
+///
+/// Ein roter Punkt sagt, dass dort etwas wartet (Freundschaftsanfragen). Die
+/// ungelesenen Nachrichten zählt schon der Knopf in der Grußzeile; zwei
+/// Zähler für dieselbe Sache wären einer zu viel.
+class _ProfilKnopf extends ConsumerWidget {
+  const _ProfilKnopf();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final name = ref.watch(currentUsernameProvider).valueOrNull;
+    final anfragen = ref.watch(incomingRequestsProvider).length;
+    return IconButton(
+      tooltip: anfragen > 0 ? 'Profil, $anfragen Anfragen' : 'Profil',
+      onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ProfileScreen())),
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AppAvatar(
+            imageUrl: profile?.avatarUrl,
+            emoji: profile?.avatarEmoji,
+            colorHex: profile?.avatarColor,
+            fallbackText: name,
+            size: 30,
+          ),
+          if (anfragen > 0)
+            Positioned(
+              right: -1,
+              top: -1,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: scheme.error,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: scheme.surface, width: 1.5),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

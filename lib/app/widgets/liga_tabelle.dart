@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/data/neu_laden.dart';
@@ -40,7 +41,7 @@ class LigaTabelle extends ConsumerWidget {
       ref.watch(leagueSeasonFixturesProvider(leagueId)).valueOrNull ?? const [],
     );
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

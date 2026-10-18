@@ -7,17 +7,15 @@
 ///
 /// * **Spielzeile** — vor dem Anpfiff Gegner und Anstoß, danach Ausgang und
 ///   Ergebnis aus Sicht seines Vereins.
-/// * **Statistikzeile** — Minuten und die Dinge, die man in einer Zeile sagen
-///   kann: Tore, Vorlagen, beim Torwart Paraden, Karten. Nicht die zwanzig
-///   Zähler der Wertung; dafür gibt es die Aufschlüsselung hinter der Zahl.
+/// * **Statistikzeile** — gab es bis zum 17.10.2026 („90' · 4 Paraden"); auf
+///   Ansage raus, sie machte die Karte unruhig. Woher die Punkte kommen, sagt
+///   die Aufschlüsselung hinter der Zahl.
 ///
 /// Beides rein und ohne Flutter, damit es prüfbar ist.
 library;
 
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/models/models.dart';
-import '../models/fantasy_models.dart';
-import 'fantasy_scoring_engine.dart';
 import 'naechstes_spiel.dart';
 
 /// Ausgang des Spiels **seines Vereins** — nicht des Fantasy-Duells.
@@ -73,35 +71,4 @@ SpielZeile? spielZeile(NaechstesSpiel? s, {required DateTime jetzt}) {
     return SpielZeile('${stand ?? '0:0'} ${_gegen(s)}', laeuft: true);
   }
   return SpielZeile(_gegen(s), anstoss: anpfiffKurz(s.anpfiff));
-}
-
-/// Die Statistikzeile — `null`, solange er nicht gespielt hat.
-///
-/// **Reihenfolge nach Gewicht**: Minuten zuerst (sie sagen, ob er überhaupt
-/// eine Rolle gespielt hat), dann was punktet, dann was kostet. Die Zeile ist
-/// einzeilig; was hinten nicht mehr passt, wird abgeschnitten — deshalb steht
-/// das Wichtige vorn.
-String? statistikZeile(PlayerMatchStats? s, PlayerPosition position) {
-  if (s == null || !s.hasContribution) return null;
-  if (s.minutes == 0 && !s.played) return null;
-  String n(int k, String eins, String mehr) => k == 1 ? '1 $eins' : '$k $mehr';
-  final teile = <String>[
-    if (s.minutes > 0) "${s.minutes}'",
-    if (s.goals > 0) n(s.goals, 'Tor', 'Tore'),
-    if (s.assists > 0) n(s.assists, 'Vorlage', 'Vorlagen'),
-    if (position == PlayerPosition.gk && s.saves > 0)
-      n(s.saves, 'Parade', 'Paraden'),
-    if (s.penaltiesSaved > 0) 'Elfer gehalten',
-    if (s.cleanSheet &&
-        (position == PlayerPosition.gk || position == PlayerPosition.def))
-      'zu Null',
-    if (s.ownGoals > 0) n(s.ownGoals, 'Eigentor', 'Eigentore'),
-    if (s.red > 0)
-      'Rot'
-    else if (s.secondYellow > 0)
-      'Gelb-Rot'
-    else if (s.yellow > 0)
-      'Gelb',
-  ];
-  return teile.isEmpty ? null : teile.join(' · ');
 }

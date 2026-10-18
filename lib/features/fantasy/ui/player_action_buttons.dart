@@ -98,7 +98,7 @@ class PlayerActionButton extends ConsumerWidget {
         context,
         color: _cWaiver,
         fg: Colors.black,
-        icon: Icons.schedule,
+        icon: Icons.schedule_outlined,
         label: 'Waiver-Antrag stellen',
         onTap: () => _claim(context, ref),
       );
@@ -131,14 +131,13 @@ class PlayerActionButton extends ConsumerWidget {
         onTap: onTap,
       );
     }
-    return FilledButton.icon(
+    return FilledButton(
       style: FilledButton.styleFrom(
         backgroundColor: color,
         foregroundColor: fg,
       ),
       onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
+      child: Text(label),
     );
   }
 
@@ -541,14 +540,13 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: FilledButton.icon(
+                        child: FilledButton(
                           onPressed: canConfirm
                               ? () => Navigator.of(
                                   context,
                                 ).pop(_MoveConfirm(_dropId))
                               : null,
-                          icon: const Icon(Icons.check),
-                          label: const Text('Bestätigen'),
+                          child: const Text('Bestätigen'),
                         ),
                       ),
                     ],

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/app_config.dart';
+import '../core/models/models.dart';
 import '../core/models/team_fixture.dart';
+import '../features/tippspiel/providers.dart' show liveFixturesProvider;
 import '../features/favorites/favorites.dart';
 import '../features/favorites/logic/favorite_order.dart';
 import '../features/favorites/logic/next_favorite_fixtures.dart';
@@ -51,9 +55,20 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
   // Kopfkarte des Homescreens nimmt sich den ersten Eintrag, der Abschnitt
   // „Mein Wochenende" den Rest. An einem Samstag mit vier Vereinen wäre sonst
   // der 13:30-Anstoß auf der Kopfkarte gelandet, egal wem er gehört.
+  // **Der Live-Stand liegt über dem Spielplan** (17.10.2026, gemeldet: „das
+  // Spiel oben in der Box wird nicht mehr als live angezeigt, obwohl es
+  // läuft"). Der Vereinsspielplan wird einmal geladen; wer die App vor dem
+  // Anpfiff öffnete, sah das Spiel bis zum nächsten Kaltstart als „geplant".
+  // Jetzt dieselbe Bauart wie im Live-Tab: der eine Sammelabruf
+  // (`liveFixturesProvider`) über die Partien gelegt, und ein Takt, der ihn
+  // auffrischt — siehe [_planeLiveTakt].
+  final live = ref.watch(liveFixturesProvider).valueOrNull ?? const {};
+  final mitLive = [for (final f in tagesspiele) _mitLiveStand(f, live[f.id])];
+  _planeLiveTakt(ref, mitLive);
+
   final raenge = favoritenRaenge(ref.watch(favoritesProvider));
   return favoritenSpielZuerst(
-    spiele: tagesspiele,
+    spiele: mitLive,
     rang: (f) {
       final h = raenge[teamIdOf(f.home.id)];
       final a = raenge[teamIdOf(f.away.id)];
@@ -64,3 +79,56 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
     },
   );
 });
+
+/// Stand, Zustand und Anstoß aus dem Live-Abruf — alles andere (Wettbewerb,
+/// Logo, Spieltag) bleibt, wie der Spielplan es kennt.
+TeamFixture _mitLiveStand(TeamFixture f, Fixture? l) => l == null
+    ? f
+    : TeamFixture(
+        id: f.id,
+        kickoff: l.kickoff,
+        status: l.status,
+        leagueName: f.leagueName,
+        leagueLogo: f.leagueLogo,
+        round: f.round,
+        home: f.home,
+        away: f.away,
+        homeScore: l.homeScore,
+        awayScore: l.awayScore,
+      );
+
+/// **Wann der Live-Stand der Kopfkarte aufgefrischt wird.**
+///
+/// * Läuft ein Spiel (oder ist es angepfiffen und noch nicht beendet), alle
+///   30 Sekunden — der Live-Tab nimmt 10, die Kopfkarte braucht weniger.
+/// * Steht das nächste erst an, **ein** Wecker genau zum Anstoß.
+/// * Sonst nichts — an einem spielfreien Mittwoch kostet die Karte keinen
+///   Abruf.
+///
+/// Ein einmaliger `Timer` statt `Timer.periodic`: Die Auffrischung baut diesen
+/// Provider neu, und der stellt dabei den nächsten Takt — dieselbe Bauart wie
+/// beim Nachladen der Live-Punkte.
+void _planeLiveTakt(Ref ref, List<TeamFixture> spiele) {
+  final jetzt = DateTime.now();
+  final laeuft = spiele.any((f) =>
+      f.status == FixtureStatus.live ||
+      (f.status == FixtureStatus.scheduled &&
+          !f.kickoff.isAfter(jetzt) &&
+          jetzt.difference(f.kickoff) < const Duration(hours: 3)));
+  Duration? warte;
+  if (laeuft) {
+    warte = const Duration(seconds: 30);
+  } else {
+    final kommend = [
+      for (final f in spiele)
+        if (f.status == FixtureStatus.scheduled && f.kickoff.isAfter(jetzt))
+          f.kickoff,
+    ]..sort();
+    if (kommend.isNotEmpty) {
+      warte = kommend.first.difference(jetzt) + const Duration(seconds: 5);
+    }
+  }
+  if (warte == null) return;
+  final timer = Timer(warte, () => ref.invalidate(liveFixturesProvider));
+  ref.onDispose(timer.cancel);
+}

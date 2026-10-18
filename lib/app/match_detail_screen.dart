@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../core/logic/vereins_kuerzel.dart';
+import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -59,7 +61,7 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Spieldetails')),
       body: detailAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -206,7 +208,7 @@ class _TeamColumn extends StatelessWidget {
         // Wappen öffnet die Vereinsseite.
         ClubLink(team: team, child: TeamBadge(team: team, size: 46)),
         const SizedBox(height: 8),
-        Text(team.name,
+        Text(vereinsKurzname(team.name),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -365,7 +367,7 @@ IconData? _iconFor(String type) {
     case 'goal':
     case 'owngoal':
     case 'penalty':
-      return Icons.sports_soccer;
+      return Icons.sports_soccer_outlined;
     case 'yellowcard':
     case 'yellowredcard':
     case 'redcard':
@@ -373,7 +375,7 @@ IconData? _iconFor(String type) {
     case 'substitution':
       return Icons.swap_horiz;
     case 'var':
-      return Icons.tv;
+      return Icons.tv_outlined;
     default:
       return null;
   }
@@ -766,7 +768,7 @@ class _SideLabel extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                team.name,
+                vereinsKurzname(team.name),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
@@ -877,7 +879,7 @@ class _PlayerMarker extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               shadows: [Shadow(color: Colors.black, blurRadius: 2)],
             ),
@@ -1014,12 +1016,12 @@ class _TeamColumnHeader extends StatelessWidget {
       const SizedBox(width: 6),
       Flexible(
         child: Text(
-          team.name,
+          vereinsKurzname(team.name),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: alignEnd ? TextAlign.end : TextAlign.start,
           style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: scheme.onSurface),
         ),
@@ -1205,7 +1207,7 @@ class _TableTab extends ConsumerWidget {
       ref.watch(leagueSeasonFixturesProvider(leagueId)).valueOrNull ?? const [],
     );
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

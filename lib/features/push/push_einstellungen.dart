@@ -44,7 +44,7 @@ class PushKategorie {
     PushKategorie('liga_anfragen', PushBereich.fantasy, 'Beitrittsanfragen',
         'Wenn jemand in eine Liga will, die du verwaltest.'),
     PushKategorie('tipps', PushBereich.tippspiel, 'Offene Tipps',
-        'Drei Stunden vor Anpfiff, falls dein Tipp noch fehlt.'),
+        'Vor Anpfiff, falls dein Tipp noch fehlt.'),
     PushKategorie('runden_chat', PushBereich.tippspiel, 'Tipprunden-Chat',
         'Neue Nachrichten im Chat deiner Tipprunden.'),
     PushKategorie('runden_anfragen', PushBereich.tippspiel,
@@ -74,11 +74,51 @@ class PushKategorie {
 /// Regel wie in der Datenbank, und sie steht hier ein zweites Mal, weil der
 /// Schirm sonst beim ersten Öffnen lauter ausgeschaltete Schalter zeigte.
 class PushEinstellungen {
-  const PushEinstellungen(this._werte);
+  const PushEinstellungen(this._werte, {this.tippZeiten});
 
-  const PushEinstellungen.allesAn() : _werte = const {};
+  const PushEinstellungen.allesAn()
+      : _werte = const {},
+        tippZeiten = null;
 
   final Map<String, bool> _werte;
+
+  /// **Wann die Tipp-Erinnerung kommt** — Minuten vor Anpfiff, absteigend.
+  /// `null` heißt Standard ([tippZeitenStandard]); dieselbe Regel wie in
+  /// `push_tipp_erinnerungen` (Migration 0136).
+  final List<int>? tippZeiten;
+
+  /// 2 Stunden und 30 Minuten vor Anpfiff (seit 0137; davor 3 Std.).
+  static const tippZeitenStandard = [120, 30];
+
+  /// Was zur Wahl steht: 30 Minuten, 1 Stunde und 2, 4, 6 … 24 Stunden
+  /// (auf Ansage, 17.10.2026: Stunden nur im 2-Stunden-Takt). Dieselbe Liste
+  /// prüft die Datenbank (`push_einstellungen_tipp_zeiten_erlaubt`).
+  static final tippZeitenWahl = List<int>.unmodifiable([
+    30,
+    60,
+    for (var h = 2; h <= 24; h += 2) h * 60,
+  ]);
+
+  /// Die tatsächlich geltenden Zeitpunkte.
+  List<int> get tippZeitenWirksam => tippZeiten ?? tippZeitenStandard;
+
+  PushEinstellungen mitTippZeiten(List<int>? zeiten) => PushEinstellungen(
+        _werte,
+        tippZeiten: zeiten == null
+            ? null
+            : (zeiten.toSet().toList()..sort((a, b) => b.compareTo(a))),
+      );
+
+  /// „3 Std. und 30 Min. vorher" — für den Untertitel.
+  static String zeitenText(List<int> zeiten) {
+    String eins(int m) => m < 60 ? '$m Min.' : '${m ~/ 60} Std.';
+    final sortiert = [...zeiten]..sort((a, b) => b.compareTo(a));
+    final teile = sortiert.map(eins).toList();
+    final satz = teile.length == 1
+        ? teile.single
+        : '${teile.sublist(0, teile.length - 1).join(', ')} und ${teile.last}';
+    return '$satz vorher';
+  }
 
   bool an(String schluessel) => _werte[schluessel] ?? true;
 
@@ -86,19 +126,20 @@ class PushEinstellungen {
     return PushEinstellungen({
       for (final k in PushKategorie.alle)
         k.schluessel: (r[k.schluessel] as bool?) ?? true,
-    });
+    }, tippZeiten: (r['tipp_zeiten'] as List?)?.cast<int>());
   }
 
   PushEinstellungen kopieMit(String schluessel, bool wert) {
     return PushEinstellungen({
       for (final k in PushKategorie.alle) k.schluessel: an(k.schluessel),
       schluessel: wert,
-    });
+    }, tippZeiten: tippZeiten);
   }
 
   Map<String, dynamic> toRow(String userId) => {
         'user_id': userId,
         for (final k in PushKategorie.alle) k.schluessel: an(k.schluessel),
+        'tipp_zeiten': tippZeiten,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 }

@@ -128,7 +128,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       titleTextStyle: TextStyle(
         fontFamily: Schrift.familie,
         fontWeight: FontWeight.w800,
-        fontSize: Schrift.h1,
+        fontSize: Schrift.gross,
         letterSpacing: -0.4,
         color: scheme.onSurface,
       ),
@@ -208,7 +208,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontFamily: Schrift.familie,
-          fontSize: Schrift.winzig,
+          fontSize: Schrift.label,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w800
               : FontWeight.w500,
@@ -235,12 +235,12 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       labelStyle: const TextStyle(
           fontFamily: Schrift.familie,
           fontWeight: FontWeight.w600,
-          fontSize: Schrift.koerper),
+          fontSize: Schrift.text),
       secondaryLabelStyle: const TextStyle(
           fontFamily: Schrift.familie,
           color: MatchUpColors.base,
           fontWeight: FontWeight.w700,
-          fontSize: Schrift.koerper),
+          fontSize: Schrift.text),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
     inputDecorationTheme: InputDecorationTheme(

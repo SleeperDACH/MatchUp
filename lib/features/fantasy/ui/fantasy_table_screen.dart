@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
+import '../../../app/widgets/kapitelmarke.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/typografie.dart';
@@ -12,6 +14,11 @@ import '../providers.dart';
 import 'manager_profile_screen.dart';
 import 'playoff_bracket_screen.dart';
 import 'weekly_recap_screen.dart';
+import 'liga_duelle_band.dart';
+import 'matchup_hero.dart' show kChanceNeutral;
+import '../logic/saisonverlauf.dart';
+import '../logic/playoff.dart';
+import '../../../app/theme.dart';
 
 /// Eigenständiger Screen (mit AppBar) — dünne Hülle um [FantasyTableBody].
 class FantasyTableScreen extends StatelessWidget {
@@ -63,14 +70,10 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
     final managers = managersAsync.valueOrNull;
     final pool = poolAsync.valueOrNull;
     if (managers == null || pool == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Skelett();
     }
     final playerById = {for (final p in pool) p.id: p};
     final nameOf = {for (final m in managers) m.userId: m.display};
-    final avatarOf = {
-      for (final m in managers)
-        m.userId: (url: m.avatarUrl, emoji: m.avatarEmoji, color: m.avatarColor)
-    };
     final seasonStats = seasonStatsAsync.valueOrNull ??
         const <int, Map<String, PlayerMatchStats>>{};
 
@@ -97,7 +100,8 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
     );
     final ids = grundlage.ids;
     final totalsByRound = grundlage.summen;
-    final standings = h2hStandings(ids, totalsByRound);
+    final standings =
+        h2hStandings(ids, totalsByRound, remisGrenze: grundlage.remis);
     final nonePlayed = standings.every((r) => r.played == 0);
 
     final abgepfiffen = ref.watch(abgepfiffeneRundenProvider);
@@ -115,24 +119,66 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.07),
         );
 
-    Widget zeile(int i, H2HRecord r) => _RecordRow(
-          rank: i + 1,
-          name: nameOf[r.managerId] ?? '?',
-          avatar: avatarOf[r.managerId],
-          record: r,
-          me: r.managerId == myId,
-          onTap: () => showManagerProfile(context,
-              league: league,
-              managerId: r.managerId,
-              managerName: nameOf[r.managerId] ?? '?'),
-        );
+    // **Bewegung seit dem vorigen Spieltag**: dieselbe Tabelle ohne den
+    // zuletzt gewerteten Spieltag. Erst ab zwei gewerteten Spieltagen — beim
+    // ersten gibt es nichts, wovon man sich bewegt hätte.
+    final gewertet = totalsByRound.keys.toList()..sort();
+    final vorher = gewertet.length < 2
+        ? null
+        : h2hStandings(ids, {
+            for (final e in totalsByRound.entries)
+              if (e.key != gewertet.last) e.key: e.value,
+          }, remisGrenze: grundlage.remis);
+    final rangVorher = vorher == null
+        ? null
+        : {for (final (i, r) in vorher.indexed) r.managerId: i + 1};
+    final byId = {for (final m in managers) m.userId: m};
+
+    Widget zeile(int i, H2HRecord r) {
+      final verlauf = saisonverlauf(
+        ids: ids,
+        managerId: r.managerId,
+        gewertet: totalsByRound,
+        letzteRunde: kRegularSeasonMatchdays,
+        remisGrenze: grundlage.remis,
+      );
+      final alt = rangVorher?[r.managerId];
+      return _TabellenZeile(
+        rank: i + 1,
+        manager: byId[r.managerId],
+        record: r,
+        serie: serie(verlauf),
+        bewegung: alt == null ? null : alt - (i + 1),
+        me: r.managerId == myId,
+        onTap: () => showManagerProfile(context,
+            league: league,
+            managerId: r.managerId,
+            managerName: nameOf[r.managerId] ?? '?'),
+      );
+    }
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
       children: [
         if (seasonStatsAsync.isLoading)
           const LinearProgressIndicator(minHeight: 2),
-        const _Marke('Tabelle'),
+        // **Alle Duelle des Spieltags auf einen Blick** (16.10.2026, nach
+        // dem Vorbild Sleeper) — wischbar, ein Tipp führt in den
+        // MatchUp-Reiter.
+        if (ref.watch(fantasyCurrentRoundProvider).valueOrNull
+            case final runde?) ...[
+          _Marke('Spieltag $runde'),
+          LigaDuelleBand(league: league),
+        ],
+        _Marke('Tabelle', info: (
+          'So wird gewertet',
+          'Je Spieltag ein Duell mit der effektiven Startelf — 3 Punkte für '
+              'einen Sieg, 1 für ein Unentschieden. '
+              '${league.remisGrenze == null ? 'Unentschieden ist ein Duell nur bei exakt gleicher Punktzahl.' : 'Unentschieden ist ein Duell, wenn höchstens ${formatPoints(league.remisGrenze!)} Punkte dazwischen liegen.'} '
+              'Bei Gleichstand in der Tabelle zählen die erzielten '
+              'Spielerpunkte.\n\nØ ist der Schnitt je Duell; spielfreie '
+              'Spieltage zählen nicht mit.',
+        )),
         if (nonePlayed)
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
@@ -147,38 +193,13 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
         // an der Stelle, an der ihn niemand liest. Jetzt steht es über den
         // Spalten, wo es hingehört.
         const _TabellenKopf(),
-        // Die Bilanzen sind **eine** Tabelle, nicht vier Kästen. Vorher trug
-        // jede Zeile eigene Ränder, Ecken und Fläche; vier gleich laute
-        // Objekte untereinander lesen sich nicht als Rangfolge.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Theme.of(context).dividerColor),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (final (i, r) in standings.indexed) ...[
-                  if (i > 0) trenner(),
-                  zeile(i, r),
-                ],
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-          child: Text(
-            'Je Spieltag ein Duell mit der effektiven Startelf — 3 Punkte für '
-            'einen Sieg, 1 für ein Unentschieden. Bei Gleichstand zählen die '
-            'erzielten Spielerpunkte.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-        ),
+        // **Ohne Kasten** (16.10.2026, nach dem Vorbild Sleeper): Die
+        // Zeilen stehen auf dem Grund, Haarlinien trennen sie. Der Rahmen um
+        // die ganze Tabelle sagte nichts, was die Linien nicht schon sagen.
+        for (final (i, r) in standings.indexed) ...[
+          if (i > 0) trenner(),
+          zeile(i, r),
+        ],
 
         // --- Rückblick -----------------------------------------------------
         // Der Wochen-Recap wohnt hier, nicht mehr nur auf der Übersicht: Dort
@@ -215,87 +236,62 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
 /// Kapitelmarke: farbiger Strich, Wort, Haarlinie bis an den Rand — dieselbe
 /// Gliederung wie auf dem Startbildschirm und im Live-Tab.
 class _Marke extends StatelessWidget {
-  const _Marke(this.wort);
+  const _Marke(this.wort, {this.info});
 
   final String wort;
+  final (String, String)? info;
 
+  // Die App-weite Kapitelmarke statt einer eigenen Fassung mit grünem
+  // Strich — Grün heißt „ich / gut", eine Rubrik ist keins von beidem
+  // (Design-Ideen Punkt 3, 15.10.2026).
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
-      child: Row(
-        children: [
-          Container(width: 3, height: 12, color: scheme.primary),
-          const SizedBox(width: 6),
-          Flexible(
-            flex: 0,
-            child: Text(
-              wort.toUpperCase(),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.1,
-                color: scheme.onSurface,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Container(height: 1, color: scheme.outlineVariant)),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Kapitelmarke(wort, obenLuft: 14, info: info),
+      );
 }
 
 /// Spaltenköpfe der Tabelle.
 ///
-/// Die Breiten müssen zu [_RecordRow] passen — sie stehen deshalb als
+/// Die Breiten müssen zu [_TabellenZeile] passen — sie stehen deshalb als
 /// Konstanten an einer Stelle, nicht zweimal als Zahl im Layout.
 class _TabellenKopf extends StatelessWidget {
   const _TabellenKopf();
 
-  static const rangBreite = 38.0;
-  static const bilanzBreite = 56.0;
+  static const rangBreite = 30.0;
+  static const bildBreite = 36.0;
+  /// **Zwei Zahlenspalten, beide groß** (auf Ansage, 16.10.2026): „Für" und
+  /// „Gegen" sind raus, damit Punkte und Schnitt Platz und Größe bekommen —
+  /// in vier Spalten à 14 Punkt war keine auf einen Blick zu lesen.
+  static const punkteBreite = 48.0;
 
-  /// **Der Schnitt je Duell in eigener Spalte** (auf Ansage, 14.10.2026:
-  /// „sodass man mit einem Blick sofort sieht"). Die Gesamtpunkte allein
-  /// vergleichen nur, solange alle gleich oft gespielt haben — mit einem
-  /// spielfreien Spieltag steht einer schon um eine Woche Punkte zurück.
-  static const schnittBreite = 42.0;
-  static const punkteBreite = 52.0;
+  /// **Der Schnitt je Duell in eigener Spalte** (auf Ansage, 14.10.2026):
+  /// Die Gesamtpunkte vergleichen nur, solange alle gleich oft gespielt
+  /// haben.
+  static const schnittBreite = 64.0;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final stil = TextStyle(
-      fontSize: 10,
+      fontSize: Schrift.label,
       fontWeight: FontWeight.w800,
       letterSpacing: 0.8,
       color: scheme.onSurfaceVariant,
     );
+    Widget zahl(String t, double b) =>
+        SizedBox(width: b, child: Text(t, style: stil, textAlign: TextAlign.end));
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
       child: Row(
         children: [
           SizedBox(width: rangBreite, child: Text('#', style: stil)),
-          const SizedBox(width: 10),
+          const SizedBox(width: bildBreite + 10),
           Expanded(child: Text('TEAM', style: stil)),
-          SizedBox(
-            width: bilanzBreite,
-            child: Text('S · U · N', style: stil, textAlign: TextAlign.end),
-          ),
-          SizedBox(
-            width: schnittBreite,
-            child: Text('Ø', style: stil, textAlign: TextAlign.end),
-          ),
-          // Dieselbe Lücke wie in den Zeilen, sonst stünde „Ø" neben seiner
-          // Spalte.
-          const SizedBox(width: 6),
-          SizedBox(
-            width: punkteBreite,
-            child: Text('PUNKTE', style: stil, textAlign: TextAlign.end),
-          ),
+          // Ø links, die Punkte ganz rechts (auf Ansage, 16.10.2026): Die
+          // Zahl, nach der sortiert wird, steht an der Außenkante.
+          zahl('Ø', schnittBreite),
+          zahl('PKT', punkteBreite),
         ],
       ),
     );
@@ -372,7 +368,7 @@ class _BracketButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                const Icon(Icons.account_tree, color: gold),
+                const Icon(Icons.account_tree_outlined, color: gold),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -398,269 +394,198 @@ class _BracketButton extends StatelessWidget {
   }
 }
 
-/// **Die ersten drei stehen groesser da.** Auf Ansage: Platz 1 groesser als 2,
-/// 2 groesser als 3, danach eine einheitliche Zeile.
+/// **Eine Zeile der Tabelle — nach dem Vorbild Sleeper** (16.10.2026).
 ///
-/// Groesser wird nur, was zum Team gehoert — Rang, Bild, Name. Die
-/// **Zahlenspalten bleiben unangetastet**: Bilanz und Punkte stehen auf festen
-/// Breiten, damit sie ueber alle Zeilen fluchten. Eine Tabelle, deren Spalten
-/// je Zeile eine andere Groesse haben, ist keine Tabelle mehr.
-class _Podest {
-  const _Podest({
-    required this.polster,
-    required this.badge,
-    required this.rangSchrift,
-    required this.avatar,
-    required this.name,
-  });
-
-  /// Senkrechtes Polster der Zeile — daraus kommt die Zeilenhoehe.
-  final double polster;
-
-  /// Kantenlaenge des Rang-Badges. Nie groesser als
-  /// [_TabellenKopf.rangBreite], sonst schoebe es Bild und Name der obersten
-  /// Zeile gegen die uebrigen.
-  final double badge;
-
-  final double rangSchrift;
-  final double avatar;
-  final double name;
-
-
-  /// Vier Stufen: 1 · 2 · 3 · alle anderen. Die Schriftgrade kommen aus der
-  /// Leiter (`Schrift`); zwischen `titel` und `h1` liegen genau zwei Stufen,
-  /// und mehr braucht ein Podest nicht.
-  factory _Podest.fuer(int rank) => switch (rank) {
-        1 => const _Podest(
-            polster: 18,
-            badge: 38,
-            rangSchrift: Schrift.h2,
-            avatar: 44,
-            name: Schrift.h1),
-        2 => const _Podest(
-            polster: 15,
-            badge: 33,
-            rangSchrift: Schrift.h3,
-            avatar: 37,
-            name: Schrift.h2),
-        3 => const _Podest(
-            polster: 13,
-            badge: 29,
-            rangSchrift: Schrift.titel,
-            avatar: 32,
-            name: Schrift.h3),
-        _ => const _Podest(
-            polster: 11,
-            badge: 26,
-            rangSchrift: Schrift.koerper,
-            avatar: 28,
-            name: Schrift.titel),
-      };
-}
-
-class _RecordRow extends StatelessWidget {
-  const _RecordRow({
+/// Ohne Kasten auf dem Grund, durch Haarlinien getrennt. Links der Rang und
+/// darunter, wie er sich seit dem vorigen Spieltag bewegt hat („+1" grün,
+/// „−2" rot). Dann Bild, Name, darunter Bilanz und Serie. Rechts die Zahlen:
+/// Der Schnitt je Duell, ganz rechts groß die Tabellenpunkte. Erzielte und kassierte
+/// Spielerpunkte standen kurz als zwei weitere Spalten da und sind auf
+/// Ansage wieder raus (16.10.2026) — sie nahmen den beiden Zahlen den Platz,
+/// auf die es ankommt.
+///
+/// **Das Podest mit drei Größen ist damit weg** — alle Zeilen gleich hoch,
+/// wie bei Sleeper; die ersten drei tragen ihren Rang in Medaillenfarbe. Die
+/// eigene Zeile ist hell hinterlegt, nicht farbig: Hell heißt in dieser App
+/// „das bist du".
+class _TabellenZeile extends StatelessWidget {
+  const _TabellenZeile({
     required this.rank,
-    required this.name,
+    required this.manager,
     required this.record,
+    required this.serie,
+    required this.bewegung,
     required this.me,
     required this.onTap,
-    this.avatar,
   });
 
   final int rank;
-  final String name;
-  final AvatarInfo? avatar;
+  final FantasyManager? manager;
   final H2HRecord record;
+  final ({DuellAusgang ausgang, int anzahl})? serie;
+
+  /// Plätze gewonnen (positiv) oder verloren seit dem vorigen Spieltag;
+  /// `null`, solange es keinen vorigen gibt.
+  final int? bewegung;
   final bool me;
   final VoidCallback onTap;
+
+  static const _gold = Color(0xFFFFC83D);
+  static const _silber = Color(0xFFC4CBD4);
+  static const _bronze = Color(0xFFCD8B4E);
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final (badgeBg, badgeFg) = _rankColors(rank, scheme);
-    final podest = _Podest.fuer(rank);
+    final r = record;
+    final m = manager;
+    final rangFarbe = switch (rank) {
+      1 => _gold,
+      2 => _silber,
+      3 => _bronze,
+      _ => scheme.onSurfaceVariant,
+    };
+    final zahlStil = TextStyle(
+      fontSize: Schrift.text,
+      fontWeight: FontWeight.w600,
+      color: scheme.onSurface,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    Widget zahl(String t, double b, {TextStyle? stil}) => SizedBox(
+          width: b,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(t, style: stil ?? zahlStil, textAlign: TextAlign.end),
+          ),
+        );
 
-    return GestureDetector(
+    final (pfeil, buchstabe, serieFarbe) = switch (serie?.ausgang) {
+      DuellAusgang.sieg => ('▲', 'S', MatchUpColors.green),
+      DuellAusgang.niederlage => ('▼', 'N', MatchUpColors.red),
+      _ => ('■', 'U', kChanceNeutral),
+    };
+    final hatTeamname = m?.teamName != null && m!.teamName!.trim().isNotEmpty;
+
+    return InkWell(
       onTap: onTap,
-      child: Stack(children: [
-      Container(
-      padding:
-          EdgeInsets.symmetric(horizontal: 12, vertical: podest.polster),
-      // **Die Zeile trägt keine getönte Fläche.** Zwei Anläufe damit sahen
-      // schlecht aus — je Zeile ein Streifen (abgehackt), dann ein Verlauf
-      // über alle drei (ein brauner Schleier). Die Medaille sitzt jetzt in
-      // Ring und Kante, beide in voller Sättigung.
-      //
-      // **Die eigene Zeile wird hell, nicht grün.** Sie zog vorher
-      // `scheme.primary` bei 10 % — Grün heißt in dieser App „hier läuft
-      // etwas", und in einer Tabellenzeile läuft nichts. Hell ist ohnehin das
-      // Zeichen, mit dem hier überall „das bist du / das ist gewählt" gesagt
-      // wird. Gerahmt wird sie nicht: In einer Tabelle, die als *eine* Fläche
-      // steht, wäre ein Rahmen um eine Zeile ein Kasten im Kasten.
-      color: me ? Colors.white.withValues(alpha: 0.06) : null,
-      child: Row(
-        children: [
-          // Rang (Top 3 in Medaillenfarben, und in Medaillengroesse).
-          // **Linksbuendig in einer festen Spalte**: Waechst das Badge, sollen
-          // Bild und Name der obersten Zeile trotzdem mit den uebrigen
-          // fluchten.
-          SizedBox(
-            width: _TabellenKopf.rangBreite,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                width: podest.badge,
-                height: podest.badge,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text('$rank',
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: me
+            ? BoxDecoration(
+                color: scheme.onSurface.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+              )
+            : null,
+        child: Row(
+          children: [
+            SizedBox(
+              width: _TabellenKopf.rangBreite,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$rank',
                     style: TextStyle(
-                        color: badgeFg,
-                        fontWeight: FontWeight.bold,
-                        fontSize: podest.rangSchrift)),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          // **Der Medaillenring liegt außen um das Bild, nicht darin.** Der
-          // erste Versuch schnitt das Bild um die Ringstärke kleiner, damit
-          // der Platz gleich blieb — damit war das Gesicht auf Platz 3 (24)
-          // kleiner als auf Platz 4 (28), und die Leiter stand für einen
-          // Moment auf dem Kopf. Der Ring wächst deshalb nach außen; dass die
-          // Namen dadurch versetzt anfangen, tun sie ohnehin, weil die
-          // Avatare je Rang verschieden groß sind.
-          if (rank <= 3)
-            Container(
-              width: podest.avatar + 8,
-              height: podest.avatar + 8,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: badgeBg, width: 2),
-              ),
-              child: AppAvatar(
-                imageUrl: avatar?.url,
-                emoji: avatar?.emoji,
-                colorHex: avatar?.color,
-                fallbackText: name,
-                size: podest.avatar,
-              ),
-            )
-          else
-            AppAvatar(
-              imageUrl: avatar?.url,
-              emoji: avatar?.emoji,
-              colorHex: avatar?.color,
-              fallbackText: name,
-              size: podest.avatar,
-            ),
-          const SizedBox(width: 9),
-          // **Der Name schrumpft, er kappt nicht** — dieselbe Regel wie im
-          // Live-Tab und in der Tipp-Tabelle. Auf Platz 1 steht er in 24
-          // Punkt; ein langer Name faende dort sonst als „Spitzenr…" statt.
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(name,
-                  maxLines: 1,
-                  style: TextStyle(
-                      fontSize: podest.name,
-                      fontWeight: me ? FontWeight.w800 : FontWeight.w600)),
-            ),
-          ),
-          // Bilanz in ihrer eigenen Spalte — sie stand vorher als Kleintext
-          // unter dem Namen und fluchtete mit nichts.
-          SizedBox(
-            width: _TabellenKopf.bilanzBreite,
-            child: Text(
-              '${record.wins} · ${record.ties} · ${record.losses}',
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: 13,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          // Schnitt je Duell: erzielte Punkte durch gespielte Duelle —
-          // spielfreie Spieltage zählen nicht mit, sie sind kein Duell.
-          SizedBox(
-            width: _TabellenKopf.schnittBreite,
-            child: Text(
-              record.played == 0
-                  ? '–'
-                  : formatPoints(record.pointsFor / record.played),
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                color: scheme.onSurface,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          // Rechts: Tabellenpunkte groß, darunter die erzielten
-          // Spielerpunkte (Tiebreak). Feste Spaltenbreite, damit die Zahlen
-          // über alle Zeilen fluchten — vorher rutschte die Spalte je nach
-          // Stellenzahl.
-          SizedBox(
-            width: _TabellenKopf.punkteBreite,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('${record.points}',
-                    style: const TextStyle(
+                      fontSize: Schrift.titel,
+                      fontWeight: FontWeight.w800,
+                      color: rangFarbe,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  if (bewegung != null && bewegung != 0)
+                    Text(
+                      bewegung! > 0 ? '+$bewegung' : '−${-bewegung!}',
+                      style: TextStyle(
+                        fontSize: Schrift.label,
                         fontWeight: FontWeight.w800,
-                        fontSize: 20,
-                        height: 1.1,
-                        fontFeatures: [FontFeature.tabularFigures()])),
-                Text(formatPoints(record.pointsFor),
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: scheme.onSurfaceVariant,
-                        fontFeatures: const [FontFeature.tabularFigures()])),
-              ],
+                        color: bewegung! > 0
+                            ? MatchUpColors.green
+                            : MatchUpColors.red,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-      ),
-      // **Die Medaillenkante am linken Rand.** Sie liegt im `Stack` über der
-      // Zeile statt in der `Row` davor: Als eigene Spalte schöbe sie den
-      // Inhalt der ersten drei Zeilen um drei Punkte gegen die übrigen —
-      // genau der Grund, aus dem der 4-px-Streifen im Live-Tab wieder
-      // geflogen ist.
-      //
-      // **Volle Sättigung, harte Kante.** Zwei getönte Flächen davor sahen
-      // beide schlecht aus: erst drei Streifen, die abgehackt aneinander
-      // stießen, dann ein Verlauf über alle drei, der zu einem braunen
-      // Schleier verlief. Über nahezu Schwarz wird jede Medaillenfarbe als
-      // Fläche matschig — als scharfer Strich bleibt sie Gold, Silber und
-      // Bronze. Dieselbe Form trägt in dieser App auch die Kapitelmarke.
-      if (rank <= 3)
-        Positioned(
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 3,
-          child: ColoredBox(color: badgeBg),
+            AppAvatar(
+              imageUrl: m?.avatarUrl,
+              emoji: m?.avatarEmoji,
+              colorHex: m?.avatarColor,
+              fallbackText: m?.display,
+              size: _TabellenKopf.bildBreite,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      m?.display ?? '?',
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: Schrift.text,
+                        fontWeight: me ? FontWeight.w800 : FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  // Wie bei Sleeper der Nutzername unter dem Teamnamen — nur,
+                  // wenn es einen Teamnamen gibt; sonst stünde er doppelt.
+                  if (hatTeamname)
+                    Text(
+                      '@${m.username}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: Schrift.label,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  const SizedBox(height: 2),
+                  Text.rich(
+                    TextSpan(children: [
+                      // Reihenfolge Sieg – Unentschieden – Niederlage.
+                      TextSpan(text: '${r.wins}-${r.ties}-${r.losses}'),
+                      if (serie != null) ...[
+                        const TextSpan(text: ' · '),
+                        TextSpan(
+                          text: '$pfeil${serie!.anzahl}$buchstabe',
+                          style: TextStyle(
+                              color: serieFarbe, fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ]),
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: Schrift.label,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurfaceVariant,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            zahl(
+              r.played == 0 ? '–' : formatPoints(r.pointsFor / r.played),
+              _TabellenKopf.schnittBreite,
+              stil: zahlStil.copyWith(
+                  fontSize: Schrift.titel,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurfaceVariant),
+            ),
+            zahl('${record.points}', _TabellenKopf.punkteBreite,
+                stil: zahlStil.copyWith(
+                    fontSize: Schrift.gross, fontWeight: FontWeight.w800)),
+          ],
         ),
-      ]),
+      ),
     );
   }
-
-  /// Rang-Badge-Farben: Gold/Silber/Bronze für Top 3, sonst neutral.
-  (Color, Color) _rankColors(int rank, ColorScheme scheme) => switch (rank) {
-        1 => (const Color(0xFFFFC83D), Colors.black),
-        2 => (const Color(0xFFC4CBD4), Colors.black),
-        3 => (const Color(0xFFCD8B4E), Colors.white),
-        _ => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
-      };
 }

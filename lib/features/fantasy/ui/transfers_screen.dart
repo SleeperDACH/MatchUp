@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -167,13 +168,13 @@ class _AntragKarte extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.schedule, size: 16, color: _kGold),
+                Icon(Icons.schedule_outlined, size: 16, color: _kGold),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'Antrag ${claim.rank}',
                     style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 13),
+                        fontWeight: FontWeight.w700, fontSize: 14),
                   ),
                 ),
                 if (fenster?.deadline != null)
@@ -278,7 +279,7 @@ class _LigaSeite extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final movesAsync = ref.watch(rosterMovesProvider(league.id));
     return movesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (e, _) => _Leer('Bewegungen nicht geladen.\n$e'),
       data: (moves) {
         // **Der Draft ist keine Bewegung, die man nachliest.** Er erzeugt bei
@@ -424,7 +425,7 @@ class _VorgangsKarte extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700)),
+                          fontSize: 11, fontWeight: FontWeight.w700)),
                 ),
                 Text(
                   DateFormat('HH:mm', 'de_DE').format(ereignis.passiertAm),
@@ -524,7 +525,7 @@ class _Marke extends StatelessWidget {
                   color: f, borderRadius: BorderRadius.circular(8)),
               child: Text('$zahl',
                   style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: Colors.white)),
             ),

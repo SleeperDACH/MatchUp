@@ -52,12 +52,11 @@ class UserProfileScreen extends ConsumerWidget {
           if (showMessageButton) ...[
             const SizedBox(height: 12),
             Center(
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => ConversationScreen(
                         partnerId: userId, partnerName: name))),
-                icon: const Icon(Icons.forum_outlined, size: 18),
-                label: const Text('Nachricht schreiben'),
+                child: const Text('Nachricht schreiben'),
               ),
             ),
           ],

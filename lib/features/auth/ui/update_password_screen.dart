@@ -67,7 +67,7 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.lock_reset,
+                Icon(Icons.lock_reset_outlined,
                     size: 56, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(height: 16),
                 Text(

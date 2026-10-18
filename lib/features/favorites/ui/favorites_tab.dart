@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widgets/team_fixture_list.dart';
@@ -189,10 +190,9 @@ class _LeerHinweis extends StatelessWidget {
     void oeffneAuswahl() => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const FavoritesManageScreen()));
 
-    final zurAuswahl = OutlinedButton.icon(
+    final zurAuswahl = OutlinedButton(
       onPressed: oeffneAuswahl,
-      icon: const Icon(Icons.star_border, size: 18),
-      label: const Text('Favoriten hinzufügen'),
+      child: const Text('Favoriten hinzufügen'),
     );
 
     return Center(
@@ -206,7 +206,7 @@ class _LeerHinweis extends StatelessWidget {
             Text(titel,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
+                    fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text(
               text,
@@ -215,18 +215,16 @@ class _LeerHinweis extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             if (onRetry != null) ...[
-              FilledButton.icon(
+              FilledButton(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Erneut laden'),
+                child: const Text('Erneut laden'),
               ),
               const SizedBox(height: 10),
               zurAuswahl,
             ] else if (betont)
-              FilledButton.icon(
+              FilledButton(
                 onPressed: oeffneAuswahl,
-                icon: const Icon(Icons.add),
-                label: const Text('Favoriten hinzufügen'),
+                child: const Text('Favoriten hinzufügen'),
               )
             else
               zurAuswahl,
@@ -488,7 +486,7 @@ class _VereinsKopf extends ConsumerWidget {
               unterzeile,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             ),
         ],
       ),
@@ -520,11 +518,11 @@ class _FixturesTab extends ConsumerWidget {
 
     if (fixtures.isEmpty) {
       if (anyLoading) {
-        return const Center(child: CircularProgressIndicator());
+        return const Skelett();
       }
       if (asyncs.every((a) => a.hasError)) {
         return _LeerHinweis(
-          icon: Icons.cloud_off,
+          icon: Icons.cloud_off_outlined,
           titel: 'Spielplan nicht geladen',
           text: 'Die Spiele deiner Favoriten konnten nicht abgerufen werden.',
           onRetry: () {
@@ -535,7 +533,7 @@ class _FixturesTab extends ConsumerWidget {
         );
       }
       return _LeerHinweis(
-        icon: Icons.event_busy,
+        icon: Icons.event_busy_outlined,
         titel: 'Keine Spiele',
         text: 'Für $name ist gerade kein Spielplan hinterlegt.',
       );
@@ -584,10 +582,10 @@ class _NewsTab extends ConsumerWidget {
       });
 
     if (items.isEmpty) {
-      if (anyLoading) return const Center(child: CircularProgressIndicator());
+      if (anyLoading) return const Skelett();
       if (asyncs.every((a) => a.hasError)) {
         return _LeerHinweis(
-          icon: Icons.cloud_off,
+          icon: Icons.cloud_off_outlined,
           titel: 'News nicht geladen',
           text: 'Die Meldungen zu deinen Favoriten konnten nicht abgerufen '
               'werden.',
@@ -599,7 +597,7 @@ class _NewsTab extends ConsumerWidget {
         );
       }
       return _LeerHinweis(
-        icon: Icons.newspaper,
+        icon: Icons.newspaper_outlined,
         titel: 'Keine News',
         text: 'Zu $name gibt es gerade nichts zu lesen.',
       );

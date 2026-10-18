@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/data/odds/frozen_odds.dart';
@@ -46,7 +47,7 @@ class _TipDuelsTabState extends ConsumerState<TipDuelsTab> {
 
     // Nur wenn nichts dasteht — ein Nachladen darf die Duelle nicht ersetzen.
     if (membersAsync.valueOrNull == null || fixturesAsync.valueOrNull == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Skelett();
     }
     final members = membersAsync.valueOrNull ?? const <RoundMember>[];
     final fixtures = fixturesAsync.valueOrNull ?? const <Fixture>[];
@@ -362,7 +363,7 @@ class _StandingRow extends StatelessWidget {
         backgroundColor: rank == 1
             ? scheme.primary.withValues(alpha: 0.25)
             : scheme.surfaceContainerHighest,
-        child: Text('$rank', style: const TextStyle(fontSize: 12)),
+        child: Text('$rank', style: const TextStyle(fontSize: 11)),
       ),
       title: Row(
         children: [

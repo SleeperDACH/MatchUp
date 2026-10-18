@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 
 import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,7 +40,7 @@ class _TransfersScreenState extends ConsumerState<TransfersScreen> {
           ]),
         ),
         body: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Skelett(),
           error: (e, _) => _centered('Transfers konnten nicht geladen '
               'werden.\n$e'),
           data: (deals) {
@@ -317,7 +318,7 @@ class _DealTile extends StatelessWidget {
             children: [
               Text(deal.amountLabel,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 13)),
+                      fontWeight: FontWeight.bold, fontSize: 14)),
               if (deal.date != null) ...[
                 const SizedBox(height: 2),
                 Text(_date(deal.date!),

@@ -65,7 +65,7 @@ class _ScoringInfoScreenState extends State<ScoringInfoScreen> {
             child: Text(
               _einleitung(p),
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 height: 1.35,
                 color: scheme.onSurfaceVariant,
               ),
@@ -281,7 +281,7 @@ class _Gruppe extends StatelessWidget {
                 titel.toUpperCase(),
                 style: TextStyle(
                   color: scheme.onSurface,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
                 ),
@@ -312,7 +312,7 @@ class _Gruppe extends StatelessWidget {
             child: Text(
               fussnote!,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 height: 1.35,
                 color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
               ),

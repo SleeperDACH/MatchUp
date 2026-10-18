@@ -13,7 +13,6 @@ import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/models/roster_move.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/fantasy_league_screen.dart';
-import 'package:matchup/features/fantasy/ui/matchup_detail_screen.dart';
 import 'package:matchup/features/fantasy/ui/matchup_hero.dart';
 import 'package:matchup/features/tippspiel/providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
@@ -187,7 +186,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: buildAppTheme(),
-          home: FantasyLeagueScreen(league: liga),
+          home: FantasyLeagueScreen(
+              league: liga, startReiter: LigaReiter.uebersicht),
         ),
       ),
     );
@@ -199,8 +199,17 @@ void main() {
     // Zeilengruppen und der Spieltagsblock sind der Inhalt dieses Schirms;
     // ob der Duell-Kasten „VS" oder einen Punktestand zeigt, hängt am
     // Kalender und nicht am Code.
-    expect(find.text('Aufstellung'), findsOneWidget);
-    expect(find.text('Free Agency'), findsOneWidget);
+    // Die Aufstellung steht im Kader-Reiter, nicht mehr auf der Übersicht
+    // (17.10.2026).
+    expect(find.text('Aufstellung'), findsNothing);
+    expect(find.text('MEIN TEAM'), findsNothing);
+    // Der Transfermarkt steht vorn (16.10.2026): Spieler, Trades, Transfers.
+    expect(find.text('TRANSFERMARKT'), findsOneWidget);
+    expect(find.text('Spieler'), findsOneWidget);
+    expect(find.text('Trades'), findsOneWidget);
+    expect(find.text('Transfers'), findsOneWidget);
+    expect(find.text('Free Agency'), findsNothing,
+        reason: 'heißt jetzt „Spieler"');
     expect(find.text('Liga-Chat'), findsOneWidget);
     expect(find.text('3. SPIELTAG'), findsOneWidget);
 
@@ -354,7 +363,8 @@ void main() {
         ],
         child: MaterialApp(
           theme: buildAppTheme(),
-          home: FantasyLeagueScreen(league: liga),
+          home: FantasyLeagueScreen(
+              league: liga, startReiter: LigaReiter.uebersicht),
         ),
       ),
     );
@@ -383,13 +393,14 @@ void main() {
     // nicht, wohin ein Tipp führt — deshalb hier ausdrücklich.
     final reiter = DefaultTabController.of(
         tester.element(find.byType(TabBarView)));
-    expect(reiter.index, 0);
+    expect(reiter.index, LigaReiter.uebersicht);
     await tester.tap(find.byType(MatchupBanner));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    expect(reiter.index, 1, reason: 'der MatchUp-Reiter ist offen');
-    expect(find.byType(MatchupDetailScreen), findsNothing,
-        reason: 'keine zweite, abgeschlossene Fassung desselben Duells');
+    expect(reiter.index, LigaReiter.matchup,
+        reason: 'der MatchUp-Reiter ist offen');
+    expect(find.byType(MatchupBanner), findsWidgets,
+        reason: 'keine neue Seite — der Kasten steht weiter im Bild');
   });
 }

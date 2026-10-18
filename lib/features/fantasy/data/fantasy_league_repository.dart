@@ -83,6 +83,7 @@ class FantasyLeagueRepository {
     String visibility = 'private',
     String joinPolicy = 'open',
     bool tipEnabled = false,
+    double? remisGrenze = FantasyLeague.remisGrenzeStandard,
   }) async {
     final userId = _client.auth.currentUser!.id;
     final row = await _client
@@ -105,10 +106,30 @@ class FantasyLeagueRepository {
           'visibility': visibility,
           'join_policy': joinPolicy,
           'tip_enabled': tipEnabled,
+          'remis_grenze': remisGrenze,
         })
         .select()
         .single();
     return FantasyLeague.fromJson(row);
+  }
+
+  /// Unentschieden bei knappem Ausgang setzen (`null` = aus). Nur der
+  /// Ersteller (RLS). Ein Trigger meldet die Änderung im Liga-Chat — sie
+  /// wertet alle Spieltage der Saison neu.
+  ///
+  /// `select` hängt dran, weil ein `update`, das wegen der RLS keine Zeile
+  /// trifft, für PostgREST kein Fehler ist — die Oberfläche meldete sonst
+  /// „Gespeichert".
+  Future<void> updateRemisGrenze(String leagueId, double? grenze) async {
+    final rows = await _client
+        .from('fantasy_leagues')
+        .update({'remis_grenze': grenze})
+        .eq('id', leagueId)
+        .select('id');
+    if (rows.isEmpty) {
+      throw Exception('Nicht gespeichert — nur der Ersteller darf die '
+          'Unentschieden-Regel ändern.');
+    }
   }
 
   /// Schaltet das ligainterne Tippspiel für die Liga ein/aus (nur Ersteller,

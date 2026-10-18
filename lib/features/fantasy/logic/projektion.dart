@@ -91,7 +91,7 @@ Projektion projektion({
       spielerId: p.id,
       position: p.position,
       regeln: regeln,
-    ).punkteJeSpieltag;
+    ).schnitt;
     gezaehlt++;
   }
 

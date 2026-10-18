@@ -95,7 +95,7 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: [
           const NavigationDestination(
-            icon: Icon(Icons.sports_soccer),
+            icon: Icon(Icons.sports_soccer_outlined),
             label: 'Tippen',
           ),
           const NavigationDestination(

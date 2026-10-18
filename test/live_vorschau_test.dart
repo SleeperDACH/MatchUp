@@ -144,10 +144,10 @@ void main() {
     // hier wäre sie eine dritte Zahl neben Stand und Anstoßzeit.
     expect(find.textContaining("'"), findsNothing);
 
-    // **Die Datumszelle ist schmal, ihr Tippziel nicht.** Der sichtbare Kasten
-    // misst 34 Punkte; getroffen werden muss das Plattformmaß (48 auf
-    // Android, 44 auf iOS). Wer die Zelle weiter verschmälert, darf das nicht
-    // am Ziel tun — genau davor warnt `minTastflaeche`.
+    // **Das Tippziel ist die ganze Spalte** — seit dem 17.10.2026 teilen sich
+    // fünf Tage die Breite. Es muss mindestens das Plattformmaß treffen (48
+    // auf Android, 44 auf iOS); wer die Leiste wieder dichter macht, darf das
+    // nicht am Ziel tun.
     // **Der Tag wird gerechnet, nicht hingeschrieben.** Ein fester „Samstag,
     // 12." stand drei Tage später nicht mehr in der Leiste — sie zeigt die
     // letzten und nächsten sieben Tage um **heute**. Dieselbe Falle wie bei
@@ -159,6 +159,9 @@ void main() {
         (w.properties.label ?? '').startsWith(heuteLabel));
     expect(tag, findsOneWidget);
     expect(tester.getSize(tag).width, greaterThanOrEqualTo(44));
+    // Fünf Tage im Bild, nicht neun: Die Zelle ist ein Fünftel der Breite.
+    expect(tester.getSize(tag).width, greaterThan(60));
+    expect(find.text('HEUTE'), findsOneWidget);
 
     if (!autoUpdateGoldenFiles) return;
     await expectLater(

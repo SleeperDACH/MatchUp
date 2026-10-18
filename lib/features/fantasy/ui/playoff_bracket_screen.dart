@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logic/round_robin.dart';
@@ -48,7 +49,7 @@ class PlayoffBracketScreen extends ConsumerWidget {
     }
     // Nur wenn nichts dasteht — sonst ersetzt jedes Nachladen den Bracket.
     if (managersAsync.valueOrNull == null || poolAsync.valueOrNull == null) {
-      return scaffold(const Center(child: CircularProgressIndicator()));
+      return scaffold(const Skelett());
     }
     final managers = managersAsync.valueOrNull ?? const <FantasyManager>[];
     if (managers.length < 2) {
@@ -104,7 +105,8 @@ class PlayoffBracketScreen extends ConsumerWidget {
         if (e.key < plan.startRound) e.key: e.value
     };
     final seeding = [
-      for (final r in h2hStandings(ids, regularTotals)) r.managerId
+      for (final r in h2hStandings(ids, regularTotals,
+          remisGrenze: league.remisGrenze ?? 0)) r.managerId
     ];
 
     // Abgeschlossene Spieltage (alle Spiele beendet).
@@ -135,7 +137,7 @@ class PlayoffBracketScreen extends ConsumerWidget {
         const SizedBox(height: 12),
         if (bracket.complete) ...[
           _SectionHeader(
-              icon: Icons.emoji_events, title: 'Endplatzierung', color: _gold),
+              icon: Icons.emoji_events_outlined, title: 'Endplatzierung', color: _gold),
           for (final p in bracket.placements)
             _PlacementRow(
               place: p.place,
@@ -147,7 +149,7 @@ class PlayoffBracketScreen extends ConsumerWidget {
           const SizedBox(height: 16),
         ],
         _SectionHeader(
-            icon: Icons.account_tree, title: 'Winner-Bracket', color: _gold),
+            icon: Icons.account_tree_outlined, title: 'Winner-Bracket', color: _gold),
         _Legend(text: 'Plätze 1–${bracket.playoffTeams} · Setzung aus der Tabelle'),
         for (final r in bracket.winners)
           _RoundBlock(
@@ -399,7 +401,7 @@ class _SideRow extends StatelessWidget {
             padding: const EdgeInsets.only(right: 8),
             child: Text('${slot.seed}',
                 style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold)),
           ),
@@ -432,7 +434,7 @@ class _SideRow extends StatelessWidget {
           Text(formatPoints(points),
               style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 17,
                   color: winner ? scheme.onSurface : scheme.onSurfaceVariant)),
       ],
     );
@@ -512,7 +514,7 @@ class _PlacementRow extends StatelessWidget {
             decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
             child: Text('$place',
                 style: TextStyle(
-                    color: fg, fontWeight: FontWeight.bold, fontSize: 13)),
+                    color: fg, fontWeight: FontWeight.bold, fontSize: 14)),
           ),
           const SizedBox(width: 10),
           AppAvatar(

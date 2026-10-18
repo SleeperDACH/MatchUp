@@ -174,30 +174,59 @@ void main() {
     }
 
     // **Die Reihenfolge wird mitgeprüft, nicht nur abgebildet.** Ein Golden
-    // sagt „so sah es aus", nicht „so muss es sein" — und genau die Reihenfolge
-    // ist hier die Zusage: erst die freien, dann die vergebenen, in beiden
-    // Gruppen die punktbesten oben.
-    final namen = tester
+    // sagt „so sah es aus", nicht „so muss es sein".
+    List<String?> namen() => tester
         .widgetList<ListTile>(find.byType(ListTile))
         .map((t) => ((t.title as Row).children.first as Expanded).child)
         .map((w) => (w as Text).data)
         .toList();
-    expect(namen.take(3).toList(),
+
+    // **Verfügbar** (seit 16.10.2026 ein eigener Reiter): nur freie Spieler,
+    // nach Saisonpunkten.
+    final frei = namen();
+    expect(frei.take(3).toList(),
         ['Hyun-seok Hong', 'Andreas Hanche-Olsen', 'Marius Wolf'],
         reason: '49,5 vor 28 vor 18 — freie Spieler nach Punkten');
-    expect(namen.indexOf('Serhou Guirassy'), greaterThan(namen.indexOf('Denis Zakaria')),
-        reason: 'Ein vergebener Spieler steht unter jedem freien, auch wenn '
-            'er mehr Punkte hat');
-    expect(find.text('IN KADERN'), findsOneWidget);
-    expect(find.text('JojoAcz44'), findsNothing,
-        reason: 'Der Teamname steht in der Zeile, nicht als eigener Text');
-    expect(find.textContaining('JojoAcz44'), findsOneWidget,
-        reason: 'Wem der Spieler gehört, muss dranstehen');
+    expect(frei, isNot(contains('Serhou Guirassy')),
+        reason: 'ein vergebener Spieler steht nicht unter „Verfügbar"');
+    expect(find.text('Spieler'), findsOneWidget, reason: 'der neue Titel');
 
+    // Die Vorschau zeigt den ersten Reiter.
     await expectLater(
       find.byType(FreeAgencyScreen),
       matchesGoldenFile('goldens/free_agency_vorschau.png'),
     );
+
+    // **Leaders**: alle Spieler nach Saisonpunkten, mit Rang und Besitzer.
+    await tester.tap(find.text('LEADERS'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    final alle = namen();
+    expect(alle, contains('Serhou Guirassy'),
+        reason: 'in den Leaders stehen auch vergebene Spieler');
+    expect(alle.indexOf('Serhou Guirassy'), lessThan(alle.indexOf('Marius Wolf')),
+        reason: 'sortiert nur nach Punkten, nicht nach frei/vergeben');
+    expect(find.textContaining('JojoAcz44'), findsOneWidget,
+        reason: 'Wem der Spieler gehört, muss dranstehen');
+    expect(find.text('1'), findsWidgets, reason: 'der Rang steht vorn');
+    expect(find.textContaining('Mainz 05'), findsNothing,
+        reason: 'der Vereinsname steht nicht mehr in der Zeile — das Wappen '
+            'sagt ihn schon (16.10.2026)');
+    await expectLater(
+      find.byType(FreeAgencyScreen),
+      matchesGoldenFile('goldens/spieler_leaders.png'),
+    );
+
+    // **Nur Free Agents** in den Leaders: vergebene Spieler fallen heraus,
+    // der Rang bleibt der in der ganzen Liga.
+    await tester.tap(find.text('Nur Free Agents'));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    final nurFrei = namen();
+    expect(nurFrei, isNot(contains('Serhou Guirassy')));
+    expect(nurFrei, contains('Marius Wolf'));
   });
 
   testWidgets('Vorschau: Waiver-Antrag bei vollem Kader', (tester) async {
@@ -297,7 +326,7 @@ void main() {
     }
 
     // Den goldenen Antragsknopf des angepfiffenen Spielers drücken.
-    await tester.tap(find.byIcon(Icons.schedule).last);
+    await tester.tap(find.byIcon(Icons.schedule_outlined).last);
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

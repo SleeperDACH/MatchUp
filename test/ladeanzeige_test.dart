@@ -47,7 +47,11 @@ void main() {
       if (_erlaubt.contains(datei.path)) continue;
       final zeilen = datei.readAsLinesSync();
       for (var i = 0; i < zeilen.length; i++) {
-        if (!zeilen[i].contains('CircularProgressIndicator')) continue;
+        // Das Skelett (seit 15.10.2026) folgt derselben Regel wie der Kreis.
+        if (!zeilen[i].contains('CircularProgressIndicator') &&
+            !zeilen[i].contains('Skelett(')) {
+          continue;
+        }
         // Die Bedingung steht unmittelbar davor — fünf Zeilen decken auch
         // eine über mehrere Zeilen umbrochene Oder-Verknüpfung ab.
         final davor = zeilen.sublist((i - 5).clamp(0, i), i).join(' ');
@@ -60,6 +64,26 @@ void main() {
         reason: 'Gefragt ist „liegen Daten vor?" (`valueOrNull == null`), '
             'nicht „lädt gerade etwas?" — sonst fällt der Schirm bei jedem '
             'Nachladen auf einen leeren Kreis zurück:\n${treffer.join('\n')}');
+  });
+
+  test('ein Schirm lädt mit Skelett, nicht mit einem Kreis in der Mitte', () {
+    // Design-Ideen Punkt 7: Die Form der Seite statt eines Kreises. Ein
+    // Kreis in einem Knopf (`MitLadekreis`) oder über Inhalt bleibt erlaubt —
+    // verboten ist der, der den ganzen Schirm ersetzt.
+    final treffer = <String>[];
+    for (final datei in Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))) {
+      final t = datei.readAsStringSync();
+      if (RegExp(r'Center\(\s*child:\s*CircularProgressIndicator\(\)\s*\)')
+          .hasMatch(t)) {
+        treffer.add(datei.path);
+      }
+    }
+    expect(treffer, isEmpty,
+        reason: 'Statt `Center(child: CircularProgressIndicator())` gehört '
+            'dort `Skelett()` hin:\n${treffer.join('\n')}');
   });
 
   testWidgets('der Vorwärmer holt einmal, und erst nach dem Aufbau',

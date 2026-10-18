@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -116,7 +117,7 @@ class _SpielplanTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(teamFixturesProvider(teamId));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => _Fehler(
         text: 'Spielplan konnte nicht geladen werden.',
         onRetry: () => ref.invalidate(teamFixturesProvider(teamId)),
@@ -147,7 +148,7 @@ class _KaderTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(teamSquadProvider(teamId));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => _Fehler(
         text: 'Kader konnte nicht geladen werden.',
         onRetry: () => ref.invalidate(teamSquadProvider(teamId)),
@@ -225,7 +226,7 @@ class _KaderZeile extends StatelessWidget {
           member.jerseyNumber?.toString() ?? '–',
           textAlign: TextAlign.center,
           style: TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 16, color: gedaempft),
+              fontWeight: FontWeight.bold, fontSize: 17, color: gedaempft),
         ),
       ),
       title: Row(
@@ -262,7 +263,7 @@ class _NewsTab extends ConsumerWidget {
     final args = (teamId: teamId, name: name, leagueId: leagueId);
     final async = ref.watch(teamNewsProvider(args));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => _Fehler(
         text: 'News konnten nicht geladen werden.',
         onRetry: () => ref.invalidate(teamNewsProvider(args)),

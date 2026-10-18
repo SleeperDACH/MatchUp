@@ -20,7 +20,6 @@ import 'matchup_lineups.dart';
 import '../models/fantasy_models.dart';
 import '../models/player_absence.dart';
 import '../providers.dart';
-import 'matchup_detail_screen.dart';
 import '../../../core/ui/app_avatar.dart';
 
 // MatchUp-Palette (wie in der Übersicht): grün normal, rot solange live.
@@ -57,8 +56,8 @@ const double kMatchupBannerHoehe = 176;
 
 /// Live-MatchUp-Kopf: zeigt die eigene Head-to-Head-Paarung eines Spieltags.
 /// Hintergrund grün; solange der Spieltag läuft (erster Anpfiff bis letzter
-/// Abpfiff) wird er rot und zeigt den Live-Stand. Tippen springt in die
-/// MatchUp-Detailseite. Liegen die Basisdaten nicht vor (kein Login, <2
+/// Abpfiff) wird er rot und zeigt den Live-Stand. Tippen tut, was [onTap]
+/// sagt. Liegen die Basisdaten nicht vor (kein Login, <2
 /// Manager, keine eigene Paarung), wird [fallback] gezeigt.
 class MatchupHero extends ConsumerWidget {
   const MatchupHero({
@@ -76,7 +75,8 @@ class MatchupHero extends ConsumerWidget {
   /// Was ein Tipp auf den Kasten tut. Auf der Liga-Übersicht: in den
   /// MatchUp-Reiter wechseln (auf Ansage, 14.10.2026) — nicht mehr in die
   /// abgeschlossene Detailseite, die dasselbe Duell ein zweites Mal zeigte.
-  /// Ohne Angabe bleibt es bei der Detailseite.
+  /// Ohne Angabe ist der Kasten reine Anzeige — die frühere Detailseite gibt
+  /// es nicht mehr.
   final VoidCallback? onTap;
 
   @override
@@ -118,16 +118,6 @@ class MatchupHero extends ConsumerWidget {
           color: m.avatarColor,
         ),
     };
-    // Tap auf den Kopf → Detailseite der eigenen Paarung (ich immer „Heim").
-    void openDetail(String? oppId, String? oppName) => showMatchupDetail(
-          context,
-          league: league,
-          round: round,
-          homeId: myId,
-          homeName: nameOf[myId] ?? 'Du',
-          awayId: oppId,
-          awayName: oppName,
-        );
     final roundFx = [
       for (final f in all ?? const <Fixture>[])
         if (f.round == round) f
@@ -145,6 +135,7 @@ class MatchupHero extends ConsumerWidget {
     // Bye: eigener Spieltag spielfrei.
     if (pairing.isBye) {
       return MatchupBanner(
+        remisGrenze: league.remisGrenze ?? 0,
         round: round,
         homeName: nameOf[myId] ?? 'Du',
         awayName: null,
@@ -156,7 +147,7 @@ class MatchupHero extends ConsumerWidget {
         live: live,
         started: started,
         mine: true,
-        onTap: onTap ?? () => openDetail(null, null),
+        onTap: onTap,
       );
     }
 
@@ -225,6 +216,7 @@ class MatchupHero extends ConsumerWidget {
     );
 
     return MatchupBanner(
+        remisGrenze: league.remisGrenze ?? 0,
       round: round,
       homeName: nameOf[myId] ?? 'Du',
       awayName: nameOf[oppId] ?? '?',
@@ -243,7 +235,7 @@ class MatchupHero extends ConsumerWidget {
       homeErwartet: prognose.heimErwartet,
       awayErwartet: prognose.gastErwartet,
       siegchanceHeim: prognose.siegchanceHeim,
-      onTap: onTap ?? () => openDetail(oppId, nameOf[oppId]),
+      onTap: onTap,
     );
   }
 }
@@ -429,7 +421,7 @@ class HeroAvatar extends StatelessWidget {
 }
 
 /// Grau, solange niemand Favorit ist.
-const _cChanceNeutral = Color(0xFF9AA0AA);
+const kChanceNeutral = Color(0xFF9AA0AA);
 
 /// **Die Farbregel für Band und Prozentzahlen — an einer Stelle.**
 ///
@@ -441,10 +433,10 @@ const _cChanceNeutral = Color(0xFF9AA0AA);
 /// **Unter drei Prozentpunkten Unterschied ist niemand Favorit.** 51 zu 49 ist
 /// ein Münzwurf, und ihn grün gegen rot zu stellen behauptet eine Überlegen-
 /// heit, die im Rauschen liegt.
-(Color, Color) _chanceFarben(int linksProzent) {
+(Color, Color) chanceFarben(int linksProzent) {
   final rechtsProzent = 100 - linksProzent;
   if ((linksProzent - rechtsProzent).abs() < 3) {
-    return (_cChanceNeutral, _cChanceNeutral);
+    return (kChanceNeutral, kChanceNeutral);
   }
   return linksProzent > rechtsProzent
       ? (_cGreen, _cRed)
@@ -513,7 +505,7 @@ DuellPrognose duellPrognose({
                   spielerId: p.id,
                   position: p.position,
                   regeln: regeln,
-                ).punkteJeSpieltag,
+                ).schnitt,
                 anpfiff: spiel?.anpfiff,
                 faellt: ausfaelle.containsKey(p.id),
               );
@@ -543,7 +535,7 @@ typedef BannerSerie = ({DuellAusgang ausgang, int anzahl});
 /// Platz, Bilanz (S-U-N) und Serie eines Managers — aus derselben
 /// [h2hGrundlage] wie die Tabelle, damit beide dasselbe sagen.
 BannerBilanz bannerBilanz(H2HGrundlage g, String managerId) {
-  final standings = h2hStandings(g.ids, g.summen);
+  final standings = h2hStandings(g.ids, g.summen, remisGrenze: g.remis);
   if (standings.every((r) => r.played == 0)) return (zeile: null, serie: null);
   final i = standings.indexWhere((r) => r.managerId == managerId);
   if (i < 0) return (zeile: null, serie: null);
@@ -553,6 +545,7 @@ BannerBilanz bannerBilanz(H2HGrundlage g, String managerId) {
     managerId: managerId,
     gewertet: g.summen,
     letzteRunde: kRegularSeasonMatchdays,
+    remisGrenze: g.remis,
   );
   return (
     zeile: 'P${i + 1} · ${r.wins}-${r.ties}-${r.losses}',
@@ -613,7 +606,12 @@ class MatchupBanner extends StatelessWidget {
     this.siegchanceHeim,
     this.onHomeName,
     this.onAwayName,
+    this.remisGrenze = 0,
   });
+
+  /// Höchster Abstand, der noch Unentschieden ist (Ligaeinstellung) — damit
+  /// „Sieg" im Kasten dasselbe meint wie in der Tabelle.
+  final num remisGrenze;
 
   final int round;
   final String homeName;
@@ -719,6 +717,7 @@ class MatchupBanner extends StatelessWidget {
               chance: chanceLinks,
               started: started,
               beendet: beendet,
+              remisGrenze: remisGrenze,
               bilanz: homeBilanz,
               onName: onHomeName,
             ),
@@ -740,6 +739,7 @@ class MatchupBanner extends StatelessWidget {
               chance: chanceRechts,
               started: started,
               beendet: beendet,
+              remisGrenze: remisGrenze,
               bilanz: awayBilanz,
               onName: onAwayName,
             ),
@@ -765,7 +765,10 @@ class _Seite extends StatelessWidget {
     required this.beendet,
     required this.bilanz,
     this.onName,
+    this.remisGrenze = 0,
   });
+
+  final num remisGrenze;
 
   final bool links;
   final String name;
@@ -782,7 +785,9 @@ class _Seite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final verloren = beendet && punkte < gegnerPunkte;
+    final ausgang =
+        duellErgebnis(punkte, gegnerPunkte, remisGrenze: remisGrenze);
+    final verloren = beendet && ausgang < 0;
     final ausrichtung =
         links ? CrossAxisAlignment.start : CrossAxisAlignment.end;
 
@@ -792,7 +797,7 @@ class _Seite extends StatelessWidget {
       gross = Punktzahl(
         punkte,
         stil: TextStyle(
-          fontSize: Schrift.h1,
+          fontSize: Schrift.gross,
           fontWeight: FontWeight.w800,
           height: 1,
           color: Colors.white.withValues(alpha: verloren ? 0.6 : 1),
@@ -802,7 +807,7 @@ class _Seite extends StatelessWidget {
       gross = Punktzahl(
         erwartet!,
         stil: TextStyle(
-          fontSize: Schrift.h1,
+          fontSize: Schrift.gross,
           fontWeight: FontWeight.w800,
           height: 1,
           color: Colors.white.withValues(alpha: 0.55),
@@ -811,7 +816,7 @@ class _Seite extends StatelessWidget {
     } else {
       gross = Text('–',
           style: TextStyle(
-              fontSize: Schrift.h1,
+              fontSize: Schrift.gross,
               fontWeight: FontWeight.w800,
               height: 1,
               color: Colors.white.withValues(alpha: 0.4)));
@@ -838,7 +843,7 @@ class _Seite extends StatelessWidget {
           klein,
           maxLines: 1,
           style: TextStyle(
-            fontSize: Schrift.winzig,
+            fontSize: Schrift.label,
             fontWeight: FontWeight.w600,
             height: 1,
             color: Colors.white.withValues(alpha: 0.5),
@@ -878,7 +883,7 @@ class _Seite extends StatelessWidget {
           links: links,
           chance: chance,
           beendet: beendet,
-          sieg: beendet && punkte > gegnerPunkte,
+          sieg: beendet && ausgang > 0,
           niederlage: verloren,
         ),
         const SizedBox(height: 10),
@@ -894,7 +899,7 @@ class _Seite extends StatelessWidget {
 /// Siegchance einer Seite: „63 % Sieg" und ein Balken, der nur ihr gehört.
 ///
 /// **Grün für den Favoriten, rot für den anderen, grau bei einem Münzwurf** —
-/// dieselbe Farbregel wie zuvor (`_chanceFarben`), nur je Seite angewandt.
+/// dieselbe Farbregel wie zuvor (`chanceFarben`), nur je Seite angewandt.
 /// Ist der Spieltag beendet, steht dort das Ergebnis als Wort.
 class _ChanceZeile extends StatelessWidget {
   const _ChanceZeile({
@@ -919,12 +924,12 @@ class _ChanceZeile extends StatelessWidget {
     if (beendet) {
       text = sieg ? 'Sieg' : (niederlage ? 'Niederlage' : 'Unentschieden');
       anteil = sieg ? 1 : (niederlage ? 0 : 0.5);
-      farbe = sieg ? _cGreen : (niederlage ? _cRed : _cChanceNeutral);
+      farbe = sieg ? _cGreen : (niederlage ? _cRed : kChanceNeutral);
     } else if (chance != null) {
       final prozent = (chance! * 100).round().clamp(0, 100);
       text = '$prozent % Sieg';
       anteil = chance!;
-      farbe = _chanceFarben(prozent.clamp(1, 99)).$1;
+      farbe = chanceFarben(prozent.clamp(1, 99)).$1;
     } else {
       // Ohne Grundlage keine Zahl — aber dieselbe Höhe, damit beide Seiten
       // und alle Karten des Karussells gleich stehen.
@@ -939,7 +944,7 @@ class _ChanceZeile extends StatelessWidget {
           Text(
             text.toUpperCase(),
             style: TextStyle(
-              fontSize: Schrift.winzig,
+              fontSize: Schrift.label,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.8,
               height: 1,
@@ -1013,7 +1018,7 @@ class _NameZeilen extends StatelessWidget {
     final (pfeil, buchstabe, farbe) = switch (serie?.ausgang) {
       DuellAusgang.sieg => ('▲', 'S', _cGreen),
       DuellAusgang.niederlage => ('▼', 'N', _cRed),
-      _ => ('■', 'U', _cChanceNeutral),
+      _ => ('■', 'U', kChanceNeutral),
     };
     return Column(
       crossAxisAlignment:
@@ -1049,7 +1054,7 @@ class _NameZeilen extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: links ? TextAlign.start : TextAlign.end,
             style: TextStyle(
-              fontSize: Schrift.klein,
+              fontSize: Schrift.label,
               fontWeight: FontWeight.w600,
               height: 1.1,
               color: leise,

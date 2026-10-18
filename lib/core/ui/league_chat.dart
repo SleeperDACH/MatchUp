@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/widgets/skelett.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -25,6 +26,7 @@ class LeagueChat extends StatefulWidget {
     this.hintText = 'Nachricht an die Liga …',
     this.emptyText = 'Noch keine Nachrichten.\nSchreib der Liga als Erster!',
     this.extraBuilder,
+    this.systemBuilder,
     this.enableReply = true,
     this.neuAb,
   });
@@ -50,6 +52,11 @@ class LeagueChat extends StatefulWidget {
 
   /// Optionale Zusatzkarte unter einer Nachricht (z. B. Trade-Aktionen).
   final Widget? Function(BuildContext, ChatMessage)? extraBuilder;
+
+  /// Eigene Darstellung einer **Systemnachricht** — etwa die Kaderbewegungen
+  /// im Liga-Chat (17.10.2026). `null` zurückgeben heißt: die gewöhnliche
+  /// Systemzeile.
+  final Widget? Function(BuildContext, ChatMessage)? systemBuilder;
 
   /// Live-Zustand der Nachrichten (älteste zuerst).
   final AsyncValue<List<ChatMessage>> messages;
@@ -172,7 +179,7 @@ class _LeagueChatState extends State<LeagueChat> {
       children: [
         Expanded(
           child: widget.messages.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const Skelett(),
             error: (e, _) => _ChatError(error: e, onRetry: widget.onRetry),
             data: (server) {
               final list = _zusammenfuehren(server);
@@ -194,6 +201,7 @@ class _LeagueChatState extends State<LeagueChat> {
                     avatars: widget.avatars,
                     myId: widget.myId,
                     extraBuilder: widget.extraBuilder,
+                    systemBuilder: widget.systemBuilder,
                     onReply: widget.enableReply
                         ? (m) => setState(() => _replyTo = m)
                         : null,
@@ -228,9 +236,12 @@ class _MessageList extends StatefulWidget {
     required this.myId,
     required this.onReply,
     this.extraBuilder,
+    this.systemBuilder,
     this.neuAb,
     this.unterwegs = const {},
   });
+
+  final Widget? Function(BuildContext, ChatMessage)? systemBuilder;
 
   /// IDs eigener Nachrichten, die gerade gesendet werden — sie stehen
   /// gedämpft da, bis der Server sie bestätigt.
@@ -297,13 +308,15 @@ class _MessageListState extends State<_MessageList> {
       // Eigene zählen nicht: Was man selbst geschrieben hat, hat man gelesen.
       if (!neuMarkeGesetzt &&
           widget.neuAb != null &&
+          !msg.isSystem &&
           msg.userId != widget.myId &&
           msg.createdAt.isAfter(widget.neuAb!)) {
         rows.add(const _NeuTrenner());
         neuMarkeGesetzt = true;
       }
       if (msg.isSystem) {
-        rows.add(_SystemLine(text: msg.body));
+        rows.add(widget.systemBuilder?.call(context, msg) ??
+            _SystemLine(text: msg.body));
         continue;
       }
       final isMine = msg.userId == widget.myId;
@@ -385,7 +398,7 @@ class _NeuTrenner extends StatelessWidget {
               'Neue Nachrichten',
               style: TextStyle(
                 color: rot,
-                fontSize: Schrift.klein,
+                fontSize: Schrift.label,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.3,
               ),
@@ -441,52 +454,55 @@ class _SystemLine extends StatelessWidget {
 
   final String text;
 
+  /// **Wie eine Nachricht der Liga selbst** (17.10.2026, nach dem Vorbild
+  /// Sleeper): links das Liga-Zeichen, daneben der Text. Vorher stand sie in
+  /// einem grün getönten Kasten — grün gestochene Flächen sind in dieser App
+  /// verboten, und eine Meldung ist kein Signal „hier läuft etwas".
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Emoji am Anfang (falls vorhanden) vom Text trennen, damit es als
-    // farbiges Badge links steht.
-    final parts = text.split(' ');
-    final hasIcon = parts.isNotEmpty && parts.first.runes.length <= 2 &&
-        parts.first.codeUnits.first > 0x2000;
-    final icon = hasIcon ? parts.first : null;
-    final body = hasIcon ? parts.sublist(1).join(' ') : text;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.86),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: scheme.primary.withValues(alpha: 0.22)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (icon != null) ...[
-                  Text(icon, style: const TextStyle(fontSize: 14)),
-                  const SizedBox(width: 6),
-                ],
-                Flexible(
-                  child: Text(
-                    body,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                  ),
-                ),
-              ],
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const ChatLigaZeichen(),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                text,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
+    );
+  }
+}
+
+/// Das Zeichen, unter dem die Liga selbst im Chat spricht — ein Schild im
+/// Kreis, wie bei Sleeper. Öffentlich, weil die Kaderbewegungen im
+/// Fantasy-Chat dieselbe Absenderzeile tragen.
+class ChatLigaZeichen extends StatelessWidget {
+  const ChatLigaZeichen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: scheme.onSurface.withValues(alpha: 0.07),
+      ),
+      child: Icon(Icons.shield_outlined, size: 20, color: scheme.primary),
     );
   }
 }
@@ -546,7 +562,7 @@ class _MessageBubble extends StatelessWidget {
             ),
             if (onReply != null)
               ListTile(
-                leading: const Icon(Icons.reply),
+                leading: const Icon(Icons.reply_outlined),
                 title: const Text('Antworten'),
                 onTap: () {
                   Navigator.of(ctx).pop();
@@ -599,7 +615,7 @@ class _MessageBubble extends StatelessWidget {
                 timeText,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: scheme.onSurfaceVariant,
-                      fontSize: 10,
+                      fontSize: 11,
                     ),
               ),
             ],
@@ -803,7 +819,7 @@ class _Composer extends StatelessWidget {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.send),
+                  : const Icon(Icons.send_outlined),
             ),
           ],
         ),

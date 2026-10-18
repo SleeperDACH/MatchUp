@@ -217,10 +217,9 @@ class _InviteRow extends StatelessWidget {
       title: Text(name),
       trailing: invited
           ? const Chip(label: Text('Eingeladen'))
-          : FilledButton.icon(
+          : FilledButton(
               onPressed: onInvite,
-              icon: const Icon(Icons.send, size: 18),
-              label: const Text('Einladen')),
+              child: const Text('Einladen')),
     );
   }
 }

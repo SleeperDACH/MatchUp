@@ -39,10 +39,10 @@ class KaderLimitsEditor extends StatelessWidget {
   };
 
   static const _symbol = {
-    PlayerPosition.gk: Icons.sports_handball,
+    PlayerPosition.gk: Icons.sports_handball_outlined,
     PlayerPosition.def: Icons.shield_outlined,
     PlayerPosition.mid: Icons.hub_outlined,
-    PlayerPosition.fwd: Icons.sports_soccer,
+    PlayerPosition.fwd: Icons.sports_soccer_outlined,
   };
 
   /// Untergrenze je Position: Unter der Startelf-Mindestzahl wäre keine

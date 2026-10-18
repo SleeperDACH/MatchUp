@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 
 import '../../../app/widgets/pill_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -101,10 +102,9 @@ class _LeagueSearchScreenState extends ConsumerState<LeagueSearchScreen> {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             child: SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: () => joinAnyFlow(context, ref),
-                icon: const Icon(Icons.vpn_key_outlined, size: 18),
-                label: const Text('Mit Einladungscode beitreten'),
+                child: const Text('Mit Einladungscode beitreten'),
               ),
             ),
           ),
@@ -142,7 +142,7 @@ class _LeagueSearchScreenState extends ConsumerState<LeagueSearchScreen> {
           Expanded(
             child: results.when(
               loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+                  const Skelett(),
               error: (e, _) => _CenteredNote('Suche fehlgeschlagen: $e'),
               data: (all) {
                 final list = _filter(all);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
@@ -44,7 +45,7 @@ class BonusTipsTableScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Bonustipp-Tabelle')),
       // Nur wenn nichts dasteht, siehe die übrigen Tabellen.
       body: (membersAsync.valueOrNull == null || answersAsync.valueOrNull == null)
-          ? const Center(child: CircularProgressIndicator())
+          ? const Skelett()
           : Builder(builder: (context) {
               final members = membersAsync.valueOrNull ?? const [];
               final answers = answersAsync.valueOrNull ?? const [];

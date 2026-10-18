@@ -112,6 +112,7 @@ WeeklyRecap computeWeeklyRecap({
   required Map<String, PlayerMatchStats> stats,
   FantasyScoringRules scoring = FantasyScoringRules.standard,
   required RosterConfig rosterConfig,
+  num remisGrenze = 0,
 }) {
   // Kader je Manager (nur Spieler, die im Pool bekannt sind).
   final rosterByManager = <String, List<FantasyPlayer>>{};
@@ -217,7 +218,10 @@ WeeklyRecap computeWeeklyRecap({
     if (m.isBye) continue;
     final hp = pointsById[m.home] ?? 0;
     final ap = pointsById[m.away] ?? 0;
-    if (hp == ap) continue; // Unentschieden hat keinen Sieger
+    // Unentschieden hat keinen Sieger — auch nicht das knappe nach der
+    // Ligaregel (`remisGrenze`). Sonst stünde „schlägt X · +3,2" im
+    // Rückblick, während die Tabelle ein Unentschieden zählt.
+    if (duellErgebnis(hp, ap, remisGrenze: remisGrenze) == 0) continue;
     final homeWon = hp > ap;
     final res = RecapMatchup(
       winnerId: homeWon ? m.home : m.away!,

@@ -229,25 +229,21 @@ void main() {
 
     /// Wer gerade auf dem Platz steht (kurze Namen).
     ///
-    /// **Ohne Rücksicht auf die Schreibweise**, und klein abgelegt: Die Kachel
-    /// setzt den Namen in Versalien („def1" → „DEF1"). Ein Test, der die
-    /// Schreibweise einer Beschriftung mitprüft, meldet einen Fehler im
-    /// Formationswechsel, wo nur die Schrift anders geworden ist — genau das
-    /// ist hier passiert.
-    ///
-    /// **Die Versalien sind hier das Unterscheidungsmerkmal, kein Zufall.**
-    /// Die Kachel auf dem Feld setzt den Namen groß (`_short(p.name)
-    /// .toUpperCase()`), die Bankzeile lässt ihn, wie er ist. Seit die Bank
-    /// ihre Namen einzeln zeigt (vorher steckten sie in „name · punkte" eines
-    /// Chips und fielen durch das Muster), zählte ein Helfer ohne diese
-    /// Unterscheidung die vier Bankspieler mit: 15 statt 11.
-    ///
-    /// Über die Verschachtelung geht es **nicht** — die Bank liegt selbst in
-    /// einem `AnimatedContainer` (ihrer Ablegefläche), genau wie die Kacheln.
+    /// **Gesucht wird in den Feldkacheln**, nicht über die Schreibweise.
+    /// Bis zum 16.10.2026 setzte die Kachel den Namen in Versalien, und daran
+    /// unterschied der Test Feld von Bank; seit der Kachel-Überarbeitung steht
+    /// er in normaler Schreibung, und eine Beschriftungsregel ist kein
+    /// verlässliches Merkmal. Seit dem 17.10.2026 trägt auch die Bank diese
+    /// Kachel — gesucht wird deshalb in den Feldplätzen (`_Slot`).
     Set<String> aufDemPlatz() => {
-          for (final w in tester.widgetList<Text>(find.byType(Text)))
+          for (final w in tester.widgetList<Text>(find.descendant(
+            of: find.byWidgetPredicate(
+                (w) => w.runtimeType.toString() == '_Slot'),
+            matching: find.byType(Text),
+          )))
             if (w.data != null &&
-                RegExp(r'^(GK|DEF|MID|FWD)\d$').hasMatch(w.data!))
+                RegExp(r'^(gk|def|mid|fwd)\d$', caseSensitive: false)
+                    .hasMatch(w.data!))
               w.data!.toLowerCase(),
         };
 

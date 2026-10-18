@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/mit_ladekreis.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/models.dart';
@@ -83,15 +84,10 @@ class _TipRulesSettingsScreenState
                 .any((id) => Leagues.byId(id).oddsSportKey != null),
           ),
           const SizedBox(height: 24),
-          FilledButton.icon(
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.save_outlined),
-            label: const Text('Speichern'),
+          FilledButton(
             onPressed: _saving ? null : _save,
+            child: MitLadekreis(
+                laedt: _saving, child: const Text('Speichern')),
           ),
         ],
       ),

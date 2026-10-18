@@ -46,6 +46,18 @@ class SpielerSchnitt {
   final double? minutenJeEinsatz;
   final double? punkteJeEinsatz;
 
+  /// **Der Schnitt, den die App zeigt und mit dem sie rechnet: je Einsatz**
+  /// (auf Ansage, 16.10.2026). Gemeldet an Eric Martel — 5,1 im Schnitt,
+  /// gespielt aber nur an zwei Spieltagen; die übrigen gingen als Nullen ein.
+  /// Ein Einsatz ist ein Spieltag mit Spielzeit (Minuten über 0); wer nur im
+  /// Kader stand, zählt nicht. Ohne Einsatz 0 — angezeigt wird dann ein
+  /// Strich (siehe [punkteJeEinsatz]).
+  ///
+  /// Gilt für jede Ø-Zahl eines Spielers **und** für die Prognose, die aus
+  /// ihnen summiert: Eine Prognose, die mit anderen Zahlen rechnet, als auf
+  /// den Karten stehen, wäre nicht nachzuvollziehen.
+  double get schnitt => punkteJeEinsatz ?? 0;
+
   /// Gibt es überhaupt etwas zu zeigen?
   bool get hatDaten => spieltage > 0;
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
+import '../../../app/widgets/mit_ladekreis.dart';
 
 import '../../../app/theme.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +15,7 @@ import '../../leagues/providers.dart';
 import '../../leagues/ui/visibility_settings_page.dart';
 import '../../tippspiel/providers.dart';
 import 'kader_limits_editor.dart';
+import 'remis_grenze_editor.dart';
 import 'wert_stepper.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
@@ -123,7 +126,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               l.name,
               style: Theme.of(
                 context,
-              ).textTheme.labelSmall?.copyWith(color: scheme.primary),
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -133,7 +136,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
         children: [
           // Liga-Identität (nur Ersteller).
           if (isOwner) ...[
-            _Section('Liga', farbe: _grpLiga),
+            _Section('Liga'),
             _settingsGroup(context, [
               ListTile(
                 leading: Icon(Icons.drive_file_rename_outline),
@@ -152,7 +155,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 onTap: editLogo,
               ),
               ListTile(
-                leading: Icon(l.isPublic ? Icons.public : Icons.lock_outline),
+                leading: Icon(l.isPublic ? Icons.public_outlined : Icons.lock_outline),
                 title: const Text('Sichtbarkeit & Beitritt'),
                 subtitle: Text(visibilityLabel(l.visibility, l.joinPolicy)),
                 trailing: RequestsBadgeChevron(
@@ -174,7 +177,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-            ], farbe: _grpLiga),
+            ]),
           ],
 
           // Der Draft — für alle, nicht nur den Ersteller. Nach dem letzten
@@ -182,7 +185,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
           // (`if (!draftFullyDone)`), und damit war das Board nicht mehr
           // erreichbar. Hier kommt man wieder heran.
           if (l.draftStatus != DraftStatus.setup) ...[
-            _Section('Draft', farbe: _grpAdmin),
+            _Section('Draft'),
             _settingsGroup(context, [
               ListTile(
                 leading: const Icon(Icons.grid_on_outlined),
@@ -195,11 +198,11 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 trailing: const _Chevron(),
                 onTap: () => open(DraftBoardScreen(league: l)),
               ),
-            ], farbe: _grpAdmin),
+            ]),
           ],
 
           // Persönliches.
-          _Section('Mein Team', farbe: _grpTeam),
+          _Section('Mein Team'),
           _settingsGroup(context, [
             ListTile(
               leading: Icon(Icons.badge_outlined),
@@ -212,10 +215,10 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const _Chevron(),
               onTap: editTeamName,
             ),
-          ], farbe: _grpTeam),
+          ]),
 
           // Spielregeln & Format.
-          _Section('Regeln & Format', farbe: _grpRegeln),
+          _Section('Regeln & Format'),
           _settingsGroup(context, [
             ListTile(
               leading: Icon(Icons.calculate_outlined),
@@ -232,7 +235,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             // wollte, fand im Zahnrad Draft, Playoffs, Punkte und
             // Sichtbarkeit, aber nichts für die Liga-Größe.
             ListTile(
-              leading: Icon(Icons.groups),
+              leading: Icon(Icons.groups_outlined),
               title: const Text('Teilnehmerzahl'),
               subtitle: Text(
                 l.maxTeams != null
@@ -243,7 +246,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               onTap: () => open(LeagueSettingsPage(league: l)),
             ),
             ListTile(
-              leading: Icon(Icons.sports),
+              leading: Icon(Icons.sports_outlined),
               title: const Text('Draft-Einstellungen'),
               subtitle: Text(
                 '${l.pickTime.label} · ${l.rounds} Runden${l.hasPause ? ' · Pause' : ''}',
@@ -261,6 +264,15 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const _Chevron(),
               onTap: () => open(KaderLimitsPage(league: l)),
             ),
+            // Unentschieden bei knappem Ausgang (16.10.2026). Für alle
+            // sichtbar — es ist eine Regel, nach der jeder gewertet wird.
+            ListTile(
+              leading: const Icon(Icons.balance_outlined),
+              title: const Text('Unentschieden'),
+              subtitle: Text(RemisGrenzeEditor.text(l.remisGrenze)),
+              trailing: const _Chevron(),
+              onTap: () => open(RemisGrenzePage(league: l)),
+            ),
             ListTile(
               leading: Icon(Icons.emoji_events_outlined),
               title: const Text('Playoff-Einstellungen'),
@@ -272,7 +284,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const _Chevron(),
               onTap: () => open(PlayoffSettingsPage(league: l)),
             ),
-          ], farbe: _grpRegeln),
+          ]),
 
           // **Kein Saison-Rollover mehr.** Er führte eine Dynasty-Liga in die
           // nächste Saison (Kader bleibt, danach U20-Draft) — beides gibt es
@@ -280,7 +292,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
           // gedraftet, dafür braucht es keine Aktion in den Einstellungen.
 
           if (isOwner) ...[
-            _Section('Admin', farbe: _grpAdmin),
+            _Section('Admin'),
             _settingsGroup(context, [
               ListTile(
                 leading: Icon(Icons.admin_panel_settings_outlined),
@@ -291,14 +303,14 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 trailing: const _Chevron(),
                 onTap: () => open(FantasyAdminScreen(league: l)),
               ),
-            ], farbe: _grpAdmin),
+            ]),
           ],
 
           // Ligainternes Tippspiel — **in beide Richtungen**, und keine
           // Richtung ohne Rückfrage. Vorher schaltete ein Fingertipp direkt
           // ein, und wieder aus kam man gar nicht mehr.
           if (isOwner) ...[
-            _Section('Tippspiel', farbe: _grpRegeln),
+            _Section('Tippspiel'),
             _settingsGroup(context, [
               Builder(
                 builder: (context) {
@@ -325,7 +337,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                   final an = l.tipEnabled;
                   return ListTile(
                     leading: Icon(
-                      an ? Icons.emoji_events : Icons.emoji_events_outlined,
+                      an ? Icons.emoji_events_outlined : Icons.emoji_events_outlined,
                     ),
                     title: Text(
                       an
@@ -342,7 +354,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                   );
                 },
               ),
-            ], farbe: _grpRegeln),
+            ]),
           ],
 
           _Section('Gefahrenzone', farbe: _grpGefahr),
@@ -350,7 +362,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             if (isOwner) ...[
               // Admin kann verlassen, muss dabei die Adminrechte übergeben.
               ListTile(
-                leading: Icon(Icons.logout, color: scheme.error),
+                leading: Icon(Icons.logout_outlined, color: scheme.error),
                 title: Text(
                   'Liga verlassen',
                   style: TextStyle(
@@ -381,7 +393,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               ),
             ] else
               ListTile(
-                leading: Icon(Icons.logout, color: scheme.error),
+                leading: Icon(Icons.logout_outlined, color: scheme.error),
                 title: Text(
                   'Liga verlassen',
                   style: TextStyle(
@@ -792,7 +804,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
           if (!editable) _LockNote(league: widget.league, ref: ref),
           _CardColumn([
             _SettingRow(
-              icon: Icons.timer,
+              icon: Icons.timer_outlined,
               label: 'Pickzeit',
               child: editable
                   ? DropdownButton<DraftPickTime>(
@@ -815,7 +827,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
             ),
             const Divider(height: 1),
             _SettingRow(
-              icon: Icons.numbers,
+              icon: Icons.numbers_outlined,
               label: 'Anzahl Runden',
               subtitle: '11 in der Startelf + ${_rounds - 11} auf der Bank',
               child: editable
@@ -835,7 +847,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
           const SizedBox(height: 8),
           _CardColumn([
             _SettingRow(
-              icon: Icons.format_list_numbered,
+              icon: Icons.format_list_numbered_outlined,
               label: 'Reihenfolge',
               child: editable
                   ? PillSelector<String>(
@@ -982,7 +994,7 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
               onChanged: editable
                   ? (v) => setState(() => _limitTeams = v)
                   : null,
-              secondary: Icon(Icons.groups),
+              secondary: Icon(Icons.groups_outlined),
               title: const Text('Teilnehmer begrenzen'),
               subtitle: Text(
                 _limitTeams
@@ -993,7 +1005,7 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
             if (_limitTeams) ...[
               const Divider(height: 1),
               _SettingRow(
-                icon: Icons.person,
+                icon: Icons.person_outline,
                 label: 'Max. Teilnehmer',
                 child: editable
                     ? WertStepper(
@@ -1022,13 +1034,13 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
           const SizedBox(height: 8),
           _CardColumn([
             _SettingRow(
-              icon: Icons.auto_awesome,
+              icon: Icons.auto_awesome_outlined,
               label: 'Modus',
               child: _ReadValue(l.mode.label),
             ),
             const Divider(height: 1),
             _SettingRow(
-              icon: Icons.calendar_today,
+              icon: Icons.calendar_today_outlined,
               label: 'Saison',
               child: _ReadValue('${l.season}/${(l.season + 1) % 100}'),
             ),
@@ -1142,7 +1154,7 @@ class _PlayoffSettingsPageState extends ConsumerState<PlayoffSettingsPage> {
             ),
             const Divider(height: 1),
             _SettingRow(
-              icon: Icons.date_range,
+              icon: Icons.date_range_outlined,
               label: 'Partie-Dauer',
               child: editable
                   ? PillSelector<int>(
@@ -1247,7 +1259,7 @@ class _PlayoffSummary extends StatelessWidget {
             '${plan.rounds} Runden × ${plan.weeksPerRound == 2 ? '2 Wochen' : '1 Woche'}',
           ),
           line(
-            Icons.play_arrow,
+            Icons.play_arrow_outlined,
             'Playoffs starten an Spieltag ${plan.startRound}',
             strong: true,
           ),
@@ -1334,7 +1346,7 @@ class _DraftOrderPageState extends ConsumerState<DraftOrderPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Draft-Reihenfolge')),
       body: managersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (managers) {
           _order ??= [...managers]
@@ -1439,16 +1451,9 @@ class _SaveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton.icon(
+    return FilledButton(
       onPressed: (saving || onPressed == null) ? null : onPressed,
-      icon: saving
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.check),
-      label: const Text('Speichern'),
+      child: MitLadekreis(laedt: saving, child: const Text('Speichern')),
     );
   }
 }
@@ -1488,7 +1493,7 @@ class _Section extends StatelessWidget {
             text.toUpperCase(),
             style: TextStyle(
               color: scheme.onSurface,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
             ),
@@ -1523,7 +1528,7 @@ Widget _settingsGroup(
   Color? farbe,
 }) {
   final scheme = Theme.of(context).colorScheme;
-  final ton = farbe ?? scheme.primary;
+  final ton = farbe ?? scheme.onSurfaceVariant;
   return IconTheme.merge(
     data: IconThemeData(color: ton, size: 22),
     child: ListTileTheme(
@@ -1540,12 +1545,12 @@ Widget _settingsGroup(
         // Roboto zurückgefallen statt Rajdhani zu benutzen, und zwar
         // auf dem Gerät genauso wie in der Vorschau.
         titleTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontSize: 16,
+          fontSize: 17,
           fontWeight: FontWeight.w600,
           color: scheme.onSurface,
         ),
         subtitleTextStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontSize: 12,
+          fontSize: 11,
           height: 1.25,
           color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
         ),
@@ -1584,12 +1589,10 @@ class _Chevron extends StatelessWidget {
   );
 }
 
-/// Farben der Einstellungs-Gruppen. Eine je Bereich — sie steht im Strich des
-/// Gruppenkopfs und in den Symbolen darunter.
-const _grpLiga = MatchUpColors.green;
-const _grpTeam = Color(0xFF4FC3A1);
-const _grpRegeln = Color(0xFFFFC83D);
-const _grpAdmin = Color(0xFF5B9DF9);
+/// **Nur die Gefahrenzone trägt Farbe** (Design-Ideen Punkt 3, 15.10.2026).
+/// Vorher hatte jede Gruppe ihren eigenen Ton (grün, türkis, gold, blau) —
+/// fünf Farben, die gliederten, aber nichts bedeuteten. Rot dagegen sagt
+/// etwas: Was hier steht, lässt sich nicht zurücknehmen.
 const _grpGefahr = MatchUpColors.red;
 
 /// **Kader-Limits je Position.**
@@ -1740,7 +1743,7 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               'Höchstens so viele Spieler einer Position im Kader. Gilt beim '
-              'Draften, in der Free Agency, bei Waivern und Trades — nicht für '
+              'Draften, beim Holen von Spielern, bei Waivern und Trades — nicht für '
               'die Aufstellung, die regelt die Formation.',
               style: Theme.of(
                 context,
@@ -1933,9 +1936,15 @@ class _InviteBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // Kartengrund statt grün getönter Fläche — grün gestochene Flächen sind
+    // in dieser App verboten, und ein Code zum Kopieren ist weder „ich" noch
+    // „gut" (Design-Ideen Punkt 3, 15.10.2026).
     return Material(
-      color: scheme.primary.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(14),
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Theme.of(context).dividerColor),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () async {
@@ -1950,7 +1959,7 @@ class _InviteBanner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(Icons.key),
+              Icon(Icons.vpn_key_outlined),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1965,7 +1974,7 @@ class _InviteBanner extends StatelessWidget {
                     Text(
                       code,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
                       ),
@@ -1973,10 +1982,93 @@ class _InviteBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.copy, size: 18, color: scheme.primary),
+              Icon(Icons.content_copy, size: 18, color: scheme.onSurfaceVariant),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// **Unentschieden bei knappem Ausgang** — eigene Seite unter Regeln & Format.
+///
+/// Anders als die Draft-Einstellungen ist sie die ganze Saison änderbar, und
+/// sie wirkt **rückwirkend**: Die Bilanz wird bei jedem Aufruf aus den
+/// Punkten neu gerechnet. Das sagt die Seite vor dem Speichern, und der
+/// Liga-Chat bekommt eine Meldung (Trigger in Migration 0134).
+class RemisGrenzePage extends ConsumerStatefulWidget {
+  const RemisGrenzePage({super.key, required this.league});
+
+  final FantasyLeague league;
+
+  @override
+  ConsumerState<RemisGrenzePage> createState() => _RemisGrenzePageState();
+}
+
+class _RemisGrenzePageState extends ConsumerState<RemisGrenzePage> {
+  late double? _wert = widget.league.remisGrenze;
+  bool _saving = false;
+
+  bool get _geaendert => _wert != widget.league.remisGrenze;
+
+  Future<void> _speichern() async {
+    setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .updateRemisGrenze(widget.league.id, _wert);
+      ref.invalidate(draftLeagueProvider(widget.league.id));
+      ref.invalidate(myFantasyLeaguesProvider);
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Gespeichert — die Liga ist im Chat informiert')));
+      navigator.pop();
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isOwner =
+        ref.watch(currentUserProvider)?.id == widget.league.createdBy;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Unentschieden')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          RemisGrenzeEditor(
+            wert: _wert,
+            aenderbar: isOwner,
+            onChanged: (v) => setState(() => _wert = v),
+          ),
+          const SizedBox(height: 12),
+          _Hinweis(
+            gut: true,
+            text: isOwner
+                ? 'Gilt für alle Spieltage dieser Saison — auch die schon '
+                    'gespielten. Bilanzen und Tabelle werden sofort neu '
+                    'gewertet, und die Liga bekommt eine Meldung im Chat.'
+                : 'Nur der Ersteller der Liga kann diese Regel ändern.',
+          ),
+          if (isOwner) ...[
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: (_saving || !_geaendert) ? null : _speichern,
+              child: MitLadekreis(
+                laedt: _saving,
+                child: const Text('Speichern'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

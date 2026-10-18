@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/widgets/mit_ladekreis.dart';
 
 /// Ein Abschnitt in einem Formular oder einer Einstellungsliste: kleine
 /// Überschrift in Versalien, optional ein erklärender Satz, darunter der
@@ -68,7 +69,7 @@ class FormSection extends StatelessWidget {
               hinweis!,
               style: TextStyle(
                   color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-                  fontSize: 12,
+                  fontSize: 11,
                   height: 1.3),
             ),
           ],
@@ -155,15 +156,9 @@ class FormActionBar extends StatelessWidget {
         minimum: const EdgeInsets.fromLTRB(16, 10, 16, 10),
         child: SizedBox(
           height: 50,
-          child: FilledButton.icon(
-            icon: busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.check),
-            label: Text(label),
+          child: FilledButton(
             onPressed: onPressed,
+            child: MitLadekreis(laedt: busy, child: Text(label)),
           ),
         ),
       ),

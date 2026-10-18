@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../typografie.dart';
+import 'info_knopf.dart';
 
 /// **Die Kapitelmarke der App.**
 ///
@@ -22,7 +23,12 @@ class Kapitelmarke extends StatelessWidget {
     super.key,
     this.farbe,
     this.obenLuft = Abstand.l,
+    this.info,
   });
+
+  /// Erklärung hinter einem ⓘ am Ende der Marke — für die Regel, die
+  /// vorher als Satz unter dem Abschnitt stand. `(titel, text)`.
+  final (String, String)? info;
 
   final String text;
   final Color? farbe;
@@ -53,7 +59,7 @@ class Kapitelmarke extends StatelessWidget {
             text.toUpperCase(),
             style: TextStyle(
               color: scheme.onSurface,
-              fontSize: Schrift.marke,
+              fontSize: Schrift.label,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
             ),
@@ -65,6 +71,18 @@ class Kapitelmarke extends StatelessWidget {
               color: scheme.onSurface.withValues(alpha: 0.12),
             ),
           ),
+          if (info case (final titel, final text))
+            // Die Marke bleibt so hoch wie ohne Knopf: Er ragt über ihre
+            // Zeile hinaus, statt sie auf 44 Punkte aufzublähen.
+            SizedBox(
+              height: 14,
+              width: 30,
+              child: OverflowBox(
+                maxHeight: 44,
+                maxWidth: 44,
+                child: InfoKnopf(titel: titel, text: text, groesse: 16),
+              ),
+            ),
         ],
       ),
     );

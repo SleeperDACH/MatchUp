@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logic/round_robin.dart';
@@ -124,7 +125,12 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
     final league = widget.league;
     ref.listen(matchupSprungProvider(league.id), (_, _) {
       setState(() => _round = null);
-      if (_pageController.hasClients) _pageController.jumpToPage(_loopBase);
+      // Auf die gemerkte Seite, nicht stur auf die erste: Das Duell-Band im
+      // Tabellen-Reiter springt auf eine beliebige Paarung (16.10.2026).
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(
+            _loopBase + ref.read(matchupKarussellSeiteProvider(league.id)));
+      }
     });
     final current = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final round = _round ?? current ?? 1;
@@ -177,7 +183,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
     if (!hatDaten) {
       final loadError = managersAsync.error ?? poolAsync.error;
       if (loadError == null) {
-        return const Center(child: CircularProgressIndicator());
+        return const Skelett();
       }
       return Center(
         child: Padding(
@@ -416,6 +422,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
                           child: MatchupBanner(
                             round: round,
+                            remisGrenze: league.remisGrenze ?? 0,
                             homeName: nameOf[hId] ?? '?',
                             awayName: aId == null ? null : (nameOf[aId] ?? '?'),
                             homePoints: weekTotals[hId] ?? 0.0,
@@ -535,16 +542,32 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                               roster: roster,
                               lineups: lineups,
                               stats: weekStats);
-                      return MatchupLineups(
-                        league: league,
-                        runde: round,
-                        home: home,
-                        away: away,
-                        homeId: hId,
-                        awayId: aId,
-                        homeName: nameOf[hId] ?? '?',
-                        awayName: aId == null ? null : (nameOf[aId] ?? '?'),
-                        stats: weekStats,
+                      // **Weich zwischen den Wochen** (Design-Ideen Punkt 6):
+                      // Wer den Spieltag wechselt, sieht die Aufstellungen
+                      // überblenden statt umspringen. Der Schlüssel ist
+                      // Spieltag und Paarung — beides wechselt den Inhalt.
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        layoutBuilder: (aktuell, vorige) => Stack(
+                          alignment: Alignment.topCenter,
+                          children: [...vorige, ?aktuell],
+                        ),
+                        child: KeyedSubtree(
+                          key: ValueKey('$round|$hId|$aId'),
+                          child: MatchupLineups(
+                            league: league,
+                            runde: round,
+                            home: home,
+                            away: away,
+                            homeId: hId,
+                            awayId: aId,
+                            homeName: nameOf[hId] ?? '?',
+                            awayName: aId == null ? null : (nameOf[aId] ?? '?'),
+                            stats: weekStats,
+                          ),
+                        ),
                       );
                     }),
                   const SizedBox(height: 24),

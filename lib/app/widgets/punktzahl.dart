@@ -61,6 +61,10 @@ class Punktzahl extends StatelessWidget {
   /// Spalte.
   static const kleinsteZweiteilung = 20.0;
 
+  // **Kein Hochzählen mehr** (auf Ansage, 16.10.2026: „sieht irgendwie
+  // verpackt aus"). Die Zahl lief bei jeder Änderung 600 ms vom alten zum
+  // neuen Stand (Design-Ideen Punkt 6); jetzt springt sie wieder. Das
+  // Aufleuchten beim Tor bleibt — es sagt, *dass* sich etwas geändert hat.
   @override
   Widget build(BuildContext context) {
     final basis = (stil ?? DefaultTextStyle.of(context).style).copyWith(

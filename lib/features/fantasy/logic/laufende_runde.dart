@@ -34,8 +34,18 @@ Map<int, Map<String, PlayerMatchStats>> mitLaufenderRunde({
   required String verein,
   required List<Fixture> spiele,
   required Map<String, PlayerMatchStats>? live,
+  DateTime? jetzt,
 }) {
   if (runde == null) return saison;
+  final uhr = jetzt ?? DateTime.now();
+  // **Abgepfiffen nach Status oder nach der Uhr** (17.10.2026, gemeldet:
+  // „bei den Spielern, die schon gespielt haben, steht noch nichts"). Der
+  // Spielplan im Client wird nicht laufend gespiegelt; sein Status hing nach
+  // dem Abpfiff noch auf „läuft". Zwei Stunden nach Anpfiff ist jedes Spiel
+  // durch — dieselbe Annahme wie in `fantasy_trade_frei_ab`.
+  bool durch(Fixture f) =>
+      f.status == FixtureStatus.finished ||
+      uhr.isAfter(f.kickoff.add(const Duration(hours: 2)));
   final dieser = [
     for (final f in spiele)
       if (f.round == runde) f,
@@ -48,9 +58,7 @@ Map<int, Map<String, PlayerMatchStats>> mitLaufenderRunde({
           vereinKanonisch(f.home.name) == meiner ||
           vereinKanonisch(f.away.name) == meiner)
       .firstOrNull;
-  final fertig = sein != null
-      ? sein.status == FixtureStatus.finished
-      : dieser.every((f) => f.status == FixtureStatus.finished);
+  final fertig = sein != null ? durch(sein) : dieser.every(durch);
 
   final aus = {...saison}..remove(runde);
   if (!fertig) return aus;

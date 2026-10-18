@@ -332,11 +332,11 @@ class _TipSettingsScreen extends ConsumerWidget {
       // einladen", also bei der Frage, die ihn aufwirft.
       if (!round.isFantasyLinked)
         _Zeile(
-          icon: Icons.key,
+          icon: Icons.vpn_key_outlined,
           titel: 'Einladungscode',
           untertitel: '${round.inviteCode} — antippen zum Kopieren',
           trailing: Icon(
-            Icons.copy,
+            Icons.content_copy,
             size: 18,
             color: Theme.of(context)
                 .colorScheme
@@ -354,7 +354,7 @@ class _TipSettingsScreen extends ConsumerWidget {
         ),
       if (isCreator)
         _Zeile(
-          icon: round.isPublic ? Icons.public : Icons.lock_outline,
+          icon: round.isPublic ? Icons.public_outlined : Icons.lock_outline,
           titel: 'Sichtbarkeit & Beitritt',
           untertitel: visibilityLabel(round.visibility, round.joinPolicy),
           trailing: RequestsBadgeChevron(
@@ -390,7 +390,7 @@ class _TipSettingsScreen extends ConsumerWidget {
     final wertung = <Widget>[
       if (isCreator)
         _Zeile(
-          icon: Icons.tune,
+          icon: Icons.tune_outlined,
           titel: 'Wertung & Modi',
           untertitel: 'Punkte, Quoten-Bonus, Head-to-Head, Bonustipps …',
           onTap: () => Navigator.of(context).push(
@@ -414,7 +414,7 @@ class _TipSettingsScreen extends ConsumerWidget {
         ),
       if (isCreator)
         _Zeile(
-          icon: Icons.edit_note,
+          icon: Icons.edit_note_outlined,
           titel: 'Tipps nachtragen',
           untertitel: 'Für Mitglieder eintragen — auch nach Anstoß',
           onTap: () => Navigator.of(context).push(
@@ -475,7 +475,7 @@ class _TipSettingsScreen extends ConsumerWidget {
             gefahr: true,
             kinder: [
               _Zeile(
-                icon: Icons.logout,
+                icon: Icons.logout_outlined,
                 titel: 'Tippspiel verlassen',
                 untertitel: isCreator
                     ? 'Adminrechte an ein Mitglied übergeben und austreten'
@@ -539,7 +539,7 @@ class _Kopf extends StatelessWidget {
                 extra > 0 ? '${league.name} +$extra' : league.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
               ),
             ],
           ),
@@ -592,7 +592,7 @@ class _Zeile extends StatelessWidget {
         untertitel,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+        style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
       ),
       trailing:
           trailing ??

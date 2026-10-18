@@ -46,7 +46,7 @@ class WertStepper extends StatelessWidget {
           width: 28,
           child: Text('$value',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
         ),
         IconButton(
           tooltip: '$label erhöhen',

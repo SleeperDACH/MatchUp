@@ -121,45 +121,6 @@ final fantasyUnreadChatProvider = Provider.family<bool, String>((ref, leagueId) 
       m.userId != myId && (lastRead == null || m.createdAt.isAfter(lastRead)));
 });
 
-/// Die eigene Formation für den aktuellen Spieltag — `null`, wenn keine
-/// Aufstellung gespeichert ist.
-///
-/// Damit die Zeile „Aufstellung" auf der Liga-Übersicht **etwas sagen kann**.
-/// Sie trug vorher nur ihr Wort, und damit war die wöchentlich wichtigste
-/// Aufgabe der Liga von „Liga-Chat" nicht zu unterscheiden.
-final meineFormationProvider =
-    Provider.family<String?, String>((ref, leagueId) {
-  final myId = ref.watch(currentUserProvider)?.id;
-  // **Die Runde, die man stellt.** „Noch nicht gestellt" muss sich auf den
-  // Spieltag beziehen, den der Aufstellungs-Schirm öffnet — sonst meldet die
-  // Zeile einen Auftrag für einen Spieltag, der schon gelaufen ist.
-  final runde = ref.watch(fantasyAufstellungsRundeProvider).valueOrNull;
-  if (myId == null || runde == null) return null;
-  final ids = (ref.watch(leagueLineupsProvider(leagueId)).valueOrNull ??
-          const <FantasyLineup>[])
-      .where((l) => l.managerId == myId && l.round == runde)
-      .map((l) => l.playerIds)
-      .firstOrNull;
-  if (ids == null || ids.isEmpty) return null;
-  final pool = ref.watch(playerPoolProvider).valueOrNull;
-  if (pool == null) return null;
-  final byId = {for (final p in pool) p.id: p};
-  var d = 0, m = 0, f = 0;
-  for (final id in ids) {
-    switch (byId[id]?.position) {
-      case PlayerPosition.def:
-        d++;
-      case PlayerPosition.mid:
-        m++;
-      case PlayerPosition.fwd:
-        f++;
-      default:
-        break;
-    }
-  }
-  return '$d-$m-$f';
-});
-
 /// Trade-Angebote einer Liga (RLS: nur eigene Beteiligung) in Echtzeit.
 final leagueTradesProvider =
     StreamProvider.family<List<TradeOffer>, String>((ref, leagueId) {
@@ -772,7 +733,8 @@ final myFantasyRankProvider =
         rosterConfig: league.roster,
       )
   };
-  final standings = h2hStandings(ids, totalsByRound);
+  final standings = h2hStandings(ids, totalsByRound,
+      remisGrenze: league.remisGrenze ?? 0);
   // Vor dem ersten gewerteten Spieltag stehen alle auf null — das ist kein
   // Tabellenplatz, sondern eine Reihenfolge nach Zufall.
   if (standings.every((r) => r.played == 0)) return null;

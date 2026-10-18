@@ -47,8 +47,8 @@ class WaiverClaimsScreen extends ConsumerWidget {
             const Padding(
               padding: EdgeInsets.all(32),
               child: Text(
-                'Noch keine Waiver-Anträge. Spieler auf dem Wire kannst du in '
-                'der Free Agency beantragen.',
+                'Noch keine Waiver-Anträge. Spieler auf dem Wire kannst du '
+                'unter „Spieler" beantragen.',
                 textAlign: TextAlign.center,
               ),
             ),
@@ -210,11 +210,11 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (IconData icon, Color color) = switch (status) {
-      WaiverStatus.pending => (Icons.schedule, scheme.primary),
+      WaiverStatus.pending => (Icons.schedule_outlined, scheme.primary),
       WaiverStatus.won => (Icons.check_circle, Colors.green),
-      WaiverStatus.lost => (Icons.cancel, scheme.error),
+      WaiverStatus.lost => (Icons.cancel_outlined, scheme.error),
       WaiverStatus.invalid => (Icons.error_outline, scheme.error),
-      WaiverStatus.cancelled => (Icons.block, scheme.onSurfaceVariant),
+      WaiverStatus.cancelled => (Icons.block_outlined, scheme.onSurfaceVariant),
     };
     return Tooltip(
       message: status.label,

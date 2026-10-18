@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/widgets/karte.dart';
+import '../../../app/widgets/info_knopf.dart';
 import '../../../core/ui/form_section.dart';
 import '../push_einstellungen.dart';
+import 'tipp_zeiten_screen.dart';
 
 /// Ein Schalter je Sorte Benachrichtigung, in vier Blöcken: Fantasy,
 /// Tippspiel, Live, Allgemein (Migration 0131).
@@ -55,9 +57,21 @@ class _PushEinstellungenScreenState
     final geladen = ref.watch(pushEinstellungenProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Benachrichtigungen')),
+      appBar: AppBar(
+        title: const Text('Benachrichtigungen'),
+        // Der Satz über die Systemeinstellungen stand als Absatz über der
+        // Liste (Design-Ideen Punkt 4).
+        actions: const [
+          InfoKnopf(
+            titel: 'Systemeinstellungen',
+            text: 'Ob dein Gerät Benachrichtigungen überhaupt anzeigt, '
+                'entscheidest du in den Systemeinstellungen. Hier legst du '
+                'fest, wofür MatchUp sie schickt.',
+          ),
+        ],
+      ),
       body: geladen.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -70,13 +84,6 @@ class _PushEinstellungenScreenState
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 96),
             children: [
-              Text(
-                'Ob dein Gerät Benachrichtigungen überhaupt anzeigt, '
-                'entscheidest du in den Systemeinstellungen. Hier legst du '
-                'fest, wofür MatchUp sie schickt.',
-                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
-              ),
-              const SizedBox(height: 20),
               for (final b in PushBereich.values) ...[
                 FormSection(
                   titel: b.titel,
@@ -84,22 +91,50 @@ class _PushEinstellungenScreenState
                       ? 'Für die Vereine unter deinen Favoriten.'
                       : null,
                   kinder: [
-                    for (final k in PushKategorie.imBereich(b)) ...[
-                      Karte(
-                        hauch: stand.an(k.schluessel) ? scheme.primary : null,
-                        padding: EdgeInsets.zero,
-                        child: SwitchListTile(
-                          value: stand.an(k.schluessel),
-                          onChanged: _speichert
-                              ? null
-                              : (v) => _umschalten(k.schluessel, v),
-                          title: Text(k.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold)),
-                          subtitle: Text(k.hinweis),
-                        ),
+                    // **Schalter ohne Karte** (Design-Ideen Punkt 1 und 3,
+                    // 15.10.2026). Jede Zeile lag in einem eigenen Kasten,
+                    // und ein eingeschalteter trug dazu einen grünen Hauch —
+                    // bei fast lauter eingeschalteten Sorten ein Schirm aus
+                    // grünen Kästen. Den Zustand sagt der Schalter selbst.
+                    for (final (i, k)
+                        in PushKategorie.imBereich(b).indexed) ...[
+                      if (i > 0)
+                        Divider(
+                            height: 1,
+                            color: scheme.onSurface.withValues(alpha: 0.07)),
+                      SwitchListTile(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 4),
+                        value: stand.an(k.schluessel),
+                        onChanged: _speichert
+                            ? null
+                            : (v) => _umschalten(k.schluessel, v),
+                        title: Text(k.name,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(k.hinweis),
                       ),
-                      const SizedBox(height: 8),
+                      // **Wann erinnert wird, stellt man selbst ein**
+                      // (17.10.2026) — nur sichtbar, solange die Erinnerung
+                      // an ist.
+                      if (k.schluessel == 'tipps' && stand.an('tipps'))
+                        ListTile(
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 4),
+                          title: const Text('Individuell einstellen'),
+                          subtitle: Text(PushEinstellungen.zeitenText(
+                              stand.tippZeitenWirksam)),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () async {
+                            final neu = await Navigator.of(context)
+                                .push<PushEinstellungen>(MaterialPageRoute(
+                              builder: (_) => TippZeitenScreen(stand: stand),
+                            ));
+                            if (neu != null && mounted) {
+                              setState(() => _stand = neu);
+                            }
+                          },
+                        ),
                     ],
                   ],
                 ),

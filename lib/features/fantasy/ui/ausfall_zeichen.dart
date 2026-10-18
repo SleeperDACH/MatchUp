@@ -37,7 +37,7 @@ class AusfallZeichen extends StatelessWidget {
       child: Semantics(
         label: ausfall.kurz,
         child: Icon(
-          ausfall.gesperrt ? Icons.block : Icons.medical_services_outlined,
+          ausfall.gesperrt ? Icons.block_outlined : Icons.medical_services_outlined,
           size: size,
           color: ausfallFarbe(ausfall),
         ),

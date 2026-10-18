@@ -93,14 +93,33 @@ class H2HRecord {
       );
 }
 
+/// **Ausgang eines Duells aus Sicht von [eigene]**: 1 Sieg, 0 Unentschieden,
+/// −1 Niederlage.
+///
+/// Unentschieden ist, was höchstens [remisGrenze] Punkte auseinanderliegt
+/// (Ligaeinstellung seit 16.10.2026, neue Ligen 5,0). Mit 0 bleibt es bei
+/// exakter Gleichheit. **Die eine Stelle, an der das entschieden wird** —
+/// Tabelle, Saisonverlauf, MatchUp-Kasten, Duell-Band und Rückblick fragen
+/// alle hier. Laufen zwei Fassungen auseinander, zeigt der Kasten „Sieg"
+/// und die Tabelle ein Unentschieden.
+///
+/// Der kleine Zuschlag fängt Fließkomma ab: 105,0 gegen 100,0 ergibt als
+/// Summe von Zehnteln gern 4,999999.
+int duellErgebnis(num eigene, num gegner, {num remisGrenze = 0}) {
+  final d = eigene.toDouble() - gegner.toDouble();
+  if (d.abs() <= remisGrenze + 1e-6) return 0;
+  return d > 0 ? 1 : -1;
+}
+
 /// Bilanztabelle aus den Paarungen und den (effektiven) Punkten je
 /// gespieltem Spieltag. [totalsByRound] enthält nur gespielte Spieltage
 /// (Teilnehmer-ID → Punkte). Sortiert nach Tabellenpunkten (3/1/0), bei
 /// Gleichstand nach den insgesamt erzielten Spielerpunkten (dann Differenz).
 List<H2HRecord> h2hStandings(
   List<String> ids,
-  Map<int, Map<String, num>> totalsByRound,
-) {
+  Map<int, Map<String, num>> totalsByRound, {
+  num remisGrenze = 0,
+}) {
   var records = {for (final id in ids) id: H2HRecord(managerId: id)};
 
   for (final entry in totalsByRound.entries) {
@@ -109,10 +128,11 @@ List<H2HRecord> h2hStandings(
       if (m.isBye) continue; // spielfrei zählt nicht
       final hp = (totals[m.home] ?? 0).toDouble();
       final ap = (totals[m.away] ?? 0).toDouble();
-      if (hp > ap) {
+      final ausgang = duellErgebnis(hp, ap, remisGrenze: remisGrenze);
+      if (ausgang > 0) {
         records[m.home] = records[m.home]!._add(win: 1, pf: hp, pa: ap);
         records[m.away!] = records[m.away]!._add(loss: 1, pf: ap, pa: hp);
-      } else if (ap > hp) {
+      } else if (ausgang < 0) {
         records[m.home] = records[m.home]!._add(loss: 1, pf: hp, pa: ap);
         records[m.away!] = records[m.away]!._add(win: 1, pf: ap, pa: hp);
       } else {

@@ -230,7 +230,11 @@ void main() {
     expect(find.text('Spieltag 3'), findsOneWidget);
     // Auf den Karten: Ergebnis, laufender Stand, Anstoß — und Statistik.
     expect(find.textContaining('vs BVB'), findsWidgets);
-    expect(find.textContaining('2 Tore'), findsWidgets);
+    // Keine Statistikzeile mehr (17.10.2026); der Schnitt steht unter dem
+    // Namen, nicht in der Punktebox.
+    expect(find.textContaining('Tore'), findsNothing);
+    expect(find.textContaining('Paraden'), findsNothing);
+    expect(find.textContaining('· Ø '), findsWidgets);
     // Auch die Bank trägt ihren Schnitt.
     expect(find.text('Bank'), findsOneWidget);
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/mit_ladekreis.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../fantasy/providers.dart';
@@ -38,7 +39,7 @@ class RequestsBadgeChevron extends StatelessWidget {
               style: TextStyle(
                   color: scheme.onPrimary,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12)),
+                  fontSize: 11)),
         ),
         const SizedBox(width: 4),
         const Icon(Icons.chevron_right),
@@ -126,15 +127,10 @@ class _VisibilitySettingsPageState
             }),
           ),
           const SizedBox(height: 20),
-          FilledButton.icon(
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.check),
-            label: const Text('Speichern'),
+          FilledButton(
             onPressed: _saving ? null : _save,
+            child: MitLadekreis(
+                laedt: _saving, child: const Text('Speichern')),
           ),
           if (showRequests) ...[
             const SizedBox(height: 28),

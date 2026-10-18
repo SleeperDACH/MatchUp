@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import '../../app/widgets/mit_ladekreis.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -262,15 +263,12 @@ class _AvatarEditorSheetState extends State<_AvatarEditorSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton.icon(
+            FilledButton(
               onPressed: _uploading ? null : _pickPhoto,
-              icon: _uploading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.photo_library_outlined),
-              label: Text(_uploading ? 'Lädt hoch …' : 'Foto hochladen'),
+              child: MitLadekreis(
+                laedt: _uploading,
+                child: Text(_uploading ? 'Lädt hoch …' : 'Foto hochladen'),
+              ),
             ),
             const SizedBox(height: 18),
             Row(children: [
@@ -302,7 +300,7 @@ class _AvatarEditorSheetState extends State<_AvatarEditorSheet> {
                           width: 2,
                         ),
                       ),
-                      child: Text(e, style: const TextStyle(fontSize: 20)),
+                      child: Text(e, style: const TextStyle(fontSize: 17)),
                     ),
                   ),
               ],
@@ -340,13 +338,12 @@ class _AvatarEditorSheetState extends State<_AvatarEditorSheet> {
                 if (widget.currentUrl != null ||
                     widget.currentEmoji != null) ...[
                   Expanded(
-                    child: OutlinedButton.icon(
+                    child: OutlinedButton(
                       onPressed: _uploading
                           ? null
                           : () => Navigator.of(context)
                               .pop(const AvatarValue()),
-                      icon: const Icon(Icons.delete_outline, size: 18),
-                      label: const Text('Entfernen'),
+                      child: const Text('Entfernen'),
                     ),
                   ),
                   const SizedBox(width: 12),

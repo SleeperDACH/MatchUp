@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/logic/vereins_kuerzel.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/models/models.dart';
@@ -182,7 +183,7 @@ class _VorherigeSpieleKnopf extends StatelessWidget {
               Text(
                 'Vorherige Spiele anzeigen',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -191,7 +192,7 @@ class _VorherigeSpieleKnopf extends StatelessWidget {
               Text(
                 '$anzahl',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
               ),
@@ -310,7 +311,7 @@ class FixtureDateHeader extends StatelessWidget {
           Text(
             label[0].toUpperCase() + label.substring(1),
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: scheme.onSurfaceVariant,
             ),
@@ -320,7 +321,7 @@ class FixtureDateHeader extends StatelessWidget {
             Text(
               DateFormat('HH:mm').format(date),
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: scheme.onSurfaceVariant,
                 fontFeatures: const [FontFeature.tabularFigures()],
@@ -335,7 +336,7 @@ class FixtureDateHeader extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
                 ),
               ),
@@ -366,7 +367,7 @@ class FixtureSectionLabel extends StatelessWidget {
             text.toUpperCase(),
             style: TextStyle(
               color: scheme.onSurfaceVariant,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
             ),
@@ -453,10 +454,10 @@ class TeamFixtureCard extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    f.home.name,
+                    vereinsKurzname(f.home.name),
                     maxLines: 1,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -471,7 +472,7 @@ class TeamFixtureCard extends StatelessWidget {
                       Text(
                         '${f.homeScore}:${f.awayScore}',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: live
                               ? MatchUpColors.red
@@ -483,7 +484,7 @@ class TeamFixtureCard extends StatelessWidget {
                       Text(
                         '–',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: scheme.onSurface.withValues(alpha: 0.28),
                         ),
@@ -492,7 +493,7 @@ class TeamFixtureCard extends StatelessWidget {
                       Text(
                         DateFormat('HH:mm').format(f.kickoff.toLocal()),
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
@@ -513,11 +514,11 @@ class TeamFixtureCard extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerRight,
                   child: Text(
-                    f.away.name,
+                    vereinsKurzname(f.away.name),
                     maxLines: 1,
                     textAlign: TextAlign.end,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

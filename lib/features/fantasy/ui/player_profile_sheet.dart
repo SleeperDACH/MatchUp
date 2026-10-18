@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -193,7 +194,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
                         statsAsync.when(
                           loading: () => const Padding(
                             padding: EdgeInsets.all(32),
-                            child: Center(child: CircularProgressIndicator()),
+                            child: Skelett(),
                           ),
                           error: (e, _) => Padding(
                             padding: const EdgeInsets.all(24),
@@ -218,6 +219,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
                                 spielerId: player.id,
                                 verein: player.club,
                                 spiele: spiele,
+                                jetzt: jetzt,
                                 live: runde == null
                                     ? null
                                     : ref
@@ -267,32 +269,29 @@ class _PlayerProfileSheet extends ConsumerWidget {
     if (isMine) {
       children = [
         Expanded(
-          child: FilledButton.icon(
+          child: FilledButton(
             onPressed: () => _tradeMine(context, ref, managers, myId),
-            icon: const Icon(Icons.swap_horiz),
-            label: const Text('Traden'),
+            child: const Text('Traden'),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: OutlinedButton.icon(
+          child: OutlinedButton(
             style: OutlinedButton.styleFrom(
               foregroundColor: scheme.error,
               side: BorderSide(color: scheme.error.withValues(alpha: 0.5)),
             ),
             onPressed: () => _drop(context, ref),
-            icon: const Icon(Icons.person_remove_outlined),
-            label: const Text('Droppen'),
+            child: const Text('Droppen'),
           ),
         ),
       ];
     } else if (ownerMgr != null && ownerId != myId) {
       children = [
         Expanded(
-          child: FilledButton.icon(
+          child: FilledButton(
             onPressed: () => _tradeRequest(context, ownerMgr),
-            icon: const Icon(Icons.swap_horiz),
-            label: Text('Mit ${ownerMgr.display} traden'),
+            child: Text('Mit ${ownerMgr.display} traden'),
           ),
         ),
       ];
@@ -588,7 +587,7 @@ class _LeistungKopf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stil = TextStyle(
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: FontWeight.w800,
       letterSpacing: 0.8,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -646,7 +645,7 @@ class _Bilanzleiste extends StatelessWidget {
                 wert,
                 maxLines: 1,
                 style: TextStyle(
-                  fontSize: Schrift.h3,
+                  fontSize: Schrift.titel,
                   fontWeight: FontWeight.w800,
                   fontFeatures: gleichbreiteZiffern,
                   color: (zahl ?? 0) < 0
@@ -675,22 +674,29 @@ class _Bilanzleiste extends StatelessWidget {
           color: scheme.onSurface.withValues(alpha: 0.08),
         );
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
+    // Ganze Minuten je Einsatz — eine `int`, keine Punktzahl.
+    final int? minuten = schnitt.minutenJeEinsatz?.round();
+
+    // **Ohne Kasten** (Design-Ideen Punkt 1, 15.10.2026): Die Leiste lässt
+    // sich nicht antippen, und eine Karte verspricht das. Die Zahlen stehen
+    // auf dem Grund, die Haarlinien dazwischen gliedern genug.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           feld(formatPoints(punkte), 'Punkte', zahl: punkte),
           trenner(),
-          feld(formatPoints(schnitt.punkteJeSpieltag), 'Ø je Spieltag',
-              zahl: schnitt.punkteJeSpieltag),
+          // **Je Einsatz, nicht je Spieltag** (16.10.2026): Spieltage ohne
+          // Spielzeit zählen nicht mit — sonst drückten sie den Schnitt eines
+          // Spielers, der erst spät in die Elf kam.
+          feld(
+              schnitt.punkteJeEinsatz == null
+                  ? '–'
+                  : formatPoints(schnitt.punkteJeEinsatz!),
+              'Ø je Einsatz',
+              zahl: schnitt.punkteJeEinsatz),
           trenner(),
-          feld('${schnitt.minutenJeSpieltag.round()}', 'Ø Minuten',
-              leise: true),
+          feld(minuten == null ? '–' : '$minuten', 'Ø Minuten', leise: true),
           trenner(),
           feld('${schnitt.einsaetze}', 'Einsätze', leise: true),
         ],
@@ -729,7 +735,7 @@ class _LeistungZeile extends StatelessWidget {
     final gespielt = stats.hasContribution;
     final offen = punkte == null;
     final stil = TextStyle(
-      fontSize: 13,
+      fontSize: 14,
       fontFeatures: const [FontFeature.tabularFigures()],
       color: gespielt
           ? scheme.onSurface
@@ -823,7 +829,7 @@ class _Spielplan extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final alle = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
     if (alle == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Skelett();
     }
     // **Kanonisch vergleichen, nicht buchstabengenau.** `players.club` schreibt
     // „1. FC Köln", der Spielplan „FC Köln" — bei sieben von achtzehn Vereinen
@@ -878,7 +884,7 @@ class _Tabelle extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final alle = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
     if (alle == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Skelett();
     }
     final seine = spieleDesVereins(alle, club);
     if (seine.isEmpty) {
@@ -1009,7 +1015,7 @@ class _Prognose extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final spiele = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
     if (spiele == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Skelett();
     }
     final spiel = spielFuerPrognose(spiele, player.club);
     if (spiel == null) {
@@ -1021,7 +1027,7 @@ class _Prognose extends ConsumerWidget {
     );
 
     return elfAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (e, _) =>
           _Leer('Die Aufstellung konnte nicht geladen werden.\n$e'),
       data: (elf) {
@@ -1125,7 +1131,7 @@ class _FortschreibungHinweis extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.history, size: 18, color: scheme.onSurfaceVariant),
+          Icon(Icons.history_outlined, size: 18, color: scheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1136,7 +1142,7 @@ class _FortschreibungHinweis extends StatelessWidget {
                   style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: scheme.onSurface,
-                      fontSize: 13),
+                      fontSize: 14),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1149,7 +1155,7 @@ class _FortschreibungHinweis extends StatelessWidget {
                   style: TextStyle(
                       color: scheme.onSurfaceVariant,
                       height: 1.35,
-                      fontSize: 12),
+                      fontSize: 11),
                 ),
               ],
             ),
@@ -1294,7 +1300,7 @@ class _Feldspieler extends StatelessWidget {
               border: Border.all(
                   color: schnee.withValues(alpha: 0.45), width: 1.2),
             ),
-            child: Icon(Icons.question_mark,
+            child: Icon(Icons.question_mark_outlined,
                 size: 16, color: schnee.withValues(alpha: 0.7)),
           )
         else
@@ -1354,7 +1360,7 @@ class _Feldspieler extends StatelessWidget {
               spieler.offen ? 'frei' : _kurzerName(spieler.name),
               maxLines: 1,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 height: 1.15,
                 fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
                 color: schnee.withValues(
@@ -1417,7 +1423,7 @@ class _NichtInDerElf extends StatelessWidget {
                 child: Text(
                   'Nicht in der Startelf',
                   style: TextStyle(
-                    fontSize: Schrift.klein,
+                    fontSize: Schrift.label,
                     letterSpacing: 0.6,
                     fontWeight: FontWeight.w700,
                     color: scheme.onSurfaceVariant,
@@ -1430,7 +1436,7 @@ class _NichtInDerElf extends StatelessWidget {
                 Text(
                   'Minuten zuletzt',
                   style: TextStyle(
-                    fontSize: Schrift.klein,
+                    fontSize: Schrift.label,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
@@ -1443,7 +1449,7 @@ class _NichtInDerElf extends StatelessWidget {
               style: TextStyle(
                 color: scheme.onSurfaceVariant,
                 height: 1.35,
-                fontSize: Schrift.koerperKlein,
+                fontSize: Schrift.text,
               ),
             )
           else
@@ -1493,7 +1499,7 @@ class _Uebriger extends StatelessWidget {
               child: Text(
                 spieler.position.short,
                 style: TextStyle(
-                  fontSize: Schrift.klein,
+                  fontSize: Schrift.label,
                   fontWeight: FontWeight.w700,
                   color: scheme.onSurfaceVariant,
                 ),
@@ -1506,7 +1512,7 @@ class _Uebriger extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: Schrift.koerper,
+                  fontSize: Schrift.text,
                   fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
@@ -1517,7 +1523,7 @@ class _Uebriger extends StatelessWidget {
                 child: Text(
                   '$minuten',
                   style: TextStyle(
-                    fontSize: Schrift.koerperKlein,
+                    fontSize: Schrift.text,
                     fontWeight: FontWeight.w700,
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: scheme.onSurfaceVariant,
@@ -1525,7 +1531,7 @@ class _Uebriger extends StatelessWidget {
                 ),
               ),
             Icon(
-              hervor ? Icons.person : Icons.chevron_right,
+              hervor ? Icons.person_outline : Icons.chevron_right,
               size: 18,
               color: scheme.onSurfaceVariant,
             ),
@@ -1552,7 +1558,7 @@ class _PrognoseKopf extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${spiel.home.name} – ${spiel.away.name}',
+            '${vereinsKurzname(spiel.home.name)} – ${vereinsKurzname(spiel.away.name)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(
@@ -1565,7 +1571,7 @@ class _PrognoseKopf extends StatelessWidget {
               '${spiel.roundName} · ${_wannKurz(spiel.kickoff.toLocal())}',
               if (elf?.formation != null) elf!.formation!,
             ].join(' · '),
-            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
           ),
         ],
       ),
@@ -1646,7 +1652,7 @@ class _Urteil extends StatelessWidget {
               style: TextStyle(
                 fontWeight: drin ? FontWeight.w600 : FontWeight.w700,
                 color: farbe,
-                fontSize: 13,
+                fontSize: 14,
               ),
             ),
           ),
@@ -1691,7 +1697,7 @@ class _NochKeinePrognose extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.schedule, size: 18, color: scheme.onSurfaceVariant),
+              Icon(Icons.schedule_outlined, size: 18, color: scheme.onSurfaceVariant),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -1818,7 +1824,7 @@ class _Ausfallzeile extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              a.gesperrt ? Icons.block : Icons.medical_services_outlined,
+              a.gesperrt ? Icons.block_outlined : Icons.medical_services_outlined,
               size: 15,
               color: farbe,
             ),
@@ -1832,14 +1838,14 @@ class _Ausfallzeile extends ConsumerWidget {
                     style: TextStyle(
                       color: farbe,
                       fontWeight: FontWeight.w700,
-                      fontSize: Schrift.koerperKlein,
+                      fontSize: Schrift.text,
                     ),
                   ),
                   if (teile.isNotEmpty)
                     Text(
                       teile.join(' · '),
                       style: TextStyle(
-                        fontSize: Schrift.klein,
+                        fontSize: Schrift.label,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -1848,7 +1854,7 @@ class _Ausfallzeile extends ConsumerWidget {
                     child: Text(
                       rueckkehr,
                       style: TextStyle(
-                        fontSize: Schrift.klein,
+                        fontSize: Schrift.label,
                         fontWeight: FontWeight.w600,
                         color: a.bis == null
                             ? Theme.of(context).colorScheme.onSurfaceVariant

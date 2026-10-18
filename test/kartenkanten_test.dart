@@ -38,19 +38,19 @@ void main() {
           'die Farbe des Bereichs, in den sie führt (bewusst so entschieden, '
           'nachdem der Schirm als „trostlos" gemeldet worden war).'
     ),
-    'core/ui/league_chat.dart': (
-      1,
-      'Systemnachricht im Chat: eine Ansage, keine Karte.'
-    ),
+    // `core/ui/league_chat.dart` stand hier für den grün gerahmten Kasten der
+    // Systemnachricht. Seit dem 17.10.2026 spricht die Liga mit eigenem
+    // Zeichen und ohne Kasten — wie bei Sleeper.
     'features/fantasy/ui/draft_room_screen.dart': (
       1,
       'Auto-Pick-Warnung — hier ist etwas kaputt, und das darf man sehen.'
     ),
     'features/fantasy/ui/lineup_screen.dart': (
-      4,
-      'Spieler-Slot auf dem Feld, der Free-Agency-Chip und die beiden '
-          'Ablegeflächen beim Ziehen: alles Zustände („gewählt", „hier '
-          'loslassen"), keine Karten.\n'
+      3,
+      'Spieler-Slot auf dem Feld und die beiden Ablegeflächen beim Ziehen '
+          '(Feldplatz, Bankreihe): alles Zustände („gewählt", „hier '
+          'loslassen"), keine Karten. Die Bankkarten seit dem 17.10.2026 '
+          'tragen die Haarlinie.\n'
           '    Nicht mitgezählt und bewusst so: der Strich in der '
           'Positionsfarbe über dem Namensfeld der Spielerkachel (Ansage vom '
           '17.09.2026). Er ist ein `Border(top: …)` ohne eigenen Radius und '
@@ -59,11 +59,9 @@ void main() {
           'ist schwarz und deckend; die erste Fassung färbte das ganze '
           'Namensband ein und wurde als „sehr, sehr bunt" zurückgewiesen.'
     ),
-    'app/live_screen.dart': (
-      1,
-      'Der heutige Tag in der Tagesleiste — ein Zustand an einer Zelle, keine '
-          'Karte.'
-    ),
+    // `app/live_screen.dart` stand hier für den Rahmen um den heutigen Tag in
+    // der Tagesleiste. Seit dem 17.10.2026 sagt das Wort „HEUTE" es — der
+    // Rahmen ist weg.
     'core/ui/form_section.dart': (
       1,
       '`FormError` — hier ist etwas kaputt, und das darf man sehen.'
@@ -95,11 +93,10 @@ void main() {
       1,
       'Die ausgewählte Option — ein Zustand, dieselbe Sorte wie `PillChip`.'
     ),
-    'features/fantasy/ui/fantasy_league_screen.dart': (
-      1,
-      'Die Kachel mit rotem Zähler: Hier wartet etwas, und die rote Kante '
-          'trägt genau das. Ohne Zähler ist es die gewöhnliche Haarlinie.'
-    ),
+    // `fantasy_league_screen.dart` stand hier für die kleine Kachel mit rotem
+    // Zähler im Kader-Reiter. **Die gibt es seit dem 16.10.2026 nicht mehr**
+    // — Spieler, Trades und Transfers stehen auf der Übersicht, und dort
+    // trägt der Zähler die Farbe, nicht die Kante.
     // `app/widgets/navi_kapsel.dart` stand hier für die Marke um den aktiven
     // Reiter. **Die gibt es seit dem 17.09.2026 nicht mehr** (Ansage: „Können
     // wir in der Leiste diese Umrandung rausnehmen?"): Den Zustand tragen

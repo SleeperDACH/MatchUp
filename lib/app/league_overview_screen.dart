@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../core/logic/vereins_kuerzel.dart';
+import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -113,7 +115,7 @@ class _TableTab extends ConsumerWidget {
       ref.watch(leagueSeasonFixturesProvider(leagueId)).valueOrNull ?? const [],
     );
     return tableAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => _Retry(
         message: 'Tabelle konnte nicht geladen werden.',
         onRetry: () => _tabelleNeuLaden(ref, leagueId),
@@ -153,7 +155,7 @@ class _GroupTables extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final fixturesAsync = ref.watch(leagueSeasonFixturesProvider(leagueId));
     return fixturesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => _Retry(
         message: 'Tabelle konnte nicht geladen werden.',
         onRetry: () => ref.invalidate(leagueSeasonFixturesProvider(leagueId)),
@@ -426,7 +428,7 @@ class _MatchdaysTabState extends ConsumerState<_MatchdaysTab> {
     final fixturesAsync = ref.watch(leagueSeasonFixturesProvider(widget.leagueId));
 
     return fixturesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => _Retry(
         message: 'Spieltage konnten nicht geladen werden.',
         onRetry: () =>
@@ -648,7 +650,7 @@ class _SlotWindow extends StatelessWidget {
                   const Spacer(),
                   const Text('● LIVE',
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: MatchUpColors.red)),
                 ],
@@ -688,7 +690,7 @@ class _SlotGame extends StatelessWidget {
             // Name außen, Logo innen (zur Mitte) → Wappen fluchten.
             child: Row(children: [
               Expanded(
-                child: Text(f.home.name,
+                child: Text(vereinsKurzname(f.home.name),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 8),
@@ -701,7 +703,7 @@ class _SlotGame extends StatelessWidget {
                 ? Text('${f.homeScore}:${f.awayScore}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                         color: live ? MatchUpColors.red : scheme.onSurface))
                 : Text('–',
@@ -714,7 +716,7 @@ class _SlotGame extends StatelessWidget {
               TeamBadge(team: f.away),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(f.away.name,
+                child: Text(vereinsKurzname(f.away.name),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end),
@@ -739,7 +741,7 @@ class _TopScorersTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(leagueTopScorersProvider(leagueId));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => _Retry(
         message: 'Torjäger konnten nicht geladen werden.',
         onRetry: () => ref.invalidate(leagueTopScorersProvider(leagueId)),
@@ -800,7 +802,7 @@ class _SeasonFallbackBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.history, size: 18, color: scheme.primary),
+          Icon(Icons.history_outlined, size: 18, color: scheme.primary),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -871,7 +873,7 @@ class _ScorerTile extends StatelessWidget {
           Text('${scorer.goals}',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 17,
                   color: scheme.primary)),
           const SizedBox(width: 2),
           Text('Tore',
@@ -894,7 +896,7 @@ class _NewsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(leagueNewsProvider(leagueId));
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Skelett(),
       error: (_, _) => _Retry(
         message: 'News konnten nicht geladen werden.',
         onRetry: () => ref.invalidate(leagueNewsProvider(leagueId)),

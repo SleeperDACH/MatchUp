@@ -200,7 +200,7 @@ class _Reiter extends StatelessWidget {
                             // Versalien laufen breiter; eine Stufe kleiner
                             // und gesperrt, wie bei den Kapitelmarken.
                             fontSize:
-                                versalien ? Schrift.koerperKlein : Schrift.koerper,
+                                versalien ? Schrift.text : Schrift.text,
                             letterSpacing: versalien ? 0.8 : null,
                             // Das Gewicht trägt die Auskunft mit; die Marke
                             // allein wäre bei vier Reitern zu wenig.

@@ -205,7 +205,7 @@ class _Ziel extends StatelessWidget {
                         wort,
                         maxLines: 1,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: Schrift.winzig,
+                          fontSize: Schrift.label,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.1,
                           height: 1.1,

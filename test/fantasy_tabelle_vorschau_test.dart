@@ -9,7 +9,12 @@ import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/providers.dart';
+import 'package:matchup/features/fantasy/ui/fantasy_league_screen.dart'
+    show LigaReiter;
 import 'package:matchup/features/fantasy/ui/fantasy_table_screen.dart';
+import 'package:matchup/features/fantasy/ui/liga_duelle_band.dart';
+import 'package:matchup/features/fantasy/ui/matchups_screen.dart'
+    show matchupKarussellSeiteProvider;
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import 'support/schrift.dart';
@@ -143,7 +148,11 @@ void main() {
         ],
         child: MaterialApp(
           theme: buildAppTheme(),
-          home: Scaffold(body: FantasyTableBody(league: liga)),
+          home: DefaultTabController(
+            length: 4,
+            initialIndex: LigaReiter.tabelle,
+            child: Scaffold(body: FantasyTableBody(league: liga)),
+          ),
         ),
       ),
     );
@@ -151,9 +160,30 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
 
+    // Alle Duelle des Spieltags oben: bei vier Managern zwei Karten.
+    expect(find.byType(LigaDuelleBand), findsOneWidget);
+    expect(find.text('VS'), findsNWidgets(2));
+
     await expectLater(
       find.byType(FantasyTableBody),
       matchesGoldenFile('goldens/fantasy_tabelle_vorschau.png'),
+    );
+
+    // Ein Tipp auf die zweite Karte führt in den MatchUp-Reiter, auf genau
+    // diese Paarung — ein Bild zeigt nicht, wohin ein Tipp führt.
+    final band = find.byType(LigaDuelleBand);
+    final karten = find.descendant(of: band, matching: find.byType(InkWell));
+    await tester.drag(band, const Offset(-200, 0));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(karten.at(1));
+    await tester.pump(const Duration(milliseconds: 400));
+    final container =
+        ProviderScope.containerOf(tester.element(find.byType(FantasyTableBody)));
+    expect(container.read(matchupKarussellSeiteProvider('l1')), 1);
+    expect(
+      DefaultTabController.of(tester.element(find.byType(FantasyTableBody)))
+          .index,
+      LigaReiter.matchup,
     );
   });
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/app_avatar.dart';
@@ -37,13 +38,13 @@ class ConversationsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Neue Nachricht',
-            icon: const Icon(Icons.edit_square),
+            icon: const Icon(Icons.edit_outlined),
             onPressed: () => _newChat(context, ref),
           ),
         ],
       ),
       body: dmAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Skelett(),
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (_) {
           if (convos.isEmpty) {
@@ -56,10 +57,9 @@ class ConversationsScreen extends ConsumerWidget {
                     const Text('Noch keine Nachrichten.',
                         textAlign: TextAlign.center),
                     const SizedBox(height: 12),
-                    FilledButton.icon(
+                    FilledButton(
                       onPressed: () => _newChat(context, ref),
-                      icon: const Icon(Icons.edit_square),
-                      label: const Text('Nachricht schreiben'),
+                      child: const Text('Nachricht schreiben'),
                     ),
                   ],
                 ),
@@ -135,7 +135,7 @@ class ConversationsScreen extends ConsumerWidget {
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: Schrift.winzig,
+                            fontSize: Schrift.label,
                             fontWeight: FontWeight.w800,
                           ),
                         ),

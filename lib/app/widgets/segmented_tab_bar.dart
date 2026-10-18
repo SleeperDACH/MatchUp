@@ -67,9 +67,9 @@ class SegmentedTabBar extends StatelessWidget implements PreferredSizeWidget {
         labelColor: MatchUpColors.snow,
         unselectedLabelColor: scheme.onSurfaceVariant,
         labelStyle:
-            const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
         unselectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         labelPadding:
             EdgeInsets.symmetric(horizontal: _hasIcons ? 6 : 14),
         // Kein grauer Wisch beim Antippen — die Pille ist Rückmeldung genug.

@@ -63,7 +63,7 @@ class OptionTile extends StatelessWidget {
                     Text(untertitel,
                         style: TextStyle(
                             color: scheme.onSurfaceVariant,
-                            fontSize: 12,
+                            fontSize: 11,
                             height: 1.25)),
                   ],
                 ),

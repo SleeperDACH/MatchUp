@@ -16,8 +16,8 @@ import 'package:matchup/app/match_detail_screen.dart';
 void main() {
   group('Ereignistypen aus der Quelle werden erkannt', () {
     const gemessen = {
-      'Goal': Icons.sports_soccer,
-      'Own Goal': Icons.sports_soccer,
+      'Goal': Icons.sports_soccer_outlined,
+      'Own Goal': Icons.sports_soccer_outlined,
       'Yellowcard': Icons.rectangle,
       'Redcard': Icons.rectangle,
       'Substitution': Icons.swap_horiz,
@@ -34,7 +34,7 @@ void main() {
       // Falls die Quelle morgen anders schreibt, darf nicht dasselbe noch
       // einmal passieren.
       for (final t in ['owngoal', 'own_goal', 'own-goal', 'OWN GOAL']) {
-        expect(matchEventIcon(t), Icons.sports_soccer, reason: t);
+        expect(matchEventIcon(t), Icons.sports_soccer_outlined, reason: t);
       }
       for (final t in ['yellowcard', 'Yellow Card', 'yellow_card']) {
         expect(matchEventIcon(t), Icons.rectangle, reason: t);
