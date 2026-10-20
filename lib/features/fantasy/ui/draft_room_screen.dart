@@ -20,6 +20,7 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'draft_start.dart';
 import '../../../app/typografie.dart';
+import '../../../app/theme.dart' show MatchUpColors;
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/ui/rueckfrage.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -1890,6 +1891,8 @@ class DraftBoard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: c.userId == null
                             ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
+                            : c.mine
+                            ? MatchUpColors.green
                             : scheme.onSurface,
                       ),
                     ),
@@ -1924,11 +1927,18 @@ class DraftBoard extends StatelessWidget {
                           : (rechte != null
                                 ? pickByCell['$r:#$s']
                                 : pickByCell['$r:${cols[s].userId}']),
+                      meiner: () {
+                        final u = cols[s].userId;
+                        if (u == null || myId == null) return false;
+                        final b = rechte == null ? u : besitzerVon(rechte!, r, u);
+                        return b == myId;
+                      }(),
                       besitzerName: () {
                         final u = cols[s].userId;
                         if (rechte == null || u == null) return null;
                         final b = besitzerVon(rechte!, r, u);
-                        return b == u ? null : (nameVon[b] ?? '?');
+                        if (b == u) return null;
+                        return b == myId ? 'Dein Pick' : (nameVon[b] ?? '?');
                       }(),
                       isCurrent: rechte != null && aktuellerPick != null
                           ? (aktuellerPick! ~/ n + 1 == r &&
@@ -1954,6 +1964,7 @@ class DraftBoard extends StatelessWidget {
     required DraftPick? pick,
     required bool isCurrent,
     String? besitzerName,
+    bool meiner = false,
   }) {
     final scheme = Theme.of(context).colorScheme;
     // Snake: ungerade Runden vorwärts, gerade rückwärts (0-basiert: round-1).
@@ -1968,7 +1979,6 @@ class DraftBoard extends StatelessWidget {
     // Feldes, obwohl gedraftet wurde. Sie bekommt jetzt Fläche und Text; der
     // Pool lädt parallel nach (siehe _poolNachladenFallsUnbekannt).
     final unbekannt = pick != null && player == null;
-    final mine = col.mine;
     final placeholder = col.userId == null;
     // **Neutrale Fläche, die Position als Strich** (20.10.2026, auf Ansage:
     // „immer noch so viel Farbe auf Farbe auf Farbe, ziemlich
@@ -1990,11 +2000,14 @@ class DraftBoard extends StatelessWidget {
     final grund0 = gefuellt
         ? Color.alphaBlend(scheme.onSurface.withValues(alpha: 0.05), karte)
         : karte;
-    // Die eigene Spalte eine Spur heller — hell heißt in dieser App „das
-    // bist du".
-    final grund = mine
-        ? Color.alphaBlend(_cSchnee.withValues(alpha: 0.06), grund0)
-        : grund0;
+    // **Eigene Picks grün umrandet, nicht die eigene Spalte heller**
+    // (20.10.2026, auf Ansage: „fällt nicht so sehr auf, unschön von der
+    // Farbe"). Die Spalte eine Spur heller zu tönen sah man kaum, und seit
+    // Picks gehandelt werden, stimmte es auch nicht mehr: Ein abgegebener
+    // Pick steht in der eigenen Spalte, ein erhandelter in einer fremden.
+    // Grün heißt in dieser App „ich" — als Rahmen und Schrift, nie als
+    // Fläche (siehe „Verboten: grün gestochene Flächen").
+    final grund = grund0;
     final strich = player == null ? null : positionColor(player.position);
 
     return Container(
@@ -2008,11 +2021,15 @@ class DraftBoard extends StatelessWidget {
         // **Eine Kante für alle**, und Farbe nur für den Zustand „hier ist
         // gerade jemand dran" — hell, nicht grün: Der Zug läuft nicht, er
         // wartet auf eine Entscheidung.
+        // Am Zug: hell. Eigener Pick: grün — auch, wenn er gerade dran ist,
+        // dann kräftiger.
         border: Border.all(
-          color: isCurrent
+          color: meiner
+              ? MatchUpColors.green.withValues(alpha: isCurrent ? 1 : 0.75)
+              : isCurrent
               ? _cSchnee.withValues(alpha: 0.65)
               : Theme.of(context).dividerColor,
-          width: isCurrent ? 1.4 : 1,
+          width: meiner ? (isCurrent ? 2 : 1.5) : (isCurrent ? 1.4 : 1),
         ),
       ),
       // **Drei Zeilen statt zwei, und der Nachname führt.** Auf Ansage: die
@@ -2046,9 +2063,11 @@ class DraftBoard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
-                        color: scheme.onSurfaceVariant.withValues(
-                          alpha: placeholder ? 0.5 : 0.85,
-                        ),
+                        color: meiner
+                        ? MatchUpColors.green
+                        : scheme.onSurfaceVariant.withValues(
+                            alpha: placeholder ? 0.5 : 0.85,
+                          ),
                       ),
                     ),
                     if (pick?.isAuto ?? false) ...[

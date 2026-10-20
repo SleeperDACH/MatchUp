@@ -2905,7 +2905,13 @@ Zelle trägt den Kartengrund — gefüllt eine Spur heller als leer, die eigene
 Spalte eine weitere Spur heller —, die Position steht als **3-Punkt-Strich
 am linken Rand** in voller Positionsfarbe; oben rechts steht klein das
 **Vereinswappen** (14 Punkt, `clubIcons` am `DraftBoard` — auf Ansage am
-selben Tag statt des Kürzels TW/ABW/MF/ST, das der Strich ohnehin sagt). Die gedämpfte 22-%-Fläche, die der
+selben Tag statt des Kürzels TW/ABW/MF/ST, das der Strich ohnehin sagt).
+**Eigene Picks sind grün umrandet** (Rahmen 1,5, Pick-Nummer grün, eigener
+Name im Kopf grün) statt einer kaum sichtbaren helleren Spalte — je Feld nach
+**Besitzer**, nicht nach Spalte: Ein erhandelter Pick in einer fremden Spalte
+ist grün und heißt „Dein Pick", ein abgegebener in der eigenen nicht. Grün nur
+als Rahmen und Schrift, nie als Fläche. Ist der eigene Pick gerade dran, wird
+der Rahmen kräftiger (2) statt hell. Die gedämpfte 22-%-Fläche, die der
 Abschnitt unten beschreibt, ist damit weg. Vorschau
 `draft_board_vorschau.png`.
 

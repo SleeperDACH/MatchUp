@@ -203,6 +203,8 @@ void main() {
 
     // Auf dem Board steht der neue Besitzer in der Zelle des gehandelten Picks.
     expect(find.text('SFV03'), findsWidgets);
+    // Ein erhandelter eigener Pick heißt „Dein Pick", nicht der eigene Name.
+    expect(find.text('Dein Pick'), findsOneWidget);
     // Eigene Picks: 1.01 (erhandelt), 1.03, 3.03, 4.01 — 2.03 ist an eric.
     expect(find.text('1.01'), findsWidgets);
     expect(find.text('von lennart'), findsOneWidget);
