@@ -20,6 +20,7 @@ import 'club_badge.dart';
 import 'player_profile_sheet.dart';
 import 'spieler_kachel.dart';
 import 'meine_picks.dart';
+import '../../../app/widgets/karte.dart';
 import '../logic/draft_rechte.dart';
 import '../../../app/widgets/segmented_tab_bar.dart';
 
@@ -148,6 +149,29 @@ class TradePartnerList extends ConsumerWidget {
                   : a.name.compareTo(b.name),
             );
 
+        // Ø je Spieltag nach der Wertung dieser Liga — dieselbe Zahl wie im
+        // Angebot, damit man schon bei der Partnerwahl vergleichen kann.
+        final stats = ref.watch(seasonStatsProvider).valueOrNull ??
+            const <int, Map<String, PlayerMatchStats>>{};
+        final schnitt = <String, double>{};
+        for (final r in roster) {
+          final p = byId[r.playerId];
+          if (p == null) continue;
+          final sp = spielerSchnitt(
+            saison: stats,
+            spielerId: p.id,
+            position: p.position,
+            regeln: league.scoring,
+          );
+          if (sp.hatDaten) schnitt[p.id] = sp.schnitt;
+        }
+        // Picks für den Reset-Draft je Team, solange die Liga einen hat.
+        final slots = league.resetAktiv &&
+                !(league.draftPhase == 'reset' &&
+                    league.draftStatus == DraftStatus.done)
+            ? ref.watch(resetPicksProvider(league.id))
+            : null;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -184,6 +208,8 @@ class TradePartnerList extends ConsumerWidget {
                     players: playersOf(m.userId),
                     clubIcons: clubIcons,
                     enabled: !closed,
+                    schnitt: schnitt,
+                    picks: slots == null ? null : picksVon(slots, m.userId),
                     onOpen: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => TradeComposeScreen(
@@ -204,8 +230,16 @@ class TradePartnerList extends ConsumerWidget {
   }
 }
 
-/// Eine kompakte Kader-Spalte eines Teilnehmers auf dem Auswahl-Screen.
-/// Kopf und „Traden"-Button öffnen den Trade mit dieser Person.
+/// Eine Kader-Spalte eines Teilnehmers auf dem Auswahl-Screen. Kopf und
+/// „Traden"-Knopf öffnen den Trade mit dieser Person.
+///
+/// **Ruhiger seit dem 20.10.2026** (auf Ansage: „weniger Farbe, die Spieler
+/// mehr im Fokus"). Vorher trug jede Zeile einen Strich und das
+/// Positionswort in der Positionsfarbe — bei achtzehn Spalten ein Streifen
+/// aus Blau, Gelb, Grün und Rot, und der Name war die kleinste Schrift der
+/// Zeile. Jetzt gliedern graue Zwischenzeilen nach Position, der Name steht
+/// in Textgröße, rechts grau der Schnitt je Spieltag. Darunter die Picks
+/// für den Reset-Draft (0145), wenn die Liga einen hat.
 class _ParticipantColumn extends StatelessWidget {
   const _ParticipantColumn({
     required this.manager,
@@ -213,6 +247,8 @@ class _ParticipantColumn extends StatelessWidget {
     required this.clubIcons,
     required this.enabled,
     required this.onOpen,
+    this.schnitt = const {},
+    this.picks,
   });
 
   final FantasyManager manager;
@@ -221,17 +257,66 @@ class _ParticipantColumn extends StatelessWidget {
   final bool enabled;
   final VoidCallback onOpen;
 
+  /// Ø je Spieltag nach der Wertung dieser Liga.
+  final Map<String, double> schnitt;
+
+  /// Picks des Teams für den Reset-Draft; `null` = Liga ohne Reset.
+  final List<PickSlot>? picks;
+
+  static const _positionen = {
+    PlayerPosition.gk: 'Tor',
+    PlayerPosition.def: 'Abwehr',
+    PlayerPosition.mid: 'Mittelfeld',
+    PlayerPosition.fwd: 'Sturm',
+  };
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final zeilen = <Widget>[];
+    PlayerPosition? letzte;
+    for (final p in players) {
+      if (p.position != letzte) {
+        letzte = p.position;
+        zeilen.add(_marke(context, _positionen[p.position] ?? ''));
+      }
+      zeilen.add(_zeile(context, p));
+    }
+    if (picks != null && picks!.isNotEmpty) {
+      zeilen
+        ..add(_marke(context, 'Picks · Reset-Draft'))
+        ..add(Padding(
+          padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+          child: Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (final pk in picks!)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: scheme.onSurface.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    pk.code,
+                    style: const TextStyle(
+                      fontSize: Schrift.label,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ));
+    }
+
     return Container(
-      width: 188,
+      width: 196,
       margin: const EdgeInsets.symmetric(horizontal: 5),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+      decoration: kartenDeko(context),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -239,50 +324,64 @@ class _ParticipantColumn extends StatelessWidget {
           InkWell(
             onTap: enabled ? onOpen : null,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
-              child: Column(
+              padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+              child: Row(
                 children: [
                   AppAvatar(
                     imageUrl: manager.avatarUrl,
                     emoji: manager.avatarEmoji,
                     colorHex: manager.avatarColor,
                     fallbackText: manager.display,
-                    size: 44,
+                    seed: manager.userId,
+                    size: 36,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    manager.display,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    '${players.length} Spieler',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          manager.display,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: Schrift.text,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          [
+                            '${players.length} Spieler',
+                            if (picks != null) '${picks!.length} Picks',
+                          ].join(' · '),
+                          style: TextStyle(
+                            fontSize: Schrift.label,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: Theme.of(context).dividerColor),
           Expanded(
-            child: players.isEmpty
+            child: players.isEmpty && zeilen.isEmpty
                 ? const Center(
                     child: Padding(
                       padding: EdgeInsets.all(12),
                       child: Text('Kein Kader', textAlign: TextAlign.center),
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    itemCount: players.length,
-                    itemBuilder: (context, i) => _miniTile(context, players[i]),
+                : ListView(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    children: zeilen,
                   ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             child: SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -296,53 +395,54 @@ class _ParticipantColumn extends StatelessWidget {
     );
   }
 
-  Widget _miniTile(BuildContext context, FantasyPlayer p) {
-    final base = positionColor(p.position);
+  Widget _marke(BuildContext context, String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+        child: Text(
+          text.toUpperCase(),
+          style: TextStyle(
+            fontSize: Schrift.label,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+
+  Widget _zeile(BuildContext context, FantasyPlayer p) {
+    final scheme = Theme.of(context).colorScheme;
+    final s = schnitt[p.id];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
       child: Row(
         children: [
-          Container(
-            width: 4,
-            height: 26,
-            decoration: BoxDecoration(
-              color: base,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 6),
-          ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 20),
-          const SizedBox(width: 6),
+          ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 22),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _shortName(p.name),
-                    maxLines: 1,
-                    softWrap: false,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _shortName(p.name),
+                maxLines: 1,
+                softWrap: false,
+                style: const TextStyle(
+                  fontSize: Schrift.text,
+                  fontWeight: FontWeight.w700,
                 ),
-                Text(
-                  p.position.label,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.3,
-                    color: base,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
+          if (s != null) ...[
+            const SizedBox(width: 6),
+            Text(
+              formatPoints(s),
+              style: TextStyle(
+                fontSize: Schrift.label,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );

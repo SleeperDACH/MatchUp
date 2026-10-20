@@ -4083,6 +4083,18 @@ Mensch stehen sollte. `managerMit()` liefert dafür bewusst für beide Fälle
 Nebenbei mitgenommen: `_counter` machte dieselbe Managersuche noch einmal von
 Hand. Sie steht jetzt einmal da.
 
+### Die Partnerwahl ist ruhig geworden (20.10.2026)
+
+Auf Ansage („weniger Farbe, die Spieler mehr im Fokus, die Picks mit
+anzeigen"): Die Kader-Spalten im Reiter „Neuer Trade" (`_ParticipantColumn`)
+tragen keinen Positionsstrich und kein farbiges Positionswort mehr. Graue
+Zwischenzeilen (TOR, ABWEHR, MITTELFELD, STURM) gliedern, der Name steht in
+Textgröße (14, w700), rechts grau der Ø je Spieltag (`spielerSchnitt`,
+dieselbe Zahl wie im Angebot). Kopf: Avatar links, Name, „16 Spieler · 16
+Picks". Fläche `kartenDeko` statt getöntem `surfaceContainerHighest`. In
+Ligen mit Reset stehen unten die Picks des Teams für den Reset-Draft als graue
+Nummern.
+
 ### „Neuer Trade" — der Tausch steht jetzt oben
 
 Der Schirm zeigte zwei scrollende Kaderspalten und sonst nichts. Drei Befunde:
