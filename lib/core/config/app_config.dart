@@ -116,9 +116,13 @@ abstract final class AppConfig {
   /// dorthin — der des Upload-Keys und der des Play-App-Signing-Keys.
   static const googleIosClientId = String.fromEnvironment(
     'GOOGLE_IOS_CLIENT_ID',
+    defaultValue:
+        '325263487271-0tb15h4jnp0l6fthegi6kkp1djbpavt2.apps.googleusercontent.com',
   );
   static const googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
+    defaultValue:
+        '325263487271-mucma5rt90gmmns6qsgtjfj3rni23i6k.apps.googleusercontent.com',
   );
 
   /// Kann auf **dieser** Plattform nativ mit Google angemeldet werden?

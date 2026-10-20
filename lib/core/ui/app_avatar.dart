@@ -85,7 +85,7 @@ class AppAvatar extends StatelessWidget {
         (_hasEmoji ? scheme.surfaceContainerHighest : scheme.primary.withValues(alpha: 0.12));
     final Widget child;
     if (_hasEmoji) {
-      child = Text(emoji!, style: TextStyle(fontSize: size * 0.5));
+      child = Text(alsEmoji(emoji!), style: TextStyle(fontSize: size * 0.5));
     } else if (fallbackText != null && fallbackText!.trim().isNotEmpty) {
       child = Text(
         fallbackText!.characters.first.toUpperCase(),
@@ -140,6 +140,20 @@ const List<String> kAvatarColors = [
   '#4ADE6A', '#4FC3A1', '#5B9DF9', '#8B7CF6', '#F472B6',
   '#F23030', '#FF8A3D', '#FFC83D', '#94A3B8', '#12141C',
 ];
+
+/// Hängt den Emoji-Selektor (U+FE0F) an Zeichen, die es auch als Text gibt.
+///
+/// `⚽` und `⚡` haben in Inter keine Glyphe, also greift die Ersatzkette des
+/// Systems — und die darf sie ohne Selektor als einfarbiges Textzeichen
+/// zeichnen. Mit Selektor steht überall das bunte Emoji. Gespeichert wird
+/// weiter ohne, damit vorhandene Avatare dieselbe Auswahl treffen.
+String alsEmoji(String e) {
+  final runen = e.runes.toList();
+  if (runen.length == 1 && runen.first < 0x1F000) {
+    return '$e\uFE0F';
+  }
+  return e;
+}
 
 /// Auswahl an Emojis (sport-/team-lastig) für den Emoji-Modus.
 const List<String> kAvatarEmojis = [
@@ -300,7 +314,7 @@ class _AvatarEditorSheetState extends State<_AvatarEditorSheet> {
                           width: 2,
                         ),
                       ),
-                      child: Text(e, style: const TextStyle(fontSize: 17)),
+                      child: Text(alsEmoji(e), style: const TextStyle(fontSize: 17)),
                     ),
                   ),
               ],

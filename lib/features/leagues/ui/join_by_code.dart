@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/league_screen.dart';
+import '../../../core/ui/eingabe_blatt.dart';
 import '../../fantasy/models/fantasy_models.dart';
 import '../../fantasy/providers.dart';
 import '../../fantasy/ui/fantasy_league_screen.dart';
@@ -21,39 +22,17 @@ import '../../tippspiel/providers.dart';
 /// heißt: sonst verschluckt die Fantasy-Stufe echte Gründe (Draft läuft
 /// bereits, Liga voll) und der Nutzer sähe nur „Code passt zu nichts".
 Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
-  final controller = TextEditingController();
-  final code = await showDialog<String>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Beitreten'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('Gib den Einladungscode ein – für eine Fantasy-Liga '
-              'oder eine Tipprunde.'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Einladungscode',
-              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-            ),
-            onSubmitted: (value) => Navigator.of(context).pop(value),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(controller.text),
-          child: const Text('Beitreten'),
-        ),
-      ],
+  final code = await eingabe(
+    context,
+    titel: 'Beitreten',
+    text: 'Einladungscode einer Fantasy-Liga oder Tipprunde.',
+    feld: const EingabeFeld(
+      label: 'Einladungscode',
+      autokorrektur: false,
+      grossschreibung: TextCapitalization.characters,
     ),
+    ja: 'Beitreten',
+    pruefe: (v) => v.isEmpty ? 'Bitte gib einen Code ein.' : null,
   );
   if (code == null || code.trim().isEmpty) return;
   final trimmed = code.trim();

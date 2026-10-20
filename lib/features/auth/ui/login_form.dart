@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widgets/liquid_glass.dart';
 import '../../../app/widgets/matchup_logo.dart';
+import '../../../core/ui/eingabe_blatt.dart';
 import '../auth_repository.dart';
 import '../providers.dart';
 import 'social_buttons.dart';
@@ -209,9 +210,18 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   /// Öffnet einen Dialog zum Anfordern einer Passwort-Reset-Mail. Die
   /// E-Mail aus dem Login-Feld wird vorbefüllt.
   Future<void> _forgotPassword() async {
-    final email = await showDialog<String>(
-      context: context,
-      builder: (_) => _ForgotPasswordDialog(initialEmail: _email.text.trim()),
+    final email = await eingabe(
+      context,
+      titel: 'Passwort vergessen',
+      text: 'Wir schicken dir einen Link zum Zurücksetzen.',
+      feld: EingabeFeld(
+        label: 'E-Mail',
+        start: _email.text.trim(),
+        tastatur: TextInputType.emailAddress,
+        autokorrektur: false,
+      ),
+      ja: 'Link senden',
+      pruefe: (v) => v.contains('@') ? null : 'Bitte gib deine E-Mail ein.',
     );
     if (email == null || email.isEmpty || !mounted) return;
 
@@ -413,64 +423,6 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                       ? 'Du hast schon ein Konto? Anmelden'
                       : 'Du hast noch kein Konto? Registrieren'),
                 ),
-      ],
-    );
-  }
-}
-
-/// Dialog zum Anfordern einer Passwort-Reset-Mail. Eigenes StatefulWidget,
-/// damit der TextEditingController erst beim Unmount des Dialogs sauber
-/// freigegeben wird (kein manuelles dispose während der Schließ-Animation).
-class _ForgotPasswordDialog extends StatefulWidget {
-  const _ForgotPasswordDialog({required this.initialEmail});
-
-  final String initialEmail;
-
-  @override
-  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
-}
-
-class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
-  late final TextEditingController _email =
-      TextEditingController(text: widget.initialEmail);
-
-  @override
-  void dispose() {
-    _email.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Passwort vergessen'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-              'Wir senden dir einen Link zum Zurücksetzen an deine '
-              'E-Mail-Adresse.'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            autocorrect: false,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'E-Mail'),
-            onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_email.text.trim()),
-          child: const Text('Link senden'),
-        ),
       ],
     );
   }

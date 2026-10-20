@@ -1131,8 +1131,17 @@ Der Code steht; ohne diese Schritte bleiben beide Knöpfe unsichtbar.
 5. **`ios/Runner/Info.plist`**: das *umgekehrte* Schema der iOS-Client-ID
    (`com.googleusercontent.apps.…`) als weiteren `CFBundleURLTypes`-Eintrag
    ergänzen. Ohne das kehrt die Google-Anmeldung auf iOS nicht in die App
-   zurück. **Steht noch aus** — die Client-ID gibt es noch nicht, und ein
-   falsches Schema ist schlimmer als keins.
+   zurück. **Eingetragen am 20.10.2026** (Projekt `matchup-f9e83`, Web- und
+   iOS-Client-ID stehen als `defaultValue` in `AppConfig`), dazu zwei
+   Android-Clients (Upload-SHA-1 `44:D2:69:…:3D:B4` und der des
+   Play-App-Signing-Keys) und Google wie Apple in Supabase aktiviert.
+   **Die IDs waren beim ersten Eintragen vertauscht** — Web- und iOS-ID sehen
+   gleich aus. Geprüft wird das ohne Anmeldung über Google selbst:
+   `https://accounts.google.com/o/oauth2/v2/auth?client_id=<ID>&redirect_uri=<R>&response_type=code&scope=openid`
+   mit `R` = umgekehrtes Schema `:/oauth2redirect` (iOS) bzw. die
+   Supabase-Callback-URL (Web). Ein Fehler steht base64-kodiert in
+   `authError` der Weiterleitung („Custom scheme URIs are not allowed for
+   'WEB' client type" heißt: das ist der Web-Client).
 6. **Redirect-URLs in Supabase** (Authentication → URL Configuration): der
    Deep-Link steht dort schon vom Passwort-Reset; für den Browser-Weg wird
    nichts Weiteres gebraucht.
@@ -1600,9 +1609,13 @@ Umgestellt sind alle Ja/Nein-Rückfragen: Draft-Pick (mit Wappen, Position,
 Verein, Ø), Droppen, Trade zurückziehen, Kader voll, Liga verlassen/löschen
 (dreifach mit `rueckfrageWahl`), Adminrechte übergeben, Kicken,
 Tippspiel ein/aus, Tippspiel löschen/verlassen/übergeben, Abmelden, Konto
-löschen. **Noch `AlertDialog`:** die sechs Eingabefenster (Liga-Name,
-Teamname, Passwort ändern/vergessen, Beitreten mit Code, Profiltext).
-Vorschau `rueckfrage_vorschau_test.dart`.
+löschen. Vorschau `rueckfrage_vorschau_test.dart`.
+**Seit dem 20.10.2026 auch alle Eingaben** — `eingabeBlatt`/`eingabe` in
+`core/ui/eingabe_blatt.dart`, dieselbe Form mit Textfeldern: Liga-Name,
+Teamname, Profilname, E-Mail, Passwort ändern und vergessen, Beitreten mit
+Code. `pruefe` liefert einen Fehlertext, das Blatt bleibt dann offen (vorher
+schloss etwa ein zu kurzer Liga-Name stumm ohne Wirkung). In `lib/` steht
+kein `AlertDialog` mehr. Gehalten von `eingabe_blatt_test.dart`.
 
 **„Redraft" steht nirgends mehr** (18.10.2026, auf Ansage): Seit der
 Dynasty-Modus weg ist, stand auf jeder Ligakarte, unter jedem Liga-Titel und
@@ -3900,8 +3913,12 @@ der Icon-Schrift.
 angesehen, oder es wird ein `Icon`. In den Vorschauen ist der Fehler sichtbar
 (leeres Kästchen), auf dem Gerät hängt die Anzeige an einer Schrift-
 Ersatzkette — dann steht das Zeichen in einer fremden Schrift mitten im Satz.
-Die restlichen Fundstellen (`★` in der Tipp-Tabelle, `●` in der
-Liga-Übersicht, `⚽`/`⚡` in den Avataren) sind **noch offen**.
+`★` (Tipp-Tabelle) und `●` (Liga-Übersicht) hat Inter in allen Schnitten —
+geprüft am 20.10.2026 über die Zeichentabelle, dort ist nichts zu tun. `⚽`
+und `⚡` in den Avataren sind Emojis und kommen aus der Systemschrift;
+`alsEmoji` hängt beim Zeichnen den Selektor U+FE0F an, damit die
+Ersatzkette sie nicht als einfarbiges Textzeichen nimmt. Gespeichert wird
+ohne Selektor.
 
 **Die Zeile „Spieler antippen — aus deinem Kader und aus seinem" ist weg.**
 Eine Anleitung, die dasteht, bis man sie befolgt hat, liest niemand ein

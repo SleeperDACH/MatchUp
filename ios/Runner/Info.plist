@@ -22,6 +22,16 @@
 				<string>app.matchup.mobile</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>google-sign-in</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.325263487271-0tb15h4jnp0l6fthegi6kkp1djbpavt2</string>
+			</array>
+		</dict>
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Zum schnellen Anmelden bei MatchUp per Face ID.</string>

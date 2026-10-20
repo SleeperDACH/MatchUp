@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/config/app_config.dart';
 import '../core/ui/app_avatar.dart';
+import '../core/ui/eingabe_blatt.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/user_profile.dart';
 import '../features/auth/ui/login_screen.dart';
@@ -78,11 +79,12 @@ class _Profile extends ConsumerWidget {
   /// Ändert den Nutzernamen (Kurz-Dialog).
   Future<void> _editName(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final value = await _showTextDialog(
+    final value = await eingabe(
       context,
-      title: 'Name ändern',
-      label: 'Nutzername',
-      initial: username,
+      titel: 'Name ändern',
+      feld: EingabeFeld(label: 'Nutzername', start: username ?? ''),
+      ja: 'Speichern',
+      pruefe: (v) => v.isEmpty ? 'Bitte gib einen Namen ein.' : null,
     );
     if (value == null || value.isEmpty) return;
     try {
@@ -98,11 +100,26 @@ class _Profile extends ConsumerWidget {
   /// Passwort ändern: altes Passwort, neues Passwort und Bestätigung.
   Future<void> _editPassword(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final result = await showDialog<({String current, String next})>(
-      context: context,
-      builder: (_) => const _ChangePasswordDialog(),
+    final werte = await eingabeBlatt(
+      context,
+      titel: 'Passwort ändern',
+      felder: const [
+        EingabeFeld(label: 'Aktuelles Passwort', verdeckt: true),
+        EingabeFeld(label: 'Neues Passwort', verdeckt: true),
+        EingabeFeld(label: 'Neues Passwort bestätigen', verdeckt: true),
+      ],
+      ja: 'Speichern',
+      pruefe: (w) {
+        if (w.any((v) => v.isEmpty)) return 'Bitte alle Felder ausfüllen.';
+        if (w[1].length < 6) {
+          return 'Das neue Passwort muss mindestens 6 Zeichen haben.';
+        }
+        if (w[1] != w[2]) return 'Die neuen Passwörter stimmen nicht überein.';
+        return null;
+      },
     );
-    if (result == null) return;
+    if (werte == null) return;
+    final result = (current: werte[0], next: werte[1]);
     try {
       await ref
           .read(authRepositoryProvider)
@@ -121,12 +138,18 @@ class _Profile extends ConsumerWidget {
   /// Ändert die E-Mail-Adresse (Bestätigung per Link an die neue Adresse).
   Future<void> _editEmail(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final value = await _showTextDialog(
+    final value = await eingabe(
       context,
-      title: 'E-Mail ändern',
-      label: 'Neue E-Mail',
-      initial: email,
-      keyboardType: TextInputType.emailAddress,
+      titel: 'E-Mail ändern',
+      text: 'Wir schicken einen Bestätigungslink an die neue Adresse.',
+      feld: EingabeFeld(
+        label: 'Neue E-Mail',
+        start: email ?? '',
+        tastatur: TextInputType.emailAddress,
+        autokorrektur: false,
+      ),
+      ja: 'Speichern',
+      pruefe: (v) => v.contains('@') ? null : 'Bitte gib eine E-Mail ein.',
     );
     if (value == null || value.isEmpty) return;
     try {
@@ -366,137 +389,6 @@ class _SettingTile extends StatelessWidget {
           ? Icon(Icons.chevron_right, size: 20, color: scheme.onSurfaceVariant)
           : null,
       onTap: onTap,
-    );
-  }
-}
-
-/// Kurzer Text-Eingabe-Dialog (Name / E-Mail / Passwort).
-Future<String?> _showTextDialog(
-  BuildContext context, {
-  required String title,
-  required String label,
-  String? initial,
-  bool obscure = false,
-  TextInputType? keyboardType,
-}) {
-  final controller = TextEditingController(text: initial ?? '');
-  return showDialog<String>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        obscureText: obscure,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(labelText: label),
-        onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Abbrechen'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-          child: const Text('Speichern'),
-        ),
-      ],
-    ),
-  );
-}
-
-/// Dialog zum Ändern des Passworts: aktuelles Passwort, neues Passwort und
-/// Bestätigung. Gibt bei Erfolg `(current, next)` zurück, sonst `null`.
-class _ChangePasswordDialog extends StatefulWidget {
-  const _ChangePasswordDialog();
-
-  @override
-  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
-}
-
-class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
-  final _current = TextEditingController();
-  final _next = TextEditingController();
-  final _confirm = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _current.dispose();
-    _next.dispose();
-    _confirm.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final cur = _current.text;
-    final next = _next.text;
-    final conf = _confirm.text;
-    if (cur.isEmpty || next.isEmpty || conf.isEmpty) {
-      setState(() => _error = 'Bitte alle Felder ausfüllen.');
-      return;
-    }
-    if (next.length < 6) {
-      setState(
-        () => _error = 'Das neue Passwort muss mindestens 6 Zeichen haben.',
-      );
-      return;
-    }
-    if (next != conf) {
-      setState(() => _error = 'Die neuen Passwörter stimmen nicht überein.');
-      return;
-    }
-    Navigator.of(context).pop((current: cur, next: next));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Passwort ändern'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _current,
-            obscureText: true,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Aktuelles Passwort'),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _next,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Neues Passwort'),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _confirm,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Neues Passwort bestätigen',
-            ),
-            onSubmitted: (_) => _submit(),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 10),
-            Text(
-              _error!,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Speichern')),
-      ],
     );
   }
 }
