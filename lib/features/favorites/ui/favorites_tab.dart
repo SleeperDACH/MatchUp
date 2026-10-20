@@ -1,3 +1,4 @@
+import '../../../app/typografie.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -280,7 +281,14 @@ class _Body extends StatelessWidget {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _FixturesTab(teamIds: group.teamIds, name: group.label),
+                      _FixturesTab(
+                        teamIds: group.teamIds,
+                        name: group.label,
+                        hauptWettbewerb: () {
+                          final id = group.members.first.leagueId;
+                          return id == null ? null : Leagues.byId(id).name;
+                        }(),
+                      ),
                       _NewsTab(args: group.newsArgs, name: group.label),
                     ],
                   ),
@@ -411,18 +419,13 @@ class _RundKnopf extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
-          child: Container(
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: scheme.onSurface.withValues(alpha: 0.18),
-                width: 0.8,
-              ),
-            ),
-            child: Icon(icon, size: 19, color: ton),
+          // **Ohne Kreisrand** (21.10.2026, „cleaner"): Zwei umrandete Kreise
+          // neben einer Reihe runder Wappen lasen sich wie zwei weitere
+          // Vereine. Das Tippziel bleibt 44 Punkte.
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icon, size: 22, color: ton),
           ),
         ),
       ),
@@ -472,13 +475,14 @@ class _VereinsKopf extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            group.label,
+            group.label.toUpperCase(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            // Schräg in Versalien wie jede Überschrift der App (18.10.2026).
             style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
+              fontSize: Schrift.gross,
+              fontWeight: Schrift.ueberschriftGewicht,
+              fontStyle: Schrift.ueberschriftStil,
             ),
           ),
           if (unterzeile.isNotEmpty)
@@ -498,8 +502,15 @@ class _VereinsKopf extends ConsumerWidget {
 // Spielplan (wettbewerbsübergreifend)
 // ---------------------------------------------------------------------
 class _FixturesTab extends ConsumerWidget {
-  const _FixturesTab({required this.teamIds, required this.name});
+  const _FixturesTab({
+    required this.teamIds,
+    required this.name,
+    this.hauptWettbewerb,
+  });
   final List<String> teamIds;
+
+  /// Liga des Vereins — ihre Spiele nennen im Kopf nur den Spieltag.
+  final String? hauptWettbewerb;
 
   /// Anzeigename des gewählten Favoriten — der Leerzustand nennt ihn.
   final String name;
@@ -544,6 +555,7 @@ class _FixturesTab extends ConsumerWidget {
     // den nächsten Spielen, die Ergebnisse liegen darüber.
     return SpielplanAnsicht(
       fixtures: fixtures,
+      hauptWettbewerb: hauptWettbewerb,
       onRefresh: () => neuLaden(() {
         for (final id in teamIds) {
           ref.invalidate(teamFixturesProvider(id));

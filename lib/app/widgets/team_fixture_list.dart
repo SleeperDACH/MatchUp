@@ -7,6 +7,7 @@ import '../../core/models/team_fixture.dart';
 import '../../features/tippspiel/ui/team_badge.dart';
 import '../match_detail_screen.dart';
 import '../theme.dart';
+import 'karte.dart';
 import 'pulsing_dot.dart';
 
 /// Gemeinsame Darstellung eines Team-Spielplans: Datums-Überschriften und
@@ -50,10 +51,16 @@ class SpielplanAnsicht extends StatefulWidget {
     required this.fixtures,
     this.padding = const EdgeInsets.fromLTRB(12, 8, 12, 96),
     this.onRefresh,
+    this.hauptWettbewerb,
   });
 
   final List<TeamFixture> fixtures;
   final EdgeInsets padding;
+
+  /// Der Wettbewerb, in dem der Verein spielt („Bundesliga"). Seine Spiele
+  /// tragen im Kopf nur den Spieltag; andere Wettbewerbe (Pokal) behalten
+  /// ihren Namen. Ohne Angabe steht er überall.
+  final String? hauptWettbewerb;
 
   /// Zum Neuladen nach unten ziehen. Greift am **oberen** Ende der Liste, also
   /// über den Ergebnissen — an der Trennstelle zieht man die Vergangenheit
@@ -95,7 +102,12 @@ class _SpielplanAnsichtState extends State<SpielplanAnsicht> {
     if (vergangen.isNotEmpty) {
       if (offen) {
         oben.add(const FixtureSectionLabel('Vorherige Spiele'));
-        oben.addAll(fixturesWithDateHeaders(vergangen));
+        oben.add(SpielFlaeche(
+          children: fixturesWithDateHeaders(
+            vergangen,
+            hauptWettbewerb: widget.hauptWettbewerb,
+          ),
+        ));
       } else {
         oben.add(
           _VorherigeSpieleKnopf(
@@ -137,7 +149,16 @@ class _SpielplanAnsichtState extends State<SpielplanAnsicht> {
         ),
         SliverPadding(
           padding: seiten.copyWith(bottom: widget.padding.bottom),
-          sliver: SliverList.list(children: fixturesWithDateHeaders(kommend)),
+          sliver: SliverToBoxAdapter(
+            child: kommend.isEmpty
+                ? const SizedBox.shrink()
+                : SpielFlaeche(
+                    children: fixturesWithDateHeaders(
+                      kommend,
+                      hauptWettbewerb: widget.hauptWettbewerb,
+                    ),
+                  ),
+          ),
         ),
       ],
     );
@@ -225,6 +246,7 @@ class _VorherigeSpieleKnopf extends StatelessWidget {
 List<Widget> fixturesWithDateHeaders(
   List<TeamFixture> list, {
   bool mitWettbewerb = true,
+  String? hauptWettbewerb,
 }) {
   final out = <Widget>[];
   DateTime? letzterAnstoss;
@@ -239,6 +261,8 @@ List<Widget> fixturesWithDateHeaders(
         date: anstoss,
         fixture: mitWettbewerb ? f : null,
         mitZeit: true,
+        hauptWettbewerb: hauptWettbewerb,
+        zeitOffen: anstossOffen(f.kickoff),
       ));
       letzterAnstoss = anstoss;
     }
@@ -269,9 +293,18 @@ class FixtureDateHeader extends StatelessWidget {
     required this.date,
     this.fixture,
     this.mitZeit = false,
+    this.hauptWettbewerb,
+    this.zeitOffen = false,
   });
 
   final DateTime date;
+
+  /// Spiele dieses Wettbewerbs nennen nur den Spieltag (siehe
+  /// [SpielplanAnsicht.hauptWettbewerb]).
+  final String? hauptWettbewerb;
+
+  /// Die Quelle kennt die Anstoßzeit noch nicht (siehe [anstossOffen]).
+  final bool zeitOffen;
 
   /// Liefert Wettbewerb und Spieltag. Ohne Spiel bleibt es beim Datum.
   ///
@@ -294,9 +327,12 @@ class FixtureDateHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final label = DateFormat('E, d. MMM', 'de_DE').format(date);
     final f = fixture;
+    final eigener = f != null &&
+        hauptWettbewerb != null &&
+        f.leagueName.toLowerCase() == hauptWettbewerb!.toLowerCase();
     final zusatz = f == null
         ? null
-        : [f.leagueName, ?matchdayLabel(f)].join(', ');
+        : [if (!eigener) f.leagueName, ?matchdayLabel(f)].join(', ');
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
       child: Row(
@@ -319,7 +355,7 @@ class FixtureDateHeader extends StatelessWidget {
           if (mitZeit) ...[
             const SizedBox(width: 7),
             Text(
-              DateFormat('HH:mm').format(date),
+              zeitOffen ? 'Zeit offen' : DateFormat('HH:mm').format(date),
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -491,7 +527,9 @@ class TeamFixtureCard extends StatelessWidget {
                       )
                     else
                       Text(
-                        DateFormat('HH:mm').format(f.kickoff.toLocal()),
+                        anstossOffen(f.kickoff)
+                            ? 'offen'
+                            : DateFormat('HH:mm').format(f.kickoff.toLocal()),
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
@@ -543,3 +581,34 @@ class TeamFixtureCard extends StatelessWidget {
   }
 }
 
+
+
+/// **Die Quelle kennt die Anstoßzeit noch nicht.** Sportmonks setzt dann
+/// Mitternacht UTC — in der App stand „01:00" bzw. „02:00" da, als wäre das
+/// ein Anstoß. Kein Spiel einer deutschen Liga beginnt um Mitternacht UTC.
+bool anstossOffen(DateTime kickoff) {
+  final u = kickoff.toUtc();
+  return u.hour == 0 && u.minute == 0;
+}
+
+/// **Die Spiele auf einer Fläche** (21.10.2026, auf Ansage: „den
+/// Favoriten-Tab cleaner") — dieselbe Form wie im Live-Tab, wo die Spiele
+/// eines Wettbewerbs auf dem Kartengrund stehen. Ohne Fläche liefen Köpfe,
+/// Zeilen und Haarlinien auf dem schwarzen Grund ineinander.
+class SpielFlaeche extends StatelessWidget {
+  const SpielFlaeche({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.only(bottom: 4),
+        decoration: kartenDeko(context),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      );
+}

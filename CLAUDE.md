@@ -2180,6 +2180,10 @@ Was sich daraus geändert hat:
   derselbe Fehler wie „bis 20:30" unter einer 20:30. Die Auskunft „beendet"
   bleibt, denn einem 3:2 sieht man nicht an, ob es das Endergebnis ist — sie
   steht seit dem 04.09.2026 im Kopf des Zeitblocks statt in jeder Zeile.
+- **Die Wettbewerbs-Kacheln sind seit dem 21.10.2026 neutral** (auf
+  Ansage, „an das neue Design anpassen"): `kartenDeko` statt Verlauf und
+  Kante in der Ligafarbe; Farbe trägt nur das Logo. Sie sind ein Weg in die
+  Übersicht, kein Zustand. Der Punkt darunter beschreibt die Fassung davor.
 - **Die Wettbewerbe sind fünf gleich breite Kacheln** (`_WettbewerbsKacheln`)
   — alle ohne Wischen sichtbar und direkt antippbar. Drei Fassungen hat das
   gebraucht, und die mittlere ist die lehrreiche: Zuerst fünf farbige
@@ -7958,6 +7962,17 @@ Test braucht `SharedPreferences.setMockInitialValues({})`, weil der
 Ungelesen-Punkt je Gespräch seine Lesemarke von dort holt.
 
 ## Favoriten-Tab — „A, der Verein führt""
+
+**Cleaner seit dem 21.10.2026** (auf Ansage): Vereinsname schräg in
+Versalien wie jede Überschrift; Sortieren und „+" ohne Kreisrand (sie lasen
+sich neben den runden Wappen wie zwei weitere Vereine); die Spiele stehen auf
+einer Kartenfläche (`SpielFlaeche`, wie im Live-Tab); der Hauptwettbewerb
+steht nicht mehr in jedem Kopf (`SpielplanAnsicht.hauptWettbewerb`: „7.
+Spieltag" statt „Bundesliga, 7. Spieltag", der Pokal behält seinen Namen).
+**Anstoß unbekannt heißt „Zeit offen"** (`anstossOffen`): Sportmonks setzt
+Mitternacht UTC, in der App stand „01:00". Gilt überall, wo die gemeinsame
+Spielplanzeile steht (Favoriten, Vereinsseite, Liga-Übersicht,
+Spielerprofil).
 
 Dritter Schirm nach demselben Verfahren: Diagnose plus drei Richtungen als
 Design-Canvas (`design/favoriten/`), gewählt wurde **A**.

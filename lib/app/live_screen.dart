@@ -852,29 +852,12 @@ class _WettbewerbsKachel extends StatelessWidget {
           onTap: () => onOpen(league.id),
           borderRadius: BorderRadius.circular(14),
           child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              // Der Farbton sitzt in der Fläche, nicht in der Schrift: fünf
-              // farbige Wörter nebeneinander lasen sich als fünf Alarme.
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color.alphaBlend(
-                    farbe.withValues(alpha: 0.22),
-                    scheme.surface,
-                  ),
-                  Color.alphaBlend(
-                    farbe.withValues(alpha: 0.06),
-                    scheme.surface,
-                  ),
-                ],
-              ),
-              border: Border.all(
-                color: farbe.withValues(alpha: 0.42),
-                width: 0.8,
-              ),
-            ),
+            // **Neutral wie jede Karte** (21.10.2026, auf Ansage: „an das neue
+            // Design anpassen"). Vorher trug jede Kachel einen Verlauf und
+            // eine Kante in ihrer Ligafarbe — fünf Farbflächen nebeneinander
+            // am unteren Rand. Die Kachel ist ein Weg in die Übersicht des
+            // Wettbewerbs, kein Zustand; die Farbe trägt das Logo.
+            decoration: kartenDeko(context, radius: 14),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 9),
               child: Column(
