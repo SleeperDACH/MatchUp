@@ -156,8 +156,8 @@ gelten:
    gescheitert, siehe „Einfarbig ist auch kein Zustand"), Vereinsfarben,
    Medaillen. **Das Draft-Board trägt seit dem 20.10.2026 keine
    Positionsfläche mehr** (auf Ansage, „Farbe auf Farbe auf Farbe"): neutrale
-   Zelle, die Position als 3-Punkt-Strich am linken Rand plus Kürzel oben
-   rechts. Punkte statt Fläche wurden früher ausdrücklich abgelehnt — der
+   Zelle, die Position als 3-Punkt-Strich am linken Rand, oben rechts das
+   Vereinswappen. Punkte statt Fläche wurden früher ausdrücklich abgelehnt — der
    Strich ist keiner.
 4. **Erklärungen hinter ⓘ.** `InfoKnopf` (`app/widgets/info_knopf.dart`)
    öffnet ein Blatt; `Kapitelmarke(info: (titel, text))` trägt ihn am Ende.
@@ -2903,8 +2903,9 @@ der nächste Schritt, wenn es wieder klemmt.
 Farbe auf Farbe, ziemlich unübersichtlich, wenn das Board gefüllt ist"): Die
 Zelle trägt den Kartengrund — gefüllt eine Spur heller als leer, die eigene
 Spalte eine weitere Spur heller —, die Position steht als **3-Punkt-Strich
-am linken Rand** in voller Positionsfarbe und als graues Kürzel (TW, ABW, MF,
-ST) oben rechts neben Pick-Code und AUTO. Die gedämpfte 22-%-Fläche, die der
+am linken Rand** in voller Positionsfarbe; oben rechts steht klein das
+**Vereinswappen** (14 Punkt, `clubIcons` am `DraftBoard` — auf Ansage am
+selben Tag statt des Kürzels TW/ABW/MF/ST, das der Strich ohnehin sagt). Die gedämpfte 22-%-Fläche, die der
 Abschnitt unten beschreibt, ist damit weg. Vorschau
 `draft_board_vorschau.png`.
 

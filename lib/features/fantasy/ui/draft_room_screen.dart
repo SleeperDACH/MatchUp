@@ -643,6 +643,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
                   // echten Teams (Pick-Nummern folgen der echten Draftorder).
                   showPlaceholders: league.draftStatus == DraftStatus.setup,
                   rechte: rechte,
+                  clubIcons: clubIcons,
                   aktuellerPick: league.draftStatus == DraftStatus.drafting
                       ? league.picksMade
                       : null,
@@ -1772,7 +1773,11 @@ class DraftBoard extends StatelessWidget {
     required this.showPlaceholders,
     this.rechte,
     this.aktuellerPick,
+    this.clubIcons = const {},
   });
+
+  /// Wappen je Verein (`clubIconsProvider`) — klein oben rechts in der Zelle.
+  final Map<String, String?> clubIcons;
 
   /// **Gehandelte Picks des Reset-Drafts** (0145). Ist die Karte gesetzt,
   /// steht ein Pick in der Spalte seines **ursprünglichen** Teams, nach
@@ -1976,7 +1981,7 @@ class DraftBoard extends StatelessWidget {
     // noch über zweihundert getönte Felder ergab. Jetzt trägt die Zelle den
     // Kartengrund (gefüllt eine Spur heller als leer), und die Position steht
     // als **3-Punkt-Strich am linken Rand** — dieselbe Form wie überall sonst
-    // in der App (`PositionsStrich`) — plus das Kürzel grau oben rechts. Der
+    // in der App (`PositionsStrich`) — oben rechts steht das Vereinswappen. Der
     // Strich ist voll gesättigt, aber schmal: Über das Raster gelesen ergibt
     // er eine Spalte aus Farbmarken, die man überfliegen kann, ohne dass die
     // Fläche ruft.
@@ -2058,16 +2063,15 @@ class DraftBoard extends StatelessWidget {
                         ),
                       ),
                     ],
+                    // **Das Wappen statt des Kürzels** (20.10.2026, auf
+                    // Ansage): Die Position sagt schon der Strich am Rand,
+                    // der Verein fehlte in der Zelle.
                     if (player != null) ...[
                       const Spacer(),
-                      Text(
-                        player.position.short,
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.3,
-                          color: scheme.onSurfaceVariant,
-                        ),
+                      ClubBadge(
+                        club: player.club,
+                        iconUrl: clubIcons[player.club],
+                        size: 14,
                       ),
                     ],
                   ],

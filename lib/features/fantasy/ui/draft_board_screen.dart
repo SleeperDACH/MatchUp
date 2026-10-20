@@ -137,6 +137,8 @@ class _DraftBoardScreenState extends ConsumerState<DraftBoardScreen> {
                     myId: myId,
                     showPlaceholders: false,
                     rechte: rechte,
+                    clubIcons: ref.watch(clubIconsProvider).valueOrNull ??
+                        const <String, String?>{},
                   ),
                 ),
               ],
