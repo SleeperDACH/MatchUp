@@ -3021,19 +3021,24 @@ gebrochen oder den Draft unmöglich gemacht:
 Gehalten von `test/reset_winterpause_test.dart` (Snake-Folge, Tabelle bleibt
 mit Gegenprobe, Start-Blatt `reset_draft_start.png`).
 
-**Die Elf der Rückrunde kommt aus dem Reset-Draft** (0144, 20.10.2026,
-auf Ansage): Wer zuerst gezogen wurde, steht in der Startelf, aufgefüllt nach
+**Nach jedem Draft steht eine Elf aus der Pick-Reihenfolge** (0144,
+20.10.2026, auf Ansage) — nach dem ersten Draft einer Liga wie nach dem
+Reset-Draft. Wer zuerst gezogen wurde, steht in der Startelf, aufgefüllt nach
 **4-3-3** (1 TW, 4 ABW, 3 MF, 3 ST — bewusst nicht die Grundformation der
-Liga). `fantasy_reset_elf` geht die Picks der Phase `reset` in
+Liga). `fantasy_draft_elf` geht die Picks der laufenden Draft-Phase in
 Pick-Reihenfolge durch und nimmt je Position die ersten. Eingetragen wird
-**sofort mit dem letzten Pick** (Trigger `fantasy_reset_draft_fertig` auf
-`draft_status → done`), Rückfallebene ist der Takt aus 0110. Ziel ist der
-erste noch nicht angepfiffene Spieltag; endet der Draft mitten in einem, gilt
-die Elf ab dem nächsten. Nur einmal je Manager — danach übernimmt 0110 wie
-gewohnt. Eine Zeile für den Zielspieltag wird nur ersetzt, wenn keiner ihrer
-Spieler im Kader steht (die vor dem Reset übernommene, beim Leeren der Kader
-ausgeräumte Zeile). 0110 legt außerdem keine **leere** Übernahme mehr an.
-Rollback-Probe an MatchUp! #1: 18 Elfen, je Position höchstens 1/4/3/3,
+**sofort mit dem letzten Pick** (Trigger `fantasy_draft_fertig` auf
+`draft_status → done`, dieselbe Transaktion), und zwar für den ersten
+Spieltag, der noch nicht angepfiffen ist: Läuft ein Spieltag, während der
+Draft endet, gilt die Elf erst ab dem nächsten. **Handarbeit gewinnt:**
+Nur einmal je Manager, eine selbst gestellte Elf wird nie ersetzt — nur eine
+Zeile, in der keiner der Spieler im Kader steht (die vor dem Reset
+übernommene, beim Leeren der Kader ausgeräumte). Danach übernimmt 0110 wie
+gewohnt die Vorwoche; 0110 legt außerdem keine **leere** Übernahme mehr an.
+**Nicht im Takt**, absichtlich: Dort liefe es über bestehende Ligen, und wer
+dort nie aufgestellt hat, bekäme mitten in der Saison eine Elf aus einem
+alten Draft. Rollback-Proben an MatchUp! #1: erster Draft und Reset-Draft je
+18 Elfen, je Position höchstens 1/4/3/3, eine vorher gestellte Elf bleibt,
 zweiter Lauf 0.
 
 ### Der Admin kann den Draft pausieren (0140, 19.10.2026)
