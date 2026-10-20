@@ -3041,6 +3041,48 @@ alten Draft. Rollback-Proben an MatchUp! #1: erster Draft und Reset-Draft je
 18 Elfen, je Position höchstens 1/4/3/3, eine vorher gestellte Elf bleibt,
 zweiter Lauf 0.
 
+### Picks für den Reset-Draft handeln (0145, 20.10.2026)
+
+Auf Ansage: Während der Hinrunde lassen sich die Picks des Reset-Drafts
+handeln — gegen Picks, gegen Spieler, gemischt. Ein Pick ist **Runde +
+ursprüngliches Team**; die Nummer in der Runde („2.07") steht erst mit dem
+Reset fest und wird bis dahin nach der **aktuellen** Tabelle angezeigt
+(Tabellenletzter zuerst, Snake — `resetReihenfolgeProvider`).
+
+- **Gespeichert wird nur, was gehandelt wurde** (`fantasy_draft_rechte`,
+  Schlüssel Liga/Runde/Ursprung). Ohne Zeile gehört der Pick seinem
+  ursprünglichen Team (`fantasy_pick_besitzer` ↔ `besitzerVon` in
+  `logic/draft_rechte.dart` — **die Regel steht zweimal**).
+- **Picks in Angeboten stehen in `fantasy_trade_picks`**, nicht in
+  `fantasy_trade_items`: Dort ist `player_id` Teil des Primärschlüssels, und
+  ältere App-Versionen lesen ihn als Pflichtfeld. Sie sehen ein Angebot mit
+  Picks nur ohne die Picks. `fantasy_propose_trade` hat zwei neue Parameter
+  (`p_offer_picks`, `p_request_picks`, JSON `[{runde, ursprung}]`, Standard
+  leer); die App schickt sie nur, wenn es Picks gibt.
+- **Handelbar** (`fantasy_picks_handelbar` ↔ `picksHandelbar`): Liga mit
+  Reset, erster Draft fertig, Reset noch nicht erfolgt. Geprüft beim Angebot,
+  beim Annehmen und beim Ausführen; der Reset storniert ohnehin alle offenen
+  und vorgemerkten Trades. Runden 1 bis Kadergröße. Der Reset-Draft startet
+  nicht mit weniger Runden, als gehandelt wurden.
+- **Im Reset-Draft zieht der Besitzer** (`fantasy_current_manager` ↔
+  `amZugMitRechten`). Ist er nicht mehr in der Liga, zieht das ursprüngliche
+  Team. Das Board sortiert Picks mit Rechten **nach Pick-Nummer** in die
+  Spalte des ursprünglichen Teams (nach Manager eingeordnet überschrieben
+  sich zwei Picks desselben Teams in einer Runde) und nennt in der Zelle den
+  neuen Besitzer.
+- **Wo man es sieht:** Übersicht › Reset-Draft (eigene Picks als Marken,
+  „Draft-Board" → `DraftBoardScreen(phase: 'reset')`, vor dem Reset die
+  Vorschau nach aktueller Tabelle), Kader-Reiter unter der Bank (Liste
+  `MeinePicks`), Trade-Schirm (Picks unter den Spielern jeder Spalte,
+  `PickKachel`), Angebotskarte und Kontern.
+- **Nicht im Transfers-Bereich:** Der liest das Kaderprotokoll, und Picks
+  sind keine Kaderbewegung. Ein reiner Pick-Tausch steht dort nicht.
+
+Rollback-Probe an MatchUp! #1: Angebot Runde 2 von A gegen Runde 1 von B,
+fremder Pick abgelehnt, nach Annahme die Rechte getauscht, im simulierten
+Reset-Draft zieht A an Bs Platz in Runde 1 und B an As Platz in Runde 2.
+Gehalten von `test/picks_handeln_test.dart` (`picks_handeln.png`).
+
 ### Der Admin kann den Draft pausieren (0140, 19.10.2026)
 
 Auf Ansage („der Admin braucht die Möglichkeit, den Draft stoppen zu

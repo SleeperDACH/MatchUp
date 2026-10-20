@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:matchup/features/fantasy/logic/draft_rechte.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/features/auth/providers.dart';
@@ -83,7 +84,12 @@ Widget _karte(String tradeId,
       playerPoolProvider.overrideWith((ref) async => [_spieler('p1'), _spieler('p2')]),
       clubIconsProvider.overrideWith((ref) async => const {}),
       fantasyManagersProvider.overrideWith((ref, id) => Stream.value(manager)),
-      tradeDetailProvider.overrideWith((ref, id) async => details[id]),
+      tradeDetailProvider.overrideWith((ref, id) async {
+            final d = details[id];
+            return d == null
+                ? null
+                : (trade: d.trade, items: d.items, picks: const <TradePick>[]);
+          }),
     ],
     child: MaterialApp(
       theme: buildAppTheme(),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:matchup/features/fantasy/logic/draft_rechte.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/features/auth/providers.dart';
@@ -229,7 +230,12 @@ void main() {
           fantasyManagersProvider
               .overrideWith((ref, id) => Stream.value(manager)),
           leagueTradesProvider.overrideWith((ref, id) => Stream.value(trades)),
-          tradeDetailProvider.overrideWith((ref, id) async => details[id]),
+          tradeDetailProvider.overrideWith((ref, id) async {
+            final d = details[id];
+            return d == null
+                ? null
+                : (trade: d.trade, items: d.items, picks: const <TradePick>[]);
+          }),
           myWaiverClaimsProvider
               .overrideWith((ref, id) => Stream.value(antraege)),
           rosterMovesProvider.overrideWith((ref, id) => Stream.value(moves)),

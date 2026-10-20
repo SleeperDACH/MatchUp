@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
+import '../../../app/widgets/kapitelmarke.dart';
+import 'meine_picks.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app/theme.dart';
@@ -616,6 +618,23 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               runde: round,
               gesperrt: gesperrt,
             ),
+            // **Die Picks für den Reset-Draft unter der Bank** (0145, auf
+            // Ansage). Sie gehören zum Kader der Rückrunde und lassen sich
+            // während der Hinrunde wie Spieler handeln.
+            if (widget.league.resetAktiv &&
+                !(widget.league.draftPhase == 'reset' &&
+                    widget.league.draftStatus == DraftStatus.done))
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Kapitelmarke('Picks · Reset-Draft'),
+                    const SizedBox(height: 4),
+                    MeinePicks(league: widget.league),
+                  ],
+                ),
+              ),
             if (!allesZu)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),

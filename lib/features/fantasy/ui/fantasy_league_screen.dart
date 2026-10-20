@@ -29,6 +29,8 @@ import 'trade_screen.dart';
 import 'transfers_screen.dart';
 import 'weekly_recap_screen.dart';
 import '../../../app/widgets/karte.dart';
+import 'draft_board_screen.dart';
+import 'meine_picks.dart';
 import '../../../app/typografie.dart';
 import '../../../app/widgets/kapitelmarke.dart';
 import '../../../app/widgets/leise_reiter.dart';
@@ -294,6 +296,34 @@ class _OverviewTab extends ConsumerWidget {
                         : '${bewegungen.length} Wechsel in der Liga'),
               zahl: offeneTransfers,
               onTap: () => go(TransfersScreen(league: league)),
+            ),
+          ]),
+        ],
+
+        // --- Reset-Draft ---------------------------------------------------
+        // **Die eigenen Picks und das offizielle Board** (0145, auf Ansage).
+        // Während der Hinrunde lassen sich die Picks handeln; das Board zeigt
+        // die Reihenfolge nach der aktuellen Tabelle samt gehandelter Picks.
+        // Nach dem Reset-Draft ist beides erledigt und verschwindet.
+        if (league.resetAktiv &&
+            league.saisonGestartet &&
+            !(league.draftPhase == 'reset' &&
+                league.draftStatus == DraftStatus.done)) ...[
+          const _Abschnittsmarke('Reset-Draft'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Karte(child: MeinePicks(league: league, kompakt: true)),
+          ),
+          const SizedBox(height: 10),
+          _Zeilengruppe([
+            _LigaZeile(
+              label: 'Draft-Board',
+              icon: Icons.grid_view_outlined,
+              hinweis: league.resetErfolgtAt == null
+                  ? 'Wo du gerade stehst'
+                  : 'Reihenfolge steht fest',
+              onTap: () =>
+                  go(DraftBoardScreen(league: league, phase: 'reset')),
             ),
           ]),
         ],

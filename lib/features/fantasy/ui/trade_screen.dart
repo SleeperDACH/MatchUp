@@ -19,6 +19,8 @@ import '../providers.dart';
 import 'club_badge.dart';
 import 'player_profile_sheet.dart';
 import 'spieler_kachel.dart';
+import 'meine_picks.dart';
+import '../logic/draft_rechte.dart';
 import '../../../app/widgets/segmented_tab_bar.dart';
 
 /// Trade-Zentrale einer Liga: neue Angebote erstellen (Kader nebeneinander)
@@ -362,6 +364,8 @@ class TradeComposeScreen extends ConsumerStatefulWidget {
     required this.partner,
     this.initialOffer = const {},
     this.initialRequest = const {},
+    this.initialOfferPicks = const {},
+    this.initialRequestPicks = const {},
     this.counterOf,
   });
 
@@ -371,6 +375,10 @@ class TradeComposeScreen extends ConsumerStatefulWidget {
   /// Vorauswahl (z. B. beim Kontern eines Angebots).
   final Set<String> initialOffer;
   final Set<String> initialRequest;
+
+  /// Vorauswahl an Picks für den Reset-Draft (0145).
+  final Set<PickKey> initialOfferPicks;
+  final Set<PickKey> initialRequestPicks;
 
   /// ID des ursprünglichen Angebots, das hiermit gekontert (geschlossen) wird.
   final String? counterOf;
@@ -382,6 +390,8 @@ class TradeComposeScreen extends ConsumerStatefulWidget {
 class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
   late final Set<String> _offer = {...widget.initialOffer}; // ich gebe ab
   late final Set<String> _request = {...widget.initialRequest}; // ich will
+  late final Set<PickKey> _offerPicks = {...widget.initialOfferPicks};
+  late final Set<PickKey> _requestPicks = {...widget.initialRequestPicks};
   final _msgCtrl = TextEditingController();
   bool _sending = false;
 
@@ -405,6 +415,8 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
             widget.partner.userId,
             offerPlayers: _offer.toList(),
             requestPlayers: _request.toList(),
+            offerPicks: _offerPicks.toList(),
+            requestPicks: _requestPicks.toList(),
             message: note.isEmpty ? null : note,
             counterOf: widget.counterOf,
           );
@@ -453,6 +465,9 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
     List<FantasyPlayer> offer,
     List<FantasyPlayer> request,
     Map<String, String?> clubIcons,
+    List<PickSlot> offerPicks,
+    List<PickSlot> requestPicks,
+    Map<String, String> nameVon,
   ) async {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
@@ -464,6 +479,9 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
         request: request,
         messageController: _msgCtrl,
         clubIcons: clubIcons,
+        offerPicks: offerPicks,
+        requestPicks: requestPicks,
+        nameVon: nameVon,
       ),
     );
     if (confirmed == true) await _send();
@@ -545,12 +563,38 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                   regeln: widget.league.scoring,
                 ).schnitt,
           };
+          // **Picks für den Reset-Draft** (0145) — nur, solange sie sich
+          // handeln lassen (Hinrunde einer Liga mit Reset).
+          final slots = picksHandelbar(widget.league)
+              ? ref.watch(resetPicksProvider(widget.league.id))
+              : null;
+          final nameVon = {
+            for (final m
+                in ref
+                        .watch(fantasyManagersProvider(widget.league.id))
+                        .valueOrNull ??
+                    const <FantasyManager>[])
+              m.userId: m.display,
+          };
+          final myPicks = slots == null || myId == null
+              ? const <PickSlot>[]
+              : picksVon(slots, myId);
+          final theirPicks = slots == null
+              ? const <PickSlot>[]
+              : picksVon(slots, widget.partner.userId);
+          final offerPickSel =
+              myPicks.where((p) => _offerPicks.contains(p.key)).toList();
+          final requestPickSel =
+              theirPicks.where((p) => _requestPicks.contains(p.key)).toList();
           final offerSel = mine.where((p) => _offer.contains(p.id)).toList();
           final requestSel = theirs
               .where((p) => _request.contains(p.id))
               .toList();
-          final canSend =
-              (_offer.isNotEmpty || _request.isNotEmpty) && !_sending;
+          final canSend = (_offer.isNotEmpty ||
+                  _request.isNotEmpty ||
+                  offerPickSel.isNotEmpty ||
+                  requestPickSel.isNotEmpty) &&
+              !_sending;
 
           return Column(
             children: [
@@ -558,6 +602,8 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
               _Geschaeft(
                 gebe: offerSel,
                 bekomme: requestSel,
+                gebePicks: offerPickSel,
+                bekommePicks: requestPickSel,
                 clubIcons: clubIcons,
                 punkte: punkte,
               ),
@@ -568,13 +614,13 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                   Expanded(
                     child: _Spaltenmarke(
                       wort: 'Du gibst',
-                      anzahl: _offer.length,
+                      anzahl: _offer.length + offerPickSel.length,
                     ),
                   ),
                   Expanded(
                     child: _Spaltenmarke(
                       wort: widget.partner.display,
-                      anzahl: _request.length,
+                      anzahl: _request.length + requestPickSel.length,
                     ),
                   ),
                 ],
@@ -587,6 +633,14 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                       child: _RosterColumn(
                         players: mine,
                         selected: _offer,
+                        picks: myPicks,
+                        selectedPicks: _offerPicks,
+                        nameVon: nameVon,
+                        onTogglePick: (k) => setState(
+                          () => _offerPicks.contains(k)
+                              ? _offerPicks.remove(k)
+                              : _offerPicks.add(k),
+                        ),
                         clubIcons: clubIcons,
                         punkte: punkte,
                         onToggle: (id) => setState(
@@ -608,6 +662,14 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                       child: _RosterColumn(
                         players: theirs,
                         selected: _request,
+                        picks: theirPicks,
+                        selectedPicks: _requestPicks,
+                        nameVon: nameVon,
+                        onTogglePick: (k) => setState(
+                          () => _requestPicks.contains(k)
+                              ? _requestPicks.remove(k)
+                              : _requestPicks.add(k),
+                        ),
                         clubIcons: clubIcons,
                         punkte: punkte,
                         onToggle: (id) => setState(
@@ -642,6 +704,9 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                             offerSel,
                             requestSel,
                             clubIcons,
+                            offerPickSel,
+                            requestPickSel,
+                            nameVon,
                           )
                         : null,
                   ),
@@ -664,11 +729,17 @@ class _ConfirmOfferSheet extends StatelessWidget {
     required this.request,
     required this.messageController,
     required this.clubIcons,
+    this.offerPicks = const [],
+    this.requestPicks = const [],
+    this.nameVon = const {},
   });
 
   final String partnerName;
   final List<FantasyPlayer> offer;
   final List<FantasyPlayer> request;
+  final List<PickSlot> offerPicks;
+  final List<PickSlot> requestPicks;
+  final Map<String, String> nameVon;
   final TextEditingController messageController;
   final Map<String, String?> clubIcons;
 
@@ -689,11 +760,12 @@ class _ConfirmOfferSheet extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 14),
-            _side(context, 'Du gibst', offer, scheme.primary),
+            _side(context, 'Du gibst', offer, offerPicks, scheme.primary),
             const SizedBox(height: 8),
             Icon(Icons.swap_vert, color: scheme.onSurfaceVariant),
             const SizedBox(height: 8),
-            _side(context, '$partnerName gibt', request, scheme.tertiary),
+            _side(context, '$partnerName gibt', request, requestPicks,
+                scheme.tertiary),
             const SizedBox(height: 16),
             TextField(
               controller: messageController,
@@ -732,6 +804,7 @@ class _ConfirmOfferSheet extends StatelessWidget {
     BuildContext context,
     String title,
     List<FantasyPlayer> players,
+    List<PickSlot> picks,
     Color color,
   ) {
     final scheme = Theme.of(context).colorScheme;
@@ -751,7 +824,7 @@ class _ConfirmOfferSheet extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.bold, color: color),
           ),
           const SizedBox(height: 8),
-          if (players.isEmpty)
+          if (players.isEmpty && picks.isEmpty)
             Text('—', style: TextStyle(color: scheme.onSurfaceVariant))
           else
             // Dieselbe Karte wie in der Auswahl und in der Angebotskarte.
@@ -767,6 +840,15 @@ class _ConfirmOfferSheet extends StatelessWidget {
                     iconUrl: clubIcons[p.club],
                     hervor: true,
                     mitHaken: false,
+                    hoehe: 46,
+                    breite: 152,
+                  ),
+                for (final p in picks)
+                  PickKachel(
+                    runde: p.runde,
+                    team: nameVon[p.ursprung] ?? '?',
+                    code: p.code,
+                    hervor: true,
                     hoehe: 46,
                     breite: 152,
                   ),
@@ -965,10 +1047,14 @@ class _Geschaeft extends StatelessWidget {
     required this.bekomme,
     required this.clubIcons,
     required this.punkte,
+    this.gebePicks = const [],
+    this.bekommePicks = const [],
   });
 
   final List<FantasyPlayer> gebe;
   final List<FantasyPlayer> bekomme;
+  final List<PickSlot> gebePicks;
+  final List<PickSlot> bekommePicks;
   final Map<String, String?> clubIcons;
 
   /// Saisonpunkte je Spieler — im Kopf steht die **Summe je Seite**. Sie ist
@@ -1001,6 +1087,7 @@ class _Geschaeft extends StatelessWidget {
             child: _seite(
               context,
               gebe,
+              gebePicks,
               scheme.primary,
               links: true,
               summe: _summe(gebe),
@@ -1018,6 +1105,7 @@ class _Geschaeft extends StatelessWidget {
             child: _seite(
               context,
               bekomme,
+              bekommePicks,
               scheme.tertiary,
               links: false,
               summe: _summe(bekomme),
@@ -1031,12 +1119,13 @@ class _Geschaeft extends StatelessWidget {
   Widget _seite(
     BuildContext context,
     List<FantasyPlayer> spieler,
+    List<PickSlot> picks,
     Color farbe, {
     required bool links,
     required double summe,
   }) {
     final scheme = Theme.of(context).colorScheme;
-    if (spieler.isEmpty) {
+    if (spieler.isEmpty && picks.isEmpty) {
       return Text(
         'nichts',
         textAlign: links ? TextAlign.start : TextAlign.end,
@@ -1049,7 +1138,8 @@ class _Geschaeft extends StatelessWidget {
           : CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _kacheln(context, spieler, links),
+        _kacheln(context, spieler, picks, links),
+        if (spieler.isNotEmpty) ...[
         const SizedBox(height: 4),
         Text(
           'Ø ${formatPoints(summe)} Punkte',
@@ -1060,6 +1150,7 @@ class _Geschaeft extends StatelessWidget {
             color: scheme.onSurfaceVariant,
           ),
         ),
+        ],
       ],
     );
   }
@@ -1067,6 +1158,7 @@ class _Geschaeft extends StatelessWidget {
   Widget _kacheln(
     BuildContext context,
     List<FantasyPlayer> spieler,
+    List<PickSlot> picks,
     bool links,
   ) {
     final scheme = Theme.of(context).colorScheme;
@@ -1092,6 +1184,30 @@ class _Geschaeft extends StatelessWidget {
                 const SizedBox(width: 5),
                 Text(
                   SpielerKachel.kurzerName(p.name),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        for (final p in picks)
+          Container(
+            padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
+            decoration: BoxDecoration(
+              color: scheme.onSurface.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.confirmation_number_outlined,
+                    size: 13, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Text(
+                  'Pick ${p.code}',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -1169,10 +1285,20 @@ class _RosterColumn extends StatelessWidget {
     required this.onToggle,
     required this.onProfil,
     required this.punkte,
+    this.picks = const [],
+    this.selectedPicks = const {},
+    this.onTogglePick,
+    this.nameVon = const {},
   });
 
   final List<FantasyPlayer> players;
   final Set<String> selected;
+
+  /// Picks für den Reset-Draft unter den Spielern (0145).
+  final List<PickSlot> picks;
+  final Set<PickKey> selectedPicks;
+  final ValueChanged<PickKey>? onTogglePick;
+  final Map<String, String> nameVon;
   final Map<String, String?> clubIcons;
 
   /// Saisonpunkte je Spieler, nach der Wertung dieser Liga.
@@ -1188,7 +1314,7 @@ class _RosterColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    if (players.isEmpty) {
+    if (players.isEmpty && picks.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -1206,10 +1332,38 @@ class _RosterColumn extends StatelessWidget {
     // Spielerkarten sind.
     return ListView.builder(
       padding: const EdgeInsets.only(top: 2, bottom: 8),
-      itemCount: players.length,
+      itemCount: players.length + (picks.isEmpty ? 0 : picks.length + 1),
       itemBuilder: (context, i) {
-        final p = players[i];
-        return _tile(context, p, selected.contains(p.id));
+        if (i < players.length) {
+          final p = players[i];
+          return _tile(context, p, selected.contains(p.id));
+        }
+        if (i == players.length) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(10, 14, 8, 4),
+            child: Text(
+              'PICKS · RESET-DRAFT',
+              style: TextStyle(
+                fontSize: Schrift.label,
+                fontWeight: Schrift.ueberschriftGewicht,
+                fontStyle: Schrift.ueberschriftStil,
+                letterSpacing: 0.6,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          );
+        }
+        final pick = picks[i - players.length - 1];
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(8, 3, 8, 3),
+          child: PickKachel(
+            runde: pick.runde,
+            team: nameVon[pick.ursprung] ?? '?',
+            code: pick.code,
+            hervor: selectedPicks.contains(pick.key),
+            onTap: onTogglePick == null ? null : () => onTogglePick!(pick.key),
+          ),
+        );
       },
     );
   }
@@ -1411,6 +1565,7 @@ class TradeCard extends ConsumerWidget {
     WidgetRef ref,
     TradeOffer trade,
     List<TradeItem> items,
+    List<TradePick> picks,
   ) {
     final league = ref.read(draftLeagueProvider(trade.leagueId)).valueOrNull;
     final managers = ref
@@ -1438,6 +1593,14 @@ class TradeCard extends ConsumerWidget {
           partner: sender,
           initialOffer: myGive,
           initialRequest: theirGive,
+          initialOfferPicks: {
+            for (final p in picks)
+              if (p.giver == trade.toManager) p.key,
+          },
+          initialRequestPicks: {
+            for (final p in picks)
+              if (p.giver == trade.fromManager) p.key,
+          },
           counterOf: trade.id,
         ),
       ),
@@ -1484,6 +1647,18 @@ class TradeCard extends ConsumerWidget {
               (it.playerId, playerById[it.playerId]),
         ];
         final incoming = trade.toManager == myId;
+        // Picks für den Reset-Draft (0145) mit ihrer Nummer nach der
+        // aktuellen Tabelle, soweit sie schon berechnet ist.
+        final slots = ref.watch(resetPicksProvider(trade.leagueId));
+        final codeVon = {for (final s in slots ?? const <PickSlot>[]) s.key: s.code};
+        final offeredPicks = [
+          for (final p in d.picks)
+            if (p.giver == trade.fromManager) p,
+        ];
+        final requestedPicks = [
+          for (final p in d.picks)
+            if (p.giver == trade.toManager) p,
+        ];
         // Liga (Name + fürs Kontern) & Manager laden.
         final leagueName = ref
             .watch(draftLeagueProvider(trade.leagueId))
@@ -1505,6 +1680,18 @@ class TradeCard extends ConsumerWidget {
         final kopf = gegen == null
             ? 'Trade-Angebot'
             : (incoming ? 'Von ${gegen.display}' : 'An ${gegen.display}');
+        final nameVon = {
+          for (final m in managers ?? const <FantasyManager>[])
+            m.userId: m.display,
+        };
+        Widget pickKachel(TradePick p) => PickKachel(
+              runde: p.runde,
+              team: nameVon[p.ursprung] ?? '?',
+              code: codeVon[p.key],
+              hervor: true,
+              hoehe: 46,
+              breite: 152,
+            );
         final untertitel = gegen == null
             ? leagueName
             : ['Trade-Angebot', ?leagueName].join(' · ');
@@ -1565,6 +1752,10 @@ class TradeCard extends ConsumerWidget {
                 incoming ? offered : requested,
                 clubIcons,
                 scheme.primary,
+                picks: [
+                  for (final p in incoming ? offeredPicks : requestedPicks)
+                    pickKachel(p),
+                ],
               ),
               const SizedBox(height: 8),
               _seite(
@@ -1573,6 +1764,10 @@ class TradeCard extends ConsumerWidget {
                 incoming ? requested : offered,
                 clubIcons,
                 scheme.tertiary,
+                picks: [
+                  for (final p in incoming ? requestedPicks : offeredPicks)
+                    pickKachel(p),
+                ],
               ),
               if (trade.message != null && trade.message!.isNotEmpty) ...[
                 const SizedBox(height: 6),
@@ -1620,7 +1815,8 @@ class TradeCard extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: () => _counter(context, ref, trade, d.items),
+                    onPressed: () =>
+                        _counter(context, ref, trade, d.items, d.picks),
                     child: const Text('Kontern'),
                   ),
                 ),
@@ -1732,8 +1928,9 @@ class TradeCard extends ConsumerWidget {
     String label,
     List<(String, FantasyPlayer?)> spieler,
     Map<String, String?> clubIcons,
-    Color farbe,
-  ) {
+    Color farbe, {
+    List<Widget> picks = const [],
+  }) {
     final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1753,7 +1950,7 @@ class TradeCard extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 6),
-        if (spieler.isEmpty)
+        if (spieler.isEmpty && picks.isEmpty)
           Padding(
             padding: const EdgeInsets.only(left: 9),
             child: Text('—', style: TextStyle(color: scheme.onSurfaceVariant)),
@@ -1787,6 +1984,7 @@ class TradeCard extends ConsumerWidget {
                     hoehe: 46,
                     breite: 152,
                   ),
+              ...picks,
             ],
           ),
       ],

@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../logic/reset_draft.dart';
+import '../logic/draft_rechte.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -483,7 +484,14 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
       unawaited(_applyQueue(list));
     }
 
-    final cur = currentManager(managers, league.picksMade);
+    // Im Reset-Draft zieht der Besitzer des Picks (0145).
+    final rechte = league.draftPhase == 'reset'
+        ? (ref.watch(draftRechteProvider(_leagueId)).valueOrNull ??
+            const <PickKey, String>{})
+        : null;
+    final cur = rechte != null
+        ? amZugMitRechten(managers, league.picksMade, rechte)
+        : currentManager(managers, league.picksMade);
     final myManager = managers.where((m) => m.userId == myId).firstOrNull;
     // Pausiert: niemand ist am Zug, auch wer es vorher war.
     final myTurn =
@@ -632,6 +640,10 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
                   // Platzhalter nur im Setup; ab Draft-Start zählen nur die
                   // echten Teams (Pick-Nummern folgen der echten Draftorder).
                   showPlaceholders: league.draftStatus == DraftStatus.setup,
+                  rechte: rechte,
+                  aktuellerPick: league.draftStatus == DraftStatus.drafting
+                      ? league.picksMade
+                      : null,
                 ),
                 // Spieler-Tab mit Unter-Tabs: Verfügbar + Queue.
                 _PlayersTab(
@@ -1752,7 +1764,19 @@ class DraftBoard extends StatelessWidget {
     required this.currentRound,
     required this.myId,
     required this.showPlaceholders,
+    this.rechte,
+    this.aktuellerPick,
   });
+
+  /// **Gehandelte Picks des Reset-Drafts** (0145). Ist die Karte gesetzt,
+  /// steht ein Pick in der Spalte seines **ursprünglichen** Teams, nach
+  /// Pick-Nummer einsortiert — ein Team kann dann zwei Picks in einer Runde
+  /// haben, und nach Manager eingeordnet überschrieben sie sich. Gehört der
+  /// Pick inzwischen jemand anderem, steht sein Name in der Zelle.
+  final Map<PickKey, String>? rechte;
+
+  /// 0-basierter Index des Picks, der gerade dran ist (nur mit [rechte]).
+  final int? aktuellerPick;
 
   final List<DraftPick> picks;
   final Map<String, FantasyPlayer> playerById;
@@ -1811,10 +1835,21 @@ class DraftBoard extends StatelessWidget {
       cols.add(_BoardCol(label: 'Team ${i + 1}'));
     }
     final n = cols.length;
-    // Pick je (Runde, Manager) für schnellen Zugriff.
+    // Pick je Zelle: normal nach (Runde, Manager), mit gehandelten Picks
+    // nach Pick-Nummer (Runde, Spalte) — siehe [rechte].
+    int spalteVon(int pickIndex) {
+      final pos = pickIndex % n;
+      return (pickIndex ~/ n).isEven ? pos : n - 1 - pos;
+    }
+
     final pickByCell = <String, DraftPick>{
-      for (final p in picks) '${p.round}:${p.managerId}': p,
+      for (final p in picks)
+        if (rechte != null)
+          '${p.round}:#${spalteVon(p.pickNumber - 1)}': p
+        else
+          '${p.round}:${p.managerId}': p,
     };
+    final nameVon = {for (final m in managers) m.userId: m.display};
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
@@ -1875,11 +1910,21 @@ class DraftBoard extends StatelessWidget {
                       col: cols[s],
                       pick: cols[s].userId == null
                           ? null
-                          : pickByCell['$r:${cols[s].userId}'],
-                      isCurrent:
-                          cols[s].userId != null &&
-                          cols[s].userId == currentManagerId &&
-                          r == currentRound,
+                          : (rechte != null
+                              ? pickByCell['$r:#$s']
+                              : pickByCell['$r:${cols[s].userId}']),
+                      besitzerName: () {
+                        final u = cols[s].userId;
+                        if (rechte == null || u == null) return null;
+                        final b = besitzerVon(rechte!, r, u);
+                        return b == u ? null : (nameVon[b] ?? '?');
+                      }(),
+                      isCurrent: rechte != null && aktuellerPick != null
+                          ? (aktuellerPick! ~/ n + 1 == r &&
+                              spalteVon(aktuellerPick!) == s)
+                          : cols[s].userId != null &&
+                              cols[s].userId == currentManagerId &&
+                              r == currentRound,
                     ),
                 ],
               ),
@@ -1897,6 +1942,7 @@ class DraftBoard extends StatelessWidget {
     required _BoardCol col,
     required DraftPick? pick,
     required bool isCurrent,
+    String? besitzerName,
   }) {
     final scheme = Theme.of(context).colorScheme;
     // Snake: ungerade Runden vorwärts, gerade rückwärts (0-basiert: round-1).
@@ -1999,6 +2045,28 @@ class DraftBoard extends StatelessWidget {
               ],
             ],
           ),
+          // Gehandelter Pick: wer ihn jetzt hat. Steht auch nach dem Ziehen
+          // da, sonst stünde ein fremder Spieler kommentarlos in der Spalte.
+          if (besitzerName != null)
+            Row(
+              children: [
+                Icon(Icons.swap_horiz,
+                    size: 11, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: Text(
+                    besitzerName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           const Spacer(),
           if (player != null) ...[
             if (_vorname(player.name).isNotEmpty)

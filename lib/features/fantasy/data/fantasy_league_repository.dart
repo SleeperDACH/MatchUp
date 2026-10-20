@@ -7,6 +7,7 @@ import '../models/fantasy_models.dart';
 import '../models/player_absence.dart';
 import '../models/roster_move.dart';
 import '../models/trade.dart';
+import '../logic/draft_rechte.dart';
 import '../logic/fantasy_scoring_rules.dart';
 import '../../../core/data/live_mit_rueckfall.dart';
 
@@ -198,15 +199,38 @@ class FantasyLeagueRepository {
           .map(TradeItem.fromJson)
           .toList());
 
+  /// Gehandelte Picks für den Reset-Draft (0145) in Echtzeit. Fehlt ein
+  /// Pick, gehört er seinem ursprünglichen Team (`besitzerVon`).
+  Stream<List<DraftRecht>> draftRechteStream(String leagueId) => _client
+      .from('fantasy_draft_rechte')
+      .stream(primaryKey: ['league_id', 'runde', 'ursprung'])
+      .eq('league_id', leagueId)
+      .map((rows) => ohneDubletten(rows, ['league_id', 'runde', 'ursprung'])
+          .map(DraftRecht.fromJson)
+          .toList());
+
+  /// Picks in den eigenen Trades in Echtzeit (RLS-gefiltert).
+  Stream<List<TradePick>> tradePicksStream() => _client
+      .from('fantasy_trade_picks')
+      .stream(primaryKey: ['trade_id', 'runde', 'ursprung'])
+      .map((rows) => ohneDubletten(rows, ['trade_id', 'runde', 'ursprung'])
+          .map(TradePick.fromJson)
+          .toList());
+
   /// Erstellt ein Angebot und gibt dessen ID zurück (für die Chat-Verknüpfung).
   Future<String> proposeTrade(
     String leagueId,
     String toManager, {
     required List<String> offerPlayers,
     required List<String> requestPlayers,
+    List<PickKey> offerPicks = const [],
+    List<PickKey> requestPicks = const [],
     String? message,
     String? counterOf,
   }) async {
+    List<Map<String, Object>> alsJson(List<PickKey> picks) => [
+          for (final p in picks) {'runde': p.runde, 'ursprung': p.ursprung},
+        ];
     final id = await _client.rpc('fantasy_propose_trade', params: {
       'p_league_id': leagueId,
       'p_to_manager': toManager,
@@ -214,16 +238,21 @@ class FantasyLeagueRepository {
       'p_request_players': requestPlayers,
       'p_message': message,
       'p_counter_of': counterOf,
+      // Nur mitschicken, wenn es Picks gibt — so funktioniert das Angebot
+      // auch gegen eine Datenbank ohne 0145.
+      if (offerPicks.isNotEmpty) 'p_offer_picks': alsJson(offerPicks),
+      if (requestPicks.isNotEmpty) 'p_request_picks': alsJson(requestPicks),
     });
     return id as String;
   }
 
   /// Einzelnes Angebot samt Positionen (für die Chat-Karte).
-  Future<({TradeOffer trade, List<TradeItem> items})?> tradeById(
-      String tradeId) async {
+  Future<({TradeOffer trade, List<TradeItem> items, List<TradePick> picks})?>
+      tradeById(String tradeId) async {
     final row = await _client
         .from('fantasy_trades')
-        .select('*, fantasy_trade_items(giver, player_id)')
+        .select('*, fantasy_trade_items(giver, player_id), '
+            'fantasy_trade_picks(giver, runde, ursprung)')
         .eq('id', tradeId)
         .maybeSingle();
     if (row == null) return null;
@@ -235,7 +264,11 @@ class FantasyLeagueRepository {
           playerId: m['player_id'] as String,
         )
     ];
-    return (trade: TradeOffer.fromJson(row), items: items);
+    final picks = [
+      for (final m in (row['fantasy_trade_picks'] as List? ?? const []))
+        TradePick.fromJson({...(m as Map<String, dynamic>), 'trade_id': tradeId}),
+    ];
+    return (trade: TradeOffer.fromJson(row), items: items, picks: picks);
   }
 
   Future<void> respondTrade(String tradeId, bool accept) =>

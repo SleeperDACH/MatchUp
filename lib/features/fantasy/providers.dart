@@ -2,6 +2,7 @@ import 'dart:async';
 import 'logic/wertungs_kader.dart';
 import 'logic/h2h_grundlage.dart';
 import 'logic/reset_draft.dart';
+import 'logic/draft_rechte.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -197,7 +198,8 @@ final vorgemerkteTradesProvider =
 
 /// Einzelnes Trade-Angebot samt Positionen (für die Chat-Karte).
 final tradeDetailProvider = FutureProvider.family<
-    ({TradeOffer trade, List<TradeItem> items})?, String>((ref, tradeId) {
+    ({TradeOffer trade, List<TradeItem> items, List<TradePick> picks})?,
+    String>((ref, tradeId) {
   return ref.watch(fantasyLeagueRepositoryProvider).tradeById(tradeId);
 });
 
@@ -214,6 +216,68 @@ final tradeItemsProvider =
     }
     return byTrade;
   });
+});
+
+/// Picks aller eigenen Trades, gruppiert nach `trade_id` (Echtzeit, 0145).
+final tradePicksProvider =
+    StreamProvider<Map<String, List<TradePick>>>((ref) {
+  return ref
+      .watch(fantasyLeagueRepositoryProvider)
+      .tradePicksStream()
+      .map((picks) {
+    final byTrade = <String, List<TradePick>>{};
+    for (final p in picks) {
+      byTrade.putIfAbsent(p.tradeId, () => []).add(p);
+    }
+    return byTrade;
+  });
+});
+
+/// Gehandelte Picks für den Reset-Draft, als Nachschlagetabelle (0145).
+final draftRechteProvider =
+    StreamProvider.family<Map<PickKey, String>, String>((ref, leagueId) {
+  return ref
+      .watch(fantasyLeagueRepositoryProvider)
+      .draftRechteStream(leagueId)
+      .map(rechteKarte);
+});
+
+/// **Alle Picks des Reset-Drafts mit ihrem Besitzer.** Vor dem Reset in der
+/// Reihenfolge der aktuellen Tabelle (Tabellenletzter zuerst, Snake) — wo
+/// man gerade stünde. Ab dem Reset-Draft in der festgeschriebenen Folge
+/// (`reset_position`). `null`, solange etwas lädt oder die Liga keinen Reset
+/// hat.
+final resetPicksProvider =
+    Provider.family<List<PickSlot>?, String>((ref, leagueId) {
+  final league = ref
+      .watch(myFantasyLeaguesProvider)
+      .valueOrNull
+      ?.where((l) => l.id == leagueId)
+      .firstOrNull;
+  if (league == null || !league.resetAktiv) return null;
+  final rechte = ref.watch(draftRechteProvider(leagueId)).valueOrNull;
+  if (rechte == null) return null;
+  List<String>? reihenfolge;
+  if (league.resetErfolgtAt != null) {
+    final managers = ref.watch(fantasyManagersProvider(leagueId)).valueOrNull;
+    final mitPosition = [
+      for (final m in managers ?? const <FantasyManager>[])
+        if (m.resetPosition != null) m,
+    ]..sort((a, b) => a.resetPosition!.compareTo(b.resetPosition!));
+    if (mitPosition.isNotEmpty) {
+      reihenfolge = [for (final m in mitPosition) m.userId];
+    }
+  }
+  reihenfolge ??= [
+    for (final m in ref.watch(resetReihenfolgeProvider(leagueId)) ?? const [])
+      m.userId,
+  ];
+  if (reihenfolge.isEmpty) return null;
+  return resetPicks(
+    reihenfolge: reihenfolge,
+    runden: league.rounds,
+    rechte: rechte,
+  );
 });
 
 /// Spieler-IDs auf dem Waiver-Wire (nach Drop claim-only) in Echtzeit.
