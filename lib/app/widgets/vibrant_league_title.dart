@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/ui/app_avatar.dart';
+import '../typografie.dart';
 
 /// Auffällige Liga-/Runden-Kopfzeile für die AppBar: das Logo/Emblem plus der
 /// Name in fetter, condensed Schrift mit lebendigem Farbverlauf. Ersetzt die
@@ -30,8 +31,9 @@ class VibrantLeagueTitle extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        // Rajdhani (App-Font) in maximaler Fettung → „dick" & sportlich.
-        fontWeight: FontWeight.w800,
+        // Schräg wie die Wortmarke — Liganamen sind Überschriften.
+        fontWeight: Schrift.ueberschriftGewicht,
+        fontStyle: Schrift.ueberschriftStil,
         fontSize: 24,
         letterSpacing: -0.4,
         height: 1.0,

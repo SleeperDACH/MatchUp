@@ -57,7 +57,9 @@ void main() {
         ],
         child: MaterialApp(
           theme: buildAppTheme(),
-          home: const PushEinstellungenScreen(),
+          // Seit dem 18.10.2026 stehen die Schalter je Bereich auf einem
+          // eigenen Schirm.
+          home: const PushBereichScreen(bereich: PushBereich.tippspiel),
         ),
       ));
       await tester.pumpAndSettle();

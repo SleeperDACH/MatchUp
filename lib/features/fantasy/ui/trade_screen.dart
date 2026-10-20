@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/rueckfrage.dart';
 import '../../../app/widgets/skelett.dart';
 import '../../../app/widgets/info_knopf.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,7 +32,8 @@ class TradeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myId = ref.watch(currentUserProvider)?.id;
-    final trades = ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
+    final trades =
+        ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
         const <TradeOffer>[];
     final openReceived = trades
         .where((t) => t.status.isPending && t.toManager == myId)
@@ -50,9 +52,10 @@ class TradeScreen extends ConsumerWidget {
             tabs: [
               const Tab(text: 'Neuer Trade'),
               Tab(
-                  text: openReceived > 0
-                      ? 'Empfangen ($openReceived)'
-                      : 'Empfangen'),
+                text: openReceived > 0
+                    ? 'Empfangen ($openReceived)'
+                    : 'Empfangen',
+              ),
               Tab(text: openSent > 0 ? 'Gesendet ($openSent)' : 'Gesendet'),
               const Tab(text: 'Historie'),
             ],
@@ -107,9 +110,10 @@ class TradePartnerList extends ConsumerWidget {
     final managersAsync = ref.watch(fantasyManagersProvider(league.id));
     final currentRound = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final closed = _tradesClosed(league, currentRound);
-    final pool = ref.watch(playerPoolProvider).valueOrNull ??
-        const <FantasyPlayer>[];
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final pool =
+        ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
@@ -123,19 +127,24 @@ class TradePartnerList extends ConsumerWidget {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: Text('Noch keine anderen Manager in der Liga.',
-                  textAlign: TextAlign.center),
+              child: Text(
+                'Noch keine anderen Manager in der Liga.',
+                textAlign: TextAlign.center,
+              ),
             ),
           );
         }
         final byId = {for (final p in pool) p.id: p};
-        List<FantasyPlayer> playersOf(String uid) => [
+        List<FantasyPlayer> playersOf(String uid) =>
+            [
               for (final r in roster)
                 if (r.managerId == uid && byId[r.playerId] != null)
-                  byId[r.playerId]!
-            ]..sort((a, b) => a.position.index != b.position.index
-                ? a.position.index.compareTo(b.position.index)
-                : a.name.compareTo(b.name));
+                  byId[r.playerId]!,
+            ]..sort(
+              (a, b) => a.position.index != b.position.index
+                  ? a.position.index.compareTo(b.position.index)
+                  : a.name.compareTo(b.name),
+            );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -145,18 +154,19 @@ class TradePartnerList extends ConsumerWidget {
                 color: scheme.errorContainer,
                 child: const Padding(
                   padding: EdgeInsets.all(14),
-                  child: Text('Die Trade-Deadline ist überschritten — '
-                      'neue Angebote sind nicht mehr möglich.'),
+                  child: Text(
+                    'Die Trade-Deadline ist überschritten — '
+                    'neue Angebote sind nicht mehr möglich.',
+                  ),
                 ),
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
               child: Text(
                 'Mit wem möchtest du traden? Tippe auf einen Kader.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ),
             // Alle Teilnehmer-Kader nebeneinander (horizontal scrollbar).
@@ -172,12 +182,15 @@ class TradePartnerList extends ConsumerWidget {
                     players: playersOf(m.userId),
                     clubIcons: clubIcons,
                     enabled: !closed,
-                    onOpen: () => Navigator.of(context).push(MaterialPageRoute(
+                    onOpen: () => Navigator.of(context).push(
+                      MaterialPageRoute(
                         builder: (_) => TradeComposeScreen(
-                              league: league,
-                              partner: m,
-                              initialOffer: initialOffer ?? const {},
-                            ))),
+                          league: league,
+                          partner: m,
+                          initialOffer: initialOffer ?? const {},
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),
@@ -235,13 +248,18 @@ class _ParticipantColumn extends StatelessWidget {
                     size: 44,
                   ),
                   const SizedBox(height: 6),
-                  Text(manager.display,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text('${players.length} Spieler',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant)),
+                  Text(
+                    manager.display,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '${players.length} Spieler',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -286,7 +304,9 @@ class _ParticipantColumn extends StatelessWidget {
             width: 4,
             height: 26,
             decoration: BoxDecoration(
-                color: base, borderRadius: BorderRadius.circular(2)),
+              color: base,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
           const SizedBox(width: 6),
           ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 20),
@@ -299,18 +319,25 @@ class _ParticipantColumn extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(_shortName(p.name),
-                      maxLines: 1,
-                      softWrap: false,
-                      style: const TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w700)),
+                  child: Text(
+                    _shortName(p.name),
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                Text(p.position.label,
-                    style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
-                        color: base)),
+                Text(
+                  p.position.label,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                    color: base,
+                  ),
+                ),
               ],
             ),
           ),
@@ -349,8 +376,7 @@ class TradeComposeScreen extends ConsumerStatefulWidget {
   final String? counterOf;
 
   @override
-  ConsumerState<TradeComposeScreen> createState() =>
-      _TradeComposeScreenState();
+  ConsumerState<TradeComposeScreen> createState() => _TradeComposeScreenState();
 }
 
 class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
@@ -372,7 +398,9 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
     final note = _msgCtrl.text.trim();
     final String tradeId;
     try {
-      tradeId = await ref.read(fantasyLeagueRepositoryProvider).proposeTrade(
+      tradeId = await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .proposeTrade(
             widget.league.id,
             widget.partner.userId,
             offerPlayers: _offer.toList(),
@@ -397,18 +425,25 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
     try {
       await ref
           .read(messagingRepositoryProvider)
-          .sendMessage(widget.partner.userId, 'Trade-Angebot', tradeId: tradeId);
+          .sendMessage(
+            widget.partner.userId,
+            'Trade-Angebot',
+            tradeId: tradeId,
+          );
     } catch (_) {
       // Chat-Nachricht ist optional — Trade wurde bereits gesendet.
     }
 
     if (!mounted) return;
     // Compose-Screen durch den Direktnachrichten-Chat ersetzen.
-    navigator.pushReplacement(MaterialPageRoute(
+    navigator.pushReplacement(
+      MaterialPageRoute(
         builder: (_) => ConversationScreen(
-              partnerId: widget.partner.userId,
-              partnerName: widget.partner.display,
-            )));
+          partnerId: widget.partner.userId,
+          partnerName: widget.partner.display,
+        ),
+      ),
+    );
   }
 
   /// Zeigt das finale Angebot zur Bestätigung (inkl. optionaler Nachricht) und
@@ -439,7 +474,8 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
     final scheme = Theme.of(context).colorScheme;
     final myId = ref.watch(currentUserProvider)?.id;
     final poolAsync = ref.watch(playerPoolProvider);
-    final roster = ref.watch(leagueRosterProvider(widget.league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(widget.league.id)).valueOrNull ??
         const <RosterEntry>[];
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
@@ -457,10 +493,9 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
               'mit ${widget.partner.display}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -470,13 +505,16 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (pool) {
           final byId = {for (final p in pool) p.id: p};
-          List<FantasyPlayer> playersOf(String uid) => [
+          List<FantasyPlayer> playersOf(String uid) =>
+              [
                 for (final r in roster)
                   if (r.managerId == uid && byId[r.playerId] != null)
-                    byId[r.playerId]!
-              ]..sort((a, b) => a.position.index != b.position.index
-                  ? a.position.index.compareTo(b.position.index)
-                  : a.name.compareTo(b.name));
+                    byId[r.playerId]!,
+              ]..sort(
+                (a, b) => a.position.index != b.position.index
+                    ? a.position.index.compareTo(b.position.index)
+                    : a.name.compareTo(b.name),
+              );
 
           final mine = myId == null ? <FantasyPlayer>[] : playersOf(myId);
           final theirs = playersOf(widget.partner.userId);
@@ -489,16 +527,17 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
           // war, hat eine kleine Summe und kann trotzdem der bessere sein.
           // Das Ø vor der Zahl sagt es auch hin — sonst läse man sie als
           // Gesamtpunktzahl.
-          final stats = ref.watch(seasonStatsProvider).valueOrNull ??
+          final stats =
+              ref.watch(seasonStatsProvider).valueOrNull ??
               const <int, Map<String, PlayerMatchStats>>{};
           final punkte = <String, double>{
             for (final p in [...mine, ...theirs])
               if (spielerSchnitt(
-                    saison: stats,
-                    spielerId: p.id,
-                    position: p.position,
-                    regeln: widget.league.scoring,
-                  ).hatDaten)
+                saison: stats,
+                spielerId: p.id,
+                position: p.position,
+                regeln: widget.league.scoring,
+              ).hatDaten)
                 p.id: spielerSchnitt(
                   saison: stats,
                   spielerId: p.id,
@@ -507,8 +546,9 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                 ).schnitt,
           };
           final offerSel = mine.where((p) => _offer.contains(p.id)).toList();
-          final requestSel =
-              theirs.where((p) => _request.contains(p.id)).toList();
+          final requestSel = theirs
+              .where((p) => _request.contains(p.id))
+              .toList();
           final canSend =
               (_offer.isNotEmpty || _request.isNotEmpty) && !_sending;
 
@@ -516,22 +556,26 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
             children: [
               // Was ist der Tausch? Steht jetzt oben und bleibt stehen.
               _Geschaeft(
-                  gebe: offerSel,
-                  bekomme: requestSel,
-                  clubIcons: clubIcons,
-                  punkte: punkte),
+                gebe: offerSel,
+                bekomme: requestSel,
+                clubIcons: clubIcons,
+                punkte: punkte,
+              ),
               // Kapitelmarken statt farbiger Kopfkästen — dieselbe Gliederung
               // wie auf dem Startbildschirm.
               Row(
                 children: [
                   Expanded(
                     child: _Spaltenmarke(
-                        wort: 'Du gibst', anzahl: _offer.length),
+                      wort: 'Du gibst',
+                      anzahl: _offer.length,
+                    ),
                   ),
                   Expanded(
                     child: _Spaltenmarke(
-                        wort: widget.partner.display,
-                        anzahl: _request.length),
+                      wort: widget.partner.display,
+                      anzahl: _request.length,
+                    ),
                   ),
                 ],
               ),
@@ -545,8 +589,11 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                         selected: _offer,
                         clubIcons: clubIcons,
                         punkte: punkte,
-                        onToggle: (id) => setState(() =>
-                            _offer.contains(id) ? _offer.remove(id) : _offer.add(id)),
+                        onToggle: (id) => setState(
+                          () => _offer.contains(id)
+                              ? _offer.remove(id)
+                              : _offer.add(id),
+                        ),
                         onProfil: (p) => showPlayerProfile(
                           context,
                           league: widget.league,
@@ -563,9 +610,11 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                         selected: _request,
                         clubIcons: clubIcons,
                         punkte: punkte,
-                        onToggle: (id) => setState(() => _request.contains(id)
-                            ? _request.remove(id)
-                            : _request.add(id)),
+                        onToggle: (id) => setState(
+                          () => _request.contains(id)
+                              ? _request.remove(id)
+                              : _request.add(id),
+                        ),
                         // Sein Spieler: kein „Droppen" im Profil, aber der
                         // Trade-Knopf — dieselbe Regel wie in jeder Liste.
                         onProfil: (p) => showPlayerProfile(
@@ -589,7 +638,11 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                     laeuft: _sending,
                     onPressed: canSend
                         ? () => _confirmAndSend(
-                            context, offerSel, requestSel, clubIcons)
+                            context,
+                            offerSel,
+                            requestSel,
+                            clubIcons,
+                          )
                         : null,
                   ),
                 ),
@@ -630,9 +683,11 @@ class _ConfirmOfferSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Angebot bestätigen',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Angebot bestätigen',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 14),
             _side(context, 'Du gibst', offer, scheme.primary),
             const SizedBox(height: 8),
@@ -673,8 +728,12 @@ class _ConfirmOfferSheet extends StatelessWidget {
     );
   }
 
-  Widget _side(BuildContext context, String title,
-      List<FantasyPlayer> players, Color color) {
+  Widget _side(
+    BuildContext context,
+    String title,
+    List<FantasyPlayer> players,
+    Color color,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
@@ -687,8 +746,10 @@ class _ConfirmOfferSheet extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          Text(
+            title,
+            style: TextStyle(fontWeight: FontWeight.bold, color: color),
+          ),
           const SizedBox(height: 8),
           if (players.isEmpty)
             Text('—', style: TextStyle(color: scheme.onSurfaceVariant))
@@ -743,10 +804,9 @@ class VorgemerkteTradesScreen extends ConsumerWidget {
               league.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -755,7 +815,8 @@ class VorgemerkteTradesScreen extends ConsumerWidget {
           // Liste (Design-Ideen Punkt 4).
           InfoKnopf(
             titel: 'Warum erst nach dem Spieltag?',
-            text: 'Diese Trades sind beschlossen. Damit ein Tausch niemandem '
+            text:
+                'Diese Trades sind beschlossen. Damit ein Tausch niemandem '
                 'mitten in der Wertung einen Spieler aus der Elf nimmt, '
                 'wechseln die Kader erst 12 Stunden nach dem letzten Spiel '
                 'des Spieltags.',
@@ -826,7 +887,10 @@ class _VorgemerktHinweis extends StatelessWidget {
               '(${_zeitpunkt()}). Bis dahin zählen sie für ihre bisherigen '
               'Teams.',
               style: TextStyle(
-                  fontSize: 11, color: scheme.onSurfaceVariant, height: 1.3),
+                fontSize: 11,
+                color: scheme.onSurfaceVariant,
+                height: 1.3,
+              ),
             ),
           ),
         ],
@@ -869,11 +933,14 @@ class _Spaltenmarke extends StatelessWidget {
           ),
           if (anzahl > 0) ...[
             const SizedBox(width: 6),
-            Text('$anzahl',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurfaceVariant)),
+            Text(
+              '$anzahl',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
           ],
           const SizedBox(width: 8),
           Expanded(child: Container(height: 1, color: scheme.outlineVariant)),
@@ -931,32 +998,55 @@ class _Geschaeft extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-              child: _seite(context, gebe, scheme.primary,
-                  links: true, summe: _summe(gebe))),
+            child: _seite(
+              context,
+              gebe,
+              scheme.primary,
+              links: true,
+              summe: _summe(gebe),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Icon(Icons.swap_horiz,
-                size: 18, color: scheme.onSurfaceVariant),
+            child: Icon(
+              Icons.swap_horiz,
+              size: 18,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           Expanded(
-              child: _seite(context, bekomme, scheme.tertiary,
-                  links: false, summe: _summe(bekomme))),
+            child: _seite(
+              context,
+              bekomme,
+              scheme.tertiary,
+              links: false,
+              summe: _summe(bekomme),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _seite(BuildContext context, List<FantasyPlayer> spieler, Color farbe,
-      {required bool links, required double summe}) {
+  Widget _seite(
+    BuildContext context,
+    List<FantasyPlayer> spieler,
+    Color farbe, {
+    required bool links,
+    required double summe,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     if (spieler.isEmpty) {
-      return Text('nichts',
-          textAlign: links ? TextAlign.start : TextAlign.end,
-          style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant));
+      return Text(
+        'nichts',
+        textAlign: links ? TextAlign.start : TextAlign.end,
+        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+      );
     }
     return Column(
-      crossAxisAlignment:
-          links ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      crossAxisAlignment: links
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
         _kacheln(context, spieler, links),
@@ -975,7 +1065,10 @@ class _Geschaeft extends StatelessWidget {
   }
 
   Widget _kacheln(
-      BuildContext context, List<FantasyPlayer> spieler, bool links) {
+    BuildContext context,
+    List<FantasyPlayer> spieler,
+    bool links,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     return Wrap(
       alignment: links ? WrapAlignment.start : WrapAlignment.end,
@@ -995,14 +1088,16 @@ class _Geschaeft extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ClubBadge(
-                    club: p.club, iconUrl: clubIcons[p.club], size: 16),
+                ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 16),
                 const SizedBox(width: 5),
-                Text(SpielerKachel.kurzerName(p.name),
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface)),
+                Text(
+                  SpielerKachel.kurzerName(p.name),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1034,9 +1129,9 @@ class _SendeKnopf extends StatelessWidget {
       height: 52,
       child: FilledButton(
         onPressed: onPressed,
+
         // Farbe, Form und Schrift kommen aus dem Theme — seit der helle Knopf
         // dort steht, hat dieser Schirm keine eigene Fassung mehr.
-
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1045,12 +1140,16 @@ class _SendeKnopf extends StatelessWidget {
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: MatchUpColors.base),
+                  strokeWidth: 2,
+                  color: MatchUpColors.base,
+                ),
               )
             else
-              Icon(Icons.send,
-                  size: 18,
-                  color: an ? MatchUpColors.base : scheme.onSurfaceVariant),
+              Icon(
+                Icons.send,
+                size: 18,
+                color: an ? MatchUpColors.base : scheme.onSurfaceVariant,
+              ),
             const SizedBox(width: 8),
             // Die Zahlen standen hier, weil der Tausch sonst nirgends
             // zusammengefasst war. Das tut jetzt der Kopf.
@@ -1093,9 +1192,11 @@ class _RosterColumn extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Text('Kein Kader',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: scheme.onSurfaceVariant)),
+          child: Text(
+            'Kein Kader',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          ),
         ),
       );
     }
@@ -1128,7 +1229,6 @@ class _RosterColumn extends StatelessWidget {
       ),
     );
   }
-
 }
 
 /// Offene Angebote einer Richtung: [incoming] true = an mich gerichtet
@@ -1143,14 +1243,18 @@ class _ActiveOffers extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myId = ref.watch(currentUserProvider)?.id;
-    final trades = ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
+    final trades =
+        ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
         const <TradeOffer>[];
-    final list = trades
-        .where((t) =>
-            t.status.isPending &&
-            (incoming ? t.toManager == myId : t.fromManager == myId))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final list =
+        trades
+            .where(
+              (t) =>
+                  t.status.isPending &&
+                  (incoming ? t.toManager == myId : t.fromManager == myId),
+            )
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     if (list.isEmpty) {
       return _EmptyState(
@@ -1178,7 +1282,8 @@ class _TradeHistory extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final trades = ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
+    final trades =
+        ref.watch(leagueTradesProvider(league.id)).valueOrNull ??
         const <TradeOffer>[];
     final list = trades.where((t) => !t.status.isPending).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -1215,9 +1320,11 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: scheme.onSurfaceVariant),
             const SizedBox(height: 12),
-            Text(text,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.onSurfaceVariant)),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
           ],
         ),
       ),
@@ -1247,7 +1354,11 @@ class TradeCard extends ConsumerWidget {
   final bool inList;
 
   Future<void> _respond(
-      BuildContext context, WidgetRef ref, TradeOffer trade, bool accept) async {
+    BuildContext context,
+    WidgetRef ref,
+    TradeOffer trade,
+    bool accept,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref
@@ -1258,31 +1369,28 @@ class TradeCard extends ConsumerWidget {
       // Chat laengst weggescrollt waere.
       ref.invalidate(tradeDetailProvider(tradeId));
       ref.invalidate(leagueTradesProvider(trade.leagueId));
-      messenger.showSnackBar(SnackBar(
-          content: Text(accept ? 'Trade angenommen.' : 'Angebot abgelehnt.')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(accept ? 'Trade angenommen.' : 'Angebot abgelehnt.'),
+        ),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
   }
 
   Future<void> _cancel(
-      BuildContext context, WidgetRef ref, TradeOffer trade) async {
+    BuildContext context,
+    WidgetRef ref,
+    TradeOffer trade,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Angebot zurückziehen?'),
-        content: const Text(
-            'Möchtest du dieses Trade-Angebot wirklich zurückziehen?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Abbrechen')),
-          FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Zurückziehen')),
-        ],
-      ),
+    final confirm = await rueckfrage(
+      context,
+      titel: 'Angebot zurückziehen?',
+      text: 'Möchtest du dieses Trade-Angebot wirklich zurückziehen?',
+      ja: 'Zurückziehen',
+      nein: 'Abbrechen',
     );
     if (confirm != true) return;
     try {
@@ -1290,41 +1398,50 @@ class TradeCard extends ConsumerWidget {
       ref.invalidate(tradeDetailProvider(tradeId));
       ref.invalidate(leagueTradesProvider(trade.leagueId));
       messenger.showSnackBar(
-          const SnackBar(content: Text('Angebot zurückgezogen.')));
+        const SnackBar(content: Text('Angebot zurückgezogen.')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
   }
 
   /// Gegenangebot: den Trade-Compose mit vertauschter Vorauswahl öffnen.
-  void _counter(BuildContext context, WidgetRef ref, TradeOffer trade,
-      List<TradeItem> items) {
+  void _counter(
+    BuildContext context,
+    WidgetRef ref,
+    TradeOffer trade,
+    List<TradeItem> items,
+  ) {
     final league = ref.read(draftLeagueProvider(trade.leagueId)).valueOrNull;
-    final managers =
-        ref.read(fantasyManagersProvider(trade.leagueId)).valueOrNull;
+    final managers = ref
+        .read(fantasyManagersProvider(trade.leagueId))
+        .valueOrNull;
     final sender = managerMit(managers, trade.fromManager);
     if (league == null || sender == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kontern gerade nicht möglich.')));
+        const SnackBar(content: Text('Kontern gerade nicht möglich.')),
+      );
       return;
     }
     final myGive = {
       for (final it in items)
-        if (it.giver == trade.toManager) it.playerId
+        if (it.giver == trade.toManager) it.playerId,
     };
     final theirGive = {
       for (final it in items)
-        if (it.giver == trade.fromManager) it.playerId
+        if (it.giver == trade.fromManager) it.playerId,
     };
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => TradeComposeScreen(
-        league: league,
-        partner: sender,
-        initialOffer: myGive,
-        initialRequest: theirGive,
-        counterOf: trade.id,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TradeComposeScreen(
+          league: league,
+          partner: sender,
+          initialOffer: myGive,
+          initialRequest: theirGive,
+          counterOf: trade.id,
+        ),
       ),
-    ));
+    );
   }
 
   @override
@@ -1343,9 +1460,13 @@ class TradeCard extends ConsumerWidget {
       error: (e, _) => const SizedBox.shrink(),
       data: (d) {
         if (d == null) {
-          return _shell(context,
-              child: Text('Angebot nicht mehr verfügbar.',
-                  style: TextStyle(color: scheme.onSurfaceVariant)));
+          return _shell(
+            context,
+            child: Text(
+              'Angebot nicht mehr verfügbar.',
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+          );
         }
         final trade = d.trade;
         // Die Positionen als Paar (ID, Spieler) — der Spieler kann fehlen,
@@ -1355,25 +1476,30 @@ class TradeCard extends ConsumerWidget {
         final offered = [
           for (final it in d.items)
             if (it.giver == trade.fromManager)
-              (it.playerId, playerById[it.playerId])
+              (it.playerId, playerById[it.playerId]),
         ];
         final requested = [
           for (final it in d.items)
             if (it.giver == trade.toManager)
-              (it.playerId, playerById[it.playerId])
+              (it.playerId, playerById[it.playerId]),
         ];
         final incoming = trade.toManager == myId;
         // Liga (Name + fürs Kontern) & Manager laden.
-        final leagueName =
-            ref.watch(draftLeagueProvider(trade.leagueId)).valueOrNull?.name;
-        final managers =
-            ref.watch(fantasyManagersProvider(trade.leagueId)).valueOrNull;
+        final leagueName = ref
+            .watch(draftLeagueProvider(trade.leagueId))
+            .valueOrNull
+            ?.name;
+        final managers = ref
+            .watch(fantasyManagersProvider(trade.leagueId))
+            .valueOrNull;
         // **Die Gegenseite.** Bei einem eingehenden Angebot ist das der
         // Absender, bei einem eigenen der Empfänger. Genau das fehlte: Die
         // Karte sagte „Trade-Angebot" und den Liganamen — aber nicht, mit wem
         // man da eigentlich handelt.
         final gegen = managerMit(
-            managers, incoming ? trade.fromManager : trade.toManager);
+          managers,
+          incoming ? trade.fromManager : trade.toManager,
+        );
         // Ohne Namen bleibt es beim alten Kopf: lieber die neutrale Marke als
         // eine leere Zeile, wo ein Mensch stehen sollte.
         final kopf = gegen == null
@@ -1411,19 +1537,20 @@ class TradeCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(kopf,
+                        Text(
+                          kopf,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        if (untertitel != null)
+                          Text(
+                            untertitel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        if (untertitel != null)
-                          Text(untertitel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant)),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
                       ],
                     ),
                   ),
@@ -1432,17 +1559,30 @@ class TradeCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              _seite(context, 'Du bekommst',
-                  incoming ? offered : requested, clubIcons, scheme.primary),
+              _seite(
+                context,
+                'Du bekommst',
+                incoming ? offered : requested,
+                clubIcons,
+                scheme.primary,
+              ),
               const SizedBox(height: 8),
-              _seite(context, 'Du gibst',
-                  incoming ? requested : offered, clubIcons, scheme.tertiary),
+              _seite(
+                context,
+                'Du gibst',
+                incoming ? requested : offered,
+                clubIcons,
+                scheme.tertiary,
+              ),
               if (trade.message != null && trade.message!.isNotEmpty) ...[
                 const SizedBox(height: 6),
-                Text('„${trade.message}"',
-                    style: TextStyle(
-                        fontStyle: FontStyle.italic,
-                        color: scheme.onSurfaceVariant)),
+                Text(
+                  '„${trade.message}"',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
               if (trade.status.isPending && incoming) ...[
                 const SizedBox(height: 10),
@@ -1453,7 +1593,8 @@ class TradeCard extends ConsumerWidget {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: scheme.error,
                           side: BorderSide(
-                              color: scheme.error.withValues(alpha: 0.5)),
+                            color: scheme.error.withValues(alpha: 0.5),
+                          ),
                         ),
                         onPressed: () => _respond(context, ref, trade, false),
                         child: const Text('Ablehnen'),
@@ -1493,12 +1634,17 @@ class TradeCard extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Text('Warten auf Antwort …',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant)),
+                    Text(
+                      'Warten auf Antwort …',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                     const Spacer(),
                     TextButton(
-                      style: TextButton.styleFrom(foregroundColor: scheme.error),
+                      style: TextButton.styleFrom(
+                        foregroundColor: scheme.error,
+                      ),
                       onPressed: () => _cancel(context, ref, trade),
                       child: const Text('Zurückziehen'),
                     ),
@@ -1524,8 +1670,11 @@ class TradeCard extends ConsumerWidget {
   /// **von mir etwas will**: Ein eingehendes, offenes Angebot trägt einen
   /// Hauch aus der Ecke und eine getönte Kante ([betont]) — dasselbe Muster
   /// wie bei den Ligakarten und im MatchUp-Kasten.
-  Widget _shell(BuildContext context,
-      {required Widget child, bool betont = false}) {
+  Widget _shell(
+    BuildContext context, {
+    required Widget child,
+    bool betont = false,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     final grund = Theme.of(context).cardColor;
     final card = Container(
@@ -1539,7 +1688,9 @@ class TradeCard extends ConsumerWidget {
                 stops: const [0.0, 0.75],
                 colors: [
                   Color.alphaBlend(
-                      scheme.primary.withValues(alpha: 0.12), grund),
+                    scheme.primary.withValues(alpha: 0.12),
+                    grund,
+                  ),
                   grund,
                 ],
               )
@@ -1560,8 +1711,9 @@ class TradeCard extends ConsumerWidget {
       );
     }
     return Container(
-      constraints:
-          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.82,
+      ),
       margin: const EdgeInsets.only(top: 2, bottom: 6, left: 4, right: 4),
       child: card,
     );
@@ -1593,10 +1745,10 @@ class TradeCard extends ConsumerWidget {
             Text(
               label.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
-                  ),
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.1,
+              ),
             ),
           ],
         ),
@@ -1604,8 +1756,7 @@ class TradeCard extends ConsumerWidget {
         if (spieler.isEmpty)
           Padding(
             padding: const EdgeInsets.only(left: 9),
-            child: Text('—',
-                style: TextStyle(color: scheme.onSurfaceVariant)),
+            child: Text('—', style: TextStyle(color: scheme.onSurfaceVariant)),
           )
         else
           // Nebeneinander statt untereinander, mit fester Breite: Über die
@@ -1620,10 +1771,13 @@ class TradeCard extends ConsumerWidget {
                   // Unbekannter Spieler: Der lokale Pool kennt ihn nicht (der
                   // Zugang kam per sync-squads nach dem App-Start). Ihn
                   // wegzulassen hieße, ein Angebot falsch darzustellen.
-                  Text(id,
-                      style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontStyle: FontStyle.italic))
+                  Text(
+                    id,
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  )
                 else
                   SpielerKachel(
                     spieler: p,
@@ -1666,11 +1820,14 @@ class TradeCard extends ConsumerWidget {
             ? Border.all(color: Theme.of(context).dividerColor)
             : null,
       ),
-      child: Text(status.label,
-          style: TextStyle(
-              color: ton ?? scheme.onSurfaceVariant,
-              fontSize: 11,
-              fontWeight: FontWeight.w700)),
+      child: Text(
+        status.label,
+        style: TextStyle(
+          color: ton ?? scheme.onSurfaceVariant,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -1694,7 +1851,7 @@ class TradePartnerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Neuer Trade')),
-        body: TradePartnerList(league: league, initialOffer: initialOffer),
-      );
+    appBar: AppBar(title: const Text('Neuer Trade')),
+    body: TradePartnerList(league: league, initialOffer: initialOffer),
+  );
 }

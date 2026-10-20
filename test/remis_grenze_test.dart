@@ -89,7 +89,14 @@ void main() {
     expect(FantasyLeague.fromJson(zeile(12.0)).remisGrenze, 12.0);
   });
 
-  testWidgets('Editor: einschalten setzt 5, der Stepper zählt bis 20',
+  test('Ein alter Wert wird auf den nächsten erlaubten gezogen', () {
+    expect(RemisGrenzeEditor.erlaubt(3), 5);
+    expect(RemisGrenzeEditor.erlaubt(12), 10);
+    expect(RemisGrenzeEditor.erlaubt(13), 15);
+    expect(RemisGrenzeEditor.erlaubt(80), 50);
+  });
+
+  testWidgets('Editor: einschalten setzt 10, Schritte zu fünf, 5 bis 50',
       (tester) async {
     double? wert;
     await tester.pumpWidget(MaterialApp(
@@ -105,10 +112,27 @@ void main() {
     await tester.tap(find.byType(Switch));
     await tester.pump();
     expect(wert, FantasyLeague.remisGrenzeStandard);
+    expect(wert, 10);
 
-    await tester.tap(find.byTooltip('Abstand für Unentschieden erhöhen'));
+    final hoch = find.byTooltip('Abstand für Unentschieden erhöhen');
+    final runter = find.byTooltip('Abstand für Unentschieden verringern');
+    await tester.tap(hoch);
     await tester.pump();
-    expect(wert, 6);
+    expect(wert, 15, reason: 'Fünferschritte');
+
+    // Nach unten bis 5, dann ist Schluss.
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(runter);
+      await tester.pump();
+    }
+    expect(wert, 5);
+
+    // Nach oben bis 50, dann ist Schluss.
+    for (var i = 0; i < 12; i++) {
+      await tester.tap(hoch);
+      await tester.pump();
+    }
+    expect(wert, 50);
 
     await tester.tap(find.byType(Switch));
     await tester.pump();

@@ -201,8 +201,8 @@ void main() {
 
     // Das Profil erkennt man an seinen Reitern, nicht am Namen — der steht
     // auch in der Zeile darunter.
+    expect(find.text('Übersicht'), findsOneWidget);
     expect(find.text('Leistung'), findsOneWidget);
-    expect(find.text('Aufstellung'), findsOneWidget);
   });
 
   testWidgets('Vorschau: Positionsstand im Kopf statt Duell je Zeile',

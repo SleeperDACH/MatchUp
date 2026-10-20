@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:matchup/app/home_screen.dart';
+import 'package:matchup/core/util/club_colors.dart';
 import 'package:matchup/app/theme.dart';
 
 /// **Jeder Verein muss auf der Kopfkarte eine sichtbare Farbe bekommen.**

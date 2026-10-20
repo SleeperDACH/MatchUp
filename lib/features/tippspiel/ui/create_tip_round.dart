@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widgets/competition_picker.dart';
+import '../../../core/ui/einstellungs_zeile.dart';
 import '../../../core/ui/form_section.dart';
 
 import '../../../app/league_screen.dart';
 import '../../../core/models/models.dart';
-import '../../leagues/ui/visibility_picker.dart';
 import '../models/tip.dart';
 import '../providers.dart';
 import 'tip_rules_editor.dart';
@@ -40,8 +40,10 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
   // Ausgewählte Wettbewerbe (mind. einer). Mehrere lassen sich kombinieren.
   final Set<String> _leagueIds = {Leagues.tippspiel.first.id};
 
-  List<LeagueInfo> get _selectedLeagues =>
-      [for (final l in Leagues.tippspiel) if (_leagueIds.contains(l.id)) l];
+  List<LeagueInfo> get _selectedLeagues => [
+    for (final l in Leagues.tippspiel)
+      if (_leagueIds.contains(l.id)) l,
+  ];
 
   // Wertung + Modi — alle Standardwerte (Modi aus), vom Editor gepflegt.
   ScoringRules _rules = const ScoringRules();
@@ -84,13 +86,13 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
       final repo = ref.read(tipRoundRepositoryProvider);
       // Gekoppelte Runden sind immer privat (Mitglieder = Fantasy-Mitglieder).
       var round = await repo.createRound(
-            name: _name.text,
-            leagues: leagues,
-            season: leagues.first.seasonFor(DateTime.now()),
-            rules: _rules,
-            visibility: _linked ? 'private' : _visibility,
-            joinPolicy: _linked ? 'open' : _joinPolicy,
-          );
+        name: _name.text,
+        leagues: leagues,
+        season: leagues.first.seasonFor(DateTime.now()),
+        rules: _rules,
+        visibility: _linked ? 'private' : _visibility,
+        joinPolicy: _linked ? 'open' : _joinPolicy,
+      );
       // An die Fantasy-Liga koppeln und deren Mitglieder übernehmen. Danach
       // die Runde neu laden, damit fantasy_league_id gesetzt ist (kein
       // Chat-Tab bei gekoppelten Runden).
@@ -103,7 +105,8 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
       activateRound(ref, round);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
+        MaterialPageRoute(builder: (_) => LeagueScreen(round: round)),
+      );
     } catch (e) {
       setState(() => _error = 'Tipprunde konnte nicht erstellt werden: $e');
     } finally {
@@ -113,11 +116,14 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final oeffentlich = _visibility == 'public';
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         title: Text(_linked ? 'Ligainternes Tippspiel' : 'Tippspiel erstellen'),
       ),
+      // **Dieselbe Form wie „Fantasy-Liga erstellen"** (18.10.2026): eine
+      // Zeile je Einstellung, keine Erklärsätze, keine gerahmten Kästen.
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
@@ -125,26 +131,25 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
           // Namensfeld nötig.
           if (!_linked)
             FormSection(
-              titel: 'Name',
+              titel: 'Tippspiel',
               kinder: [
                 TextField(
                   controller: _name,
                   textCapitalization: TextCapitalization.words,
+                  style: einstellungsStil,
                   decoration: const InputDecoration(
-                    hintText: 'z. B. Büro-Tippspiel',
+                    hintText: 'Name, z. B. Büro-Tippspiel',
                     // Der Abschnitt ist die Fläche; das Feld bringt keine
                     // zweite mit.
                     filled: false,
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ],
             ),
           FormSection(
             titel: 'Wettbewerbe',
-            hinweis: 'Wähle einen oder mehrere — die Spiele zählen gemeinsam '
-                'in einer Tabelle.',
             kinder: [
               CompetitionPicker(
                 leagues: Leagues.tippspiel,
@@ -172,22 +177,33 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
             const FormSection(
               titel: 'Mitglieder',
               kinder: [
-                Text('Es spielen automatisch alle Mitglieder deiner '
-                    'Fantasy-Liga mit — kein eigener Beitritt nötig.'),
+                EinstellungsZeile(
+                  label: 'Alle Mitglieder der Fantasy-Liga',
+                  rechts: SizedBox.shrink(),
+                ),
               ],
             )
           else
             FormSection(
               titel: 'Sichtbarkeit',
               kinder: [
-                VisibilityPicker(
-                  visibility: _visibility,
-                  joinPolicy: _joinPolicy,
-                  onChanged: (v, p) => setState(() {
-                    _visibility = v;
-                    _joinPolicy = p;
-                  }),
+                EinstellungsSchalter(
+                  label: 'Öffentlich',
+                  unter: 'In der Suche findbar',
+                  wert: oeffentlich,
+                  onChanged: (v) =>
+                      setState(() => _visibility = v ? 'public' : 'private'),
                 ),
+                if (oeffentlich) ...[
+                  const EinstellungsTrenner(),
+                  EinstellungsSchalter(
+                    label: 'Nur auf Einladung',
+                    unter: 'Beitritt nach deiner Bestätigung',
+                    wert: _joinPolicy == 'invite',
+                    onChanged: (v) =>
+                        setState(() => _joinPolicy = v ? 'invite' : 'open'),
+                  ),
+                ],
               ],
             ),
           if (_error != null) ...[

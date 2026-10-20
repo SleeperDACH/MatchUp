@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/typografie.dart';
 import '../../app/widgets/mit_ladekreis.dart';
 
 /// Ein Abschnitt in einem Formular oder einer Einstellungsliste: kleine
@@ -56,10 +57,12 @@ class FormSection extends StatelessWidget {
         children: [
           Text(
             titel.toUpperCase(),
+            // Schräg wie jede Überschrift der App (18.10.2026).
             style: TextStyle(
               color: farbe,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
+              fontSize: Schrift.label,
+              fontWeight: Schrift.ueberschriftGewicht,
+              fontStyle: Schrift.ueberschriftStil,
               letterSpacing: 1.3,
             ),
           ),

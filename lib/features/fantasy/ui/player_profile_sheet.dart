@@ -19,9 +19,10 @@ import '../logic/aufstellungs_prognose.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
-import 'club_badge.dart';
 import 'pitch_painter.dart';
+import '../../../core/ui/rueckfrage.dart';
 import 'punkte_aufschluesselung.dart';
+import 'spieler_profil_kopf.dart';
 import 'trade_screen.dart';
 import '../logic/waiver_fenster.dart';
 import 'player_action_buttons.dart';
@@ -44,7 +45,9 @@ Future<void> showPlayerProfile(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    showDragHandle: true,
+    // Kein Wisch-Strich (19.10.2026, auf Ansage): Der Kopf beginnt oben mit
+    // dem Wappen; geschlossen wird mit der Geste nach unten wie gewohnt.
+    showDragHandle: false,
     builder: (_) => _PlayerProfileSheet(
       league: league,
       player: player,
@@ -75,7 +78,8 @@ void _weiteresProfil(
   final icons =
       ref.read(clubIconsProvider).valueOrNull ?? const <String, String?>{};
   final myId = ref.read(currentUserProvider)?.id;
-  final roster = ref.read(leagueRosterProvider(league.id)).valueOrNull ??
+  final roster =
+      ref.read(leagueRosterProvider(league.id)).valueOrNull ??
       const <RosterEntry>[];
   showPlayerProfile(
     context,
@@ -112,124 +116,98 @@ class _PlayerProfileSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     final statsAsync = ref.watch(seasonStatsProvider);
     final cutoff = DateTime(league.season, 8, 1);
 
+    final spiele =
+        ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+        const <Fixture>[];
+    final runde = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
+    final live = runde == null
+        ? null
+        : ref.watch(roundStatsProvider(runde)).valueOrNull;
+    // Einmal gerechnet, im Kopf, in der Übersicht und im Leistungsreiter
+    // benutzt — sonst stünden dort verschiedene Zahlen.
+    final saison = statsAsync.valueOrNull == null
+        ? null
+        : mitLaufenderRunde(
+            saison: statsAsync.valueOrNull!,
+            runde: runde,
+            spielerId: player.id,
+            verein: player.club,
+            spiele: spiele,
+            jetzt: jetzt,
+            live: live,
+          );
+
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Kopf: Wappen, Name, Verein/Position/Alter.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(
-              children: [
-                ClubBadge(club: player.club, iconUrl: clubIcon, size: 48),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        player.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          PositionPill(pos: player.position),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '${player.club} · ${player.ageOn(cutoff)} J.',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: scheme.onSurfaceVariant),
-                            ),
-                          ),
-                        ],
-                      ),
-                      // **Hier steht der genaue Grund.** Auf der Karte ist nur
-                      // Platz für ein Symbol; wer wissen will, ob es ein
-                      // Kreuzbandriss oder eine Prellung ist, kommt hierher.
-                      _Ausfallzeile(playerId: player.id, jetzt: jetzt),
-                    ],
+          SpielerProfilKopf(
+            player: player,
+            clubIcon: clubIcon,
+            alter: player.ageOn(cutoff),
+            besitzer: _besitzer(ref),
+            schnitt: saison == null
+                ? null
+                : spielerSchnitt(
+                    saison: saison,
+                    spielerId: player.id,
+                    position: player.position,
+                    regeln: league.scoring,
                   ),
-                ),
-              ],
-            ),
+            aktionen: _aktionen(context, ref),
           ),
-          // **Vier Reiter statt einer Tabelle.** Seit das Wappen kein Link
-          // mehr auf die Vereinsseite ist, muss das Profil hergeben, wofür man
-          // dorthin ging: Spielplan und Kader des Vereins — plus die Leistung,
-          // die es schon zeigte. Dazu die **voraussichtliche Aufstellung**:
-          // Vor dem Aufstellen ist „spielt er überhaupt?" die erste Frage, und
-          // sie stand vorher nirgends in der App.
+          // **Hier steht der genaue Grund.** Auf der Karte ist nur Platz für
+          // ein Symbol; wer wissen will, ob es ein Kreuzbandriss oder eine
+          // Prellung ist, kommt hierher.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _Ausfallzeile(playerId: player.id, jetzt: jetzt),
+          ),
+          // **Fünf Reiter, die Übersicht vorn** (19.10.2026, nach Sleeper).
+          // Dahinter wie bisher Leistung, die voraussichtliche Aufstellung,
+          // Spielplan und Tabelle des Vereins.
           DefaultTabController(
-            length: 4,
+            length: 5,
             child: Flexible(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const LeiseReiter(
-                    // **Tabelle statt Vereinskader** (Ansage vom 19.09.2026).
-                    // Der Kader-Reiter listete den Pool-Kader des Vereins —
-                    // eine Auskunft, die man im Profil eines einzelnen
-                    // Spielers selten sucht. Wo sein Verein steht, dagegen
-                    // schon.
-                    titel: ['Leistung', 'Aufstellung', 'Spielplan', 'Tabelle'],
+                    // „Elf" und „Spiele" statt „Aufstellung" und
+                    // „Spielplan": Fünf Reiter auf Telefonbreite stießen
+                    // sonst aneinander.
+                    titel: [
+                      'Übersicht',
+                      'Leistung',
+                      'Elf',
+                      'Spiele',
+                      'Tabelle',
+                    ],
                     horizontal: 12,
                   ),
                   Flexible(
                     child: TabBarView(
                       children: [
-                        statsAsync.when(
-                          loading: () => const Padding(
-                            padding: EdgeInsets.all(32),
-                            child: Skelett(),
+                        if (saison == null)
+                          _laedtOderFehler(statsAsync)
+                        else
+                          SpielerUebersicht(
+                            league: league,
+                            player: player,
+                            clubIcon: clubIcon,
+                            saison: saison,
+                            spiele: spiele,
                           ),
-                          error: (e, _) => Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              'Stats konnten nicht geladen werden.\n$e',
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          data: (season) {
-                            final spiele =
-                                ref.watch(fantasySeasonFixturesProvider)
-                                        .valueOrNull ??
-                                    const <Fixture>[];
-                            final runde = ref
-                                .watch(fantasyCurrentRoundProvider)
-                                .valueOrNull;
-                            return _table(
-                              context,
-                              mitLaufenderRunde(
-                                saison: season,
-                                runde: runde,
-                                spielerId: player.id,
-                                verein: player.club,
-                                spiele: spiele,
-                                jetzt: jetzt,
-                                live: runde == null
-                                    ? null
-                                    : ref
-                                        .watch(roundStatsProvider(runde))
-                                        .valueOrNull,
-                              ),
-                              spiele,
-                            );
-                          },
-                        ),
+                        if (saison == null)
+                          _laedtOderFehler(statsAsync)
+                        else
+                          _table(context, saison, spiele),
                         _Prognose(league: league, player: player),
                         _Spielplan(club: player.club),
                         _Tabelle(club: player.club),
@@ -240,15 +218,47 @@ class _PlayerProfileSheet extends ConsumerWidget {
               ),
             ),
           ),
-          _actions(context, ref),
+          SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
   }
 
+  Widget _laedtOderFehler(AsyncValue<Object?> stats) => stats.hasError
+      ? Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Stats konnten nicht geladen werden.\n${stats.error}',
+            textAlign: TextAlign.center,
+          ),
+        )
+      : const Padding(padding: EdgeInsets.all(32), child: Skelett());
+
+  /// Wem er gehört — die Zeile über dem Namen.
+  String _besitzer(WidgetRef ref) {
+    if (isMine) return 'Dein Kader';
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+        const <RosterEntry>[];
+    final managers =
+        ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
+        const <FantasyManager>[];
+    final ownerId = roster
+        .where((r) => r.playerId == player.id)
+        .map((r) => r.managerId)
+        .firstOrNull;
+    if (ownerId == null) return 'Free Agent';
+    // Solange die Mitglieder laden, nichts behaupten.
+    if (managers.isEmpty) return '';
+    final m = managers.where((m) => m.userId == ownerId).firstOrNull;
+    // Dieselbe Regel wie die Knöpfe darunter: Wem kein Mitglied zugeordnet
+    // ist, der gilt als frei — sonst stünde „vergeben" über „Holen".
+    return m == null ? 'Free Agent' : '→ ${m.display}';
+  }
+
   /// Aktionsleiste: eigener Spieler → Traden + Droppen; fremder (gehört einem
   /// anderen Manager) → Traden (mit dem Besitzer). Freie Spieler: keine Aktion.
-  Widget _actions(BuildContext context, WidgetRef ref) {
+  List<Widget> _aktionen(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final myId = ref.watch(currentUserProvider)?.id;
     final roster =
@@ -325,7 +335,10 @@ class _PlayerProfileSheet extends ConsumerWidget {
             ownerId: null,
             onWaiver: onWaivers.contains(player.id),
             aufWire: vereinAufWire(
-                player.club, spiele, jetzt ?? DateTime.now()),
+              player.club,
+              spiele,
+              jetzt ?? DateTime.now(),
+            ),
             claimed: offen.any((c) => c.addPlayerId == player.id),
             myPlayers: [
               for (final r in roster)
@@ -339,13 +352,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
       ];
     }
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Row(children: children),
-      ),
-    );
+    return children;
   }
 
   /// Trade um diesen (fremden) Spieler: Compose mit dem Besitzer, Spieler ist
@@ -397,10 +404,8 @@ class _PlayerProfileSheet extends ConsumerWidget {
     nav.pop();
     nav.push(
       MaterialPageRoute(
-        builder: (_) => TradePartnerScreen(
-          league: league,
-          initialOffer: {player.id},
-        ),
+        builder: (_) =>
+            TradePartnerScreen(league: league, initialOffer: {player.id}),
       ),
     );
   }
@@ -411,7 +416,8 @@ class _PlayerProfileSheet extends ConsumerWidget {
     List<Fixture> spiele,
   ) {
     final scheme = Theme.of(context).colorScheme;
-    final defensive = player.position == PlayerPosition.gk ||
+    final defensive =
+        player.position == PlayerPosition.gk ||
         player.position == PlayerPosition.def;
 
     // **Alle Spieltage der Saison, nicht nur die gewerteten.** Vorher endete
@@ -463,10 +469,7 @@ class _PlayerProfileSheet extends ConsumerWidget {
         // breiten Kasten sahen aus wie drei angefangene Gedanken; die vier
         // Zahlen gehören zusammen und stehen jetzt in einer Reihe, durch
         // Haarlinien getrennt.
-        _Bilanzleiste(
-          punkte: total,
-          schnitt: schnitt,
-        ),
+        _Bilanzleiste(punkte: total, schnitt: schnitt),
         const SizedBox(height: 12),
         _LeistungKopf(defensive: defensive),
         // **Jede Zeile ist antippbar.** Eine Punktzahl allein sagt nicht,
@@ -523,33 +526,18 @@ class _PlayerProfileSheet extends ConsumerWidget {
   }
 
   Future<void> _drop(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('${player.name} droppen?'),
-        // **Was mit einer laufenden Aufstellung passiert, gehört hierher.**
-        // „Er bleibt in der Elf" ist die Auskunft, nach der man sonst rät —
-        // und die Frage stellt sich genau in dem Moment, in dem man droppt.
-        content: const Text(
-          'Der Spieler verlässt deinen Kader und kommt für 24 Stunden auf '
+    // **Was mit einer laufenden Aufstellung passiert, gehört hierher.**
+    // „Er bleibt in der Elf" ist die Auskunft, nach der man sonst rät — und
+    // die Frage stellt sich genau in dem Moment, in dem man droppt.
+    final ok = await rueckfrage(
+      context,
+      titel: '${player.name} droppen?',
+      text: 'Der Spieler verlässt deinen Kader und kommt für 24 Stunden auf '
           'den Waiver-Wire. Sein Platz bleibt frei, bis du nachlegst.\n\n'
           'Hat sein Spiel schon angepfiffen, bleibt er für diesen Spieltag '
           'in deiner Elf und punktet weiter für dich.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Droppen'),
-          ),
-        ],
-      ),
+      ja: 'Droppen',
+      gefahr: true,
     );
     if (ok != true || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -636,8 +624,7 @@ class _Bilanzleiste extends StatelessWidget {
 
     // **Minus steht rot da.** Ein Minuszeichen vor einer sonst gleich
     // aussehenden Zahl überliest man; die Farbe sieht man, bevor man liest.
-    Widget feld(String wert, String wort,
-            {bool leise = false, double? zahl}) =>
+    Widget feld(String wert, String wort, {bool leise = false, double? zahl}) =>
         Expanded(
           child: Column(
             children: [
@@ -669,10 +656,10 @@ class _Bilanzleiste extends StatelessWidget {
         );
 
     Widget trenner() => Container(
-          width: 1,
-          height: 30,
-          color: scheme.onSurface.withValues(alpha: 0.08),
-        );
+      width: 1,
+      height: 30,
+      color: scheme.onSurface.withValues(alpha: 0.08),
+    );
 
     // Ganze Minuten je Einsatz — eine `int`, keine Punktzahl.
     final int? minuten = schnitt.minutenJeEinsatz?.round();
@@ -690,11 +677,12 @@ class _Bilanzleiste extends StatelessWidget {
           // Spielzeit zählen nicht mit — sonst drückten sie den Schnitt eines
           // Spielers, der erst spät in die Elf kam.
           feld(
-              schnitt.punkteJeEinsatz == null
-                  ? '–'
-                  : formatPoints(schnitt.punkteJeEinsatz!),
-              'Ø je Einsatz',
-              zahl: schnitt.punkteJeEinsatz),
+            schnitt.punkteJeEinsatz == null
+                ? '–'
+                : formatPoints(schnitt.punkteJeEinsatz!),
+            'Ø je Einsatz',
+            zahl: schnitt.punkteJeEinsatz,
+          ),
           trenner(),
           feld(minuten == null ? '–' : '$minuten', 'Ø Minuten', leise: true),
           trenner(),
@@ -770,8 +758,9 @@ class _LeistungZeile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: stil.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: scheme.onSurfaceVariant
-                      .withValues(alpha: offen ? 0.7 : 0.95),
+                  color: scheme.onSurfaceVariant.withValues(
+                    alpha: offen ? 0.7 : 0.95,
+                  ),
                 ),
               ),
             ),
@@ -961,7 +950,10 @@ class _Prognose extends ConsumerWidget {
   /// Der Grund steht in [_minutenZuletzt]: Wer eben noch neunzig Minuten
   /// gespielt hat und in der Prognose fehlt, gehört nach oben.
   List<FantasyPlayer> _uebrige(
-      WidgetRef ref, PrognoseElf elf, Map<String, int> minuten) {
+    WidgetRef ref,
+    PrognoseElf elf,
+    Map<String, int> minuten,
+  ) {
     final pool =
         ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
     final drin = {for (final s in elf.elf) s.playerId};
@@ -969,14 +961,14 @@ class _Prognose extends ConsumerWidget {
       for (final p in pool)
         if (p.club == player.club && !p.abgewandert && !drin.contains(p.id)) p,
     ]..sort((a, b) {
-        final ma = minuten[a.id] ?? 0;
-        final mb = minuten[b.id] ?? 0;
-        if (ma != mb) return mb.compareTo(ma);
-        if (a.position.index != b.position.index) {
-          return a.position.index.compareTo(b.position.index);
-        }
-        return a.name.compareTo(b.name);
-      });
+      final ma = minuten[a.id] ?? 0;
+      final mb = minuten[b.id] ?? 0;
+      if (ma != mb) return mb.compareTo(ma);
+      if (a.position.index != b.position.index) {
+        return a.position.index.compareTo(b.position.index);
+      }
+      return a.name.compareTo(b.name);
+    });
   }
 
   /// Die Einsatzminuten aus dem **letzten Spiel dieses Vereins**.
@@ -1036,50 +1028,51 @@ class _Prognose extends ConsumerWidget {
         // hier drei bis fünf Tage ohne jede Auskunft. Die Fortschreibung
         // trifft genauso gut (77 % gegen 77 %, gemessen über die Saison
         // 2025/26) und ist Tage früher da.
-        final zeige = elf ??
+        final zeige =
+            elf ??
             ref.watch(fortgeschriebeneElfProvider(player.club)).valueOrNull;
         return ListView(
-        padding: const EdgeInsets.only(top: 8, bottom: 16),
-        children: [
-          _PrognoseKopf(spiel: spiel, elf: zeige),
-          if (zeige == null)
-            _NochKeinePrognose(player: player, spiel: spiel)
-          else ...[
-            if (zeige.ausRunde != null)
-              _FortschreibungHinweis(
-                ausRunde: zeige.ausRunde!,
-                ersetzt: zeige.elf.where((x) => x.ersatz).length,
-                offen: zeige.elf.where((x) => x.offen).length,
+          padding: const EdgeInsets.only(top: 8, bottom: 16),
+          children: [
+            _PrognoseKopf(spiel: spiel, elf: zeige),
+            if (zeige == null)
+              _NochKeinePrognose(player: player, spiel: spiel)
+            else ...[
+              if (zeige.ausRunde != null)
+                _FortschreibungHinweis(
+                  ausRunde: zeige.ausRunde!,
+                  ersetzt: zeige.elf.where((x) => x.ersatz).length,
+                  offen: zeige.elf.where((x) => x.offen).length,
+                ),
+              _Urteil(
+                ausRunde: zeige.ausRunde,
+                drin: zeige.enthaelt(player.id),
+                bank: zeige.aufBank(player.id),
+                // **Ein abgepfiffenes Spiel ist nie „voraussichtlich".** Seit
+                // die Anzeige bis zum Ende des Spieltags auf der laufenden Runde
+                // bleibt, steht hier auch eine gelaufene Partie. In aller Regel
+                // ist ihre Aufstellung ohnehin gemeldet; fehlte das Kennzeichen
+                // einmal, stünde sonst „voraussichtlich in der Startelf" über
+                // einem Spiel von gestern.
+                bestaetigt:
+                    zeige.bestaetigt || spiel.status == FixtureStatus.finished,
               ),
-            _Urteil(
-              ausRunde: zeige.ausRunde,
-              drin: zeige.enthaelt(player.id),
-              bank: zeige.aufBank(player.id),
-              // **Ein abgepfiffenes Spiel ist nie „voraussichtlich".** Seit
-              // die Anzeige bis zum Ende des Spieltags auf der laufenden Runde
-              // bleibt, steht hier auch eine gelaufene Partie. In aller Regel
-              // ist ihre Aufstellung ohnehin gemeldet; fehlte das Kennzeichen
-              // einmal, stünde sonst „voraussichtlich in der Startelf" über
-              // einem Spiel von gestern.
-              bestaetigt:
-                  zeige.bestaetigt || spiel.status == FixtureStatus.finished,
-            ),
-            _Formationsfeld(
-              elf: zeige,
-              ich: player.id,
-              verein: player.club,
-              oeffnet: (id) => _ausPool(ref, id) != null,
-              onTip: (id) => _oeffne(context, ref, id),
-            ),
-            _NichtInDerElf(
-              uebrige: _uebrige(ref, zeige, _minutenZuletzt(ref, spiele)),
-              minuten: _minutenZuletzt(ref, spiele),
-              ich: player.id,
-              onTip: (id) => _oeffne(context, ref, id),
-            ),
+              _Formationsfeld(
+                elf: zeige,
+                ich: player.id,
+                verein: player.club,
+                oeffnet: (id) => _ausPool(ref, id) != null,
+                onTip: (id) => _oeffne(context, ref, id),
+              ),
+              _NichtInDerElf(
+                uebrige: _uebrige(ref, zeige, _minutenZuletzt(ref, spiele)),
+                minuten: _minutenZuletzt(ref, spiele),
+                ich: player.id,
+                onTip: (id) => _oeffne(context, ref, id),
+              ),
+            ],
           ],
-        ],
-      );
+        );
       },
     );
   }
@@ -1131,7 +1124,11 @@ class _FortschreibungHinweis extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.history_outlined, size: 18, color: scheme.onSurfaceVariant),
+          Icon(
+            Icons.history_outlined,
+            size: 18,
+            color: scheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1140,9 +1137,10 @@ class _FortschreibungHinweis extends StatelessWidget {
                 Text(
                   'Elf des $ausRunde. Spieltags',
                   style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurface,
-                      fontSize: 14),
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1153,9 +1151,10 @@ class _FortschreibungHinweis extends StatelessWidget {
                     if (zusatz.isNotEmpty) zusatz,
                   ].join(' '),
                   style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.35,
-                      fontSize: 11),
+                    color: scheme.onSurfaceVariant,
+                    height: 1.35,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -1225,7 +1224,8 @@ class _Formationsfeld extends StatelessWidget {
                         Flexible(
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: s.offen ||
+                            onTap:
+                                s.offen ||
                                     s.playerId == ich ||
                                     !oeffnet(s.playerId)
                                 ? null
@@ -1298,10 +1298,15 @@ class _Feldspieler extends StatelessWidget {
               shape: BoxShape.circle,
               color: Colors.black.withValues(alpha: 0.35),
               border: Border.all(
-                  color: schnee.withValues(alpha: 0.45), width: 1.2),
+                color: schnee.withValues(alpha: 0.45),
+                width: 1.2,
+              ),
             ),
-            child: Icon(Icons.question_mark_outlined,
-                size: 16, color: schnee.withValues(alpha: 0.7)),
+            child: Icon(
+              Icons.question_mark_outlined,
+              size: 16,
+              color: schnee.withValues(alpha: 0.7),
+            ),
           )
         else
           DecoratedBox(
@@ -1315,9 +1320,7 @@ class _Feldspieler extends StatelessWidget {
                         spreadRadius: 1,
                       ),
                     ]
-                  : const [
-                      BoxShadow(color: Colors.black45, blurRadius: 4),
-                    ],
+                  : const [BoxShadow(color: Colors.black45, blurRadius: 4)],
             ),
             child: Stack(
               clipBehavior: Clip.none,
@@ -1342,8 +1345,11 @@ class _Feldspieler extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: _kErsatzGold,
                       ),
-                      child: const Icon(Icons.swap_horiz,
-                          size: 10, color: Colors.black),
+                      child: const Icon(
+                        Icons.swap_horiz,
+                        size: 10,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
               ],
@@ -1364,7 +1370,8 @@ class _Feldspieler extends StatelessWidget {
                 height: 1.15,
                 fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
                 color: schnee.withValues(
-                    alpha: spieler.offen ? 0.6 : (hervor ? 1 : 0.85)),
+                  alpha: spieler.offen ? 0.6 : (hervor ? 1 : 0.85),
+                ),
               ),
             ),
           ),
@@ -1620,28 +1627,27 @@ class _Urteil extends StatelessWidget {
     final farbe = drin ? scheme.onSurfaceVariant : const Color(0xFFFFC83D);
     final text = ausRunde != null
         ? (drin
-            ? 'Stand am $ausRunde. Spieltag in der Startelf'
-            : 'Stand am $ausRunde. Spieltag nicht in der Startelf')
+              ? 'Stand am $ausRunde. Spieltag in der Startelf'
+              : 'Stand am $ausRunde. Spieltag nicht in der Startelf')
         : drin
-            ? (bestaetigt ? 'In der Startelf' : 'Voraussichtlich in der Startelf')
-            : bank
-                ? 'Auf der Bank'
-                : bestaetigt
-                    ? 'Nicht im Kader für dieses Spiel'
-                    : 'Nicht in der voraussichtlichen Elf';
+        ? (bestaetigt ? 'In der Startelf' : 'Voraussichtlich in der Startelf')
+        : bank
+        ? 'Auf der Bank'
+        : bestaetigt
+        ? 'Nicht im Kader für dieses Spiel'
+        : 'Nicht in der voraussichtlichen Elf';
     return Container(
       margin: EdgeInsets.fromLTRB(12, 0, 12, drin ? 2 : 8),
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: drin ? 6 : 10),
-      decoration:
-          drin ? null : kartenDeko(context, hauch: farbe, radius: 12),
+      decoration: drin ? null : kartenDeko(context, hauch: farbe, radius: 12),
       child: Row(
         children: [
           Icon(
             drin
                 ? Icons.check_circle_outline
                 : bank
-                    ? Icons.event_seat_outlined
-                    : Icons.remove_circle_outline,
+                ? Icons.event_seat_outlined
+                : Icons.remove_circle_outline,
             size: 18,
             color: farbe,
           ),
@@ -1697,7 +1703,11 @@ class _NochKeinePrognose extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.schedule_outlined, size: 18, color: scheme.onSurfaceVariant),
+              Icon(
+                Icons.schedule_outlined,
+                size: 18,
+                color: scheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -1720,7 +1730,7 @@ class _NochKeinePrognose extends ConsumerWidget {
             spiel.status == FixtureStatus.finished
                 ? 'Für dieses Spiel liegt keine Aufstellung vor.'
                 : 'Die voraussichtliche Elf steht in der Regel ein bis zwei '
-                    'Tage vor Anpfiff.',
+                      'Tage vor Anpfiff.',
             style: TextStyle(color: scheme.onSurfaceVariant, height: 1.35),
           ),
           if (stats != null && zuletzt != null) ...[
@@ -1802,7 +1812,8 @@ class _Ausfallzeile extends ConsumerWidget {
         .firstOrNull
         ?.club;
     final spielplan =
-        ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
+        ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+        const <Fixture>[];
     final spieltag = (a.bis != null && verein != null)
         ? ersterSpieltagAb(a.bis!, spielplan, verein)
         : null;
@@ -1824,7 +1835,9 @@ class _Ausfallzeile extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              a.gesperrt ? Icons.block_outlined : Icons.medical_services_outlined,
+              a.gesperrt
+                  ? Icons.block_outlined
+                  : Icons.medical_services_outlined,
               size: 15,
               color: farbe,
             ),
@@ -1871,4 +1884,3 @@ class _Ausfallzeile extends ConsumerWidget {
     );
   }
 }
-

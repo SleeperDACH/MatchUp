@@ -137,6 +137,7 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
 
     final managersAsync = ref.watch(fantasyManagersProvider(league.id));
     final poolAsync = ref.watch(playerPoolProvider);
+    ref.watch(poolVollstaendigProvider(league.id));
     final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
     final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??

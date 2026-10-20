@@ -44,6 +44,12 @@ LeagueStatus fantasyStatus(FantasyLeague league, {int? teams}) {
       ),
     // Einzige Zahl, die bleibt: der laufende Pick. Der sagt, ob man gleich
     // dran ist — anders als die Teamzahl.
+    // Reset zur Winterpause (0143): Kader leer, der Draft wartet auf den
+    // Admin.
+    DraftStatus.reset => const LeagueStatus(
+        'Reset',
+        tone: LeagueStatusTone.wartet,
+      ),
     DraftStatus.drafting => LeagueStatus(
         'Draft läuft',
         // 1-basiert: `picksMade` zählt die fertigen Picks.

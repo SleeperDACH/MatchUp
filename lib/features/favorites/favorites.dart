@@ -146,10 +146,20 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
   /// dann leer und Änderungen sind wirkungslos statt fehlerhaft.
   final FavoritesRepository? _repo;
 
+  /// Ob die gespeicherten Favoriten schon da sind. Eine leere Liste vor dem
+  /// Laden heißt nicht „keine Favoriten" — die Startseite zeigte sonst jedem
+  /// kurz die Favoriten-Auswahl, auch dem, der zehn hat.
+  bool geladen = false;
+
   Future<void> _load() async {
     try {
-      state = await _repo!.load();
-    } catch (_) {/* offline o.ä. — bleibt leer */}
+      final geladeneListe = await _repo!.load();
+      geladen = true;
+      state = geladeneListe;
+    } catch (_) {
+      // Offline o. ä.: Die Liste bleibt leer, gilt aber nicht als geladen —
+      // eine Aufforderung „wähle einen Verein" wäre dann eine falsche Auskunft.
+    }
   }
 
   /// **Alle** gespeicherten Zeilen zu Typ und Schlüssel — bei Teams über die

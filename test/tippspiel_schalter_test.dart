@@ -121,7 +121,7 @@ void main() {
     final repo = await _aufbauen(tester, tipEnabled: false);
 
     await _tippeZeile(tester, 'Ligainternes Tippspiel einschalten');
-    expect(find.text('Tippspiel einschalten?'), findsOneWidget,
+    expect(find.text('TIPPSPIEL EINSCHALTEN?'), findsOneWidget,
         reason: 'Der Tipp muss fragen, nicht handeln');
     expect(repo.gesetzt, isEmpty,
         reason: 'Vor der Antwort darf nichts geschrieben werden');
@@ -141,7 +141,7 @@ void main() {
     final repo = await _aufbauen(tester, tipEnabled: true);
 
     await _tippeZeile(tester, 'Ligainternes Tippspiel ausschalten');
-    expect(find.text('Tippspiel ausschalten?'), findsOneWidget);
+    expect(find.text('TIPPSPIEL AUSSCHALTEN?'), findsOneWidget);
     expect(repo.gesetzt, isEmpty);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Ausschalten'));

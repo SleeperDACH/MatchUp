@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../core/logic/tabellen_zonen.dart';
+import 'widgets/zonen_rang.dart';
 import '../core/logic/vereins_kuerzel.dart';
 import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -129,13 +131,18 @@ class _TableTab extends ConsumerWidget {
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
-            itemCount: rows.length + 1,
+            itemCount: rows.length + 2,
             itemBuilder: (context, i) {
               if (i == 0) return const _TableHeader();
+              // Am Ende die Legende der Zonen (Meister, Europa, Abstieg …).
+              if (i == rows.length + 1) {
+                return ZonenLegende(leagueId: leagueId, teams: rows.length);
+              }
               return _TableRowTile(
                 row: rows[i - 1],
                 leagueId: leagueId,
                 live: laufend.contains(rows[i - 1].team.id),
+                zone: tabellenZone(leagueId, rows[i - 1].rank, rows.length),
               );
             },
           ),
@@ -164,11 +171,13 @@ class _GroupTables extends ConsumerWidget {
         final groups = _computeGroups(fixtures);
         if (groups.isEmpty) {
           return const Center(
-              child: Text('Noch keine Gruppentabelle verfügbar.'));
+            child: Text('Noch keine Gruppentabelle verfügbar.'),
+          );
         }
         return RefreshIndicator(
           onRefresh: () => neuLaden(
-              () => ref.invalidate(leagueSeasonFixturesProvider(leagueId))),
+            () => ref.invalidate(leagueSeasonFixturesProvider(leagueId)),
+          ),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -196,9 +205,13 @@ class _GroupHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 12, 4, 2),
-      child: Text(label,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold, color: scheme.primary)),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: scheme.primary,
+        ),
+      ),
     );
   }
 }
@@ -224,7 +237,7 @@ class _Tally {
 List<_Group> _computeGroups(List<Fixture> fixtures) {
   final groupFixtures = [
     for (final f in fixtures)
-      if (f.roundName.toLowerCase().contains('gruppe')) f
+      if (f.roundName.toLowerCase().contains('gruppe')) f,
   ];
   if (groupFixtures.isEmpty) return const [];
 
@@ -262,7 +275,9 @@ List<_Group> _computeGroups(List<Fixture> fixtures) {
     DateTime? earliest;
     for (final f in groupFixtures) {
       if (!set.contains(f.home.id) || !set.contains(f.away.id)) continue;
-      if (earliest == null || f.kickoff.isBefore(earliest)) earliest = f.kickoff;
+      if (earliest == null || f.kickoff.isBefore(earliest)) {
+        earliest = f.kickoff;
+      }
       if (f.status == FixtureStatus.finished &&
           f.homeScore != null &&
           f.awayScore != null) {
@@ -310,16 +325,20 @@ List<_Group> _computeGroups(List<Fixture> fixtures) {
           goalsAgainst: sorted[i].ga,
         ),
     ];
-    computed
-        .add((rows: rows, earliest: earliest ?? DateTime.fromMillisecondsSinceEpoch(0)));
+    computed.add((
+      rows: rows,
+      earliest: earliest ?? DateTime.fromMillisecondsSinceEpoch(0),
+    ));
   }
 
   computed.sort((a, b) => a.earliest.compareTo(b.earliest));
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   return [
     for (var i = 0; i < computed.length; i++)
-      _Group(i < letters.length ? 'Gruppe ${letters[i]}' : 'Gruppe ${i + 1}',
-          computed[i].rows),
+      _Group(
+        i < letters.length ? 'Gruppe ${letters[i]}' : 'Gruppe ${i + 1}',
+        computed[i].rows,
+      ),
   ];
 }
 
@@ -329,18 +348,28 @@ class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-        fontWeight: FontWeight.bold);
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.bold,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Row(
         children: [
-          SizedBox(width: 24, child: Text('#', style: style)),
+          SizedBox(width: 30, child: Text('#', style: style)),
           const SizedBox(width: 8),
           Expanded(child: Text('Team', style: style)),
-          SizedBox(width: 30, child: Text('Sp', style: style, textAlign: TextAlign.center)),
-          SizedBox(width: 40, child: Text('Diff', style: style, textAlign: TextAlign.center)),
-          SizedBox(width: 34, child: Text('Pkt', style: style, textAlign: TextAlign.end)),
+          SizedBox(
+            width: 30,
+            child: Text('Sp', style: style, textAlign: TextAlign.center),
+          ),
+          SizedBox(
+            width: 40,
+            child: Text('Diff', style: style, textAlign: TextAlign.center),
+          ),
+          SizedBox(
+            width: 34,
+            child: Text('Pkt', style: style, textAlign: TextAlign.end),
+          ),
         ],
       ),
     );
@@ -348,8 +377,16 @@ class _TableHeader extends StatelessWidget {
 }
 
 class _TableRowTile extends StatelessWidget {
-  const _TableRowTile({required this.row, this.leagueId, this.live = false});
+  const _TableRowTile({
+    required this.row,
+    this.leagueId,
+    this.live = false,
+    this.zone,
+  });
   final StandingRow row;
+
+  /// Meister, Europa, Relegation, Abstieg — oder nichts.
+  final TabellenZone? zone;
 
   /// Läuft gerade ein Spiel dieser Mannschaft?
   final bool live;
@@ -366,11 +403,7 @@ class _TableRowTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       child: Row(
         children: [
-          SizedBox(
-            width: 24,
-            child: Text('${row.rank}',
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-          ),
+          ZonenRang(rang: row.rank, zone: zone),
           const SizedBox(width: 8),
           // Wappen + Name öffnen die Vereinsseite.
           ClubLink(
@@ -383,21 +416,28 @@ class _TableRowTile extends StatelessWidget {
             child: ClubLink(
               team: row.team,
               leagueId: leagueId,
-              child: Text(row.team.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(
+                row.team.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
           SizedBox(
             width: 30,
-            child: Text('${row.played}',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.onSurfaceVariant)),
+            child: Text(
+              '${row.played}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
           ),
           SizedBox(
             width: 40,
-            child: Text(diff > 0 ? '+$diff' : '$diff',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.onSurfaceVariant)),
+            child: Text(
+              diff > 0 ? '+$diff' : '$diff',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
           ),
           SizedBox(
             width: 34,
@@ -425,7 +465,9 @@ class _MatchdaysTabState extends ConsumerState<_MatchdaysTab> {
 
   @override
   Widget build(BuildContext context) {
-    final fixturesAsync = ref.watch(leagueSeasonFixturesProvider(widget.leagueId));
+    final fixturesAsync = ref.watch(
+      leagueSeasonFixturesProvider(widget.leagueId),
+    );
 
     return fixturesAsync.when(
       loading: () => const Skelett(),
@@ -437,7 +479,8 @@ class _MatchdaysTabState extends ConsumerState<_MatchdaysTab> {
       data: (fixtures) {
         if (fixtures.isEmpty) {
           return const Center(
-              child: Text('Noch kein Spielplan veröffentlicht.'));
+            child: Text('Noch kein Spielplan veröffentlicht.'),
+          );
         }
         // Nach Runde gruppieren.
         final byRound = <int, List<Fixture>>{};
@@ -452,14 +495,11 @@ class _MatchdaysTabState extends ConsumerState<_MatchdaysTab> {
             : (byRound.keys.toList()..sort());
         // Aktuelle Runde: erste mit noch nicht beendetem Spiel; beim Pokal gilt
         // eine noch leere (nicht ausgeloste) Runde als „aktuell/nächste".
-        final current = rounds.firstWhere(
-          (r) {
-            final games = byRound[r];
-            if (games == null || games.isEmpty) return isCup;
-            return games.any((f) => f.status != FixtureStatus.finished);
-          },
-          orElse: () => rounds.last,
-        );
+        final current = rounds.firstWhere((r) {
+          final games = byRound[r];
+          if (games == null || games.isEmpty) return isCup;
+          return games.any((f) => f.status != FixtureStatus.finished);
+        }, orElse: () => rounds.last);
         final round = _round ?? current;
         final idx = rounds.indexOf(round).clamp(0, rounds.length - 1);
         final activeRound = rounds[idx];
@@ -542,12 +582,13 @@ class _RoundSelector extends StatelessWidget {
             icon: const Icon(Icons.chevron_left),
           ),
           Expanded(
-            child: Text(name,
-                textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            child: Text(
+              name,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
           ),
           IconButton(
             tooltip: nextName == null ? 'Weiter' : 'Weiter zu $nextName',
@@ -614,7 +655,9 @@ class _DateHeader extends StatelessWidget {
       child: Text(
         label[0].toUpperCase() + label.substring(1),
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold, color: scheme.onSurfaceVariant),
+          fontWeight: FontWeight.bold,
+          color: scheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -642,17 +685,23 @@ class _SlotWindow extends StatelessWidget {
               children: [
                 Icon(Icons.schedule, size: 14, color: scheme.onSurface),
                 const SizedBox(width: 5),
-                Text(DateFormat('HH:mm').format(slot.time),
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.bold)),
+                Text(
+                  DateFormat('HH:mm').format(slot.time),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 if (live) ...[
                   const Spacer(),
-                  const Text('● LIVE',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: MatchUpColors.red)),
+                  const Text(
+                    '● LIVE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: MatchUpColors.red,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -680,51 +729,66 @@ class _SlotGame extends StatelessWidget {
     final f = fixture;
     final live = f.status == FixtureStatus.live;
     return InkWell(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => MatchDetailScreen(fixtureId: f.id))),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => MatchDetailScreen(fixtureId: f.id)),
+      ),
       child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            // Name außen, Logo innen (zur Mitte) → Wappen fluchten.
-            child: Row(children: [
-              Expanded(
-                child: Text(vereinsKurzname(f.home.name),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              // Name außen, Logo innen (zur Mitte) → Wappen fluchten.
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      vereinsKurzname(f.home.name),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TeamBadge(team: f.home),
+                ],
               ),
-              const SizedBox(width: 8),
-              TeamBadge(team: f.home),
-            ]),
-          ),
-          SizedBox(
-            width: 46,
-            child: f.hasScore
-                ? Text('${f.homeScore}:${f.awayScore}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
+            ),
+            SizedBox(
+              width: 46,
+              child: f.hasScore
+                  ? Text(
+                      '${f.homeScore}:${f.awayScore}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
-                        color: live ? MatchUpColors.red : scheme.onSurface))
-                : Text('–',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: scheme.onSurfaceVariant)),
-          ),
-          Expanded(
-            // Logo innen (zur Mitte), Name außen → Wappen fluchten.
-            child: Row(children: [
-              TeamBadge(team: f.away),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(vereinsKurzname(f.away.name),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end),
+                        color: live ? MatchUpColors.red : scheme.onSurface,
+                      ),
+                    )
+                  : Text(
+                      '–',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
+            ),
+            Expanded(
+              // Logo innen (zur Mitte), Name außen → Wappen fluchten.
+              child: Row(
+                children: [
+                  TeamBadge(team: f.away),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      vereinsKurzname(f.away.name),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                ],
               ),
-            ]),
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -760,7 +824,8 @@ class _TopScorersTab extends ConsumerWidget {
         }
         return RefreshIndicator(
           onRefresh: () => neuLaden(
-              () => ref.invalidate(leagueTopScorersProvider(leagueId))),
+            () => ref.invalidate(leagueTopScorersProvider(leagueId)),
+          ),
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -808,11 +873,16 @@ class _SeasonFallbackBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('Die neue Saison hat noch nicht begonnen.',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant)),
+                Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Die neue Saison hat noch nicht begonnen.',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -835,8 +905,10 @@ class _ScorerTile extends StatelessWidget {
         children: [
           SizedBox(
             width: 24,
-            child: Text('${scorer.position}',
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              '${scorer.position}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
           const SizedBox(width: 8),
           // Vereinswappen statt Spielerfoto: Sportmonks hat für die 2./3. Liga
@@ -858,27 +930,39 @@ class _ScorerTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(scorer.playerName,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  scorer.playerName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 if (scorer.teamName != null)
-                  Text(scorer.teamName!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant)),
+                  Text(
+                    scorer.teamName!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Text('${scorer.goals}',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
-                  color: scheme.primary)),
+          Text(
+            '${scorer.goals}',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: scheme.primary,
+            ),
+          ),
           const SizedBox(width: 2),
-          Text('Tore',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant)),
+          Text(
+            'Tore',
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -904,10 +988,12 @@ class _NewsTab extends ConsumerWidget {
       data: (items) {
         if (items.isEmpty) {
           return const Center(
-              child: Text('Aktuell keine News für diesen Wettbewerb.'));
+            child: Text('Aktuell keine News für diesen Wettbewerb.'),
+          );
         }
         return RefreshIndicator(
-          onRefresh: () => neuLaden(() => ref.invalidate(leagueNewsProvider(leagueId))),
+          onRefresh: () =>
+              neuLaden(() => ref.invalidate(leagueNewsProvider(leagueId))),
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(4, 8, 4, 24),
@@ -936,9 +1022,11 @@ class _EmptyRound extends StatelessWidget {
           children: [
             Icon(Icons.help_outline, size: 44, color: scheme.onSurfaceVariant),
             const SizedBox(height: 12),
-            Text('Diese Runde ist noch nicht ausgelost.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.onSurfaceVariant)),
+            Text(
+              'Diese Runde ist noch nicht ausgelost.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
           ],
         ),
       ),

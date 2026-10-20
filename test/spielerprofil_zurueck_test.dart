@@ -167,7 +167,7 @@ void main() {
     }
     expect(find.byType(BottomSheet), findsOneWidget);
 
-    await tester.tap(find.text('Aufstellung'));
+    await tester.tap(find.text('Elf'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -193,7 +193,8 @@ void main() {
 
     expect(find.byType(BottomSheet), findsOneWidget,
         reason: 'Zurück beim ersten Profil, nicht draußen im Reiter');
-    expect(find.text('Nico Schlotterbeck'), findsWidgets);
+    // Der Kopf schreibt den Nachnamen seit dem 19.10.2026 in Versalien.
+    expect(find.text('SCHLOTTERBECK'), findsOneWidget);
   });
 
   testWidgets('Ein eigener Spieler behält seinen Droppen-Knopf',
@@ -214,7 +215,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
     // Vom eigenen Spieler zu Kobel und zurück zu sich selbst.
-    await tester.tap(find.text('Aufstellung'));
+    await tester.tap(find.text('Elf'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -222,7 +223,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Aufstellung').last);
+    await tester.tap(find.text('Elf').last);
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

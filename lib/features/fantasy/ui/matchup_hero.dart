@@ -84,9 +84,11 @@ class MatchupHero extends ConsumerWidget {
     final all = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
     final pool = ref.watch(playerPoolProvider).valueOrNull;
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
-    final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
+    final lineups =
+        ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
         const <FantasyLineup>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
@@ -103,9 +105,10 @@ class MatchupHero extends ConsumerWidget {
       });
     if (ids.length < 2) return fallback;
 
-    final pairing = roundPairings(ids, round)
-        .where((m) => m.home == myId || m.away == myId)
-        .firstOrNull;
+    final pairing = roundPairings(
+      ids,
+      round,
+    ).where((m) => m.home == myId || m.away == myId).firstOrNull;
     if (pairing == null) return fallback;
 
     final nameOf = {for (final m in managers) m.userId: m.display};
@@ -120,7 +123,7 @@ class MatchupHero extends ConsumerWidget {
     };
     final roundFx = [
       for (final f in all ?? const <Fixture>[])
-        if (f.round == round) f
+        if (f.round == round) f,
     ];
     final live = roundIsLive(roundFx, DateTime.now());
     // Frühester Anpfiff des Spieltags — die Vorschau schreibt ihn unter das
@@ -128,7 +131,8 @@ class MatchupHero extends ConsumerWidget {
     final anpfiff = roundFx.isEmpty
         ? null
         : roundFx.map((f) => f.kickoff).reduce((a, b) => a.isBefore(b) ? a : b);
-    final allFinished = roundFx.isNotEmpty &&
+    final allFinished =
+        roundFx.isNotEmpty &&
         roundFx.every((f) => f.status == FixtureStatus.finished);
     final started = live || allFinished;
 
@@ -153,7 +157,8 @@ class MatchupHero extends ConsumerWidget {
 
     final oppId = pairing.home == myId ? pairing.away! : pairing.home;
     final byId = {for (final p in pool) p.id: p};
-    final roundStats = ref.watch(roundStatsProvider(round)).valueOrNull ??
+    final roundStats =
+        ref.watch(roundStatsProvider(round)).valueOrNull ??
         const <String, PlayerMatchStats>{};
     final totals = effectiveTotalsForRound(
       stats: roundStats,
@@ -172,13 +177,14 @@ class MatchupHero extends ConsumerWidget {
     //
     // **Unbedingt beobachten, nicht im Zweig:** Ein `ref.watch` hinter einer
     // Bedingung meldet die Abhängigkeit ab, sobald der andere Fall greift.
-    final saison = ref.watch(seasonStatsProvider).valueOrNull ??
+    final saison =
+        ref.watch(seasonStatsProvider).valueOrNull ??
         const <int, Map<String, PlayerMatchStats>>{};
     final abgepfiffen = ref.watch(abgepfiffeneRundenProvider);
-    final ausfaelle = ref.watch(absencesProvider).valueOrNull ??
+    final ausfaelle =
+        ref.watch(absencesProvider).valueOrNull ??
         const <String, PlayerAbsence>{};
-    final wochenStreuung =
-        ref.watch(fantasyWochenStreuungProvider(league.id));
+    final wochenStreuung = ref.watch(fantasyWochenStreuungProvider(league.id));
     final fertig = gewerteteRunden(abgepfiffen, saison.keys);
     final saisonGewertet = {
       for (final e in saison.entries)
@@ -195,14 +201,14 @@ class MatchupHero extends ConsumerWidget {
     );
 
     MatchupSideData seite(String id) => computeSideData(
-          league: league,
-          round: round,
-          managerId: id,
-          byId: byId,
-          roster: roster,
-          lineups: lineups,
-          stats: roundStats,
-        );
+      league: league,
+      round: round,
+      managerId: id,
+      byId: byId,
+      roster: roster,
+      lineups: lineups,
+      stats: roundStats,
+    );
     final prognose = duellPrognose(
       round: round,
       heim: seite(myId),
@@ -216,7 +222,7 @@ class MatchupHero extends ConsumerWidget {
     );
 
     return MatchupBanner(
-        remisGrenze: league.remisGrenze ?? 0,
+      remisGrenze: league.remisGrenze ?? 0,
       round: round,
       homeName: nameOf[myId] ?? 'Du',
       awayName: nameOf[oppId] ?? '?',
@@ -309,6 +315,24 @@ class HeroShell extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: Stack(
               children: [
+                // **Das Stadion der Startseite, schlicht** (20.10.2026, auf
+                // Ansage). Dasselbe Bild wie hinter der Kopfkarte, aber nur
+                // zu 30 % — der Kasten trägt Zahlen, und die brauchen ruhigen
+                // Grund. Unterer Bildrand (beleuchteter Rasen mit Linien),
+                // nur im dunklen Modus: Das Foto ist fast schwarz.
+                if (Theme.of(context).brightness == Brightness.dark)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: 0.30,
+                        child: Image.asset(
+                          'assets/images/spiel_bg.jpg',
+                          fit: BoxFit.cover,
+                          alignment: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                  ),
                 // **Keine Kopfzeile mehr.** Sie trug ein Blitzsymbol, das Wort
                 // MATCHUP, den Spieltag und eine Status-Pille — vier
                 // Auskünfte in 11 bis 13 Punkt über dem, worum es geht.
@@ -330,6 +354,7 @@ class HeroShell extends StatelessWidget {
     );
   }
 }
+
 /// Die Profildaten eines Managers, so wie sie im Banner gebraucht werden.
 ///
 /// Ein eigener kleiner Typ statt vier loser Parameter je Seite: Acht
@@ -389,15 +414,17 @@ class HeroAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-            color: dim ? Colors.white.withValues(alpha: 0.28) : accent,
-            width: 2.5),
+          color: dim ? Colors.white.withValues(alpha: 0.28) : accent,
+          width: 2.5,
+        ),
         boxShadow: dim
             ? null
             : [
                 BoxShadow(
-                    color: accent.withValues(alpha: 0.45),
-                    blurRadius: 12,
-                    spreadRadius: -3),
+                  color: accent.withValues(alpha: 0.45),
+                  blurRadius: 12,
+                  spreadRadius: -3,
+                ),
               ],
       ),
       // **Der Ring bleibt sichtbar, das Bild sitzt darin.** Ohne das Polster
@@ -438,11 +465,8 @@ const kChanceNeutral = Color(0xFF9AA0AA);
   if ((linksProzent - rechtsProzent).abs() < 3) {
     return (kChanceNeutral, kChanceNeutral);
   }
-  return linksProzent > rechtsProzent
-      ? (_cGreen, _cRed)
-      : (_cRed, _cGreen);
+  return linksProzent > rechtsProzent ? (_cGreen, _cRed) : (_cRed, _cGreen);
 }
-
 
 // ---------------------------------------------------------------------------
 // Prognose und Bilanz eines Duells — einmal gerechnet, an beiden Orten benutzt
@@ -458,9 +482,16 @@ typedef DuellPrognose = ({
 /// **Was der Kasten über ein Duell sagt, das noch nicht entschieden ist.**
 ///
 /// Vor dem Anpfiff ist das die Prognose (Summe der Schnitte), währenddessen
-/// die Hochrechnung (echte Punkte plus erwarteter Rest, `hochrechnung.dart`),
-/// nach dem letzten Abpfiff der Endstand. Die Siegchance folgt derselben
-/// Rechnung und schärft sich mit jedem Abpfiff.
+/// die Hochrechnung (echte Punkte plus erwarteter Rest, `hochrechnung.dart`).
+///
+/// **Nach dem letzten Abpfiff wieder die Prognose von vor dem Spieltag**
+/// (19.10.2026, auf Ansage) — zum Vergleich mit dem Endstand. Gespeichert ist
+/// sie nirgends; sie wird nachgerechnet, wie sie damals stand: nur Spieltage
+/// **vor** diesem, jeder Spieler „noch nicht angepfiffen", und nur Ausfälle,
+/// die schon vor dem ersten Anpfiff gemeldet waren. Ohne diese drei Schnitte
+/// rechnete sie mit dem Spieltag selbst und läge mal über, mal unter dem, was
+/// am Freitag dastand. Die Siegchance zählt nach dem Spieltag nicht mehr — der
+/// Kasten zeigt dort Sieg oder Niederlage.
 ///
 /// **Steht hier und nicht in zwei Schirmen**, weil der Kasten an zwei Orten
 /// erscheint (Liga-Übersicht, MatchUp-Karussell) und für dasselbe Duell
@@ -482,37 +513,59 @@ DuellPrognose duellPrognose({
   required DateTime jetzt,
 }) {
   const nichts = (heimErwartet: null, gastErwartet: null, siegchanceHeim: null);
+
+  final dieser = [
+    for (final f in spiele)
+      if (f.round == round) f,
+  ];
+  final vorSpieltag = rundeDurch(dieser, jetzt);
+  if (vorSpieltag) {
+    final ersterAnpfiff = dieser
+        .map((f) => f.kickoff)
+        .reduce((a, b) => a.isBefore(b) ? a : b);
+    saisonGewertet = {
+      for (final e in saisonGewertet.entries)
+        if (e.key < round) e.key: e.value,
+    };
+    ausfaelle = {
+      for (final e in ausfaelle.entries)
+        if ((e.value.seit == null || e.value.seit!.isBefore(ersterAnpfiff)) &&
+            !(e.value.ausgewechselt && (e.value.runde ?? 0) >= round))
+          e.key: e.value,
+    };
+    jetzt = ersterAnpfiff.subtract(const Duration(minutes: 1));
+  }
+
   if (gast == null || saisonGewertet.values.every((r) => r.isEmpty)) {
     return nichts;
   }
-  Hochrechnung rechne(MatchupSideData seite) => hochrechnung(
-        [
-          for (final p in seite.starters)
-            () {
-              final spiel = naechstesSpiel(spiele, round, p.club);
-              final lage = spiel == null
-                  ? SpielLage.ohneSpiel
-                  : spiel.status == FixtureStatus.finished
-                      ? SpielLage.fertig
-                      : !spiel.anpfiff.isAfter(jetzt)
-                          ? SpielLage.laeuft
-                          : SpielLage.offen;
-              return HochrechnungsPosten(
-                lage: lage,
-                punkte: seite.points[p.id] ?? 0,
-                schnitt: spielerSchnitt(
-                  saison: saisonGewertet,
-                  spielerId: p.id,
-                  position: p.position,
-                  regeln: regeln,
-                ).schnitt,
-                anpfiff: spiel?.anpfiff,
-                faellt: ausfaelle.containsKey(p.id),
-              );
-            }(),
-        ],
-        jetzt: jetzt,
-      );
+  Hochrechnung rechne(MatchupSideData seite) => hochrechnung([
+    for (final p in seite.starters)
+      () {
+        final spiel = naechstesSpiel(spiele, round, p.club);
+        final lage = spiel == null
+            ? SpielLage.ohneSpiel
+            : vorSpieltag
+            ? SpielLage.offen
+            : spiel.status == FixtureStatus.finished
+            ? SpielLage.fertig
+            : !spiel.anpfiff.isAfter(jetzt)
+            ? SpielLage.laeuft
+            : SpielLage.offen;
+        return HochrechnungsPosten(
+          lage: lage,
+          punkte: seite.points[p.id] ?? 0,
+          schnitt: spielerSchnitt(
+            saison: saisonGewertet,
+            spielerId: p.id,
+            position: p.position,
+            regeln: regeln,
+          ).schnitt,
+          anpfiff: spiel?.anpfiff,
+          faellt: ausfaelle.containsKey(p.id),
+        );
+      }(),
+  ], jetzt: jetzt);
   final h = rechne(heim);
   final g = rechne(gast);
   return (
@@ -666,12 +719,13 @@ class MatchupBanner extends StatelessWidget {
             _Tippbar(
               onTap: onHomeName,
               child: HeroAvatar(
-                  name: homeName,
-                  accent: accent,
-                  imageUrl: homeAvatar?.url,
-                  emoji: homeAvatar?.emoji,
-                  colorHex: homeAvatar?.color,
-                  userId: homeAvatar?.userId),
+                name: homeName,
+                accent: accent,
+                imageUrl: homeAvatar?.url,
+                emoji: homeAvatar?.emoji,
+                colorHex: homeAvatar?.color,
+                userId: homeAvatar?.userId,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -685,11 +739,14 @@ class MatchupBanner extends StatelessWidget {
                 ),
               ),
             ),
-            Text('spielfrei',
-                style: TextStyle(
-                    fontSize: Schrift.titel,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withValues(alpha: 0.7))),
+            Text(
+              'spielfrei',
+              style: TextStyle(
+                fontSize: Schrift.titel,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
           ],
         ),
       );
@@ -722,11 +779,7 @@ class MatchupBanner extends StatelessWidget {
               onName: onHomeName,
             ),
           ),
-          _Mitte(
-            live: live,
-            started: started,
-            anpfiff: anpfiff,
-          ),
+          _Mitte(live: live, started: started, anpfiff: anpfiff),
           Expanded(
             child: _Seite(
               links: false,
@@ -785,11 +838,15 @@ class _Seite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ausgang =
-        duellErgebnis(punkte, gegnerPunkte, remisGrenze: remisGrenze);
+    final ausgang = duellErgebnis(
+      punkte,
+      gegnerPunkte,
+      remisGrenze: remisGrenze,
+    );
     final verloren = beendet && ausgang < 0;
-    final ausrichtung =
-        links ? CrossAxisAlignment.start : CrossAxisAlignment.end;
+    final ausrichtung = links
+        ? CrossAxisAlignment.start
+        : CrossAxisAlignment.end;
 
     // Groß: der Stand — vor dem Anpfiff die Prognose, gedämpft.
     final Widget gross;
@@ -814,20 +871,27 @@ class _Seite extends StatelessWidget {
         ),
       );
     } else {
-      gross = Text('–',
-          style: TextStyle(
-              fontSize: Schrift.gross,
-              fontWeight: FontWeight.w800,
-              height: 1,
-              color: Colors.white.withValues(alpha: 0.4)));
+      gross = Text(
+        '–',
+        style: TextStyle(
+          fontSize: Schrift.gross,
+          fontWeight: FontWeight.w800,
+          height: 1,
+          color: Colors.white.withValues(alpha: 0.4),
+        ),
+      );
     }
 
     // Klein darunter: was die große Zahl ist, bzw. wo es hinläuft.
+    // Nach dem Spieltag die Prognose von vorher — der Vergleich, den man
+    // dann sucht. Ohne Prognose bleibt „Endstand".
     final klein = beendet
-        ? 'Endstand'
+        ? (erwartet == null
+              ? 'Endstand'
+              : 'Prognose ${formatPoints(erwartet!)}')
         : started
-            ? (erwartet == null ? 'Live' : 'Prognose ${formatPoints(erwartet!)}')
-            : (erwartet == null ? '' : 'Prognose');
+        ? (erwartet == null ? 'Live' : 'Prognose ${formatPoints(erwartet!)}')
+        : (erwartet == null ? '' : 'Prognose');
 
     final zahlen = Column(
       crossAxisAlignment: ausrichtung,
@@ -840,16 +904,16 @@ class _Seite extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-          klein,
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: Schrift.label,
-            fontWeight: FontWeight.w600,
-            height: 1,
-            color: Colors.white.withValues(alpha: 0.5),
-            fontFeatures: const [FontFeature.tabularFigures()],
+            klein,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: Schrift.label,
+              fontWeight: FontWeight.w600,
+              height: 1,
+              color: Colors.white.withValues(alpha: 0.5),
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
-        ),
         ),
       ],
     );
@@ -872,8 +936,9 @@ class _Seite extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
-          mainAxisAlignment:
-              links ? MainAxisAlignment.start : MainAxisAlignment.end,
+          mainAxisAlignment: links
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.end,
           children: links
               ? [bild, const SizedBox(width: 10), Flexible(child: zahlen)]
               : [Flexible(child: zahlen), const SizedBox(width: 10), bild],
@@ -938,8 +1003,9 @@ class _ChanceZeile extends StatelessWidget {
     return SizedBox(
       height: 18,
       child: Column(
-        crossAxisAlignment:
-            links ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+        crossAxisAlignment: links
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.end,
         children: [
           Text(
             text.toUpperCase(),
@@ -961,8 +1027,9 @@ class _ChanceZeile extends StatelessWidget {
                   Container(color: Colors.white.withValues(alpha: 0.08)),
                   // Der Balken wächst von der Außenkante nach innen.
                   Align(
-                    alignment:
-                        links ? Alignment.centerLeft : Alignment.centerRight,
+                    alignment: links
+                        ? Alignment.centerLeft
+                        : Alignment.centerRight,
                     child: FractionallySizedBox(
                       widthFactor: anteil.clamp(0.0, 1.0),
                       child: Container(color: farbe),
@@ -1021,8 +1088,9 @@ class _NameZeilen extends StatelessWidget {
       _ => ('■', 'U', kChanceNeutral),
     };
     return Column(
-      crossAxisAlignment:
-          links ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      crossAxisAlignment: links
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
@@ -1040,16 +1108,18 @@ class _NameZeilen extends StatelessWidget {
         if (bilanz?.zeile != null) ...[
           const SizedBox(height: 3),
           Text.rich(
-            TextSpan(children: [
-              TextSpan(text: bilanz!.zeile),
-              if (serie != null) ...[
-                const TextSpan(text: ' · '),
-                TextSpan(
-                  text: '$pfeil${serie.anzahl}$buchstabe',
-                  style: TextStyle(color: farbe, fontWeight: FontWeight.w800),
-                ),
+            TextSpan(
+              children: [
+                TextSpan(text: bilanz!.zeile),
+                if (serie != null) ...[
+                  const TextSpan(text: ' · '),
+                  TextSpan(
+                    text: '$pfeil${serie.anzahl}$buchstabe',
+                    style: TextStyle(color: farbe, fontWeight: FontWeight.w800),
+                  ),
+                ],
               ],
-            ]),
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: links ? TextAlign.start : TextAlign.end,
@@ -1084,22 +1154,21 @@ class _Mitte extends StatelessWidget {
     final String? zustand = live
         ? 'LIVE'
         : started
-            ? 'ENDE'
-            : (anpfiff == null ? null : anpfiffKurz(anpfiff!.toLocal()));
+        ? 'ENDE'
+        : (anpfiff == null ? null : anpfiffKurz(anpfiff!.toLocal()));
     return SizedBox(
       width: 46,
       child: Column(
         children: [
           const SizedBox(height: 4),
+          // **Nur das Zeichen, ohne Kästchen** (20.10.2026, auf Ansage) —
+          // dieselbe Linie wie bei den Ligakarten. Etwas größer, damit es
+          // ohne Fläche dahinter trotzdem trägt.
           Container(
             width: 36,
             height: 36,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const MatchUpChevron(size: 18),
+            child: const MatchUpChevron(size: 26),
           ),
           if (zustand != null) ...[
             const SizedBox(height: 6),

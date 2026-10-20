@@ -44,4 +44,21 @@ void beimZurueckkommenAktualisieren(WidgetRef ref) {
 
   // Nachrichtenleiste auf dem Startbildschirm.
   ref.invalidate(newsProvider);
+
+  // **Spielplan, Statistik und Spielerpool** (19.10.2026). Daraus rechnet
+  // jedes Gerät die Tabelle selbst — und alle drei hingen bis zum Kaltstart
+  // am Stand vom Öffnen. Ein iPhone hält die App tagelang im Hintergrund;
+  // so standen in derselben Liga verschiedene Tabellen nebeneinander. Der
+  // Spielplan ist billig (gebündelt, 20 s gemerkt); Statistik (wächst mit der
+  // Saison) und Pool höchstens alle zehn Minuten.
+  ref.invalidate(fantasySeasonFixturesProvider);
+  final jetzt = DateTime.now();
+  if (jetzt.difference(_grossZuletzt) > _grossAbstand) {
+    _grossZuletzt = jetzt;
+    ref.invalidate(seasonStatsProvider);
+    ref.invalidate(playerPoolProvider);
+  }
 }
+
+const _grossAbstand = Duration(minutes: 10);
+DateTime _grossZuletzt = DateTime.now();

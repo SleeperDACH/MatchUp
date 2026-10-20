@@ -1,10 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/core/models/models.dart';
-import 'package:matchup/features/fantasy/logic/fantasy_scoring_engine.dart';
 import 'package:matchup/features/fantasy/logic/naechstes_spiel.dart';
 import 'package:matchup/features/fantasy/logic/saisonverlauf.dart';
 import 'package:matchup/features/fantasy/logic/spieler_kurzzeile.dart';
-import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 
 void main() {
   final anpfiff = DateTime(2026, 10, 17, 15, 30);

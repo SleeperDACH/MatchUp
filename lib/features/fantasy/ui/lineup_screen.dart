@@ -11,7 +11,7 @@ import '../../../app/typografie.dart';
 import '../../../app/widgets/pill_selector.dart';
 import '../../../app/widgets/punktzahl.dart';
 
-import '../../../core/logic/vereins_kuerzel.dart';
+import '../logic/spieler_schnitt.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -27,6 +27,7 @@ import '../models/player_absence.dart';
 import '../providers.dart';
 import 'ausfall_zeichen.dart';
 import 'club_badge.dart';
+import 'spiel_marke.dart';
 import 'free_agency_screen.dart';
 import 'pitch_painter.dart';
 import 'player_profile_sheet.dart';
@@ -490,6 +491,23 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
         final ausfaelle =
             ref.watch(absencesProvider).valueOrNull ??
             const <String, PlayerAbsence>{};
+        // Ø je Einsatz auf jeder Kachel — dieselbe Zahl wie im Profil, nur
+        // über abgepfiffene Spieltage.
+        final fertig = gewerteteRunden(
+            ref.watch(abgepfiffeneRundenProvider), saison.keys);
+        final gewertet = {
+          for (final e in saison.entries)
+            if (fertig.contains(e.key)) e.key: e.value,
+        };
+        final schnitte = <String, double?>{
+          for (final p in [...elf, ...bench])
+            p.id: spielerSchnitt(
+              saison: gewertet,
+              spielerId: p.id,
+              position: p.position,
+              regeln: league.scoring,
+            ).punkteJeEinsatz,
+        };
         final vorschau = gesperrt.isEmpty
             ? projektion(
                 elf: elf,
@@ -532,6 +550,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                 ),
               ),
             _Pitch(
+              schnitte: schnitte,
               slots: slots,
               playerById: playerById,
               points: points,
@@ -585,6 +604,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               ),
             _Bench(
               bench: bench,
+              schnitte: schnitte,
               points: points,
               clubIcons: clubIcons,
               emptySlots: emptySlots,
@@ -923,9 +943,14 @@ class _FormationChips extends StatelessWidget {
   }
 }
 
+/// Breite des Prognose-Kastens neben dem Torwart — eigene Zahl, nicht die
+/// Kachelbreite: Seit die Kachel schmaler ist (62), brach „PROGNOSE" um.
+const _prognoseBreite = 70.0;
+
 class _Pitch extends StatelessWidget {
   const _Pitch({
     required this.slots,
+    required this.schnitte,
     required this.playerById,
     required this.points,
     required this.clubIcons,
@@ -941,6 +966,9 @@ class _Pitch extends StatelessWidget {
 
   /// Prognose der Startelf, oder `null`, solange der Spieltag läuft.
   final Projektion? projektion;
+
+  /// Ø je Einsatz je Spieler-ID.
+  final Map<String, double?> schnitte;
 
   /// IDs der Spieler, deren Spiel schon läuft — festgenagelt (Migration 0084).
   final Set<String> gesperrt;
@@ -969,7 +997,9 @@ class _Pitch extends StatelessWidget {
     // suchen muss. Bei 420 stand alles davon im selben Raum wie vorher.
     return Container(
       margin: const EdgeInsets.all(12),
-      height: 470,
+      // 440 seit der kompakten Kachel (19.10.2026, 90 hoch); vorher 500 für
+      // die 108 hohe.
+      height: 440,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
@@ -1002,7 +1032,7 @@ class _Pitch extends StatelessWidget {
                           // nach rechts, und die Elf stünde schief auf dem Feld.
                           if (pos == PlayerPosition.gk && projektion != null)
                             SizedBox(
-                              width: _Slot._kachelBreite,
+                              width: _prognoseBreite,
                               child: _ProjektionsBox(werte: projektion!),
                             ),
                           // **Jeder Platz nimmt seinen Anteil an der Reihe.**
@@ -1012,7 +1042,7 @@ class _Pitch extends StatelessWidget {
                           for (var i = 0; i < (slots[pos]?.length ?? 0); i++)
                             Expanded(child: _slotTarget(pos, i)),
                           if (pos == PlayerPosition.gk && projektion != null)
-                            const SizedBox(width: _Slot._kachelBreite),
+                            const SizedBox(width: _prognoseBreite),
                         ],
                       ),
                     ),
@@ -1054,6 +1084,7 @@ class _Pitch extends StatelessWidget {
       builder: (context, candidate, rejected) {
         final slot = _Slot(
           player: player,
+          schnitt: player == null ? null : schnitte[player.id],
           pos: pos,
           points: pts,
           spiel: player == null
@@ -1093,6 +1124,7 @@ PlayerAbsence? _ausfall(WidgetRef ref, FantasyPlayer? p) => p == null
 class _Slot extends ConsumerWidget {
   const _Slot({
     required this.player,
+    this.schnitt,
     required this.pos,
     required this.points,
     required this.spiel,
@@ -1115,6 +1147,8 @@ class _Slot extends ConsumerWidget {
   /// betrifft.
   final bool alleZu;
 
+  /// Ø je Einsatz (für die Kachel).
+  final double? schnitt;
   final FantasyPlayer? player;
   final PlayerPosition pos;
   final double? points;
@@ -1146,11 +1180,11 @@ class _Slot extends ConsumerWidget {
   /// Innenabstand = 370 für die Reihe, geteilt durch fünf = 74, minus Rand (2)
   /// und Polster (4) der Kachel = **68**. Was hier hineinpasst, passt überall
   /// hinein.
-  static const _kachelBreite = 68.0;
+  static const _kachelBreite = 62.0;
 
   /// Breiter wird eine Kachel nicht — mit vier in einer Reihe sind es rund
   /// 86 Punkte, beim Torwart wäre sonst eine Karte über die halbe Feldbreite.
-  static const _kachelMax = 88.0;
+  static const _kachelMax = 76.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1201,6 +1235,7 @@ class _Slot extends ConsumerWidget {
                     ? _LeererPlatz(pos: pos)
                     : _SpielerKachelFeld(
                         spieler: p,
+                        schnitt: schnitt,
                         iconUrl: iconUrl,
                         farbe: farbe,
                         ausfall: ausfall,
@@ -1356,7 +1391,13 @@ class _SpielerKachelFeld extends StatelessWidget {
     required this.tauschLabel,
     this.ohneEcke = false,
     this.ausfallFlaeche = false,
+    this.schnitt,
   });
+
+  /// Ø je Einsatz der laufenden Saison (19.10.2026, auf Ansage) — `null`
+  /// ohne Einsatz; dann steht ein Strich, damit die Kacheln gleich hoch
+  /// bleiben.
+  final double? schnitt;
 
   /// **Auf der Bank trägt ein Ausfall die ganze Fläche** (17.10.2026, auf
   /// Ansage): gold bei Verletzung, rot bei Sperre. Auf dem Feld bleibt es beim
@@ -1380,11 +1421,14 @@ class _SpielerKachelFeld extends StatelessWidget {
   final VoidCallback? onTausch;
   final String tauschLabel;
 
-  /// Feste Maße der Kachel: Polster 8 + Wappen 32 + 5 + Name 17 + 4 + Fuß 16
-  /// + Polster 7 + Rand 2 = 91. Siehe [build].
-  static const _kachelHoehe = 92.0;
-  static const _nameHoehe = 17.0;
-  static const _fussHoehe = 16.0;
+  /// Feste Maße der Kachel — **kompakt seit dem 19.10.2026** (auf Ansage:
+  /// „nicht ganz so fett, schmaler, dünner, kleiner"): Polster 6 + Wappen 26
+  /// + 4 + Name 16 + 3 + Fuß 14 + 1 + Ø 12 + Polster 5 + Rand 2 = 89, plus 1
+  /// Luft. Vorher 108 hoch, Wappen 30, Name extrafett.
+  static const _kachelHoehe = 90.0;
+  static const _schnittHoehe = 12.0;
+  static const _nameHoehe = 16.0;
+  static const _fussHoehe = 14.0;
 
   static String _kurz(String name) {
     final teile = name.trim().split(' ');
@@ -1409,19 +1453,11 @@ class _SpielerKachelFeld extends StatelessWidget {
         ),
       );
     } else if (spiel != null) {
-      fuss = Text(
-        // Das Zeichen sagt, wo gespielt wird: zu Hause oder auswärts.
-        '${spiel!.heim ? '' : '@'}${vereinsKuerzel(spiel!.gegner)} · '
-        '${anpfiffKurz(spiel!.anpfiff)}',
-        maxLines: 1,
-        softWrap: false,
-        style: TextStyle(
-          fontSize: Schrift.label,
-          height: 1.0,
-          fontWeight: FontWeight.w700,
-          color: leise,
-        ),
-      );
+      // **Wappen statt Kürzel** (19.10.2026): „FCA · Sa 15:30" in fetter
+      // Kleinschrift war die unruhigste Zeile der Kachel.
+      // Im Kader nur Heim/Auswärts und der Gegner, ohne Tag und Zeit
+      // (19.10.2026, auf Ansage).
+      fuss = SpielMarke(spiel: spiel!, farbe: leise, mitZeit: false);
     } else {
       fuss = Text('spielfrei',
           style: TextStyle(fontSize: Schrift.label, height: 1.0, color: leise));
@@ -1435,7 +1471,7 @@ class _SpielerKachelFeld extends StatelessWidget {
     // muss, schrumpft.
     final karte = Container(
       height: _kachelHoehe,
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 7),
+      padding: const EdgeInsets.fromLTRB(5, 6, 5, 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         // Deckend, nicht durchscheinend — auf dem Rasen ist alles
@@ -1453,8 +1489,8 @@ class _SpielerKachelFeld extends StatelessWidget {
         children: [
           // Wappen mit dem Ausfall-Zeichen an der Ecke.
           SizedBox(
-            width: 38,
-            height: 32,
+            width: 32,
+            height: 26,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
@@ -1462,7 +1498,7 @@ class _SpielerKachelFeld extends StatelessWidget {
                 Opacity(
                   opacity: gesperrt ? 0.55 : 1,
                   child: ClubBadge(
-                      club: spieler.club, iconUrl: iconUrl, size: 30),
+                      club: spieler.club, iconUrl: iconUrl, size: 24),
                 ),
                 if (ausfall != null)
                   Positioned(
@@ -1473,7 +1509,7 @@ class _SpielerKachelFeld extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           // **Schrumpfen statt kappen** — aber in normaler Schreibung, die
           // weniger schrumpfen muss als Versalien.
           SizedBox(
@@ -1490,18 +1526,34 @@ class _SpielerKachelFeld extends StatelessWidget {
                         ? MatchUpColors.snow.withValues(alpha: 0.6)
                         : MatchUpColors.snow,
                     fontSize: Schrift.text,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     height: 1.1,
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           SizedBox(
             height: _fussHoehe,
             child: Center(
               child: FittedBox(fit: BoxFit.scaleDown, child: fuss),
+            ),
+          ),
+          const SizedBox(height: 1),
+          SizedBox(
+            height: _schnittHoehe,
+            child: Center(
+              child: Text(
+                schnitt == null ? '' : 'Ø ${formatPoints(schnitt!)}',
+                style: TextStyle(
+                  fontSize: Schrift.label,
+                  fontWeight: FontWeight.w600,
+                  height: 1.0,
+                  color: leise,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
             ),
           ),
         ],
@@ -1674,6 +1726,7 @@ class _DragFeedback extends StatelessWidget {
 class _Bench extends ConsumerWidget {
   const _Bench({
     required this.bench,
+    required this.schnitte,
     required this.points,
     required this.clubIcons,
     required this.emptySlots,
@@ -1690,6 +1743,8 @@ class _Bench extends ConsumerWidget {
   final int? runde;
   final Set<String> gesperrt;
 
+  /// Ø je Einsatz je Spieler-ID.
+  final Map<String, double?> schnitte;
   final List<FantasyPlayer> bench;
   final Map<FantasyPlayer, double> points;
   final Map<String, String?> clubIcons;
@@ -1794,7 +1849,7 @@ class _Bench extends ConsumerWidget {
   }
 
   /// So breit wie eine Karte in einer Viererreihe auf dem Feld.
-  static const _kartenBreite = 84.0;
+  static const _kartenBreite = 74.0;
 
   List<FantasyPlayer> _sortiert() => [...bench]
     ..sort((a, b) {
@@ -1807,6 +1862,7 @@ class _Bench extends ConsumerWidget {
     final zu = gesperrt.contains(p.id);
     final karte = _SpielerKachelFeld(
       spieler: p,
+      schnitt: schnitte[p.id],
       iconUrl: clubIcons[p.club],
       farbe: positionColor(p.position),
       // Der Ausfall steht am Wappen — die Bank ist die Liste, aus der man

@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'logic/wertungs_kader.dart';
+import 'logic/h2h_grundlage.dart';
+import 'logic/reset_draft.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -98,9 +101,39 @@ final pendingMembersProvider =
 });
 
 /// Aktuelle Kader der Liga in Echtzeit (Draft + Free Agency).
+///
+/// **Nach einem Reset (0143) ein [WertungsKader]**: nach außen derselbe
+/// aktuelle Kader, dazu der Kader vor dem Reset für die Wertung der
+/// Hinrunde ([kaderFuerRunde]). Ohne Reset die schlichte Liste.
 final leagueRosterProvider =
     StreamProvider.family<List<RosterEntry>, String>((ref, leagueId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).rosterStream(leagueId);
+  final reset = ref.watch(_resetKaderProvider(leagueId));
+  return ref
+      .watch(fantasyLeagueRepositoryProvider)
+      .rosterStream(leagueId)
+      .map((r) => reset == null
+          ? r
+          : WertungsKader(r,
+              vorReset: reset.vorher, ersteRundeNachReset: reset.ersteRunde));
+});
+
+/// Kader vor dem Reset und erste Runde danach — `null` ohne Reset oder
+/// solange Protokoll oder Spielplan laden. Ein Wert mit Inhaltsgleichheit:
+/// Im Reset-Draft ändert jeder Pick Liga und Protokoll, und ohne sie würde
+/// der Kaderstrom bei jedem Pick neu abonniert.
+final _resetKaderProvider =
+    Provider.family<ResetKader?, String>((ref, leagueId) {
+  final info = ref.watch(myFantasyLeaguesProvider.select((v) {
+    final l = v.valueOrNull?.where((l) => l.id == leagueId).firstOrNull;
+    return l?.resetErfolgtAt == null ? null : l!.season;
+  }));
+  if (info == null) return null;
+  final moves = ref.watch(rosterMovesProvider(leagueId)).valueOrNull;
+  final fixtures = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
+  if (moves == null || fixtures == null) return null;
+  final erste = ersteRundeNachReset(fixtures, FantasyLeague.resetTermin(info));
+  if (erste == null) return null;
+  return ResetKader(kaderVorReset(moves), erste);
 });
 
 /// Live-Stream der Chat-Nachrichten einer Fantasy-Liga (älteste zuerst).
@@ -513,31 +546,61 @@ int currentFantasyRound(List<Fixture> fixtures, DateTime now) {
   return runden.last; // Saison vorbei → letzter Spieltag.
 }
 
-/// **Der Spieltag, den der Rückblick zeigt** — der zuletzt abgepfiffene, und
-/// zwar **bis zum Anstoß des nächsten**.
+/// **Ist der Rückblick auf [runde] veröffentlicht?** (19.10.2026, auf
+/// Ansage: „erst mit dem Umstellen auf den nächsten Spieltag").
 ///
-/// Er folgt bewusst nicht [currentFantasyRound]: Der springt montags um 15:00
-/// weiter, und ein Rückblick auf einen Spieltag, der noch gar nicht gespielt
-/// ist, wäre leer. Der Rückblick bleibt deshalb bis Freitagabend stehen — bis
-/// dahin ist er das Aktuellste, was es gibt.
+/// Der Wechsel ist die Waiver-Frist der Runde — derselbe Zeitpunkt, an dem
+/// [currentFantasyRound] weiterspringt und der Server die Push-Meldung
+/// schickt (`fantasy_rueckblick_melden`, 0141). Vorher war der Rückblick ab
+/// dem letzten Abpfiff sichtbar, also schon Sonntagabend.
+bool rueckblickVeroeffentlicht(List<Fixture> fixtures, int runde, DateTime now) {
+  final frist = waiverFrist(fixtures, runde);
+  return frist != null && !now.isBefore(frist);
+}
+
+/// **Der Spieltag, den der Rückblick auf der Übersicht zeigt** — der zuletzt
+/// veröffentlichte ([rueckblickVeroeffentlicht]), und zwar **bis zum Anstoß
+/// des nächsten**. Danach führt die laufende Paarung.
 ///
-/// `null` heißt: nichts zurückzublicken. Vor dem ersten Spieltag, und wieder,
-/// sobald der nächste angepfiffen hat — dann führt die laufende Paarung.
+/// `null` heißt: nichts zurückzublicken.
 int? recapRunde(List<Fixture> fixtures, DateTime now) {
   final runden = {for (final f in fixtures) f.round}.toList()..sort();
-  int? beendet;
+  int? veroeffentlicht;
   for (final r in runden) {
-    final dieser = [for (final f in fixtures) if (f.round == r) f];
-    if (dieser.isNotEmpty &&
-        dieser.every((f) => f.status == FixtureStatus.finished)) {
-      beendet = r;
+    if (rueckblickVeroeffentlicht(fixtures, r, now)) veroeffentlicht = r;
+  }
+  if (veroeffentlicht == null) return null;
+  final naechsterLaeuft = fixtures.any((f) =>
+      f.round > veroeffentlicht! && !f.kickoff.toLocal().isAfter(now));
+  return naechsterLaeuft ? null : veroeffentlicht;
+}
+
+/// Alle Spieltage, deren Rückblick veröffentlicht ist, aufsteigend — für die
+/// Auswahl im Tabellen-Reiter. Mit einem Wecker auf die nächste Frist.
+final veroeffentlichteRueckblickeProvider = Provider<List<int>>((ref) {
+  final fixtures =
+      ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
+  final jetzt = DateTime.now();
+  final runden = {for (final f in fixtures) f.round}.toList()..sort();
+  final fertig = [
+    for (final r in runden)
+      if (rueckblickVeroeffentlicht(fixtures, r, jetzt)) r,
+  ];
+  DateTime? naechste;
+  for (final r in runden) {
+    final frist = waiverFrist(fixtures, r);
+    if (frist != null && frist.isAfter(jetzt) &&
+        (naechste == null || frist.isBefore(naechste))) {
+      naechste = frist;
     }
   }
-  if (beendet == null) return null;
-  final naechsterLaeuft = fixtures.any(
-      (f) => f.round > beendet! && !f.kickoff.toLocal().isAfter(now));
-  return naechsterLaeuft ? null : beendet;
-}
+  if (naechste != null) {
+    final t = Timer(naechste.difference(jetzt) + const Duration(seconds: 5),
+        ref.invalidateSelf);
+    ref.onDispose(t.cancel);
+  }
+  return fertig;
+});
 
 /// Der Spieltag des Rückblicks — `null`, solange es keinen gibt.
 final fantasyRecapRundeProvider = FutureProvider<int?>((ref) async {
@@ -585,29 +648,61 @@ final roundIsLiveProvider = Provider.family<bool, int>((ref, round) {
 /// Anpfiff, „abgepfiffen" nur danach. Der Wochen-Recap hängt daran — er ist
 /// eine Bilanz, und eine Bilanz über einen halb gespielten Spieltag ist keine.
 final rundeAbgepfiffenProvider = Provider.family<bool, int>((ref, round) {
-  final fixtures = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
-  if (fixtures == null) return false;
-  final spiele = [
-    for (final f in fixtures)
-      if (f.round == round) f
-  ];
-  return spiele.isNotEmpty &&
-      spiele.every((f) => f.status == FixtureStatus.finished);
+  ref.watch(fantasySeasonFixturesProvider);
+  return ref.watch(abgepfiffeneRundenProvider).contains(round);
 });
+
+/// Wie lange nach dem Anpfiff ein Spiel spätestens als abgepfiffen gilt,
+/// auch wenn der Spielplan auf dem Gerät noch „läuft" sagt.
+const spielDauerSicher = Duration(hours: 3);
+
+/// **Ist dieser Spieltag durch?** Rein, damit es prüfbar ist.
+///
+/// Durch heißt: jedes Spiel beendet — nach dem Spielplan **oder nach der
+/// Uhr** (Anpfiff plus [spielDauerSicher]). Der Spielplan auf dem Gerät wird
+/// nur nachgeladen, solange jemand hinsieht; ohne die Uhr galt ein Spieltag
+/// auf einem Gerät als beendet und auf dem nächsten nicht, und die Tabellen
+/// gingen auseinander (gemeldet 19.10.2026).
+bool rundeDurch(List<Fixture> spiele, DateTime jetzt) =>
+    spiele.isNotEmpty &&
+    spiele.every((f) =>
+        f.status == FixtureStatus.finished ||
+        jetzt.isAfter(f.kickoff.add(spielDauerSicher)));
 
 /// Alle **abgepfiffenen** Spieltage der Saison, aufsteigend — die Spieltage,
 /// für die es einen Recap zum Nachschlagen gibt.
 final abgepfiffeneRundenProvider = Provider<List<int>>((ref) {
   final fixtures =
       ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
+  final jetzt = DateTime.now();
   final proRunde = <int, List<Fixture>>{};
   for (final f in fixtures) {
     (proRunde[f.round] ??= []).add(f);
   }
   final fertig = [
     for (final e in proRunde.entries)
-      if (e.value.every((f) => f.status == FixtureStatus.finished)) e.key
+      if (rundeDurch(e.value, jetzt)) e.key
   ]..sort();
+
+  // **Ein Wecker auf den nächsten Zeitpunkt, an dem ein Spieltag nach der
+  // Uhr durch ist** — sonst bliebe die Liste bis zum nächsten Laden des
+  // Spielplans stehen. Einmalig statt periodisch, dieselbe Bauart wie beim
+  // Live-Takt; ohne anstehenden Spieltag gibt es keinen.
+  DateTime? naechste;
+  for (final e in proRunde.entries) {
+    if (fertig.contains(e.key)) continue;
+    final ende = e.value
+        .map((f) => f.kickoff.add(spielDauerSicher))
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+    if (ende.isAfter(jetzt) && (naechste == null || ende.isBefore(naechste))) {
+      naechste = ende;
+    }
+  }
+  if (naechste != null) {
+    final t = Timer(naechste.difference(jetzt) + const Duration(seconds: 5),
+        ref.invalidateSelf);
+    ref.onDispose(t.cancel);
+  }
   return fertig;
 });
 
@@ -671,9 +766,36 @@ final roundStatsProvider =
 /// Alle gespielten Spieltage der Saison (Spieltag → Spieler-ID → Stats);
 /// Grundlage der Head-to-Head-Bilanz. Leer ohne serverseitige Stats.
 final seasonStatsProvider =
+    FutureProvider<Map<int, Map<String, PlayerMatchStats>>>((ref) async {
+  final season = ref.watch(fantasySeasonProvider);
+  // **Die Statistik ist nie älter als der letzte abgepfiffene Spieltag**
+  // (19.10.2026, gemeldet: „jedem werden unterschiedliche Tabellen
+  // angezeigt"). Sie wurde einmal je Sitzung geladen; sprang danach ein
+  // Spieltag auf „abgepfiffen", zählte die Tabelle ihn mit den
+  // Zwischenständen vom Laden. Jetzt hängt sie an der Liste der
+  // abgepfiffenen Spieltage: Kommt einer dazu, wird neu geladen.
+  //
+  // Erst auf den Spielplan warten, damit beim Start nicht zweimal geladen
+  // wird (einmal mit leerer Liste, einmal mit der echten). **`read`, nicht
+  // `watch`:** Der Spielplan lädt während eines Spieltags alle 30 s nach; mit
+  // `watch` holte jedes Nachladen die ganze Saison neu. Gehört wird allein auf
+  // die Liste der abgepfiffenen Spieltage darunter. Scheitert der Spielplan,
+  // lädt die Statistik trotzdem.
+  try {
+    await ref.read(fantasySeasonFixturesProvider.future);
+  } catch (_) {}
+  ref.watch(abgepfiffeneRundenProvider.select((l) => l.join(',')));
+  return ref.watch(fantasyStatsSourceProvider).seasonStats(season: season);
+});
+
+/// Statistik der **Vorsaison** — für den Draft vor dem ersten Spieltag
+/// (19.10.2026): Solange die laufende Saison keinen gewerteten Spieltag hat,
+/// zeigt der Draft-Raum den Schnitt der letzten Saison. Leer, wenn die
+/// Datenbank sie nicht hat (Stand 19.10.2026: nur 2026 gespiegelt).
+final vorsaisonStatsProvider =
     FutureProvider<Map<int, Map<String, PlayerMatchStats>>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
-  return ref.watch(fantasyStatsSourceProvider).seasonStats(season: season);
+  return ref.watch(fantasyStatsSourceProvider).seasonStats(season: season - 1);
 });
 
 /// Mein H2H-Tabellenplatz in einer Liga — `null`, solange nichts feststeht:
@@ -797,4 +919,77 @@ final fantasyWochenStreuungProvider =
         ),
   };
   return streuung(totalsByRound);
+});
+
+/// **Wächter: Kennt der Spielerpool jeden aufgestellten Spieler?**
+/// (19.10.2026)
+///
+/// Die Tabelle summiert die Elf über den Pool. Fehlt dort ein Spieler — ein
+/// Neuzugang aus `sync-squads`, nachdem das Gerät den Pool geladen hat —,
+/// fielen seine Punkte auf diesem Gerät stillschweigend weg, und die Tabelle
+/// wich von der aller anderen ab. Dieselbe Falle wie beim leeren Feld im
+/// Draft-Brett: „nicht gefunden" wurde gerendert wie „nichts".
+///
+/// Liefert `true`, solange etwas fehlt, und lädt den Pool **einmal je
+/// fehlender Menge** nach (sonst liefe ein Spieler, den es auch auf dem
+/// Server nicht mehr gibt, in eine Schleife).
+final poolVollstaendigProvider = Provider.family<bool, String>((ref, leagueId) {
+  final pool = ref.watch(playerPoolProvider).valueOrNull;
+  final lineups = ref.watch(leagueLineupsProvider(leagueId)).valueOrNull;
+  if (pool == null || lineups == null) return true;
+  final bekannt = {for (final p in pool) p.id};
+  final fehlend = <String>{
+    for (final l in lineups)
+      for (final id in l.playerIds)
+        if (!bekannt.contains(id)) id,
+  };
+  if (fehlend.isEmpty) return true;
+  final schluessel = (fehlend.toList()..sort()).join(',');
+  if (_poolNachgeladenFuer.add(schluessel)) {
+    Future.microtask(() => ref.invalidate(playerPoolProvider));
+  }
+  return false;
+});
+
+final _poolNachgeladenFuer = <String>{};
+
+
+/// **Pick-Folge des Reset-Drafts** (0143): die Manager vom Tabellenletzten
+/// zum Ersten — aus derselben Rechnung wie der Tabellen-Reiter
+/// (`h2hGrundlage` + `h2hStandings`). `null`, solange etwas lädt.
+final resetReihenfolgeProvider =
+    Provider.family<List<FantasyManager>?, String>((ref, leagueId) {
+  final league = ref
+      .watch(myFantasyLeaguesProvider)
+      .valueOrNull
+      ?.where((l) => l.id == leagueId)
+      .firstOrNull;
+  final managers = ref.watch(fantasyManagersProvider(leagueId)).valueOrNull;
+  final pool = ref.watch(playerPoolProvider).valueOrNull;
+  final roster = ref.watch(leagueRosterProvider(leagueId)).valueOrNull;
+  final lineups = ref.watch(leagueLineupsProvider(leagueId)).valueOrNull;
+  final stats = ref.watch(seasonStatsProvider).valueOrNull;
+  if (league == null ||
+      managers == null ||
+      pool == null ||
+      roster == null ||
+      lineups == null ||
+      stats == null) {
+    return null;
+  }
+  final g = h2hGrundlage(
+    league: league,
+    managers: managers,
+    roster: roster,
+    lineups: lineups,
+    playerById: {for (final p in pool) p.id: p},
+    seasonStats: stats,
+    abgepfiffen: ref.watch(abgepfiffeneRundenProvider),
+  );
+  final standings = h2hStandings(g.ids, g.summen, remisGrenze: g.remis);
+  final byId = {for (final m in managers) m.userId: m};
+  return [
+    for (final id in resetReihenfolge(standings))
+      if (byId[id] != null) byId[id]!,
+  ];
 });

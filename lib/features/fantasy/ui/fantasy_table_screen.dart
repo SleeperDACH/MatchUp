@@ -57,6 +57,9 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
     final league = widget.league;
     final managersAsync = ref.watch(fantasyManagersProvider(league.id));
     final poolAsync = ref.watch(playerPoolProvider);
+    // Lädt den Pool nach, wenn eine Elf einen Spieler enthält, den er nicht
+    // kennt — sonst fehlten dessen Punkte nur auf diesem Gerät.
+    ref.watch(poolVollstaendigProvider(league.id));
     final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
     final seasonStatsAsync = ref.watch(seasonStatsProvider);
@@ -104,9 +107,11 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
         h2hStandings(ids, totalsByRound, remisGrenze: grundlage.remis);
     final nonePlayed = standings.every((r) => r.played == 0);
 
-    final abgepfiffen = ref.watch(abgepfiffeneRundenProvider);
-    final rueckblick =
-        _rueckblick ?? (abgepfiffen.isEmpty ? null : abgepfiffen.last);
+    // Nur veröffentlichte Rückblicke (seit 19.10.2026: ab dem Wechsel auf
+    // den nächsten Spieltag).
+    final veroeffentlicht = ref.watch(veroeffentlichteRueckblickeProvider);
+    final rueckblick = _rueckblick ??
+        (veroeffentlicht.isEmpty ? null : veroeffentlicht.last);
 
     // Zeile und Trennlinie stehen als Helfer da, weil die Tabelle seit dem
     // Podest **zwei** Schleifen hat (die ersten drei auf gemeinsamer Fläche,
@@ -205,10 +210,10 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
         // Der Wochen-Recap wohnt hier, nicht mehr nur auf der Übersicht: Dort
         // zeigte er allein den laufenden Spieltag, und wer auf eine frühere
         // Woche zurückwollte, hatte keinen Weg dorthin.
-        if (abgepfiffen.isNotEmpty && rueckblick != null) ...[
+        if (veroeffentlicht.isNotEmpty && rueckblick != null) ...[
           const _Marke('Rückblick'),
           _SpieltagWahl(
-            runden: abgepfiffen,
+            runden: veroeffentlicht,
             gewaehlt: rueckblick,
             onWahl: (r) => setState(() => _rueckblick = r),
           ),

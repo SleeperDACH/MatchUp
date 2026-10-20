@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
+import '../../../app/widgets/pill_selector.dart';
+import '../logic/reset_draft.dart';
 import 'draft_room_screen.dart' show DraftBoard;
 
 /// Das Draft-Board zum **Nachschauen**, nach dem Draft.
@@ -23,18 +25,28 @@ class DraftBoardScreen extends ConsumerStatefulWidget {
 }
 
 class _DraftBoardScreenState extends ConsumerState<DraftBoardScreen> {
+  /// Welcher Draft: `startup` (Hinrunde) oder `reset` (Rückrunde, 0143).
+  String? _phase;
+
   @override
   Widget build(BuildContext context) {
     final id = widget.league.id;
     // Die Liga live, damit ein noch laufender Draft mitläuft, wenn jemand von
     // hier aus zusieht.
-    final league = ref.watch(draftLeagueProvider(id)).valueOrNull ??
-        widget.league;
-    final picks = ref.watch(draftPicksProvider(id)).valueOrNull ??
-        const <DraftPick>[];
-    final managers =
-        ref.watch(fantasyManagersProvider(id)).valueOrNull ??
-            const <FantasyManager>[];
+    final league =
+        ref.watch(draftLeagueProvider(id)).valueOrNull ?? widget.league;
+    final allePicks =
+        ref.watch(draftPicksProvider(id)).valueOrNull ?? const <DraftPick>[];
+    // **Zwei Drafts nach einem Reset** (0143): Umschalter, Standard ist der
+    // jüngere. Ohne Reset-Picks gibt es nur einen und keinen Umschalter.
+    final mitReset = allePicks.any((p) => p.phase == 'reset');
+    final phase = _phase ?? (mitReset ? 'reset' : 'startup');
+    final picks = picksDerPhase(allePicks, phase);
+    final managers = managerFuerDraft(
+      ref.watch(fantasyManagersProvider(id)).valueOrNull ??
+          const <FantasyManager>[],
+      phase,
+    );
     final pool =
         ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
     final myId = ref.watch(currentUserProvider)?.id;
@@ -50,28 +62,46 @@ class _DraftBoardScreenState extends ConsumerState<DraftBoardScreen> {
         : picks.map((p) => p.round).reduce((a, b) => a > b ? a : b);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Draft-Board'),
-      ),
+      appBar: AppBar(title: const Text('Draft-Board')),
       body: picks.isEmpty
           ? const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('In dieser Liga wurde noch nicht gedraftet.',
-                    textAlign: TextAlign.center),
+                child: Text(
+                  'In dieser Liga wurde noch nicht gedraftet.',
+                  textAlign: TextAlign.center,
+                ),
               ),
             )
-          : DraftBoard(
-              picks: picks,
-              playerById: {for (final p in pool) p.id: p},
-              managers: managers,
-              maxTeams: league.maxTeams,
-              rounds: rounds,
-              // Nichts ist „am Zug" — das Board wird gelesen, nicht bedient.
-              currentManagerId: null,
-              currentRound: 0,
-              myId: myId,
-              showPlaceholders: false,
+          : Column(
+              children: [
+                if (mitReset)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: PillSelector<String>(
+                      options: const {
+                        'startup': 'Hinrunde',
+                        'reset': 'Rückrunde',
+                      },
+                      value: phase,
+                      onSelect: (v) => setState(() => _phase = v),
+                    ),
+                  ),
+                Expanded(
+                  child: DraftBoard(
+                    picks: picks,
+                    playerById: {for (final p in pool) p.id: p},
+                    managers: managers,
+                    maxTeams: league.maxTeams,
+                    rounds: rounds,
+                    // Nichts ist „am Zug" — das Board wird gelesen, nicht bedient.
+                    currentManagerId: null,
+                    currentRound: 0,
+                    myId: myId,
+                    showPlaceholders: false,
+                  ),
+                ),
+              ],
             ),
     );
   }

@@ -76,9 +76,14 @@ void main() {
       expect(recapRunde(s, DateTime(2026, 8, 27)), isNull);
     });
 
-    test('nach dem Abpfiff zeigt er den gelaufenen Spieltag', () {
+    test('nach dem Abpfiff noch nicht — erst mit dem Wechsel', () {
+      // **Seit dem 19.10.2026** erscheint der Rückblick mit dem Wechsel auf
+      // den nächsten Spieltag (Waiver-Frist Montag 15:00), nicht schon am
+      // Sonntagabend. Zur selben Zeit kommt der Push (0141).
       final s = _saison(runde1: FixtureStatus.finished);
-      expect(recapRunde(s, DateTime(2026, 8, 30, 20)), 1);
+      expect(recapRunde(s, DateTime(2026, 8, 30, 20)), isNull);
+      expect(recapRunde(s, DateTime(2026, 8, 31, 14, 59)), isNull);
+      expect(recapRunde(s, DateTime(2026, 8, 31, 15)), 1);
     });
 
     test('und bleibt über die Waiver-Frist hinaus stehen', () {

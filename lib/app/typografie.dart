@@ -47,6 +47,17 @@ abstract final class Schrift {
   /// nichts Größeres. Bewusst die Ausnahme und nicht für Sätze da.
   static const mikro = 9.0;
 
+  /// **Überschriften stehen schräg wie die Wortmarke** (18.10.2026, auf
+  /// Ansage: „in diesem schrägen Format wie die MatchUp-Anzeige"):
+  /// ExtraBold kursiv. Abschnittsköpfe (`Kapitelmarke`, `abschnittsKopf`)
+  /// und Liganamen tragen es, Fließtext und Zahlen nicht — schräg gesetzte
+  /// Ziffern fluchten nicht in Spalten.
+  ///
+  /// **Nur w800.** Kursiv liegt als Schnittdatei allein in 400 und 800 bei;
+  /// jedes andere Gewicht stellte Flutter künstlich schräg.
+  static const ueberschriftGewicht = FontWeight.w800;
+  static const ueberschriftStil = FontStyle.italic;
+
   /// Die Textleiter. Der Wächtertest prüft dagegen.
   static const alle = <double>[mikro, label, text, titel, gross];
 

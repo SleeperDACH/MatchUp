@@ -84,6 +84,7 @@ class FantasyLeagueRepository {
     String joinPolicy = 'open',
     bool tipEnabled = false,
     double? remisGrenze = FantasyLeague.remisGrenzeStandard,
+    bool resetAktiv = false,
   }) async {
     final userId = _client.auth.currentUser!.id;
     final row = await _client
@@ -107,6 +108,9 @@ class FantasyLeagueRepository {
           'join_policy': joinPolicy,
           'tip_enabled': tipEnabled,
           'remis_grenze': remisGrenze,
+          // Nur mitschicken, wenn an: Eine ältere Datenbank ohne die Spalte
+          // (vor 0143) nähme sonst gar keine Liga mehr an.
+          if (resetAktiv) 'reset_aktiv': true,
         })
         .select()
         .single();
@@ -129,6 +133,20 @@ class FantasyLeagueRepository {
     if (rows.isEmpty) {
       throw Exception('Nicht gespeichert — nur der Ersteller darf die '
           'Unentschieden-Regel ändern.');
+    }
+  }
+
+  /// **Reset zur Winterpause** ein/aus (0143). Nur der Ersteller (RLS), und
+  /// nur bis zum 24.12. — danach lehnt ein Trigger ab.
+  Future<void> updateResetAktiv(String leagueId, bool an) async {
+    final rows = await _client
+        .from('fantasy_leagues')
+        .update({'reset_aktiv': an})
+        .eq('id', leagueId)
+        .select('id');
+    if (rows.isEmpty) {
+      throw Exception('Nicht gespeichert — nur der Ersteller darf den Reset '
+          'ändern.');
     }
   }
 
@@ -234,7 +252,8 @@ class FantasyLeagueRepository {
           .from('fantasy_leagues')
           .update({'draft_pick_seconds': pickTime.seconds})
           .eq('id', leagueId)
-          .eq('draft_status', 'setup');
+          // Vor dem ersten Draft und vor dem Reset-Draft (0143).
+          .inFilter('draft_status', ['setup', 'reset']);
 
   /// Draft-Einstellungen (Pickzeit, Runden über die roster-JSONB,
   /// Slow-Draft-Pause) — nur vor dem Draft (`.eq('draft_status','setup')`
@@ -257,7 +276,8 @@ class FantasyLeagueRepository {
             'draft_order_mode': orderMode,
           })
           .eq('id', leagueId)
-          .eq('draft_status', 'setup');
+          // Vor dem ersten Draft und vor dem Reset-Draft (0143).
+          .inFilter('draft_status', ['setup', 'reset']);
 
   /// Nur die Kader-Konfiguration schreiben — **ohne** den Setup-Filter.
   ///
@@ -388,7 +408,8 @@ class FantasyLeagueRepository {
             'trade_deadline_offset': tradeDeadlineOffset,
           })
           .eq('id', leagueId)
-          .eq('draft_status', 'setup');
+          // Vor dem ersten Draft und vor dem Reset-Draft (0143).
+          .inFilter('draft_status', ['setup', 'reset']);
 
   Future<FantasyLeague> joinLeague(String inviteCode) async {
     final leagueId = await _client.rpc<String>(
@@ -406,7 +427,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> managers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, auto_pick, profiles(username, avatar_url, avatar_emoji, avatar_color)')
+        .select('user_id, team_name, draft_position, reset_position, waiver_priority, vacant, pending, auto_pick, profiles(username, avatar_url, avatar_emoji, avatar_color)')
         .eq('league_id', leagueId)
         .eq('vacant', false)
         .eq('pending', false)
@@ -430,7 +451,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> vacantTeams(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username, avatar_url, avatar_emoji, avatar_color)')
+        .select('user_id, team_name, draft_position, reset_position, waiver_priority, vacant, pending, profiles(username, avatar_url, avatar_emoji, avatar_color)')
         .eq('league_id', leagueId)
         .eq('vacant', true)
         .order('joined_at');
@@ -442,7 +463,7 @@ class FantasyLeagueRepository {
   Future<List<FantasyManager>> pendingMembers(String leagueId) async {
     final rows = await _client
         .from('fantasy_league_members')
-        .select('user_id, team_name, draft_position, waiver_priority, vacant, pending, profiles(username, avatar_url, avatar_emoji, avatar_color)')
+        .select('user_id, team_name, draft_position, reset_position, waiver_priority, vacant, pending, profiles(username, avatar_url, avatar_emoji, avatar_color)')
         .eq('league_id', leagueId)
         .eq('pending', true)
         .order('joined_at');

@@ -14,6 +14,21 @@ class DraftRepository {
   Future<void> startDraft(String leagueId) =>
       _client.rpc('start_fantasy_draft', params: {'p_league_id': leagueId});
 
+  /// Reset-Draft starten (0143). [reihenfolge] = Pick-Folge der ersten Runde,
+  /// Tabellenletzter zuerst; danach Snake.
+  Future<void> startResetDraft(String leagueId, List<String> reihenfolge) =>
+      _client.rpc('fantasy_reset_draft_starten', params: {
+        'p_league_id': leagueId,
+        'p_reihenfolge': reihenfolge,
+      });
+
+  /// Admin: Draft anhalten bzw. weiterlaufen lassen (0140). Die Restzeit des
+  /// laufenden Picks bleibt erhalten.
+  Future<void> pausieren(String leagueId) =>
+      _client.rpc('fantasy_draft_pausieren', params: {'p_league_id': leagueId});
+  Future<void> fortsetzen(String leagueId) => _client
+      .rpc('fantasy_draft_fortsetzen', params: {'p_league_id': leagueId});
+
   Future<void> makePick(String leagueId, String playerId) => _client.rpc(
         'fantasy_make_pick',
         params: {'p_league_id': leagueId, 'p_player_id': playerId},

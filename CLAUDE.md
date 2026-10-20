@@ -67,7 +67,7 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   nicht mehr gibt.
   **Keine der beiden Karten hat noch einen Sockel** — beide zeigen Marke, Name
   und Untertitel, sonst nichts, und teilen sich deshalb ein Maß
-  (`_kKartenHoehe`, 108 statt vorher 146 und 140). Was sie unterscheidet, sind
+  (`_kKartenHoehe`, seit dem 20.10.2026 92; vorher 116, davor 146 und 140). Was sie unterscheidet, sind
   Zeichen und Farbe.
 
   **Was damit vom Startbildschirm verschwunden ist**, sollte kennen, wer es
@@ -1237,7 +1237,12 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
   erster Lauf 8, zweiter nach Versand 0). Der Schlüssel trägt den Zeitpunkt
   mit (`tipps:<runde>:<user>:<anstoß>:<minuten>`).
 - **Die Einstellungen sind nach Bereichen geschnitten** (0131): Fantasy,
-  Tippspiel, Live, Allgemein. Die Sammelsorten `nachrichten` und `anfragen`
+  Tippspiel, Live, Allgemein. **Seit dem 18.10.2026 in zwei Ebenen** (auf
+  Ansage): `PushEinstellungenScreen` zeigt nur die vier Bereiche als Zeilen
+  mit Stand („Alle an", „4 von 5 an", „Aus"), ein Tipp öffnet
+  `PushBereichScreen` mit den Schaltern dieses Bereichs; „Individuell
+  einstellen" der Tipp-Erinnerung steht dort unter Tippspiel. Gespeichert
+  wird weiter der ganze Stand, die Übersicht liest denselben Provider. Die Sammelsorten `nachrichten` und `anfragen`
   aus 0129 sind zerlegt (Liga-Chat/Tipprunden-Chat/Direktnachrichten,
   Liga-/Runden-Beitritt/Freunde); ihre Spalten bleiben für ältere
   App-Versionen stehen und werden nicht mehr gelesen. `push_anlegen` liest den
@@ -1259,6 +1264,20 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
   beim ersten Lauf alle Tore laufender Spiele). Der Versand verwirft
   Live-Aufträge, die älter als 15 Minuten sind. Prüfen ohne zu schreiben:
   `POST /functions/v1/sync-live?probe=<sportmonks-id>`.
+- **Live auch ohne Favorit: Vereine und ganze Ligen** (0142, 20.10.2026, auf
+  Ansage). `push_live_abos (user_id, art, schluessel)`: `verein` mit
+  `sportmonks:<id>` (wie `user_favorites.key`) oder `liga` mit
+  `fixtures.league_id` (Bundesliga, 2./3. Liga, Frauen, Pokal; per Check).
+  `push_live_an_fans` meldet an Favoriten ∪ Vereins-Abo ∪ Liga-Abo, die Liga
+  kommt über die Fixture-ID aus `fixtures` — `sync-live` schickt nichts
+  Neues. `push_live_kandidaten` zählt Abos mit. Die Sorten-Schalter (Anpfiff,
+  Tore …) gelten für alle Wege. Einstellen: Benachrichtigungen › Live ›
+  **Vereine & Ligen** und die **Glocke im Live-Tab** (`LiveAbosScreen`, je
+  Wettbewerb `LiveAboLigaScreen`: „Alle Vereine" plus jeder Verein; Favoriten
+  und Vereine einer abonnierten Liga tragen ein Häkchen statt Schalter — ein
+  gesperrter Schalter las sich wie „aus"). Ein Verein in zwei Wettbewerben
+  ist **ein** Abo. Rollback-Probe: ohne Abo 0, Liga-Abo 1, Vereins-Abo 1.
+  Gehalten von `test/live_abos_test.dart`.
 - **Nach fünf Fehlversuchen gibt der Versand auf** und setzt `gesendet_at`.
   Vorher blieb so ein Auftrag ewig offen und hielt seinen Schlüssel belegt —
   jeder weitere Chat desselben Absenders wäre still verschluckt worden.
@@ -1484,6 +1503,112 @@ Leerzustände und News-Titel stehen längs und haben den Platz. Nur wo Text und
 Symbol in einer Zeile stehen, die nicht umbricht — die beiden Knöpfe des
 Leerzustands —, liegt der Deckel bei 1,6, und die Höhen sind dort
 Mindesthöhen.
+
+### Cleaner, und eine Vereinswahl für den Anfang (18.10.2026)
+
+Auf Ansage: den Homescreen „in dem Format cleaner und moderner" wie die Liga,
+und ohne Favoriten oben eine Leiste zur Auswahl.
+
+- **`FavoritWahl`** (`app/home_favorit_wahl.dart`) steht an der Stelle der
+  Kopfkarte, solange kein **Verein** favorisiert ist: Wappenreihe der
+  Bundesliga zum Wischen, ein Tipp favorisiert, und an ihrer Stelle erscheint
+  die Kopfkarte. „Andere Ligen" führt in `FavoritesManageScreen`. Erst nach
+  dem Laden (`FavoritesNotifier.geladen`), sonst sähe jeder beim Start kurz
+  die Aufforderung; ein Ladefehler zählt nicht als „keine Favoriten". Gold
+  als Hauch, weil etwas zu tun ist.
+- **Abschnittsköpfe sind Kapitelmarken** (Versalien, Zähler, Haarlinie bis
+  zum Rand) — dieselbe Sprache wie in der Liga. Der farbige Strich davor ist
+  weg. Ab großer Systemschrift (über 1,5-fach) fällt die Linie weg und beide
+  Texte brechen um (`home_kopf_test`).
+- **Die Tipprunden sind eine Zeilengruppe** statt gestapelter Goldbalken,
+  volle Breite wie „Mein Wochenende". Das Gold bleibt im Zeichen der Runde.
+- Kopfkarte, Ligakarten (Hauch in der Ecke), „Mein Wochenende" und News
+  bleiben, wie sie sind — sie waren jeweils ausdrücklich so gewollt.
+
+Angesehen über `home_vorschau_test.dart` (`home_vorschau.png`,
+`home_ohne_favoriten.png`).
+
+**Überschriften stehen schräg wie die Wortmarke** (18.10.2026, auf Ansage):
+ExtraBold kursiv (`Schrift.ueberschriftGewicht`/`ueberschriftStil`) für alle
+Kapitelmarken und Abschnittsköpfe der App, die Liganamen auf den Startkarten,
+die Tipprunden-Namen und den Liga-Titel (`VibrantLeagueTitle`). Nur w800 —
+kursiv liegt allein in 400 und 800 als Datei bei, jedes andere Gewicht wäre
+künstlich schräg. Zahlen und Fließtext bleiben aufrecht.
+
+**Kein Gruß, und die vier Wege stehen bei ihrem Inhalt** (18.10.2026, auf
+Ansage: „Hallo SFV03 raus … die Platzierung der Symbole mag ich nicht …
+besser erkennbar machen"). Die Grußzeile samt `_Schnellzugriff` ist gelöscht.
+**Nachrichten** sitzt als Sprechblase mit Zähler oben rechts in der
+Kopfleiste (`_NachrichtenKnopf`), gegenüber dem Profilbild. **Suchen** und
+**Neu** stehen als Wörter im Kopf von „Meine Ligen", **Transfers** im Kopf der
+News neben „Alle" (`abschnittsKopf(aktionen:)`, ohne Pfeil — sie führen
+woandershin, nicht zu „mehr davon"). Der Abschnitt „Vier Wege, ein Ort, mit
+Wörtern" weiter unten beschreibt den Stand davor.
+
+**„Neu starten" ist zwei Bilder und ein Wort** (18.10.2026, auf Ansage:
+„viel weniger Schrift … Untertitel komplett raus … Buttons größer").
+Überschrift, Erklärsatz, Untertitel und „ODER" sind weg; FANTASY und
+TIPPSPIEL stehen in Versalien schräg (40) auf je einer Bildkarte, die sich
+die Schirmhöhe teilen (`Expanded` statt fester 168). Die Kante ist die
+Haarlinie, die Farbe tragen Marke, Schleier und Pfeil. Darunter „Mit Code
+beitreten" als eine Zeile. Vorschau `neu_starten_vorschau_test.dart`, mit
+Überlaufprobe auf 375×667 bei 1,6-facher Schrift.
+
+**„Fantasy-Liga erstellen" ist eine Liste gleicher Zeilen** (18.10.2026, auf
+Ansage: „zu viel Ungleichheit … muss alles einheitlich aussehen … die
+Erklärung für Teams ist selbsterklärend"). Jede Einstellung: Bezeichnung
+links in Textgröße (w600), Bedienung rechts, höchstens eine kurze Unterzeile.
+Abschnitte: Liga (Name, Teams), Sichtbarkeit (Schalter „Öffentlich", bei an
+„Nur auf Einladung" — statt der gerahmten `OptionTile`s), Unentschieden,
+Kader-Limits, Tippspiel. Alle Erklärsätze und der Fußhinweis sind weg; der
+Summensatz der Kader-Limits steht nur noch rot, wenn die Rechnung nicht
+aufgeht. `KaderLimitsEditor` (ohne grüne Symbole, „ohne Limit" grau) und
+`RemisGrenzeEditor` („Bei knappem Ausgang · Bis 5 Punkte Abstand") gelten
+genauso in den Liga-Einstellungen. `FormSection`-Köpfe stehen schräg.
+
+**„Tippspiel erstellen" folgt derselben Form** (gleicher Tag, „fürs Tippspiel
+gilt das gleiche"). Die Zeilen stehen jetzt an einer Stelle:
+`core/ui/einstellungs_zeile.dart` (`EinstellungsZeile`, `EinstellungsSchalter`,
+`EinstellungsTrenner`, `einstellungsStil`), `WertStepper` ist nach `core/ui/`
+umgezogen. `TipRulesEditor` (auch in den Tipprunden-Einstellungen) hat keine
+Modus-Kacheln mit Hauch und keine grauen Kästen mehr: Quoten-Stufen und
+Bonustipps stehen als Zeilen unter ihrem Schalter, „Basiswertung" heißt
+„Punkte je Tipp". `CompetitionPicker` zeigt Zeilen mit Wappen und Häkchen
+statt Pillen. Sichtbarkeit wie bei Fantasy als zwei Schalter. Vorschau
+`tippspiel_erstellen_vorschau_test.dart` (Grundzustand und Modi an).
+
+**Flacher seit dem 20.10.2026** (auf Ansage). Ein Versuch „cooler" am
+selben Tag — großes Zeichen unten rechts in Markenfarben, Lichtkegel, Strich
+unter dem Namen, LIVE/DRAFT-Marke — ist auf Ansage zurückgenommen („das Alte
+gefällt mir besser"). Geblieben ist der Stand darunter, nur `_kKartenHoehe`
+ist von 116 auf **92** gesunken; die eigene Logo-Marke misst 26.
+
+**Die Ligakarten tragen kein Logo-Kästchen mehr** (19.10.2026, auf Ansage).
+Das MatchUp-Zeichen läuft leise (16 %) in der Ligafarbe oben rechts aus der
+Ecke, vom Kartenrand angeschnitten (`Material.clipBehavior`); der Name steht
+fest unten links (`Expanded` + `Align`, sonst rutschte er ohne das Kästchen
+darüber nach oben). Eine Liga mit eigenem Logo oder Emoji zeigt es oben links
+als Kreis, ohne Wasserzeichen (`_LeagueMark.hatEigenes`).
+
+**Rückfragen sind Blätter, keine Kästen** (19.10.2026, auf Ansage: „wieder
+dieses komische Box-Design, das wir nicht mehr haben möchten").
+`rueckfrage(context, titel:, text:, inhalt:, ja:, gefahr:)` und
+`rueckfrageWahl<T>` (mehrere Wege) in `core/ui/rueckfrage.dart`: Blatt von
+unten, Titel schräg in Versalien, ein Satz, optional eigener Inhalt, Knöpfe
+50 hoch in voller Breite, „Abbrechen" grau darunter; `gefahr` färbt rot.
+Umgestellt sind alle Ja/Nein-Rückfragen: Draft-Pick (mit Wappen, Position,
+Verein, Ø), Droppen, Trade zurückziehen, Kader voll, Liga verlassen/löschen
+(dreifach mit `rueckfrageWahl`), Adminrechte übergeben, Kicken,
+Tippspiel ein/aus, Tippspiel löschen/verlassen/übergeben, Abmelden, Konto
+löschen. **Noch `AlertDialog`:** die sechs Eingabefenster (Liga-Name,
+Teamname, Passwort ändern/vergessen, Beitreten mit Code, Profiltext).
+Vorschau `rueckfrage_vorschau_test.dart`.
+
+**„Redraft" steht nirgends mehr** (18.10.2026, auf Ansage): Seit der
+Dynasty-Modus weg ist, stand auf jeder Ligakarte, unter jedem Liga-Titel und
+in den Einstellungen („Modus") dasselbe Wort. `FantasyMode.label`/`tagline`
+sind gelöscht; die Spalte `mode` und das Enum bleiben (siehe 0130). Der
+Liganame auf den Startkarten steht dafür in Titelgröße (17).
 
 ### Richtung A — die Zeit führt
 
@@ -2832,6 +2957,84 @@ Schrumpfen im Bild steht.
 `_cBoardGreen` und `_cBoardInk` sind damit weg; das Rot bleibt nur dort, wo es
 etwas meldet (Uhr abgelaufen, Auto-Pick-Warnung).
 
+### Reset zur Winterpause (0143, 20.10.2026)
+
+Auf Ansage: eine Ligaeinstellung (beim Erstellen unter „Winterpause", später
+unter Regeln & Format › **Reset zur Winterpause**), änderbar bis zum Reset.
+Am **24.12. der Saison** (00:00 Berlin, `fantasy_reset_termin`; 2026/27
+zwischen Spieltag 14 am 19.12. und 15 am 09.01.) leert der Cron
+`fantasy-reset` (alle 10 Min., `fantasy_resets_faellig`) alle Kader, storniert
+offene Trades und Anträge, leert Wunschlisten und setzt
+`draft_status = 'reset'`, `draft_phase = 'reset'`. Eine Systemnachricht geht
+in den Liga-Chat. Der Admin startet dann den **Reset-Draft**
+(`fantasy_reset_draft_starten`), **Snake, Runde 1 vom Tabellenletzten zum
+Ersten**; Zeit je Pick und Runden übernimmt das Start-Blatt (änderbar), die
+Reihenfolge steht fest. Gerechnet wird sie in der App
+(`resetReihenfolgeProvider`: `h2hGrundlage` + `h2hStandings`, umgedreht) —
+die Wertung steht in Dart, eine dritte Fassung in SQL wäre die nächste
+Stelle, an der zwei Tabellen auseinanderlaufen. Der Server prüft nur, dass
+jeder Teilnehmer genau einmal drin ist.
+
+Vier Fallen, alle vor dem Bau gefunden, und jede hätte „die Tabelle bleibt"
+gebrochen oder den Draft unmöglich gemacht:
+
+- **`draft_position` trägt die Duell-Paarungen.** `h2hGrundlage` sortiert den
+  Round-Robin danach; der Reset-Draft schreibt deshalb in
+  `fantasy_league_members.reset_position`, und `fantasy_current_manager` liest
+  in der Phase `reset` diese Spalte. Der Draft-Raum bekommt eine Sicht
+  (`managerFuerDraft`, `picksDerPhase` in `logic/reset_draft.dart`), das
+  Nachschau-Board einen Umschalter Hinrunde/Rückrunde.
+- **Ohne gespeicherte Elf wertet die App die beste Elf aus dem aktuellen
+  Kader** — nach dem Reset wäre das der neue. `leagueRosterProvider` liefert
+  nach einem Reset einen `WertungsKader` (`logic/wertungs_kader.dart`): nach
+  außen der aktuelle Kader, für Spieltage vor der ersten Runde nach dem
+  Termin der Kader zum Reset-Zeitpunkt. Den liest die App aus den
+  Protokoll-Abgängen mit `weg = 'reset'` (der Protokoll-Trigger setzt ihn
+  über `set_config('matchup.reset', '1', true)`).
+  `effectiveTotalsForRound` und `computeSideData` fragen `kaderFuerRunde` —
+  kein Aufrufer musste sich ändern. Transfers und Liga-Chat blenden
+  `weg = 'reset'` aus (`ereignisseAus`).
+- **`draft_picks` war eindeutig auf (Liga, Spieler)** — ein Spieler aus dem
+  ersten Draft wäre nicht noch einmal ziehbar gewesen. Jetzt (Liga, Phase,
+  Spieler).
+- **Free Agency, Waiver und Trades prüfen den Draft-Status serverseitig
+  nicht.** Während des Resets lehnen Trigger auf `fantasy_rosters` (alles
+  außer `draft`) und `fantasy_waiver_claims` ab
+  (`fantasy_im_reset`), `fantasy_waivers_faellig` überspringt solche Ligen. In
+  der App zeigen Aktionsknöpfe „Reset-Draft läuft", der Transfermarkt der
+  Übersicht ist ausgeblendet. Beitritte laufen über den Status `reset` wie
+  nach einem Draft (die Funktionen prüfen auf `'setup'`).
+
+Gehalten von `test/reset_winterpause_test.dart` (Snake-Folge, Tabelle bleibt
+mit Gegenprobe, Start-Blatt `reset_draft_start.png`). **Offen:** Nach dem
+Reset-Draft hat niemand eine Elf für die Rückrunde — die Übernahme der
+Vorwoche (0110) findet keine Spieler mehr im Kader, der Editor sät die beste
+Elf, gespeichert wird sie erst beim ersten Zug.
+
+### Der Admin kann den Draft pausieren (0140, 19.10.2026)
+
+Auf Ansage („der Admin braucht die Möglichkeit, den Draft stoppen zu
+können"), gewählt: **pausieren und fortsetzen**, nicht abbrechen. Im
+Draft-Raum steht für den Ersteller „Draft pausieren" (mit Rückfrage) bzw.
+„Draft fortsetzen". Pausiert merkt `fantasy_draft_pausieren` die **Restzeit**
+des laufenden Picks in `draft_pausiert_rest` und setzt
+`current_pick_deadline` auf `null`; `fantasy_draft_fortsetzen` setzt die
+Frist auf jetzt + Restzeit. `fantasy_make_pick` lehnt während der Pause ab
+(„Der Draft ist pausiert"), `fantasy_autopick_if_expired` pickt nicht — auch
+nicht für Manager mit Auto-Pick, die sonst ohne Uhr gezogen würden. Der Raum
+zeigt „Draft pausiert · Am Zug … · Restzeit 0:50", niemand ist am Zug, der
+Sekundentakt fragt keinen Auto-Pick an. Mit Rollback-Probe nachgemessen:
+Restzeit 50 s gemerkt, Pick abgelehnt, kein Auto-Pick, nach dem Fortsetzen
+wieder 50 s.
+
+**Die Spielerzeilen zeigen den Schnitt statt des Vereins** (gleicher Tag):
+„Abwehr · Ø 8,4" — Ø je Einsatz der laufenden Saison, sobald sie gewertet
+ist, sonst der Vorsaison mit Jahr („Ø 25/26 8,4", `DraftSchnitte`,
+`vorsaisonStatsProvider`). **Die Vorsaison steht nicht in der Datenbank**
+(Stand 19.10.2026 nur 2026 in `player_match_stats`); vor dem ersten Spieltag
+der nächsten Saison zeigt die Zeile deshalb nur die Position, bis 2026 als
+Vorsaison da ist. Gehalten von `test/draft_pause_schnitt_test.dart`.
+
 ### Das Draft-Board bleibt erreichbar
 
 Nach dem letzten Pick verschwand der Draft-Raum aus der Liga-Übersicht
@@ -3081,6 +3284,24 @@ abgehackter Farbverlauf, vorne zu hell":
   (Alignment −0,62), sondern näher an der Mitte (−0,35), und die ganze Leiter
   ist dunkler — vorne war der Rasen heller als die Wappen darauf.
 
+**Ø auf jeder Kachel, und die Partie als Wappen** (19.10.2026, auf Ansage:
+„Durchschnittspunkte mit rein … die Schrift von den Partien und
+Anstoßzeiten sieht unordentlich aus"). Die Kachel hat eine zweite Fußzeile
+„Ø 8,4" (Ø je Einsatz über abgepfiffene Spieltage, im Kader-Schirm einmal
+gerechnet). **Seit dem 19.10.2026 kompakt** (auf Ansage: „nicht ganz so
+fett, schmaler, dünner, kleiner"): 90 hoch, 62–76 breit (Bank 74), Wappen
+24, Name w700 statt w800, das Feld 440. Der Prognose-Kasten neben dem Torwart
+hat eine eigene Breite (`_prognoseBreite` 70) — an der Kachelbreite brach
+„PROGNOSE" um. Die Partie steht als
+`SpielMarke` (`ui/spiel_marke.dart`): **Wappen des Gegners** mit einer
+Heim/Auswärts-Marke davor (kein „@" mehr, auf Ansage: im MatchUp ein „H"/„A"
+im Kästchen, im **Kader ohne Tag und Zeit** das Wort „Heim"/„Auswärts",
+`mitZeit: false`) und die Zeit in normaler Stärke mit Tabellenziffern —
+statt „FCA · Sa 15:30" in fetter Kleinschrift. `NaechstesSpiel` trägt dafür
+`gegnerTeam`. Dieselbe Marke in den MatchUp-Zeilen: vor dem Anpfiff Wappen
+und Anstoß (die dritte Zeile nur noch Ø), laufend/beendet „S 2:1" mit Wappen
+statt „vs BVB".
+
 **Die Bank trägt dieselben Karten** (17.10.2026, auf Ansage): eine Reihe zum
 Wischen wie die Formationsleiste, sortiert nach Position und Punkten, freie
 Kaderplätze als Karte „Frei" am Ende. Ohne Tauschknopf (`ohneEcke`), mit
@@ -3268,7 +3489,18 @@ zuordnen. `kMatchupBannerHoehe` ist dadurch von 206 auf 176 gesunken.
 |---|---|---|---|
 | vor dem Anpfiff | Prognose, gedämpft | „Prognose" | aus der Prognose |
 | läuft | Stand | „Prognose 190,2" (Hochrechnung) | schärft sich mit jedem Abpfiff |
-| beendet | Endstand | „Endstand" | Wort: Sieg / Niederlage |
+| beendet | Endstand | „Prognose 180,4" (die von vor dem Spieltag) | Wort: Sieg / Niederlage |
+
+**Nach dem letzten Abpfiff steht wieder die Prognose von vor dem Spieltag**
+(19.10.2026, auf Ansage), zum Vergleich mit dem Endstand. Sie ist nicht
+gespeichert, sondern wird in `duellPrognose` nachgerechnet, wie sie damals
+stand: nur Spieltage **vor** diesem, jeder Spieler „noch nicht
+angepfiffen", nur Ausfälle mit `seit` vor dem ersten Anpfiff (und keine
+„verletzt ausgewechselt" aus diesem Spieltag). Erkannt wird „nach dem
+Spieltag" über `rundeDurch`. Gehalten von `test/prognose_nach_spieltag_test.dart`
+— gegengeprüft. Nicht exakt nachzubauen sind Ausfälle, die vor dem Spieltag
+gemeldet und inzwischen wieder geschlossen wurden; sie fehlen in der
+nachgerechneten Zahl.
 
 **Die Hochrechnung ist neu** (`logic/hochrechnung.dart`). Vorher verschwand
 die Prognose mit dem ersten Anpfiff, und mitten im Spieltag stand nur ein
@@ -3294,6 +3526,12 @@ die Prognose für die nächsten MatchUps rechnete mit irgendwelchen elf Spielern
 Jetzt gilt für einen Spieltag ohne Daten `uebernommeneElf`: die zuletzt
 gestellte, dieselbe Regel wie `fantasy_aufstellung_uebernehmen`. Für gespielte
 Spieltage bleibt es bei der besten Elf (`test/kuenftige_elf_test.dart`).
+
+**Hinter dem Kasten liegt das Stadion der Startseite, schlicht**
+(20.10.2026, auf Ansage): `assets/images/spiel_bg.jpg`, unterer Bildrand
+(Rasen und Linien), nur zu 30 % und nur im dunklen Modus, als unterste
+Schicht in `HeroShell` — gilt damit im MatchUp-Reiter und auf der
+Liga-Übersicht. Am Gerät geprüft; in Vorschauen erscheinen Bilder nicht.
 
 **Der Kasten führt nicht mehr in die Detailseite** (auf Ansage, 14.10.2026).
 Im MatchUp-Tab ist er eine Anzeige ohne Tipp-Ziel (`onTap: null`) — man ist
@@ -4005,9 +4243,13 @@ zu finden sind.
 
 Ligaeinstellung seit dem 16.10.2026, auf Ansage: Liegen beide Wochensummen
 höchstens `remis_grenze` Punkte auseinander, endet das Duell unentschieden
-(`null` = aus, nur Punktgleichheit). Einstellbar 1–20 in ganzen Punkten, beim
-Erstellen (`RemisGrenzeEditor`, Standard 5,0) und unter Regeln & Format
-(`RemisGrenzePage`, nur der Ersteller ändert, alle sehen sie).
+(`null` = aus, nur Punktgleichheit). **Einstellbar 5 bis 50 in
+Fünferschritten, Standard 10** (seit 19.10.2026, Migration 0138 mit Check;
+vorher 1–20 und Standard 5) — beim Erstellen (`RemisGrenzeEditor`,
+`WertStepper(schritt: 5)`) und unter Regeln & Format (`RemisGrenzePage`, nur
+der Ersteller ändert, alle sehen sie). Ein alter Wert wird beim Anzeigen auf
+den nächsten erlaubten gezogen (`RemisGrenzeEditor.erlaubt`); beim Einspielen
+von 0138 hatte keine Liga die Regel an.
 
 - **Bestehende Ligen sind aus** und werden vom Admin eingeschaltet. Weil die
   Bilanz bei jedem Aufruf gerechnet wird, gilt die Regel dann **rückwirkend**
@@ -4032,6 +4274,54 @@ Erstellen (`RemisGrenzeEditor`, Standard 5,0) und unter Regeln & Format
 
 Gehalten von `test/remis_grenze_test.dart` (Grenze genau 5,0, Fließkomma,
 Tabelle gegen Saisonverlauf, alte Ligen bleiben aus, Editor).
+
+### Jedes Gerät rechnet dieselbe Tabelle (19.10.2026)
+
+Gemeldet: *„Jedem werden unterschiedliche Tabellen angezeigt in der gleichen
+Liga."* **Die Tabelle wird nicht auf dem Server gerechnet, sondern auf jedem
+Gerät** — aus Mitgliedern, Kadern, Aufstellungen, Spielerpool,
+Saisonstatistik und Spielplan. Mitglieder, Kader und Aufstellungen sind
+Live-Ströme und werden beim Zurückkommen neu geholt. **Die anderen drei
+nicht:**
+
+| Eingang | vorher | Folge |
+|---|---|---|
+| `seasonStatsProvider` | einmal je Sitzung | Zwischenstände vom Öffnen |
+| `fantasySeasonFixturesProvider` | nur, solange jemand live hinsieht | „abgepfiffen" je Gerät verschieden |
+| `playerPoolProvider` | einmal je Sitzung | Neuzugang in der Elf zählt 0 |
+
+Ein iPhone hält die App tagelang im Hintergrund. Nach Spieltag 6 rechnete
+also ein Gerät mit der Statistik vom Samstag und zählte den Spieltag schon,
+ein zweites zählte ihn noch gar nicht, ein drittes hatte alles — drei
+Tabellen. **Der Fehler war von Anfang an da** (seit die Bilanz nur
+abgepfiffene Spieltage zählt), sichtbar wird er erst, wenn Leute nach einem
+Spieltag vergleichen. Dazu kommen Korrekturen der Nachlese bis 72 Stunden
+nach Abpfiff.
+
+Was es jetzt verhindert:
+
+- **Die Statistik hängt an der Liste der abgepfiffenen Spieltage**
+  (`seasonStatsProvider` hört auf `abgepfiffeneRundenProvider`). Kommt ein
+  Spieltag dazu, wird neu geladen — sie kann damit nie älter sein als der
+  letzte gewertete Spieltag. Auf den Spielplan wird mit `read` gewartet, nicht
+  mit `watch`: sonst holte jedes Nachladen des Spielplans (30 s live) die
+  ganze Saison neu. Der erste Entwurf hatte genau diesen Fehler; der Test hat
+  ihn gefunden.
+- **Abgepfiffen auch nach der Uhr** (`rundeDurch`: Status beendet **oder**
+  Anpfiff + 3 Std.), mit einem Wecker auf den nächsten solchen Zeitpunkt.
+  Damit kennt jedes Gerät denselben Stand, auch ohne frischen Spielplan.
+- **Beim Zurückkommen** (`beimZurueckkommenAktualisieren`) Spielplan immer,
+  Statistik und Pool höchstens alle zehn Minuten.
+- **`poolVollstaendigProvider`**: Steht in einer Elf ein Spieler, den der
+  Pool nicht kennt, wird der Pool einmal nachgeladen (Tabelle und
+  MatchUp-Reiter hören darauf).
+
+Gehalten von `test/tabelle_gleicher_stand_test.dart` — gegengeprüft: ohne die
+Kopplung fällt er. **Was bleibt:** Zwischen dem Abpfiff und dem nächsten
+Laden kann ein Gerät für Sekunden einen älteren Stand zeigen; dauerhaft
+auseinanderlaufen können die Tabellen nicht mehr. Die eigentlich sichere
+Lösung wäre eine Tabelle, die der Server rechnet — dafür müsste die Wertung
+ein drittes Mal (in SQL) stehen.
 
 ### Eine Bilanz ist ein Ergebnis, kein Zwischenstand
 
@@ -4288,6 +4578,32 @@ nicht gespielt wurde — dieselbe Regel wie im MatchUp.
 durchgerutscht. `test/punkte_formatierung_test.dart` kennt jetzt auch
 `scorePlayer(`. Wer so einen Wächter schreibt, sollte über seine Namensannahme
 dreimal nachdenken.
+
+### Das Spielerprofil nach Sleeper (19.10.2026)
+
+Auf Ansage, mit Screenshot aus Sleeper. **Kein Wisch-Strich mehr**
+(`showDragHandle: false`); oben steht der Kopf `SpielerProfilKopf`
+(`ui/spieler_profil_kopf.dart`): links groß das Wappen (Spielerfotos gibt es
+nicht), darunter der Verein in schrägen Versalien und „ABW · BVB" mit
+Positionspunkt; rechts wem er gehört („Dein Kader", „→ Team", „Free Agent" —
+dieselbe Regel wie die Knöpfe), Vor- und Nachname in schrägen Versalien,
+Kennzahlen Alter · Ø · Einsätze, darunter die Knöpfe (vorher unten am Blatt).
+Ein Schimmer in der Vereinsfarbe (`vereinsTon`, dafür nach
+`core/util/club_colors.dart` umgezogen) kommt von links.
+
+**Fünf Reiter: Übersicht · Leistung · Elf · Spiele · Tabelle.** „Elf" und
+„Spiele" heißen kürzer als vorher („Aufstellung", „Spielplan"), weil fünf
+Wörter auf Telefonbreite aneinanderstießen. Die **Übersicht**
+(`SpielerUebersicht`): Rang nach Saisonpunkten (in der Position und gesamt),
+Saisonpunkte, Ø je Einsatz; die Karte der letzten Leistung (Minuten, Tore,
+Vorlagen, Karten, Punkte — Tipp öffnet die Aufschlüsselung); die Karte des
+Spiels dazu; und unter „Spielplan" die nächsten drei Gegner (Wappen, Name,
+Anstoß). Eine Prognose je Spieltag stand dort einen Tag lang und ist auf
+Ansage raus — es war dreimal dieselbe Zahl. **Wappen kommen aus dem
+Spielplan** (`Fixture.home/away`, `TeamBadge`), nicht über den Vereinsnamen:
+`ClubBadge` ohne Adresse zeigte nach Spieltag 6 nur Buchstaben. Die Saison wird einmal im
+Blatt gerechnet (`mitLaufenderRunde`) und an Kopf, Übersicht und
+Leistungsreiter gereicht.
 
 ### Die voraussichtliche Aufstellung
 
@@ -4695,6 +5011,15 @@ in der Anordnung.
 Dazu kam, dass der Knopf bis zur Wahl eines Abgangs **deaktiviert** ist und der
 Grund dafür nur ganz oben im Blatt stand — außer Sicht, sobald man zur Liste
 gescrollt hatte. Ein grauer Knopf, der nicht sagt, was fehlt.
+
+**Seit dem 19.10.2026 neu gebaut** (auf Ansage: „man kann nicht auf das
+Profil draufdrücken, sondern nur auswählen"): schräger Titel, „KOMMT REIN"
+und „WER MACHT PLATZ?" als schräge Marken (Zeichen grün/rot) statt farbig
+gerahmter Kästen, jede Zeile mit Wappen, Position · Verein · Ø. **Zwei
+Ziele je Zeile:** Tipp auf die Zeile wählt aus, der Pfeil rechts öffnet das
+Profil über dem Blatt (die Auswahl bleibt). Beim Neuzugang öffnet schon die
+Zeile das Profil. Knöpfe groß untereinander. Gehalten in
+`free_agency_vorschau_test.dart`. Darunter der Stand davor:
 
 Behoben: Kopf und Aktionen stehen fest, nur die Spielerliste scrollt
 (`ConstrainedBox` auf 85 % Bildschirmhöhe, `Flexible` um den Scroller), und
@@ -5481,6 +5806,36 @@ Was das Bild sofort zeigte:
   flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
   ist die Beschriftung, das Ergebnis die Auskunft.
 
+### Zonen in der Ligatabelle (19.10.2026)
+
+Auf Ansage: Meister, Champions League, Europa League, Conference League,
+Relegation, Abstieg — Europa nur in der Bundesliga, in der 2. und 3. Liga
+Aufstieg, Relegation, Abstieg. Die Regel steht als reine Funktion
+`tabellenZone(leagueId, rang, teams)` in `core/logic/tabellen_zonen.dart`
+(Abstiegsplätze vom Tabellenende gezählt, damit die 3. Liga mit 20 Vereinen
+dieselbe Rechnung nutzt). Gezeichnet wird ein **3-Punkt-Strich vor dem
+Platz** (`ZonenRang`, `app/widgets/zonen_rang.dart`), keine eingefärbte Zeile
+— sechs Farbflächen auf achtzehn Zeilen wären die rote Wäsche des Live-Tabs
+noch einmal. Darunter `ZonenLegende`. An allen drei Tabellen: Wettbewerbs-
+Übersicht, `LigaTabelle` (Vereinsseite, Spielerprofil) und Spiel-Detail.
+
+| | Bundesliga | 2. Bundesliga | 3. Liga |
+|---|---|---|---|
+| Meister (gold) | 1 | – | – |
+| Champions League (blau) | 2–4 | – | – |
+| Europa League (orange) | 5 | – | – |
+| Conference League (türkis) | 6 | – | – |
+| Aufstieg (gold wie Meister) | – | 1–2 | 1–2 |
+| Relegation (violett) | 16 | 3, 16 | 3 |
+| Abstieg (rot) | 17–18 | 17–18 | 17–20 |
+
+**Es sind die Regelplätze**, nicht der Einzelfall — Pokalsieger und
+UEFA-Wertung verschieben Europa, und das steht nirgends in unseren Daten.
+Andere Wettbewerbe (Frauen-Bundesliga, Pokal) haben keine Zonen. In der 2.
+und 3. Liga gibt es keinen eigenen Meister-Strich (auf Ansage, gleicher Tag);
+der Aufstieg trägt dort das Gold des Bundesliga-Meisters. Gehalten von
+`test/tabellen_zonen_test.dart` (`tabellen_zonen.png`).
+
 ### Die Ligatabelle zeigt jetzt, dass sie live ist
 
 Gewünscht: *„Bitte in den Tabellen eine LIVE-Tabelle einbauen. Dass, wenn
@@ -5599,6 +5954,30 @@ anzukündigen.
 - Ein Golden dieses Teilbaums ist **weiß**, wenn man ihn direkt aufnimmt — er
   malt selbst keinen Grund. Aufgenommen wird deshalb der `Scaffold`; eine
   zusätzliche Farbfläche dazwischen löst die Zusicherung oben aus.
+
+### Der Wochenrückblick erscheint mit dem Wechsel — und meldet sich (0141)
+
+Auf Ansage (19.10.2026): cleaner, **erst mit dem Umstellen auf den nächsten
+Spieltag** veröffentlicht, und eine Push-Meldung dazu.
+
+- **Zeitpunkt:** `rueckblickVeroeffentlicht` — die Waiver-Frist der Runde
+  (Mo 15:00, englische Woche Do 15:00), derselbe Moment, an dem
+  `currentFantasyRound` weiterspringt. Vorher ab dem letzten Abpfiff, also
+  Sonntagabend. `recapRunde` (Übersicht) zeigt den zuletzt veröffentlichten
+  bis zum Anstoß des nächsten; `veroeffentlichteRueckblickeProvider` (mit
+  Wecker auf die nächste Frist) füttert Karte, Tabellen-Auswahl und Schirm.
+  Ein nicht veröffentlichter Spieltag sagt im Schirm, wann er kommt.
+- **Push:** `fantasy_waivers_faellig` vermerkt die Frist ohnehin einmal je
+  Liga und Runde; danach ruft sie `fantasy_rueckblick_melden` — an alle
+  aktiven Mitglieder, nur bei fertigem Draft, Sorte `wochenrueckblick`
+  (Bereich Fantasy, Spalte + Check). **Der Schlüssel trägt den Nutzer**
+  (`rueckblick:<liga>:<runde>:<nutzer>`): Der Index auf `schluessel` gilt über
+  alle Aufträge, ohne Nutzer bekam in der Probe nur einer von zwölf seine
+  Meldung. Ein Tipp öffnet die Liga auf der Übersicht.
+- **Aussehen:** Team der Woche als Kopf (schräg, große Zahl, Gold nur hier),
+  die übrigen Auszeichnungen als **eine** Zeilengruppe mit grauen
+  Umriss-Symbolen, Zahl weiß rechts, eigener Name grün. Der „Beendet"-Chip
+  und die sechs Farben (Stern, Teal, Blau, Rot, Violett, Grau) sind weg.
 
 ### Der fünfte Rattenschwanz — und warum die Wache ihn nicht sah
 
@@ -6465,6 +6844,13 @@ Zwei Entscheidungen darin sind wichtig:
 - **Ein Trade ist zwei Bewegungen.** Er läuft über ein `update` von
   `manager_id`, nicht über Delete+Insert; wer nur auf `delete` hört, sieht
   Trades gar nicht.
+- **Beim Löschen der Liga wird nichts protokolliert** (0139, 19.10.2026).
+  Die Kaskade löscht die Kaderzeilen, und der Trigger schrieb für jede einen
+  Abgang — mit der `league_id` einer Liga, die schon weg war. Der
+  Fremdschlüssel lehnte das ab (23503), und **seit 0096 ließ sich keine Liga
+  mit Kader mehr löschen** („Löschen fehlgeschlagen"). Der Trigger prüft
+  jetzt, ob die Liga noch existiert. Nachgestellt per Rollback-Probe an
+  „Testtesttest": vorher 23503, nachher gelöscht.
 
 **Zurückgefüllt wurden zuerst nur die Zugänge** (364 Zeilen aus dem Bestand,
 mit ihrem echten Zeitstempel), mit der Begründung, Abgänge seien nirgends
@@ -7268,6 +7654,24 @@ Zuständen keinen Kopf.
   hohe Zustandskarte („Setup") mit halbtransparentem Dekor-Chevron, die nicht
   antippbar war; was zu tun ist, steckte hinter einer Kachel weiter unten. Ein
   Zustand ist kein Auftrag.
+- **Der Kasten „Als Nächstes" hat Luft** (19.10.2026, gemeldet:
+  „zusammengequetscht"). Marke schräg in Gold, der Titel groß („Noch 8 Plätze
+  frei"), darunter ein schmaler Balken „2 von 10 Teams", **kein Erklärsatz**,
+  die Knöpfe untereinander in voller Breite und 50 hoch — „Spieler einladen"
+  gold, „Draft starten" mit Haarlinie statt grün. Hülle ist `Karte` mit
+  goldenem Hauch. Vorschau `liga_vor_dem_draft_vorschau_test.dart`; der
+  Zustand vor dem Draft stand vorher in keiner.
+  **Die Rückfrage danach ist ein Blatt**, kein `AlertDialog` mehr
+  (`draft_start.dart`, `_StartBlatt`): „DRAFT STARTEN?" schräg, die Eckdaten
+  als `EinstellungsZeile`n (Teams, Reihenfolge, Zeit je Pick, Runden), ein
+  Satz mit Schloss, dass es endgültig ist, dann „Draft starten" gold in voller
+  Breite und „Abbrechen" grau. Gilt für beide Wege (Kasten und Draft-Raum).
+  **Seit demselben Tag bearbeitbar** (auf Ansage): Zeit je Pick (−/+ durch
+  `DraftPickTime`), Runden (14–30, `WertStepper`) und Reihenfolge
+  (Zufällig/Manuell, bei Manuell „Reihenfolge festlegen ›" zu
+  `DraftOrderPage`) — dieselben Grenzen wie `DraftSettingsPage`. Geänderte
+  Werte schreibt `updateDraftSettings` **vor** dem Start (die Pause bleibt,
+  wie sie war); unverändert wird gleich gestartet.
 - **„Schnellzugriff" ist weg** — die Rubrik über zwei gefüllten Kacheln. Es
   sind zwei Zeilengruppen geworden: **Mein Team** (Aufstellung, Free Agency,
   Trades) und **Liga** (Draft-Raum, Tippspiel, Chat, Einladen), jeweils unter

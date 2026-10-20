@@ -53,9 +53,16 @@ void main() {
     // Der Abschnitt ist da, und im Grundzustand ist nichts begrenzt — eine
     // stillschweigend eingeführte Obergrenze wäre eine Regel, die niemand
     // gewählt hat.
+    // Seit dem 18.10.2026 sagen das die Zeilen selbst („ohne Limit" je
+    // Position), der Satz darunter steht nur noch, wenn die Summe nicht
+    // aufgeht.
     expect(find.text('KADER-LIMITS'), findsOneWidget);
-    expect(find.text('Keine Position ist begrenzt — es gilt keine Obergrenze.'),
-        findsOneWidget);
+    expect(find.text('ohne Limit'), findsNWidgets(4));
+    expect(find.textContaining('Keine Position ist begrenzt'), findsNothing);
+    // Die Erklärsätze sind weg.
+    expect(find.textContaining('So viele Manager passen'), findsNothing);
+    expect(find.textContaining('Draft- und Playoff-Einstellungen'),
+        findsNothing);
 
     await expectLater(find.byType(CreateFantasyLeagueScreen),
         matchesGoldenFile('goldens/liga_erstellen_limits_aus.png'));
@@ -66,10 +73,9 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    expect(
-        find.textContaining('Ohne Limit: Abwehr, Mittelfeld, Sturm'),
-        findsOneWidget,
-        reason: 'Die offenen Positionen müssen benannt werden');
+    // Die offenen Positionen stehen weiter als „ohne Limit" in ihrer Zeile.
+    expect(find.text('ohne Limit'), findsNWidgets(3),
+        reason: 'Die offenen Positionen müssen erkennbar bleiben');
 
     await expectLater(find.byType(CreateFantasyLeagueScreen),
         matchesGoldenFile('goldens/liga_erstellen_limits_teilweise.png'));

@@ -42,12 +42,13 @@ void main() {
 
   test('die Schlüssel stimmen mit der Datenbank überein', () {
     // Dieselbe Liste wie die Spalten von `push_einstellungen` und der Check
-    // von `push_auftraege.kategorie` (Migration 0131), ohne die beiden
-    // Altsorten `nachrichten` und `anfragen`.
+    // von `push_auftraege.kategorie` (Migration 0131, `wochenrueckblick` seit
+    // 0141), ohne die beiden Altsorten `nachrichten` und `anfragen`.
     expect(
       PushKategorie.alle.map((k) => k.schluessel).toList(),
       [
-        'draft', 'trades', 'waiver', 'ausfaelle', 'liga_chat', 'liga_anfragen',
+        'draft', 'trades', 'waiver', 'wochenrueckblick', 'ausfaelle',
+        'liga_chat', 'liga_anfragen',
         'tipps', 'runden_chat', 'runden_anfragen',
         'live_anpfiff', 'live_tore', 'live_rote_karten', 'live_halbzeit',
         'live_endstand',

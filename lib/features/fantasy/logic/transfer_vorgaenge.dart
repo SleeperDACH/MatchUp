@@ -134,7 +134,11 @@ class TransferEreignis {
 /// Maßgeblich ist deshalb: Die Gegenseite ist die, deren **Zugänge genau meine
 /// Abgänge** sind und umgekehrt.
 List<TransferEreignis> ereignisseAus(List<RosterMove> moves) {
-  final vorgaenge = vorgaengeAus(moves);
+  // **Der Reset ist kein Wechsel** (0143): Er leert alle Kader auf einmal.
+  // Im Protokoll bleibt er für den Rückblick (`kaderAm`), in Transfers und
+  // Liga-Chat stünden sonst Hunderte „Abgegeben".
+  final vorgaenge =
+      vorgaengeAus([for (final m in moves) if (m.weg != 'reset') m]);
   final offen = [...vorgaenge];
   final out = <TransferEreignis>[];
 

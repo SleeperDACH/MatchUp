@@ -60,7 +60,8 @@ class Kapitelmarke extends StatelessWidget {
             style: TextStyle(
               color: scheme.onSurface,
               fontSize: Schrift.label,
-              fontWeight: FontWeight.w700,
+              fontWeight: Schrift.ueberschriftGewicht,
+              fontStyle: Schrift.ueberschriftStil,
               letterSpacing: 1.2,
             ),
           ),

@@ -356,6 +356,25 @@ void main() {
         find.ancestor(of: find.text('Bestätigen'), matching: find.byType(FilledButton)));
     expect(knopf.onPressed, isNotNull,
         reason: 'Mit gewähltem Abgang muss abgeschickt werden können');
+
+    // **Der Pfeil öffnet das Profil, die Auswahl bleibt** (19.10.2026).
+    // Vorher ließ sich aus dem Blatt kein Profil aufrufen.
+    await tester.tap(find.byTooltip('Profil von Mein Spieler 12'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    expect(find.byType(BottomSheet), findsNWidgets(2),
+        reason: 'Das Profil liegt über dem Blatt');
+    expect(find.text('Übersicht'), findsOneWidget);
+    Navigator.of(tester.element(find.text('Übersicht'))).pop();
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    expect(find.byType(BottomSheet), findsOneWidget);
+    final nochGewaehlt = tester.widget<FilledButton>(find.ancestor(
+        of: find.text('Bestätigen'), matching: find.byType(FilledButton)));
+    expect(nochGewaehlt.onPressed, isNotNull,
+        reason: 'Nach dem Profil ist die Auswahl noch da');
   });
 
   testWidgets('Ein Tipp auf den Namen öffnet das Spielerprofil',
@@ -433,7 +452,7 @@ void main() {
         reason: 'Der Name muss das Profil öffnen');
     // Die Reiter des Profils belegen, dass wirklich das Profil offen ist und
     // nicht irgendein Blatt.
-    expect(find.text('Aufstellung'), findsOneWidget);
-    expect(find.text('Spielplan'), findsOneWidget);
+    expect(find.text('Übersicht'), findsOneWidget);
+    expect(find.text('Spiele'), findsOneWidget);
   });
 }

@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/rueckfrage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/typografie.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
+import '../../../core/ui/einstellungs_zeile.dart';
+import '../logic/fantasy_scoring_engine.dart';
+import '../logic/spieler_schnitt.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'player_profile_sheet.dart';
 import 'trade_screen.dart';
 
 const _cAdd = Color(0xFF4ADE6A); // grün — freien Spieler holen
@@ -67,6 +74,14 @@ class PlayerActionButton extends ConsumerWidget {
       return breit
           ? const _WeiterChip(text: 'Hat die Bundesliga verlassen')
           : const _MiniChip(text: 'Nicht mehr in der BL');
+    }
+    // **Reset zur Winterpause** (0143): Bis der Reset-Draft fertig ist,
+    // kommt niemand außer über den Draft in einen Kader — der Server lehnt
+    // jeden anderen Weg ab, also gibt es hier keinen Knopf.
+    if (league.imReset) {
+      return breit
+          ? const _WeiterChip(text: 'Reset-Draft läuft')
+          : const _MiniChip(text: 'Reset');
     }
     if (ownerId != null) {
       if (ownerId == myId) {
@@ -151,8 +166,9 @@ class PlayerActionButton extends ConsumerWidget {
     final confirm = await showModalBottomSheet<_MoveConfirm>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      showDragHandle: false,
       builder: (_) => _RosterMoveSheet(
+        league: league,
         incoming: player,
         myPlayers: myPlayers,
         mode: needsDrop ? _DropMode.mustDrop : _DropMode.none,
@@ -217,27 +233,16 @@ class PlayerActionButton extends ConsumerWidget {
         .map((c) => nameById[c.addPlayerId] ?? c.addPlayerId)
         .join(', ');
 
-    final cancel = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Kader ist jetzt voll'),
-        content: Text(
+    final cancel = await rueckfrage(
+      context,
+      titel: 'Kader ist jetzt voll',
+      text:
           'Dein offener Waiver-Antrag ohne Abgang ($names) wird bei der '
           'Abarbeitung ungültig, weil kein Kaderplatz mehr frei ist. Jetzt '
           'stornieren? Für einen neuen Antrag musst du dann einen Abgang '
           'festlegen.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Behalten'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Stornieren'),
-          ),
-        ],
-      ),
+      ja: 'Stornieren',
+      nein: 'Behalten',
     );
     if (cancel != true) return;
 
@@ -262,8 +267,9 @@ class PlayerActionButton extends ConsumerWidget {
     final confirm = await showModalBottomSheet<_MoveConfirm>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      showDragHandle: false,
       builder: (_) => _RosterMoveSheet(
+        league: league,
         incoming: player,
         myPlayers: myPlayers,
         mode: full ? _DropMode.mustDrop : _DropMode.mayDrop,
@@ -395,8 +401,9 @@ class _MoveConfirm {
 /// Drop-Modus des Move-Sheets: keiner / Pflicht (Kader voll) / optional (Waiver).
 enum _DropMode { none, mustDrop, mayDrop }
 
-class _RosterMoveSheet extends StatefulWidget {
+class _RosterMoveSheet extends ConsumerStatefulWidget {
   const _RosterMoveSheet({
+    required this.league,
     required this.incoming,
     required this.myPlayers,
     required this.mode,
@@ -404,6 +411,7 @@ class _RosterMoveSheet extends StatefulWidget {
     this.note,
   });
 
+  final FantasyLeague league;
   final FantasyPlayer incoming;
   final List<FantasyPlayer> myPlayers;
   final _DropMode mode;
@@ -413,10 +421,17 @@ class _RosterMoveSheet extends StatefulWidget {
   final String? note;
 
   @override
-  State<_RosterMoveSheet> createState() => _RosterMoveSheetState();
+  ConsumerState<_RosterMoveSheet> createState() => _RosterMoveSheetState();
 }
 
-class _RosterMoveSheetState extends State<_RosterMoveSheet> {
+/// **Das Blatt fürs Holen und für Waiver-Anträge** (19.10.2026, auf Ansage:
+/// „man kann nicht auf das Profil des Spielers draufdrücken, sondern nur den
+/// auswählen"). Jede Zeile hat jetzt zwei Ziele: ein Tipp auf die Zeile wählt
+/// aus, der Pfeil rechts öffnet das Profil — über dem Blatt, das danach
+/// stehen bleibt. Dazu Wappen, Position und Ø, damit man vergleichen kann,
+/// wen man abgibt. Die beiden farbig gerahmten Kästen sind ruhigen Zeilen
+/// unter einer schrägen Marke gewichen.
+class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
   String? _dropId;
 
   @override
@@ -430,40 +445,39 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
             ? a.position.index.compareTo(b.position.index)
             : a.name.compareTo(b.name),
       );
-    // **Der Knopf muss stehen bleiben.** Vorher lag das ganze Blatt in einem
-    // `SingleChildScrollView`, und bei vollem Kader standen „Abbrechen" und
-    // „Bestätigen" unter sechzehn Kaderzeilen — außerhalb des Bildes. Gemeldet
-    // als „ich habe einen Antrag gestellt, er wird nicht angezeigt": Das Blatt
-    // ging auf, der Abschicken-Knopf war nie zu sehen, und geschlossen wurde
-    // es ohne einen Laut (`confirm == null` kehrt stumm zurück).
-    //
-    // Jetzt: Kopf und Aktionen fest, nur die Spielerliste scrollt.
+    // **Der Knopf muss stehen bleiben.** Bei vollem Kader standen „Abbrechen"
+    // und „Bestätigen" einmal unter sechzehn Kaderzeilen — außerhalb des
+    // Bildes, und das Blatt ging ohne einen Laut wieder zu. Kopf und Aktionen
+    // stehen fest, nur die Liste scrollt.
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    widget.title.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: Schrift.gross,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
+                    ),
                   ),
                   if (widget.note != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       widget.note!,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      style: TextStyle(
+                        fontSize: Schrift.text,
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
@@ -472,86 +486,67 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
               ),
             ),
             Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _block(
-                      context,
-                      icon: Icons.add,
-                      label: 'Kommt rein',
-                      color: _cAdd,
-                      child: _playerRow(widget.incoming),
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(20, 6, 12, 0),
+                children: [
+                  const _Marke(text: 'Kommt rein', farbe: _cAdd),
+                  _zeile(widget.incoming, auswahl: null),
+                  if (widget.mode != _DropMode.none) ...[
+                    _Marke(
+                      text: widget.mode == _DropMode.mustDrop
+                          ? 'Wer macht Platz?'
+                          : 'Wer macht Platz? (optional)',
+                      farbe: _cTrade,
                     ),
-                    if (widget.mode != _DropMode.none) ...[
-                      const SizedBox(height: 8),
-                      Icon(
-                        Icons.arrow_downward,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 8),
-                      _block(
-                        context,
-                        icon: Icons.remove,
-                        label: widget.mode == _DropMode.mustDrop
-                            ? 'Kader voll — wer macht Platz?'
-                            : 'Optional: wen abgeben? (nur bei vollem Kader nötig)',
-                        color: _cTrade,
-                        child: Column(
-                          children: [
-                            for (final p in sorted)
-                              _dropRow(p, _dropId == p.id),
-                          ],
-                        ),
-                      ),
+                    for (final (i, p) in sorted.indexed) ...[
+                      if (i > 0) const EinstellungsTrenner(),
+                      _zeile(p, auswahl: _dropId == p.id),
                     ],
                   ],
-                ),
+                ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // **Ein grauer Knopf sagt nicht, was fehlt.** Der Hinweis
-                  // stand nur oben im Blatt, außer Sicht, sobald man zur Liste
-                  // gescrollt hatte.
-                  if (!canConfirm) ...[
-                    Text(
-                      'Wähle oben, wer Platz macht.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _cWaiver,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('Abbrechen'),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // **Ein grauer Knopf sagt nicht, was fehlt.**
+                    if (!canConfirm) ...[
+                      const Text(
+                        'Wähle oben, wer Platz macht.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _cWaiver,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: canConfirm
-                              ? () => Navigator.of(
-                                  context,
-                                ).pop(_MoveConfirm(_dropId))
-                              : null,
-                          child: const Text('Bestätigen'),
-                        ),
-                      ),
+                      const SizedBox(height: 8),
                     ],
-                  ),
-                ],
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                      ),
+                      onPressed: canConfirm
+                          ? () =>
+                                Navigator.of(context).pop(_MoveConfirm(_dropId))
+                          : null,
+                      child: const Text('Bestätigen'),
+                    ),
+                    const SizedBox(height: 4),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size.fromHeight(46),
+                        foregroundColor: scheme.onSurfaceVariant,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Abbrechen'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -560,103 +555,132 @@ class _RosterMoveSheetState extends State<_RosterMoveSheet> {
     );
   }
 
-  Widget _block(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required Widget child,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  /// Eine Spielerzeile. [auswahl] `null` = nicht wählbar (der Neuzugang);
+  /// sonst wählt ein Tipp auf die Zeile aus und der Pfeil öffnet das Profil.
+  Widget _zeile(FantasyPlayer p, {required bool? auswahl}) {
+    final scheme = Theme.of(context).colorScheme;
+    final icons =
+        ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
+    final saison = ref.watch(seasonStatsProvider).valueOrNull;
+    final fertig = gewerteteRunden(
+      ref.watch(abgepfiffeneRundenProvider),
+      saison?.keys ?? const [],
+    );
+    final schnitt = saison == null
+        ? null
+        : spielerSchnitt(
+            saison: {
+              for (final e in saison.entries)
+                if (fertig.contains(e.key)) e.key: e.value,
+            },
+            spielerId: p.id,
+            position: p.position,
+            regeln: widget.league.scoring,
+          ).punkteJeEinsatz;
+    final unter = [
+      p.position.short,
+      vereinsKuerzel(p.club),
+      if (schnitt != null) 'Ø ${formatPoints(schnitt)}',
+    ].join(' · ');
+
+    void profil() => showPlayerProfile(
+      context,
+      league: widget.league,
+      player: p,
+      clubIcon: icons[p.club],
+      isMine: auswahl != null,
+    );
+
+    final gewaehlt = auswahl == true;
+    return Material(
+      color: gewaehlt ? _cTrade.withValues(alpha: 0.12) : Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        // Der Neuzugang hat nichts zu wählen — dort öffnet die Zeile das
+        // Profil gleich selbst.
+        onTap: auswahl == null
+            ? profil
+            : () => setState(() => _dropId = gewaehlt ? null : p.id),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 58),
+          child: Row(
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(fontWeight: FontWeight.bold, color: color),
+              if (auswahl != null) ...[
+                Icon(
+                  gewaehlt ? Icons.check_circle : Icons.radio_button_unchecked,
+                  size: 22,
+                  color: gewaehlt ? _cTrade : scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 12),
+              ],
+              ClubBadge(club: p.club, iconUrl: icons[p.club], size: 30),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: Schrift.text,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      unter,
+                      style: TextStyle(
+                        fontSize: Schrift.label,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Profil von ${p.name}',
+                onPressed: profil,
+                icon: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          child,
-        ],
+        ),
       ),
     );
   }
+}
 
-  Widget _playerRow(FantasyPlayer p) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+/// Schräge Marke über einem Abschnitt des Blatts, mit Zeichen in der Farbe
+/// der Richtung (rein grün, raus rot).
+class _Marke extends StatelessWidget {
+  const _Marke({required this.text, required this.farbe});
+
+  final String text;
+  final Color farbe;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 18, bottom: 4),
+    child: Row(
       children: [
-        PositionPill(pos: p.position),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            '${p.name} · ${p.club}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        Icon(farbe == _cAdd ? Icons.add : Icons.remove, size: 16, color: farbe),
+        const SizedBox(width: 6),
+        Text(
+          text.toUpperCase(),
+          style: TextStyle(
+            fontSize: Schrift.label,
+            fontWeight: Schrift.ueberschriftGewicht,
+            fontStyle: Schrift.ueberschriftStil,
+            letterSpacing: 1.2,
+            color: farbe,
           ),
         ),
       ],
-    );
-  }
-
-  Widget _dropRow(FantasyPlayer p, bool selected) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: selected
-            ? _cTrade.withValues(alpha: 0.18)
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => setState(() => _dropId = selected ? null : p.id),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: selected ? _cTrade : Colors.transparent,
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                PositionPill(pos: p.position),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    p.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-                Icon(
-                  selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                  size: 20,
-                  color: selected ? _cTrade : scheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }
 
 /// Ein Zustand statt einer Aktion, in der breiten Fassung: „hier ist nichts zu

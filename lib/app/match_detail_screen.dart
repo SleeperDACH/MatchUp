@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../core/logic/tabellen_zonen.dart';
+import 'widgets/zonen_rang.dart';
 import 'package:flutter/material.dart';
 import '../core/logic/vereins_kuerzel.dart';
 import 'widgets/skelett.dart';
@@ -68,8 +70,10 @@ class _MatchDetailScreenState extends ConsumerState<MatchDetailScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Spieldaten konnten nicht geladen werden.',
-                    textAlign: TextAlign.center),
+                const Text(
+                  'Spieldaten konnten nicht geladen werden.',
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 12),
                 FilledButton(
                   onPressed: _refresh,
@@ -134,30 +138,40 @@ class _Header extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (d.hasScore)
-                  Text('${d.homeScore}:${d.awayScore}',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: live ? MatchUpColors.red : scheme.onSurface))
+                  Text(
+                    '${d.homeScore}:${d.awayScore}',
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: live ? MatchUpColors.red : scheme.onSurface,
+                    ),
+                  )
                 else
                   Column(
                     children: [
-                      Text(DateFormat('HH:mm').format(d.kickoff.toLocal()),
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.bold)),
                       Text(
-                          DateFormat('d. MMM', 'de_DE')
-                              .format(d.kickoff.toLocal()),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant)),
+                        DateFormat('HH:mm').format(d.kickoff.toLocal()),
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        DateFormat(
+                          'd. MMM',
+                          'de_DE',
+                        ).format(d.kickoff.toLocal()),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 const SizedBox(height: 6),
                 if (detail.halfTime != null)
-                  Text('(${detail.halfTime!.$1}:${detail.halfTime!.$2})',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant)),
+                  Text(
+                    '(${detail.halfTime!.$1}:${detail.halfTime!.$2})',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                 // **Statt „LIVE" steht hier, wie weit das Spiel ist.**
                 // „LIVE" sagt dasselbe wie der pulsierende Punkt daneben; die
                 // Minute sagt etwas Neues. In der Pause läuft keine Uhr — dann
@@ -171,22 +185,27 @@ class _Header extends StatelessWidget {
                       const PulsingDot(size: 7),
                       const SizedBox(width: 4),
                       Text(
-                          d.minute != null
-                              ? "${d.minute}'"
-                              : d.istPause
-                                  ? 'Halbzeit'
-                                  : 'LIVE',
-                          style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: MatchUpColors.red,
-                              fontFeatures: [FontFeature.tabularFigures()])),
+                        d.minute != null
+                            ? "${d.minute}'"
+                            : d.istPause
+                            ? 'Halbzeit'
+                            : 'LIVE',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: MatchUpColors.red,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
                     ],
                   )
                 else if (d.status == FixtureStatus.finished)
-                  Text('beendet',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: scheme.onSurfaceVariant)),
+                  Text(
+                    'beendet',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -206,13 +225,18 @@ class _TeamColumn extends StatelessWidget {
     return Column(
       children: [
         // Wappen öffnet die Vereinsseite.
-        ClubLink(team: team, child: TeamBadge(team: team, size: 46)),
+        ClubLink(
+          team: team,
+          child: TeamBadge(team: team, size: 46),
+        ),
         const SizedBox(height: 8),
-        Text(vereinsKurzname(team.name),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(
+          vereinsKurzname(team.name),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -277,8 +301,10 @@ class _ResultLines extends StatelessWidget {
               color: scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text('$label  $h:$a',
-                style: Theme.of(context).textTheme.labelMedium),
+            child: Text(
+              '$label  $h:$a',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
           ),
       ],
     );
@@ -293,19 +319,22 @@ class _Location extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final text =
-        [stadium, city].where((e) => e != null && e.isNotEmpty).join(' · ');
+    final text = [
+      stadium,
+      city,
+    ].where((e) => e != null && e.isNotEmpty).join(' · ');
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(Icons.place_outlined, size: 16, color: scheme.onSurfaceVariant),
         const SizedBox(width: 4),
         Flexible(
-          child: Text(text,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant)),
+          child: Text(
+            text,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
         ),
       ],
     );
@@ -324,17 +353,18 @@ class _Timeline extends StatelessWidget {
     // an den Spielern in der Aufstellung).
     final events = [
       for (final e in detail.events)
-        if (_iconFor(e.type) != null && _typ(e.type) != 'yellowcard') e
+        if (_iconFor(e.type) != null && _typ(e.type) != 'yellowcard') e,
     ];
     if (events.isEmpty) {
       final msg = detail.status == FixtureStatus.scheduled
           ? 'Das Spiel hat noch nicht begonnen.'
           : 'Keine Verlaufsdaten verfügbar.';
-      return Text(msg,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: scheme.onSurfaceVariant));
+      return Text(
+        msg,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+      );
     }
     return Column(children: [for (final e in events) _EventRow(event: e)]);
   }
@@ -353,8 +383,7 @@ class _Timeline extends StatelessWidget {
 /// Deshalb wird jetzt alles entfernt, was zwischen den Woertern stehen kann.
 /// Das haelt auch, wenn die Quelle morgen `Yellow Card` statt `Yellowcard`
 /// schreibt — der Fehler waere sonst derselbe, nur an anderer Stelle.
-String _typ(String roh) =>
-    roh.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
+String _typ(String roh) => roh.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
 
 /// Symbol je Ereignistyp; null = nicht anzeigen.
 ///
@@ -407,36 +436,48 @@ class _EventRow extends StatelessWidget {
     // Wechsel: grüner Pfeil rein, roter Pfeil raus.
     final Widget icon = t == 'substitution'
         ? const _SubArrows()
-        : Icon(_iconFor(e.type) ?? Icons.circle,
-            size: t.contains('card') ? 12 : 16, color: color);
+        : Icon(
+            _iconFor(e.type) ?? Icons.circle,
+            size: t.contains('card') ? 12 : 16,
+            color: color,
+          );
     final minute = Text(
-        e.extra != null ? "${e.minute}+${e.extra}'" : "${e.minute}'",
-        style: TextStyle(fontWeight: FontWeight.bold, color: scheme.primary));
+      e.extra != null ? "${e.minute}+${e.extra}'" : "${e.minute}'",
+      style: TextStyle(fontWeight: FontWeight.bold, color: scheme.primary),
+    );
     final label = Column(
-      crossAxisAlignment:
-          e.forHomeTeam ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      crossAxisAlignment: e.forHomeTeam
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
       children: [
-        Text(e.player ?? e.type,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-            textAlign: e.forHomeTeam ? TextAlign.start : TextAlign.end),
+        Text(
+          e.player ?? e.type,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          textAlign: e.forHomeTeam ? TextAlign.start : TextAlign.end,
+        ),
         // Beim Eigentor steht hier das Wort statt eines Vorlagengebers.
         if (eigentor)
-          Text('Eigentor',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: MatchUpColors.red, fontWeight: FontWeight.w700))
+          Text(
+            'Eigentor',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: MatchUpColors.red,
+              fontWeight: FontWeight.w700,
+            ),
+          )
         else if (e.related != null)
           Text(
-              t == 'substitution' ? 'für ${e.related}' : e.related!,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant)),
+            t == 'substitution' ? 'für ${e.related}' : e.related!,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
         if (isGoal && e.result != null)
-          Text(e.result!,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant)),
+          Text(
+            e.result!,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
       ],
     );
     final children = e.forHomeTeam
@@ -455,8 +496,9 @@ class _EventRow extends StatelessWidget {
             icon,
             const SizedBox(width: 4),
             SizedBox(
-                width: 40,
-                child: Align(alignment: Alignment.centerRight, child: minute)),
+              width: 40,
+              child: Align(alignment: Alignment.centerRight, child: minute),
+            ),
           ];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
@@ -504,13 +546,15 @@ class Substitutions {
   final Map<int, String> onFor;
 
   static Substitutions from(
-      List<MatchEvent> events, List<LineupPlayer> lineups) {
+    List<MatchEvent> events,
+    List<LineupPlayer> lineups,
+  ) {
     final offIds = <int>{};
     final onFor = <int, String>{};
     // Namensindex nur als Rückfall, wenn die Ereignis-ID fehlt.
     final idByName = <String, int>{
       for (final p in lineups)
-        if (p.playerId != null) p.name.toLowerCase().trim(): p.playerId!
+        if (p.playerId != null) p.name.toLowerCase().trim(): p.playerId!,
     };
     for (final e in events) {
       if (_typ(e.type) != 'substitution') continue;
@@ -535,9 +579,9 @@ class _LineupTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = detail;
     List<LineupPlayer> pick(bool home, bool starting) => [
-          for (final p in d.lineups)
-            if (p.forHomeTeam == home && p.starting == starting) p
-        ]..sort((a, b) => (a.position ?? 99).compareTo(b.position ?? 99));
+      for (final p in d.lineups)
+        if (p.forHomeTeam == home && p.starting == starting) p,
+    ]..sort((a, b) => (a.position ?? 99).compareTo(b.position ?? 99));
     final startHome = pick(true, true);
     final startAway = pick(false, true);
     // Karten je Spieler (aus den Events) für die Anzeige am Feld.
@@ -552,7 +596,8 @@ class _LineupTab extends StatelessWidget {
     }
     final subs = Substitutions.from(d.events, d.lineups);
     // Feld nur zeigen, wenn Rasterpositionen vorhanden sind.
-    final hasGrid = startHome.any((p) => p.row != null) &&
+    final hasGrid =
+        startHome.any((p) => p.row != null) &&
         startAway.any((p) => p.row != null);
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 32),
@@ -571,12 +616,13 @@ class _LineupTab extends StatelessWidget {
           ),
         ] else
           LineupBlock(
-              title: 'Startelf',
-              home: startHome,
-              away: startAway,
-              homeTeam: d.home,
-              awayTeam: d.away,
-              subs: subs),
+            title: 'Startelf',
+            home: startHome,
+            away: startAway,
+            homeTeam: d.home,
+            awayTeam: d.away,
+            subs: subs,
+          ),
         const SizedBox(height: 20),
         LineupBlock(
           title: 'Bank',
@@ -619,7 +665,10 @@ class PitchLineup extends StatelessWidget {
 
   /// Ausweichfarben, wenn der Verein nicht in der Farbliste steht: das bisherige
   /// Grün für Heim, Blau für Auswärts — so bleiben die Seiten unterscheidbar.
-  static const _fallbackHome = ClubColors(MatchUpColors.green, Color(0xFF0E2C1A));
+  static const _fallbackHome = ClubColors(
+    MatchUpColors.green,
+    Color(0xFF0E2C1A),
+  );
   static const _fallbackAway = ClubColors(Color(0xFF5B9DF9), Color(0xFF12294A));
 
   ClubColors get _homeColors =>
@@ -643,27 +692,30 @@ class PitchLineup extends StatelessWidget {
       final double yf = maxRow <= 1
           ? (isHome ? 0.1 : 0.9)
           : (isHome
-              ? 0.06 + (r - 1) / (maxRow - 1) * (0.44 - 0.06)
-              : 0.94 - (r - 1) / (maxRow - 1) * (0.94 - 0.56));
+                ? 0.06 + (r - 1) / (maxRow - 1) * (0.44 - 0.06)
+                : 0.94 - (r - 1) / (maxRow - 1) * (0.94 - 0.56));
       for (var i = 0; i < n; i++) {
         final p = line[i];
         final xf = (i + 1) / (n + 1);
         final card = p.playerId != null && red.contains(p.playerId)
             ? MatchUpColors.red
             : (p.playerId != null && yellow.contains(p.playerId)
-                ? const Color(0xFFFFC83D)
-                : null);
-        out.add(Align(
-          alignment: Alignment(xf * 2 - 1, yf * 2 - 1),
-          child: _PlayerMarker(
-            player: p,
-            colors: isHome ? _homeColors : _awayColors,
-            card: card,
-            // Ausgewechselt: Pfeil nach unten am Trikot.
-            subbedOff: p.playerId != null &&
-                (subs?.offIds.contains(p.playerId) ?? false),
+                  ? const Color(0xFFFFC83D)
+                  : null);
+        out.add(
+          Align(
+            alignment: Alignment(xf * 2 - 1, yf * 2 - 1),
+            child: _PlayerMarker(
+              player: p,
+              colors: isHome ? _homeColors : _awayColors,
+              card: card,
+              // Ausgewechselt: Pfeil nach unten am Trikot.
+              subbedOff:
+                  p.playerId != null &&
+                  (subs?.offIds.contains(p.playerId) ?? false),
+            ),
           ),
-        ));
+        );
       }
     }
     return out;
@@ -694,20 +746,22 @@ class PitchLineup extends StatelessWidget {
                 left: 8,
                 right: 8,
                 child: _SideLabel(
-                    team: homeTeam,
-                    colors: _homeColors,
-                    formation: homeFormation,
-                    alignEnd: false),
+                  team: homeTeam,
+                  colors: _homeColors,
+                  formation: homeFormation,
+                  alignEnd: false,
+                ),
               ),
               Positioned(
                 bottom: 6,
                 left: 8,
                 right: 8,
                 child: _SideLabel(
-                    team: awayTeam,
-                    colors: _awayColors,
-                    formation: awayFormation,
-                    alignEnd: true),
+                  team: awayTeam,
+                  colors: _awayColors,
+                  formation: awayFormation,
+                  alignEnd: true,
+                ),
               ),
               ..._place(home, true),
               ..._place(away, false),
@@ -741,8 +795,9 @@ class _SideLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment:
-          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: alignEnd
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -762,8 +817,7 @@ class _SideLabel extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: colors.primary,
                   shape: BoxShape.circle,
-                  border:
-                      Border.all(color: colors.secondary, width: 1.5),
+                  border: Border.all(color: colors.secondary, width: 1.5),
                 ),
               ),
               const SizedBox(width: 6),
@@ -794,7 +848,6 @@ class _SideLabel extends StatelessWidget {
   }
 }
 
-
 /// Wechsel-Marke: grüner Pfeil nach oben = eingewechselt, roter nach unten =
 /// ausgewechselt. Dieselbe Farbsprache wie im Spielverlauf ([_SubArrows]),
 /// nur als einzelner Pfeil, weil hier je Spieler nur eine Richtung gilt.
@@ -812,8 +865,9 @@ class _SubBadge extends StatelessWidget {
         color: MatchUpColors.base,
         shape: BoxShape.circle,
         border: Border.all(
-            color: incoming ? MatchUpColors.green : MatchUpColors.red,
-            width: 1.2),
+          color: incoming ? MatchUpColors.green : MatchUpColors.red,
+          width: 1.2,
+        ),
       ),
       child: Icon(
         incoming ? Icons.arrow_upward : Icons.arrow_downward,
@@ -903,18 +957,25 @@ class _PitchPainter extends CustomPainter {
     final m = w * 0.04;
     final rect = Rect.fromLTRB(m, m, w - m, h - m);
     canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(6)), line);
+      RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+      line,
+    );
     // Mittellinie + Mittelkreis.
     canvas.drawLine(Offset(m, h / 2), Offset(w - m, h / 2), line);
     canvas.drawCircle(Offset(w / 2, h / 2), w * 0.13, line);
-    canvas.drawCircle(Offset(w / 2, h / 2), 2, line..style = PaintingStyle.fill);
+    canvas.drawCircle(
+      Offset(w / 2, h / 2),
+      2,
+      line..style = PaintingStyle.fill,
+    );
     line.style = PaintingStyle.stroke;
     // Strafräume oben und unten.
     final boxW = w * 0.44, boxH = h * 0.14;
+    canvas.drawRect(Rect.fromLTWH((w - boxW) / 2, m, boxW, boxH), line);
     canvas.drawRect(
-        Rect.fromLTWH((w - boxW) / 2, m, boxW, boxH), line);
-    canvas.drawRect(
-        Rect.fromLTWH((w - boxW) / 2, h - m - boxH, boxW, boxH), line);
+      Rect.fromLTWH((w - boxW) / 2, h - m - boxH, boxW, boxH),
+      line,
+    );
   }
 
   @override
@@ -943,8 +1004,10 @@ class LineupBlock extends StatelessWidget {
   final TeamRef awayTeam;
   final Substitutions? subs;
 
-  static const _fallbackHome =
-      ClubColors(MatchUpColors.green, Color(0xFF0E2C1A));
+  static const _fallbackHome = ClubColors(
+    MatchUpColors.green,
+    Color(0xFF0E2C1A),
+  );
   static const _fallbackAway = ClubColors(Color(0xFF5B9DF9), Color(0xFF12294A));
 
   @override
@@ -956,22 +1019,30 @@ class LineupBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.bold, color: scheme.primary)),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: scheme.primary,
+          ),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
               child: _TeamColumnHeader(
-                  team: homeTeam, colors: heimFarben, alignEnd: false),
+                team: homeTeam,
+                colors: heimFarben,
+                alignEnd: false,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _TeamColumnHeader(
-                  team: awayTeam, colors: auswFarben, alignEnd: true),
+                team: awayTeam,
+                colors: auswFarben,
+                alignEnd: true,
+              ),
             ),
           ],
         ),
@@ -980,18 +1051,22 @@ class LineupBlock extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-                child: _PlayerList(
-                    players: home,
-                    colors: heimFarben,
-                    alignEnd: false,
-                    subs: subs)),
+              child: _PlayerList(
+                players: home,
+                colors: heimFarben,
+                alignEnd: false,
+                subs: subs,
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-                child: _PlayerList(
-                    players: away,
-                    colors: auswFarben,
-                    alignEnd: true,
-                    subs: subs)),
+              child: _PlayerList(
+                players: away,
+                colors: auswFarben,
+                alignEnd: true,
+                subs: subs,
+              ),
+            ),
           ],
         ),
       ],
@@ -1002,8 +1077,11 @@ class LineupBlock extends StatelessWidget {
 /// Spaltenkopf einer Mannschaftsliste: Wappen, Name und ein Strich in der
 /// Trikotfarbe, der die Spalte optisch der Mannschaft zuordnet.
 class _TeamColumnHeader extends StatelessWidget {
-  const _TeamColumnHeader(
-      {required this.team, required this.colors, required this.alignEnd});
+  const _TeamColumnHeader({
+    required this.team,
+    required this.colors,
+    required this.alignEnd,
+  });
   final TeamRef team;
   final ClubColors colors;
   final bool alignEnd;
@@ -1021,19 +1099,22 @@ class _TeamColumnHeader extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           textAlign: alignEnd ? TextAlign.end : TextAlign.start,
           style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: scheme.onSurface),
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: scheme.onSurface,
+          ),
         ),
       ),
     ];
     return Column(
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment:
-              alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment: alignEnd
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
           children: alignEnd ? inhalt.reversed.toList() : inhalt,
         ),
         const SizedBox(height: 4),
@@ -1069,21 +1150,27 @@ class _PlayerList extends StatelessWidget {
       final fuer = p.playerId == null ? null : subs?.onFor[p.playerId];
       final eingewechselt = fuer != null;
       final name = Column(
-        crossAxisAlignment:
-            alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: alignEnd
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(p.name,
+          Text(
+            p.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+          ),
+          if (eingewechselt)
+            Text(
+              'für $fuer',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              textAlign: alignEnd ? TextAlign.end : TextAlign.start),
-          if (eingewechselt)
-            Text('für $fuer',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: alignEnd ? TextAlign.end : TextAlign.start,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant)),
+              textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
         ],
       );
       final marke = eingewechselt
@@ -1100,15 +1187,14 @@ class _PlayerList extends StatelessWidget {
       ];
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: alignEnd ? inhalt.reversed.toList() : inhalt,
-        ),
+        child: Row(children: alignEnd ? inhalt.reversed.toList() : inhalt),
       );
     }
 
     return Column(
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [for (final p in players) zeile(p)],
     );
   }
@@ -1153,20 +1239,23 @@ class _StatRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('${stat.home}',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, color: homeColor)),
-              Expanded(
-                child: Text(stat.label,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelMedium
-                        ?.copyWith(color: scheme.onSurfaceVariant)),
+              Text(
+                '${stat.home}',
+                style: TextStyle(fontWeight: FontWeight.bold, color: homeColor),
               ),
-              Text('${stat.away}',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, color: awayColor)),
+              Expanded(
+                child: Text(
+                  stat.label,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              Text(
+                '${stat.away}',
+                style: TextStyle(fontWeight: FontWeight.bold, color: awayColor),
+              ),
             ],
           ),
           const SizedBox(height: 5),
@@ -1211,8 +1300,10 @@ class _TableTab extends ConsumerWidget {
       error: (_, _) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text('Tabelle konnte nicht geladen werden.',
-              textAlign: TextAlign.center),
+          child: Text(
+            'Tabelle konnte nicht geladen werden.',
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
       data: (rows) {
@@ -1221,9 +1312,12 @@ class _TableTab extends ConsumerWidget {
         }
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 32),
-          itemCount: rows.length + 1,
+          itemCount: rows.length + 2,
           itemBuilder: (context, i) {
             if (i == 0) return const _TableHeader();
+            if (i == rows.length + 1) {
+              return ZonenLegende(leagueId: leagueId, teams: rows.length);
+            }
             final row = rows[i - 1];
             final highlight =
                 row.team.id == detail.home.id || row.team.id == detail.away.id;
@@ -1232,6 +1326,7 @@ class _TableTab extends ConsumerWidget {
               highlight: highlight,
               leagueId: leagueId,
               live: laufend.contains(row.team.id),
+              zone: tabellenZone(leagueId, row.rank, rows.length),
             );
           },
         );
@@ -1246,24 +1341,28 @@ class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-        fontWeight: FontWeight.bold);
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.bold,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Row(
         children: [
-          SizedBox(width: 24, child: Text('#', style: style)),
+          SizedBox(width: 30, child: Text('#', style: style)),
           const SizedBox(width: 8),
           Expanded(child: Text('Team', style: style)),
           SizedBox(
-              width: 30,
-              child: Text('Sp', style: style, textAlign: TextAlign.center)),
+            width: 30,
+            child: Text('Sp', style: style, textAlign: TextAlign.center),
+          ),
           SizedBox(
-              width: 40,
-              child: Text('Diff', style: style, textAlign: TextAlign.center)),
+            width: 40,
+            child: Text('Diff', style: style, textAlign: TextAlign.center),
+          ),
           SizedBox(
-              width: 34,
-              child: Text('Pkt', style: style, textAlign: TextAlign.end)),
+            width: 34,
+            child: Text('Pkt', style: style, textAlign: TextAlign.end),
+          ),
         ],
       ),
     );
@@ -1276,9 +1375,13 @@ class _TableRow extends StatelessWidget {
     required this.highlight,
     this.leagueId,
     this.live = false,
+    this.zone,
   });
   final StandingRow row;
   final bool highlight;
+
+  /// Meister, Europa, Relegation, Abstieg — oder nichts.
+  final TabellenZone? zone;
 
   /// Läuft gerade ein Spiel dieser Mannschaft?
   final bool live;
@@ -1300,40 +1403,44 @@ class _TableRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       child: Row(
         children: [
-          SizedBox(
-            width: 24,
-            child: Text('${row.rank}',
-                style: TextStyle(
-                    fontWeight:
-                        highlight ? FontWeight.bold : FontWeight.w600)),
-          ),
+          ZonenRang(rang: row.rank, zone: zone, fett: highlight),
           const SizedBox(width: 8),
           ClubLink(
-              team: row.team,
-              leagueId: leagueId,
-              child: TeamBadge(team: row.team)),
+            team: row.team,
+            leagueId: leagueId,
+            child: TeamBadge(team: row.team),
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(row.team.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontWeight:
-                        highlight ? FontWeight.bold : FontWeight.normal)),
+            child: Text(
+              row.team.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
           ),
           SizedBox(
-              width: 30,
-              child: Text('${row.played}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: scheme.onSurfaceVariant))),
+            width: 30,
+            child: Text(
+              '${row.played}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+          ),
           SizedBox(
-              width: 40,
-              child: Text(diff > 0 ? '+$diff' : '$diff',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: scheme.onSurfaceVariant))),
+            width: 40,
+            child: Text(
+              diff > 0 ? '+$diff' : '$diff',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+          ),
           SizedBox(
-              width: 34,
-              child: TabellenPunkte(punkte: row.points, live: live)),
+            width: 34,
+            child: TabellenPunkte(punkte: row.points, live: live),
+          ),
         ],
       ),
     );

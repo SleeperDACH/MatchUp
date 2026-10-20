@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../logic/wertungs_kader.dart';
 
 import '../../auth/providers.dart';
 import '../logic/aufstellung_uebernahme.dart';
@@ -13,6 +14,9 @@ import '../models/player_absence.dart';
 import '../providers.dart';
 import 'ausfall_zeichen.dart';
 import 'club_badge.dart';
+import 'spiel_marke.dart';
+import '../../tippspiel/ui/team_badge.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
 import 'manager_profile_screen.dart';
 import 'player_profile_sheet.dart';
 import 'punkte_aufschluesselung.dart';
@@ -71,6 +75,8 @@ MatchupSideData computeSideData({
   required List<FantasyLineup> lineups,
   required Map<String, PlayerMatchStats> stats,
 }) {
+  // Nach einem Reset der Kader dieses Spieltags (`wertungs_kader.dart`).
+  roster = kaderFuerRunde(roster, round);
   final rosterPlayers = [
     for (final r in roster)
       if (r.managerId == managerId && byId[r.playerId] != null)
@@ -98,11 +104,9 @@ MatchupSideData computeSideData({
   // Für gespielte Spieltage ändert sich nichts: Dort gibt es Daten, und
   // gewertet wird ohne gestellte Elf weiter die beste (`effectiveTotalsForRound`).
   final uebernommen = (saved == null || saved.isEmpty) && stats.isEmpty
-      ? uebernommeneElf(
-          lineups.where((l) => l.managerId == managerId),
-          round,
-          {for (final p in rosterPlayers) p.id},
-        )
+      ? uebernommeneElf(lineups.where((l) => l.managerId == managerId), round, {
+          for (final p in rosterPlayers) p.id,
+        })
       : null;
   final starterIds = (saved != null && saved.isNotEmpty)
       ? {
@@ -212,7 +216,8 @@ class MatchupLineups extends ConsumerWidget {
     // **Auch hier, nicht nur auf dem Feld.** Das MatchUp ist der Schirm, den
     // man am Spieltag offen hat; wer dort sieht, dass sein Stürmer gesperrt
     // ist, kann noch tauschen.
-    final ausfaelle = ref.watch(absencesProvider).valueOrNull ??
+    final ausfaelle =
+        ref.watch(absencesProvider).valueOrNull ??
         const <String, PlayerAbsence>{};
     bool angepfiffen(String verein) {
       final s = naechstesSpiel(spiele, runde, verein);
@@ -225,10 +230,13 @@ class MatchupLineups extends ConsumerWidget {
     // **Der Schnitt je Spieltag als kleine Zahl unter den Punkten** — wie die
     // Projektion bei Sleeper. Gerechnet nur über abgepfiffene Spieltage, mit
     // derselben Funktion wie Prognose und Hochrechnung im Kasten darüber.
-    final saison = ref.watch(seasonStatsProvider).valueOrNull ??
+    final saison =
+        ref.watch(seasonStatsProvider).valueOrNull ??
         const <int, Map<String, PlayerMatchStats>>{};
-    final fertig =
-        gewerteteRunden(ref.watch(abgepfiffeneRundenProvider), saison.keys);
+    final fertig = gewerteteRunden(
+      ref.watch(abgepfiffeneRundenProvider),
+      saison.keys,
+    );
     final saisonGewertet = {
       for (final e in saison.entries)
         if (fertig.contains(e.key)) e.key: e.value,
@@ -269,11 +277,11 @@ class MatchupLineups extends ConsumerWidget {
       final st = stats[p.id];
       if (st == null || !st.hasContribution) return null;
       return () => zeigePunkteAufschluesselung(
-            context,
-            titel: '${p.name} · $runde. Spieltag',
-            score: scorePlayerDetailed(st, p.position, league.scoring),
-            gespielt: true,
-          );
+        context,
+        titel: '${p.name} · $runde. Spieltag',
+        score: scorePlayerDetailed(st, p.position, league.scoring),
+        gespielt: true,
+      );
     }
 
     return Column(
@@ -488,25 +496,24 @@ class _BlockStand extends StatelessWidget {
     final gastFuehrt = vergleichbar && gast! > heim!;
 
     TextStyle stil(bool fuehrt) => TextStyle(
-          fontSize: 14,
-          fontWeight: fuehrt ? FontWeight.w800 : FontWeight.w600,
-          color: fuehrt ? scheme.primary : scheme.onSurfaceVariant,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        );
+      fontSize: 14,
+      fontWeight: fuehrt ? FontWeight.w800 : FontWeight.w600,
+      color: fuehrt ? scheme.primary : scheme.onSurfaceVariant,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
 
-    Widget zahl(double? wert, bool fuehrt) => Text(
-          wert == null ? '–' : formatPoints(wert),
-          style: stil(fuehrt),
-        );
+    Widget zahl(double? wert, bool fuehrt) =>
+        Text(wert == null ? '–' : formatPoints(wert), style: stil(fuehrt));
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         zahl(heim, heimFuehrt),
         if (gast != null || heim != null) ...[
-          Text(' : ',
-              style: TextStyle(
-                  fontSize: 14, color: scheme.onSurfaceVariant)),
+          Text(
+            ' : ',
+            style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+          ),
           zahl(gast, gastFuehrt),
         ],
       ],
@@ -681,8 +688,9 @@ class _PlayerRow extends StatelessWidget {
       width: 40,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment:
-            start ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: start
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           _punkte(
             gespielt,
@@ -743,8 +751,7 @@ class _PlayerRow extends StatelessWidget {
             Flexible(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment:
-                    start ? Alignment.centerLeft : Alignment.centerRight,
+                alignment: start ? Alignment.centerLeft : Alignment.centerRight,
                 child: Text(
                   shortPlayerName(player.name),
                   maxLines: 1,
@@ -764,16 +771,16 @@ class _PlayerRow extends StatelessWidget {
         // **Zwei Zeilen mehr Auskunft, nach dem Vorbild Sleeper**
         // (14.10.2026): wie das Spiel seines Vereins steht oder wann es
         // anfängt, und was er selbst darin gemacht hat.
-        if (spielplanDa) _SpielZeileText(zeile: zeile, start: start),
+        if (spielplanDa)
+          _SpielZeileText(zeile: zeile, spiel: spiel, start: start),
         // **Dritte Zeile: Anstoß (vor dem Spiel) und der Schnitt.** Die
         // Statistik („90' · 4 Paraden") stand hier bis zum 17.10.2026 und ist
         // auf Ansage raus — sie machte die Karte unruhig; wer wissen will,
         // woher die Punkte kommen, tippt auf die Zahl.
-        if ([
-          ?zeile?.anstoss,
-          if (schnitt != null) 'Ø ${formatPoints(schnitt)}',
-        ].join(' · ')
-            case final z when z.isNotEmpty)
+        // Seit dem 19.10.2026 nur noch der Schnitt — der Anstoß steht mit dem
+        // Wappen des Gegners in der Zeile darüber (`SpielMarke`).
+        if (schnitt != null ? 'Ø ${formatPoints(schnitt)}' : '' case final z
+            when z.isNotEmpty)
           // Schrumpfen statt kappen — „Sa 20:16 · Ø …" sagte den Schnitt
           // gerade nicht.
           FittedBox(
@@ -1115,7 +1122,8 @@ class _BenchSection extends StatelessWidget {
                                 Punktzahl(
                                   points[p.id] ?? 0,
                                   stil: const TextStyle(
-                                      fontWeight: FontWeight.bold),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                   negativRot: true,
                                 ),
                                 // **Klein darunter, nicht daneben**: In
@@ -1131,7 +1139,7 @@ class _BenchSection extends StatelessWidget {
                                       height: 1.1,
                                       color: scheme.onSurfaceVariant,
                                       fontFeatures: const [
-                                        FontFeature.tabularFigures()
+                                        FontFeature.tabularFigures(),
                                       ],
                                     ),
                                   ),
@@ -1192,15 +1200,21 @@ Widget _punkte(
 /// **Kein Spiel ist etwas anderes als „noch nicht angepfiffen"** — wessen
 /// Verein an diesem Spieltag frei hat, bei dem steht „spielfrei".
 class _SpielZeileText extends StatelessWidget {
-  const _SpielZeileText({required this.zeile, required this.start});
+  const _SpielZeileText({
+    required this.zeile,
+    required this.spiel,
+    required this.start,
+  });
 
   final SpielZeile? zeile;
+  final NaechstesSpiel? spiel;
   final bool start;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final z = zeile;
+    final s = spiel;
     final basis = TextStyle(
       fontSize: Schrift.label,
       fontWeight: FontWeight.w600,
@@ -1208,29 +1222,85 @@ class _SpielZeileText extends StatelessWidget {
       color: z?.laeuft ?? false ? scheme.error : scheme.onSurfaceVariant,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
-    if (z == null) {
+    if (z == null || s == null) {
       return Text('spielfrei', style: basis);
     }
+    // **Vor dem Anpfiff: Wappen und Anstoß** (19.10.2026, `SpielMarke`) statt
+    // „vs M05" und einer zweiten Zeile mit der Zeit.
+    if (z.anstoss != null) {
+      // Schrumpfen statt überlaufen — die Spalte ist eine halbe Kartenbreite.
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1.5),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: start ? Alignment.centerLeft : Alignment.centerRight,
+          child: SpielMarke(spiel: s),
+        ),
+      );
+    }
+    // Läuft oder beendet: das Ergebnis, dahinter das Wappen des Gegners.
     final ausgang = z.ausgang;
     final farbe = switch (ausgang) {
       VereinsAusgang.sieg => MatchUpColors.green,
       VereinsAusgang.niederlage => scheme.error,
-      _ => scheme.onSurfaceVariant,
+      _ => basis.color,
     };
-    return Text.rich(
-      ausgang == null
-          ? TextSpan(text: z.text)
-          : TextSpan(children: [
-              TextSpan(
-                text: z.text.substring(0, 1),
-                style: TextStyle(color: farbe, fontWeight: FontWeight.w800),
+    final stand = '${s.eigeneTore ?? 0}:${s.gegnerTore ?? 0}';
+    final buchstabe = switch (ausgang) {
+      VereinsAusgang.sieg => 'S ',
+      VereinsAusgang.unentschieden => 'U ',
+      VereinsAusgang.niederlage => 'N ',
+      null => '',
+    };
+    final team = s.gegnerTeam;
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: start ? Alignment.centerLeft : Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text.rich(
+            TextSpan(
+              children: [
+                if (buchstabe.isNotEmpty)
+                  TextSpan(
+                    text: buchstabe,
+                    style: TextStyle(color: farbe, fontWeight: FontWeight.w800),
+                  ),
+                TextSpan(text: stand),
+              ],
+            ),
+            maxLines: 1,
+            style: basis,
+          ),
+          const SizedBox(width: 5),
+          // Dieselbe H/A-Marke wie vor dem Anpfiff (`SpielMarke`).
+          Container(
+            margin: const EdgeInsets.only(right: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(3),
+              border: Border.all(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                width: 0.8,
               ),
-              TextSpan(text: z.text.substring(1)),
-            ]),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      textAlign: start ? TextAlign.start : TextAlign.end,
-      style: basis,
+            ),
+            child: Text(
+              s.heim ? 'H' : 'A',
+              style: basis.copyWith(
+                fontSize: Schrift.mikro,
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurfaceVariant,
+                height: 1.0,
+              ),
+            ),
+          ),
+          if (team != null)
+            TeamBadge(team: team, size: 14)
+          else
+            Text(vereinsKuerzel(s.gegner), style: basis),
+        ],
+      ),
     );
   }
 }
@@ -1267,7 +1337,11 @@ class _FehlendePosition extends StatelessWidget {
               color: gold.withValues(alpha: 0.12),
               border: Border.all(color: gold.withValues(alpha: 0.55)),
             ),
-            child: const Icon(Icons.priority_high_outlined, size: 17, color: gold),
+            child: const Icon(
+              Icons.priority_high_outlined,
+              size: 17,
+              color: gold,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(

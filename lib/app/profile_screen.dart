@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/ui/rueckfrage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -45,7 +46,10 @@ class _Profile extends ConsumerWidget {
   final String? email;
 
   Future<void> _editAvatar(
-      BuildContext context, WidgetRef ref, UserProfile? profile) async {
+    BuildContext context,
+    WidgetRef ref,
+    UserProfile? profile,
+  ) async {
     final uid = ref.read(currentUserProvider)?.id;
     if (uid == null) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -60,20 +64,26 @@ class _Profile extends ConsumerWidget {
     );
     if (value == null) return;
     try {
-      await ref.read(authRepositoryProvider).setAvatar(
-          url: value.url, emoji: value.emoji, color: value.color);
+      await ref
+          .read(authRepositoryProvider)
+          .setAvatar(url: value.url, emoji: value.emoji, color: value.color);
       ref.invalidate(currentProfileProvider);
     } catch (e) {
       messenger.showSnackBar(
-          SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+        SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      );
     }
   }
 
   /// Ändert den Nutzernamen (Kurz-Dialog).
   Future<void> _editName(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final value = await _showTextDialog(context,
-        title: 'Name ändern', label: 'Nutzername', initial: username);
+    final value = await _showTextDialog(
+      context,
+      title: 'Name ändern',
+      label: 'Nutzername',
+      initial: username,
+    );
     if (value == null || value.isEmpty) return;
     try {
       await ref.read(authRepositoryProvider).updateUsername(value);
@@ -94,10 +104,15 @@ class _Profile extends ConsumerWidget {
     );
     if (result == null) return;
     try {
-      await ref.read(authRepositoryProvider).changePassword(
-          currentPassword: result.current, newPassword: result.next);
-      messenger
-          .showSnackBar(const SnackBar(content: Text('Passwort geändert.')));
+      await ref
+          .read(authRepositoryProvider)
+          .changePassword(
+            currentPassword: result.current,
+            newPassword: result.next,
+          );
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Passwort geändert.')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('$e')));
     }
@@ -106,16 +121,21 @@ class _Profile extends ConsumerWidget {
   /// Ändert die E-Mail-Adresse (Bestätigung per Link an die neue Adresse).
   Future<void> _editEmail(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final value = await _showTextDialog(context,
-        title: 'E-Mail ändern',
-        label: 'Neue E-Mail',
-        initial: email,
-        keyboardType: TextInputType.emailAddress);
+    final value = await _showTextDialog(
+      context,
+      title: 'E-Mail ändern',
+      label: 'Neue E-Mail',
+      initial: email,
+      keyboardType: TextInputType.emailAddress,
+    );
     if (value == null || value.isEmpty) return;
     try {
       await ref.read(authRepositoryProvider).updateEmail(value);
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Bestätigungslink an die neue Adresse gesendet.')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Bestätigungslink an die neue Adresse gesendet.'),
+        ),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('$e')));
     }
@@ -154,11 +174,13 @@ class _Profile extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: scheme.primary,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: scheme.surface, width: 2),
+                          border: Border.all(color: scheme.surface, width: 2),
                         ),
-                        child: Icon(Icons.photo_camera_outlined,
-                            size: 16, color: scheme.onPrimary),
+                        child: Icon(
+                          Icons.photo_camera_outlined,
+                          size: 16,
+                          color: scheme.onPrimary,
+                        ),
                       ),
                     ),
                   ],
@@ -166,9 +188,12 @@ class _Profile extends ConsumerWidget {
               ),
               if (email != null) ...[
                 const SizedBox(height: 12),
-                Text(email!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant)),
+                Text(
+                  email!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ],
           ),
@@ -185,27 +210,31 @@ class _Profile extends ConsumerWidget {
           icon: Icons.people_outline,
           label: 'Freunde',
           zaehler: anfragen,
-          onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const FriendsScreen())),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const FriendsScreen())),
         ),
         const Kapitelmarke('App'),
         _SettingTile(
           icon: Icons.star_border,
           label: 'Favoriten',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const FavoritesManageScreen())),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const FavoritesManageScreen()),
+          ),
         ),
         _SettingTile(
           icon: Icons.notifications_outlined,
           label: 'Benachrichtigungen',
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const PushEinstellungenScreen())),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const PushEinstellungenScreen()),
+          ),
         ),
         _SettingTile(
           icon: Icons.leaderboard_outlined,
           label: 'Tippbilanz',
-          onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TipStatsScreen())),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const TipStatsScreen())),
         ),
         const Kapitelmarke('Konto'),
         _SettingTile(
@@ -257,7 +286,8 @@ class _Profile extends ConsumerWidget {
             _RechtlichesLink(
               label: 'Impressum',
               onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ImpressumScreen())),
+                MaterialPageRoute(builder: (_) => const ImpressumScreen()),
+              ),
             ),
           ],
         ),
@@ -299,17 +329,22 @@ class _SettingTile extends StatelessWidget {
       minLeadingWidth: 0,
       // Grau, nicht Grün: Grün heißt in dieser App „ich / gut", und eine
       // Einstellungszeile ist keins von beidem.
-      leading:
-          Icon(icon, color: color ?? scheme.onSurfaceVariant, size: 22),
-      title: Text(label,
-          style: TextStyle(
-              color: color, fontWeight: FontWeight.w600, fontSize: 14)),
+      leading: Icon(icon, color: color ?? scheme.onSurfaceVariant, size: 22),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+      ),
       subtitle: hasSub
-          ? Text(subtitle!.trim(),
+          ? Text(
+              subtitle!.trim(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontSize: 11, color: scheme.onSurfaceVariant))
+              style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+            )
           : null,
       trailing: zaehler > 0
           ? Container(
@@ -318,16 +353,18 @@ class _SettingTile extends StatelessWidget {
                 color: scheme.error,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text('$zaehler',
-                  style: TextStyle(
-                      color: scheme.onError,
-                      fontSize: Schrift.label,
-                      fontWeight: FontWeight.w800)),
+              child: Text(
+                '$zaehler',
+                style: TextStyle(
+                  color: scheme.onError,
+                  fontSize: Schrift.label,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             )
           : showChevron
-              ? Icon(Icons.chevron_right,
-                  size: 20, color: scheme.onSurfaceVariant)
-              : null,
+          ? Icon(Icons.chevron_right, size: 20, color: scheme.onSurfaceVariant)
+          : null,
       onTap: onTap,
     );
   }
@@ -357,11 +394,13 @@ Future<String?> _showTextDialog(
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Abbrechen')),
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Abbrechen'),
+        ),
         FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Speichern')),
+          onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+          child: const Text('Speichern'),
+        ),
       ],
     ),
   );
@@ -399,8 +438,9 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       return;
     }
     if (next.length < 6) {
-      setState(() =>
-          _error = 'Das neue Passwort muss mindestens 6 Zeichen haben.');
+      setState(
+        () => _error = 'Das neue Passwort muss mindestens 6 Zeichen haben.',
+      );
       return;
     }
     if (next != conf) {
@@ -433,23 +473,28 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
           TextField(
             controller: _confirm,
             obscureText: true,
-            decoration:
-                const InputDecoration(labelText: 'Neues Passwort bestätigen'),
+            decoration: const InputDecoration(
+              labelText: 'Neues Passwort bestätigen',
+            ),
             onSubmitted: (_) => _submit(),
           ),
           if (_error != null) ...[
             const SizedBox(height: 10),
-            Text(_error!,
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontSize: 11)),
+            Text(
+              _error!,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 11,
+              ),
+            ),
           ],
         ],
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Abbrechen')),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
         FilledButton(onPressed: _submit, child: const Text('Speichern')),
       ],
     );
@@ -474,25 +519,15 @@ class TipStatsScreen extends StatelessWidget {
 
 /// Abmelden mit Sicherheitsabfrage.
 Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
-  final scheme = Theme.of(context).colorScheme;
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Abmelden?'),
-      content: const Text(
-          'Du wirst von deinem Konto abgemeldet. Zum Weiterspielen musst du '
-          'dich erneut anmelden.'),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Abbrechen')),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: scheme.error),
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Abmelden'),
-        ),
-      ],
-    ),
+  final ok = await rueckfrage(
+    context,
+    titel: 'Abmelden?',
+    text:
+        'Du wirst von deinem Konto abgemeldet. Zum Weiterspielen musst du '
+        'dich erneut anmelden.',
+    ja: 'Abmelden',
+    nein: 'Abbrechen',
+    gefahr: true,
   );
   if (ok != true) return;
   // **Erst das Gerät abmelden, dann das Konto.** Die Zeile in `push_geraete`
@@ -506,27 +541,17 @@ Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
 /// Konto endgültig löschen (mit starker Bestätigung). Nach Erfolg meldet
 /// [AuthRepository.deleteAccount] ab → das Gate zeigt wieder den Login.
 Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
-  final scheme = Theme.of(context).colorScheme;
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Konto löschen?'),
-      content: const Text(
-          'Dein Konto und alle zugehörigen Daten werden endgültig gelöscht — '
-          'von dir erstellte Ligen und Tipprunden (für alle Mitglieder), deine '
-          'Kader, Tipps, Favoriten, Freundschaften und Nachrichten. Das kann '
-          'nicht rückgängig gemacht werden.'),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Abbrechen')),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: scheme.error),
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Endgültig löschen'),
-        ),
-      ],
-    ),
+  final ok = await rueckfrage(
+    context,
+    titel: 'Konto löschen?',
+    text:
+        'Dein Konto und alle zugehörigen Daten werden endgültig gelöscht — '
+        'von dir erstellte Ligen und Tipprunden (für alle Mitglieder), deine '
+        'Kader, Tipps, Favoriten, Freundschaften und Nachrichten. Das kann '
+        'nicht rückgängig gemacht werden.',
+    ja: 'Endgültig löschen',
+    nein: 'Abbrechen',
+    gefahr: true,
   );
   if (ok != true || !context.mounted) return;
   final messenger = ScaffoldMessenger.of(context);
@@ -540,7 +565,10 @@ Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
       canPop: false,
       child: Center(
         child: SizedBox(
-            width: 36, height: 36, child: CircularProgressIndicator()),
+          width: 36,
+          height: 36,
+          child: CircularProgressIndicator(),
+        ),
       ),
     ),
   );
@@ -551,7 +579,9 @@ Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
     messenger.showSnackBar(const SnackBar(content: Text('Konto gelöscht.')));
   } catch (e) {
     navigator.pop();
-    messenger.showSnackBar(SnackBar(content: Text('Löschen fehlgeschlagen: $e')));
+    messenger.showSnackBar(
+      SnackBar(content: Text('Löschen fehlgeschlagen: $e')),
+    );
   }
 }
 
@@ -582,10 +612,9 @@ class _StatsSection extends ConsumerWidget {
           'Noch keine gewerteten Tipps — tritt einer Tipprunde bei und '
           'tippe los.',
           textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: scheme.onSurfaceVariant),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
       );
     }
@@ -599,19 +628,22 @@ class _StatsSection extends ConsumerWidget {
         Row(
           children: [
             _StatTile(
-                label: 'Exakt',
-                value: quote(stats.exact),
-                accent: _exactColor),
+              label: 'Exakt',
+              value: quote(stats.exact),
+              accent: _exactColor,
+            ),
             const SizedBox(width: 10),
             _StatTile(
-                label: 'Tordifferenz',
-                value: quote(stats.goalDiff),
-                accent: _diffColor),
+              label: 'Tordifferenz',
+              value: quote(stats.goalDiff),
+              accent: _diffColor,
+            ),
             const SizedBox(width: 10),
             _StatTile(
-                label: 'Tendenz',
-                value: quote(stats.tendency),
-                accent: _tendColor),
+              label: 'Tendenz',
+              value: quote(stats.tendency),
+              accent: _tendColor,
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -622,15 +654,17 @@ class _StatsSection extends ConsumerWidget {
             '${stats.points} Punkte · '
             '${stats.rounds} Tipprunde${stats.rounds == 1 ? '' : 'n'} · '
             '${stats.scored} gewertete Tipps',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ] else
           Text(
             '${stats.rounds} Tipprunde${stats.rounds == 1 ? '' : 'n'} · '
             'noch keine gewerteten Tipps',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         const SizedBox(height: 20),
       ],
@@ -640,8 +674,11 @@ class _StatsSection extends ConsumerWidget {
 
 /// Eine Kennzahl-Kachel im Dashboard.
 class _StatTile extends StatelessWidget {
-  const _StatTile(
-      {required this.label, required this.value, required this.accent});
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
 
   final String label;
   final String value;
@@ -659,14 +696,21 @@ class _StatTile extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold, color: accent)),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: accent,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant)),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
           ],
         ),
       ),
@@ -700,7 +744,10 @@ class _BreakdownBar extends StatelessWidget {
               children: [
                 for (final (count, color, _) in segments)
                   if (count > 0)
-                    Expanded(flex: count, child: ColoredBox(color: color)),
+                    Expanded(
+                      flex: count,
+                      child: ColoredBox(color: color),
+                    ),
               ],
             ),
           ),
@@ -718,11 +765,15 @@ class _BreakdownBar extends StatelessWidget {
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                        color: color, borderRadius: BorderRadius.circular(3)),
+                      color: color,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
                   ),
                   const SizedBox(width: 5),
-                  Text('$label $count',
-                      style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    '$label $count',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ],
               ),
           ],
@@ -740,9 +791,12 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-      child: Text(text,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
@@ -758,23 +812,28 @@ class _SignedOut extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.account_circle_outlined,
-                size: 72, color: scheme.onSurfaceVariant),
+            Icon(
+              Icons.account_circle_outlined,
+              size: 72,
+              color: scheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 16),
             Text(
               configured
                   ? 'Melde dich an, um dein Profil, deine Ligen und Tipprunden zu sehen.'
                   : 'Profile gibt es nur mit Server-Verbindung.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
             ),
             if (configured) ...[
               const SizedBox(height: 20),
               FilledButton(
                 child: const Text('Anmelden'),
-                onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const LoginScreen())),
+                onPressed: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const LoginScreen())),
               ),
             ],
           ],

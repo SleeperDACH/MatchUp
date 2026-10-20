@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/logic/tabellen_zonen.dart';
+import 'zonen_rang.dart';
 import 'skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -74,12 +76,15 @@ class LigaTabelle extends ConsumerWidget {
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
-            itemCount: rows.length,
-            itemBuilder: (context, i) => TabellenZeile(
-              row: rows[i],
-              eigene: rows[i].team.id == eigenesTeam,
-              live: laufend.contains(rows[i].team.id),
-            ),
+            itemCount: rows.length + 1,
+            itemBuilder: (context, i) => i == rows.length
+                ? ZonenLegende(leagueId: leagueId, teams: rows.length)
+                : TabellenZeile(
+                    row: rows[i],
+                    eigene: rows[i].team.id == eigenesTeam,
+                    live: laufend.contains(rows[i].team.id),
+                    zone: tabellenZone(leagueId, rows[i].rank, rows.length),
+                  ),
           ),
         );
       },
@@ -102,9 +107,13 @@ class TabellenZeile extends StatelessWidget {
     required this.row,
     required this.eigene,
     this.live = false,
+    this.zone,
   });
 
   final StandingRow row;
+
+  /// Meister, Europa, Relegation, Abstieg — oder nichts.
+  final TabellenZone? zone;
   final bool eigene;
 
   /// Läuft gerade ein Spiel dieser Mannschaft?
@@ -121,13 +130,7 @@ class TabellenZeile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: Row(
         children: [
-          SizedBox(
-            width: 24,
-            child: Text(
-              '${row.rank}',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
+          ZonenRang(rang: row.rank, zone: zone),
           TeamBadge(team: row.team, size: 22),
           const SizedBox(width: 8),
           Expanded(

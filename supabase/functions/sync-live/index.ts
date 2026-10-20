@@ -1,5 +1,5 @@
 // Live-Abgleich für Push: Anpfiff, Tore, Rote Karten, Halbzeit und Abpfiff
-// in den Spielen der Lieblingsvereine.
+// in den Spielen der Lieblingsvereine und abonnierten Vereine/Ligen (0142).
 //
 // Die Function stellt nichts selbst fest. Sie holt je Minute die Spiele, die
 // gerade laufen oder gleich beginnen, und reicht je Spiel einen Schnappschuss

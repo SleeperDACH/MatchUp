@@ -24,9 +24,8 @@ enum FantasyMode {
   /// Redraft: Kader gilt nur für eine Saison, danach neuer Draft.
   liga;
 
-  String get label => 'Redraft';
-
-  String get tagline => 'Eine Saison · danach neuer Draft';
+  // Kein `label` mehr: „Redraft" stand auf jeder Karte und im Ligakopf, seit
+  // es nur noch diese Spielart gibt, ohne etwas zu unterscheiden (18.10.2026).
 
   /// **Unbekanntes fällt auf Redraft zurück.** Altzeilen mit `'dynasty'` darf
   /// es nach dem Aufräumen nicht mehr geben — käme doch eine, darf sie den
@@ -64,7 +63,10 @@ enum DraftPickTime {
       );
 }
 
-enum DraftStatus { setup, drafting, done }
+/// `reset` (0143): Die Kader sind zur Winterpause geleert, der Admin hat den
+/// Reset-Draft noch nicht gestartet. Ältere App-Versionen lesen es als
+/// `setup`.
+enum DraftStatus { setup, reset, drafting, done }
 
 DraftStatus _draftStatusFromId(String id) =>
     DraftStatus.values.firstWhere((s) => s.name == id,
@@ -494,6 +496,7 @@ class FantasyLeague {
     required this.createdBy,
     this.picksMade = 0,
     this.currentPickDeadline,
+    this.draftPausiertRest,
     this.maxTeams,
     this.pauseStart,
     this.pauseEnd,
@@ -508,9 +511,43 @@ class FantasyLeague {
     this.joinPolicy = 'open',
     this.tipEnabled = false,
     this.remisGrenze,
+    this.draftPhase = 'startup',
+    this.resetAktiv = false,
+    this.resetErfolgtAt,
   });
 
   final String id;
+
+  /// `startup` (erster Draft) oder `reset` (Draft zur Rückrunde, 0143).
+  final String draftPhase;
+
+  /// **Reset zur Winterpause** (0143): Am 24.12. der Saison werden alle
+  /// Kader geleert, die Tabelle bleibt, und es folgt ein zweiter Draft —
+  /// Snake, Runde 1 vom Tabellenletzten zum Ersten.
+  final bool resetAktiv;
+
+  /// Wann der Reset stattgefunden hat; `null` = noch nicht.
+  final DateTime? resetErfolgtAt;
+
+  /// Der feste Termin: 24.12. der Saison, 00:00 deutscher Zeit (dieselbe
+  /// Regel wie `fantasy_reset_termin`).
+  static DateTime resetTermin(int season) => DateTime(season, 12, 24);
+
+  /// Die Einstellung lässt sich ändern, solange der Reset nicht stattgefunden
+  /// hat und der Termin nicht verstrichen ist (Trigger in 0143).
+  bool resetAenderbar(DateTime jetzt) =>
+      resetErfolgtAt == null && jetzt.isBefore(resetTermin(season));
+
+  /// Kader geleert oder Reset-Draft läuft: Transfers sind gesperrt.
+  bool get imReset =>
+      draftStatus == DraftStatus.reset ||
+      (draftStatus == DraftStatus.drafting && draftPhase == 'reset');
+
+  /// **Die Saison läuft** — nach dem ersten Draft und auch während des
+  /// Resets. Tabelle, MatchUps und Rückblick gelten weiter; nur der Kader
+  /// ist zwischen Reset und Draft leer.
+  bool get saisonGestartet =>
+      draftStatus == DraftStatus.done || resetErfolgtAt != null;
   final String name;
   final FantasyMode mode;
 
@@ -520,7 +557,7 @@ class FantasyLeague {
   /// 16.10.2026). Neue Ligen starten mit [remisGrenzeStandard].
   final double? remisGrenze;
 
-  static const remisGrenzeStandard = 5.0;
+  static const remisGrenzeStandard = 10.0;
 
   /// Liga-Logo ("Beides kombiniert"): Bild-URL oder Emoji + Farbe.
   final String? logoUrl;
@@ -541,6 +578,11 @@ class FantasyLeague {
 
   /// Ablaufzeitpunkt des aktuellen Picks; null außerhalb des laufenden Drafts.
   final DateTime? currentPickDeadline;
+
+  /// **Pausiert der Admin den Draft** (0140), steht hier die Restzeit des
+  /// laufenden Picks; `null` heißt: Der Draft läuft (oder läuft nicht).
+  final Duration? draftPausiertRest;
+  bool get draftPausiert => draftPausiertRest != null;
 
   /// Maximale Teilnehmerzahl (null = unbegrenzt).
   final int? maxTeams;
@@ -599,8 +641,10 @@ class FantasyLeague {
         currentPickDeadline: json['current_pick_deadline'] == null
             ? null
             : DateTime.parse(json['current_pick_deadline'] as String),
-        // `draft_phase`, `u20_rounds` und `u20_draft_pending` stehen in der
-        // Datenbank weiter, werden hier aber bewusst **nicht** mehr gelesen.
+        draftPausiertRest: intervallAusText(json['draft_pausiert_rest']),
+        // `u20_rounds` und `u20_draft_pending` stehen in der Datenbank
+        // weiter, werden hier aber bewusst **nicht** mehr gelesen.
+        // `draft_phase` ist seit 0143 wieder in Gebrauch (`reset`).
         maxTeams: json['max_teams'] as int?,
         pauseStart: json['draft_pause_start'] as int?,
         pauseEnd: json['draft_pause_end'] as int?,
@@ -615,6 +659,11 @@ class FantasyLeague {
         joinPolicy: json['join_policy'] as String? ?? 'open',
         tipEnabled: json['tip_enabled'] as bool? ?? false,
         remisGrenze: (json['remis_grenze'] as num?)?.toDouble(),
+        draftPhase: json['draft_phase'] as String? ?? 'startup',
+        resetAktiv: json['reset_aktiv'] as bool? ?? false,
+        resetErfolgtAt: json['reset_erfolgt_at'] == null
+            ? null
+            : DateTime.parse(json['reset_erfolgt_at'] as String),
       );
 
   /// Picks pro Manager im Draft (= Kadergröße).
@@ -674,7 +723,12 @@ class DraftPick {
     required this.managerId,
     required this.playerId,
     required this.isAuto,
+    this.phase = 'startup',
   });
+
+  /// `startup` oder `reset` (0143) — die Pick-Nummern beginnen je Phase
+  /// wieder bei 1.
+  final String phase;
 
   final int pickNumber;
   final int round;
@@ -688,6 +742,7 @@ class DraftPick {
         managerId: json['manager_id'] as String,
         playerId: json['player_id'] as String,
         isAuto: json['is_auto'] as bool? ?? false,
+        phase: json['phase'] as String? ?? 'startup',
       );
 }
 
@@ -698,6 +753,7 @@ class FantasyManager {
     required this.username,
     this.teamName,
     this.draftPosition,
+    this.resetPosition,
     this.waiverPriority,
     this.vacant = false,
     this.pending = false,
@@ -725,7 +781,29 @@ class FantasyManager {
       (teamName?.trim().isNotEmpty ?? false) ? teamName!.trim() : username;
 
   /// Position in der Draft-Reihenfolge (1-basiert), null bis ausgelost.
+  /// **Trägt auch die Duell-Paarungen** (Round-Robin) — deshalb schreibt der
+  /// Reset-Draft nicht hierher, sondern in [resetPosition].
   final int? draftPosition;
+
+  /// Position im Reset-Draft (0143), Tabellenletzter = 1.
+  final int? resetPosition;
+
+  /// Dieselbe Person mit anderer Draft-Position — auch `null`, anders als
+  /// [copyWith].
+  FantasyManager mitDraftPosition(int? pos) => FantasyManager(
+        userId: userId,
+        username: username,
+        teamName: teamName,
+        draftPosition: pos,
+        resetPosition: resetPosition,
+        waiverPriority: waiverPriority,
+        vacant: vacant,
+        pending: pending,
+        autoPick: autoPick,
+        avatarUrl: avatarUrl,
+        avatarEmoji: avatarEmoji,
+        avatarColor: avatarColor,
+      );
 
   /// Rollende Waiver-Priorität (1 = zuerst dran), null bis zur ersten
   /// Waiver-Abarbeitung.
@@ -749,6 +827,7 @@ class FantasyManager {
         username: username,
         teamName: teamName,
         draftPosition: draftPosition ?? this.draftPosition,
+        resetPosition: resetPosition,
         waiverPriority: waiverPriority ?? this.waiverPriority,
         vacant: vacant,
         pending: pending,
@@ -765,6 +844,7 @@ class FantasyManager {
       username: p?['username'] as String? ?? '?',
       teamName: json['team_name'] as String?,
       draftPosition: json['draft_position'] as int?,
+      resetPosition: json['reset_position'] as int?,
       waiverPriority: json['waiver_priority'] as int?,
       vacant: json['vacant'] as bool? ?? false,
       pending: json['pending'] as bool? ?? false,
@@ -834,4 +914,25 @@ class WaiverClaim {
         reason: json['reason'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
       );
+}
+
+/// Ein Postgres-`interval` aus PostgREST („00:00:50", „1 day 02:00:00")
+/// als [Duration], oder `null`.
+Duration? intervallAusText(Object? wert) {
+  if (wert is! String || wert.isEmpty) return null;
+  var tage = 0;
+  var rest = wert.trim();
+  final m = RegExp(r'^(\d+) days? ?').firstMatch(rest);
+  if (m != null) {
+    tage = int.parse(m.group(1)!);
+    rest = rest.substring(m.end);
+  }
+  final teile = rest.split(':');
+  if (teile.length != 3) return Duration(days: tage);
+  return Duration(
+    days: tage,
+    hours: int.tryParse(teile[0]) ?? 0,
+    minutes: int.tryParse(teile[1]) ?? 0,
+    seconds: double.tryParse(teile[2])?.floor() ?? 0,
+  );
 }

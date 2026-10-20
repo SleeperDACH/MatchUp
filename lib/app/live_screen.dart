@@ -21,6 +21,7 @@ import 'typografie.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/pulsing_dot.dart';
 import '../core/data/neu_laden.dart';
+import '../features/push/ui/live_abos_screen.dart';
 
 /// Signaturfarbe je Wettbewerb — im Quadrat vor dem Liganamen, in der
 /// Wettbewerbszeile unten und im Auswahl-Sheet.
@@ -482,9 +483,9 @@ class _Kopf extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 4, 4, 0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Text(
@@ -511,6 +512,17 @@ class _Kopf extends StatelessWidget {
               ),
             ),
           ],
+          // **Meldungen für Vereine und Ligen** (20.10.2026, auf Ansage):
+          // Hier sieht man die Spiele, also stellt man hier ein, für welche
+          // eine Push-Meldung kommt — auch ohne Favorit.
+          const SizedBox(width: 4),
+          IconButton(
+            tooltip: 'Live-Benachrichtigungen für Vereine und Ligen',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.notifications_none_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const LiveAbosScreen())),
+          ),
         ],
       ),
     );

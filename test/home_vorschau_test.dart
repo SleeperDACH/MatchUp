@@ -10,6 +10,9 @@ import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
 import 'package:matchup/core/models/team_fixture.dart';
 import 'package:matchup/features/auth/providers.dart';
+import 'package:matchup/features/favorites/favorites.dart';
+import 'package:matchup/features/friends/providers.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import 'package:matchup/features/fantasy/logic/fantasy_scoring_rules.dart';
 import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/providers.dart';
@@ -124,6 +127,23 @@ void main() {
     );
   });
 
+  testWidgets('Ohne Favoriten steht oben die Vereinswahl', (tester) async {
+    await _bauen(tester, ohneFavoriten: true);
+    expect(find.text('Wähle deinen Verein'), findsOneWidget);
+    expect(find.bySemanticsLabel('Hamburger SV als Favorit wählen'),
+        findsOneWidget);
+    if (!autoUpdateGoldenFiles) return;
+    await expectLater(
+      find.byType(HomeScreen),
+      matchesGoldenFile('goldens/home_ohne_favoriten.png'),
+    );
+  });
+
+  testWidgets('Mit Favoriten keine Vereinswahl', (tester) async {
+    await _bauen(tester);
+    expect(find.text('Wähle deinen Verein'), findsNothing);
+  });
+
   testWidgets('Kartennamen werden nicht auf eine halbe Zeile gestaucht', (
     tester,
   ) async {
@@ -159,7 +179,7 @@ void main() {
 }
 
 /// Baut den Homescreen mit gesetzten Zuständen auf.
-Future<void> _bauen(WidgetTester tester) async {
+Future<void> _bauen(WidgetTester tester, {bool ohneFavoriten = false}) async {
   final vorher = AppConfig.supabaseInitialized;
   AppConfig.supabaseInitialized = true;
   addTearDown(() => AppConfig.supabaseInitialized = vorher);
@@ -224,12 +244,44 @@ Future<void> _bauen(WidgetTester tester) async {
         // Angemeldet, aber ohne echten Supabase-User: den Screen
         // interessiert nur, ob überhaupt einer da ist — und die Karten
         // vergleichen die ID mit `createdBy`.
-        currentUserProvider.overrideWith((ref) => null),
+        currentUserProvider.overrideWith(
+          (ref) => ohneFavoriten
+              ? User(
+                  id: 'ich',
+                  appMetadata: const {},
+                  userMetadata: const {},
+                  aud: 'authenticated',
+                  createdAt: DateTime(2026).toIso8601String(),
+                )
+              : null,
+        ),
+        // Mit Nutzer erscheint oben links das Profilbild; Profil und
+        // Anfragen gingen sonst an `Supabase.instance`.
+        currentProfileProvider.overrideWith((ref) async => null),
+        incomingRequestsProvider.overrideWith((ref) => const []),
+        // Geladen und leer — der Fall, für den die Favoriten-Leiste da ist.
+        if (ohneFavoriten)
+          favoritesProvider
+              .overrideWith((ref) => FavoritesNotifier(null)..geladen = true),
+        if (ohneFavoriten)
+          leagueTeamsProvider.overrideWith((ref, id) => AsyncValue.data([
+                for (final (i, n) in const [
+                  'FC Bayern München',
+                  'Borussia Dortmund',
+                  'Hamburger SV',
+                  'FC Schalke 04',
+                  'Borussia Mönchengladbach',
+                  'SC Freiburg',
+                  'VfB Stuttgart',
+                ].indexed)
+                  TeamRef(id: 't$i', name: n, shortName: n.substring(0, 3)),
+              ])),
         currentUsernameProvider.overrideWith((ref) async => 'SFV03'),
         unreadDmCountProvider.overrideWith((ref) => 18),
         myFantasyLeaguesProvider.overrideWith((ref) => Stream.value(ligen)),
         myRoundsProvider.overrideWith((ref) async => runden),
-        favoritenSpieleProvider.overrideWith((ref) async => spiele),
+        favoritenSpieleProvider
+            .overrideWith((ref) async => ohneFavoriten ? const [] : spiele),
         fantasyManagersProvider.overrideWith(
           (ref, id) => Stream.value(const []),
         ),

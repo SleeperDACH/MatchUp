@@ -281,6 +281,9 @@ void main() {
           reason: 'ohne Anpfiff steht auf keiner Karte eine Punktzahl');
     }
 
+    // Das Bild trägt Tage relativ zu heute — verglichen wird nur beim
+    // Aufnehmen, die Messungen darüber laufen immer.
+    if (!autoUpdateGoldenFiles) return;
     await expectLater(find.byType(LineupEditor),
         matchesGoldenFile('goldens/aufstellung_feld.png'));
   });
@@ -297,6 +300,9 @@ void main() {
     await zeichne(tester, gelaufen: const {}, fuenferreihe: true);
 
     expect(tester.takeException(), isNull);
+    // Das Bild trägt Tage relativ zu heute — verglichen wird nur beim
+    // Aufnehmen, die Messungen darüber laufen immer.
+    if (!autoUpdateGoldenFiles) return;
     await expectLater(find.byType(LineupEditor),
         matchesGoldenFile('goldens/aufstellung_feld_fuenferreihe.png'));
   });
@@ -327,6 +333,9 @@ void main() {
     };
     expect(hoehen, hasLength(1), reason: 'verschiedene Höhen: $hoehen');
 
+    // Das Bild trägt Tage relativ zu heute — verglichen wird nur beim
+    // Aufnehmen, die Messungen darüber laufen immer.
+    if (!autoUpdateGoldenFiles) return;
     await expectLater(find.byType(LineupEditor),
         matchesGoldenFile('goldens/aufstellung_feld_teilweise.png'));
   });
@@ -348,6 +357,9 @@ void main() {
     // muss man sehen, ohne es auszuprobieren.
     expect(find.text('Aufstellung steht — alle Spiele laufen'), findsOneWidget);
 
+    // Das Bild trägt Tage relativ zu heute — verglichen wird nur beim
+    // Aufnehmen, die Messungen darüber laufen immer.
+    if (!autoUpdateGoldenFiles) return;
     await expectLater(find.byType(LineupEditor),
         matchesGoldenFile('goldens/aufstellung_feld_gesperrt.png'));
   });

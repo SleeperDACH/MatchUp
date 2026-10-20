@@ -76,11 +76,6 @@ void main() {
           'während Tabelle und Navileiste „das bist du" längst hell sagen; '
           'wer den Baum das nächste Mal anfasst, zieht das mit.'
     ),
-    'features/fantasy/ui/player_action_buttons.dart': (
-      1,
-      'Die Blöcke „Kommt rein" und „wer macht Platz?" im Bestätigungsblatt: '
-          'Grün und Rot sagen die Richtung, das ist der Inhalt.'
-    ),
     'features/fantasy/ui/trade_screen.dart': (
       2,
       'Der Richtungsblock („Kommt rein" / „wer macht Platz?"), und die Hülle '

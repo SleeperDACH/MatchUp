@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/rueckfrage.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,26 +22,20 @@ class FantasyAdminScreen extends ConsumerWidget {
   }
 
   Future<void> _kick(
-      BuildContext context, WidgetRef ref, FantasyManager m) async {
+    BuildContext context,
+    WidgetRef ref,
+    FantasyManager m,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('${m.display} kicken?'),
-        content: const Text(
-            'Der Teilnehmer verlässt die Liga. Sein Team bleibt als verwaister '
-            'Slot bestehen und kann neu zugewiesen werden.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Abbrechen')),
-          FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(ctx).colorScheme.error),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Kicken')),
-        ],
-      ),
+    final ok = await rueckfrage(
+      context,
+      titel: '${m.display} kicken?',
+      text:
+          'Der Teilnehmer verlässt die Liga. Sein Team bleibt als verwaister '
+          'Slot bestehen und kann neu zugewiesen werden.',
+      ja: 'Kicken',
+      nein: 'Abbrechen',
+      gefahr: true,
     );
     if (ok != true) return;
     try {
@@ -55,25 +50,20 @@ class FantasyAdminScreen extends ConsumerWidget {
   }
 
   Future<void> _transferOwnership(
-      BuildContext context, WidgetRef ref, FantasyManager m) async {
+    BuildContext context,
+    WidgetRef ref,
+    FantasyManager m,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Adminrechte übergeben?'),
-        content: Text(
-            '${m.display} wird neuer Admin dieser Liga. Du bleibst Mitglied, '
-            'verlierst aber die Admin-Rechte.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Abbrechen')),
-          FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Übergeben')),
-        ],
-      ),
+    final ok = await rueckfrage(
+      context,
+      titel: 'Adminrechte übergeben?',
+      text:
+          '${m.display} wird neuer Admin dieser Liga. Du bleibst Mitglied, '
+          'verlierst aber die Admin-Rechte.',
+      ja: 'Übergeben',
+      nein: 'Abbrechen',
     );
     if (ok != true) return;
     try {
@@ -83,18 +73,24 @@ class FantasyAdminScreen extends ConsumerWidget {
       ref.invalidate(myFantasyLeaguesProvider);
       ref.invalidate(fantasyManagersProvider(league.id));
       navigator.pop(); // Admin-Screen verlassen (keine Rechte mehr)
-      messenger
-          .showSnackBar(SnackBar(content: Text('${m.display} ist jetzt Admin.')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('${m.display} ist jetzt Admin.')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
   }
 
   Future<void> _assign(
-      BuildContext context, WidgetRef ref, FantasyManager vacant) async {
+    BuildContext context,
+    WidgetRef ref,
+    FantasyManager vacant,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final user = await Navigator.of(context).push<({String id, String username})>(
-        MaterialPageRoute(builder: (_) => _UserPickerScreen(league: league)));
+    final user = await Navigator.of(context)
+        .push<({String id, String username})>(
+          MaterialPageRoute(builder: (_) => _UserPickerScreen(league: league)),
+        );
     if (user == null) return;
     try {
       await ref
@@ -102,7 +98,8 @@ class FantasyAdminScreen extends ConsumerWidget {
           .assignTeam(league.id, vacant.userId, user.id);
       await _refresh(ref);
       messenger.showSnackBar(
-          SnackBar(content: Text('Team an ${user.username} zugewiesen.')));
+        SnackBar(content: Text('Team an ${user.username} zugewiesen.')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
@@ -111,9 +108,13 @@ class FantasyAdminScreen extends ConsumerWidget {
   /// „Zuweisen" auf einem wartenden Teilnehmer → Screen mit allen freien
   /// (verwaisten) Teams; dort wählt der Admin, welches Team der Teilnehmer
   /// bekommt. Ohne freies Team zeigt der Screen einen entsprechenden Hinweis.
-  Future<void> _assignPending(BuildContext context, WidgetRef ref,
-      FantasyManager pending, List<FantasyManager> vacants,
-      Map<String, int> playerCounts) async {
+  Future<void> _assignPending(
+    BuildContext context,
+    WidgetRef ref,
+    FantasyManager pending,
+    List<FantasyManager> vacants,
+    Map<String, int> playerCounts,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final target = await Navigator.of(context).push<FantasyManager>(
       MaterialPageRoute(
@@ -130,8 +131,11 @@ class FantasyAdminScreen extends ConsumerWidget {
           .read(fantasyLeagueRepositoryProvider)
           .assignTeam(league.id, target.userId, pending.userId);
       await _refresh(ref);
-      messenger.showSnackBar(SnackBar(
-          content: Text('${pending.display} wurde einem Team zugewiesen.')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${pending.display} wurde einem Team zugewiesen.'),
+        ),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
@@ -140,13 +144,17 @@ class FantasyAdminScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
+    final managers =
+        ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
         const <FantasyManager>[];
-    final vacants = ref.watch(vacantTeamsProvider(league.id)).valueOrNull ??
+    final vacants =
+        ref.watch(vacantTeamsProvider(league.id)).valueOrNull ??
         const <FantasyManager>[];
-    final pendings = ref.watch(pendingMembersProvider(league.id)).valueOrNull ??
+    final pendings =
+        ref.watch(pendingMembersProvider(league.id)).valueOrNull ??
         const <FantasyManager>[];
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
 
     int rosterCount(String uid) =>
@@ -157,9 +165,13 @@ class FantasyAdminScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Mitglieder',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold, color: scheme.onSurfaceVariant)),
+          Text(
+            'Mitglieder',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
           for (final m in managers)
             Card(
@@ -172,15 +184,20 @@ class FantasyAdminScreen extends ConsumerWidget {
                   size: 40,
                 ),
                 title: Text(m.display),
-                subtitle: Text(m.userId == league.createdBy
-                    ? 'Admin · ${rosterCount(m.userId)} Spieler'
-                    : '${rosterCount(m.userId)} Spieler'),
+                subtitle: Text(
+                  m.userId == league.createdBy
+                      ? 'Admin · ${rosterCount(m.userId)} Spieler'
+                      : '${rosterCount(m.userId)} Spieler',
+                ),
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) {
                     if (v == 'edit') {
-                      Navigator.of(context).push(MaterialPageRoute(
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
                           builder: (_) =>
-                              AdminRosterEditor(league: league, target: m)));
+                              AdminRosterEditor(league: league, target: m),
+                        ),
+                      );
                     } else if (v == 'transfer') {
                       _transferOwnership(context, ref, m);
                     } else if (v == 'kick') {
@@ -188,30 +205,43 @@ class FantasyAdminScreen extends ConsumerWidget {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Kader bearbeiten')),
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Kader bearbeiten'),
+                    ),
                     if (m.userId != league.createdBy)
                       const PopupMenuItem(
-                          value: 'transfer',
-                          child: Text('Adminrechte übergeben')),
+                        value: 'transfer',
+                        child: Text('Adminrechte übergeben'),
+                      ),
                     if (m.userId != league.createdBy)
                       PopupMenuItem(
-                          value: 'kick',
-                          child: Text('Kicken',
-                              style: TextStyle(color: scheme.error))),
+                        value: 'kick',
+                        child: Text(
+                          'Kicken',
+                          style: TextStyle(color: scheme.error),
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
           const SizedBox(height: 20),
-          Text('Verwaiste Teams',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold, color: scheme.onSurfaceVariant)),
+          Text(
+            'Verwaiste Teams',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 8),
           if (vacants.isEmpty)
             Padding(
               padding: const EdgeInsets.all(8),
-              child: Text('Keine verwaisten Teams.',
-                  style: TextStyle(color: scheme.onSurfaceVariant)),
+              child: Text(
+                'Keine verwaisten Teams.',
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
             )
           else
             for (final v in vacants)
@@ -228,17 +258,21 @@ class FantasyAdminScreen extends ConsumerWidget {
               ),
           if (pendings.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Text('Beitritts-Anfragen',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold, color: scheme.onSurfaceVariant)),
+            Text(
+              'Beitritts-Anfragen',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 4),
             Text(
-                'Nach dem Draft beigetreten — einem freien Team zuweisen. '
-                'Ohne freies Team ist keine Zuweisung möglich (keine neuen Teams).',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant)),
+              'Nach dem Draft beigetreten — einem freien Team zuweisen. '
+              'Ohne freies Team ist keine Zuweisung möglich (keine neuen Teams).',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
             const SizedBox(height: 8),
             for (final p in pendings)
               Card(
@@ -253,8 +287,9 @@ class FantasyAdminScreen extends ConsumerWidget {
                   title: Text(p.display),
                   subtitle: const Text('wartet auf ein Team'),
                   trailing: FilledButton(
-                    onPressed: () => _assignPending(context, ref, p, vacants,
-                        {for (final v in vacants) v.userId: rosterCount(v.userId)}),
+                    onPressed: () => _assignPending(context, ref, p, vacants, {
+                      for (final v in vacants) v.userId: rosterCount(v.userId),
+                    }),
                     child: const Text('Zuweisen'),
                   ),
                 ),
@@ -302,17 +337,22 @@ class _FreeTeamPickerScreen extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
-                  child: Text('Welches Team bekommt $participantName?',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    'Welches Team bekommt $participantName?',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
                 for (final v in vacants)
                   Card(
                     child: ListTile(
-                      leading:
-                          Icon(Icons.groups_outlined, color: scheme.primary),
+                      leading: Icon(
+                        Icons.groups_outlined,
+                        color: scheme.primary,
+                      ),
                       title: Text('Team von ${v.display}'),
-                      subtitle:
-                          Text('verwaist · ${playerCounts[v.userId] ?? 0} Spieler'),
+                      subtitle: Text(
+                        'verwaist · ${playerCounts[v.userId] ?? 0} Spieler',
+                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).pop(v),
                     ),
@@ -326,7 +366,11 @@ class _FreeTeamPickerScreen extends StatelessWidget {
 /// Kader eines Teams als Admin bearbeiten: Spieler droppen (→ 24h-Waiver) oder
 /// freie Spieler zuweisen.
 class AdminRosterEditor extends ConsumerWidget {
-  const AdminRosterEditor({super.key, required this.league, required this.target});
+  const AdminRosterEditor({
+    super.key,
+    required this.league,
+    required this.target,
+  });
 
   final FantasyLeague league;
   final FantasyManager target;
@@ -334,7 +378,8 @@ class AdminRosterEditor extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final poolAsync = ref.watch(playerPoolProvider);
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
@@ -351,31 +396,37 @@ class AdminRosterEditor extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Fehler: $e')),
         data: (pool) {
           final byId = {for (final p in pool) p.id: p};
-          final players = [
-            for (final r in roster)
-              if (r.managerId == target.userId && byId[r.playerId] != null)
-                byId[r.playerId]!
-          ]..sort((a, b) => a.position.index != b.position.index
-              ? a.position.index.compareTo(b.position.index)
-              : a.name.compareTo(b.name));
+          final players =
+              [
+                for (final r in roster)
+                  if (r.managerId == target.userId && byId[r.playerId] != null)
+                    byId[r.playerId]!,
+              ]..sort(
+                (a, b) => a.position.index != b.position.index
+                    ? a.position.index.compareTo(b.position.index)
+                    : a.name.compareTo(b.name),
+              );
           if (players.isEmpty) {
             return const Center(
-                child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('Dieses Team hat noch keine Spieler.')));
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Dieses Team hat noch keine Spieler.'),
+              ),
+            );
           }
           return ListView(
             padding: const EdgeInsets.only(bottom: 88),
             children: [
               for (final p in players)
                 ListTile(
-                  leading:
-                      ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
+                  leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
                   title: Text(p.name),
                   subtitle: Text('${p.position.short} · ${p.club}'),
                   trailing: IconButton(
-                    icon: Icon(Icons.remove_circle_outline,
-                        color: Theme.of(context).colorScheme.error),
+                    icon: Icon(
+                      Icons.remove_circle_outline,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                     tooltip: 'Droppen',
                     onPressed: () => _drop(context, ref, p),
                   ),
@@ -388,14 +439,18 @@ class AdminRosterEditor extends ConsumerWidget {
   }
 
   Future<void> _drop(
-      BuildContext context, WidgetRef ref, FantasyPlayer p) async {
+    BuildContext context,
+    WidgetRef ref,
+    FantasyPlayer p,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref
           .read(fantasyLeagueRepositoryProvider)
           .adminDrop(league.id, target.userId, p.id);
-      messenger.showSnackBar(SnackBar(
-          content: Text('${p.name} gedroppt (24h auf dem Waiver).')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('${p.name} gedroppt (24h auf dem Waiver).')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
@@ -404,14 +459,16 @@ class AdminRosterEditor extends ConsumerWidget {
   Future<void> _add(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final player = await Navigator.of(context).push<FantasyPlayer>(
-        MaterialPageRoute(builder: (_) => _FreePlayerPicker(league: league)));
+      MaterialPageRoute(builder: (_) => _FreePlayerPicker(league: league)),
+    );
     if (player == null) return;
     try {
       await ref
           .read(fantasyLeagueRepositoryProvider)
           .adminAdd(league.id, target.userId, player.id);
       messenger.showSnackBar(
-          SnackBar(content: Text('${player.name} hinzugefügt.')));
+        SnackBar(content: Text('${player.name} hinzugefügt.')),
+      );
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
@@ -433,7 +490,8 @@ class _FreePlayerPickerState extends ConsumerState<_FreePlayerPicker> {
   @override
   Widget build(BuildContext context) {
     final poolAsync = ref.watch(playerPoolProvider);
-    final roster = ref.watch(leagueRosterProvider(widget.league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(widget.league.id)).valueOrNull ??
         const <RosterEntry>[];
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
@@ -451,7 +509,7 @@ class _FreePlayerPickerState extends ConsumerState<_FreePlayerPicker> {
                   (_query.isEmpty ||
                       p.name.toLowerCase().contains(_query.toLowerCase()) ||
                       p.club.toLowerCase().contains(_query.toLowerCase())))
-                p
+                p,
           ]..sort((a, b) => a.name.compareTo(b.name));
           return Column(
             children: [
@@ -473,8 +531,10 @@ class _FreePlayerPickerState extends ConsumerState<_FreePlayerPicker> {
                   itemBuilder: (context, i) {
                     final p = free[i];
                     return ListTile(
-                      leading:
-                          ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
+                      leading: ClubBadge(
+                        club: p.club,
+                        iconUrl: clubIcons[p.club],
+                      ),
                       title: Text(p.name),
                       subtitle: Text('${p.position.short} · ${p.club}'),
                       onTap: () => Navigator.of(context).pop(p),
@@ -554,20 +614,20 @@ class _UserPickerScreenState extends ConsumerState<_UserPickerScreen> {
             child: _query.trim().isEmpty
                 ? const Center(child: Text('Nach einem Benutzernamen suchen.'))
                 : _results.isEmpty && !_loading
-                    ? const Center(child: Text('Keine Treffer.'))
-                    : ListView.builder(
-                        itemCount: _results.length,
-                        itemBuilder: (context, i) {
-                          final u = _results[i];
-                          return ListTile(
-                            leading: CircleAvatar(
-                                child: Text(
-                                    u.username.substring(0, 1).toUpperCase())),
-                            title: Text(u.username),
-                            onTap: () => Navigator.of(context).pop(u),
-                          );
-                        },
-                      ),
+                ? const Center(child: Text('Keine Treffer.'))
+                : ListView.builder(
+                    itemCount: _results.length,
+                    itemBuilder: (context, i) {
+                      final u = _results[i];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          child: Text(u.username.substring(0, 1).toUpperCase()),
+                        ),
+                        title: Text(u.username),
+                        onTap: () => Navigator.of(context).pop(u),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

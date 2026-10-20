@@ -22,7 +22,12 @@ class NaechstesSpiel {
     this.status = FixtureStatus.scheduled,
     this.eigeneTore,
     this.gegnerTore,
+    this.gegnerTeam,
   });
+
+  /// Der Gegner als Team — für sein **Wappen** (`SpielMarke`). `null`, wo
+  /// das Spiel nicht aus dem Spielplan kommt (Tests, alte Aufrufer).
+  final TeamRef? gegnerTeam;
 
   /// Vereinsname des Gegners (nicht das Kürzel — das macht die Anzeige).
   final String gegner;
@@ -53,6 +58,7 @@ NaechstesSpiel? naechstesSpiel(
     if (vereinKanonisch(f.home.name) == vereinKanonisch(verein)) {
       return NaechstesSpiel(
           gegner: f.away.name,
+          gegnerTeam: f.away,
           anpfiff: f.kickoff.toLocal(),
           heim: true,
           status: f.status,
@@ -62,6 +68,7 @@ NaechstesSpiel? naechstesSpiel(
     if (vereinKanonisch(f.away.name) == vereinKanonisch(verein)) {
       return NaechstesSpiel(
           gegner: f.home.name,
+          gegnerTeam: f.home,
           anpfiff: f.kickoff.toLocal(),
           heim: false,
           status: f.status,

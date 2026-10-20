@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/models/models.dart';
-import '../theme.dart';
+import '../../core/ui/einstellungs_zeile.dart';
 import 'competition_emblem.dart';
 import 'league_logo.dart';
-import 'pill_selector.dart';
 
 /// Mehrfachauswahl von Wettbewerben — mit **Wappen**, nicht nur Namen.
 ///
@@ -31,29 +30,28 @@ class CompetitionPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    // **Zeilen statt Pillen** (18.10.2026): Auf „Tippspiel erstellen" ist
+    // jede Einstellung eine Zeile — die Wettbewerbe als Pillenhaufen waren
+    // dort die eine Stelle, die anders aussah. Das Wappen bleibt vorn, weil
+    // es die Erkennung trägt (siehe oben).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final league in leagues)
-          PillChip(
-            label: league.name,
-            selected: selected.contains(league.id),
-            outlined: true,
-            onTap: () => onToggle(league.id),
-            leading: _Wappen(leagueId: league.id),
-            trailing: selected.contains(league.id)
-                ? const Icon(Icons.check,
-                    size: 16, color: MatchUpColors.green)
-                : null,
+        for (final (i, league) in leagues.indexed) ...[
+          if (i > 0) const EinstellungsTrenner(),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            secondary: _Wappen(leagueId: league.id),
+            value: selected.contains(league.id),
+            onChanged: (_) => onToggle(league.id),
+            title: Text(league.name, style: einstellungsStil),
           ),
+        ],
       ],
     );
   }
 }
 
-/// Wettbewerbslogo auf hellem Plättchen — die offiziellen Logos sind für
-/// hellen Untergrund gezeichnet und würden auf dem dunklen Grund absaufen.
 class _Wappen extends StatelessWidget {
   const _Wappen({required this.leagueId});
 

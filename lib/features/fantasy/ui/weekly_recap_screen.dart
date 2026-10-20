@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../app/theme.dart';
+import '../../../app/typografie.dart';
+import '../../../app/widgets/kapitelmarke.dart';
+import '../../../app/widgets/punktzahl.dart';
 import '../../../app/widgets/skelett.dart';
 
 import '../../../app/widgets/karte.dart';
@@ -19,12 +23,6 @@ import '../models/roster_move.dart';
 
 // Award-Palette (abgestimmt auf die MatchUp-Übersicht).
 const _cGold = Color(0xFFFFC83D);
-const _cStar = Color(0xFFF2A63B);
-const _cTeal = Color(0xFF4FC3A1);
-const _cBlue = Color(0xFF5B9DF9);
-const _cRed = Color(0xFFF23030);
-const _cViolet = Color(0xFF9B7BE0);
-const _cGrey = Color(0xFF8A8F9C);
 
 /// Öffnet das Wochen-Recap einer Liga (optional für einen bestimmten Spieltag).
 void showWeeklyRecap(
@@ -74,8 +72,9 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     final league = widget.league;
     // Beim Öffnen der zuletzt abgepfiffene Spieltag — der, über den es etwas
     // zu berichten gibt. Zurückblättern geht danach frei.
-    final current =
-        ref.watch(fantasyRecapRundeProvider).valueOrNull ??
+    final veroeffentlicht = ref.watch(veroeffentlichteRueckblickeProvider);
+    final current = ref.watch(fantasyRecapRundeProvider).valueOrNull ??
+        (veroeffentlicht.isEmpty ? null : veroeffentlicht.last) ??
         ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final round = _round ?? widget.initialRound ?? current ?? 1;
 
@@ -100,7 +99,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     final myId = ref.watch(currentUserProvider)?.id;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Wochen-Recap')),
+      appBar: AppBar(title: const Text('Wochenrückblick')),
       // Nur wenn nichts dasteht — ein Nachladen darf den Rückblick nicht
       // gegen einen leeren Kreis tauschen.
       body: (managersAsync.valueOrNull == null || poolAsync.valueOrNull == null)
@@ -117,13 +116,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
                   for (final f in allFx)
                     if (f.round == round) f,
                 ];
-                final live =
-                    roundFx.isNotEmpty &&
-                    roundFx.any((f) => f.status != FixtureStatus.finished) &&
-                    roundFx.any((f) => f.status != FixtureStatus.scheduled);
-                final started =
-                    roundFx.isNotEmpty &&
-                    roundFx.any((f) => f.status != FixtureStatus.scheduled);
+                final freigegeben = veroeffentlicht.contains(round);
 
                 // **Der Kader von damals, nicht der von heute.** Nach dem
                 // Abpfiff schneidet der Rückblick ab: Wer später geholt wurde,
@@ -177,17 +170,21 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
                     ),
                     if (statsAsync.isLoading)
                       const LinearProgressIndicator(minHeight: 2),
-                    _StatusLine(live: live, started: started),
                     if (ids.length < 2)
                       const _EmptyHint(
-                        'Ein Recap braucht mindestens zwei Manager.',
+                        'Ein Rückblick braucht mindestens zwei Manager.',
+                      )
+                    // **Erst mit dem Wechsel auf den nächsten Spieltag**
+                    // (19.10.2026) — vorher steht hier nur, wann er kommt.
+                    else if (!freigegeben)
+                      _EmptyHint(
+                        'Der Rückblick auf Spieltag $round erscheint mit dem '
+                        'Wechsel auf Spieltag ${round + 1}.',
                       )
                     else if (!recap.hasData)
-                      _EmptyHint(
-                        started
-                            ? 'Für diesen Spieltag liegen noch keine gewerteten '
-                                  'Punkte vor.'
-                            : 'Spieltag $round hat noch nicht begonnen.',
+                      const _EmptyHint(
+                        'Für diesen Spieltag liegen keine gewerteten Punkte '
+                        'vor.',
                       )
                     else
                       ..._awards(
@@ -208,6 +205,12 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     );
   }
 
+  /// **Team der Woche als Kopf, der Rest als eine Zeilengruppe**
+  /// (19.10.2026, auf Ansage: „an unsere neuen, cleaneren Designs anpassen").
+  /// Vorher sechs Karten untereinander, jede mit eigener Farbe für Symbol,
+  /// Marke und Zahl. Jetzt trägt nur der Kopf Gold; die Zeilen stehen grau
+  /// mit Umriss-Symbol, die Zahl weiß rechts. Wer selbst vorkommt, steht grün
+  /// (Grün heißt „ich").
   List<Widget> _awards(
     BuildContext context, {
     required WeeklyRecap recap,
@@ -219,178 +222,147 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     required void Function(String, bool) onPlayer,
   }) {
     String name(String id) => nameOf[id] ?? '?';
-    final cards = <Widget>[];
+    final zeilen = <Widget>[];
 
-    void managerAward({
-      required Color color,
+    void zeile({
       required IconData icon,
-      required String title,
-      required String managerId,
-      required double points,
-      String? suffix,
+      required String titel,
+      required String wer,
+      String? unter,
+      required String wert,
+      bool pkt = true,
+      bool ich = false,
+      Widget? wappen,
+      required VoidCallback onTap,
     }) {
-      cards.add(
-        _AwardCard(
-          color: color,
-          icon: icon,
-          title: title,
-          primary: name(managerId),
-          secondary: suffix,
-          value: formatPoints(points),
-          valueLabel: 'Pkt',
-          highlight: managerId == myId,
-          onTap: () => onManager(managerId),
-        ),
+      zeilen.add(_AwardZeile(
+        icon: icon,
+        titel: titel,
+        wer: wer,
+        unter: unter,
+        wert: wert,
+        pkt: pkt,
+        ich: ich,
+        wappen: wappen,
+        onTap: onTap,
+      ));
+    }
+
+    void spieler(IconData icon, String titel, PlayerAward a) {
+      final p = playerById[a.playerId];
+      zeile(
+        icon: icon,
+        titel: titel,
+        wer: p?.name ?? '?',
+        unter: 'Kader: ${name(a.managerId)}',
+        wert: formatPoints(a.points),
+        ich: a.managerId == myId,
+        wappen: p == null
+            ? null
+            : ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 26),
+        onTap: () => onPlayer(a.playerId, a.managerId == myId),
       );
     }
 
-    void playerAward({
-      required Color color,
-      required IconData icon,
-      required String title,
-      required PlayerAward award,
-    }) {
-      final p = playerById[award.playerId];
-      cards.add(
-        _AwardCard(
-          color: color,
-          icon: icon,
-          title: title,
-          primary: p?.name ?? '?',
-          secondary: 'Kader: ${name(award.managerId)}',
-          value: formatPoints(award.points),
-          valueLabel: 'Pkt',
-          highlight: award.managerId == myId,
-          badge: p == null
-              ? null
-              : ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 34),
-          onTap: () => onPlayer(award.playerId, award.managerId == myId),
-        ),
-      );
-    }
-
-    if (recap.topScore != null) {
-      managerAward(
-        color: _cGold,
-        icon: Icons.emoji_events_outlined,
-        title: 'Team der Woche',
-        managerId: recap.topScore!.managerId,
-        points: recap.topScore!.points,
-        suffix: 'Höchstes Ergebnis des Spieltags',
-      );
-    }
     if (recap.mvp != null) {
-      playerAward(
-        color: _cStar,
-        icon: Icons.star,
-        title: 'MVP der Woche',
-        award: recap.mvp!,
-      );
+      spieler(Icons.star_outline, 'MVP der Woche', recap.mvp!);
     }
     if (recap.benchHero != null) {
-      playerAward(
-        color: _cTeal,
-        icon: Icons.event_seat_outlined,
-        title: 'Bank-Held',
-        award: recap.benchHero!,
-      );
+      spieler(Icons.event_seat_outlined, 'Bank-Held', recap.benchHero!);
     }
     if (recap.closestWin != null) {
       final m = recap.closestWin!;
-      cards.add(
-        _AwardCard(
-          color: _cBlue,
-          icon: Icons.bolt_outlined,
-          title: 'Nervenkrimi',
-          primary: name(m.winnerId),
-          secondary: 'schlägt ${name(m.loserId)} · +${formatPoints(m.margin)}',
-          value:
-              '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
-          highlight: m.winnerId == myId || m.loserId == myId,
-          onTap: () => onManager(m.winnerId),
-        ),
+      zeile(
+        icon: Icons.bolt_outlined,
+        titel: 'Nervenkrimi',
+        wer: name(m.winnerId),
+        unter: 'schlägt ${name(m.loserId)} · +${formatPoints(m.margin)}',
+        wert: '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
+        pkt: false,
+        ich: m.winnerId == myId || m.loserId == myId,
+        onTap: () => onManager(m.winnerId),
       );
     }
     if (recap.blowout != null &&
         recap.blowout!.margin != recap.closestWin?.margin) {
       final m = recap.blowout!;
-      cards.add(
-        _AwardCard(
-          color: _cRed,
-          icon: Icons.local_fire_department_outlined,
-          title: 'Klatsche',
-          primary: name(m.winnerId),
-          secondary:
-              'deklassiert ${name(m.loserId)} · +${formatPoints(m.margin)}',
-          value:
-              '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
-          highlight: m.winnerId == myId || m.loserId == myId,
-          onTap: () => onManager(m.winnerId),
-        ),
+      zeile(
+        icon: Icons.local_fire_department_outlined,
+        titel: 'Klatsche',
+        wer: name(m.winnerId),
+        unter: 'deklassiert ${name(m.loserId)} · +${formatPoints(m.margin)}',
+        wert: '${formatPoints(m.winnerPoints)}:${formatPoints(m.loserPoints)}',
+        pkt: false,
+        ich: m.winnerId == myId || m.loserId == myId,
+        onTap: () => onManager(m.winnerId),
       );
     }
     if (recap.benchBlunder != null) {
-      managerAward(
-        color: _cViolet,
+      final b = recap.benchBlunder!;
+      zeile(
         icon: Icons.sentiment_dissatisfied_outlined,
-        title: 'Vergeigte Bank',
-        managerId: recap.benchBlunder!.managerId,
-        points: recap.benchBlunder!.pointsLeft,
-        suffix: 'Punkte auf der Bank liegengelassen',
+        titel: 'Vergeigte Bank',
+        wer: name(b.managerId),
+        unter: 'auf der Bank liegengelassen',
+        wert: formatPoints(b.pointsLeft),
+        ich: b.managerId == myId,
+        onTap: () => onManager(b.managerId),
       );
     }
     if (recap.lowScore != null) {
-      managerAward(
-        color: _cGrey,
+      final l = recap.lowScore!;
+      zeile(
         icon: Icons.trending_down_outlined,
-        title: 'Griff ins Klo',
-        managerId: recap.lowScore!.managerId,
-        points: recap.lowScore!.points,
-        suffix: 'Niedrigstes Ergebnis des Spieltags',
+        titel: 'Griff ins Klo',
+        wer: name(l.managerId),
+        unter: 'niedrigstes Ergebnis',
+        wert: formatPoints(l.points),
+        ich: l.managerId == myId,
+        onTap: () => onManager(l.managerId),
       );
     }
-    return cards;
-  }
-}
 
-/// Status-Zeile unter dem Stepper: LIVE / Beendet / Vorschau.
-class _StatusLine extends StatelessWidget {
-  const _StatusLine({required this.live, required this.started});
-
-  final bool live;
-  final bool started;
-
-  @override
-  Widget build(BuildContext context) {
-    final (color, label) = live
-        ? (_cRed, 'LIVE')
-        : started
-        ? (_cTeal, 'Beendet')
-        : (_cGrey, 'Vorschau');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
+    final top = recap.topScore;
+    return [
+      if (top != null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: _TeamDerWoche(
+            name: name(top.managerId),
+            punkte: top.points,
+            ich: top.managerId == myId,
+            onTap: () => onManager(top.managerId),
+          ),
+        ),
+      if (zeilen.isNotEmpty) ...[
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Kapitelmarke('Auszeichnungen'),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            decoration: kartenDeko(context),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (final (i, z) in zeilen.indexed) ...[
+                  if (i > 0)
+                    Divider(
+                        height: 1,
+                        indent: 52,
+                        color: Theme.of(context).dividerColor),
+                  z,
+                ],
+              ],
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ];
   }
 }
+
 
 class _EmptyHint extends StatelessWidget {
   const _EmptyHint(this.text);
@@ -412,119 +384,175 @@ class _EmptyHint extends StatelessWidget {
   }
 }
 
-/// Eine Award-Karte: farbiges Symbol, Titel + Träger, große Kennzahl rechts.
-class _AwardCard extends StatelessWidget {
-  const _AwardCard({
-    required this.color,
-    required this.icon,
-    required this.title,
-    required this.primary,
-    required this.value,
-    this.secondary,
-    this.valueLabel,
-    this.highlight = false,
-    this.badge,
-    this.onTap,
+/// Der Kopf des Rückblicks: Team der Woche, groß, schräg, mit der Zahl.
+class _TeamDerWoche extends StatelessWidget {
+  const _TeamDerWoche({
+    required this.name,
+    required this.punkte,
+    required this.ich,
+    required this.onTap,
   });
 
-  final Color color;
-  final IconData icon;
-  final String title;
-  final String primary;
-  final String? secondary;
-  final String value;
-  final String? valueLabel;
-  final bool highlight;
-  final Widget? badge;
-  final VoidCallback? onTap;
+  final String name;
+  final double punkte;
+  final bool ich;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // **Eine Kante für alle Karten.** Jede Auszeichnung trug ihren Rand in
-    // ihrer eigenen Farbe — Gold, Blau, Rot, Grün untereinander, und die
-    // hervorgehobene zusätzlich eine gefüllte Fläche derselben Farbe. Ein
-    // Regenbogen aus Rändern für eine Liste, in der nichts ansteht.
-    //
-    // Die Farbe der Auszeichnung sitzt weiterhin da, wo sie hingehört: in der
-    // Symbolkachel. Der Hauch bleibt der Karte vorbehalten, in der **du**
-    // vorkommst — dasselbe Muster wie bei den Duellen im Tippspiel.
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-      child: Karte(
-        hauch: highlight ? color : null,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        onTap: onTap,
-        child: Builder(
-          builder: (context) {
-            return Row(
+    final grau = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Karte(
+      hauch: _cGold,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title.toUpperCase(),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        primary,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      if (secondary != null)
-                        Text(
-                          secondary!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                    ],
+                const Text(
+                  'TEAM DER WOCHE',
+                  style: TextStyle(
+                    color: _cGold,
+                    fontSize: Schrift.label,
+                    fontWeight: Schrift.ueberschriftGewicht,
+                    fontStyle: Schrift.ueberschriftStil,
+                    letterSpacing: 1.2,
                   ),
                 ),
-                if (badge != null) ...[const SizedBox(width: 8), badge!],
-                const SizedBox(width: 10),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    name.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: Schrift.gross,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
+                      color: ich ? MatchUpColors.green : null,
                     ),
-                    if (valueLabel != null)
-                      Text(
-                        valueLabel!,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
+                const SizedBox(height: 2),
+                Text('höchstes Ergebnis des Spieltags',
+                    style: TextStyle(fontSize: Schrift.label, color: grau)),
               ],
-            );
-          },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Punktzahl(
+                punkte,
+                stil: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+              Text('Pkt',
+                  style: TextStyle(fontSize: Schrift.label, color: grau)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Eine Auszeichnung als Zeile: Umriss-Symbol, Marke, Träger, Zahl rechts.
+class _AwardZeile extends StatelessWidget {
+  const _AwardZeile({
+    required this.icon,
+    required this.titel,
+    required this.wer,
+    required this.unter,
+    required this.wert,
+    required this.pkt,
+    required this.ich,
+    required this.wappen,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String titel;
+  final String wer;
+  final String? unter;
+  final String wert;
+  final bool pkt;
+  final bool ich;
+  final Widget? wappen;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final grau = Theme.of(context).colorScheme.onSurfaceVariant;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: grau),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titel.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: Schrift.mikro,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: grau,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    wer,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: Schrift.text,
+                      fontWeight: FontWeight.w700,
+                      color: ich ? MatchUpColors.green : null,
+                    ),
+                  ),
+                  if (unter != null)
+                    Text(
+                      unter!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: Schrift.label, color: grau),
+                    ),
+                ],
+              ),
+            ),
+            if (wappen != null) ...[const SizedBox(width: 8), wappen!],
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  wert,
+                  style: const TextStyle(
+                    fontSize: Schrift.titel,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                if (pkt)
+                  Text('Pkt',
+                      style: TextStyle(fontSize: Schrift.label, color: grau)),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -555,8 +583,9 @@ class WeeklyRecapCard extends ConsumerWidget {
     // bleibt bis zum Anstoß des nächsten stehen.
     final current = runde ?? ref.watch(fantasyRecapRundeProvider).valueOrNull;
     if (current == null) return const SizedBox.shrink();
-    // Kein Recap über einen laufenden Spieltag.
-    if (!ref.watch(rundeAbgepfiffenProvider(current))) {
+    // **Erst mit dem Wechsel auf den nächsten Spieltag** (19.10.2026):
+    // dieselbe Frist, zu der der Server den Push schickt.
+    if (!ref.watch(veroeffentlichteRueckblickeProvider).contains(current)) {
       return const SizedBox.shrink();
     }
 
@@ -626,14 +655,14 @@ class WeeklyRecapCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.emoji_events_outlined, color: _cGold, size: 18),
-                const SizedBox(width: 6),
                 Text(
-                  'RECAP · SPIELTAG ${recap.round}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  'RÜCKBLICK · SPIELTAG ${recap.round}',
+                  style: const TextStyle(
                     color: _cGold,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                    fontSize: Schrift.label,
+                    fontWeight: Schrift.ueberschriftGewicht,
+                    fontStyle: Schrift.ueberschriftStil,
+                    letterSpacing: 1.2,
                   ),
                 ),
                 const Spacer(),
@@ -686,9 +715,8 @@ class _MiniLine extends StatelessWidget {
           width: 116,
           child: Text(
             label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            style: TextStyle(
+                fontSize: Schrift.label, color: scheme.onSurfaceVariant),
           ),
         ),
         Expanded(
@@ -696,14 +724,17 @@ class _MiniLine extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                fontSize: Schrift.text, fontWeight: FontWeight.w700),
           ),
         ),
         Text(
           trailing,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+          style: const TextStyle(
+            fontSize: Schrift.text,
+            fontWeight: FontWeight.w800,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
         ),
       ],
     );

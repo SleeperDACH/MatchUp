@@ -8,13 +8,18 @@ import 'package:flutter/material.dart';
 /// „Schaltfläche", auf jeder Zeile dieselben zwei.
 
 class WertStepper extends StatelessWidget {
-  const WertStepper(
-      {super.key,
-      required this.label,
-      required this.value,
-      required this.min,
-      required this.max,
-      required this.onChanged});
+  const WertStepper({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    this.schritt = 1,
+  });
+
+  /// Um wie viel ein Tipp ändert — Unentschieden-Abstand in Fünfern.
+  final int schritt;
 
   /// Die Beschriftung der Zeile, in der der Stepper sitzt. Er steht
   /// dort rechts neben ihr und wusste selbst nicht, was er zählt — für die
@@ -34,7 +39,9 @@ class WertStepper extends StatelessWidget {
         IconButton(
           tooltip: '$label verringern',
           visualDensity: VisualDensity.compact,
-          onPressed: value > min ? () => onChanged(value - 1) : null,
+          onPressed: value - schritt >= min
+              ? () => onChanged(value - schritt)
+              : null,
           icon: const Icon(Icons.remove_circle_outline),
         ),
         // Die Zahl bleibt als eigene Station stehen: Die umgebende
@@ -44,14 +51,18 @@ class WertStepper extends StatelessWidget {
         // benannten Knöpfen steht die Zahl auch so am richtigen Platz.
         SizedBox(
           width: 28,
-          child: Text('$value',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+          ),
         ),
         IconButton(
           tooltip: '$label erhöhen',
           visualDensity: VisualDensity.compact,
-          onPressed: value < max ? () => onChanged(value + 1) : null,
+          onPressed: value + schritt <= max
+              ? () => onChanged(value + schritt)
+              : null,
           icon: const Icon(Icons.add_circle_outline),
         ),
       ],

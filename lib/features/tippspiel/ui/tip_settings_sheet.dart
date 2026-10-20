@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/rueckfrage.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,50 +39,59 @@ class _TipSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     final myId = ref.watch(currentUserProvider)?.id;
-    final round = ref
+    final round =
+        ref
             .watch(myRoundsProvider)
             .valueOrNull
             ?.where((r) => r.id == startRound.id)
             .firstOrNull ??
         startRound;
     final isCreator = myId == round.createdBy;
-    final myName = (ref.watch(roundMembersProvider(round.id)).valueOrNull ??
-            const <RoundMember>[])
-        .where((m) => m.userId == myId)
-        .firstOrNull;
+    final myName =
+        (ref.watch(roundMembersProvider(round.id)).valueOrNull ??
+                const <RoundMember>[])
+            .where((m) => m.userId == myId)
+            .firstOrNull;
 
     Future<void> editTeamName() async {
       final messenger = ScaffoldMessenger.of(context);
       final navigator = Navigator.of(context);
-      final name =
-          await showTeamNameDialog(context, current: myName?.teamName);
+      final name = await showTeamNameDialog(context, current: myName?.teamName);
       if (name == null) return;
       try {
         await ref.read(tipRoundRepositoryProvider).setTeamName(round.id, name);
         ref.invalidate(roundMembersProvider(round.id));
         navigator.pop();
-        messenger
-            .showSnackBar(const SnackBar(content: Text('Teamname gespeichert.')));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Teamname gespeichert.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+          SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+        );
       }
     }
 
     Future<void> renameRound() async {
       final messenger = ScaffoldMessenger.of(context);
-      final newName = await showRenameLeagueDialog(context, current: round.name);
+      final newName = await showRenameLeagueDialog(
+        context,
+        current: round.name,
+      );
       if (newName == null || newName == round.name) return;
       try {
-        await ref.read(tipRoundRepositoryProvider).renameRound(round.id, newName);
+        await ref
+            .read(tipRoundRepositoryProvider)
+            .renameRound(round.id, newName);
         ref.invalidate(myRoundsProvider);
         messenger.showSnackBar(
-            const SnackBar(content: Text('Liga-Name geändert.')));
+          const SnackBar(content: Text('Liga-Name geändert.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+          SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+        );
       }
     }
 
@@ -98,72 +108,66 @@ class _TipSettingsScreen extends ConsumerWidget {
       );
       if (value == null) return;
       try {
-        await ref.read(tipRoundRepositoryProvider).setLogo(round.id,
-            url: value.url, emoji: value.emoji, color: value.color);
+        await ref
+            .read(tipRoundRepositoryProvider)
+            .setLogo(
+              round.id,
+              url: value.url,
+              emoji: value.emoji,
+              color: value.color,
+            );
         ref.invalidate(myRoundsProvider);
         messenger.showSnackBar(
-            const SnackBar(content: Text('Runden-Logo gespeichert.')));
+          const SnackBar(content: Text('Runden-Logo gespeichert.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Speichern fehlgeschlagen: $e')));
+          SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+        );
       }
     }
 
     Future<void> confirmDelete() async {
       final messenger = ScaffoldMessenger.of(context);
       final navigator = Navigator.of(context);
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Tippspiel löschen?'),
-          content: Text('„${round.name}" wird mit allen Tipps und dem Chat '
-              'endgültig gelöscht. Das kann nicht rückgängig gemacht werden.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Abbrechen')),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: scheme.error),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Löschen'),
-            ),
-          ],
-        ),
+      final confirmed = await rueckfrage(
+        context,
+        titel: 'Tippspiel löschen?',
+        text:
+            '„${round.name}" wird mit allen Tipps und dem Chat '
+            'endgültig gelöscht. Das kann nicht rückgängig gemacht werden.',
+        ja: 'Löschen',
+        nein: 'Abbrechen',
+        gefahr: true,
       );
       if (confirmed != true) return;
       try {
         await ref.read(tipRoundRepositoryProvider).deleteRound(round.id);
         ref.invalidate(myRoundsProvider);
         navigator.popUntil((r) => r.isFirst);
-        messenger
-            .showSnackBar(const SnackBar(content: Text('Tippspiel gelöscht.')));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Tippspiel gelöscht.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Löschen fehlgeschlagen: $e')));
+          SnackBar(content: Text('Löschen fehlgeschlagen: $e')),
+        );
       }
     }
 
     Future<void> confirmLeave() async {
       final messenger = ScaffoldMessenger.of(context);
       final navigator = Navigator.of(context);
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Tippspiel verlassen?'),
-          content: Text('Du verlässt „${round.name}". Deine Tipps in dieser '
-              'Liga werden entfernt. Über einen Einladungslink kannst du '
-              'später wieder beitreten.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Abbrechen')),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: scheme.error),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Verlassen'),
-            ),
-          ],
-        ),
+      final confirmed = await rueckfrage(
+        context,
+        titel: 'Tippspiel verlassen?',
+        text:
+            'Du verlässt „${round.name}". Deine Tipps in dieser '
+            'Liga werden entfernt. Über einen Einladungslink kannst du '
+            'später wieder beitreten.',
+        ja: 'Verlassen',
+        nein: 'Abbrechen',
+        gefahr: true,
       );
       if (confirmed != true) return;
       try {
@@ -171,24 +175,32 @@ class _TipSettingsScreen extends ConsumerWidget {
         ref.invalidate(myRoundsProvider);
         navigator.popUntil((r) => r.isFirst);
         messenger.showSnackBar(
-            const SnackBar(content: Text('Tippspiel verlassen.')));
+          const SnackBar(content: Text('Tippspiel verlassen.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
+          SnackBar(content: Text('Verlassen fehlgeschlagen: $e')),
+        );
       }
     }
 
     // Wählt ein anderes Mitglied als neuen Admin (null = keins da/abgebrochen).
     Future<RoundMember?> pickNewAdmin() async {
-      final others = (ref.read(roundMembersProvider(round.id)).valueOrNull ??
-              const <RoundMember>[])
-          .where((m) => m.userId != myId)
-          .toList();
+      final others =
+          (ref.read(roundMembersProvider(round.id)).valueOrNull ??
+                  const <RoundMember>[])
+              .where((m) => m.userId != myId)
+              .toList();
       if (others.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Kein anderes Mitglied vorhanden, dem du die '
-                'Adminrechte übergeben kannst. Du kannst die Runde '
-                'stattdessen löschen.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Kein anderes Mitglied vorhanden, dem du die '
+              'Adminrechte übergeben kannst. Du kannst die Runde '
+              'stattdessen löschen.',
+            ),
+          ),
+        );
         return null;
       }
       return showDialog<RoundMember>(
@@ -212,8 +224,11 @@ class _TipSettingsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(m.display,
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          m.display,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -230,37 +245,33 @@ class _TipSettingsScreen extends ConsumerWidget {
       final navigator = Navigator.of(context);
       final newOwner = await pickNewAdmin();
       if (newOwner == null || !context.mounted) return;
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Adminrechte übergeben?'),
-          content: Text('„${newOwner.display}" wird neuer Admin von '
-              '„${round.name}". Du bleibst Mitglied, verlierst aber die '
-              'Admin-Rechte.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Abbrechen')),
-            FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Übergeben')),
-          ],
-        ),
+      final confirmed = await rueckfrage(
+        context,
+        titel: 'Adminrechte übergeben?',
+        text:
+            '„${newOwner.display}" wird neuer Admin von '
+            '„${round.name}". Du bleibst Mitglied, verlierst aber die '
+            'Admin-Rechte.',
+        ja: 'Übergeben',
+        nein: 'Abbrechen',
       );
       if (confirmed != true) return;
       try {
         final repo = ref.read(tipRoundRepositoryProvider);
         await repo.transferOwnership(round.id, newOwner.userId);
         // Aktive Runde aktualisieren, damit Admin-Optionen verschwinden.
-        ref.read(activeRoundProvider.notifier).state =
-            await repo.fetchRound(round.id);
+        ref.read(activeRoundProvider.notifier).state = await repo.fetchRound(
+          round.id,
+        );
         ref.invalidate(myRoundsProvider);
         navigator.pop(); // Einstellungen schließen
-        messenger.showSnackBar(SnackBar(
-            content: Text('„${newOwner.display}" ist jetzt Admin.')));
+        messenger.showSnackBar(
+          SnackBar(content: Text('„${newOwner.display}" ist jetzt Admin.')),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Übergabe fehlgeschlagen: $e')));
+          SnackBar(content: Text('Übergabe fehlgeschlagen: $e')),
+        );
       }
     }
 
@@ -272,24 +283,16 @@ class _TipSettingsScreen extends ConsumerWidget {
       final newOwner = await pickNewAdmin();
       if (newOwner == null || !context.mounted) return;
       // Übergabe + Austritt bestätigen.
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Übergeben und verlassen?'),
-          content: Text('„${newOwner.display}" wird neuer Admin von '
-              '„${round.name}". Du verlässt die Runde und deine Tipps werden '
-              'entfernt.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Abbrechen')),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: scheme.error),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Übergeben & verlassen'),
-            ),
-          ],
-        ),
+      final confirmed = await rueckfrage(
+        context,
+        titel: 'Übergeben und verlassen?',
+        text:
+            '„${newOwner.display}" wird neuer Admin von '
+            '„${round.name}". Du verlässt die Runde und deine Tipps werden '
+            'entfernt.',
+        ja: 'Übergeben & verlassen',
+        nein: 'Abbrechen',
+        gefahr: true,
       );
       if (confirmed != true) return;
       try {
@@ -298,12 +301,15 @@ class _TipSettingsScreen extends ConsumerWidget {
             .transferAndLeaveRound(round.id, newOwner.userId);
         ref.invalidate(myRoundsProvider);
         navigator.popUntil((r) => r.isFirst);
-        messenger.showSnackBar(const SnackBar(
-            content:
-                Text('Adminrechte übergeben und Tippspiel verlassen.')));
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Adminrechte übergeben und Tippspiel verlassen.'),
+          ),
+        );
       } catch (e) {
         messenger.showSnackBar(
-            SnackBar(content: Text('Verlassen fehlgeschlagen: $e')));
+          SnackBar(content: Text('Verlassen fehlgeschlagen: $e')),
+        );
       }
     }
 
@@ -338,10 +344,9 @@ class _TipSettingsScreen extends ConsumerWidget {
           trailing: Icon(
             Icons.content_copy,
             size: 18,
-            color: Theme.of(context)
-                .colorScheme
-                .onSurfaceVariant
-                .withValues(alpha: 0.7),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
           ),
           onTap: () async {
             await Clipboard.setData(ClipboardData(text: round.inviteCode));

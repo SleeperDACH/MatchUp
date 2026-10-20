@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'wertungs_kader.dart';
 
 import '../models/fantasy_models.dart';
 import 'fantasy_scoring_rules.dart';
@@ -415,6 +416,9 @@ Map<String, double> effectiveTotalsForRound({
   FantasyScoringRules scoring = FantasyScoringRules.standard,
   required RosterConfig rosterConfig,
 }) {
+  // Nach einem Reset wird jeder Spieltag mit dem Kader seiner Zeit gewertet
+  // (`wertungs_kader.dart`); ohne Reset ist das der übergebene Kader.
+  roster = kaderFuerRunde(roster, round);
   final out = <String, double>{};
   for (final m in managers) {
     // Kaderlimit überschritten → keine Punkte, bis genug Spieler abgegeben

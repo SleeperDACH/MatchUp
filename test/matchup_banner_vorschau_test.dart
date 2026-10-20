@@ -153,7 +153,7 @@ void main() {
                 ),
               ),
               banner(
-                'BEENDET',
+                'BEENDET · MIT PROGNOSE VON VORHER',
                 MatchupBanner(
                   round: 3,
                   homeName: 'SFV03',
@@ -170,6 +170,10 @@ void main() {
                     serie: (ausgang: DuellAusgang.sieg, anzahl: 4),
                   ),
                   awayBilanz: (zeile: 'P6 · 2-0-4', serie: null),
+                  // Nach dem Spieltag steht klein die Prognose von vorher
+                  // (19.10.2026) — zum Vergleich mit dem Endstand.
+                  homeErwartet: 84.6,
+                  awayErwartet: 101.2,
                   onTap: () {},
                 ),
               ),

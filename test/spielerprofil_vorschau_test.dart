@@ -361,7 +361,7 @@ void main() {
 
     // **Die voraussichtliche Aufstellung.** Der Reiter, wegen dem man das
     // Profil vor dem Aufstellen ueberhaupt oeffnet.
-    await tester.tap(find.text('Aufstellung'));
+    await tester.tap(find.text('Elf'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -372,7 +372,7 @@ void main() {
 
     // Spielplan und Tabelle — die beiden Reiter, die es ohne den Wegfall der
     // Vereinsseite gar nicht bräuchte.
-    await tester.tap(find.text('Spielplan'));
+    await tester.tap(find.text('Spiele'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -504,7 +504,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Aufstellung'));
+    await tester.tap(find.text('Elf'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -567,7 +567,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Aufstellung'));
+    await tester.tap(find.text('Elf'));
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -633,7 +633,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Aufstellung'));
+    await tester.tap(find.text('Elf'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -730,7 +730,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Aufstellung'));
+    await tester.tap(find.text('Elf'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -885,7 +885,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('Aufstellung'));
+    await tester.tap(find.text('Elf'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

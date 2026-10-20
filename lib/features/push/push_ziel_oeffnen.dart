@@ -34,7 +34,14 @@ Future<void> pushZielOeffnen(
             await ref.read(fantasyLeagueRepositoryProvider).fetchLeague(ziel.id);
         if (!context.mounted) return;
         navigator.push(MaterialPageRoute(
-            builder: (_) => FantasyLeagueScreen(league: liga)));
+            builder: (_) => FantasyLeagueScreen(
+                  league: liga,
+                  // Der Wochenrückblick steht oben auf der Übersicht
+                  // (0141); alles andere öffnet wie gewohnt.
+                  startReiter: ziel.kategorie == 'wochenrueckblick'
+                      ? LigaReiter.uebersicht
+                      : null,
+                )));
 
       case 'tipprunde':
         final runde =

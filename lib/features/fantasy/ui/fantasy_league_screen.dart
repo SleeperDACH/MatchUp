@@ -38,7 +38,11 @@ import '../../../app/vorwaermen.dart';
 /// Tabelle, Teilnehmer und (leeren) Kader an; die Übersicht führt durch
 /// Setup und Draft.
 class FantasyLeagueScreen extends ConsumerWidget {
-  const FantasyLeagueScreen({super.key, required this.league, this.startReiter});
+  const FantasyLeagueScreen({
+    super.key,
+    required this.league,
+    this.startReiter,
+  });
 
   final FantasyLeague league;
 
@@ -49,7 +53,8 @@ class FantasyLeagueScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Live-Status, damit Draft-Änderungen sofort durchschlagen.
-    final live = ref.watch(draftLeagueProvider(league.id)).valueOrNull ?? league;
+    final live =
+        ref.watch(draftLeagueProvider(league.id)).valueOrNull ?? league;
     final isAdmin = ref.watch(currentUserProvider)?.id == league.createdBy;
 
     return DefaultTabController(
@@ -64,7 +69,6 @@ class FantasyLeagueScreen extends ConsumerWidget {
           titleSpacing: 12,
           title: VibrantLeagueTitle(
             name: live.name,
-            subtitle: live.mode.label,
             logoUrl: live.logoUrl,
             logoEmoji: live.logoEmoji,
             logoColor: live.logoColor,
@@ -73,8 +77,11 @@ class FantasyLeagueScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.settings_outlined),
               tooltip: 'Einstellungen',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => FantasyLeagueSettingsScreen(league: live))),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FantasyLeagueSettingsScreen(league: live),
+                ),
+              ),
             ),
           ],
           // Leise Reiter statt gefüllter Segmente: Der grüne Balken war das
@@ -161,9 +168,14 @@ class _OverviewTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final drafted = league.draftStatus != DraftStatus.setup;
+    // Während des Resets (0143) gibt es keinen Transfermarkt: Die Kader
+    // sind leer, und der Server lehnt jeden Zugang außer dem Draft ab.
+    final drafted =
+        league.draftStatus != DraftStatus.setup && !league.imReset;
     final draftFullyDone = league.draftStatus == DraftStatus.done;
-    final seasonRunning = draftFullyDone;
+    // Die Saison läuft auch während des Resets — Tabelle und Rückblick
+    // bleiben, nur das Duell oben weicht dem Auftrag „Reset-Draft".
+    final seasonRunning = league.saisonGestartet;
     final currentRound = ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final openTrades = ref.watch(incomingTradeOffersProvider(league.id));
     final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull;
@@ -175,20 +187,20 @@ class _OverviewTab extends ConsumerWidget {
     // Zeilen und ist keine Bewegung, die man nachliest.
     final offeneTransfers = ref.watch(offeneTransfersProvider(league.id));
     final bewegungen = [
-      for (final m in ref.watch(rosterMovesProvider(league.id)).valueOrNull ??
-          const <RosterMove>[])
-        if (m.weg != 'draft') m
+      for (final m
+          in ref.watch(rosterMovesProvider(league.id)).valueOrNull ??
+              const <RosterMove>[])
+        if (m.weg != 'draft' && m.weg != 'reset') m,
     ];
 
-    void go(Widget screen) => Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => screen));
+    void go(Widget screen) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
     return ListView(
       padding: const EdgeInsets.only(top: 4, bottom: 24),
       children: [
         // --- Kopf ----------------------------------------------------------
-        if (seasonRunning && currentRound != null)
+        if (seasonRunning && !league.imReset && currentRound != null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: MatchupHero(
@@ -201,8 +213,9 @@ class _OverviewTab extends ConsumerWidget {
               // aktuellen Spieltags.
               onTap: () {
                 ref
-                    .read(matchupKarussellSeiteProvider(league.id).notifier)
-                    .state = 0;
+                        .read(matchupKarussellSeiteProvider(league.id).notifier)
+                        .state =
+                    0;
                 ref.read(matchupSprungProvider(league.id).notifier).state++;
                 DefaultTabController.of(context).animateTo(LigaReiter.matchup);
               },
@@ -254,11 +267,11 @@ class _OverviewTab extends ConsumerWidget {
                     titel: 'Trades',
                     zeile: openTrades > 0
                         ? (openTrades == 1
-                            ? 'Ein Angebot wartet'
-                            : '$openTrades Angebote warten')
+                              ? 'Ein Angebot wartet'
+                              : '$openTrades Angebote warten')
                         : vorgemerkt > 0
-                            ? '$vorgemerkt warten auf den Spieltag'
-                            : 'Angebot machen',
+                        ? '$vorgemerkt warten auf den Spieltag'
+                        : 'Angebot machen',
                     icon: Icons.swap_horiz,
                     zahl: openTrades,
                     onTap: () => go(TradeScreen(league: league)),
@@ -277,8 +290,8 @@ class _OverviewTab extends ConsumerWidget {
               hinweis: bewegungen.isEmpty
                   ? null
                   : (bewegungen.length == 1
-                      ? 'Ein Wechsel in der Liga'
-                      : '${bewegungen.length} Wechsel in der Liga'),
+                        ? 'Ein Wechsel in der Liga'
+                        : '${bewegungen.length} Wechsel in der Liga'),
               zahl: offeneTransfers,
               onTap: () => go(TransfersScreen(league: league)),
             ),
@@ -298,6 +311,7 @@ class _OverviewTab extends ConsumerWidget {
               icon: Icons.meeting_room_outlined,
               hinweis: switch (league.draftStatus) {
                 DraftStatus.setup => 'noch nicht gestartet',
+                DraftStatus.reset => 'Reset-Draft wartet',
                 DraftStatus.drafting => 'läuft',
                 DraftStatus.done => null,
               },
@@ -313,7 +327,7 @@ class _OverviewTab extends ConsumerWidget {
             hinweis: chatNeu ? 'Neue Nachrichten' : null,
             onTap: () => go(FantasyChatScreen(league: league)),
           ),
-          if (!draftFullyDone)
+          if (!draftFullyDone && !league.saisonGestartet)
             _LigaZeile(
               label: 'Spieler einladen',
               icon: Icons.person_add_alt_1,
@@ -355,132 +369,175 @@ class _NaechsterSchritt extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final gold = const Color(0xFFFFC83D);
 
-    void openRoom() => Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => DraftRoomScreen(league: league)),
-    );
+    void openRoom() => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => DraftRoomScreen(league: league)));
 
-    final (String titel, String satz, String knopf, VoidCallback tun) =
-        switch (league.draftStatus) {
-          DraftStatus.setup =>
-            league.maxTeams != null && managerZahl != null
-                ? (
-                    'Noch ${(league.maxTeams! - managerZahl!).clamp(0, 99)} Plätze frei',
-                    'Lade Freunde ein — sobald alle da sind, startet der Draft.',
-                    'Spieler einladen',
-                    () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => InvitePlayersScreen(league: league),
-              ),
-            ),
-                  )
-                : (
-                    'Die Liga steht',
-                    'Lade Freunde ein und starte den Draft.',
-                    'Spieler einladen',
-                    () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => InvitePlayersScreen(league: league),
-              ),
-            ),
+    final (
+      String titel,
+      String knopf,
+      VoidCallback tun,
+    ) = switch (league.draftStatus) {
+      DraftStatus.setup =>
+        league.maxTeams != null && managerZahl != null
+            ? (
+                'Noch ${(league.maxTeams! - managerZahl!).clamp(0, 99)} Plätze frei',
+                'Spieler einladen',
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => InvitePlayersScreen(league: league),
                   ),
-          DraftStatus.drafting => (
-            'Der Draft läuft',
-            'Wer an der Reihe ist, siehst du im Draft-Raum.',
-            'Zum Draft',
-            openRoom,
-          ),
-          DraftStatus.done => (
-            'Die Saison läuft',
-            'Stell deine Aufstellung, bevor der Spieltag anpfeift.',
-            'Aufstellung',
-            () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => LineupScreen(league: league)),
-            ),
-          ),
-        };
+                ),
+              )
+            : (
+                'Die Liga steht',
+                'Spieler einladen',
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => InvitePlayersScreen(league: league),
+                  ),
+                ),
+              ),
+      // **Reset zur Winterpause** (0143): Der Admin startet den Draft
+      // selbst, alle anderen warten im Raum.
+      DraftStatus.reset => isAdmin
+          ? (
+              'Reset zur Winterpause',
+              'Reset-Draft starten',
+              () async {
+                final gestartet =
+                    await draftStartenMitBestaetigung(context, ref, league);
+                if (gestartet && context.mounted) openRoom();
+              },
+            )
+          : ('Reset zur Winterpause', 'Zum Draft-Raum', openRoom),
+      DraftStatus.drafting => (
+        league.draftPhase == 'reset'
+            ? 'Der Reset-Draft läuft'
+            : 'Der Draft läuft',
+        'Zum Draft',
+        openRoom,
+      ),
+      DraftStatus.done => (
+        'Die Saison läuft',
+        'Aufstellung',
+        () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => LineupScreen(league: league))),
+      ),
+    };
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        // Hauch aus der Ecke statt getönter Fläche, Haarlinie statt goldener
-        // Kante — dieselbe Hülle wie jede andere Karte der App.
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: const [0.0, 0.75],
-          colors: [
-            Color.alphaBlend(
-                gold.withValues(alpha: 0.12), Theme.of(context).cardColor),
-            Theme.of(context).cardColor,
+    // **Luft statt Gedränge** (19.10.2026, gemeldet: „sieht zusammengequetscht
+    // aus"). Vorher standen Marke, Titel, ein Satz und zwei Knöpfe
+    // nebeneinander in knappem Polster — „Spieler einladen" brach im Knopf auf
+    // zwei Zeilen um. Jetzt: die Zahl groß, ein Balken für die Plätze, kein
+    // Erklärsatz, die Knöpfe untereinander in voller Breite.
+    final belegt = managerZahl;
+    final gesamt = league.maxTeams;
+    final mitBalken =
+        league.draftStatus == DraftStatus.setup &&
+        belegt != null &&
+        gesamt != null &&
+        gesamt > 0;
+    final hoch = const Size.fromHeight(50);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Karte(
+        hauch: gold,
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'ALS NÄCHSTES',
+              style: TextStyle(
+                color: gold,
+                fontSize: Schrift.label,
+                fontWeight: Schrift.ueberschriftGewicht,
+                fontStyle: Schrift.ueberschriftStil,
+                letterSpacing: 1.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              titel,
+              style: const TextStyle(
+                fontSize: Schrift.gross,
+                fontWeight: FontWeight.w800,
+                height: 1.15,
+              ),
+            ),
+            if (league.draftStatus == DraftStatus.reset) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Alle Kader sind geleert, die Tabelle bleibt. Im Draft pickt '
+                'der Tabellenletzte zuerst.',
+                style: TextStyle(
+                  fontSize: Schrift.text,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (mitBalken) ...[
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: (belegt / gesamt).clamp(0.0, 1.0),
+                  minHeight: 6,
+                  color: gold,
+                  backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$belegt von $gesamt Teams',
+                style: TextStyle(
+                  fontSize: Schrift.label,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: tun,
+              style: FilledButton.styleFrom(
+                backgroundColor: gold,
+                foregroundColor: scheme.surface,
+                minimumSize: hoch,
+              ),
+              child: Text(knopf),
+            ),
+            // Den Draft startet nur der Ersteller — und nur, solange er noch
+            // nicht läuft. Der Knopf **startet** ihn auch, statt bloß den Raum
+            // zu öffnen; die Rückfrage steckt in `draftStartenMitBestaetigung`
+            // und kommt auf beiden Wegen.
+            if (isAdmin && league.draftStatus == DraftStatus.setup) ...[
+              const SizedBox(height: 10),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: hoch,
+                  // Grau statt Grün: Ein Knopf läuft nicht, er wartet.
+                  foregroundColor: scheme.onSurface,
+                  side: BorderSide(color: Theme.of(context).dividerColor),
+                ),
+                onPressed: () async {
+                  final gestartet = await draftStartenMitBestaetigung(
+                    context,
+                    ref,
+                    league,
+                  );
+                  // Nach dem Start gehört man in den Raum — dort läuft ab
+                  // jetzt die Uhr.
+                  if (gestartet && context.mounted) openRoom();
+                },
+                child: const Text('Draft starten'),
+              ),
+            ],
           ],
         ),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ALS NÄCHSTES',
-            style: TextStyle(
-              color: gold,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.3,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            titel,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            satz,
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.3,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 13),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: tun,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: gold,
-                    foregroundColor: scheme.surface,
-                  ),
-                  child: Text(knopf),
-                ),
-              ),
-              // Den Draft startet nur der Ersteller — und nur, solange er
-              // noch nicht läuft. Der Knopf **startet** ihn auch, statt bloß
-              // den Raum zu öffnen; die Rückfrage steckt in
-              // `draftStartenMitBestaetigung` und kommt auf beiden Wegen.
-              if (isAdmin && league.draftStatus == DraftStatus.setup) ...[
-                const SizedBox(width: 9),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      final gestartet = await draftStartenMitBestaetigung(
-                        context,
-                        ref,
-                        league,
-                      );
-                      // Nach dem Start gehört man in den Raum — dort läuft ab
-                      // jetzt die Uhr.
-                      if (gestartet && context.mounted) openRoom();
-                    },
-                    child: const Text('Draft starten'),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -498,9 +555,9 @@ class _Abschnittsmarke extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Kapitelmarke(text),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    child: Kapitelmarke(text),
+  );
 }
 
 /// **Große Kachel des Transfermarkts** — Spieler und Trades, nebeneinander.
@@ -549,27 +606,39 @@ class _FokusKachel extends StatelessWidget {
                 const Spacer(),
                 if (zahl > 0)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: scheme.error,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text('$zahl',
-                        style: TextStyle(
-                            color: scheme.onError,
-                            fontSize: Schrift.label,
-                            fontWeight: FontWeight.w800)),
+                    child: Text(
+                      '$zahl',
+                      style: TextStyle(
+                        color: scheme.onError,
+                        fontSize: Schrift.label,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   )
                 else
-                  Icon(Icons.chevron_right,
-                      size: 20, color: scheme.onSurfaceVariant),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: scheme.onSurfaceVariant,
+                  ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(titel,
-                style: const TextStyle(
-                    fontSize: Schrift.titel, fontWeight: FontWeight.w800)),
+            Text(
+              titel,
+              style: const TextStyle(
+                fontSize: Schrift.titel,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 2),
             Text(
               zeile,
@@ -623,24 +692,23 @@ class _Zeilengruppe extends StatelessWidget {
       child: Karte(
         padding: EdgeInsets.zero,
         child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < zeilen.length; i++) ...[
-              if (i > 0)
-                Divider(
-                  height: 1,
-                  indent: 68,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.07),
-                ),
-              zeilen[i],
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < zeilen.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    indent: 68,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.07),
+                  ),
+                zeilen[i],
+              ],
             ],
-          ],
-        ),
+          ),
         ),
       ),
     );
@@ -683,104 +751,104 @@ class _LigaZeile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                // **Grau, nicht bunt** (Design-Ideen Punkt 3, 15.10.2026).
-                // Fünf Kreise in fünf Farben sagten nur „hier ist eine
-                // Zeile"; Farbe trägt in dieser Zeile allein, was wartet —
-                // der rote Zähler und der goldene Auftrag.
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: scheme.onSurface.withValues(alpha: 0.07),
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  // **Grau, nicht bunt** (Design-Ideen Punkt 3, 15.10.2026).
+                  // Fünf Kreise in fünf Farben sagten nur „hier ist eine
+                  // Zeile"; Farbe trägt in dieser Zeile allein, was wartet —
+                  // der rote Zähler und der goldene Auftrag.
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: scheme.onSurface.withValues(alpha: 0.07),
+                  ),
+                  child: Icon(icon, size: 20, color: scheme.onSurfaceVariant),
                 ),
-                child: Icon(icon, size: 20, color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                // **Der Hinweis steht jetzt unter dem Wort, nicht daneben.**
-                // Rechtsbündig war er ein Zusatz, den man übersah; als zweite
-                // Zeile gibt er der Zeile Inhalt. Fünf Zeilen, die alle nur
-                // ein Wort trugen, waren zwischen dem Duell-Kasten oben und
-                // dem Spieltag unten das Flachste auf dem Schirm.
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
+                const SizedBox(width: 14),
+                Expanded(
+                  // **Der Hinweis steht jetzt unter dem Wort, nicht daneben.**
+                  // Rechtsbündig war er ein Zusatz, den man übersah; als zweite
+                  // Zeile gibt er der Zeile Inhalt. Fünf Zeilen, die alle nur
+                  // ein Wort trugen, waren zwischen dem Duell-Kasten oben und
+                  // dem Spieltag unten das Flachste auf dem Schirm.
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
+                        ),
                       ),
-                    ),
-                    if (hinweis != null) ...[
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              hinweis!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: Schrift.label,
-                                fontWeight: FontWeight.w500,
-                                color: scheme.onSurfaceVariant,
+                      if (hinweis != null) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                hinweis!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: Schrift.label,
+                                  fontWeight: FontWeight.w500,
+                                  color: scheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              if (zahl > 0) ...[
-                const SizedBox(width: 8),
-                Container(
-                  constraints: const BoxConstraints(minWidth: 20),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: MatchUpColors.red,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '$zahl',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                if (zahl > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
                     ),
+                    decoration: BoxDecoration(
+                      color: MatchUpColors.red,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$zahl',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
+                // Der Pfeil sitzt in einer kleinen Mulde: Er bleibt leise, liest
+                // sich aber als Knopf statt als Satzzeichen.
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHigh,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
-              const SizedBox(width: 8),
-              // Der Pfeil sitzt in einer kleinen Mulde: Er bleibt leise, liest
-              // sich aber als Knopf statt als Satzzeichen.
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHigh,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
+            ),
           ),
         ),
       ),
@@ -803,19 +871,23 @@ class _LeagueTipspielButton extends ConsumerWidget {
         title: 'Tippspiel öffnen',
         onTap: () {
           activateRound(ref, round);
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
         },
       );
     }
     if (isAdmin) {
       return _TipTile(
         title: 'Ligainternes Tippspiel aktivieren',
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
             builder: (_) => CreateTipRoundScreen(
-                  fantasyLeagueId: league.id,
-                  initialName: league.name,
-                ))),
+              fantasyLeagueId: league.id,
+              initialName: league.name,
+            ),
+          ),
+        ),
       );
     }
     // Mitglied, aber noch nicht aktiviert.
@@ -877,8 +949,11 @@ class _RostersTab extends ConsumerWidget {
             right: 16,
             bottom: 16,
             child: FloatingActionButton.extended(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => DraftRoomScreen(league: league))),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DraftRoomScreen(league: league),
+                ),
+              ),
               icon: const Icon(Icons.sports_esports_outlined),
               label: const Text('Zum Draft'),
             ),
@@ -887,14 +962,14 @@ class _RostersTab extends ConsumerWidget {
       );
     }
 
-    void open(Widget page) => Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => page));
+    void open(Widget page) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
     final myId = ref.watch(currentUserProvider)?.id;
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
-    final myCount =
-        myId == null ? 0 : rosterCountOf(myId, roster);
+    final myCount = myId == null ? 0 : rosterCountOf(myId, roster);
     final vorgemerkt = ref.watch(vorgemerkteTradesProvider(league.id));
 
     return ListView(
@@ -946,8 +1021,7 @@ class _VorgemerkteTradesZeile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration:
-              kartenDeko(context, hauch: scheme.primary, radius: 12),
+          decoration: kartenDeko(context, hauch: scheme.primary, radius: 12),
           child: Row(
             children: [
               Icon(Icons.schedule_outlined, size: 18, color: scheme.primary),
@@ -962,19 +1036,26 @@ class _VorgemerkteTradesZeile extends StatelessWidget {
                           ? 'Ein offener Trade'
                           : '$anzahl offene Trades',
                       style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 14),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
                     ),
                     const SizedBox(height: 1),
                     Text(
                       'Beschlossen — die Kader wechseln erst nach dem Spieltag.',
                       style: TextStyle(
-                          fontSize: 11, color: scheme.onSurfaceVariant),
+                        fontSize: 11,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right,
-                  size: 20, color: scheme.onSurfaceVariant),
+              Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: scheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),

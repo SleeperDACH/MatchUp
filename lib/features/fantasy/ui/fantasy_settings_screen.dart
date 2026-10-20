@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/rueckfrage.dart';
 import '../../../app/widgets/skelett.dart';
 import '../../../app/widgets/mit_ladekreis.dart';
+import '../../../core/ui/einstellungs_zeile.dart';
 
 import '../../../app/theme.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +18,7 @@ import '../../leagues/ui/visibility_settings_page.dart';
 import '../../tippspiel/providers.dart';
 import 'kader_limits_editor.dart';
 import 'remis_grenze_editor.dart';
-import 'wert_stepper.dart';
+import '../../../core/ui/wert_stepper.dart';
 import '../logic/playoff.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
@@ -155,7 +157,9 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 onTap: editLogo,
               ),
               ListTile(
-                leading: Icon(l.isPublic ? Icons.public_outlined : Icons.lock_outline),
+                leading: Icon(
+                  l.isPublic ? Icons.public_outlined : Icons.lock_outline,
+                ),
                 title: const Text('Sichtbarkeit & Beitritt'),
                 subtitle: Text(visibilityLabel(l.visibility, l.joinPolicy)),
                 trailing: RequestsBadgeChevron(
@@ -273,6 +277,15 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const _Chevron(),
               onTap: () => open(RemisGrenzePage(league: l)),
             ),
+            // Reset zur Winterpause (0143). Für alle sichtbar — es ist eine
+            // Regel, nach der die ganze Liga spielt.
+            ListTile(
+              leading: const Icon(Icons.restart_alt),
+              title: const Text('Reset zur Winterpause'),
+              subtitle: Text(ResetPage.text(l)),
+              trailing: const _Chevron(),
+              onTap: () => open(ResetPage(league: l)),
+            ),
             ListTile(
               leading: Icon(Icons.emoji_events_outlined),
               title: const Text('Playoff-Einstellungen'),
@@ -290,7 +303,6 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
           // nächste Saison (Kader bleibt, danach U20-Draft) — beides gibt es
           // seit dem 27.09.2026 nicht mehr. Im Redraft wird jede Saison neu
           // gedraftet, dafür braucht es keine Aktion in den Einstellungen.
-
           if (isOwner) ...[
             _Section('Admin'),
             _settingsGroup(context, [
@@ -337,7 +349,9 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                   final an = l.tipEnabled;
                   return ListTile(
                     leading: Icon(
-                      an ? Icons.emoji_events_outlined : Icons.emoji_events_outlined,
+                      an
+                          ? Icons.emoji_events_outlined
+                          : Icons.emoji_events_outlined,
                     ),
                     title: Text(
                       an
@@ -422,30 +436,18 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     WidgetRef ref,
     FantasyLeague l,
   ) async {
-    final scheme = Theme.of(context).colorScheme;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Liga verlassen?'),
-        content: Text(
+    final confirmed = await rueckfrage(
+      context,
+      titel: 'Liga verlassen?',
+      text:
           'Du verlässt „${l.name}". Dein Team bleibt als verwaister Slot '
           'bestehen — der Admin kann es einem neuen Nutzer zuweisen, der '
           'deinen Kader übernimmt.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: scheme.error),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Verlassen'),
-          ),
-        ],
-      ),
+      ja: 'Verlassen',
+      nein: 'Abbrechen',
+      gefahr: true,
     );
     if (confirmed != true) return;
     try {
@@ -467,7 +469,6 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     WidgetRef ref,
     FantasyLeague l,
   ) async {
-    final scheme = Theme.of(context).colorScheme;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final myId = ref.read(currentUserProvider)?.id;
@@ -524,27 +525,16 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       ),
     );
     if (newOwner == null || !context.mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Übergeben und verlassen?'),
-        content: Text(
+    final confirmed = await rueckfrage(
+      context,
+      titel: 'Übergeben und verlassen?',
+      text:
           '„${newOwner.display}" wird neuer Admin von „${l.name}". '
           'Du verlässt die Liga; dein Team bleibt als verwaister Slot '
           'bestehen.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: scheme.error),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Übergeben & verlassen'),
-          ),
-        ],
-      ),
+      ja: 'Übergeben & verlassen',
+      nein: 'Abbrechen',
+      gefahr: true,
     );
     if (confirmed != true) return;
     try {
@@ -585,31 +575,19 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     bool an,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(an ? 'Tippspiel einschalten?' : 'Tippspiel ausschalten?'),
-        content: Text(
-          an
-              ? 'Auf der Übersicht erscheint dann eine Zeile, über die du das '
-                    'ligainterne Tippspiel einrichtest. Eingerichtet wird dabei '
-                    'noch nichts — und ausschalten kannst du es wieder, solange '
-                    'keine Runde steht.'
-              : 'Die Zeile verschwindet von der Übersicht. Es geht nichts '
-                    'verloren: Eingerichtet ist noch kein Tippspiel, und '
-                    'einschalten kannst du es jederzeit wieder.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(an ? 'Einschalten' : 'Ausschalten'),
-          ),
-        ],
-      ),
+    final ok = await rueckfrage(
+      context,
+      titel: an ? 'Tippspiel einschalten?' : 'Tippspiel ausschalten?',
+      text: an
+          ? 'Auf der Übersicht erscheint dann eine Zeile, über die du das '
+                'ligainterne Tippspiel einrichtest. Eingerichtet wird dabei '
+                'noch nichts — und ausschalten kannst du es wieder, solange '
+                'keine Runde steht.'
+          : 'Die Zeile verschwindet von der Übersicht. Es geht nichts '
+                'verloren: Eingerichtet ist noch kein Tippspiel, und '
+                'einschalten kannst du es jederzeit wieder.',
+      ja: an ? 'Einschalten' : 'Ausschalten',
+      nein: 'Abbrechen',
     );
     if (ok != true) return;
     try {
@@ -636,7 +614,6 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
     WidgetRef ref,
     FantasyLeague l,
   ) async {
-    final scheme = Theme.of(context).colorScheme;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     // Gekoppeltes ligainternes Tippspiel (falls aktiviert).
@@ -644,57 +621,31 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
 
     final bool alsoDeleteTip;
     if (tipRound == null) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Liga löschen?'),
-          content: Text(
+      final confirmed = await rueckfrage(
+        context,
+        titel: 'Liga löschen?',
+        text:
             '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
             'gelöscht. Das kann nicht rückgängig gemacht werden.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Abbrechen'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: scheme.error),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Löschen'),
-            ),
-          ],
-        ),
+        ja: 'Löschen',
+        nein: 'Abbrechen',
+        gefahr: true,
       );
       if (confirmed != true) return;
       alsoDeleteTip = false;
     } else {
       // Mit gekoppeltem Tippspiel: Wahl, ob es mitgelöscht wird oder bestehen
       // bleibt (dann als eigenständige Tipprunde).
-      final choice = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Liga löschen?'),
-          content: Text(
-            '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
+      final choice = await rueckfrageWahl<String>(
+        context,
+        titel: 'Liga löschen?',
+        text: '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
             'gelöscht.\n\nZur Liga gehört das Tippspiel „${tipRound.name}". '
             'Behältst du es, bleibt es als eigenständige Tipprunde bestehen.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('cancel'),
-              child: const Text('Abbrechen'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('keep'),
-              child: const Text('Tippspiel behalten'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: scheme.error),
-              onPressed: () => Navigator.of(ctx).pop('both'),
-              child: const Text('Beides löschen'),
-            ),
-          ],
-        ),
+        knoepfe: const [
+          RueckfrageKnopf('both', 'Beides löschen', gefahr: true),
+          RueckfrageKnopf('keep', 'Tippspiel behalten'),
+        ],
       );
       if (choice == null || choice == 'cancel') return;
       alsoDeleteTip = choice == 'both';
@@ -1033,12 +984,6 @@ class _LeagueSettingsPageState extends ConsumerState<LeagueSettingsPage> {
           ]),
           const SizedBox(height: 8),
           _CardColumn([
-            _SettingRow(
-              icon: Icons.auto_awesome_outlined,
-              label: 'Modus',
-              child: _ReadValue(l.mode.label),
-            ),
-            const Divider(height: 1),
             _SettingRow(
               icon: Icons.calendar_today_outlined,
               label: 'Saison',
@@ -1982,7 +1927,11 @@ class _InviteBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.content_copy, size: 18, color: scheme.onSurfaceVariant),
+              Icon(
+                Icons.content_copy,
+                size: 18,
+                color: scheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),
@@ -1990,7 +1939,6 @@ class _InviteBanner extends StatelessWidget {
     );
   }
 }
-
 
 /// **Unentschieden bei knappem Ausgang** — eigene Seite unter Regeln & Format.
 ///
@@ -2023,8 +1971,11 @@ class _RemisGrenzePageState extends ConsumerState<RemisGrenzePage> {
           .updateRemisGrenze(widget.league.id, _wert);
       ref.invalidate(draftLeagueProvider(widget.league.id));
       ref.invalidate(myFantasyLeaguesProvider);
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Gespeichert — die Liga ist im Chat informiert')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Gespeichert — die Liga ist im Chat informiert'),
+        ),
+      );
       navigator.pop();
     } catch (e) {
       messenger.showSnackBar(
@@ -2054,14 +2005,119 @@ class _RemisGrenzePageState extends ConsumerState<RemisGrenzePage> {
             gut: true,
             text: isOwner
                 ? 'Gilt für alle Spieltage dieser Saison — auch die schon '
-                    'gespielten. Bilanzen und Tabelle werden sofort neu '
-                    'gewertet, und die Liga bekommt eine Meldung im Chat.'
+                      'gespielten. Bilanzen und Tabelle werden sofort neu '
+                      'gewertet, und die Liga bekommt eine Meldung im Chat.'
                 : 'Nur der Ersteller der Liga kann diese Regel ändern.',
           ),
           if (isOwner) ...[
             const SizedBox(height: 20),
             FilledButton(
               onPressed: (_saving || !_geaendert) ? null : _speichern,
+              child: MitLadekreis(
+                laedt: _saving,
+                child: const Text('Speichern'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+
+/// **Reset zur Winterpause** (0143) — eigene Seite unter Regeln & Format.
+///
+/// Änderbar, solange der Reset nicht stattgefunden hat und der 24.12. nicht
+/// erreicht ist (dieselbe Regel prüft ein Trigger in der Datenbank).
+class ResetPage extends ConsumerStatefulWidget {
+  const ResetPage({super.key, required this.league, this.jetzt});
+
+  final FantasyLeague league;
+
+  /// Feste Uhr für die Vorschau.
+  final DateTime? jetzt;
+
+  /// Untertitel in den Einstellungen.
+  static String text(FantasyLeague l) {
+    final erfolgt = l.resetErfolgtAt;
+    if (erfolgt != null) {
+      final d = erfolgt.toLocal();
+      return 'Erfolgt am ${d.day}.${d.month}.';
+    }
+    return l.resetAktiv ? 'An · am 24.12.' : 'Aus';
+  }
+
+  @override
+  ConsumerState<ResetPage> createState() => _ResetPageState();
+}
+
+class _ResetPageState extends ConsumerState<ResetPage> {
+  late bool _wert = widget.league.resetAktiv;
+  bool _saving = false;
+
+  Future<void> _speichern() async {
+    setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .updateResetAktiv(widget.league.id, _wert);
+      ref.invalidate(draftLeagueProvider(widget.league.id));
+      ref.invalidate(myFantasyLeaguesProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Gespeichert')));
+      navigator.pop();
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = widget.league;
+    final isOwner = ref.watch(currentUserProvider)?.id == l.createdBy;
+    final aenderbar = isOwner && l.resetAenderbar(widget.jetzt ?? DateTime.now());
+    return Scaffold(
+      appBar: AppBar(title: const Text('Reset')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          EinstellungsSchalter(
+            label: 'Reset zur Winterpause',
+            unter: 'Am 24.12. neuer Draft, die Tabelle bleibt',
+            wert: _wert,
+            onChanged: aenderbar ? (v) => setState(() => _wert = v) : null,
+          ),
+          const SizedBox(height: 12),
+          _Hinweis(
+            gut: true,
+            text: 'Am 24.12. gehen alle Spieler zurück in den Pool. Siege, '
+                'Unentschieden und Niederlagen bleiben in der Tabelle. Danach '
+                'startet der Admin einen neuen Draft für die Rückrunde: Der '
+                'Tabellenletzte pickt zuerst, der Erste zuletzt, dann Snake. '
+                'Bis der Draft fertig ist, sind keine Transfers möglich.',
+          ),
+          if (!aenderbar) ...[
+            const SizedBox(height: 8),
+            _Hinweis(
+              gut: false,
+              text: !isOwner
+                  ? 'Nur der Ersteller der Liga kann das ändern.'
+                  : l.resetErfolgtAt != null
+                      ? 'Der Reset hat stattgefunden.'
+                      : 'Nach dem 24.12. lässt sich das nicht mehr ändern.',
+            ),
+          ],
+          if (aenderbar) ...[
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed:
+                  (_saving || _wert == l.resetAktiv) ? null : _speichern,
               child: MitLadekreis(
                 laedt: _saving,
                 child: const Text('Speichern'),

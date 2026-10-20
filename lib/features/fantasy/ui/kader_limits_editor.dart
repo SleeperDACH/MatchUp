@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/typografie.dart';
 import '../models/fantasy_models.dart';
-import 'wert_stepper.dart';
+import '../../../core/ui/wert_stepper.dart';
 
 /// **Der Editor für die Kader-Limits — an zwei Stellen benutzt.**
 ///
@@ -36,13 +37,6 @@ class KaderLimitsEditor extends StatelessWidget {
     PlayerPosition.def: 'Abwehr',
     PlayerPosition.mid: 'Mittelfeld',
     PlayerPosition.fwd: 'Sturm',
-  };
-
-  static const _symbol = {
-    PlayerPosition.gk: Icons.sports_handball_outlined,
-    PlayerPosition.def: Icons.shield_outlined,
-    PlayerPosition.mid: Icons.hub_outlined,
-    PlayerPosition.fwd: Icons.sports_soccer_outlined,
   };
 
   /// Untergrenze je Position: Unter der Startelf-Mindestzahl wäre keine
@@ -113,7 +107,6 @@ class KaderLimitsEditor extends StatelessWidget {
         // halb eingeschalteter Zustand, sondern der Normalfall.
         for (final pos in PlayerPosition.values)
           _LimitZeile(
-            icon: _symbol[pos]!,
             label: bezeichnung[pos]!,
             wert: limits[pos],
             min: minFuer(roster, pos),
@@ -136,7 +129,6 @@ class KaderLimitsEditor extends StatelessWidget {
 /// erlaubt*, das Gegenteil von *unbegrenzt*.
 class _LimitZeile extends StatelessWidget {
   const _LimitZeile({
-    required this.icon,
     required this.label,
     required this.wert,
     required this.min,
@@ -145,7 +137,6 @@ class _LimitZeile extends StatelessWidget {
     required this.onWert,
   });
 
-  final IconData icon;
   final String label;
 
   /// `null` = diese Position ist nicht begrenzt.
@@ -158,16 +149,24 @@ class _LimitZeile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+    // **Wie jede andere Einstellungszeile** (18.10.2026): Bezeichnung links
+    // in derselben Größe, Bedienung rechts, kein grünes Symbol davor und kein
+    // grünes „ohne Limit" — Grün heißt „ich/gut", ein offener Wert ist
+    // keins von beidem.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
       child: Row(
         children: [
-          Icon(icon, color: scheme.primary),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label)),
+          Expanded(
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: Schrift.text, fontWeight: FontWeight.w600)),
+          ),
           if (wert == null)
             TextButton(
               onPressed: onEin,
+              style: TextButton.styleFrom(
+                  foregroundColor: scheme.onSurfaceVariant),
               child: const Text('ohne Limit'),
             )
           else ...[
