@@ -386,7 +386,9 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     ]..sort((a, b) => (a.draftPosition ?? 99).compareTo(b.draftPosition ?? 99));
     final pool = poolV;
     final picks = picksDerPhase(
-        picksAsync.valueOrNull ?? const <DraftPick>[], league.draftPhase);
+      picksAsync.valueOrNull ?? const <DraftPick>[],
+      league.draftPhase,
+    );
 
     final playerById = {for (final p in pool) p.id: p};
     final pickedIds = {for (final p in picks) p.playerId};
@@ -487,7 +489,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
     // Im Reset-Draft zieht der Besitzer des Picks (0145).
     final rechte = league.draftPhase == 'reset'
         ? (ref.watch(draftRechteProvider(_leagueId)).valueOrNull ??
-            const <PickKey, String>{})
+              const <PickKey, String>{})
         : null;
     final cur = rechte != null
         ? amZugMitRechten(managers, league.picksMade, rechte)
@@ -1915,8 +1917,8 @@ class DraftBoard extends StatelessWidget {
                       pick: cols[s].userId == null
                           ? null
                           : (rechte != null
-                              ? pickByCell['$r:#$s']
-                              : pickByCell['$r:${cols[s].userId}']),
+                                ? pickByCell['$r:#$s']
+                                : pickByCell['$r:${cols[s].userId}']),
                       besitzerName: () {
                         final u = cols[s].userId;
                         if (rechte == null || u == null) return null;
@@ -1925,10 +1927,10 @@ class DraftBoard extends StatelessWidget {
                       }(),
                       isCurrent: rechte != null && aktuellerPick != null
                           ? (aktuellerPick! ~/ n + 1 == r &&
-                              spalteVon(aktuellerPick!) == s)
+                                spalteVon(aktuellerPick!) == s)
                           : cols[s].userId != null &&
-                              cols[s].userId == currentManagerId &&
-                              r == currentRound,
+                                cols[s].userId == currentManagerId &&
+                                r == currentRound,
                     ),
                 ],
               ),
@@ -1963,40 +1965,38 @@ class DraftBoard extends StatelessWidget {
     final unbekannt = pick != null && player == null;
     final mine = col.mine;
     final placeholder = col.userId == null;
-    // **Die Positionsfarbe trägt die Fläche — gedämpft.**
+    // **Neutrale Fläche, die Position als Strich** (20.10.2026, auf Ansage:
+    // „immer noch so viel Farbe auf Farbe auf Farbe, ziemlich
+    // unübersichtlich, wenn das Board gefüllt ist").
     //
-    // Zwei Extreme lagen davor, und beide waren gemeldet. Erst die **volle**
-    // Positionsfarbe je Zelle: „viel zu bunt, man blickt gar nicht durch" —
-    // bei achtzehn Teams über sechzehn Runden über zweihundert gesättigte
-    // Farbklötze. Dann gar keine Fläche und ein 6-Punkt-Punkt als Akzent:
-    // „Das sieht auch alles so gleich aus … diese Punkte sehen beschissen
-    // aus." Auch richtig — auf einem Raster, das man **überfliegt**, ist ein
-    // Punkt zu wenig Signal, und die Zellen wurden ununterscheidbar.
-    //
-    // Die Fläche ist hier keine Dekoration, sie **ist** die Auskunft: Woraus
-    // besteht dieser Kader? Deshalb trägt sie die Farbe, aber bei 22 % über
-    // dem Kartengrund statt voll. Und deshalb flach statt als Hauch aus der
-    // Ecke: In einem 92 mal 52 Punkte großen Feld wäre ein Verlauf Matsch,
-    // nicht Gliederung.
-    final pos = player == null
-        ? null
-        : Color.alphaBlend(
-            positionColor(player.position).withValues(alpha: 0.22),
-            Theme.of(context).cardColor,
-          );
-    final grund = pos == null
-        ? Theme.of(context).cardColor
-        // Die eigene Spalte eine Spur heller — hell heißt in dieser App „das
-        // bist du", und es legt sich über jede Positionsfarbe gleich.
-        : (mine
-              ? Color.alphaBlend(_cSchnee.withValues(alpha: 0.07), pos)
-              : pos);
+    // Davor lagen drei Fassungen, und jede ist gemeldet worden: die volle
+    // Positionsfarbe je Zelle („viel zu bunt"), gar keine Fläche mit einem
+    // 6-Punkt-Punkt („sieht alles so gleich aus … die Punkte sehen
+    // beschissen aus") und die gedämpfte Fläche bei 22 %, die gefüllt immer
+    // noch über zweihundert getönte Felder ergab. Jetzt trägt die Zelle den
+    // Kartengrund (gefüllt eine Spur heller als leer), und die Position steht
+    // als **3-Punkt-Strich am linken Rand** — dieselbe Form wie überall sonst
+    // in der App (`PositionsStrich`) — plus das Kürzel grau oben rechts. Der
+    // Strich ist voll gesättigt, aber schmal: Über das Raster gelesen ergibt
+    // er eine Spalte aus Farbmarken, die man überfliegen kann, ohne dass die
+    // Fläche ruft.
+    final karte = Theme.of(context).cardColor;
+    final gefuellt = player != null || unbekannt;
+    final grund0 = gefuellt
+        ? Color.alphaBlend(scheme.onSurface.withValues(alpha: 0.05), karte)
+        : karte;
+    // Die eigene Spalte eine Spur heller — hell heißt in dieser App „das
+    // bist du".
+    final grund = mine
+        ? Color.alphaBlend(_cSchnee.withValues(alpha: 0.06), grund0)
+        : grund0;
+    final strich = player == null ? null : positionColor(player.position);
 
     return Container(
       width: _colW,
       height: _rowH,
       margin: const EdgeInsets.all(1),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: placeholder && player == null ? null : grund,
         borderRadius: BorderRadius.circular(8),
@@ -2019,99 +2019,128 @@ class DraftBoard extends StatelessWidget {
       // **Beide Namenszeilen schrumpfen, statt zu kappen** (`FittedBox`) —
       // dieselbe Regel wie im Live-Tab und auf den Ligakarten. In 80 Punkten
       // Breite wäre „Schlotterb…" keine Auskunft.
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Text(
-                code,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: scheme.onSurfaceVariant.withValues(
-                    alpha: placeholder ? 0.5 : 0.85,
-                  ),
-                ),
-              ),
-              if (pick?.isAuto ?? false) ...[
-                const SizedBox(width: 3),
-                Text(
-                  'AUTO',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          // Gehandelter Pick: wer ihn jetzt hat. Steht auch nach dem Ziehen
-          // da, sonst stünde ein fremder Spieler kommentarlos in der Spalte.
-          if (besitzerName != null)
-            Row(
+          if (strich != null)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(width: 3, color: strich),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Icon(Icons.swap_horiz,
-                    size: 11, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Text(
-                    besitzerName,
+                Row(
+                  children: [
+                    Text(
+                      code,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: scheme.onSurfaceVariant.withValues(
+                          alpha: placeholder ? 0.5 : 0.85,
+                        ),
+                      ),
+                    ),
+                    if (pick?.isAuto ?? false) ...[
+                      const SizedBox(width: 3),
+                      Text(
+                        'AUTO',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3,
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                    if (player != null) ...[
+                      const Spacer(),
+                      Text(
+                        player.position.short,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                // Gehandelter Pick: wer ihn jetzt hat. Steht auch nach dem Ziehen
+                // da, sonst stünde ein fremder Spieler kommentarlos in der Spalte.
+                if (besitzerName != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.swap_horiz,
+                        size: 11,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 2),
+                      Expanded(
+                        child: Text(
+                          besitzerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                const Spacer(),
+                if (player != null) ...[
+                  if (_vorname(player.name).isNotEmpty)
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _vorname(player.name),
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 11,
+                          height: 1.1,
+                          color: scheme.onSurface.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _nachname(player.name),
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.1,
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ] else if (unbekannt)
+                  Text(
+                    'Wird geladen …',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant,
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
                     ),
                   ),
-                ),
               ],
             ),
-          const Spacer(),
-          if (player != null) ...[
-            if (_vorname(player.name).isNotEmpty)
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _vorname(player.name),
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 11,
-                    height: 1.1,
-                    color: scheme.onSurface.withValues(alpha: 0.75),
-                  ),
-                ),
-              ),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _nachname(player.name),
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.1,
-                  fontWeight: FontWeight.w800,
-                  color: scheme.onSurface,
-                ),
-              ),
-            ),
-          ] else if (unbekannt)
-            Text(
-              'Wird geladen …',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                fontStyle: FontStyle.italic,
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.9),
-              ),
-            ),
+          ),
         ],
       ),
     );

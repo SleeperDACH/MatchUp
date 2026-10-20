@@ -154,9 +154,11 @@ gelten:
    **Bewusst geblieben:** Fantasy-Grün und Tippspiel-Gold als Identität der
    Startkarten (der Versuch „alles grau" ist schon einmal als „trostlos"
    gescheitert, siehe „Einfarbig ist auch kein Zustand"), Vereinsfarben,
-   Medaillen und **die gedämpfte Positionsfläche im Draft-Board** — dort ist
-   die Fläche die Auskunft, und Punkte statt Fläche wurden ausdrücklich
-   abgelehnt.
+   Medaillen. **Das Draft-Board trägt seit dem 20.10.2026 keine
+   Positionsfläche mehr** (auf Ansage, „Farbe auf Farbe auf Farbe"): neutrale
+   Zelle, die Position als 3-Punkt-Strich am linken Rand plus Kürzel oben
+   rechts. Punkte statt Fläche wurden früher ausdrücklich abgelehnt — der
+   Strich ist keiner.
 4. **Erklärungen hinter ⓘ.** `InfoKnopf` (`app/widgets/info_knopf.dart`)
    öffnet ein Blatt; `Kapitelmarke(info: (titel, text))` trägt ihn am Ende.
    Dorthin gewandert: die Wertungsregel unter der Tabelle, die Waiver-Regel
@@ -2896,6 +2898,15 @@ rund 6 MB im Mai) — die Abfrage holt `select()`, also alle Spalten. Beides ist
 der nächste Schritt, wenn es wieder klemmt.
 
 ### Das Draft-Board: Farbe als Akzent, nicht als Fläche
+
+**Stand seit dem 20.10.2026** (auf Ansage: „immer noch so viel Farbe auf
+Farbe auf Farbe, ziemlich unübersichtlich, wenn das Board gefüllt ist"): Die
+Zelle trägt den Kartengrund — gefüllt eine Spur heller als leer, die eigene
+Spalte eine weitere Spur heller —, die Position steht als **3-Punkt-Strich
+am linken Rand** in voller Positionsfarbe und als graues Kürzel (TW, ABW, MF,
+ST) oben rechts neben Pick-Code und AUTO. Die gedämpfte 22-%-Fläche, die der
+Abschnitt unten beschreibt, ist damit weg. Vorschau
+`draft_board_vorschau.png`.
 
 Gemeldet am 12.09.2026: *„Das Draftboard müssen wir noch mal redesignen, weil
 das viel zu bunt ist. Man blickt gar nicht durch."*
