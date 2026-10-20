@@ -1706,10 +1706,14 @@ class _BoardHeaderCell extends StatelessWidget {
         : Theme.of(context).cardColor;
     // Einzeilig, damit alle Kopf-Karten gleich groß bleiben — Auto-Pick zeigt
     // ein kleines Roboter-Symbol inline (live, sobald ein Team abwesend ist).
+    // **Derselbe Außenabstand wie die Felder darunter** (1 Punkt). Mit 1,5
+    // wuchs jede Spalte im Kopf um einen Punkt mehr als im Raster — bei
+    // achtzehn Teams standen die Felder ganz rechts 18 Punkte neben ihrem
+    // Namen.
     return Container(
       width: width,
       height: 40,
-      margin: const EdgeInsets.all(1.5),
+      margin: const EdgeInsets.all(1),
       padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: placeholder ? null : grund,

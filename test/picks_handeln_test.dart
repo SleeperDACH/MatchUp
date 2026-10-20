@@ -186,6 +186,21 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
 
+    // **Kopf und Felder fluchten** — der Kopf trug einmal mehr Außenabstand,
+    // und je Spalte verrutschte das Raster um einen Punkt.
+    Rect kasten(Finder text) => tester.getRect(
+        find.ancestor(of: text, matching: find.byType(Container)).first);
+    for (final (kopf, feld) in [
+      ('lennart', '1.01'),
+      ('eric', '1.02'),
+      ('SFV03', '1.03'),
+    ]) {
+      final k = kasten(find.text(kopf).first);
+      final f = kasten(find.text(feld).first);
+      expect(k.left, closeTo(f.left, 0.5), reason: kopf);
+      expect(k.width, closeTo(f.width, 0.5), reason: kopf);
+    }
+
     // Auf dem Board steht der neue Besitzer in der Zelle des gehandelten Picks.
     expect(find.text('SFV03'), findsWidgets);
     // Eigene Picks: 1.01 (erhandelt), 1.03, 3.03, 4.01 — 2.03 ist an eric.
