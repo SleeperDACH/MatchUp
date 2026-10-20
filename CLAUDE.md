@@ -8104,4 +8104,5099 @@ nicht erst auf Nachfrage:
   also der Beweis für den Round-Trip (und damit für die `INTERNET`-Berechtigung).
 - **Web-Demo:** mit dem Build-/Deploy-Ablauf oben neu nach `gh-pages` pushen
   und live verifizieren (md5 von `main.dart.js` gegen den Build vergleichen;
+  GitHub Pages propagiert ~15–60 s).**Die Elf der Rückrunde kommt aus dem Reset-Draft** (0144, 20.10.2026,
+auf Ansage): Wer zuerst gezogen wurde, steht in der Startelf, aufgefüllt nach
+**4-3-3** (1 TW, 4 ABW, 3 MF, 3 ST — bewusst nicht die Grundformation der
+Liga). `fantasy_reset_elf` geht die Picks der Phase `reset` in
+Pick-Reihenfolge durch und nimmt je Position die ersten. Eingetragen wird
+**sofort mit dem letzten Pick** (Trigger `fantasy_reset_draft_fertig` auf
+`draft_status → done`), Rückfallebene ist der Takt aus 0110. Ziel ist der
+erste noch nicht angepfiffene Spieltag; endet der Draft mitten in einem, gilt
+die Elf ab dem nächsten. Nur einmal je Manager — danach übernimmt 0110 wie
+gewohnt. Eine Zeile für den Zielspieltag wird nur ersetzt, wenn keiner ihrer
+Spieler im Kader steht (die vor dem Reset übernommene, beim Leeren der Kader
+ausgeräumte Zeile). 0110 legt außerdem keine **leere** Übernahme mehr an.
+Rollback-Probe an MatchUp! #1: 18 Elfen, je Position höchstens 1/4/3/3,
+zweiter Lauf 0.
+
+### Der Admin kann den Draft pausieren (0140, 19.10.2026)
+
+Auf Ansage („der Admin braucht die Möglichkeit, den Draft stoppen zu
+können"), gewählt: **pausieren und fortsetzen**, nicht abbrechen. Im
+Draft-Raum steht für den Ersteller „Draft pausieren" (mit Rückfrage) bzw.
+„Draft fortsetzen". Pausiert merkt `fantasy_draft_pausieren` die **Restzeit**
+des laufenden Picks in `draft_pausiert_rest` und setzt
+`current_pick_deadline` auf `null`; `fantasy_draft_fortsetzen` setzt die
+Frist auf jetzt + Restzeit. `fantasy_make_pick` lehnt während der Pause ab
+(„Der Draft ist pausiert"), `fantasy_autopick_if_expired` pickt nicht — auch
+nicht für Manager mit Auto-Pick, die sonst ohne Uhr gezogen würden. Der Raum
+zeigt „Draft pausiert · Am Zug … · Restzeit 0:50", niemand ist am Zug, der
+Sekundentakt fragt keinen Auto-Pick an. Mit Rollback-Probe nachgemessen:
+Restzeit 50 s gemerkt, Pick abgelehnt, kein Auto-Pick, nach dem Fortsetzen
+wieder 50 s.
+
+**Die Spielerzeilen zeigen den Schnitt statt des Vereins** (gleicher Tag):
+„Abwehr · Ø 8,4" — Ø je Einsatz der laufenden Saison, sobald sie gewertet
+ist, sonst der Vorsaison mit Jahr („Ø 25/26 8,4", `DraftSchnitte`,
+`vorsaisonStatsProvider`). **Die Vorsaison steht nicht in der Datenbank**
+(Stand 19.10.2026 nur 2026 in `player_match_stats`); vor dem ersten Spieltag
+der nächsten Saison zeigt die Zeile deshalb nur die Position, bis 2026 als
+Vorsaison da ist. Gehalten von `test/draft_pause_schnitt_test.dart`.
+
+### Das Draft-Board bleibt erreichbar
+
+Nach dem letzten Pick verschwand der Draft-Raum aus der Liga-Übersicht
+(`if (!draftFullyDone)`), und damit war das Board weg — wer nachsehen wollte,
+wer wen gezogen hat, hatte keinen Weg mehr dorthin. In den
+Fantasy-Einstellungen steht jetzt unter der Marke **Draft** die Zeile
+*Draft-Board*, für **alle** Mitglieder (der Liga-Block darüber ist
+`if (isOwner)`; das Board ist keine Verwaltung, sondern Nachschau).
+
+**Nicht der Draft-Raum wird wieder geöffnet, sondern nur das Board.**
+`DraftBoardScreen` ist bewusst ein eigener Schirm: Der Raum bringt einen
+Sekunden-Ticker, den Auto-Pick-Umschalter, die Wunschliste und den
+Verfügbar-Tab mit — nach dem letzten Pick tut davon nichts mehr etwas, aber
+der Ticker baut weiter jede Sekunde das ganze Brett neu auf (bei 18 Teams über
+250 Zellen, nicht lazy). Das Nachschau-Board steht still.
+
+Zwei Details, die beim Bauen aufkamen:
+
+- **`_BoardTab` heißt jetzt `DraftBoard`** und ist öffentlich — es hat mit dem
+  neuen Schirm ein zweites Zuhause. Der Rest des Draft-Raums bleibt privat.
+- **Gezeichnet werden nur die Runden, die es gibt** (`max(round)` aus den
+  Picks), nicht `roundsThisPhase`. Unter einem abgebrochenen Draft hingen
+  sonst leere Zeilen. Der `PillSelector` für die Draft-Phase ist mit dem
+  Dynasty-Modus entfallen (27.09.2026): Es gibt nur noch einen Draft, das
+  Board zeigt schlicht alle Picks.
+
+Angesehen über `test/draft_board_vorschau_test.dart` (fester Bildvergleich,
+kein Datum im Bild). Die Vorschau baut vier Runden Snake mit vier Teams: Genau
+daran sieht man, ob die Umkehr stimmt — R1 läuft 1.01→1.04, R2 zurück
+2.01→2.04 auf der anderen Seite.
+
+### Kader-Limits je Position — und warum ein Trigger, keine sechs Funktionen
+
+Anlass aus der laufenden Liga: Ein Manager hatte **acht Stürmer und drei
+Abwehrspieler**. Mit der Formationsspanne (ABW 3–5, ST 1–3) blieb ihm genau
+eine mögliche Aufstellung, 1-3-4-3; fällt einer der drei Verteidiger aus,
+bekommt er *gar keine* gültige Elf mehr zusammen. Fünf Kaderplätze waren tot.
+
+**Zwei Sorten Grenzen, und sie werden leicht verwechselt:**
+
+| | Was sie begrenzen | Wo sie stehen | Seit |
+|---|---|---|---|
+| `defMin`/`defMax`, `midMin`/… | die **Startelf** (Formation) | `roster`-JSONB | schon immer |
+| `maxGk`/`maxDef`/`maxMid`/`maxFwd` | den **Kader** (Besitz) | `roster`-JSONB | 0083 |
+
+- **Fehlt ein `max…`-Schlüssel, gilt kein Limit.** Absicht: Als das entstand,
+  liefen zwei Drafts, und eine stillschweigend eingeführte Obergrenze hätte sie
+  mitten im Lauf blockiert. Wer Limits will, setzt sie unter *Regeln & Format →
+  Kader-Limits*.
+- **Bestehende Kader brechen nicht.** Der Trigger prüft nur beim *Hinzufügen*;
+  wer schon darüber liegt, behält seine Spieler und kann auf dieser Position
+  nur nichts mehr dazunehmen. Die Seite sagt das auch hin („Ein Kader liegt
+  schon über einem Limit"). Rückwirkend Spieler wegzunehmen wäre keine Regel,
+  sondern eine Enteignung.
+- **Geprüft wird am Ende der Transaktion, nicht zwischen zwei Zeilen.** Der
+  Trigger lief zuerst als `before insert or update` — und ein **1:1-Tausch
+  scheiterte daran**, obwohl er nichts ändert. `fantasy_respond_trade` bewegt
+  die Spieler einzeln, als Schleife über `fantasy_trade_items`; zwischen zwei
+  Durchläufen hat die empfangende Seite den neuen Spieler schon und den eigenen
+  noch, also einen zu viel. Zwei Teilnehmer sind darüber gestolpert.
+  Seit 0087 ist es ein `constraint trigger ... deferrable initially deferred`:
+  Er läuft beim Commit, wenn alle Bewegungen erledigt sind. Zwei Eigenheiten
+  gehören dazu — Constraint-Trigger müssen `after` sein (Rückgabewert wird
+  ignoriert), und sie feuern auch für Zeilen, die in derselben Transaktion
+  wieder verschwunden sind; deshalb steigt die Funktion aus, wenn es die Zeile
+  beim Commit nicht mehr gibt.
+  **Die Lehre allgemein:** Eine Mengenregel („höchstens N davon") darf nicht
+  auf eine Momentaufnahme mitten in einer mehrschrittigen Operation schauen.
+  Wer so eine Regel als Row-Trigger schreibt, muss sie aufschieben — sonst
+  verbietet sie Vorgänge, die am Ende völlig regelkonform sind.
+- **Ein Trigger auf `fantasy_rosters`, keine sechs Funktionen.** Spieler kommen
+  über `fantasy_make_pick`, den Auto-Pick (`fantasy_advance`),
+  `fantasy_add_free_agent`, `fantasy_process_waivers`, `fantasy_admin_add` und
+  `fantasy_respond_trade` in einen Kader. Sechs Stellen sind sechs
+  Gelegenheiten, eine zu vergessen — und der siebte Weg, den jemand nächstes
+  Jahr baut, wäre von vornherein außen vor. **Trades laufen über ein `update`
+  von `manager_id`**, nicht über Delete+Insert; der Trigger hängt deshalb an
+  `insert or update`.
+- **Der Auto-Pick musste mit.** Zöge er nach seiner Rangliste einen Stürmer auf
+  eine volle Position, würfe der Trigger — und der Draft stünde, exakt der
+  Zustand, den 0079 gerade beseitigt hat. Der Filter sitzt deshalb **in der
+  Auswahl** (auch in der Wunschliste), nicht als nachträgliche Prüfung.
+- **Die Summe der Limits muss die Kadergröße erreichen.** 16 Runden mit Limits,
+  die zusammen 12 ergeben, wären nicht streng, sondern kaputt: Der Draft fände
+  keinen erlaubten Spieler mehr und beendete sich selbst. Die Seite sperrt das
+  Speichern (`limitsReichenFuerKader`, getestet), und eine offene Position
+  (`null`) rettet immer.
+
+**Die Limit-Seite hat bewusst ihre eigene Repository-Methode.**
+`updateDraftSettings` filtert auf `.eq('draft_status','setup')` — richtig für
+Rundenzahl und Pickzeit, falsch hier: Limits regeln auch Free Agency, Waiver
+und Trades, also die ganze Saison. `updateRosterLimits` lässt den Filter weg
+und hängt ein `select()` an: Ein `update`, das null Zeilen trifft, ist für
+PostgREST kein Fehler, und die Oberfläche hätte „Gespeichert" gemeldet — genau
+die stille Variante, die die Teilnehmerzahl schon einmal hatte.
+
+**Jede Position steht für sich.** Man kann die Torhüter deckeln und Abwehr,
+Mittelfeld und Sturm offen lassen — ein fehlender `max…`-Schlüssel heißt für
+Trigger und Auto-Pick „unbegrenzt", und zwar je Position einzeln. Modell und
+SQL konnten das von Anfang an; eingeschränkt hatte nur die erste Fassung der
+Oberfläche, die einen einzigen Schalter für alle vier hatte.
+
+Drei Dinge, die dabei zu beachten waren:
+
+- **„Ohne Limit" ist ein Knopf, keine Null.** Eine 0 im Stepper hieße *keiner
+  erlaubt* — das genaue Gegenteil von *unbegrenzt*.
+- **Die Summenprüfung gilt nur, wenn alle vier gesetzt sind.** Bleibt eine
+  Position offen, nimmt sie jede Restmenge auf; „zusammen 12 von 16" wäre dann
+  eine Warnung vor einem Problem, das es nicht gibt (`_alleGesetzt`).
+- **Eigene Zeile statt `_SettingRow`.** Dessen `ListTile` gibt dem `trailing`
+  nur begrenzt Platz, und dort stehen bis zu drei Bedienelemente (Stepper plus
+  Aufheben-Knopf). Die Breiten kontrolliert `_LimitZeile` selbst.
+
+**Die Limits stehen auch beim Erstellen der Liga.** Vorher waren sie nur in
+den Einstellungen einer **bestehenden** Liga erreichbar: Wer beim Anlegen etwas
+festlegen wollte, musste die Liga erst erzeugen und dann nachbessern.
+
+Dafür ist der Editor aus der Einstellungsseite herausgelöst
+(`ui/kader_limits_editor.dart`). Er kennt **keine Liga**, nur die Kaderform und
+die aktuellen Limits, und meldet Änderungen nach oben — beim Erstellen gibt es
+noch keine Liga, dort wird eine `RosterConfig` im Speicher zusammengebaut und
+erst am Ende abgeschickt. Die naheliegende Alternative wäre gewesen, die vier
+Zeilen im Erstellen-Schirm ein zweites Mal zu bauen; sie tragen aber Regeln
+(Untergrenze je Position, Vorschlag beim Einschalten, wann die Summe reichen
+muss), und zwei Fassungen davon laufen beim nächsten Feinschliff auseinander.
+Diese Regeln sind jetzt statische Funktionen am Editor und werden von **beiden**
+Schirmen benutzt.
+
+Mit herausgezogen ist `WertStepper` (vorher privat in der Einstellungsseite,
+dort an fünf Stellen benutzt). Der Grund für seine Beschriftung steht in seinem
+Kopf: Ohne sie hießen für die Vorlesehilfe beide Knöpfe „Schaltfläche".
+
+**Die Summensperre gilt beim Erstellen genauso.** Sechzehn Kaderplätze bei
+Limits, die zusammen zwölf ergeben, sind nicht streng, sondern kaputt — der
+Draft fände keinen erlaubten Spieler mehr und beendete sich selbst. Der
+Erstellen-Knopf lehnt das mit derselben Begründung ab wie die
+Einstellungsseite.
+
+Angesehen über `test/kaderlimits_vorschau_test.dart` — bewusst der **gemischte**
+Fall (Torhüter und Sturm begrenzt, Abwehr und Mittelfeld offen), weil genau
+dieser Unterschied auf einen Blick lesbar sein muss — und über
+`test/liga_erstellen_vorschau_test.dart`, das den Schirm im Grundzustand (nichts
+begrenzt) und nach dem Einschalten einer einzelnen Position zeigt. Gerechnet
+wird in `test/kaderlimits_test.dart`.
+
+Gegen die Produktions-DB nachgemessen (mit Rollback): Mit nur `maxFwd` gesetzt
+wird ein Stürmer blockiert („höchstens 1 Stürmer in dieser Liga") und ein
+Abwehrspieler durchgelassen. Nach 0087 ebenso nachgestellt: Ein 1:1-Tausch bei
+vollem Limit geht durch, ein echter Zugang auf dieselbe Position nicht.
+**Aufgeschobene Trigger prüft man mit `set constraints <name> immediate`** —
+sonst feuern sie erst beim Commit, den ein Probelauf mit Rollback nie erreicht.
+
+### Das Spielfeld im Kader-Tab
+
+Gemeldet: „Die Namen sehen doof aus, die Punkte sind zu klein, die
+Tauschknöpfe sind in Ordnung, können aber besser. Außerdem muss das Aussehen
+besser sein, wenn man an der Aufstellung nichts mehr ändern kann."
+
+**Der Rasen ist Flutlicht geworden** (`pitchGradient`, `PitchLinesPainter`).
+Vorher ein flacher Verlauf von Dunkel- nach Mittelgrün — ein Rechteck Farbe,
+auf dem weiße Namen und helle Wappen um Kontrast kämpften. Jetzt fällt das
+Licht von oben ein: zwei Kegel aus den oberen Ecken, ein beleuchteter Kern
+oben in der Mitte, zu den Rändern hin fast schwarz, dazu sechs Mähstreifen.
+**Das ist kein Schmuck, sondern der Grund für alles darauf** — auf einer
+außen dunklen Fläche stehen die Spieler an den Seitenlinien so lesbar da wie
+die in der Mitte. Dieselbe Sprache wie die Kopfkarte des Startbildschirms.
+
+Die Streifen lassen sich abschalten (`mitStreifen: false`): Im Draft-Raum und
+im Manager-Profil ist das Feld 200 Punkte hoch, sechs Bahnen darauf sind
+Unruhe statt Struktur.
+
+**Satter, nicht bunter** (04.09.2026). Gemeldet als *„das Feld sieht bisschen
+blass aus — können wir das upgraden, ohne es wieder bunt und knallig zu
+machen?"*. Vier Fassungen lagen dafür als Entwurfs-Canvas nebeneinander,
+**mit Spielern darauf**: Der Rasen ist der Grund für Wappen, Namen und Zahlen,
+und eine Fläche, die für sich schön aussieht und die Namen schluckt, ist
+schlechter als eine blasse.
+
+| Was | vorher | jetzt |
+|---|---|---|
+| Grün der Leiter | `#24603A` … `#061B10` | `#175A31` … `#04190D` |
+| Lichtkern | `Alignment(0, −0.35)` | `Alignment(0, −0.10)` |
+| Mähbahn | 3 % Weiß | **18 % Schwarz** |
+| Feldlinien | 34 % Weiß | **44 %** |
+| Vignette | keine | 35 % Schwarz an den Ecken |
+
+Der Punkt dabei: **Die Tiefe kommt aus Weiß und Schwarz, nicht aus Farbe.** Am
+Grün ändert sich nur, dass in jeder Stufe etwas weniger Grau steckt — gleiche
+Helligkeit, kein neuer Farbton. Was den Rasen wirklich zum Rasen macht, sind
+die sichtbare Mähbahn, die kräftigere Linienzeichnung und die abgedunkelten
+Ecken. Bei 8 % Bahnstärke kippt es in die andere Richtung: Dann sind es
+Streifen, die mit den Namen konkurrieren — auch das stand im Canvas
+nebeneinander, sonst hätte ich es geraten.
+
+**Die Mähbahn dunkelt ab, sie hellt nicht auf — und das war der eigentliche
+Fehler.** Sie stand erst auf 3 % Weiß, dann auf 5,5 %; zurück kam *„ich sehe da
+keinen Unterschied"*. Zu Recht: Ein paar Prozent Weiß auf dunklem Grün liegen
+unter der Wahrnehmungsschwelle. Der Denkfehler war größer als die Zahl —
+**Textur über Aufhellen zu bauen**, während zweimal gemeldet worden war, dass
+es zu hell wird. Schwarz gibt dem Rasen Struktur und nimmt ihm dabei Licht,
+statt welches hinzuzufügen; 18 % sind deutlich sichtbar, ohne dass ein einziger
+Pixel heller wird.
+
+**Und die Lehre über den Rasen hinaus: Textur beurteilt man im Ausschnitt, nie
+im verkleinerten Gesamtbild.** Ich hatte den Entwurfs-Canvas auf ein Drittel
+skaliert angesehen; dort schien die helle Bahn zu tragen. Am Gerät, in voller
+Auflösung, war sie nicht da. Ein Golden ist erst dann eine Urteilsgrundlage,
+wenn man ihn in der Größe ansieht, in der die Sache wirkt — bei einer 5-%-Tönung
+heißt das 1:1. Dasselbe gilt für den Gegenbeweis: Dass die Änderung am Gerät
+**ankam**, war über die Pixelwerte des Screenshots in einer Minute belegt
+(oben 42/101/65 → 33/75/50); die Frage war nie, ob sie da ist, sondern ob man
+sie sieht.
+
+**Der erste Anlauf machte das Grün satt *und* hell** (Grünkanal 96 → 107), und
+prompt kam *„es wird mir vorne zu hell"* zurück. Vorne ist oben, die
+Stürmerreihe — und dort saßen zwei Lichtquellen übereinander: der Kern des
+Verlaufs und die beiden Kegel des Painters, deren Mittelpunkte über der
+Oberkante liegen. Jeder Grünkanal liegt jetzt **unter** dem alten Wert; satter
+heißt mehr Grün *im Verhältnis*, nicht mehr Licht.
+
+**Der Lichtkern ist damit zum dritten Mal nach unten gewandert** (−0,62 →
+−0,35 → −0,10). Das ist kein Herumprobieren, sondern die Eigenart dieses
+Feldes: Die Stürmer stehen oben, ihre Wappen sind das Hellste darauf, und ein
+Lichtkern über ihnen nimmt ihnen den Grund weg. Genau in der Mitte (0) läge er
+wie eine Lampe im Raum — auch das stand im Canvas daneben; −0,10 hält die
+Richtung „von oben", ohne die oberste Reihe auszuleuchten.
+
+**Die Vignette sitzt im Painter, nicht an den Einbauorten.** Ein `CustomPaint`
+malt seinen Painter vor dem Kind; sie liegt damit unter Wappen und Namen und
+nimmt ihnen nichts. Als Overlay an jedem der vier Aufrufer wäre sie viermal
+gebaut und läge dreimal falsch.
+
+**Im Managerprofil sind die Streifen jetzt an.** Sie waren aus, weil sechs
+Bahnen auf den 200 Punkten des Draft-Raums Unruhe sind — dieses Feld ist aber
+420 hoch, und ohne sie las es sich als grüne Fläche statt als Rasen. Der
+Draft-Raum behält sie aus.
+
+**Zwei Dinge daran waren im ersten Wurf falsch**, gemeldet als „merkwürdig
+abgehackter Farbverlauf, vorne zu hell":
+
+- **Die Streifen waren gefüllte Rechtecke** — sechs harte Kanten quer über das
+  Feld. Sie sind jetzt ein Verlauf mit Stützstellen in den **Bahnmitten**: Der
+  Übergang blendet über, die Struktur bleibt, die Kante ist weg.
+- **Der Grundverlauf hatte vier Stufen und einen zu hellen Kern.** Auf 470
+  Punkten Höhe lagen zwischen den Stufen sichtbare Sprünge; fünf Stufen
+  blenden sauber. Der Lichtkern sitzt außerdem nicht mehr über den Stürmern
+  (Alignment −0,62), sondern näher an der Mitte (−0,35), und die ganze Leiter
+  ist dunkler — vorne war der Rasen heller als die Wappen darauf.
+
+**Ø auf jeder Kachel, und die Partie als Wappen** (19.10.2026, auf Ansage:
+„Durchschnittspunkte mit rein … die Schrift von den Partien und
+Anstoßzeiten sieht unordentlich aus"). Die Kachel hat eine zweite Fußzeile
+„Ø 8,4" (Ø je Einsatz über abgepfiffene Spieltage, im Kader-Schirm einmal
+gerechnet). **Seit dem 19.10.2026 kompakt** (auf Ansage: „nicht ganz so
+fett, schmaler, dünner, kleiner"): 90 hoch, 62–76 breit (Bank 74), Wappen
+24, Name w700 statt w800, das Feld 440. Der Prognose-Kasten neben dem Torwart
+hat eine eigene Breite (`_prognoseBreite` 70) — an der Kachelbreite brach
+„PROGNOSE" um. Die Partie steht als
+`SpielMarke` (`ui/spiel_marke.dart`): **Wappen des Gegners** mit einer
+Heim/Auswärts-Marke davor (kein „@" mehr, auf Ansage: im MatchUp ein „H"/„A"
+im Kästchen, im **Kader ohne Tag und Zeit** das Wort „Heim"/„Auswärts",
+`mitZeit: false`) und die Zeit in normaler Stärke mit Tabellenziffern —
+statt „FCA · Sa 15:30" in fetter Kleinschrift. `NaechstesSpiel` trägt dafür
+`gegnerTeam`. Dieselbe Marke in den MatchUp-Zeilen: vor dem Anpfiff Wappen
+und Anstoß (die dritte Zeile nur noch Ø), laufend/beendet „S 2:1" mit Wappen
+statt „vs BVB".
+
+**Die Bank trägt dieselben Karten** (17.10.2026, auf Ansage): eine Reihe zum
+Wischen wie die Formationsleiste, sortiert nach Position und Punkten, freie
+Kaderplätze als Karte „Frei" am Ende. Ohne Tauschknopf (`ohneEcke`), mit
+Schloss nur, wenn sein Spiel läuft; tippen öffnet das Profil, langes Drücken
+zieht aufs Feld. **Ein Ausfall färbt die ganze Bankkarte** (auf Ansage, selber
+Tag): gold bei Verletzung, rot bei Sperre, deckend aufgemischt
+(`ausfallFlaeche`, Farben aus `ausfallFarbe`). Nur auf der Bank — dort ist
+die Frage „wen kann ich bringen?"; auf dem Feld bleibt das Zeichen am Wappen.
+Die Kante bleibt die Haarlinie. Die Kachel hat seit demselben Tag eine **feste Höhe** (92) —
+am Fuß stand vor dem Spiel der Termin in 11 Punkt, danach die Punkte in 14,
+und die Reihe stand schief. `aufstellung_feld_vorschau_test` misst, dass alle
+Kacheln gleich hoch sind.
+
+**Seit dem 16.10.2026 eine Auskunft je Zeile** (`_SpielerKachelFeld`, auf
+Ansage: *„die sehen so zusammengequetscht aus"*). Die Kachel nimmt die Breite
+ihres Platzes in der Reihe (68 bis 88 Punkte statt fest 68), Wappen oben mit
+dem Ausfall-Zeichen an seiner Ecke, darunter der Name in normaler Schreibung,
+am Fuß „FCA · Sa 15:30" bzw. die Punkte. Tausch und Schloss sitzen als Kreis
+an der oberen Ecke, die Position als Strich an der Unterkante. Die
+Beschreibung darunter ist der Stand davor.
+
+**Der Spieler auf dem Platz** (`_Slot`), von unten nach oben gelesen:
+
+| | vorher | jetzt |
+|---|---|---|
+| Wappen | 42, nackt auf dem Rasen | 48, weiter ohne Scheibe darunter |
+| Punkte | 10 Punkt, Ecke des Wappens | **13 Punkt**, Chip auf der Unterkante |
+| Name | 11 Punkt in einem grauen Kästchen | 12 Punkt, weiß mit Schatten, ohne Kasten |
+| Tauschknopf | Symbol im 21er-Kreis | 26er-Kreis, nur der Tauschpfeil |
+
+**Das Kürzel ist inzwischen wieder weg** (auf Ansage, 07.09.2026). Die
+Begründung dafür war, dass der Knopf sagt, *welcher* Platz getauscht wird — auf
+dem Feld ist das entbehrlich: Der Knopf sitzt an seinem Spieler, die Reihe sagt
+die Position, und die Farbe des Rings sagt sie ein zweites Mal. **Elf Kürzel
+auf dem Rasen sind elfmal dieselbe Auskunft.** Geblieben ist der Pfeil in einem
+26er-Kreis.
+
+Zwei Dinge, die dabei mitmussten: **Das Wort steht jetzt als `Semantics`-Label**
+(„Abwehr tauschen") — ohne Beschriftung hießen alle elf Knöpfe für die
+Vorlesehilfe „Schaltfläche", genau der Zustand, den `knopfnamen_test` für die
+`IconButton`s dieser App verbietet; hier steht es von Hand, weil der Knopf
+keiner ist. Und ohne Text ist der **`CircleBorder`** wieder gefahrlos: Er hatte
+dem Knopf früher die Enden abgeschnitten, aus „ABW" wurde „ABV". Das Feld ist dafür von 420 auf 470 Punkte gewachsen; der
+Platz kommt den Spielern zugute, nicht dem Rasen.
+
+**Und der Zustand, in dem nichts mehr geht, sieht jetzt danach aus.** Vorher
+stand darüber eine graue Textzeile, die neben dem Rasen kaum auffiel. Jetzt:
+
+- **Alle Spiele laufen** → ein Band über dem Feld, „Aufstellung steht — alle
+  Spiele laufen", mit goldenem Schloss. Am Platz steht das Schloss dort, wo
+  sonst der Tauschknopf ist. **Kein Schloss am Wappen**: Elf Schlösser sagen
+  nicht mehr als eines, sie machen nur das Feld unruhig.
+- **Einzelne Spieler gesperrt** (der gewöhnliche Spieltag) → kein Band,
+  sondern das Schloss **am Wappen** dessen, den es betrifft, plus die Zeile
+  darüber mit der Zahl. Hier ist das Schloss die einzige Stelle, an der steht,
+  *wen* es trifft.
+
+Angesehen über `test/aufstellung_feld_vorschau_test.dart` — vier Bilder: die
+bearbeitbare Elf, eine 3-5-2 (fünf in einer Reihe), einzelne gesperrte Spieler
+und die ganz gesperrte Elf. **Der Schirm hatte
+vorher keine Vorschau**, und genau deshalb ließ sich sein Aussehen nur auf dem
+Gerät beurteilen, im Zustand, in dem die eigene Liga gerade war. Der
+Bildvergleich läuft nur mit `--update-goldens`: Ob jemand gesperrt ist, hängt
+an `DateTime.now()` gegen den Anpfiff.
+
+**Die Plätze teilen sich die Reihe** (`Expanded`), sie sind nicht mehr 76
+Punkte breit. Gemeldet als „vor allem die 5er-Besetzung geht nicht": Fünf feste
+Plätze sind 380 Punkte und passen auf keinen Telefonschirm — bei einer 3-5-2
+lief die Mittelfeldreihe über. Die Vorschau stellt deshalb ausdrücklich eine
+3-5-2 hin.
+
+**Ein dunkler Kreis hinter dem Wappen war der erste Wurf und ist wieder raus**
+(auf Ansage). Er sollte es vom Rasen abheben und lag vor allem als schwarzer
+Fleck hinter jedem Verein; der dunkle Rasen trägt die Wappen von selbst.
+
+**Drei Fallen dabei**, alle drei nur im Bild zu sehen:
+
+- Ein `Material` mit `CircleBorder` und `Clip.antiAlias` schneidet einer Pille
+  die Enden ab — aus „ABW" wurde „ABV". `StadiumBorder` ist die richtige Form.
+- **Ein `Container` mit `alignment` nimmt sich, was die Eltern hergeben.**
+  Solange der Platz 76 Punkte breit war, fiel das nicht auf; seit die Reihe
+  ihre Breite aufteilt, wurde aus dem Tauschknopf ein Balken über den halben
+  Schirm. Die Zeile darin ist ohnehin `MainAxisSize.min` — die Ausrichtung war
+  überflüssig und teuer.
+- Der Editor liest im `initState` das Repository, greift also ohne Ersatz auf
+  `Supabase.instance` zu, die es im Test nicht gibt.
+
+### Der Editor füllt keine Lücke auf (17.10.2026, live gemeldet)
+
+Gemeldet mitten im Spieltag: Nach einem Free-Agency-Tausch (Potulski raus,
+Uduokhai rein) stand auf dem freien Platz **Mario Götze**, dessen Spiel schon
+gelaufen war. Er punktete nicht, ließ sich nicht entfernen, und jede weitere
+Änderung scheiterte.
+
+**Der Server hatte alles richtig gemacht:** Der Trigger aus 0115 nahm Potulski
+(Anpfiff noch offen) aus der Elf, gespeichert standen zehn Spieler, Götze
+nicht. **Der Schirm hat ihn hineingesetzt** — `_buildSlots` füllte jede freie
+Stelle mit dem nächsten Bankspieler auf. Weil Götzes Spiel lief, war er dort
+gesperrt (nicht entfernbar), und weil jede Speicherung die ganze Elf schickt,
+hätte jede Änderung ihn nachträglich hinzugefügt — `fantasy_set_lineup` lehnte
+sie zu Recht ab.
+
+**Regel seitdem: Die App setzt nie selbst einen Spieler in die Elf.**
+`_buildSlots` nimmt nur, was gespeichert bzw. übernommen ist (oder, ohne jede
+Aufstellung, die beste Elf als Saat); eine Lücke bleibt als leerer Platz
+stehen, bis der Manager sie füllt. Dieselbe Zusage wie beim
+Formationswechsel (`umbauAufFormation`) und bei `formationFuerElf` — dort war
+sie schon richtig, nur der letzte Schritt füllte doch wieder auf.
+
+Gehalten von `test/luecke_bleibt_leer_test.dart` (zehn gespeicherte Spieler,
+Bankspieler mit laufendem Spiel); gegengeprüft — mit dem alten Auffüllen fällt
+er.
+
+### Die Aufstellung sperrt je Spieler, nicht je Spieltag
+
+Vorher galt **ein** Riegel für alles: `fantasy_round_deadline` liefert den
+frühesten Anpfiff der Runde, und ab dem nahm `fantasy_set_lineup` gar nichts
+mehr an. Wer am Freitagabend das Eröffnungsspiel verpasst hatte, konnte auch
+seinen Sonntagsspieler nicht mehr tauschen — zwei Tage Sperre für null
+Informationsvorsprung.
+
+Seit Migration 0084 zählt der Anpfiff **des jeweiligen Spielers**. Drei Punkte,
+die man dabei richtig treffen muss:
+
+- **Geprüft wird nur die Änderung, nicht die Aufstellung.** Jeder Spieler, der
+  dazukommt oder herausfällt, muss noch spielfrei sein; wer **drin bleibt**,
+  wird nicht geprüft. Sonst wäre nach dem ersten Anpfiff wieder jede
+  Speicherung blockiert — die unveränderten Spieler stehen ja weiter in der
+  Liste, und wir hätten die alte Sperre zurück, nur umständlicher.
+- **Beide Richtungen sperren.** Nicht nur das Hereinnehmen: Wer schon spielt,
+  darf auch nicht *heraus*, sonst setzt man den Verteidiger nach seiner Roten
+  Karte nachträglich auf die Bank.
+- **Kein Spiel gefunden heißt nicht gesperrt.** Der Kader kann Spieler
+  enthalten, deren Verein an dem Spieltag nicht spielt oder gar nicht mehr in
+  der Liga ist — gemessen: von 19 Vereinen im Pool trifft genau einer keinen
+  Spielplan („AS Monaco", ein abgewanderter, noch gerosterter Spieler). Sie zu
+  bewegen bringt niemandem einen Vorteil; sie punkten ohnehin nicht.
+
+Die Zuordnung läuft über `players.club` = `fixtures.home_name`/`away_name` —
+derselbe kanonische OpenLigaDB-Name, auf dem auch das Stats-Matching steht.
+**Nachgemessen: 18 von 19 Vereinen treffen exakt.** `min(kickoff)`, weil
+derselbe Spieltag doppelt gespiegelt sein kann (`openligadb:` und
+`sportmonks:`) — die Anstoßzeit ist dann dieselbe.
+
+**Der Client muss dieselbe Regel meinen wie der Server**, sonst zeigt die App
+ein Feld als bedienbar, das der Server dann ablehnt. Sie steht deshalb als
+reine Funktion in `logic/aufstellung_sperre.dart` (`anpfiffJeVerein`,
+`spielerGesperrt`) mit Tests, und die Oberfläche zieht daraus:
+
+- Gesperrte Spieler tragen ein **Schloss** am Wappen und „läuft" statt der
+  Positions-Pille — sie reagieren nicht mehr stumm nicht, sondern sagen warum.
+- Sie lassen sich weder ziehen noch überschreiben, und der Spielerwahl-Dialog
+  **bietet sie gar nicht erst an**.
+- **Die Formations-Chips bleiben während des Spieltags stehen** (seit dem
+  17.10.2026, auf Ansage; vorher verschwanden sie beim ersten gesperrten
+  Spieler). Wer schon gespielt hat, ist fest: `umbauAufFormation(gesperrt:)`
+  nimmt beim Verkleinern einer Gruppe zuerst die hinteren **ungesperrten**
+  Spieler heraus. Eine Formation, die auf einer Position weniger Plätze hat,
+  als dort Gesperrte stehen, geht nicht — `formationGesperrtWeil` liefert den
+  Grund, der Chip steht gedämpft mit Schloss da und sagt beim Tippen warum.
+  Der Server braucht dafür nichts Neues: `fantasy_set_lineup` prüft je
+  geändertem Spieler, und ein Gesperrter wird nie geändert. Gehalten von
+  `test/formation_waehrend_spieltag_test.dart`.
+- Die Kopfzeile sagt die Zahl („3 Spieler sind gesperrt, ihre Spiele laufen")
+  statt pauschal „Aufstellung gesperrt" — das wäre ab dem Freitagsspiel schlicht
+  falsch.
+
+### Der MatchUp-Tab nach dem Vorbild Sleeper
+
+Gewünscht am 14.10.2026, mit einem Screenshot aus Sleeper: *„Vor allem die Box
+oben mit den Namen, dem Ergebnis, der Gewinnwahrscheinlichkeit — denn wir
+werden das System der Prognose noch weiter ausbauen. Und dass man die Wochen
+wechseln kann auf die nächsten MatchUps, wo auch schon die Prognose angezeigt
+wird, und dass die Spielerkarten mehr Information bringen."*
+
+**Der Kasten** (`MatchupBanner`, `matchup_hero.dart`) hat jetzt je Seite eine
+eigene Spalte: Avatar, groß der Stand, klein darunter wohin es läuft, die
+Siegchance in Prozent mit einem Balken nur für diese Seite, Name, darunter
+Platz · Bilanz · Serie (▲3S, ▼2N). In der Mitte das MatchUp-Zeichen und der
+Zustand (Anstoß, LIVE, ENDE). Der Vorgänger stapelte Punktestand und ein
+gemeinsames Band in eigenen Zeilen — man musste jede Zahl erst ihrer Seite
+zuordnen. `kMatchupBannerHoehe` ist dadurch von 206 auf 176 gesunken.
+
+| Zustand | groß | klein | Siegchance |
+|---|---|---|---|
+| vor dem Anpfiff | Prognose, gedämpft | „Prognose" | aus der Prognose |
+| läuft | Stand | „Prognose 190,2" (Hochrechnung) | schärft sich mit jedem Abpfiff |
+| beendet | Endstand | „Prognose 180,4" (die von vor dem Spieltag) | Wort: Sieg / Niederlage |
+
+**Nach dem letzten Abpfiff steht wieder die Prognose von vor dem Spieltag**
+(19.10.2026, auf Ansage), zum Vergleich mit dem Endstand. Sie ist nicht
+gespeichert, sondern wird in `duellPrognose` nachgerechnet, wie sie damals
+stand: nur Spieltage **vor** diesem, jeder Spieler „noch nicht
+angepfiffen", nur Ausfälle mit `seit` vor dem ersten Anpfiff (und keine
+„verletzt ausgewechselt" aus diesem Spieltag). Erkannt wird „nach dem
+Spieltag" über `rundeDurch`. Gehalten von `test/prognose_nach_spieltag_test.dart`
+— gegengeprüft. Nicht exakt nachzubauen sind Ausfälle, die vor dem Spieltag
+gemeldet und inzwischen wieder geschlossen wurden; sie fehlen in der
+nachgerechneten Zahl.
+
+**Die Hochrechnung ist neu** (`logic/hochrechnung.dart`). Vorher verschwand
+die Prognose mit dem ersten Anpfiff, und mitten im Spieltag stand nur ein
+Zwischenstand. Jetzt: Wer fertig ist, zählt mit seinen echten Punkten, wer
+noch spielt, mit seinen Punkten plus dem anteiligen Rest seines Schnitts (die
+Spielminute aus der Uhr geschätzt, 15 Minuten Pause abgezogen), wer noch nicht
+dran war, mit seinem Schnitt; ein Ausfall vor seinem Anpfiff mit null.
+`siegchanceLive` skaliert die gemessene Wochenstreuung mit der Wurzel des noch
+offenen Anteils — die Prozente gehen damit gegen Ende von selbst gegen 0 und
+100, und sind alle Spiele aus, steht es fest. **Jede Annahme steht benannt im
+Kopf der Datei**, weil das Prognosesystem ausdrücklich weiter ausgebaut werden
+soll; wer eine ändert, ändert dort.
+
+**Eine Funktion, zwei Orte:** `duellPrognose` und `bannerBilanz` stehen in
+`matchup_hero.dart` und werden von der Liga-Übersicht (`MatchupHero`) und dem
+Karussell gleich benutzt. Bilanz und Serie kommen aus `h2hGrundlage` und
+`saisonverlauf`, also aus derselben Rechnung wie Tabelle und Ligaprofil.
+
+**Künftige Spieltage hatten eine Zufallself.** `computeSideData` nahm ohne
+gespeicherte Aufstellung `bestEleven` nach den Punkten **dieses** Spieltags —
+für einen Spieltag in der Zukunft alle null, die Auswahl war also beliebig, und
+die Prognose für die nächsten MatchUps rechnete mit irgendwelchen elf Spielern.
+Jetzt gilt für einen Spieltag ohne Daten `uebernommeneElf`: die zuletzt
+gestellte, dieselbe Regel wie `fantasy_aufstellung_uebernehmen`. Für gespielte
+Spieltage bleibt es bei der besten Elf (`test/kuenftige_elf_test.dart`).
+
+**Hinter dem Kasten liegt das Stadion der Startseite, schlicht**
+(20.10.2026, auf Ansage): `assets/images/spiel_bg.jpg`, unterer Bildrand
+(Rasen und Linien), nur zu 30 % und nur im dunklen Modus, als unterste
+Schicht in `HeroShell` — gilt damit im MatchUp-Reiter und auf der
+Liga-Übersicht. Am Gerät geprüft; in Vorschauen erscheinen Bilder nicht.
+
+**Der Kasten führt nicht mehr in die Detailseite** (auf Ansage, 14.10.2026).
+Im MatchUp-Tab ist er eine Anzeige ohne Tipp-Ziel (`onTap: null`) — man ist
+schon da. Auf der Liga-Übersicht wechselt er in den MatchUp-Reiter, und zwar
+auf das **eigene Duell des aktuellen Spieltags**: `matchupSprungProvider` ist
+ein Zähler, auf den der Tab hört (Woche zurück auf den aktuellen Spieltag,
+Karussell auf Seite 0). Ein Zähler statt eines Wahrheitswerts, damit zwei
+Sprünge hintereinander zweimal wirken. `MatchupDetailScreen` ist damit von
+keinem Kasten mehr erreichbar; gehalten von der Zusicherung in
+`liga_uebersicht_vorschau_test.dart`.
+
+**Bild und Name im Kasten führen ins Ligaprofil** (`onHomeName`/`onAwayName`
+am `MatchupBanner`, Ansage vom 19.09.2026 — beim Sleeper-Umbau verloren, am
+14.10.2026 wiederhergestellt). Eigene Tipp-Ziele (`_Tippbar`) innerhalb des
+Kastens; ohne Rückruf sind sie durchlässig. Dieselbe Regel wie über der Bank.
+Gehalten von `matchup_tab_vorschau_test.dart`.
+
+**Der Spieltagswechsel sitzt über der Startelf** (`MatchdayStepper(kompakt:
+true)` neben „STARTELF"), nicht mehr als eigene Zeile über dem Karussell.
+
+**Die Spielerkarten tragen drei Zeilen** (66 statt 48 Punkte hoch):
+
+* Name — schrumpft statt zu kappen;
+* **Spielzeile** (`spielZeile`, `logic/spieler_kurzzeile.dart`): vor dem
+  Anpfiff „@ M05", laufend der Stand in Rot („1:0 vs M05"), danach der Ausgang
+  seines Vereins als farbiger Buchstabe („S 2:1 vs BVB");
+* dritte Zeile: nach dem Anpfiff die **Statistik** (`statistikZeile`:
+  „90' · 2 Tore · Gelb", beim Torwart Paraden und zu Null), davor der
+  **Anstoß** („Sa 15:30"). In einer halben Kartenbreite stand „vs M05 · Sa
+  15:30" sonst abgeschnitten als „vs M05 · S…".
+
+Rechts groß die Punkte (vor dem Anpfiff ein Strich). **Seit dem 17.10.2026
+ohne Statistikzeile und ohne Schnitt in der Punktebox** (auf Ansage, „sieht
+ordentlicher aus"): Die dritte Zeile unter dem Namen trägt den Anstoß (vor
+dem Spiel) und den Schnitt — „Sa 15:30 · Ø 8,4", danach nur „Ø 8,4" —,
+schrumpft statt zu kappen. `statistikZeile` ist gelöscht. Gegner und Anstoß standen vorher
+**in** der Punktebox; sie sind in die Spielzeile gewandert. Solange der
+Spielplan nicht geladen ist, steht keine Spielzeile da — sonst hieße jeder
+Spieler „spielfrei".
+
+**Was wir von Sleeper nicht übernommen haben:** die Ticker-Zeile im Kasten
+(„P. Nacua 5 yd catch +1.5"). Dafür bräuchte es Ereignisse je Spieler mit
+Zeitstempel; `player_match_stats` hält nur Summen. Die Daten lägen in
+`sync-stats` vor (`events`), wären aber ein eigener Ausbau.
+
+Angesehen über `test/matchup_tab_vorschau_test.dart` (der ganze Tab mitten im
+Spieltag: ein Spiel beendet, eins läuft, eins offen) und
+`test/matchup_banner_vorschau_test.dart` (alle Zustände des Kastens).
+Gerechnet wird in `test/hochrechnung_test.dart` und
+`test/spieler_kurzzeile_test.dart`.
+
+### Vor dem Spieltag steht ein „VS", kein 0:0
+
+Gemeldet: „Ich mag das Design der MatchUp-Box zwischen den Spieltagen nicht.
+Da bitte was Cooleres einbauen."
+
+Zu Recht: In der Vorschau stand ein **„0 : 0"** über einem halbierten grauen
+Balken mit der Beschriftung „Punkteanteil" — zwei Anzeigen, die beide nichts
+messen, weil noch kein Ball gerollt ist. Ein Duell vor dem Anpfiff ist eine
+Ankündigung, keine Bilanz.
+
+Jetzt: ein gesperrtes **„VS"** in der Mitte, von zwei Haarlinien angelaufen,
+die zum Rand hin verlöschen (sie führen das Auge, ohne einen Kasten zu bauen),
+mit einem Schimmer in der Akzentfarbe. Darunter der **Anpfiff des Spieltags** —
+vor dem Spieltag die einzige Zahl, die schon etwas bedeutet. Punktestand und
+Momentum-Balken erscheinen erst, wenn es sie gibt.
+
+Der Anpfiff kommt als frühester Kickoff der Runde aus denselben Fixtures, die
+den Zustand (`live`/`started`) bestimmen — beide Aufrufer reichen ihn durch.
+In der Vorschau steht er als **fester** Zeitpunkt, sonst wäre das Bild von Tag
+zu Tag anders.
+
+**Und die Kopfzeile ist weg** („zu viel kleine Schrift"). Sie trug ein
+Blitzsymbol, das Wort MATCHUP, den Spieltag und eine Status-Pille — vier
+Auskünfte in 11 bis 13 Punkt über dem, worum es geht. Der Kasten steht ohnehin
+in einem Zusammenhang, der den Spieltag nennt (Spieltagswähler im
+MatchUp-Reiter, Kopf der Liga-Übersicht); dass etwas läuft, sagen der
+kräftigere Hauch, die roten Zahlen und „Live-Punkte" unter dem Balken. Mit ihr
+fielen `HeroStatusPill` und die Felder `round`/`status` der `HeroShell` weg,
+und die Karussellhöhe sank von 236 auf **206** — die Zahl steht bei der Karte,
+nicht im Karussell, damit sie dem Inhalt folgen kann.
+
+### Im Duell steht das Profilbild, kein Buchstabe
+
+Gemeldet: *„Im MatchUp-Tab bitte nicht die Kreise mit den Buchstaben, sondern
+die Account-Profilbilder."*
+
+`HeroAvatar` zeichnete seinen Kreis selbst und setzte den Anfangsbuchstaben
+hinein — obwohl die App mit `AppAvatar` seit langem einen Baustein für genau
+diese Frage hat: Bild, sonst Emoji, sonst ein aus der Nutzer-ID erzeugtes
+Standardbild. Im Seitenmenü, im Ligaprofil und in der Teamliste desselben Tabs
+stand das echte Bild; **ausgerechnet im Duell nicht.**
+
+**Ring und Schein bleiben selbst gezeichnet**, und das ist der Punkt: Sie
+tragen den Zustand („wer führt", gedimmt für den anderen), und den kennt
+`AppAvatar` nicht — er weiß nur, wie ein Mensch aussieht. Das Bild sitzt mit
+2,5 Punkten Polster **innerhalb** des Rings; ohne das liefe es unter den Rand,
+und der Zustand wäre weg.
+
+**Die Daten lagen schon bereit.** Der MatchUp-Schirm baut `avatarOf` ohnehin
+für seine Teamliste; das Banner bekommt sie jetzt als `ManagerAvatar` gereicht
+— ein eigener kleiner Typ statt vier loser Parameter je Seite, weil acht
+Argumente an einem Konstruktor acht Gelegenheiten sind, Heim und Gast zu
+vertauschen.
+
+### Der MatchUp-Kasten war buchstäblich undurchsichtig
+
+So kam die Meldung, und sie traf es wörtlich. Vier Ursachen, alle im selben
+Kasten (`MatchupBanner`/`HeroShell` in `matchup_hero.dart`):
+
+- **Ein Chevron lag als Wasserzeichen mit 45 % Deckung quer über dem Inhalt.**
+  Genau so ein „halbtransparenter Dekor-Chevron" ist auf der Liga-Übersicht
+  schon einmal geflogen (siehe oben) — hier war er stehen geblieben. Er kostet
+  Lesbarkeit an der einzigen Stelle des Schirms, an der eine Zahl zählt.
+  Ersatzlos entfernt.
+- **Die Akzentfarbe füllte die ganze Fläche**, auch vor dem Anpfiff. Grün heißt
+  in dieser App „hier läuft etwas"; ein grüner Kasten für einen Spieltag, der
+  erst Samstag beginnt, sagt das Falsche. Jetzt trägt er den Kartengrund und
+  nur einen **Hauch aus der Ecke** — kräftig solange live, leiser wenn beendet,
+  gar nicht davor. Dasselbe Muster wie bei den Ligakarten (`_kartenFlaeche`).
+- **Der Punktestand stand zwischen den Namen** und nahm ihnen die Breite:
+  „lennartruepke" schrumpfte auf Winzgröße, aus „FÜHRT" wurde „F…", und bei
+  „92 : 78,5" blieb links „SF…" statt SFV03. Er steht jetzt **mittig auf einer
+  eigenen Zeile**; jede Seite bekommt die halbe Kastenbreite. Der Name schrumpft
+  außerdem statt zu kappen (`FittedBox`), dieselbe Regel wie im Live-Tab.
+- **Unter dem Momentum-Balken standen dieselben zwei Zahlen** wie zwei Zeilen
+  darüber im Punktestand — dieselbe Auskunft dreimal in einem Kasten, der
+  ohnehin zu voll war. Nur die Beschriftung ist geblieben.
+
+**Der Überlauf, den erst die Vorschau zeigte:** `RenderFlex overflowed by 14
+pixels` in der „FÜHRT"/„SIEG"-Zeile — auf dem Gerät der schwarz-gelbe Balken.
+Beide Beschriftungen sitzen jetzt in `Flexible`. Ohne
+`test/matchup_banner_vorschau_test.dart` wäre der nie aufgefallen: Auf dem Gerät
+sieht man immer nur den einen Zustand, den die eigene Liga gerade hat, und der
+Überlauf trat nur bei langem Namen **und** angepfiffenem Spieltag auf.
+
+**Und dann kam der Überlauf zurück, den ich selbst gebaut hatte:** Die neue
+Punktestand-Zeile macht den Kasten höher, und im MatchUp-Tab steckt er in einem
+`PageView` **fester** Höhe — dort stand eine nackte `224`, und das Gerät zeigte
+4 px Überlauf nach unten. Eine Zahl, die dem Inhalt hinterherlaufen muss, gehört
+nicht an zwei Stellen: Sie steht jetzt als `kMatchupBannerHoehe` beim Banner,
+das Karussell liest sie, und die Vorschau rendert einen Kasten **genau in dieser
+Höhe** mit den längsten Namen und vierstelligen Punktzahlen. Wächst der Inhalt
+wieder darüber hinaus, wird der Test rot statt das Gerät.
+
+Die Vorschau zeigt deshalb fünf Fälle untereinander (vor dem Spieltag, live,
+beendet, in Karussell-Höhe, spielfrei). `MatchupBanner` bekommt seine Daten
+explizit — der Provider-Teil steckt in `MatchupHero` —, deshalb braucht sie
+keinen einzigen Provider.
+
+**Beim Prüfen selbst danebengegriffen, zweimal:** Ein `grep` auf
+`^flutter: .*overflowed` findet Flutters Fehlerblöcke **nicht** — die stehen
+ohne `flutter:`-Präfix im Log, und die Meldung „keine Ausgabe = sauber" war
+schlicht falsch. Und `tail -n "+$(wc -l < datei)"` scheitert an den führenden
+Leerzeichen von `wc`. Wer im Log nach Layoutfehlern sucht: auf `overflowed`
+suchen, ohne Präfix, und den Bereich ab der letzten Zeile `Restarted
+application` nehmen — sonst zählt man Fehler aus dem Code von vor dem Neustart.
+
+### Mehr Aufstellungen: von acht auf neun — und warum es nicht elf wurden
+
+Die Spannen standen im FPL-Zuschnitt (ABW 3–5, MF 2–5, ST 1–3) und ließen genau
+**acht** Formationen zu. Geweitet auf MF 6 und ST 4 (Migration 0085) waren es
+elf — neu: 3-3-4, 4-2-4, 3-6-1. Zwei davon sind auf ausdrücklichen Wunsch
+wieder weg (0086), 4-2-4 ist geblieben. Stand: **neun**.
+
+**Nicht spielbare Formationen verschwinden nicht mehr.** Gemeldet: *„Es fehlen
+Aufstellungen. In den Patchnotes steht was von 8 auf 11, aber ich sehe nur 7."*
+
+Die Sieben war richtig gezählt: Sein Kader hatte vier Mittelfeldspieler, und die
+Auswahl ließ stillschweigend weg, wofür die Spieler fehlten — 3-5-2 und 4-5-1.
+Weglassen war der Fehler. **„Geht nicht" ist ein anderer Zustand als „gibt es
+nicht"**; wer zählt, kommt sonst auf eine andere Zahl als die Regel und hält das
+für einen Fehler. Sie stehen jetzt gedämpft da und sagen beim Antippen, was
+fehlt („Für 3-5-2 fehlt dir 1 Mittelfeldspieler"). Ein gedämpftes Element, das
+auf Berührung schweigt, wäre genauso ratlos machend wie ein fehlendes.
+
+Die Regel dazu steht in `logic/formation_luecke.dart`, damit sie prüfbar ist —
+der Test rechnet **genau den gemeldeten Kader** nach: neun Formationen, sieben
+davon spielbar, und die zwei gesperrten sind namentlich 3-5-2 und 4-5-1.
+
+**Die Elf in der Patchnote war schlicht falsch.** Sie stand hier im selben
+Abschnitt richtig („von acht auf neun"), und ich habe sie beim Schreiben der
+Notes aus dem Gedächtnis genommen statt sie nachzulesen. Korrigiert in
+`CHANGELOG.md` und in der veröffentlichten Seite.
+
+**Dabei kam die Grenze des Modells zum Vorschein.** 3-6-1 ließ sich sauber über
+die Spanne entfernen — `midMax` zurück auf 5, es ist die einzige Formation mit
+sechs Mittelfeldspielern. 3-3-4 nicht: Es braucht dasselbe `fwdMax` 4 wie
+4-2-4 und unterscheidet sich nur in der Abwehr. **Reine Min/Max-Spannen können
+das eine nicht ohne das andere entfernen.** Dafür gibt es jetzt eine Regel, die
+zwei Positionen zugleich anschaut:
+
+> Vier Stürmer nur mit mindestens vier Abwehrspielern.
+
+`RosterConfig.vierStuermerBrauchenVierAbwehr` — und **dieselbe Regel ein zweites
+Mal in SQL** (`fantasy_set_lineup`), bewusste Doppelung wie bei
+`tip_scoring.dart` ↔ SQL-View. Laufen die beiden auseinander, bietet die App
+eine Formation an, die der Server ablehnt.
+
+**Zur Migration:** Alle bestehenden Ligen tragen die Spannen ausgeschrieben in
+`fantasy_leagues.roster` (`RosterConfig.toJson` schreibt sie immer) — ein
+geänderter Default in Dart bewirkt dort nichts. 0085 weitete mit `greatest`
+(nur nach oben), 0086 nimmt `midMax` mit `least` zurück. **Verengen ist die
+heikle Richtung**, deshalb vorher nachgemessen: keine einzige gespeicherte
+Aufstellung nutzte sechs Mittelfeldspieler oder vier Stürmer bei drei
+Abwehrspielern.
+
+Zwei Dinge, die dabei mit hochkamen:
+
+- **Die Formationsleiste benutzte `ChoiceChip`** — genau das Material-Element,
+  das diese Datei verbietet (stumpfes Oliv aus `secondaryContainer`). Jetzt
+  `PillChip`.
+- **Ein bestehender Test hing an der alten Grenze**, ohne es zu sagen:
+  `weekly_recap_test` baute „vier treffende Stürmer, einer muss auf die Bank" —
+  mit `fwdMax` 4 starten alle vier. Das Szenario ist um einen Stürmer verschoben
+  und benennt die Abhängigkeit jetzt im Kommentar.
+
+Gehalten wird der Stand von `test/formationen_test.dart`: vollständige Liste,
+die Kopplungsregel einzeln, und die Zusicherung, dass gegenüber dem
+FPL-Zuschnitt **nichts wegfällt**.
+
+### „Kader voll" nach einem 1:1-Tausch — und ein doppelter Lemke
+
+Zwei Meldungen, eine Ursache, und sie lag **nicht** dort, wo sie klang.
+
+Gemeldet als „Kaderlimit ist voll, obwohl ich 1 zu 1 getauscht habe" — der
+Verdacht fiel sofort auf den Kader-Limit-Trigger aus 0083. Nachgemessen: **In
+keiner Liga ist überhaupt ein Positionslimit gesetzt** (alle `max…`-Schlüssel
+`null`), der Trigger kann also gar nicht feuern. Die Meldung stammt von
+`myPlayers.length >= league.roster.squadSize` in `player_action_buttons.dart`,
+also von einer **clientseitigen** Zählung.
+
+Und die zählte falsch, weil `rosterStream` Dubletten durchließ. `.stream()`
+führt einen ersten Schnappschuss und die laufenden Realtime-Ereignisse
+zusammen; dabei kann dieselbe Zeile kurzzeitig zweimal in der Liste stehen. Aus
+16 Kaderplätzen wurden scheinbar 17 → „Kader voll". Und im Aufstellungs-Editor
+landete derselbe Spieler beim Formationswechsel auf **zwei Plätzen** (gemeldet
+als „hat Lemke dupliziert") — die Elf hatte damit nur zehn verschiedene Spieler
+und ließ sich nicht mehr speichern.
+
+**Der Quirk war im Projekt längst bekannt**: `DraftRepository.queueStream`
+entdoppelt seit jeher von Hand und sagt im Kommentar auch warum. Nur stand das
+an genau einer Stelle. Jetzt gibt es `ohneDubletten`
+(`core/data/stream_dubletten.dart`), und alle Streams mit dem einfachen Muster
+laufen hindurch — Kader, Aufstellungen, Trades, Beitrittsanfragen, Chat, Ligen
+und Draft-Picks.
+
+**Die Lehre:** Ein `.stream()` liefert **keine** garantiert dublettenfreie
+Liste. Wer aus so einer Liste eine **Anzahl** ableitet (Kadergröße, „voll?",
+Zähler) oder sie **positionsweise verteilt**, muss vorher entdoppeln. Wer sie
+nur anzeigt, merkt es nie — deshalb fiel es erst auf, als daran eine Regel hing.
+
+Nicht angefasst sind die Streams mit eigenem Rechenweg (`leagueStream` nimmt
+ohnehin `rows.first`, `waiverPlayersStream` baut ein `Set`) — dort richtet eine
+Dublette nichts an.
+
+### Trade: derselbe Spieler sieht überall gleich aus
+
+Gemeldet: „Die Trade-Angebot-Boxen sind nur Schrift." Stimmte — die
+Angebotskarte listete die Spieler als Komma-Satz („J. Urbig, S. Kolo Muani").
+Dieselbe Auskunft wie eine Spielerkarte, aber ohne Verein, ohne Position und
+ohne Wiedererkennung. Wer ein Angebot beurteilen soll, schaut auf Spieler,
+nicht auf einen Satz.
+
+Die reiche Karte gab es längst — als private `_tile` in der Auswahlspalte des
+Trade-Screens: Positionsfarbe als Fläche, das Wappen groß und halb über den
+rechten Rand hinaus, Name und Position links. Sie ist jetzt
+`SpielerKachel` (`ui/spieler_kachel.dart`) und steht an **allen drei** Stellen
+des Trade-Wegs:
+
+| Schirm | vorher | jetzt |
+|---|---|---|
+| Auswahl | die Karte (110 px) | dieselbe Zeile (62 px) |
+| Bestätigung vor dem Senden | Pillen mit Namen | dieselbe Zeile, 46 px |
+| Angebotskarte | Komma-Satz | dieselbe Zeile, 46 px |
+| Transfers | — | dieselbe Zeile, 42 px |
+
+### Die Kachel ist eine Zeile geworden
+
+**Zwei Meldungen haben den alten Aufbau erledigt**, und beide klangen nach
+einem Platzierungsfehler: erst überschnitt das Ausfall-Symbol das Wappen, dann
+der Knopf ins Profil. Es war aber keiner. **Wer den halben Kartenrücken mit
+einem Wappen füllt, hat für alles Weitere nur noch dessen Fläche übrig** — die
+Karte hatte für ein zweites und drittes Ding schlicht keinen freien Platz, und
+jede Ecke, in die man auswich, lag wieder auf dem Logo.
+
+Jetzt steht alles nebeneinander in einer Reihe: Wappen (28 bzw. 20), Name,
+darunter die Positionsmarke („ABW" statt „Abwehr") mit Ausfall-Symbol und
+Punktzahl, rechts Haken und Chevron. Nichts liegt mehr auf etwas anderem, und
+neue Angaben brauchen keine neue Ecke.
+
+- **Die Fläche behält ihre Positionsfarbe** (auf Ansage nach dem ersten
+  Umbau): gewählt kräftig, sonst ein dunkler Ton davon. Sie war nie das
+  Problem — das Wappen darauf war es. Die kleinen Positionskästchen des
+  Zwischenstands sind wieder raus: Wenn die Fläche die Position ohnehin sagt,
+  ist ein farbiges Kästchen daneben dieselbe Auskunft ein zweites Mal. Das
+  Kürzel („MF") steht als leiser Text unter dem Namen — für den, der Farben
+  nicht unterscheidet, ist es die einzige Auskunft. **Das ganze Wort passt
+  nicht:** „Mittelfeld" neben dem Schnitt ergab in einer halben
+  Bildschirmbreite „Mitt…".
+- **`onProfil` zeichnet den Chevron** (44 Punkte hohe Tastfläche, mit
+  `tooltip` — sonst heißt er für die Vorlesehilfe „Schaltfläche"). Ohne Angabe
+  erscheint er nicht: In der Angebotskarte und in den Transfers öffnet der
+  Tipp auf die Kachel ohnehin schon das Profil.
+- **`punkte` bringt den Schnitt in die Zeile** — `punkteJeSpieltag` aus
+  `spielerSchnitt`, gerechnet mit der Wertung dieser Liga. Ohne die Zahl war
+  der Trade-Schirm eine Namensliste: Was man hergibt und was man bekommt,
+  stand nirgends. **Der Schnitt, nicht die Saisonsumme:** Zwei Spieler sind
+  nur so vergleichbar — wer erst im Winter kam oder verletzt war, hat eine
+  kleine Summe und kann trotzdem der bessere sein. Im Kopf steht die Summe
+  der Schnitte je Seite, die kürzeste Antwort auf „lohnt sich das?".
+
+### Der gefüllte Hauptknopf ist hell, nicht grün
+
+Erst nur auf dem Trade-Schirm, dann auf Ansage für die ganze App
+(`filledButtonTheme` in `theme.dart`): Das Markengrün stand auf rund neunzig
+Knöpfen — Anmelden, Liga erstellen, Beitreten, Tipp speichern, Draft starten,
+Angebot senden. Damit sah die Entscheidung eines Schirms aus wie jede andere
+Schaltfläche, und Grün heißt in dieser App „hier läuft etwas". **Ein Knopf
+läuft nicht, er wartet auf einen Druck.** Hell auf dunklem Grund ist der
+stärkste Kontrast, den diese Oberfläche hat, ohne eine weitere Signalfarbe
+einzuführen.
+
+**Grün bleibt, wo es Zustimmung heißt:** „Annehmen" bei Trades und
+Freundschaftsanfragen setzt seine Farbe ausdrücklich. Dort steht es gegen ein
+rotes „Ablehnen", und ohne Grün verliert Rot sein Gegenüber. Rote Knöpfe
+(Löschen, Verlassen, Droppen) und Umriss-Knöpfe bleiben, wie sie waren.
+
+**Dasselbe gilt für die Auswahl-Pillen** (gemeldet am „Alle"-Filter der Free
+Agency: „grüner Hintergrund, grüne Schrift, grüner Rahmen"). Drei grüne
+Signale übereinander sind für einen Filter zu viel, und eine Pille, auf der man
+steht, *läuft* nicht. Gewählt heißt jetzt überall hell: `PillChip` (Fläche
+14 %, Kante 55 %, Schrift Snow), der Reiter-Indikator in `SegmentedTabBar` und
+der Wappen-Filter im Transfers-Schirm. **Nicht betroffen sind Aktionsknöpfe mit
+Bedeutung** — das grüne Plus („holen"), die goldene Uhr („Waiver"), der rote
+Tausch: Sie sagen mit Farbe, *was* passiert, nicht, wo man steht.
+
+**Die Falle dabei ist bekannt:** Ein `textStyle` in einem Theme-Feld ersetzt
+den aufgelösten Stil; ein blankes `TextStyle` verliert die Schriftfamilie — in
+der ersten Fassung standen im Knopf schwarze Kästchen. Der Stil im Theme nennt
+`fontFamily` deshalb ausdrücklich.
+
+### Welche Zeichen die Schrift hat, und welche nicht
+
+Gemessen am 02.09.2026 durch Rendern, für Inter am 14.10.2026 über die
+Zeichentabelle der Schriftdatei:
+
+| | vorhanden | fehlt (leeres Kästchen) |
+|---|---|---|
+| **Inter (heute)** | `Ø` `≥` `−` `€` `§` `«` `»` `✓` `★` `●` `↔` `∞` `→` | `⌀` `⚽` `⚡` `⚙` `✅` `⇄` |
+| Rajdhani (bis 14.10.2026) | `Ø` `≥` `−` `€` `§` `«` `»` | `⌀` `✓` `★` `●` `↔` `∞` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
+| Barlow Condensed (bis 02.09.2026) | `Ø` `≥` `∞` `−` | `⌀` `✓` `✔` `★` `●` `↔` `⚽` `⚡` `⚙` `✅` `⇄` `→` |
+
+**Der Wechsel der Schrift ändert die Liste** — Rajdhani hat das `∞` nicht mehr,
+das Barlow noch hatte. Es stand in den Kader-Limits für „ohne Grenze" und heißt
+dort jetzt „frei", was sich nebenbei auch vorlesen lässt.
+
+Anlass war das Durchschnittszeichen: `⌀` (U+2300, Durchmesserzeichen) fehlt in
+beiden Schriften,
+`Ø` (U+00D8) ist da und sieht gleich aus. Es stand an vier Stellen im
+Spielerprofil und wäre mit der neuen Kachel an acht gestanden. Mitgefunden:
+das `✓` in der Leistungstabelle („zu Null") — dort steht jetzt ein Symbol aus
+der Icon-Schrift.
+
+**Die Regel:** Ein Sonderzeichen im UI-Text wird vorher gerendert und
+angesehen, oder es wird ein `Icon`. In den Vorschauen ist der Fehler sichtbar
+(leeres Kästchen), auf dem Gerät hängt die Anzeige an einer Schrift-
+Ersatzkette — dann steht das Zeichen in einer fremden Schrift mitten im Satz.
+`★` (Tipp-Tabelle) und `●` (Liga-Übersicht) hat Inter in allen Schnitten —
+geprüft am 20.10.2026 über die Zeichentabelle, dort ist nichts zu tun. `⚽`
+und `⚡` in den Avataren sind Emojis und kommen aus der Systemschrift;
+`alsEmoji` hängt beim Zeichnen den Selektor U+FE0F an, damit die
+Ersatzkette sie nicht als einfarbiges Textzeichen nimmt. Gespeichert wird
+ohne Selektor.
+
+**Die Zeile „Spieler antippen — aus deinem Kader und aus seinem" ist weg.**
+Eine Anleitung, die dasteht, bis man sie befolgt hat, liest niemand ein
+zweites Mal; die Geschäftskarte mit „nichts" auf beiden Seiten sagt dasselbe
+und sagt es auch noch, wenn erst eine Seite steht.
+
+**Kompakt heißt auch schmal.** Der erste Wurf zog die Kacheln über die volle
+Kartenbreite — für Name und Position wirkte das viel zu groß, und drei Spieler
+machten die Angebotskarte doppelt so hoch wie nötig. Jetzt haben sie eine feste
+Breite (152 × 46) und laufen in einem `Wrap` nebeneinander. Damit skaliert auch
+der Platz, den das überstehende Wappen rechts wegnimmt, mit der Kartenhöhe
+statt fest bei 60 px zu stehen — sonst bliebe auf einer schmalen Karte für den
+Namen fast nichts übrig.
+
+Drei Parameter tragen den Unterschied: `hervor` (kräftige Positionsfarbe statt
+gedämpfter Fläche), `breite` und `mitHaken`. In der Auswahl heißt kräftig „ausgewählt"
+und bekommt ein Häkchen; im Angebot heißt es schlicht „das ist der Inhalt" —
+ein Haken wäre dort eine Behauptung über eine Entscheidung, die niemand
+getroffen hat. Wappengröße und Schriftgrad folgen der Kartenhöhe, sonst sähe
+die kompakte Fassung aus wie die große mit abgeschnittenem Rand.
+
+**Die Fläche drumherum hatte denselben Fehler wie der MatchUp-Kasten:**
+`surfaceContainerHighest` auf 60 % Deckung — eine milchige Schicht, die weder
+Fläche noch nichts war — und ein **grüner Rahmen auf jeder Karte**, auch bei
+einem Angebot, das nur auf Antwort wartet. Grün heißt „hier läuft etwas"; auf
+jeder Karte gesetzt sagt es gar nichts mehr. Jetzt: voller Kartengrund,
+Haarlinie, und Farbe **nur da, wo etwas von mir gewollt wird** — ein
+eingehendes, offenes Angebot trägt einen Hauch aus der Ecke und eine getönte
+Kante. Ein selbst gestelltes, das auf Antwort wartet, ist neutral.
+
+**„Offen" ist farblos**, und zwar aus demselben Grund. Es ist kein Ergebnis,
+sondern der Normalfall — jedes Angebot, das man sieht, ist erst einmal offen.
+Der Chip zog vorher `secondaryContainer`, und genau daraus wird beim grünen
+Seed dieser App das stumpfe Oliv, wegen dem hier auch keine `ChoiceChip`s
+stehen. Farbe tragen jetzt nur die **Ausgänge**: angenommen grün, abgelehnt
+rot, gekontert gold. „Zurückgezogen" bleibt ebenfalls neutral — auch das ist
+kein Ergebnis, sondern ein Abbruch.
+
+**Ein unbekannter Spieler verschwindet nicht.** Kennt der lokale Pool die ID
+nicht (Zugang aus `sync-squads` nach dem App-Start), steht sie kursiv da statt
+ausgelassen zu werden — dieselbe Regel wie beim Draft-Brett: „nicht gefunden"
+ist ein eigener Zustand, nicht dasselbe wie „nichts dabei". Die Vorschau
+`test/trade_angebot_vorschau_test.dart` enthält genau diesen Fall, dazu ein
+eingehendes Angebot (mit Annehmen/Ablehnen) neben einem selbst gestellten —
+auf dem Gerät sieht man immer nur eins von beiden.
+
+### Aus dem Profil in den normalen Trade-Schirm
+
+Gemeldet: *„Wenn ich über ein Spielerprofil von meinen Spielern traden möchte,
+habe ich nur den Screen mit allen Teilnehmern und nicht den normalen
+Auswahlscreen von den Trades."*
+
+Im Profil eines eigenen Spielers öffnete „Traden" einen eigenen `SimpleDialog`:
+Avatar und Name je Manager, sonst nichts. **Mit wem man tauscht, entscheidet
+man aber an den Kadern**, und die stellt der Trade-Schirm längst nebeneinander
+— zwei Antworten auf dieselbe Frage, und die schlechtere stand ausgerechnet
+dort, wo man mit einem konkreten Spieler im Kopf herkommt.
+
+Die Partnerwahl ist deshalb aus dem Trade-Schirm herausgelöst
+(`TradePartnerList`, plus `TradePartnerScreen` als Hülle mit Kopfzeile). Der
+Reiter „Neuer Trade" benutzt sie, das Profil auch. **Der Spieler geht als
+`initialOffer` mit**: Ohne ihn müsste man ihn auf dem nächsten Schirm noch
+einmal suchen — und er ist der Grund, warum man überhaupt hier ist.
+
+**Ein Golden zeigt nicht, wohin ein Knopf führt**, deshalb hält den Weg eine
+Zusicherung: Tipp auf „Traden" → `TradePartnerScreen` im Baum, und der alte
+Dialogtitel nirgends mehr. Der Test brauchte dafür eine Kulisse mit **zwei**
+Managern; mit der leeren Liste von vorher brach „Traden" mit „Keine anderen
+Manager in der Liga" ab, und geprüft worden wäre die Kulisse statt des Wegs.
+
+### Die Trade-Karte sagt, mit wem man handelt
+
+Gemeldet: *„Wenn man einen Trade bekommt, sieht man in der Box leider nicht,
+von wem der kommt. Das bitte einbauen."*
+
+Der Kopf trug ein Tauschsymbol, „Trade-Angebot" und den Liganamen — drei
+Auskünfte, die man alle schon hat, wenn man die Karte überhaupt vor sich hat.
+Die eine Angabe, die eine Entscheidung trägt („annehmen oder nicht?"), fehlte:
+**wer**.
+
+Verschärft hat es der Umstand, dass dieselbe `TradeCard` an **drei** Stellen
+hängt — in der Direktnachricht, im „Angebote"-Tab und in den Transfers. Nur im
+Chat ließ sich der Absender aus dem Gesprächspartner erschließen; in den beiden
+Listen stand die Auskunft nirgends. Beim Bauen fällt das nicht auf, weil man
+die Karte üblicherweise im Chat testet, wo der Kontext die Lücke füllt.
+
+Jetzt trägt der Kopf die **Gegenseite**: Avatar plus „Von Erics Elf"
+beziehungsweise „An Erics Elf" — bei einem eingehenden Angebot der Absender,
+beim eigenen der Empfänger. „Trade-Angebot" und Liganame rücken als
+Unterzeile darunter. Der Avatar ersetzt das Tauschsymbol, weil in dieser App
+überall ein Avatar für einen Menschen steht.
+
+Der Name kommt aus `fantasyManagersProvider` und ist der **Ligaanzeigename**
+(`display`: Teamname, sonst Nutzername) — dieselbe Auflösung wie in Tabelle,
+Kader und Chat.
+
+Und der Fall, den man leicht übersieht: Steht der Mann **nicht** in der Liste —
+Liste noch nicht geladen, oder er hat die Liga verlassen —, fällt der Kopf auf
+die alte neutrale Marke zurück. Keinen Namen raten, keine leere Zeile, wo ein
+Mensch stehen sollte. `managerMit()` liefert dafür bewusst für beide Fälle
+`null`; `test/trade_absender_test.dart` fragt alle drei Zustände ab.
+
+Nebenbei mitgenommen: `_counter` machte dieselbe Managersuche noch einmal von
+Hand. Sie steht jetzt einmal da.
+
+### „Neuer Trade" — der Tausch steht jetzt oben
+
+Der Schirm zeigte zwei scrollende Kaderspalten und sonst nichts. Drei Befunde:
+
+- **Nirgends stand, was der Tausch eigentlich ist.** Die Auswahl lag verstreut
+  in zwei Listen, und zusammengefasst wurde sie einzig als Zahlenpaar im
+  Absende-Knopf („Angebot senden (1 ↔ 2)"). Wer zwei Bildschirmhöhen weit
+  gescrollt hatte, wusste nicht mehr, was er anbietet. Jetzt steht der Tausch
+  als **fester Kopf** ganz oben — beide Seiten als Chips mit Wappen, ein
+  Tauschpfeil dazwischen. Bei leerer Auswahl sagt er, was zu tun ist, statt
+  leer zu sein. Die Zahlen im Knopf sind dafür weg; sie sagten dasselbe
+  schlechter.
+- **Die Spaltenköpfe waren farbige Kästen** mit Rahmen und einem Zähler-Chip
+  darin — auf einem Schirm, dessen Inhalt die Spielerkarten sind, das
+  Lauteste. Jetzt zwei **Kapitelmarken** (Strich, Wort, Haarlinie bis an den
+  Rand), die Anzahl rechts daneben und **nur wenn etwas gewählt ist**:
+  „0 gewählt" ist eine Meldung über nichts.
+- **Der Titel nannte den Partner, nicht den Schirm.** Jetzt zweizeilig wie in
+  den Fantasy-Einstellungen: oben „Neuer Trade", darunter „mit …".
+
+Die Spielerkarten selbst sind unangetastet — sie sind der Inhalt und
+funktionieren. Angesehen über `test/trade_neu_vorschau_test.dart`, mit
+Vorauswahl auf **beiden** Seiten: Nur dann sieht man, was die Auswahl mit dem
+Schirm macht.
+
+### Trades greifen erst nach dem Spieltag
+
+Vorfall: Ein Trade wurde **während** des Spieltags angenommen. Der abgegebene
+Spieler verließ sofort den Kader — und damit stand die Aufstellung des
+Betroffenen für den laufenden Spieltag nur noch mit **zehn** Spielern da. Der
+elfte Platz war weg, die Punkte dafür auch.
+
+Der Fehler ist nicht der Tausch, sondern sein **Zeitpunkt**. Seit Migration
+0088 wird ein angenommener Trade **vorgemerkt** und erst ausgeführt:
+
+    letzter Anpfiff der laufenden Runde + 2 h (Spieldauer) + 12 h
+
+**Läuft gerade kein Spieltag, greift der Tausch sofort.** Die Verzögerung soll
+die Wertung schützen, nicht Wartezeit erfinden; zwischen zwei Spieltagen liegt
+der berechnete Zeitpunkt ohnehin in der Vergangenheit, und `fantasy_trade_frei_ab`
+gibt dann `now()` zurück.
+
+Vier Dinge, die dabei zu beachten waren:
+
+- **`status = 'accepted'` heißt nicht mehr „vollzogen".** Es heißt „beide sind
+  sich einig"; ob die Spieler gewechselt sind, sagt allein `executed_at`. Wer
+  den Status auswertet, muss das trennen — in Dart dafür
+  `TradeOffer.wartetAufAusfuehrung`.
+- **Zwischen Zusage und Ausführung kann sich der Kader ändern** (Free Agency,
+  ein zweiter Trade, ein Drop). `fantasy_trade_ausfuehren` prüft deshalb
+  erneut, ob jeder Spieler noch beim Abgebenden liegt, und bricht sonst den
+  ganzen Trade ab (`cancelled` plus Systemnachricht). **Ein halber Tausch wäre
+  schlimmer als keiner.**
+- **Sofort und später nehmen denselben Weg.** Die Bewegung steht einmal in
+  `fantasy_trade_ausfuehren`; `fantasy_respond_trade` ruft sie bei freiem
+  Fenster direkt auf, sonst der Zeitplan (`fantasy-trades`, alle 10 Minuten).
+- **Die Chat-Nachricht darf nicht lügen.** „Trade angenommen" allein ließe
+  jemanden einen Spieler suchen, der noch beim anderen steht; hängt eine
+  Ausführung aus, steht „⏳ Die Kader wechseln erst nach dem Spieltag" darunter.
+
+**Im Kader-Tab** steht über dem Aufstellungs-Editor eine ruhige Zeile „N offene
+Trades — beschlossen, die Kader wechseln erst nach dem Spieltag", die zu
+`VorgemerkteTradesScreen` führt. Bewusst **über** dem Editor: Wer seine Elf
+stellt, muss wissen, dass sich der Kader danach noch ändert. Und bewusst keine
+der farbigen Aktionskacheln daneben — hier ist nichts zu tun, es ist eine
+Auskunft.
+
+Nachgemessen gegen die Produktions-DB (mit Rollback): Ein fälliger Trade wird
+ausgeführt und die Spieler wechseln, ein noch nicht fälliger bleibt unangetastet.
+
+### Kein Positionskürzel je Zeile
+
+Gewünscht: *„Können wir bei den Spieltag-Zeilen die Positionsbezeichnungen
+wegnehmen, damit die Kästen ein bisschen dünner sind?"*
+
+Jede Zeile im MatchUp trug unter dem Namen ihr Positionskürzel („ABW") — und
+**über jedem Block steht die Position ohnehin als Überschrift**, mit farbigem
+Punkt und ausgeschriebenem Wort. Die Zeilen darunter tragen ihre Positionsfarbe
+zusätzlich im Verlauf. Das Kürzel sagte damit zum dritten Mal dasselbe und
+kostete dafür eine ganze Textzeile Höhe.
+
+Dieselbe Regel wie beim „LIVE" in der Tipp-Tabelle und bei der Uhrzeit im
+Live-Tab: **Eine Auskunft, die sich je Zeile nicht unterscheidet, gehört nicht
+in die Zeile.**
+
+Die Zeile ist damit einzeilig, `height` geht von 60 auf **48**. Bei elf
+Startern plus Bank sind das über zweihundert Punkte, die der Spieltag kürzer
+wird.
+
+**Nicht betroffen ist die `SpielerKachel`.** Dort steht das Kürzel weiterhin,
+und aus gutem Grund: Sie steht in Trade-Angeboten und Transfers **ohne**
+Positionsüberschrift darüber, und für den, der Farben nicht unterscheidet, ist
+das Wort dort die einzige Auskunft.
+
+### Minuspunkte stehen rot da
+
+Auf Ansage: *„Wenn Spieler Minuspunkte machen, die Zahl bitte rot anzeigen."*
+Ein Minuszeichen vor einer sonst gleich aussehenden Zahl überliest man in
+einer Spalte aus zwanzig Zeilen; die Farbe sieht man, bevor man liest. Die
+Aufschlüsselung benutzt dieselbe Auszeichnung für ihre Abzüge schon lange.
+
+`Punktzahl` hat dafür ein `negativRot` — und **bewusst keinen Standard**. Rot
+heißt in dieser App an zwei Stellen etwas anderes: der laufende Spielstand im
+Live-Tab und die führende Seite im Duell-Kopf tragen es als „läuft gerade".
+Die Trennlinie verläuft deshalb zwischen **Spieler** und **Mannschaft**:
+
+| Zahl | rot bei Minus? |
+|---|---|
+| Punktebox einer Zeile im MatchUp | ja |
+| Bankspieler im MatchUp | ja |
+| Spieler in der Free Agency | ja |
+| Spieltag und Bilanz im Spielerprofil | ja |
+| Summe im Duell-Kopf und im Detailkopf | nein |
+| Stand je Positionsblock | nein |
+
+Die beiden letzten sind Mannschaftssummen und tragen ihre Farbe für „führt".
+Drei Bedeutungen an einer Zahl wären zwei zu viel.
+
+Gehalten von `test/matchup_punktebox_test.dart`: Die Minuszahlen tragen
+`colorScheme.error`, **die positiven nicht** — eine Farbe, die alle Zahlen
+trifft, hebt nichts hervor, derselbe Fehler wie die rote Wäsche im Live-Tab.
+Der Test sucht dafür nur innerhalb von `Punktzahl`; ein Filter über den ganzen
+Baum träfe den Blockstand mit. Gegengeprüft: Ohne das Flag fällt er sofort.
+
+### Der Vergleich steht im Blockkopf, nicht in der Zeile
+
+Gefragt: *„Warum sind bei den MatchUps eigentlich manchmal die Boxen grün
+umrandet?"* — Antwort: Die punktbessere der beiden gegenübergestellten Zellen
+trug einen grünen Rahmen, „führt dieses Duell". Darauf die Einordnung des
+Nutzers, und sie trifft: *„Das macht wenig Sinn, wenn verschiedene Anzahl an
+jeweiligen Positionen existieren."*
+
+**Die Paarung entsteht über den Index innerhalb der Position, und der ist
+keine Rangfolge.** Er kommt aus der Reihenfolge, in der die Elf gespeichert
+wurde — der zweite Verteidiger ist nicht der zweitbeste. Spielt die eine Seite
+vier Verteidiger und die andere drei, wird zusätzlich willkürlich gepaart, und
+der vierte hat gar kein Gegenüber. Eine Hervorhebung auf dieser Grundlage
+behauptet einen Wettbewerb, den es nicht gibt.
+
+**Die Summe je Positionsblock ist dagegen unabhängig von der Anzahl
+definiert** und beantwortet dieselbe Frage besser: Wer gewinnt die Abwehr? Sie
+steht jetzt rechts im Kopf des Blocks (`_BlockStand`), die führende Seite in
+Grün — „ein führendes Team" ist die eine Verwendung, die die Farbregel diesem
+Signal ausdrücklich zugesteht.
+
+Drei Feinheiten:
+
+- **Verglichen wird nur, wo auf beiden Seiten gespielt wurde.** Sonst führte
+  die Seite, die zufällig früher angepfiffen hat.
+- **Ein Strich statt einer Null**, solange niemand angepfiffen hat — dieselbe
+  Unterscheidung wie in der Punktebox der Zeile.
+- **Die Zeile trägt jetzt die gewöhnliche Haarlinie.** Selbst als Signal
+  gehörte die Farbe in die Fläche und nicht an den Rand.
+
+**Und der Wächter hatte ein zweites Loch.** `kartenkanten_test.dart`
+übersprang jede Stelle, in deren Umfeld `dividerColor` oder `outlineVariant`
+vorkommt — bei „grün, wenn führend, sonst `outlineVariant`" machte der
+neutrale Zweig die ganze Stelle unsichtbar. Er prüft jetzt zusätzlich, ob in
+der Farbe eine Bedingung steckt. Damit kamen drei weitere Stellen ans Licht,
+alle drei echte Zustände und namentlich eingetragen: die ausgewählte
+`OptionTile`, die Ligakachel mit rotem Zähler und die Hülle der
+Trade-Angebotskarte. Die letzte trägt Hauch **und** getönte Kante; die Kante
+steht zur Regel quer und gehört beim nächsten Anfassen weg.
+
+Angesehen über `test/matchup_punktebox_test.dart`
+(`matchup_positionsstand.png`), mit Messungen daneben: vier Blockstände bei
+ungleichen Summen. Aufgenommen wird der `Scaffold`, nicht der Teilbaum —
+`MatchupLineups` malt keinen Grund, und ein weißes Bild ist als Urteil
+wertlos.
+
+### Die Punktebox öffnet die Aufschlüsselung, die Karte das Profil
+
+Gewünscht: *„Im MatchUp-Tab beim Drücken auf das Kästchen, wo die Punkte
+stehen, soll auch die Aufschlüsselung angezeigt werden — und wenn man auf die
+restliche Spielerkarte kommt, landet man wie gewohnt auf dem Spielerprofil."*
+
+Die Zeile hat damit **zwei Ziele mit sichtbarer Grenze**: Die Punktebox ist ein
+eigener Kasten, und die Frage „woher kommen die Punkte?" stellt sich beim
+Vergleich zweier Aufstellungen eher als im Profil, wo die Aufschlüsselung
+bisher allein zu Hause war.
+
+**Technisch gewinnt das innere `GestureDetector` gegen das umgebende
+`InkWell`** — die Karte behält ihren Weg ins Profil, ohne dass etwas
+umgebaut werden musste. Zwei Dinge waren daran zu entscheiden:
+
+- **Ohne Statistikzeile nimmt die Box den Tipp nicht an**, sondern reicht ihn
+  an die Karte durch. Vor dem Anpfiff steht dort ohnehin die Partie und keine
+  Punktzahl; ein leeres Blatt wäre schlechter als kein Blatt.
+- **Die Rohdaten kommen vom Aufrufer**, nicht aus einem eigenen Provider
+  (`MatchupLineups.stats`) — aus demselben Grund, aus dem `computeSideData`
+  sie bekommt: Die Zahl in der Box und die Aufschlüsselung dahinter müssen
+  dieselbe Rechnung zeigen. Zwei Quellen dafür wären zwei Wahrheiten.
+
+**Die Aufschlüsselung lag privat im Spielerprofil** und war für den
+MatchUp-Tab unerreichbar. Sie steht jetzt als `PunkteAufschluesselung` in
+`ui/punkte_aufschluesselung.dart`, beide Schirme öffnen sie über
+`zeigePunkteAufschluesselung`. Eine zweite Fassung daneben wäre die nächste
+Stelle, an der zwei Darstellungen derselben Rechnung auseinanderlaufen.
+
+**Die Bank bleibt unangetastet.** Dort steht die Punktzahl als nackte Zahl,
+nicht in einem Kasten — ein Tippziel ohne sichtbare Grenze wäre genau das
+Ratespiel, das die Trennung hier vermeidet.
+
+Gehalten von `test/matchup_punktebox_test.dart`: Box öffnet die
+Aufschlüsselung und **nicht** das Profil, Karte öffnet das Profil, ohne
+Statistik gibt es keinen Knopf. Gegengeprüft — ohne die Trennung fällt der
+erste Fall sofort. Ein Golden hätte das nicht gezeigt: Er sagt, wie es aussah,
+nicht wohin ein Tipp führt.
+
+### Die Bank steht immer da
+
+Gemeldet: *„Die Bank beim MatchUp soll nicht durch so einen Dropdown angezeigt
+werden, sondern immer. Allerdings so, dass die Spieler so klein bleiben, wie
+sie es jetzt sind. Also keine vollen Boxen."*
+
+Sie steckte in einer `ExpansionTile` — zugeklappt, bis jemand darauf tippte,
+und beim nächsten Öffnen des MatchUps wieder. Wer wissen wollte, wen der Gegner
+noch draußen hat, musste jedes Mal von vorn anfangen. Für eine Auskunft, die
+man beim Vergleichen ohnehin braucht, ist ein Tipp einer zu viel.
+
+**Beide Hälften des Wunsches gehören zusammen: sichtbar und leise.** Die
+Zeilen bleiben, wie sie waren — Positionspunkt, 20er-Wappen, gekürzter Name,
+Punktzahl, zwei Spalten nebeneinander. Bekäme die Bank die große
+Gegenüberstellung der Startelf (Wappen an den Außenkanten, 16er-Namen), hätte
+der Schirm zwei gleich laute Abschnitte, und die Elf verlöre ihren Vorrang.
+
+Der Kopf ist derselbe wie bei den Positionsblöcken darüber (Punkt, Wort), nur
+in Grau: Die Bank ist keine Position, sondern deren Rest. Gehalten von
+`test/matchup_bank_vorschau_test.dart`, das ausdrücklich prüft, dass **keine**
+`ExpansionTile` mehr im Baum steht und die Bankspieler ohne einen einzigen Tipp
+zu finden sind.
+
+### Unentschieden bei knappem Ausgang (0134/0135)
+
+Ligaeinstellung seit dem 16.10.2026, auf Ansage: Liegen beide Wochensummen
+höchstens `remis_grenze` Punkte auseinander, endet das Duell unentschieden
+(`null` = aus, nur Punktgleichheit). **Einstellbar 5 bis 50 in
+Fünferschritten, Standard 10** (seit 19.10.2026, Migration 0138 mit Check;
+vorher 1–20 und Standard 5) — beim Erstellen (`RemisGrenzeEditor`,
+`WertStepper(schritt: 5)`) und unter Regeln & Format (`RemisGrenzePage`, nur
+der Ersteller ändert, alle sehen sie). Ein alter Wert wird beim Anzeigen auf
+den nächsten erlaubten gezogen (`RemisGrenzeEditor.erlaubt`); beim Einspielen
+von 0138 hatte keine Liga die Regel an.
+
+- **Bestehende Ligen sind aus** und werden vom Admin eingeschaltet. Weil die
+  Bilanz bei jedem Aufruf gerechnet wird, gilt die Regel dann **rückwirkend**
+  für alle Spieltage der Saison — so gewollt. Ein Trigger
+  (`fantasy_remis_grenze_melden`) schreibt jede Änderung als Systemnachricht in
+  den Liga-Chat. Andere Ligaeinstellungen tun das (noch) nicht.
+- **Kein Spaltenstandard** (0135): Mit `default 5.0` bekäme eine Liga, die mit
+  einer älteren App angelegt wird, still eine Regel, die diese App nicht
+  kennt. Die 5,0 schickt die neue App beim Anlegen selbst mit.
+- **Entschieden wird an einer Stelle:** `duellErgebnis` in
+  `core/logic/round_robin.dart` (mit Zuschlag gegen Fließkomma: 105,0 gegen
+  100,0 ist als Summe von Zehnteln gern 4,99999). Es fragen `h2hStandings`
+  (`remisGrenze`), `SaisonSpiel.ausgang`, der MatchUp-Kasten (Sieg/Niederlage
+  nach dem Spieltag), das Duell-Band und der Rückblick (ein knappes
+  Unentschieden ist kein „Nervenkrimi"-Sieg). `H2HGrundlage.remis` trägt die
+  Regel zu jeder Ansicht, die aus der Grundlage wertet.
+- **Playoffs bleiben strikt** — dort braucht jedes Duell einen Sieger; die
+  Setzung (Endstand der regulären Saison) rechnet die Regel mit.
+- **Die Siegchance ist unverändert** die Wahrscheinlichkeit, vorn zu liegen,
+  nicht die, mit mehr als der Grenze vorn zu liegen. Wer das Prognosesystem
+  ausbaut, kann hier ansetzen.
+
+Gehalten von `test/remis_grenze_test.dart` (Grenze genau 5,0, Fließkomma,
+Tabelle gegen Saisonverlauf, alte Ligen bleiben aus, Editor).
+
+### Jedes Gerät rechnet dieselbe Tabelle (19.10.2026)
+
+Gemeldet: *„Jedem werden unterschiedliche Tabellen angezeigt in der gleichen
+Liga."* **Die Tabelle wird nicht auf dem Server gerechnet, sondern auf jedem
+Gerät** — aus Mitgliedern, Kadern, Aufstellungen, Spielerpool,
+Saisonstatistik und Spielplan. Mitglieder, Kader und Aufstellungen sind
+Live-Ströme und werden beim Zurückkommen neu geholt. **Die anderen drei
+nicht:**
+
+| Eingang | vorher | Folge |
+|---|---|---|
+| `seasonStatsProvider` | einmal je Sitzung | Zwischenstände vom Öffnen |
+| `fantasySeasonFixturesProvider` | nur, solange jemand live hinsieht | „abgepfiffen" je Gerät verschieden |
+| `playerPoolProvider` | einmal je Sitzung | Neuzugang in der Elf zählt 0 |
+
+Ein iPhone hält die App tagelang im Hintergrund. Nach Spieltag 6 rechnete
+also ein Gerät mit der Statistik vom Samstag und zählte den Spieltag schon,
+ein zweites zählte ihn noch gar nicht, ein drittes hatte alles — drei
+Tabellen. **Der Fehler war von Anfang an da** (seit die Bilanz nur
+abgepfiffene Spieltage zählt), sichtbar wird er erst, wenn Leute nach einem
+Spieltag vergleichen. Dazu kommen Korrekturen der Nachlese bis 72 Stunden
+nach Abpfiff.
+
+Was es jetzt verhindert:
+
+- **Die Statistik hängt an der Liste der abgepfiffenen Spieltage**
+  (`seasonStatsProvider` hört auf `abgepfiffeneRundenProvider`). Kommt ein
+  Spieltag dazu, wird neu geladen — sie kann damit nie älter sein als der
+  letzte gewertete Spieltag. Auf den Spielplan wird mit `read` gewartet, nicht
+  mit `watch`: sonst holte jedes Nachladen des Spielplans (30 s live) die
+  ganze Saison neu. Der erste Entwurf hatte genau diesen Fehler; der Test hat
+  ihn gefunden.
+- **Abgepfiffen auch nach der Uhr** (`rundeDurch`: Status beendet **oder**
+  Anpfiff + 3 Std.), mit einem Wecker auf den nächsten solchen Zeitpunkt.
+  Damit kennt jedes Gerät denselben Stand, auch ohne frischen Spielplan.
+- **Beim Zurückkommen** (`beimZurueckkommenAktualisieren`) Spielplan immer,
+  Statistik und Pool höchstens alle zehn Minuten.
+- **`poolVollstaendigProvider`**: Steht in einer Elf ein Spieler, den der
+  Pool nicht kennt, wird der Pool einmal nachgeladen (Tabelle und
+  MatchUp-Reiter hören darauf).
+
+Gehalten von `test/tabelle_gleicher_stand_test.dart` — gegengeprüft: ohne die
+Kopplung fällt er. **Was bleibt:** Zwischen dem Abpfiff und dem nächsten
+Laden kann ein Gerät für Sekunden einen älteren Stand zeigen; dauerhaft
+auseinanderlaufen können die Tabellen nicht mehr. Die eigentlich sichere
+Lösung wäre eine Tabelle, die der Server rechnet — dafür müsste die Wertung
+ein drittes Mal (in SQL) stehen.
+
+### Eine Bilanz ist ein Ergebnis, kein Zwischenstand
+
+Gemeldet: *„Im MatchUp-Bereich steht schon eine Niederlage bei SFV, obwohl der
+Spieltag ja noch gar nicht vorbei ist. Das macht keinen Sinn."*
+
+Die Head-to-Head-Bilanz lief über **alle** Runden mit Statistikzeilen — und die
+gibt es für den laufenden Spieltag schon mittags, sobald die erste Partie
+angepfiffen ist. Wer am Samstag um 16 Uhr hinten lag, hatte dort eine
+Niederlage stehen, die sich bis Sonntagabend noch drehen konnte.
+
+`gewerteteRunden(abgepfiffen, mitDaten)` schneidet die Menge jetzt auf beides
+zu: **abgepfiffen und mit Daten.** Zwei Bedingungen, weil eine allein in beide
+Richtungen schiefgeht — ein Spieltag ohne Statistikzeilen ergäbe für alle null
+Punkte und damit ein Unentschieden, das nie gespielt wurde. Dieselbe Regel gilt
+im MatchUp-Bereich und in der Fantasy-Tabelle; **der laufende Spieltag hat
+seinen eigenen Ort**, nämlich die Live-Punkte im Kasten darüber, die dort auch
+so heißen.
+
+**Und die Reihenfolge ist Sieg – Unentschieden – Niederlage** (auf Ansage).
+Im MatchUp-Kasten und im Tippspiel-Duell stand S-N-U, in der Fantasy-Tabelle
+dagegen S·U·N. Jede Sportsendung liest sich S-U-N, und wer „2-1-3" sieht,
+rechnet sie automatisch so — die alte Reihenfolge machte aus einem Manager mit
+drei Niederlagen einen mit drei Unentschieden.
+
+### Wer noch nicht gespielt hat, führt nicht
+
+Gemeldet: Im MatchUp hatte ein Spieler eine Umrahmung, der **noch gar nicht
+gespielt** hatte — und sein Gegenüber, das schon gespielt hatte, keine.
+
+Die Umrahmung heißt „führt in dieser Paarung", und sie verglich allein die
+Punktzahl. Ein Spieler ohne Anpfiff steht bei **0**, und 0 ist mehr als die
+rund **−10** eines Verteidigers mit drei Gegentoren und Gelber Karte
+(nachgerechnet an echten Werten: Chabot, 74 Minuten, 3 Gegentore, Gelb).
+Formal richtig, als Aussage falsch: Wer noch nicht angefangen hat, führt nicht.
+
+Zwei Änderungen, beide an derselben Wurzel — **eine 0 war doppeldeutig**:
+
+- **`MatchupSideData` trägt jetzt `gespielt`**, die Menge der Spieler mit
+  einem Eintrag in den Stats. Die Hervorhebung setzt voraus, dass der
+  Führende auch gespielt hat.
+- **Nicht gespielt zeigt „–", nicht „0".** Vorher stand in beiden Fällen eine
+  Null; man konnte nicht unterscheiden, ob jemand gespielt und nichts geholt
+  hat oder noch gar nicht dran war.
+
+**Nebenbefund, den erst der geweitete Wächtertest fand:** Dieselbe Zelle gab
+ihre Punkte als rohe Interpolation aus (`Text('${pts ?? 0}')`) — der
+Fließkomma-Rattenschwanz, den `formatPoints` verhindern soll. Er war
+durchgerutscht, weil `test/punkte_formatierung_test.dart` nur nach „points"
+suchte und die Variable hier `pts` heißt. Der Test kennt jetzt beide
+Schreibweisen und fand damit **sofort eine weitere** Stelle im
+Manager-Profil. Wer so einen Wächter schreibt, sollte über seine
+Namensannahme zweimal nachdenken.
+
+### Tabelle: eine Tabelle, kein Stapel Kästen — und der Rückblick wohnt hier
+
+Der Tabellen-Tab zeigte **vier gefüllte Kästen** mit eigenen Rändern und Ecken.
+Vier gleich laute Objekte untereinander lesen sich nicht als Rangfolge. Einen
+Spaltenkopf gab es nicht; stattdessen stand **unter** der Tabelle ein
+fünfzeiliger Absatz, der erklärte, wofür S, U, N und „erzielt" stehen — an der
+Stelle, an der ihn niemand liest. Und die untere Bildschirmhälfte war leer.
+
+- **Kopfzeile statt Erklärabsatz** (`# · TEAM · S·U·N · PUNKTE`). Die
+  Spaltenbreiten stehen als Konstanten in `_TabellenKopf` und werden von
+  `_RecordRow` gelesen — zwei Zahlen an zwei Stellen wären beim nächsten
+  Feinschliff auseinandergelaufen.
+- **Die Bilanz bekommt eine eigene Spalte.** Sie stand als Kleintext unter dem
+  Namen und fluchtete mit nichts.
+- **Alle Zeilen auf einer Fläche**, hairline-getrennt. Die eigene Zeile ist nur
+  getönt, nicht gerahmt: In einer Tabelle, die als eine Fläche steht, wäre ein
+  Rahmen um eine Zeile ein Kasten im Kasten.
+- **Zahlen mit Tabellenziffern**, damit die Spalten über die Zeilen fluchten.
+
+**Der Wochen-Recap ist umgezogen — und zeigt sich erst nach dem Abpfiff.**
+
+Er hing an `fantasyCurrentRoundProvider` und erschien, sobald es *irgendwelche*
+gewerteten Punkte gab. Ein Recap ist aber eine **Bilanz**: „Team der Woche"
+mitten im Spieltag benennt den, der zufällig schon gespielt hat, und wechselt
+mit jedem weiteren Anpfiff. `WeeklyRecapCard` prüft deshalb
+`rundeAbgepfiffenProvider` — jede Partie der Runde beendet. (Nicht zu
+verwechseln mit `roundIsLiveProvider`: „nicht live" ist auch **vor** dem ersten
+Anpfiff wahr.)
+
+Dazu nimmt die Kachel jetzt einen **optionalen Spieltag** entgegen. Auf der
+Übersicht steht weiter der aktuelle; im Tabellen-Tab gibt es unter der Marke
+**Rückblick** eine Spieltagswahl über alle abgepfiffenen Runden
+(`abgepfiffeneRundenProvider`). Vorher gab es keinen Weg zu einer früheren
+Woche.
+
+Angesehen über `test/fantasy_tabelle_vorschau_test.dart`. Wichtig darin: **ohne
+Fixtures kein Rückblick** — welche Spieltage abgepfiffen sind, entscheidet der
+Spielplan, und mit leerer Liste fehlt der halbe Schirm.
+
+#### Der Tabellen-Reiter nach Sleeper (16.10.2026)
+
+Auf Ansage, mit zwei Screenshots aus Sleeper: *„dass man einmal alle
+Matchups auf einen Blick hat und dann noch die Tabelle in einem moderneren
+Design und ohne diese ganzen Boxen."*
+
+- **Oben ein Duell-Band** (`LigaDuelleBand`, `ui/liga_duelle_band.dart`):
+  alle Paarungen des aktuellen Spieltags als waagerecht wischbare Karten, die
+  eigene vorn. Je Seite Bild, Name, Platz · Bilanz · Serie, rechts der Stand
+  (vor dem Anpfiff die Prognose, gedämpft) und darunter die Siegchance bzw.
+  nach dem Spieltag SIEG/NIEDERLAGE. **Dieselben Rechnungen wie das
+  Karussell** (`duellPrognose`, `bannerBilanz`, `effectiveTotalsForRound`,
+  `chanceFarben` — Letzteres dafür öffentlich gemacht), dieselbe Reihenfolge
+  (eigene zuerst). Ein Tipp setzt `matchupKarussellSeiteProvider` auf die
+  Paarung, löst `matchupSprungProvider` aus und wechselt in den MatchUp-
+  Reiter; der Sprung-Hörer dort springt dafür jetzt auf die **gemerkte**
+  Seite statt stur auf die erste.
+- **Die Tabelle ohne Kasten:** Zeilen auf dem Grund, Haarlinien dazwischen,
+  die eigene Zeile hell hinterlegt. Links der Rang, darunter die Bewegung
+  seit dem vorigen gewerteten Spieltag („+1" grün, „−2" rot; gerechnet als
+  dieselbe Tabelle ohne den letzten Spieltag, erst ab zwei gewerteten). Unter
+  dem Namen der `@Nutzername`, wenn es einen Teamnamen gibt, und Bilanz plus
+  Serie. Spalten **Ø (17 Punkt) · PKT (24 Punkt, ganz rechts)**. „Für" und „Gegen" (PF/PA
+  wie bei Sleeper) standen einen Tag lang daneben und sind auf Ansage raus:
+  Vier Zahlenspalten in 14 Punkt waren nicht auf einen Blick zu lesen.
+- **Das Podest mit drei Schriftgrößen ist damit Geschichte** (der Abschnitt
+  darunter beschreibt es). Alle Zeilen sind gleich hoch; die ersten drei
+  tragen ihren Rang in Gold, Silber und Bronze. Die Medaillenkante und die
+  Ringe sind mit weg.
+
+Gehalten von `test/fantasy_tabelle_vorschau_test.dart`: zwei Karten bei vier
+Managern, und ein Tipp auf die zweite landet im MatchUp-Reiter auf Seite 1.
+
+#### Das Podest steht oben, das Bracket unten
+
+Auf Ansage: *„Im Tabellentab einmal das Playoff-Bracket nach unten packen und
+dann Platz 1, 2, 3 größer machen als den Rest, sodass 1 größer als 2, größer
+als 3, und dann kommen die ganzen anderen."*
+
+**Der Bracket-Knopf war die erste Zeile des Reiters.** Er stand über der
+Kapitelmarke „Tabelle" und nahm der Tabelle damit ihren Anfang — dabei ist er
+der Ausblick aufs Saisonende und nicht die Auskunft, wegen der man den Reiter
+öffnet. Er sitzt jetzt hinter dem Rückblick, unter einer eigenen Marke
+**Playoffs**; ohne sie schwebte er dort ohne Bezug.
+
+**Die Rangfolge trägt jetzt die Größe, nicht nur die Ziffer.** Vier Stufen
+(1 · 2 · 3 · alle anderen) in `_Podest.fuer`, und größer wird nur, was zum
+Team gehört:
+
+| | Rang 1 | Rang 2 | Rang 3 | ab 4 |
+|---|---|---|---|---|
+| Zeilenpolster | 18 | 15 | 13 | 11 |
+| Rang-Badge | 38 | 33 | 29 | 26 |
+| Avatar | 44 | 37 | 32 | 28 |
+| Name | 24 (`h1`) | 20 (`h2`) | 18 (`h3`) | 16 (`titel`) |
+
+Drei Entscheidungen darin:
+
+- **Die Zahlenspalten wachsen nicht mit.** Bilanz und Punkte stehen auf festen
+  Breiten, damit sie über alle Zeilen fluchten; eine Tabelle, deren Spalten je
+  Zeile eine andere Größe haben, ist keine mehr. Was das Podest trägt, sind
+  Rang, Bild und Name.
+- **Die Schriftgrade kommen aus der Leiter.** Zwischen `titel` und `h1` liegen
+  genau zwei Stufen — mehr braucht ein Podest nicht, und ein Zwischenwert wäre
+  ohnehin am Wächter aus `typografie_test.dart` gescheitert.
+- **Das Badge ist links in einer festen Spalte** (`rangBreite` von 30 auf 38).
+  Wüchse die Spalte mit, schöben Bild und Name der obersten Zeile sich gegen
+  die übrigen, und der linke Rand der Tabelle wäre ausgefranst.
+
+**Der Name schrumpft, er kappt nicht** (`FittedBox`, dieselbe Regel wie im
+Live-Tab). Auf Platz 1 stehen 24 Punkt in einer Spalte, die auf einem
+402 Punkte breiten Schirm rund 140 hergibt — ein langer Name stünde sonst als
+„Spitzenr…" ausgerechnet dort, wo man ihn am ehesten liest. Der Preis: Ein
+sehr langer Name auf Platz 1 kann kleiner gerendert werden als ein kurzer auf
+Platz 2. Badge und Avatar tragen die Rangfolge dann allein.
+
+**Die Vorschau hat dafür Playoffs bekommen** (`playoffTeams: 4`). Ohne sie ist
+`hasPlayoffs` falsch, der Knopf erscheint gar nicht — und genau seine neue
+Stelle wäre nicht im Bild.
+
+**Die Größe allein grenzte zu wenig ab** (Rückfrage: *„Kann man das noch
+irgendwie extra abgrenzen, sodass z. B. ganz farbig ist der Platz 1, 2, 3?"*).
+Die drei tragen jetzt ihre Medaillenfarbe **als Ring um den Avatar und als
+3 Punkte breite Kante am linken Rand**, beides in voller Sättigung. Ab Platz 4
+gibt es nichts davon.
+
+**Zwei getönte Flächen davor sind gescheitert, und der Grund ist derselbe.**
+Erst bekam jede der drei Zeilen ihren eigenen Farbstreifen — zurück kam *„das
+sieht ein bisschen abgehackt aus"*, und das stimmte gleich doppelt: Drei
+Farbblöcke untereinander treffen sich an harten Kanten, und weil jeder für
+sich von links nach rechts verlief, lag in jeder Zeile zusätzlich eine
+senkrechte Naht. Dann lief **ein** Verlauf über alle drei durch, von Gold über
+Silber und Bronze in den Kartengrund — Urteil: *„Das sieht noch schlechter
+aus."* Auch richtig.
+
+**Die Lehre: Über nahezu Schwarz wird jede Medaillenfarbe als Fläche
+matschig.** Gold, Silber und Bronze bei 10 bis 30 Prozent Deckung laufen alle
+auf denselben braungrauen Schleier zusammen; was sie unterscheidbar macht, ist
+ihre Sättigung, und die ist genau das, was eine Tönung wegnimmt. Als **scharfe
+Kante** bleibt Gold Gold. Dieselbe Form trägt in dieser App auch die
+Kapitelmarke — der farbige Strich ist hier das eingeführte Mittel, die getönte
+Fläche nicht.
+
+**Vier Varianten lagen als Bild nebeneinander** (nur Größe · Kante · Ring ·
+beides), bevor entschieden wurde. Nach zwei Fehlgriffen war das der billigere
+Weg als ein dritter Versuch — und der Vergleich hat nebenbei einen Fehler
+gezeigt, den man im Einzelbild übersieht (siehe unten).
+
+**Die Kante liegt im `Stack` über der Zeile**, nicht als eigene Spalte davor.
+Sonst schöbe sie den Inhalt der ersten drei Zeilen um drei Punkte gegen die
+übrigen — genau der Grund, aus dem der 4-px-Streifen im Live-Tab wieder
+geflogen ist.
+
+**Der Ring wächst nach außen, nicht nach innen.** Der erste Versuch schnitt
+das Bild um die Ringstärke kleiner, damit der belegte Platz gleich blieb —
+damit war das Gesicht auf Platz 3 (24) kleiner als auf Platz 4 (28), und die
+Leiter stand für einen Moment auf dem Kopf. Dass die Namen dadurch versetzt
+anfangen, tun sie ohnehin: Die Avatare sind je Rang verschieden groß.
+
+**Und die eigene Zeile ist dabei von Grün auf Hell umgestellt.** Sie zog
+`scheme.primary` bei 10 % — Grün heißt in dieser App „hier läuft etwas", und
+in einer Tabellenzeile läuft nichts. Hell ist ohnehin das Zeichen, mit dem
+hier überall „gewählt / das bist du" gesagt wird.
+
+### Das Wappen führt zum Spieler, nicht zum Verein
+
+**In der Fantasy-Liga öffnet ein Tipp auf einen Spieler sein Profil — Wappen
+eingeschlossen.** `ClubBadge` hat sich vorher selbst in einen `ClubLink`
+gewickelt und damit den Tipp geschluckt, der dem Spieler galt: Wer im Kader auf
+den Namen tippte, bekam das Spielerprofil; wer zwei Millimeter daneben aufs
+Wappen traf, die Vereinsseite. Zwei Ziele in einer Zeile, ohne sichtbare
+Grenze.
+
+Alle zwanzig Verwendungen von `ClubBadge` liegen in `features/fantasy/ui/` —
+die Regel fällt damit vollständig, und das Wappen ist wieder Bild statt
+Schaltfläche; was ein Tipp tut, entscheidet die umgebende Zeile. Außerhalb der
+Fantasy-Welt führt `ClubLink` weiter auf die Vereinsseite (Live-Tab,
+Favoriten, Spieldetail).
+
+**Damit muss das Profil hergeben, wofür man auf die Vereinsseite ging.** Es hat
+jetzt drei Reiter:
+
+| Reiter | Inhalt |
+|---|---|
+| Leistung | Punkte je Spieltag, **antippbar** |
+| Spielplan | die Partien des Vereins, in der geteilten Zeilenform |
+| Kader | alle Poolspieler des Vereins, nach Position — Tipp öffnet deren Profil |
+
+**Ein Tipp auf einen Spieltag zeigt die Aufschlüsselung.** Eine Punktzahl
+allein sagt nicht, woher sie kommt: −10 können ein halbes Spiel plus drei
+Gegentore plus Gelb sein. Die Zeilen kommen aus `scorePlayerDetailed` — also
+aus **derselben** Funktion, die auch wertet; eine zweite Rechnung fürs Anzeigen
+wäre eine zweite Wahrheit.
+
+Die Leistungstabelle ist dafür von `Table` auf Zeilen umgebaut (eine
+`TableRow` lässt sich nicht als Ganzes antippen) und zeigt „–" statt „0", wo
+nicht gespielt wurde — dieselbe Regel wie im MatchUp.
+
+**Dritter Anlauf beim Wächtertest:** Die Tabelle interpolierte ihre Punkte als
+`'${scorePlayer(...)}'` — weder „points" noch „pts" im Ausdruck, also wieder
+durchgerutscht. `test/punkte_formatierung_test.dart` kennt jetzt auch
+`scorePlayer(`. Wer so einen Wächter schreibt, sollte über seine Namensannahme
+dreimal nachdenken.
+
+### Das Spielerprofil nach Sleeper (19.10.2026)
+
+Auf Ansage, mit Screenshot aus Sleeper. **Kein Wisch-Strich mehr**
+(`showDragHandle: false`); oben steht der Kopf `SpielerProfilKopf`
+(`ui/spieler_profil_kopf.dart`): links groß das Wappen (Spielerfotos gibt es
+nicht), darunter der Verein in schrägen Versalien und „ABW · BVB" mit
+Positionspunkt; rechts wem er gehört („Dein Kader", „→ Team", „Free Agent" —
+dieselbe Regel wie die Knöpfe), Vor- und Nachname in schrägen Versalien,
+Kennzahlen Alter · Ø · Einsätze, darunter die Knöpfe (vorher unten am Blatt).
+Ein Schimmer in der Vereinsfarbe (`vereinsTon`, dafür nach
+`core/util/club_colors.dart` umgezogen) kommt von links.
+
+**Fünf Reiter: Übersicht · Leistung · Elf · Spiele · Tabelle.** „Elf" und
+„Spiele" heißen kürzer als vorher („Aufstellung", „Spielplan"), weil fünf
+Wörter auf Telefonbreite aneinanderstießen. Die **Übersicht**
+(`SpielerUebersicht`): Rang nach Saisonpunkten (in der Position und gesamt),
+Saisonpunkte, Ø je Einsatz; die Karte der letzten Leistung (Minuten, Tore,
+Vorlagen, Karten, Punkte — Tipp öffnet die Aufschlüsselung); die Karte des
+Spiels dazu; und unter „Spielplan" die nächsten drei Gegner (Wappen, Name,
+Anstoß). Eine Prognose je Spieltag stand dort einen Tag lang und ist auf
+Ansage raus — es war dreimal dieselbe Zahl. **Wappen kommen aus dem
+Spielplan** (`Fixture.home/away`, `TeamBadge`), nicht über den Vereinsnamen:
+`ClubBadge` ohne Adresse zeigte nach Spieltag 6 nur Buchstaben. Die Saison wird einmal im
+Blatt gerechnet (`mitLaufenderRunde`) und an Kopf, Übersicht und
+Leistungsreiter gereicht.
+
+### Die voraussichtliche Aufstellung
+
+Vor dem Aufstellen ist „spielt er überhaupt?" die erste Frage, und sie stand
+nirgends in der App. Das Spielerprofil hat dafür einen vierten Reiter
+**Aufstellung**: die voraussichtliche Elf des Vereins für das nächste Spiel,
+der eigene Spieler hervorgehoben.
+
+**Quelle ist Sportmonks, nicht kicker** — obwohl kicker vorgeschlagen war. Der
+Include `predictedLineups` steht im gebuchten Plan („Access Predicted
+Lineups"), liefert elf Spieler je Mannschaft samt Rückennummer und
+Formationsposition, und trägt **dieselben Spieler-IDs wie unser Pool**
+(`sportmonks:<id>` = `players.id`). Nachgemessen: alle elf vorhergesagten
+Dortmunder trafen exakt auf eine Pool-Zeile. Kicker gäbe dasselbe nur als HTML,
+mit Namensabgleich statt IDs und brechend bei jeder Layoutänderung — dazu eine
+ToS-Frage, die man sich für nichts einhandelt.
+
+**Gemessen, nicht geschätzt: die Prognose steht erst ein bis zwei Tage vor
+Anpfiff.** Am 29.08.2026 lagen für Partien desselben und des nächsten Tages je
+22 Einträge samt Formation vor, für den 02.09. (vier Tage) und den 05.09.
+(sieben Tage) kein einziger. Daraus folgt beides:
+
+- Der Sync fragt nur das Fenster `VORLAUF_TAGE` (3) ab. Alles darüber hinaus
+  wäre ein Request für eine garantiert leere Antwort. Ein voller Lauf ist
+  **ein** Sportmonks-Request (der multi-Endpunkt nimmt 25 Spiele).
+- **Die Tage ohne Prognose sind ein eigener Zustand.** Eine leere Liste sähe
+  aus wie „keiner spielt" — derselbe Fehler wie das leere Feld im Draft-Brett.
+  Der Reiter sagt stattdessen, dass die Elf ein bis zwei Tage vor Anpfiff
+  kommt, und trägt mit der letzten tatsächlichen Einsatzzeit („74 Minuten ·
+  Spieltag 2") die einzige belastbare Auskunft nach, die es dann gibt.
+
+**Der Umschaltzeitpunkt ist der Spieltag, nicht der Verein.** „Das nächste
+Spiel des Vereins" wäre die naheliegende und falsche Antwort: Spielt Dortmund
+freitags und der Spieltag endet sonntags, stünde ab Freitagabend die Prognose
+für den *nächsten* Spieltag da — für den es noch keine gibt, und sie
+verdrängte die Elf, die gerade auf dem Platz steht. Maßgeblich ist deshalb die
+**niedrigste noch nicht vollständig abgepfiffene Runde**
+(`aktiveRunde`/`spielFuerPrognose` in `logic/aufstellungs_prognose.dart`, rein
+und getestet). Ist der Verein in dieser Runde spielfrei, gilt sein nächstes
+Spiel — sonst stünde das Profil ohne Auskunft da, obwohl es eine gibt.
+
+**Die Elf bleibt bis zum Ende des Spieltags stehen** (05.09.2026, auf Ansage:
+*„Bis zum Ende des Spieltags möchte ich die Aufstellung des Spieltags
+sehen"*). Vorher sprang die Anzeige nach dem Abpfiff **des eigenen Spiels**
+sofort auf den nächsten Spieltag — und für den gibt es Tage vorher keine
+Prognose. Im Profil stand also „Noch keine Aufstellung", obwohl die Elf, die
+gerade auf dem Platz gestanden hatte, verfügbar war.
+
+**Die alte Begründung war zu ihrer Zeit richtig und ist es nicht mehr:** „Für
+ein gespieltes Spiel gibt es nichts mehr zu entscheiden" stammt aus der Zeit,
+als zu einer abgepfiffenen Partie nichts zu zeigen war. Seit Migration 0118
+steht dort die **gemeldete** Aufstellung samt Bank — also genau die Antwort auf
+„hat er gespielt?".
+
+Was bleibt: Steht das eigene Spiel der laufenden Runde **noch aus**, darf
+nichts vorgreifen, auch wenn andere Partien der Runde schon gelaufen sind. Und
+ist der ganze Spieltag durch, rückt die Anzeige weiter — dann greift der
+Zustand ohne Prognose mit den Minuten des letzten Einsatzes.
+
+**Zwei Wortlaute mussten mitziehen**, weil jetzt auch eine abgepfiffene Partie
+hier stehen kann: Der Leerzustand sagt für sie „Für dieses Spiel liegt keine
+Aufstellung vor" statt „kommt ein bis zwei Tage vor Anpfiff", und das Urteil
+nennt sie nie „voraussichtlich" — über einem Spiel von gestern wäre das eine
+Unsicherheit, die es nicht gibt.
+
+**Verbunden wird über Verein und Spieltag, nicht über die Fixture-ID.** Das
+ist beim Anschluss der Oberfläche aufgefallen: `predicted_lineups.fixture_id`
+trägt die **Sportmonks**-ID, die App holt ihre Spielpläne aber von OpenLigaDB
+(`fantasySeasonFixturesProvider`) — dieselbe Partie steht in `fixtures` unter
+zwei IDs. In `fixtures` gibt es keine Sportmonks-Team-ID, also löst der Sync
+den Verein über den **eigenen Pool** auf: Von elf vorhergesagten Spielern
+stehen praktisch immer mehrere in `players`, und deren `club` ist der
+kanonische Name, auf dem auch das Stats-Matching steht. Entschieden wird per
+**Mehrheit** je Mannschaft — ein einzelner Spieler mit veraltetem
+Vereinseintrag (Wechsel zwischen zwei Kader-Syncs) soll die ganze Elf nicht in
+den falschen Verein schieben. Gelesen wird über die Sicht
+`predicted_lineups_v` (`security_invoker`, damit die RLS der Basistabellen
+gilt und nicht die Rechte des Eigentümers).
+
+**Eine leere Antwort löscht nichts.** Der Sync ersetzt den Stand nur für
+Spiele, für die tatsächlich eine Prognose kommt. Sonst räumte ein Lauf vor dem
+Prognosefenster eine vorhandene Elf weg, und das sähe in der App aus wie
+„Prognose zurückgezogen".
+
+**Die Bank kommt aus der gemeldeten Aufstellung** (Migration 0118). Die
+Prognose gibt sie nicht her — gemessen am 02.09.2026 liefert
+`predictedLineups` genau elf Namen je Mannschaft, alle mit demselben
+`type_id` (111384). Der Include `lineups` trennt dagegen `type_id` 11
+(Startelf) von 12 (Bank) und kommt im selben `fixtures/multi`-Request mit,
+ohne einen zweiten zu kosten. Daraus die Regel: **Was gemeldet ist, schlägt
+was vorhergesagt ist.**
+
+**Erkannt wird die Meldung an der Bank, nicht an der Elf** — das war der
+Fehler der ersten Fassung, und er stand eine Stunde später in der Datenbank:
+`lineups` trägt Typ-11-Zeilen schon **zwei bis drei Tage vor Anpfiff**
+(gemessen für zwölf Mannschaften der Spieltage am 4. und 5.9., elf je
+Mannschaft, ohne eine einzige Typ-12-Zeile). Das ist keine Meldung, sondern
+dieselbe Erwartung noch einmal — wer nur auf Typ 11 prüft, schreibt „In der
+Startelf" über eine Vermutung und stellt darunter eine leere Bank hin. Eine
+echte Aufstellung bringt die Ersatzbank mit; nachgemessen an der gespielten
+Partie: 11 + 9 je Mannschaft. Migration 0119 räumt die falschen Markierungen
+weg, die an einem Spiel hängen blieben, für das Sportmonks in einem Lauf gar
+nichts lieferte (dort lässt der Sync die alten Zeilen absichtlich stehen).
+`predicted_lineups.bank` und `.bestaetigt` tragen den Unterschied; die App
+schreibt „In der Startelf" statt „Voraussichtlich in der Startelf", sobald er
+gemeldet ist, und kennt mit „Auf der Bank" einen dritten Zustand — er ist
+etwas anderes als „nicht dabei", weil ein Eingewechselter punktet.
+
+**Wie gut die Prognose ist, ist gemessen** — über die ganze Saison 2025/26,
+306 Spiele, Prognose gegen die tatsächliche Startelf:
+
+| Verfahren | Treffer |
+|---|---|
+| Sportmonks-Prognose | 77,0 % |
+| „dieselbe Elf wie letzte Woche" | 77,1 % |
+| gewichtet über die letzten drei Spiele | 74,8 % |
+
+**Die gekaufte Prognose ist also nicht besser als die banalste Regel**, und
+ein eigenes Modell aus unseren Daten wäre es auch nicht. Spürbar besser wird
+es nur redaktionell (Pressekonferenzen), und dort ist der Weg versperrt:
+kicker beantwortet automatisierte Abrufe mit **403**, Ligainsider liefert nur
+HTML je Verein, ohne IDs und mit offener ToS-Frage. Gemeldet wurde das an
+Lukas Pinckert — Kapitän, 90 Minuten am 1. Spieltag, in der Prognose für den
+2. nicht dabei.
+
+**Die Antwort darauf steht in der Liste, nicht in der Quelle:** Neben jedem
+Namen unter dem Feld stehen seine **Minuten aus dem letzten Spiel des
+Vereins**, und danach ist die Liste sortiert. Ein vergessener
+Neunzig-Minuten-Mann steht damit oben, mit seiner Zahl daneben. Wer keine
+Minuten hat, bekommt keine Null hingeschrieben — das wäre eine Zahl über
+etwas, das nicht stattfand.
+
+**Angezeigt wird darunter trotzdem nicht die gemeldete Ersatzbank, sondern
+jeder Spieler des Vereins, der nicht in der Startelf steht** (auf ausdrückliche
+Ansage). Die echte Bank wäre die kleinere Auskunft: neun Namen, erst kurz vor
+Anpfiff, und wer für dieses Spiel gar nicht im Kader steht, fehlte darin ganz.
+Gefragt ist beim Aufstellen aber die Anschlussfrage an „steht mein Spieler
+drin?" — wer sonst noch da ist. Die Liste kommt deshalb aus `players`, nach
+Position sortiert, ohne Abgewanderte (0117); die Spalten aus 0118 bleiben für
+Wortlaut und Urteil.
+
+**Ein Name auf dem Feld und in der Liste führt ins Profil** — dieselbe
+Bewegung wie in der Kaderliste nebenan. Getippt wird nur, wen der Pool kennt:
+Sportmonks meldet gelegentlich einen Spieler, den der letzte Kader-Sync noch
+nicht hat, und ein Tipp, der nichts öffnet, wäre schlimmer als keiner.
+
+**Ein Profil aus einem Profil legt sich darüber, es ersetzt es nicht.** Beide
+Wege (Kader-Reiter und Aufstellung) riefen vorher `pop` und danach
+`showPlayerProfile` — das erste Blatt war weg, bevor das zweite kam, und der
+Wisch nach unten führte nicht zurück, sondern ganz aus dem Reiter heraus
+(gemeldet als „ich bin komplett raus aus dem Tab"). Gestapelt führt die
+gewohnte Geste dahin zurück, wo man war, und das darunterliegende Blatt behält
+Reiter und Scrollstand. Beide Wege gehen dafür durch `_weiteresProfil`, das
+`isMine` **rechnet** statt es zu raten — die Kaderliste gab pauschal `false`
+mit, und damit fehlte am eigenen Spieler der Droppen-Knopf. Gehalten von
+`test/spielerprofil_zurueck_test.dart`, gegengeprüft: mit dem `pop` fallen
+beide Fälle.
+
+**Gezeigt wird die Formation, nicht eine Liste.** Eine Liste beantwortet „wer
+spielt", aber nicht „wo" — und das ist die Frage, wenn man eine Aufstellung
+liest. Gezeichnet wird auf demselben Feld wie der Aufstellungs-Editor, der
+Draft-Raum und das Manager-Profil (`pitchGradient` + `PitchLinesPainter`); ein
+eigener Feldlook an einer fünften Stelle wäre nur ein weiterer Dialekt.
+
+Die Reihen kommen aus **Sportmonks' Raster**, nicht aus einer eigenen Rechnung:
+`formation_field` steht im Format „Reihe:Spalte" (Felix Nmecha auf „3:3" — drei
+Reihen hinter der Spitze der 3-4-2-1, dritter von links), und alle 176
+gemessenen Zeilen tragen es. Fehlt es doch einmal, wird nach
+`formationsPosition` in Blöcke geschnitten, die der Formationszeichenkette
+entsprechen; fehlt auch die, bleibt eine einzige Reihe. **Kein Fall darf
+Spieler verlieren** — eine schiefe Formation ist besser als eine, in der jemand
+fehlt, und genau das steht als eigener Test da (`4-4-1` auf elf Spielern).
+
+**Auf dem Feld stehen Trikots, keine Kreise.** Die Elf trug ihre Nummern in
+Kreisen; jetzt zeichnet dasselbe `JerseyIcon` wie im Spielbericht ein Trikot in
+den Vereinsfarben (`clubColors`) mit der Rückennummer darin — als Symbol sofort
+als Spieler lesbar, und die Farbe sagt vor dem Namen, welche Mannschaft da
+steht. Vereine ohne hinterlegte Trikotfarben (Pokalgegner aus der Oberliga)
+bekommen neutrales Weiß auf Dunkel statt einer erfundenen Farbe. Der eigene
+Spieler wird durch einen hellen Schein hervorgehoben, nicht durch eine zweite
+Farbe.
+
+**Ein Trikot ist ein Umriss, kein Baukasten.** Der erste Wurf setzte es aus
+Teilen zusammen — zwei Ärmelvielecke, ein Rumpfrechteck — und zog um jedes eine
+Kontur; dort, wo die Teile untereinander lagen, blieben die Linien stehen.
+Gemeldet als „das sieht aus wie so Kästchen aneinander, diese Kanten dort, die
+überschneiden. Bitte richtige Trikots ohne irgendwelche Kanten und Ecken und
+Kästen."
+
+Jetzt ist der Umriss **ein einziger geschlossener Pfad** (Halsausschnitt →
+Schulter → Ärmel → Achsel → Saum → zurück), gefüllt und **einmal** außen
+konturiert. Zwei Dinge daran waren die eigentliche Arbeit:
+
+- **Die Ärmel sind Ärmel, keine Rechtecke.** Der zweite Anlauf legte die
+  Zweitfarbe als zwei Rechtecke über die oberen Ecken und schnitt sie am Umriss
+  ab (`clipPath`). Die Außenkante saß damit richtig — die **Innenkante** blieb
+  eine kerzengerade Senkrechte quer durch den Rumpf, und genau die las sich
+  weiter als Kästchen. Jeder Ärmel trägt jetzt seinen eigenen Pfad: außen die
+  Kontur des Trikots, innen die schräge Schulternaht von der Achsel zum Hals.
+- **Kurze Kurven an den Ecken, keine großen Bögen.** Der Anlauf davor war so
+  rund, dass die Ärmel wie zwei Ballons neben einem schmalen Rumpf saßen. Der
+  Rumpf nimmt jetzt 56 % der Breite, die Ärmel enden bei 48 % der Höhe.
+
+**Und beide Vorschauen, die Trikots zeigen, liefen ohne Schrift**
+(`jersey_preview_test`, `lineup_preview_test`) — Rückennummern, Spielernamen und
+Vereinsnamen standen als leere Kästchen im Bild. Ausgerechnet die Nummer ist
+das, woran sich entscheidet, ob das Symbol trägt; ich habe drei Runden lang
+Silhouetten beurteilt, über denen ein schwarzer Klotz lag. Beide laden jetzt
+`ladeSchrift` und `buildAppTheme()`. Dieselbe Lehre wie beim ungethemten
+Tippspiel-Golden: **ein Golden ohne Theme und Schrift ist als Urteilsgrundlage
+wertlos.**
+
+**Kein Signalgrün im Spielerprofil.** Es hatte sich an vier Stellen wieder
+eingeschlichen: die Punktekachel im Leistungsreiter, jeder positive Wert in der
+Aufschlüsselung, das „du bist hier"-Personensymbol im Kader und das Urteil im
+Aufstellungsreiter. Grün heißt in dieser App „hier läuft etwas", und nichts
+davon läuft. Farbe trägt jetzt nur, was etwas will: Steht der Spieler **nicht**
+in der Elf, muss die Aufstellung geändert werden — gold. Steht er drin, bleibt
+die Zeile still. In der Aufschlüsselung markiert Rot den Abzug, den Normalfall
+schmückt nichts. Der eigene Spieler auf dem Feld wird **hell** hervorgehoben,
+nicht farbig.
+
+Angesehen über `test/spielerprofil_vorschau_test.dart` mit **drei** Bildern —
+in der Elf, nicht in der Elf, noch keine Prognose. Das letzte ist der Zustand,
+den es die meiste Zeit der Woche gibt; ohne eigenes Bild fiele genau der durch.
+Die Vorschau zeigt eine **vollständige** 4-2-3-1: An vier Spielern lässt sich
+nicht beurteilen, ob eine Formation steht. Gerechnet wird in
+`test/aufstellungs_prognose_test.dart`.
+
+### Die Elf der Vorwoche schließt die Lücke ohne Prognose
+
+Gemeldet: *„Kickbase hat schon nach 24 Stunden die voraussichtlichen
+Aufstellungen für den nächsten Spieltag. Wie bekommen wir die schneller, weil
+es stört, dass dann 3, 4 Tage keine Aufstellung zu sehen ist?"*
+
+**Die gekaufte Quelle lässt sich nicht beschleunigen.** Nachgemessen am
+08.09.2026, drei bis fünf Tage vor dem 3. Spieltag, direkt gegen Sportmonks:
+für **alle neun** Partien null Einträge, weder Prognose noch Meldung. Das
+Vorlauffenster (`VORLAUF_TAGE`) hochzudrehen kauft nur leere Antworten.
+
+**Die banalste Regel ist genauso gut wie die gekaufte** — das stand schon
+gemessen in dieser Datei, über die Saison 2025/26 und 306 Spiele:
+
+| Verfahren | Treffer |
+|---|---|
+| Sportmonks-Prognose | 77,0 % |
+| „dieselbe Elf wie letzte Woche" | 77,1 % |
+
+Die Fortschreibung ist also kein Notbehelf mit schlechteren Zahlen, sondern
+dieselbe Trefferquote — nur Tage früher verfügbar. `logic/fortschreibung.dart`
+nimmt die zuletzt **gemeldete** Elf und tauscht die Ausfälle.
+
+**Der nominelle Ersatz ist der Spieler mit den meisten Saisonminuten aus
+demselben Positionsraum**, der frei ist. Er erbt den Platz im Raster, damit
+die Formation stehen bleibt; ohne das fiele die Elf beim ersten Ausfall in
+eine einzige Reihe zusammen. Fünf Regeln halten das ehrlich:
+
+- **Nur aus einer gemeldeten Elf.** Eine Prognose fortzuschreiben hieße, eine
+  Schätzung als Tatsache auszugeben.
+- **Abgewanderte zählen wie Ausfälle**, ohne in der Ausfallliste zu stehen —
+  sie stehen für keinen Verein mehr auf dem Platz (0117). Im Test rückt der
+  Abgewanderte auch mit den meisten Minuten nicht nach.
+- **Niemand rückt auf zwei Plätze zugleich.** Wer schon in der Elf steht oder
+  eben nachgerückt ist, ist vergeben.
+- **Ohne freien Ersatz bleibt der Platz sichtbar leer** — mit Fragezeichen und
+  „frei". Lieber sichtbar leer als ein Stürmer im Tor, dieselbe Regel wie beim
+  unbesetzten Torwart im Duell (0120).
+- **Die Bank der Vorwoche wird nicht mitgeschleppt.** Sie war eine Aussage
+  über ein gelaufenes Spiel.
+
+**Und sie gibt sich nie als Prognose aus.** Über dem Feld steht eine Zeile
+„Elf des N. Spieltags" samt Grund und der Zahl der getauschten Plätze,
+das Urteil heißt „Stand am N. Spieltag in der Startelf" statt
+„voraussichtlich", und jeder Ersatz trägt ein Tauschzeichen am Trikot. Elf
+Trikots auf einem Feld sehen sonst aus wie eine Aufstellung, egal woher sie
+kommen — genau die Sorte stiller Behauptung, gegen die diese Datei an einem
+Dutzend Stellen argumentiert.
+
+**Der Hinweis trägt dabei keine Farbe** (auf Ansage: *„Das reicht, wenn das
+schwarz ist, mit weißer Schrift."*). Er stand zuerst in Gold — und das war
+derselbe Fehler, den diese Datei an anderen Stellen schon beschreibt: Farbe
+trägt in dieser App, was etwas **will**. Eine Herkunftsangabe will nichts, sie
+sagt nur, woher die Elf kommt. Kartengrund, Haarlinie, weiße Überschrift.
+Gold bleibt, wo es hingehört: am Tauschzeichen des Ersatzes, denn das ist eine
+Annahme über einen einzelnen Spieler.
+
+**Der Sync musste dafür sein Fenster öffnen.** Er filterte auf
+`status = 'scheduled'` und ließ sich damit etwa eine Stunde Zeit, die
+gemeldete Aufstellung einzusammeln — sie steht rund eine Stunde vor Anpfiff,
+danach ist das Spiel `live`. Verpasst er das Fenster, ist die Elf dieses
+Spiels für immer weg. Gemessen: Spieltag 1 steht mit **2 von 18** Vereinen in
+`predicted_lineups`, Spieltag 2 vollständig. Solange das nur die Anzeige eines
+gelaufenen Spiels betraf, war es ein Schönheitsfehler; als Grundlage der
+Fortschreibung ist es die Grundlage selbst. Jetzt gilt ein Nachlauf von 48
+Stunden ohne Status-Filter — Kosten: null zusätzliche Requests, der
+multi-Endpunkt nimmt 25 Spiele für einen.
+
+Angesehen über `test/spielerprofil_vorschau_test.dart`
+(`spielerprofil_vorwoche.png`), und zwar mit **Zusicherungen neben dem Bild**:
+Der Ausgefallene darf nicht mehr auf dem Feld stehen, sein Ersatz schon, und
+der Hinweis muss sagen, woher die Elf kommt. Ein Golden zeigt, wie es aussah,
+nicht dass die Regel greift. Gerechnet wird in `test/fortschreibung_test.dart`.
+
+### „Der Waiver funktioniert nicht" — der Drop ließ ein Phantom in der Elf
+
+Gemeldet als: *„man kann den Spieler aufnehmen und einen anderen droppen, das
+greift dann allerdings nicht — es passiert überhaupt nichts."*
+
+**Gemessen in der laufenden Liga:** Zwei Manager hatten elf Spieler in der
+Startelf, aber nur zehn davon im Kader — Eric mit Nadiem Amiri, Majusch mit
+Serhou Guirassy. Beide waren abgegeben und standen weiter in
+`fantasy_lineups.player_ids`.
+
+`player_ids` ist ein `text[]` **ohne Fremdschlüssel** auf `fantasy_rosters`.
+Ein Drop löscht die Kaderzeile und lässt das Array unberührt. Die Wertung
+schneidet dann still die Menge: `effectiveTotalsForRound` bildet die Punkte
+**aus dem Kader**, `chosenLineup` behält davon die aufgestellten — wer nicht
+mehr im Kader ist, fällt heraus, ohne Ersatz und ohne Meldung. Der Manager
+spielt mit zehn Mann und sieht es nirgends.
+
+Wieder dieselbe Sorte Fehler wie das leere Feld im Draft-Brett und das stille
+Auto-Speichern: **Ein Zustand „hier fehlt jemand" sah aus wie „alles in
+Ordnung."**
+
+**Behoben mit einem Trigger auf `fantasy_rosters`** (Migration 0094), nicht in
+den einzelnen Funktionen. Ein Spieler verlässt einen Kader über
+`fantasy_drop_player`, `fantasy_add_free_agent`, `fantasy_process_waivers`,
+`fantasy_trade_ausfuehren` und die Admin-Wege — fünf Stellen sind fünf
+Gelegenheiten, eine zu vergessen. Dieselbe Begründung wie beim Kaderlimit in
+0083. **Trades laufen über ein `update` von `manager_id`**, deshalb hängt der
+Trigger an `delete or update of manager_id` und räumt beim Update die
+Aufstellung des *abgebenden* Managers.
+
+Geräumt wird nur die **laufende und kommende** Runden. Abgepfiffene Spieltage
+sind Geschichte; eine nachträglich geänderte Aufstellung wäre eine Fälschung
+der Bilanz.
+
+### Wessen Spiel läuft, ist nicht mehr holbar
+
+Der zweite Teil derselben Meldung. Der Grund ist nicht Kosmetik: Wer während
+der Partie zusieht und dann den Spieler holt, der gerade getroffen hat, wertet
+mit Wissen, das beim Aufstellen niemand hatte. Und selbst gutgläubig bringt es
+nichts — die Aufstellung ist für ihn ohnehin gesperrt (0084), er käme diesen
+Spieltag gar nicht in die Elf. **Ein Knopf, der etwas Sinnloses tut, ist
+schlimmer als keiner**, und genau das war die Beschwerde.
+
+Maßgeblich ist die **laufende Runde**: die niedrigste, die noch nicht
+vollständig abgepfiffen ist (`fantasy_laufende_runde`). Die Sperre löst sich
+damit von selbst — nach dem letzten Abpfiff zählt die nächste Runde, und deren
+Anpfiff liegt in der Zukunft. Nichts muss zurückgesetzt werden.
+
+**Die Regel steht dreimal**, und das ist Absicht wie bei `tip_scoring.dart` ↔
+SQL-View: `fantasy_spieler_laeuft` (Server, entscheidet),
+`vereinSpieltGerade` in `logic/aufstellung_sperre.dart` (Oberfläche, zeigt) und
+`aktiveRunde` in `logic/aufstellungs_prognose.dart` (bestimmt die Runde). Laufen
+sie auseinander, zeigt die App ein grünes Plus, und der Server antwortet mit
+einer Fehlermeldung — genau der Zustand, der gemeldet wurde.
+
+Abgegeben werden darf ein laufender Spieler **nur, wenn er nicht in der Elf
+steht**. Auf der Bank hängt nichts an ihm; in der Elf wäre es eine
+nachträgliche Änderung an einem laufenden Spieltag.
+
+**Beantragen geht trotzdem** (Migration 0095) — und das war eine Korrektur am
+ersten Wurf. Der zeigte ein gedämpftes Symbol, das nur erklärte, warum nichts
+geht. Zu wenig: Der Antrag sagt „ich will ihn ab nächster Woche", und genau
+dafür gibt es ihn. Ihn zu verweigern hieße, den Nutzer zwei Tage warten zu
+lassen, um dann dasselbe zu tun.
+
+**Gefahrlos ist das, weil das Fenster zwischen den Spieltagen liegt:**
+`fantasy_next_waiver_window` setzt die Abarbeitung auf zwei Tage vor dem ersten
+Anpfiff der nächsten Runde. Ein während eines laufenden Spiels gestellter
+Antrag wird also erst nach dessen Abpfiff bearbeitet — niemand wird mitten im
+Spieltag aus einer laufenden Elf gezogen. Ohne diese Eigenschaft wäre die
+Freigabe falsch gewesen.
+
+Zwei Stellen mussten dafür weichen: `fantasy_submit_waiver_claim` verlangte,
+dass der Spieler **auf dem Wire** liegt (jetzt: auf dem Wire **oder** sein
+Spiel läuft; ein wirklich freier Spieler wird abgelehnt mit „du kannst ihn
+direkt holen"), und `fantasy_process_waivers` verlangte dasselbe **zum
+Zeitpunkt der Abarbeitung**. Letzteres wäre nie erfüllt gewesen: Zwei Tage
+später ist der Spieler kein Wire-Fall mehr, sondern schlicht frei — der Antrag
+wäre als „anderweitig vergeben" verfallen, obwohl ihn niemand hat. Maßgeblich
+ist jetzt nur noch, dass der Spieler frei ist; die Sperre gehört an den
+Eingang, nicht an die Abarbeitung.
+
+In der Oberfläche führen Wire und laufendes Spiel deshalb zum **selben**
+goldenen Antragsknopf; den Unterschied trägt der Untertitel („· Waiver-Wire"
+bzw. „· Spiel läuft").
+
+### „Ich habe einen Antrag gestellt, er wird nicht angezeigt"
+
+Er war nie gestellt: In `fantasy_waiver_claims` stand keine Zeile. Server und
+RLS waren in Ordnung — als der betroffene Nutzer nachgestellt (Rollback-Probe
+mit dessen JWT) legte die Funktion den Antrag an, und die Policy
+`manager_id = auth.uid()` zeigte ihn auch.
+
+**Die Ursache lag im Bestätigungsblatt** (`_RosterMoveSheet`). Es lag komplett
+in einem `SingleChildScrollView`, und bei vollem Kader stehen darin sechzehn
+Kaderzeilen — „Abbrechen" und „Bestätigen" landeten **unterhalb des Bildes**.
+Selbst auf 900 Punkten Höhe waren sie in der Vorschau nicht zu sehen. Wer das
+Blatt schließt, ohne sie gefunden zu haben, löst nichts aus: `confirm == null`
+kehrt stumm zurück. Also wieder ein **stiller Nichts-Passiert**, diesmal rein
+in der Anordnung.
+
+Dazu kam, dass der Knopf bis zur Wahl eines Abgangs **deaktiviert** ist und der
+Grund dafür nur ganz oben im Blatt stand — außer Sicht, sobald man zur Liste
+gescrollt hatte. Ein grauer Knopf, der nicht sagt, was fehlt.
+
+**Seit dem 19.10.2026 neu gebaut** (auf Ansage: „man kann nicht auf das
+Profil draufdrücken, sondern nur auswählen"): schräger Titel, „KOMMT REIN"
+und „WER MACHT PLATZ?" als schräge Marken (Zeichen grün/rot) statt farbig
+gerahmter Kästen, jede Zeile mit Wappen, Position · Verein · Ø. **Zwei
+Ziele je Zeile:** Tipp auf die Zeile wählt aus, der Pfeil rechts öffnet das
+Profil über dem Blatt (die Auswahl bleibt). Beim Neuzugang öffnet schon die
+Zeile das Profil. Knöpfe groß untereinander. Gehalten in
+`free_agency_vorschau_test.dart`. Darunter der Stand davor:
+
+Behoben: Kopf und Aktionen stehen fest, nur die Spielerliste scrollt
+(`ConstrainedBox` auf 85 % Bildschirmhöhe, `Flexible` um den Scroller), und
+über den Knöpfen steht in Gold „Wähle oben, wer Platz macht.", solange nichts
+gewählt ist. Das trifft **beide** Wege, die dieses Blatt benutzen: den
+Waiver-Antrag und den Kader-Move beim direkten Holen.
+
+Angesehen über `test/free_agency_vorschau_test.dart` mit zwei Bildern — ohne
+und mit gewähltem Abgang. Der zweite prüft zusätzlich am Widget, dass
+`onPressed` dann wirklich gesetzt ist; ein Bild allein zeigt nicht, ob ein
+Knopf bedienbar *ist*.
+
+**Die Lehre, zum wiederholten Mal in diesem Projekt:** Ein Abbruch ohne Laut
+ist von einem Erfolg nicht zu unterscheiden. Wo ein Blatt etwas abschicken
+soll, muss der Abschicken-Knopf immer sichtbar sein — und wenn er nicht kann,
+muss er sagen, warum.
+
+### Verletzt ausgewechselt zählt als Ausfall (0122)
+
+Gemeldet: *„Filippo Mane wurde im zweiten Spiel nach 32 Minuten
+ausgewechselt, mit einer Oberschenkelverletzung. Solche Fehler dürfen nicht
+passieren. Ich kann nicht bei jedem Spieler manuell nachforschen."*
+
+**Die Ausfallliste der Quelle ist als alleinige Quelle nicht tragfähig.**
+Nachgemessen über die Saison 2026 (18 Partien, 173 Wechsel):
+
+| | Anzahl |
+|---|---|
+| Auswechslungen mit `injured: true` | **9** |
+| davon **ohne** Eintrag in `player_absences` | **5** |
+
+Die fünf sind Brackelmann, Dinkçi, Mane, Moffi und Lemperle.
+`include=sidelined` ist bei Stammspielern gepflegt und bei allen anderen
+löchrig.
+
+**Die zweite Quelle kostet keinen einzigen Request.** `sync-stats` holt
+ohnehin `/fixtures/multi/{ids}?include=lineups.details.type;events`, und dort
+steht es längst drin: `type_id` 18, `related_player_id` = der Spieler, der
+herausgeht, `minute`, `injured: true`. Die Zeile landet in
+`verletzt_ausgewechselt`; **`related_player_id` ist der Herausgehende** — wer
+ihn mit `player_id` verwechselt, markiert den Einwechselspieler als verletzt.
+
+`player_absences_v` führt beide Quellen zusammen, mit zwei neuen Spalten
+(`quelle`, `runde`/`minute`). Drei Regeln darin:
+
+- **Der abgeleitete Eintrag löst sich selbst auf**, sobald der Spieler in einer
+  späteren Runde Minuten macht. Nachgemessen an Brackelmann: 1. Spieltag
+  verletzt raus, 2. Spieltag 84 Minuten, also kein Ausfall mehr. Dieselbe
+  Logik wie `ueberholt`, nur andersherum angewandt.
+- **Die gemeldete Quelle gewinnt**, wo es sie gibt: Sie kennt den Grund, das
+  Ereignis nur die Tatsache.
+- **Eine Beobachtung ist keine Diagnose.** Der Kopf heißt „Vermutlich
+  verletzt", nicht „Verletzt", und der Text nennt Spieltag und Minute statt
+  einer Verletzungsart, die niemand kennt.
+
+Dazu die Wache `ausfaelle_ohne_meldung`, gleiche Bauart wie
+`stats_widersprueche`: wer verletzt vom Platz ging, ohne dass die Quelle einen
+Ausfall meldet. Heute fünf. Steht dort etwas, ist die Liste lückenhaft — und
+man sieht es dort, statt es von einem Nutzer zu erfahren.
+
+**Zweiter Fehler, beim Nachsehen gefunden: `.stream()` lief auf einer Sicht.**
+`player_absences_v` ist eine View, und eine View kann in Postgres gar nicht in
+einer Realtime-Publication stehen. Der erste Schnappschuss kam an, **jede
+spätere Änderung nicht** — die Ausfälle standen auf dem Stand des App-Starts,
+während der Server stündlich neue holte. Die Klingel hängt jetzt an der
+Basistabelle `player_absences`, die vollständige Abfrage kommt per `asyncMap`
+hinterher (dieselbe Bauart wie bei den Ligamitgliedern). Dazu frischt der
+Live-Takt der Punkte die Ausfälle mit auf — `sync-stats` schreibt beides im
+selben Lauf — und `beimZurueckkommenAktualisieren` nimmt sie auf.
+
+**Die Lehre, und sie ist in diesem Projekt nicht neu:** Wo eine Liste
+„vollständig" sein soll, lohnt die Gegenprobe aus einer zweiten Quelle, die
+dasselbe Ereignis anders sieht. Hier lag sie im selben Abruf.
+
+### „No Eligibility" ist keine Bundesliga-Sperre (0123)
+
+Gefragt: *„Warum sind Can und Lerma 5 Monate gesperrt?"* Zu Recht — die
+Anzeige war falsch, und zwar auf unserer Seite.
+
+In `player_absences` standen 17 Einträge vom Typ 1612 („No Eligibility"), alle
+mit Beginn kurz nach dem Transferschluss und Ende im Winterfenster:
+
+| Zeitraum | Spieler | Vereine |
+|---|---|---|
+| 03.09. – 28.01. | 11 | Dortmund, Leipzig, Stuttgart |
+| 04.09. – 29.01. | 5 | Leverkusen, Hoffenheim |
+| 04.09. – 18.12. | 1 | Freiburg |
+
+**Das sind genau die sechs Vereine im Europapokal, und die drei Zeiträume sind
+die Meldefristen dreier Wettbewerbe.** Kein Verein außerhalb Europas trägt so
+einen Eintrag. Es geht um die Kaderliste eines europäischen Wettbewerbs; für
+die Bundesliga sind diese Spieler spielberechtigt.
+
+Der Gegenbeweis steht in unseren eigenen Zahlen: Vier von ihnen haben am
+1. Spieltag gespielt (Konstantelias 54 Minuten, Hofmann 25, Stergiou 16,
+Boniface 5) und **danach** den Eintrag bekommen. Wer spielt, ist nicht gesperrt.
+
+**Sportmonks sagt nicht, welcher Wettbewerb gemeint ist** — `season_id` ist bei
+allen 17 `null`. Ein Eintrag, den wir nicht zuordnen können, darf nicht als
+„gesperrt" dastehen; dieselbe Regel wie überall hier. Die Sicht blendet ihn
+aus, die Zeile bleibt in der Tabelle stehen.
+
+**Der Schaden war größer als die falsche Zeile.** Der Client hält je Spieler
+genau einen Ausfall, und **die Sperre gewinnt über die Verletzung** (sie endet
+an einem bekannten Tag). Die erfundene Sperre verdrängte damit die echte
+Auskunft: Bei Emre Can standen fünf Monate Sperre statt Adduktorenbeschwerden,
+bei Lerma statt einer Muskelverletzung, bei Konstantelias statt eines
+Kreuzbandrisses. Eine Vorrangregel ist nur so gut wie die Einträge, zwischen
+denen sie wählt.
+
+Gemessen vorher und nachher:
+
+| | vorher | nachher |
+|---|---|---|
+| Spieler mit Ausfall | 96 | 86 |
+| davon „gesperrt" | 19 | **3** |
+| Verletzungen mit Rückkehrdatum | 2 | 3 |
+
+Die drei verbliebenen Sperren sind echte Rotsperren mit Enddatum.
+
+### Kartensperren aus anderen Wettbewerben (0133)
+
+Gefragt: *„Warum wird bei Olise eine Gelbsperre angezeigt? Er ist in der
+Champions League vom Platz geflogen, das wird aber nicht in der Bundesliga
+gewertet."*
+
+Dieselbe Lücke wie bei „No Eligibility" (0123): **Sportmonks führt Sperren je
+Verein, ohne Wettbewerb** — `season_id` ist bei allen Kartensperren `null`. Die
+Gelb-Rote Karte aus der Champions League kam als „Indirect Card Suspension"
+und stand in der App wie eine Bundesliga-Sperre.
+
+**Gegenprobe aus den eigenen Daten:** Eine Kartensperre (1608 Rot, 1610
+Gelb-Rot, 1611 Gelb) zählt nur, wenn der Spieler die passende Karte in den
+zehn Tagen vor `seit` in einem **Bundesliga**-Spiel gesehen hat —
+`player_match_stats` kennt nur die. Sonst ist sie `ueberholt`. Nachgemessen:
+Bernardo und Suzuki (Gelb-Rot am 5. Spieltag) bleiben gesperrt, Olise (keine
+Bundesliga-Karte) und Bensebaini (Rotsperre, hat seither gespielt) fallen
+heraus. Sperren durch das Sportgericht (1615) bleiben unberührt; an ihnen gibt
+es keine Karte zu prüfen.
+
+**1610 ist Gelb-Rot, nicht Gelb.** 0132 und die App-Liste übersetzten
+„Indirect Card Suspension" mit „Gelbsperre" — daher das Wort in der Meldung.
+Nachgesehen über `/v3/core/types/<id>`: 1610 = `INDIRECT_CARD_SUSPENSION`
+(Gelb-Rot), 1611 = `YELLOW_CARD_SUSPENSION` (fünfte Gelbe). Jetzt
+„Gelb-Rot-Sperre".
+
+**Und 0132 war nie eingespielt.** Die Migration („Ausfallgründe auf Deutsch")
+lag seit dem 11.10. committet im Repo, `supabase migration list` zeigte sie
+nur lokal — die App bekam weiter englische Gründe und übersetzte sie mit ihrer
+alten Liste. Eingespielt am 14.10.2026 zusammen mit 0133. Dieselbe Falle wie
+bei den nie ausgespielten Edge Functions: **Was im Repo steht, beweist nicht,
+dass es läuft** — nach jeder neuen Migration `supabase migration list` fragen.
+
+### Wieder eingeplant heißt wieder fit (0124)
+
+Eingewandt: *„Wenn der Spieler den Eintrag hat, nur weil er verletzt
+ausgewechselt wurde, und dann aber wieder fit ist in der Woche, wird er als
+verletzt angezeigt, obwohl das falsch ist."*
+
+Stimmt, und es traf genau die Woche, in der man die Aufstellung macht. 0122
+löste den abgeleiteten Eintrag erst auf, wenn der Spieler **wieder Minuten
+gemacht** hat — also frühestens während des nächsten Spiels. Bis dahin stand
+die Vermutung, auch wenn der Verein ihn längst wieder eingeplant hatte.
+
+**Die Aufstellung weiß es früher.** `predicted_lineups` trägt ein bis zwei
+Tage vor Anpfiff die voraussichtliche Elf und, sobald gemeldet, die echte samt
+Bank (576 Zeilen über 18 Spiele, Stand 07.09.2026). Wer dort für ein
+**späteres** Spiel steht, ist offensichtlich fit — **die Bank zählt mit**, denn
+auf sie setzt niemand einen Verletzten.
+
+Rollback-Probe gegen die Produktion: Mane ist sichtbar; sobald eine Zeile ihn
+für Dortmunds Spiel am 3. Spieltag auf die Bank setzt, verschwindet der
+Eintrag. Danach zurückgerollt.
+
+**Was bleibt, ist die Lücke zwischen Abpfiff und Prognose.** Von Sonntagabend
+bis etwa Mittwoch gibt es schlicht keine neue Auskunft — kein Trainingsbericht,
+keine Meldung, keine Aufstellung. Der Eintrag sagt deshalb „vermutlich" und
+nennt die Beobachtung im Wortlaut; in engen Zeilen (Free Agency) steht
+**„angeschlagen"** statt „verletzt". Das ist die ehrlichste erreichbare
+Auskunft, und es ist bewusst keine Sicherheit vorgetäuscht.
+
+### Zwei Ausfälle, einer wird gezeigt
+
+Gemeldet: *„Prass zeigt auch falsche Verletzung an."* Alexander Prass trug
+zwei offene Einträge — „Ill" seit dem **23.01.2025** mit 64 verpassten Spielen
+und „Adductor Pain" seit dem 21.08.2026. Die Quelle schließt den alten nicht,
+wenn ein neuer dazukommt.
+
+Der Client hält je Spieler genau einen Ausfall, und die einzige Regel dafür war
+„die Sperre schlägt die Verletzung". Zwischen **zwei Verletzungen** entschied
+damit die Reihenfolge der Zeilen, also der Zufall — angezeigt wurde eine
+Erkältung von vorletztem Januar. Gezählt am 07.09.2026: sechs Spieler mit zwei
+sichtbaren Einträgen, darunter Emre Can („Cruciate Ligament Tear" 03/2026 gegen
+„Adductor Pain" 07/2025).
+
+`PlayerAbsence.schlaegt` entscheidet es jetzt in zwei Stufen: **Sperre vor
+Verletzung**, und innerhalb derselben Art **der jüngere Eintrag**. Ein Eintrag
+ohne Datum verliert; er kann nicht belegen, der jüngere zu sein. Der Test prüft
+ausdrücklich **beide Reihenfolgen** derselben zwei Einträge — genau daran hing
+der Fehler.
+
+**Was bewusst bleibt:** Alte Verletzungen werden nicht pauschal verworfen. Nach
+der neuen Regel zeigen noch drei Spieler einen Eintrag von Ende 2025 (Hübers,
+Knieverletzung, 34 Spiele; El Mala; Dompé, Achillessehne). Sie haben seither
+keine Minute gespielt, unsere Daten widersprechen also nicht — und ein
+Kreuzband- oder Achillesschaden läuft wirklich ein Jahr. Eine Altersgrenze für
+Verletzungen wäre geraten, kein Wissen.
+
+### Ein fester `delay` ist keine Zusicherung
+
+`test/ladeschirm_wartet_test.dart` war die bekannteste Wackelkandidatin des
+Projekts: fiel im Gesamtlauf, lief allein durch. Die Ursache stand die ganze
+Zeit im Code — `await Future.delayed(20ms)`, danach den Zustand lesen. Zwanzig
+Millisekunden sind eine Wette auf die Maschine, keine Aussage über das
+Programm.
+
+Gekippt hat ihn zuletzt eine zusätzliche **Methode in einem Modell**, das mit
+dem Startbildschirm nichts zu tun hat. Genau das ist die Signatur des Fehlers:
+Wenn eine Änderung an unbeteiligtem Code einen Test umwirft, misst der Test die
+Laufzeit und nicht das Verhalten.
+
+Jetzt läuft die Ereignisschleife, **bis** der Schirm bereit meldet, höchstens
+aber hundert Runden. Für die Fälle, die absichtlich nicht bereit werden, kostet
+das die volle Grenze und ändert nichts: Was hängt, hängt auch nach hundert
+Runden. Dreimal hintereinander grün, und der Gesamtlauf zweimal.
+
+### Die voraussichtliche Rückkehr
+
+Gewünscht: *„Wenn ein Spieler verletzt ist, wird die voraussichtliche Rückkehr
+angezeigt. Ob das jetzt ein genaues Datum, ein genauer Spieltag, eine ungefähre
+Anzahl an Wochen oder Monaten ist, ist egal. Wenn es nicht bekannt ist, dann
+Rückkehr unbekannt."*
+
+**Die Quelle kennt genau ein Feld dafür** (`end_date`) und füllt es selten:
+gemessen am 07.09.2026 **24 von 109** Ausfällen. Es gibt kein zweites Feld und
+keine Dauer je Verletzungsart — „Rückkehr unbekannt" ist deshalb in vier von
+fünf Fällen die richtige Auskunft, nicht eine Notlösung. Ein abgeleiteter
+Eintrag (verletzt ausgewechselt) hat nie ein Datum.
+
+`logic/rueckkehr.dart` bereitet nur auf:
+
+| Fall | Text |
+|---|---|
+| kein Datum | „Rückkehr unbekannt" |
+| heute / morgen | Wörter statt Zahlen |
+| bis 13 Tage | „Zurück ab 12. September · in 5 Tagen" |
+| bis 10 Wochen | „… in etwa 3 Wochen" |
+| darüber | „… in etwa 5 Monaten" |
+| Datum vergangen | „Rückkehr war für den 1. September geplant" |
+
+Drei Entscheidungen darin:
+
+- **Die Spanne ist grob.** Das Datum ist eine Schätzung; „in 23 Tagen"
+  täuschte eine Genauigkeit vor, die dahinter nicht steckt.
+- **Ein vergangenes Datum ist eine Verzögerung, keine Rückkehr.** Die Quelle
+  schreibt es nicht zurück; „zurück ab 1. September" wäre schlicht falsch.
+- **Der Spieltag ist die Zahl, mit der man plant.** `ersterSpieltagAb` nennt
+  die erste Partie des Vereins ab dem Tag, verglichen über `vereinKanonisch`
+  (Kader und Spielplan schreiben denselben Verein verschieden, siehe 0108).
+  Ohne Treffer bleibt er weg — ein geratener Spieltag wäre schlechter als
+  keiner.
+
+Angesehen über `test/spielerprofil_vorschau_test.dart`, das jetzt beide Fälle
+zeigt: mit Rückkehrdatum (`spielerprofil_leistung.png`) und den gemeldeten Fall
+ohne (`spielerprofil_ausgewechselt.png`). Beide mit **fester Uhr** — die Zeile
+rechnet gegen heute, und ein Bild ohne gestellte Uhr wäre morgen ein anderes.
+Gerechnet wird in `test/rueckkehr_test.dart`.
+
+### Der Name führt überall ins Profil
+
+In der Free Agency und in der Spielersuche reagierte die Zeile **gar nicht** —
+etwas tat nur der Knopf am rechten Rand. Wer entscheiden soll, ob er einen
+Spieler holt, braucht aber mehr als Verein und Position: Leistung, Spielplan,
+Vereinskader und die voraussichtliche Aufstellung stehen im Profil. Beide
+Listen öffnen es jetzt beim Tippen auf die Zeile, mit `isMine` aus dem
+Besitzverhältnis — dieselbe Regel wie im Kader und in der Liga-Übersicht.
+
+Gehalten von `test/free_agency_vorschau_test.dart`: Der Test tippt auf den
+Namen und prüft, dass ein Blatt mit den Profil-Reitern aufgeht. Eine Zusicherung
+statt eines Bildes — ob sich etwas *öffnet*, zeigt ein Golden nicht.
+
+**Dabei mit hochgekommen:** Die Spielersuche benutzte für ihre Positionsfilter
+ebenfalls noch `ChoiceChip` (`_FilterChip`) — derselbe Fund wie in der Free
+Agency, dieselbe Ursache: Sie zieht `secondaryContainer` (das stumpfe Oliv) und
+ihre Beschriftung erbt die App-Schrift nicht. Ersetzt durch `PillChip`. Damit
+ist das verbotene Element aus beiden Spielerlisten raus. (Die Spielersuche
+gibt es inzwischen nicht mehr — siehe „Eine Spielerliste statt zwei".)
+
+Gegen die Produktion nachgemessen (mit Rollback): Mainz-Spieler holen →
+abgelehnt; Augsburg-Spieler (Anpfiff später) → läuft bis zum Kaderlimit durch;
+Tietz droppen (in der Elf, hat gespielt) → abgelehnt; Karius droppen (Anpfiff
+später) → erlaubt, und der Trigger nimmt ihn aus der Elf (10 → 9). Für 0095
+dazu: Antrag auf einen Mainzer, dessen Spiel gelaufen ist → angenommen; Antrag
+auf einen freien Augsburger → abgelehnt; und der Durchlauf von
+`fantasy_process_waivers` vergibt den Antrag tatsächlich (`won`), samt Abgang.
+
+**Nebenbefund aus der ersten Vorschau dieses Schirms:** Die Positionsfilter
+waren `ChoiceChip`s — das Material-Element, das diese Datei seit langem
+verbietet. Im Bild standen dort schwarze Balken statt „Tor", „Abwehr",
+„Mittelfeld", „Sturm": Die Chip-Beschriftung erbt die App-Schrift nicht.
+Dieselbe Falle wie bei `AnimatedDefaultTextStyle` in den Reitern. Und der
+Hinweisbalken oben zog `secondaryContainer`, also das stumpfe Oliv, über die
+volle Breite. Beides ersetzt (`PillChip`, goldener Hauch). Der Schirm hatte bis
+dahin keine Vorschau — deshalb hatte es nie jemand gesehen.
+Angesehen über `test/free_agency_vorschau_test.dart`: die drei Zustände einer
+Zeile nebeneinander (Waiver, Spiel läuft, frei), die es auf dem Gerät nie
+gleichzeitig gibt. Gerechnet wird in `test/free_agent_sperre_test.dart`.
+
+### Die U20-Sperre gilt nur in Dynasty (0121) — *entfallen*
+
+> **Überholt seit dem 27.09.2026.** Der Dynasty-Modus ist auf Ansage
+> vollständig entfernt (Migration 0130), und mit ihm die U20-Sperre samt
+> `fantasy_u20_gesperrt`, `fantasy_is_locked`, `start_u20_draft` und
+> `fantasy_rollover_season`. Der Abschnitt bleibt als **Historie** stehen: Er
+> erklärt, warum die Regel einmal zwei Stellen brauchte — und die Lehre daraus
+> („dieselbe Regel steht zweimal, sonst zeigt die App einen Knopf, den der
+> Server ablehnt") gilt unverändert für jede andere Regel dieser App.
+
+Gemeldet: *„Es macht keinen Sinn, dass hier einer für den U20-Draft gesperrt
+ist, weil es im Redraft-Modus keinen U20-Draft gibt. Das ist nur in Dynasty."*
+
+`fantasy_is_locked` kennt Geburtsdatum, Auslands-Neuzugang und Saison — **aber
+keine Liga**, und damit auch nicht deren Modus. Ab dem 5. September
+(Transferschluss) fiel damit jeder Rookie aus der Free Agency, **auch in Ligen,
+in denen er nie wieder gedraftet wird**: Im Redraft gibt es genau einen Draft
+und danach nie einen zweiten. Der Spieler war für den Rest der Saison für
+niemanden mehr zu holen, ohne dass es dafür einen Grund gab. Nachgezählt am
+05.09.2026: **62 Spieler** im Pool, betroffen wären sie in sieben von acht
+Ligen gewesen.
+
+**Die Sperre selbst bleibt richtig, nur eine Frage fehlte davor.**
+`fantasy_is_locked` beantwortet „ist dieser Spieler ein reservierter Rookie?"
+und tut das korrekt; sie ist unverändert. Neu ist `fantasy_u20_gesperrt(liga,
+spieler)` — „gilt diese Reservierung in dieser Liga überhaupt?". In Dynasty
+bleibt sie, denn dort wird der Kader über Saisons behalten und die Rookies
+werden vor der neuen Saison neu gedraftet; sie vorher per Free Agency
+wegzuschnappen, hebelte den U20-Draft aus.
+
+**Und wieder gilt: die Regel steht zweimal.** Serverseitig `fantasy_u20_gesperrt`
+(benutzt von `fantasy_add_free_agent` und `fantasy_submit_waiver_claim`), in
+Dart `FantasyPlayer.istFuerU20Gesperrt(liga)`. Nur den Client zu ändern hätte
+genau den Zustand erzeugt, der in dieser Datei schon mehrfach steht: **Die App
+zeigt ein grünes Plus, und der Server antwortet mit einer Fehlermeldung.**
+
+Die beiden Funktionen sind wie in 0106 aus der laufenden Datenbank gezogen
+(`pg_get_functiondef`) und nur an der einen Stelle geändert — sie aus fünf
+Migrationen zusammenzusuchen wäre ein Rückschritt gewesen, jede davon hat sie
+seither angefasst. Gegen die Produktion nachgemessen: In der Dynasty-Liga sind
+die geprüften Rookies gesperrt, in allen sieben Redraft-Ligen keiner.
+
+### Der Waiver hat eine Frist: Montag 15:00 (0107)
+
+Vorgegeben: *„Ab Anpfiff der jeweiligen Vereine auf dem Waiver. Bis Montag
+15 Uhr sind alle freien Spieler im Waiver Wire, dann werden die Anträge
+bearbeitet. Bei englischen Wochen Donnerstag 15 Uhr (wenn Dienstag und Mittwoch
+Spiele sind). Gedroppte Spieler außerhalb der Frist haben 24 Stunden
+Waiver-Sperre."*
+
+| Phase | Wann | Was gilt |
+|---|---|---|
+| frei | Frist → nächster Anpfiff | direkt holen, first come first served |
+| Waiver | Anpfiff **seines Vereins** → Frist | nur Antrag, Vergabe nach Priorität |
+| Frist | Mo 15:00, englische Woche Do 15:00 | alle Anträge werden abgearbeitet |
+
+**Je Verein, nicht je Spieltag.** Wer sonntags spielt, ist bis Sonntag 15:30
+direkt zu holen, auch wenn der Spieltag freitags begonnen hat.
+
+Zwei Befunde aus der Produktion standen davor, und der erste ist der
+lehrreichere.
+
+**`fixtures` trug die Bundesliga-Saison doppelt.** 306 Zeilen von OpenLigaDB
+und 306 von Sportmonks. `sync-fixtures` holt OpenLigaDB seit der Umstellung nur
+noch für die WM (`OL_LEAGUES` enthält bloß `wm2026`) — die Bundesliga-Zeilen
+waren Altbestand und standen deshalb **für immer auf `scheduled`**.
+`fantasy_laufende_runde` ist „die niedrigste nicht beendete Runde" und lieferte
+darum 1 statt 2. Gemessene Folge: **231 von 232 freien Spielern** galten als
+„Spiel läuft", niemand war direkt holbar, jeder Zugang wurde zum Antrag.
+
+Die Zeilen sind weg (nichts verwies darauf: `tips`, `fixture_odds`,
+`predicted_lineups`, `predicted_formations` tragen für die Bundesliga nur
+Sportmonks-IDs; die 98 OpenLigaDB-Quoten gehören zur WM). **Zusätzlich** filtern
+die Runden-Funktionen auf `sportmonks:` — ein Altbestand darf die Rechnung nie
+wieder kippen. Das Löschen allein hätte gereicht; der Filter ist der Teil, der
+beim nächsten Mal hilft.
+
+**Und Anträge auf laufende Spieler wurden nie abgearbeitet.** Der einzige Cron
+rief `fantasy_process_due_waivers`, und die läuft über `fantasy_waiver_players`
+— also nur über ausdrücklich gedroppte Spieler. Ein Antrag auf einen freien
+Spieler, dessen Partie lief, stand dort nicht drin und blieb `pending`, für
+immer. Zwei solche Anträge hingen seit dem 30.08.
+
+Jetzt rechnet `fantasy_waivers_faellig()` alle fünf Minuten nach, **ob eine
+Frist verstrichen ist, für die noch nicht abgerechnet wurde** — festgehalten in
+`fantasy_waiver_laeufe (league_id, round)`. Ein Cron auf „Montag 15:00" wäre
+zweimal falsch gewesen: pg_cron rechnet in UTC (im Winter also 14 Uhr), und ein
+Lauf, der in genau dieser Minute ausfällt, wäre verloren. Ein Protokoll holt
+einen verpassten Termin von selbst nach.
+
+**Die Frist rechnet in Europe/Berlin**, nicht in UTC — „Montag 15 Uhr" ist eine
+Uhrzeit für Menschen und darf im Winter nicht auf 16 Uhr rutschen.
+Nachgemessen: 30.11.2026 → `2026-11-30 14:00+00`, also 15:00 Ortszeit.
+
+Maßgeblich ist der letzte Anpfiff der Runde, nicht der erste: Der Waiver soll
+erst schließen, wenn alle gespielt haben.
+
+**Server und App müssen dieselbe Regel meinen**, sonst zeigt die App ein grünes
+Plus, das der Server ablehnt — genau der Fehler, der als „man kann ihn
+aufnehmen, es passiert überhaupt nichts" gemeldet wurde. Serverseitig
+`fantasy_auf_dem_wire`, in der App `logic/waiver_fenster.dart`
+(`wireRunde`, `waiverFrist`, `vereinAufWire`). Der Knopf heißt jetzt `aufWire`
+statt `spieltGerade`: Das Spiel kann längst vorbei sein, der Waiver läuft
+trotzdem noch.
+
+Gegen die Produktion nachgemessen (mit Rollback): laufende Runde 2 statt 1,
+Wire-Runde 1 mit Frist Mo 31.08. 15:00; ein Leverkusener ist **jetzt** auf dem
+Wire, **vor** seinem Anpfiff nicht und **nach** der Frist nicht mehr; „Holen"
+wird abgelehnt (*„Er liegt auf dem Waiver"*), der Antrag angenommen; die
+englische Woche über zwei eingefügte Di/Mi-Ansetzungen → Donnerstag 15:00.
+
+**Die App las den Spielplan bis zum 05.09.2026 direkt bei OpenLigaDB**
+(`OpenLigaDbProvider` fest in `fantasySeasonFixturesProvider`), während
+Live-Tab, Vereinsseite und Server längst Sportmonks lesen. Das war der Grund,
+warum im Simulator alles normal aussah, während der Server blockierte. **Seit
+dem 05.09.2026 ist es umgestellt** — siehe „Eine Quelle für den Spielplan".
+
+**Und der Vorschau-Golden hing plötzlich am Wochentag.** „Waiver bis Mo, 15:00"
+wird in einer englischen Woche zu „Do, 15:00", und die Vorschau baute ihre
+Anpfiffe relativ zu `DateTime.now()` — irgendwann wäre der Spieltag zufällig auf
+Dienstag und Mittwoch gefallen und das Bild ohne Anlass rot geworden.
+`FreeAgencyScreen` nimmt deshalb ein optionales `jetzt`, und die Vorschau setzt
+einen festen Samstag. Eine Uhr, die man stellen kann, ist die einzige Art, ein
+zeitabhängiges Bild fest einzuchecken.
+
+### Die Regel stimmte, die Uhr stand
+
+Gemeldet: *„Ich habe versucht, Hollerbach, der noch nicht gespielt hat, gegen
+Ebimbe, der aktuell spielt, einen Waiver-Antrag zu stellen. Das hat nicht
+funktioniert."*
+
+**Server und Client meinten dasselbe** — mit einer Rollback-Probe unter dem
+JWT des Nutzers nachgestellt: `fantasy_submit_waiver_claim` nimmt genau diesen
+Antrag an, und `vereinAufWire` sagt für Schalke ebenfalls „auf dem Waiver".
+Keine der Regeln war schuld.
+
+**Der Unterschied war der Zeitpunkt der Frage.** Die Free Agency rechnete
+`DateTime.now()` **einmal je Aufbau**, und nichts baute den Schirm neu, wenn
+ein Anpfiff verstrich. Wer die Liste um 18:20 offen hatte, sah für einen
+Schalker um 18:35 immer noch das grüne Plus — und `fantasy_add_free_agent`
+antwortete dann mit „Er liegt auf dem Waiver – bitte per Antrag holen".
+
+Das ist die **dritte** Ausprägung desselben Musters in dieser Datei, und die
+lehrreichste: Zweimal lagen Client und Server inhaltlich auseinander (0107,
+0108), diesmal war die Regel identisch und nur eine Seite **veraltet**. Eine
+Oberfläche, deren Aussage von einem Zeitpunkt abhängt, braucht eine Uhr —
+sonst ist sie ab dem Moment falsch, in dem der Zeitpunkt vergeht.
+
+**Ein einmaliger Timer auf den nächsten Anpfiff**, kein Sekundentakt: Zwischen
+zwei Anpfiffen ändert sich an dieser Frage nichts, und die Liste sortiert bei
+jedem Aufbau den ganzen Spielerpool. Nach dem Wecken plant sich der nächste
+Takt selbst — dieselbe Bauart wie beim Nachladen der Live-Punkte. Die feste
+Uhr der Vorschau (`jetzt`) schaltet ihn ab, sonst liefe ein Bild davon.
+
+**Und der Fehlschlag ist keine Sackgasse mehr.** Enthält die Serverantwort das
+Wort „Waiver", holt der Knopf den Wire-Stand und den Spielplan neu; beim
+nächsten Aufbau steht dort der Antragsknopf. Ein Gerät, das eine Minute
+nachgeht, oder eine verlegte Anstoßzeit reichen sonst aus, um denselben
+Zustand wieder herzustellen.
+
+### Zwei Quellen, zwei Schreibweisen — und der Join dazwischen (0108)
+
+**Ein Fehler, den 0107 selbst ausgelöst hat.** Gemeldet als *„es kommt eine
+Fehlermeldung, wenn ich einen Waiver-Antrag absende"*.
+
+`players.club` trägt mit Absicht die **OpenLigaDB-Schreibweise** — in
+`sync-squads` steht eine feste Karte von genau diesen Namen auf
+Sportmonks-Team-IDs, und die App braucht sie so, weil sie ihren Spielplan
+direkt bei OpenLigaDB holt. Der Sportmonks-Spielplan schreibt dieselben Vereine
+kürzer:
+
+| `players.club` | Sportmonks-Spielplan |
+|---|---|
+| 1. FC Köln | FC Köln |
+| 1. FSV Mainz 05 | FSV Mainz 05 |
+| SV Werder Bremen | Werder Bremen |
+| SV 07 Elversberg | Elversberg |
+| SC Paderborn 07 | Paderborn |
+| FC Schalke 04 | Schalke 04 |
+| 1. FC Union Berlin | FC Union Berlin |
+
+Solange **beide** Quellen in `fixtures` standen, fand `fantasy_spieler_anpfiff`
+für jeden Spieler eine Zeile — über die OpenLigaDB-Zeile. Mit deren Löschung
+riss der Join für **sieben von achtzehn** Vereinen. Die Funktion lieferte
+`null`, „kein Spiel gefunden" gilt als „nicht gesperrt", also galten die Spieler
+als frei: Der Antrag wurde mit *„Spieler ist frei – du kannst ihn direkt holen"*
+abgelehnt, während die App den Waiver-Knopf zeigte.
+
+**Wieder dieselbe Sorte:** Ein Zustand „ich finde nichts" sah aus wie „alles in
+Ordnung". Und wieder hat die Vorschau nichts gezeigt — Leverkusen, mit dem ich
+0107 geprüft hatte, schreibt sich in beiden Quellen gleich. **Eine Stichprobe
+aus einem Namensraum trifft den Namensfehler nur zufällig.**
+
+Verglichen wird jetzt die **kanonische Form** (`fantasy_verein_kanonisch`): ohne
+Ziffern, ohne Punkte, ohne Vereinsformen (FC, SV, SC, TSG, VfB, VfL, FSV, …).
+Nachgemessen an allen 19 Vereinen im Kaderbestand: 18 finden genau einen
+Spielplan-Verein, AS Monaco keinen (richtig — er spielt nicht in der Liga), und
+in keiner der beiden Mengen fallen zwei Vereine auf dieselbe Form.
+
+**Damit es beim nächsten Mal auffällt**, gibt es `vereine_ohne_spielplan`: jeder
+Verein, dessen Spieler in Kadern stehen, der aber im Spielplan nicht vorkommt.
+Heute leer. Ein Aufsteiger mit neuer Schreibweise steht dort, statt sich als
+abgelehnter Antrag zu zeigen. Dieselbe Bauart wie `stats_widersprueche`.
+
+0109 zieht die letzten beiden Fantasy-Funktionen nach (`fantasy_round_deadline`,
+`fantasy_trade_frei_ab`). Sie rechnen über ganze Runden statt über
+Vereinsnamen und waren deshalb nicht kaputt — aber ein halber Filter ist die
+Sorte Inkonsequenz, die beim nächsten Altbestand wieder eine Woche kostet.
+Nachgezählt: keine Fantasy-Funktion liest den Spielplan mehr ohne Quellenfilter.
+
+**Nebenbei mitrepariert:** `fantasy_trade_frei_ab` hielt mit den alten Zeilen
+jede Runde für „läuft noch" und schob vorgemerkte Trades unbegrenzt vor sich
+her. Jetzt steht die Freigabe auf „sofort" — offene Trades gab es zum Glück
+keine.
+
+### Aufstellen und anschauen sind zwei verschiedene Spieltage
+
+Gefragt: *„Ab wann ist die Kaderbearbeitung für den nächsten Spieltag
+verfügbar?"* — und beim Nachrechnen fiel eine Lücke auf.
+
+Für Spieltag 1 → 2 lagen drei Zeitpunkte auseinander:
+
+| Zeitpunkt | Was |
+|---|---|
+| Mo 15:00 | Waiver-Frist — Anträge vergeben, freie Spieler wieder direkt holbar |
+| Mo 17:30 | die App springt auf Spieltag 2 (24 h nach dem letzten Anpfiff) |
+| Fr 20:30 | erster Anpfiff Spieltag 2 |
+
+**Zweieinhalb Stunden lang konnte man Spieler holen und sie nirgends
+hinstellen** — der Aufstellungs-Schirm zeigte noch Spieltag 1, und der war
+komplett gesperrt. Der Server hatte damit nie etwas zu tun:
+`fantasy_set_lineup` prüft je geändertem Spieler nur dessen eigenen Anpfiff und
+nähme eine Aufstellung für den nächsten Spieltag jederzeit an. Der Riegel war
+allein die Oberfläche.
+
+Gewählt (von zwei Vorschlägen): **Der Aufstellungs-Schirm springt, sobald die
+Runde abgepfiffen ist**, während Übersicht, MatchUp-Karte und Spielplan die
+Abrechnung ihre 24 Stunden stehen lassen. Wer Sonntagabend fertig ist, plant
+sofort weiter.
+
+Dafür gibt es jetzt **drei** Regeln nebeneinander, und der Unterschied ist
+jedes Mal der Punkt:
+
+- `currentFantasyRound` — **was man anschaut**: der Spieltag läuft bis zur
+  **Waiver-Frist**, Montag 15:00 (in englischen Wochen Donnerstag 15:00).
+- `aufstellungsRunde` — **was man stellt**: dieselbe Runde, es sei denn, sie ist
+  vollständig abgepfiffen; dann die nächste. Gibt es keine nächste, bleibt es
+  bei der letzten — eine Runde 35 wäre eine Erfindung.
+- `recapRunde` — **worauf man zurückblickt**: der zuletzt abgepfiffene
+  Spieltag, **bis zum Anstoß des nächsten**. `null`, wenn es nichts gibt.
+
+**Warum die Frist und nicht mehr „24 Stunden nach dem letzten Anpfiff":** Die
+alte Zahl fiel je Spieltag woanders hin — Montag 17:30, an einem Spieltag mit
+Sonntagabendspiel erst 19:30. Damit gab es drei Termine in der Woche (Frist
+15:00, Spieltagswechsel 17:30, Aufstellung schon Sonntagabend). Jetzt sind es
+zwei, und der eine ist derselbe, an dem auch die Waiver-Anträge vergeben
+werden.
+
+**Der Rückblick folgt bewusst keiner der beiden anderen.** Hinge er am
+aktuellen Spieltag, verschwände er montags um 15:00 — und ein Rückblick auf
+einen Spieltag, der noch gar nicht gespielt ist, wäre leer. Er bleibt bis
+Freitagabend stehen; bis dahin ist er das Aktuellste, was es gibt. Mit dem
+Anstoß des nächsten Spieltags führt wieder die laufende Paarung.
+
+Die Zeile „Aufstellung · Noch nicht gestellt" auf der Übersicht
+(`meineFormationProvider`) folgt der **zweiten** Regel: Ein Auftrag muss sich
+auf den Spieltag beziehen, den der Schirm dahinter öffnet. Alles andere
+(MatchupHero, Karussell, Recap, Managerprofil, Spielplan) bleibt bei der
+ersten — das sind Ergebnisansichten.
+
+Gehalten von `test/aufstellungs_runde_test.dart`, das beide Regeln am selben
+Zeitpunkt gegeneinander prüft: Sonntag 20:00 ist `currentFantasyRound` noch 1
+und `aufstellungsRunde` schon 2.
+
+### Die Elf der Vorwoche wird übernommen (0110)
+
+Ausdrücklich verlangt, und beim Nachzählen war klar, warum: Es gab **zwölf**
+Aufstellungen für Spieltag 1 und **eine** für Spieltag 2. Elf Manager wären leer
+in den nächsten Spieltag gegangen — ohne Elf keine Punkte, und nichts hätte sie
+gewarnt.
+
+Der Grund war eine stille Halbheit: Einen Aufstellungs-Autopick gibt es nicht
+(`fantasy_autopick_all` gehört dem Draft), und die Oberfläche zeigte die beste
+Elf nur als **Vorschlag** — gespeichert wurde erst, wenn jemand etwas anfasste.
+Wer den Schirm öffnete und wieder zumachte, weil ihm die Elf gefiel, hatte
+trotzdem nichts stehen. **Ein Vorschlag, der aussieht wie ein Zustand.**
+
+Die Regel steht jetzt zweimal, und beide Fassungen müssen dasselbe meinen:
+
+- **Server** `fantasy_aufstellung_uebernehmen()` (alle 10 Minuten): legt für
+  jeden aktiven Manager ohne Aufstellung für die laufende Runde eine an.
+- **App** `logic/aufstellung_uebernahme.dart`: dieselbe Saat für den Schirm in
+  der Zeit dazwischen. Sonst sähe man einen fremden Vorschlag, der beim
+  nächsten Lauf umspringt.
+
+Drei Feinheiten, die beide teilen:
+
+- **Die jüngste Aufstellung vor dieser Runde**, nicht stur die der Vorrunde:
+  Wer einen Spieltag ausgesetzt hat, fiele sonst für immer aus der Übernahme.
+- **Gefiltert auf den aktuellen Kader.** Wer inzwischen weg ist (Trade, Waiver,
+  Drop), hinterlässt einen leeren Platz — besser als eine Elf, die der Server
+  beim nächsten Speichern ablehnt.
+- **Nur wenn nichts dasteht.** Eine vorhandene Aufstellung wird nie
+  überschrieben, auch keine unvollständige. Eine *leere* Zeile gilt dabei nicht
+  als gestellt, sonst verdrängte sie die Vorwoche.
+
+Beim ersten Lauf gegen die Produktion: **9 Aufstellungen übernommen**, Spieltag
+2 von 1 auf 10. Der zweite Lauf tut nichts — die Funktion ist idempotent, und
+genau das prüft der Rollback-Probelauf mit.
+
+**Was sie nicht kann:** Acht der achtzehn Manager in MatchUp! #1 haben *nie*
+eine Elf gestellt. Aus nichts lässt sich nichts übernehmen; sie starten weiter
+leer. Das wäre ein Autopick — eine andere Entscheidung als diese hier.
+
+### Punktstände lesbar hinschreiben
+
+Gemeldet: *„Die Zahlen der Punktstände sind doof zu lesen."* Zwei Ursachen, und
+beide liegen an der Zahl selbst.
+
+**Die Nachkommastelle rief so laut wie die Zahl.** „128,4 : 99,5" zwingt das
+Auge, vier Zeichen zu lesen, bevor es die Größenordnung hat — dabei entscheidet
+die Zehntelstelle so gut wie nie etwas. Sie steht jetzt kleiner (60 %) und
+leiser (72 % Deckkraft) hinter der Zahl: **128**,4 : **99**,5. **Weg ist sie
+nicht** — bei 0,4 Punkten Vorsprung wäre „128 : 99" gelogen, und in einer Liga,
+in der ein Foul −0,4 gibt, kommt das vor.
+
+**Die Ziffern waren verschieden breit.** In einem laufenden Spiel wandert der
+Doppelpunkt dann bei jeder Aktualisierung hin und her.
+`FontFeature.tabularFigures` gibt jeder Ziffer dieselbe Breite; damit stehen
+auch Spalten untereinander ruhig (Free Agency, Aufstellung).
+
+`app/widgets/punktzahl.dart` macht beides an einer Stelle. Eine Feinheit steckt
+darin: **Erst ab 20 Punkt Schriftgröße lohnt die Zweiteilung.** In einer
+Listenzeile (14–16 Punkt) würde aus dem Bruchteil ein 9-Punkt-Krümel — schwerer
+zu lesen als vorher, nicht leichter. Dort bleibt die Zahl, wie sie ist, bekommt
+aber die gleichbreiten Ziffern, weil sie in einer Spalte steht.
+
+Angesehen über `test/punktzahl_vorschau_test.dart`: alte und neue Schreibweise
+nebeneinander, in den Größen, in denen sie wirklich vorkommen (32 auf der
+MatchUp-Karte, 28 im Detailkopf, 16 in der Liste). Genau dieses Bild hat die
+20-Punkt-Grenze erzwungen — im ersten Entwurf war die Zeile mit 16 Punkt
+deutlich schlechter lesbar als vorher.
+
+Eingesetzt in MatchUp-Karte, Detailkopf, Aufstellungen und Free Agency. Die
+Tabelle trug die gleichbreiten Ziffern schon.
+
+### Torhüter bekommen keinen Einsatzbonus
+
+Nach Spieltag 1 gemessen, über alle 284 eingesetzten Spieler und mit der echten
+Wertung der Liga gerechnet (nicht mit einer in SQL nachgebauten):
+
+| | TW | ABW | MF | ST |
+|---|---|---|---|---|
+| vorher | **27,7** | 13,7 | 15,0 | 14,4 |
+| ohne Einsatzbonus für TW | **17,7** | 13,7 | 15,0 | 14,4 |
+
+**Warum ausgerechnet dieser Hebel.** Alle achtzehn Torhüter spielten 90
+Minuten — min 90, max 90, ausnahmslos. Der Sockel war für sie also eine
+**Konstante von 10 Punkten, die kein Spiel vom anderen unterschied**. Ihn zu
+streichen ändert die Reihenfolge unter den Torhütern nicht um einen Platz; es
+fällt Rauschen weg, kein Signal. Bei Feldspielern trägt derselbe Bonus sehr
+wohl etwas bei — er trennt den Durchspieler vom Einwechsler — und bleibt
+deshalb dort.
+
+Vorher durchgerechnet und verworfen: **Parade 3 → 2** allein bringt nur 27,7 →
+24,0, weil die Torhüter im Schnitt bloß 3,7 Paraden hatten. Beides zusammen
+läge bei 14,0. Entschieden wurde: nur der Einsatzbonus.
+
+`FantasyScoringRules.appearance` gilt jetzt für Feldspieler, `appearanceGk`
+(leer) für Torhüter, und `einsatz(position)` wählt aus. **Eine Migration
+braucht es nicht:** `fromJson` liest nur die flachen Zahlen, die Einsatzstufen
+kommen immer aus `standard` — die Änderung im Code greift damit sofort für
+jede Liga.
+
+**Die Wertung ist rückwirkend**, weil Punkte nirgends gespeichert, sondern bei
+jedem Aufruf gerechnet werden. Vorher geprüft, was das an Spieltag 1 ändert:
+Es gab drei Duelle mit beidseitiger Aufstellung, und **keines dreht** — die
+Abstände (163,8:171,8 · 138,7:28,2 · 263,9:162,3) sind größer als der Effekt.
+
+**Was man wissen muss:** Ohne Sockel rutschen schlechte Torwart-Tage ins Minus
+(an Spieltag 1: Raab −10,0, Hein −6,4). Der Einsatzbonus war für Torhüter
+faktisch ein Mindestlohn. Und ein eingewechselter Ersatztorwart bekommt gar
+nichts mehr fürs Mitspielen — bei achtzehn Neunzig-Minuten-Einsätzen ein
+theoretischer Fall, aber einer.
+
+Im Punktevergabe-Schirm steht für den Torwart-Reiter deshalb **ein Satz statt
+einer leeren Rubrik**: „Kein Einsatzbonus" ist eine Auskunft, eine fehlende
+Gruppe sähe aus wie ein Fehler.
+
+### Das Tippspiel spricht dieselbe Sprache wie Fantasy (erste Hälfte)
+
+Gewünscht: *„Bitte den kompletten Tippspielbereich mit denselben Designregeln
+wie im Fantasy umbauen. Komplett modernisieren, ansprechender und schlichter
+machen."*
+
+**Zuerst ein Fund, der die Lage erklärt:** Die einzige Vorschau des Bereichs
+(`tip_card_preview_test.dart`) lief **ohne App-Theme**. Flutter rendert dann
+Standard-Material-Hell — weiße Karten auf dunklem Grund, in einer Schrift, die
+die App gar nicht benutzt. Der Golden lag monatelang so im Verzeichnis und war
+als Urteilsgrundlage wertlos. Mit `buildAppTheme()` und `ladeSchrift` zeigt er
+jetzt, was auf dem Gerät steht.
+
+Was auf die gemeinsame Sprache umgestellt ist:
+
+| Vorher | Jetzt |
+|---|---|
+| Material-`Card` (7 Stellen) | `Karte` — Kartengrund, eine Haarlinie für alle |
+| gefüllte Farbfläche **plus** farbiger Rahmen (3 Stellen) | `hauch` aus der Ecke |
+| Tagesüberschrift als Textzeile | `Kapitelmarke` mit Strich und Linie |
+| Regel-Einstieg als Balken über die volle Breite | Karte mit Chevron wie jede andere Zeile |
+| „Gespeichert" in Markengrün | grau — **Farbe nur, wo etwas ansteht** |
+
+Die drei Doppelsignale waren der auffälligste Rest: Bonustipp-Einstieg,
+Fristbalken und Regel-Schalter trugen jeweils eine Farbfläche *und* einen
+Rahmen derselben Farbe — zwei Signale für dieselbe Auskunft, und beim
+Schalter sagt der Schalter selbst es ohnehin schon.
+
+**Die Kapitelmarke stand viermal im Code** (Fantasy-Einstellungen,
+Waiver-Anträge, Freunde, Profil), jedes Mal leicht anders. Sie steht jetzt
+einmal in `app/widgets/kapitelmarke.dart`.
+
+**Latenter Fehler in `Karte`, dabei gefunden:** Ein `ListTile` in einer Karte
+löst eine Zusicherung aus — es malt Grund und Tinte auf das nächste
+`Material`, und die Kartendekoration deckte beides zu. Die Karte hatte das
+Problem seit ihrer Einführung; es hatte nur nie jemand eine antippbare Zeile
+hineingelegt. Der Inhalt sitzt jetzt in einem durchsichtigen `Material`.
+
+**Was noch nicht angefasst ist**, und warum: Tabellen-Tab, Duell-Tab, Hub,
+Einstellungsblatt und die Editoren haben **keine Vorschau** — sie hängen an
+einem halben Dutzend Providern. Die Bausteine sind umgestellt und in
+`test/goldens/tippspiel_bausteine.png` zu sehen; die Schirme als Ganzes sind
+damit noch nicht beurteilt. Wer hier weitermacht, baut zuerst die Vorschauen —
+sonst wiederholt sich genau der Fehler, den der ungethemte Golden oben zeigt.
+
+**Spiele eines Zeitfensters stehen zusammen.** Vorher trug jede Karte ihre
+eigene Uhrzeit — bei fünf Samstagsspielen stand fünfmal „15:30" untereinander,
+eine Wiederholung, die nichts unterscheidet. Jetzt gibt es zwei Ebenen: der Tag
+als Kapitelmarke, darunter je Anstoßzeit **eine** Zeile, und darunter die
+Spiele, die zu ihr gehören.
+
+Dabei fiel ein zweites Doppel auf: In der Kopfzeile stand bei laufenden Spielen
+„LIVE" — und dasselbe Wort steht ohnehin *in* der Karte unter dem Spielstand
+(`_CenterInfo`). Die Kopfzeile gehört jetzt mehreren Spielen; ein Zustand eines
+einzelnen hat dort nichts verloren. Sie ist weg, die Karte sagt es weiter.
+
+Nicht angefasst, weil schon deckungsgleich: `RoundSelector` und
+`MatchdayStepper` sind bis auf die Beschriftung derselbe Baustein (Chevrons,
+mittige Rundenbezeichnung, Ziel im Vorlese-Namen).
+
+### Die Tipp-Tabelle glühte
+
+Der Schirm hatte **keine Vorschau** — und war damit der einzige große des
+Tippspiels, über den sich ohne Gerätestart nichts sagen ließ. Genau davor warnt
+diese Datei an mehreren Stellen. `test/tipp_tabelle_vorschau_test.dart` baut sie
+jetzt (zwölf Provider, sechs Mitglieder, vier Spiele — gestreut so, dass jeder
+Zellzustand im Bild steht: exakt, Tordifferenz, Tendenz, daneben, offen).
+
+Was das Bild sofort zeigte:
+
+- **Alles war grün.** Die Punktespalte, jeder Gewinn („+4", „+2"), die eigene
+  Zeile. Bei sechs Mitgliedern und vier Spielen glühte die halbe Tabelle — in
+  der Farbe, mit der die App sonst „hier läuft gerade etwas" meint. Jetzt trägt
+  **nur der Volltreffer** Grün; alles andere steht ruhig, null Punkte gedämpft.
+  Der Unterschied zwischen 3 und 2 Punkten steht in der Zahl und braucht keine
+  zweite Spur.
+- **Ein hellgrauer Kopfbalken** über beiden Tabellenhälften — das einzige
+  Element des Schirms, das seine Material-Herkunft nicht verbarg. Die Trennung
+  macht jetzt die Haarlinie, die `DataTable` ohnehin zieht.
+- **Namen brachen ab**: „Spitzenr…", „lennartr…", „JojoAcz…" — in einer
+  Tabelle, in der man Leute wiedererkennen soll. Sie schrumpfen jetzt
+  (`FittedBox`), wie überall sonst in der App, und die Spalte ist von 100 auf
+  118 Punkt gewachsen, damit das selten nötig wird.
+- **Die eigene Zeile war grün hinterlegt** und trug denselben fetten Namen —
+  zweimal dieselbe Auskunft. Jetzt eine neutrale Hebung.
+- Die Gesamtpunkte stehen mit **gleichbreiten Ziffern**, damit die Spalte
+  flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
+  ist die Beschriftung, das Ergebnis die Auskunft.
+
+### Zonen in der Ligatabelle (19.10.2026)
+
+Auf Ansage: Meister, Champions League, Europa League, Conference League,
+Relegation, Abstieg — Europa nur in der Bundesliga, in der 2. und 3. Liga
+Aufstieg, Relegation, Abstieg. Die Regel steht als reine Funktion
+`tabellenZone(leagueId, rang, teams)` in `core/logic/tabellen_zonen.dart`
+(Abstiegsplätze vom Tabellenende gezählt, damit die 3. Liga mit 20 Vereinen
+dieselbe Rechnung nutzt). Gezeichnet wird ein **3-Punkt-Strich vor dem
+Platz** (`ZonenRang`, `app/widgets/zonen_rang.dart`), keine eingefärbte Zeile
+— sechs Farbflächen auf achtzehn Zeilen wären die rote Wäsche des Live-Tabs
+noch einmal. Darunter `ZonenLegende`. An allen drei Tabellen: Wettbewerbs-
+Übersicht, `LigaTabelle` (Vereinsseite, Spielerprofil) und Spiel-Detail.
+
+| | Bundesliga | 2. Bundesliga | 3. Liga |
+|---|---|---|---|
+| Meister (gold) | 1 | – | – |
+| Champions League (blau) | 2–4 | – | – |
+| Europa League (orange) | 5 | – | – |
+| Conference League (türkis) | 6 | – | – |
+| Aufstieg (gold wie Meister) | – | 1–2 | 1–2 |
+| Relegation (violett) | 16 | 3, 16 | 3 |
+| Abstieg (rot) | 17–18 | 17–18 | 17–20 |
+
+**Es sind die Regelplätze**, nicht der Einzelfall — Pokalsieger und
+UEFA-Wertung verschieben Europa, und das steht nirgends in unseren Daten.
+Andere Wettbewerbe (Frauen-Bundesliga, Pokal) haben keine Zonen. In der 2.
+und 3. Liga gibt es keinen eigenen Meister-Strich (auf Ansage, gleicher Tag);
+der Aufstieg trägt dort das Gold des Bundesliga-Meisters. Gehalten von
+`test/tabellen_zonen_test.dart` (`tabellen_zonen.png`).
+
+### Die Ligatabelle zeigt jetzt, dass sie live ist
+
+Gewünscht: *„Bitte in den Tabellen eine LIVE-Tabelle einbauen. Dass, wenn
+Spiele laufen, von den Teams, die gerade spielen, die Punktestände rot
+angezeigt werden."*
+
+**Live war sie längst, man sah es nur nicht.** `mergeLiveResults` rechnet
+laufende Spiele seit jeher mit — führt eine Mannschaft zur Halbzeit, stehen
+ihre drei Punkte schon in der Spalte. Eine vorläufige Zahl sah damit aus wie
+eine feste, und wer die Tabelle am Samstagnachmittag aufschlug, konnte nicht
+erkennen, welche Ränge noch wackeln. **Die Rechnung war richtig, die Anzeige
+verschwieg ihren Zustand.**
+
+Rot heißt in dieser App „läuft gerade" — derselbe Ton wie der Live-Punkt im
+Live-Tab, der Spielstand einer laufenden Partie und die Kopfzeile der
+Tipp-Tabelle. Und wie dort steht **kein Wort daneben**: In einer Zeile, die
+für vier Zahlen gebaut ist, wäre „LIVE" die zweite Fassung derselben Auskunft
+(siehe den Abschnitt darunter).
+
+**Der Baustein steht an einer Stelle** (`app/widgets/tabellen_punkte.dart`),
+weil die Ligatabelle an **drei** gerendert wird — Liga-Übersicht,
+Vereinsseite, Spiel-Detail — jede mit ihrer eigenen Zeilenklasse. Drei Kopien
+einer Farbregel wären die vierte Gelegenheit, dass sie auseinanderlaufen; die
+Zeilen selbst blieben unangetastet. `laufendeTeams(fixtures)` liefert dazu die
+Menge der Mannschaften mit laufendem Spiel — **aus dem Spielplan, nicht aus
+der Tabelle**: Die Tabelle sagt, wie viele Punkte jemand hat, nicht, ob er
+gerade spielt.
+
+**Die Tipp- und die Fantasy-Tabelle bekommen das ausdrücklich nicht.** Dort
+ändert ein laufendes Spiel die Punkte **aller** Teilnehmer — jeder tippt jede
+Partie, und jede Elf hat Spieler im Einsatz. Alle Zeilen rot zu färben, wäre
+genau der Fehler, der im Live-Tab schon einmal repariert werden musste: Eine
+Hervorhebung, die den Normalfall trifft, hebt nichts hervor. In der Ligatabelle
+trifft sie an einem Samstag vier von achtzehn Zeilen, und darum trägt sie dort.
+
+Angesehen über `test/live_tabelle_vorschau_test.dart`, das zwei laufende und
+eine **beendete** Partie nebeneinanderstellt: Ein abgepfiffenes Spiel färbt
+nichts — seine Punkte stehen fest, und Rot heißt „läuft gerade", nicht „hat
+heute gespielt".
+
+### „LIVE" stand dreimal da, der Einladungscode am falschen Ort
+
+Zwei Meldungen zur Tipp-Tabelle, beide vom selben Schlag — etwas steht da, wo
+es nicht hingehört.
+
+**Das Wort „LIVE" ist weg** (*„es reicht, wenn das Ergebnis rot ist, das sollte
+deutlich genug sein"*). Der Spaltenkopf trug bei einem laufenden Spiel drei
+Zeilen: die Paarung, den Stand in Rot und darunter „● LIVE" in 9 Punkt. Die
+dritte sagte, was die zweite über ihre Farbe schon sagt. Dieselbe Streichung
+wie „LIVE" in der Kopfzeile des Live-Tabs und „Anstoß" unter der Anstoßzeit —
+**eine Auskunft, zwei Träger, einer zu viel.**
+
+Mitgegangen ist ein zweiter Fall derselben Sorte: Ohne Stand stand dort früher
+`LIVE` **statt einer Zahl**. Jetzt bleibt der Strich, auch für ein laufendes
+Spiel; ein Wort an der Stelle eines Ergebnisses ist kein Ergebnis.
+
+**Der Einladungscode ist in die Einstellungen gezogen.** Er lag als eigene
+Karte über der Rangliste — vor etwas, das man mehrmals am Spieltag ansieht,
+für eine Sache, die man einmal beim Anlegen braucht. Er steht jetzt neben
+„Mitglieder einladen", also bei der Frage, die ihn überhaupt aufwirft, und
+**dort gestaffelt wie diese Zeile**: Bei einer fantasy-gekoppelten Tipprunde
+kommen die Mitglieder aus der Fantasy-Liga, ein Beitrittscode führt ins Leere.
+Auf der Tabelle stand er unbedingt, also auch dort.
+
+**Die Vorschau hatte kein laufendes Spiel** und konnte deshalb nie zeigen,
+worum es hier ging. Sie hat jetzt eins, dazu zwei Messungen daneben: kein
+`LIVE` im Baum, kein `Einladungscode` auf der Tabelle.
+
+### Vor dem Anpfiff steht in der Punktebox das Spiel
+
+Gemeldet: *„Statt ‚–' möchte ich das nächste Spiel sehen: ‚FCB Sa 15:30'. Die
+Größe der Box soll so bleiben. Erst wenn das jeweilige Spiel angepfiffen wird,
+kommt die Punkteanzeige. Diesen Spieltag war es so, dass bereits zum Start des
+Spieltages schon 0,0 Punkte angezeigt wurden."*
+
+Der zweite Satz nennt die Ursache des ersten. Ob die Box Punkte oder einen
+Strich zeigte, hing an `stats[p.id]?.hasContribution` — also daran, ob eine
+**Statistikzeile** existierte. Die ist aber schon vor dem Anstoß da (der Sync
+legt sie an, sobald die Aufstellung steht), und damit stand überall 0,0.
+
+Maßgeblich ist jetzt der **Anpfiff seines Vereins**, aus dem Spielplan. Dieselbe
+Größe, die auch die Aufstellungssperre und den Waiver steuert; drei Regeln, die
+dasselbe meinen, sollten dieselbe Quelle lesen.
+
+Vor dem Anstoß steht in der Box zweizeilig **Gegner und Anstoß**:
+
+```
+ M05
+Sa 15:30
+```
+
+Zwei Zeilen, weil „M05 Sa 15:30" nebeneinander die Box auf die doppelte Breite
+zöge — und sie steht in einer Reihe mit Wappen und Namen, die ihren Platz
+brauchen. Übereinander bleibt sie so breit wie eine Punktzahl.
+
+**Gezeigt wird der Gegner, nicht der eigene Verein.** Das Wappen daneben sagt
+schon, für wen er spielt; neu ist, gegen wen.
+
+**Die Kürzel stehen in einer Tabelle** (`core/logic/vereins_kuerzel.dart`),
+nicht in einer Ableitung: Aus „FC Bayern München" käme sonst „FB" heraus, aus
+„Borussia Mönchengladbach" ein „BM". Verglichen wird die kanonische Form, damit
+beide Schreibweisen dieser App denselben Eintrag treffen („1. FSV Mainz 05" und
+„FSV Mainz 05") — genau daran hing der Waiver-Fehler aus 0108. Für unbekannte
+Vereine greift eine Ableitung aus dem **längsten** Wort: „AS Monaco" → „MON",
+nicht „AS".
+
+**Wer an dem Spieltag frei hat, bekommt weiter einen Strich.** Kein Spiel ist
+etwas anderes als „noch nicht angepfiffen", und für ihn gibt es nichts
+anzukündigen.
+
+**Zwei Funde beim Bauen der Vorschau** — der Schirm hatte keine:
+
+- Die **Bank-Rubrik erschien auch dann**, wenn auf beiden Seiten niemand auf
+  der Bank saß. Eine Rubrik über nichts; sie erscheint jetzt nur mit Inhalt.
+  (Sie warf dabei auch eine Material-Zusicherung, die nie jemand gesehen hat.)
+- Ein Golden dieses Teilbaums ist **weiß**, wenn man ihn direkt aufnimmt — er
+  malt selbst keinen Grund. Aufgenommen wird deshalb der `Scaffold`; eine
+  zusätzliche Farbfläche dazwischen löst die Zusicherung oben aus.
+
+### Der Wochenrückblick erscheint mit dem Wechsel — und meldet sich (0141)
+
+Auf Ansage (19.10.2026): cleaner, **erst mit dem Umstellen auf den nächsten
+Spieltag** veröffentlicht, und eine Push-Meldung dazu.
+
+- **Zeitpunkt:** `rueckblickVeroeffentlicht` — die Waiver-Frist der Runde
+  (Mo 15:00, englische Woche Do 15:00), derselbe Moment, an dem
+  `currentFantasyRound` weiterspringt. Vorher ab dem letzten Abpfiff, also
+  Sonntagabend. `recapRunde` (Übersicht) zeigt den zuletzt veröffentlichten
+  bis zum Anstoß des nächsten; `veroeffentlichteRueckblickeProvider` (mit
+  Wecker auf die nächste Frist) füttert Karte, Tabellen-Auswahl und Schirm.
+  Ein nicht veröffentlichter Spieltag sagt im Schirm, wann er kommt.
+- **Push:** `fantasy_waivers_faellig` vermerkt die Frist ohnehin einmal je
+  Liga und Runde; danach ruft sie `fantasy_rueckblick_melden` — an alle
+  aktiven Mitglieder, nur bei fertigem Draft, Sorte `wochenrueckblick`
+  (Bereich Fantasy, Spalte + Check). **Der Schlüssel trägt den Nutzer**
+  (`rueckblick:<liga>:<runde>:<nutzer>`): Der Index auf `schluessel` gilt über
+  alle Aufträge, ohne Nutzer bekam in der Probe nur einer von zwölf seine
+  Meldung. Ein Tipp öffnet die Liga auf der Übersicht.
+- **Aussehen:** Team der Woche als Kopf (schräg, große Zahl, Gold nur hier),
+  die übrigen Auszeichnungen als **eine** Zeilengruppe mit grauen
+  Umriss-Symbolen, Zahl weiß rechts, eigener Name grün. Der „Beendet"-Chip
+  und die sechs Farben (Stern, Teal, Blau, Rot, Violett, Grau) sind weg.
+
+### Der fünfte Rattenschwanz — und warum die Wache ihn nicht sah
+
+Gemeldet, sichtlich entnervt: *„Im Wochenrecap sind NACH WIE VOR Zahlen mit
+dutzend Nachkommastellen."* Zu Recht. Auf dem Schirm stand:
+
+```
+schlägt Majusch · +0.1999999999999318
+deklassiert ana · +5.000000000000057
+```
+
+Die Stelle war `'+${m.margin}'` in den Rückblick-Karten „Nervenkrimi" und
+„Klatsche". `margin` ist `winnerPoints - loserPoints`, also ein `double` aus
+lauter Summen à 0,4 und 1,5.
+
+**Warum `punkte_formatierung_test.dart` das durchgelassen hat:** Diese Wache
+liest den Quelltext und prüft Interpolationen, deren Bezeichner **nach Punkten
+klingt** — `points`, `pts`, `punkte`, `total`, `score`, `summe`. „margin" klingt
+nicht danach. Es ist der **fünfte** Durchrutscher, und jedes Mal war die Antwort
+dieselbe: das Wortfeld erweitern. Eine Wache, die Namen rät, ist nur so gut wie
+die Fantasie ihres Autors — und die reicht offensichtlich nicht.
+
+**Die neue Wache rät nicht.** `test/nachkommastellen_test.dart` baut den
+Rückblick mit Werten, die garantiert krumm werden (elf Spieler je Manager mit
+unterschiedlich vielen Fouls, Torschussvorlagen und Ballverlusten — also lauter
+0,4er und 1,5er), und liest anschließend **jeden `Text` im fertigen Baum**:
+
+```dart
+final _rattenschwanz = RegExp(r'\d[.,]\d{3,}');
+```
+
+Wie die Zahl heißt, aus der ein Text entsteht, ist ihr egal. Gegengeprüft: Ohne
+die Korrektur meldet sie genau die beiden Zeilen von oben.
+
+Sie trägt eine **Vorbedingung** — dass überhaupt Inhalt da ist. Ohne die wäre
+sie auf einem leeren Schirm still grün, und genau das ist die Falle, in die
+Golden-Tests dieser Datei schon zweimal getappt sind.
+
+`pruefeNachkommastellen(tester)` ist als Funktion herausgezogen: Wer einen
+weiteren Schirm absichern will, baut ihn im Test auf und ruft sie. Die alte
+namensbasierte Wache bleibt für Schirme ohne Vorschau bestehen (und kennt jetzt
+auch `margin`, `vorsprung`, `abstand`, `schnitt`, `delta`) — aber die
+verlässliche ist die neue.
+
+### Der Rückblick trug einen Regenbogen aus Rändern
+
+Gemeldet: *„Im Wochenrecap wurde unsere neue Regel mit den einfarbigen Rändern
+nicht beachtet."* Stimmt — und der Wachtest hatte für genau diese Datei eine
+Ausnahme stehen („Hervorgehobene Zeile im Rückblick — ein Zustand"). Die
+Ausnahme deckte aber nur eine Zeile ab; tatsächlich trug **jede**
+Auszeichnungskarte ihren Rand in ihrer eigenen Farbe: Gold, Blau, Rot, Grün,
+Violett, Grau untereinander — und die hervorgehobene zusätzlich eine gefüllte
+Fläche derselben Farbe.
+
+Jetzt `Karte`: ein Grund, eine Haarlinie. Die Farbe der Auszeichnung sitzt da,
+wo sie hingehört — in der Symbolkachel und am Wert. Der **Hauch** bleibt den
+Karten vorbehalten, in denen man selbst vorkommt; dasselbe Muster wie bei den
+Duellen im Tippspiel.
+
+**Die Ausnahme im Wachtest ist ersatzlos gestrichen.** Sie war der Grund, warum
+der Test nichts sagte: Eine Ausnahme mit Zähler 1 fängt den zweiten Verstoß
+nicht, wenn die Regex nur einen sieht — und sie lädt dazu ein, den Rest gar
+nicht mehr anzusehen.
+
+**Und der Schirm hat endlich eine Vorschau** (`goldens/wochenrueckblick.png`).
+Drei gemeldete Fehler in Folge — krumme Zahlen, ein falsch gerechneter Kader,
+farbige Ränder — auf einem Schirm, von dem es kein Bild gab. Das ist kein
+Zufall; es ist die Regel, die in dieser Datei an einem halben Dutzend Stellen
+steht.
+
+### „Seit 34 Spielen rot gesperrt" — derselbe Namensfehler, zweite Stelle
+
+Gemeldet: *„Lukas Pinckert ist seit 34 Spielen rot gesperrt? Glaube nicht, dass
+das stimmt."* Stimmte auch nicht — er hat an Spieltag 1 volle 90 Minuten
+gespielt. In `player_absences` stand eine Rotsperre vom 29.10.2025 **ohne
+Enddatum**; Sportmonks hat sie nie geschlossen.
+
+Genau dafür gibt es `ueberholt`: Die Sicht vergleicht den Beginn eines Ausfalls
+mit dem letzten Einsatz aus **unseren eigenen** Minuten und wirft Meldungen weg,
+die unsere Daten widerlegen. Bei ihm griff das nicht — die Sicht verband
+`player_match_stats` und `fixtures` über `f.home_name = p.club`, also
+buchstabengenau. Sein Verein heißt im Kader „SV 07 Elversberg" und im
+Spielplan „Elversberg".
+
+**Das ist derselbe Fehler wie 0108, nur an einer anderen Stelle.** Beim
+Aufräumen damals hatte ich die *Funktionen* durchgesehen — und die *Sichten*
+nicht. Nachgezählt waren es zwei: `player_absences_v` und
+`stats_widersprueche`. Die zweite ist besonders ärgerlich: eine Wache, die
+genau die Fälle nicht sieht, die eine andere Wache schon einmal übersehen hat.
+
+**Und eine zweite, unabhängige Regel** (0112): Eine **Sperre** aus einer
+früheren Saison ist keine mehr. Eine Rotsperre läuft über ein bis drei Spiele,
+nie über zehn Monate und einen Saisonwechsel. Die Minutenprüfung konnte den
+zweiten Fall (Felix Götze, seit 30.10.2025, 32 Spiele) nicht widerlegen, weil er
+in dieser Saison gar nicht gespielt hat.
+
+**Verletzungen bleiben davon unberührt.** Ein Kreuzbandriss vom Oktober läuft im
+August durchaus noch; zwölf der aktuellen Meldungen sind genau das. Sie pauschal
+zu verwerfen hieße, richtige Auskünfte gegen falsche zu tauschen.
+
+Der Saisonstart ist nicht hartkodiert, sondern der früheste Anpfiff der jüngsten
+Saison im Spielplan.
+
+Ergebnis: 11 von 81 Meldungen fallen jetzt heraus (vorher 8) — drei Sperren,
+acht Verletzungen. Beides sind **Sichten**, kein App-Code: Die Korrektur wirkt
+ohne neuen Build.
+
+### Speichern beim Wechsel — und der Fehlschlag, der niemanden interessierte
+
+Gemeldet nach dem Spieltag: *„Während des letzten Spieltages gab es häufiger
+Speicherprobleme bei der Aufstellung. Bitte so umbauen, dass, wenn ein Spieler
+eingewechselt wird, die Aufstellung gespeichert wird."*
+
+Zwei Ursachen, und die zweite ist die schwerere.
+
+**1. Jede Änderung wartete 700 ms.** Für das Durchtippen einer Formation ist
+das richtig, für einen Wechsel ist es die falsche Größe: Wer tauscht und sofort
+weiterzieht — Schirm zu, Bildschirmsperre, Funkloch —, hat eine Aufstellung
+gesehen, die es nirgends gibt. Wechsel (Spielerwahl, Ziehen aufs Feld, Ziehen
+auf die Bank) speichern jetzt **sofort**.
+
+Dabei fiel eine Abhängigkeit auf, die nirgends stand: `_valid` und `_lastIds`
+entstehen im `build`. Unmittelbar nach `setState` stehen dort noch die Werte
+von *vor* dem Zug — die alte Verzögerung lebte genau davon. Das Sofort-
+Speichern hängt deshalb an `addPostFrameCallback`, nicht am Ereignis.
+
+**2. Der Fehlschlag war der einzige Ausgang ohne zweiten Versuch.** Der
+Auto-Speicher war an zwei Stellen schon einmal nachgebessert worden
+(`laeuftGerade` und `spieltag == null` bestellen sich beide neu ein) — beim
+Netzfehler blieb es bei einer Snackbar. Die Änderung blieb offen (`_dirty`),
+aber **niemand nahm sie je wieder auf**, außer zufällig der nächste Zug. Genau
+der Fall, der samstags im Stadion mit einem Balken Empfang auftritt.
+
+Jetzt: Wiederholung mit wachsendem Abstand (2, 4, 8, 16, 30 s, gedeckelt),
+laut nur beim ersten Mal. Und die Fußzeile bekam einen **vierten** Zustand:
+„Nicht gespeichert – neuer Versuch läuft". Vorher stand dort „Speichere …",
+dieselbe Zeile wie bei einem laufenden Speichern — der Unterschied zwischen
+„ist gleich da" und „ist nicht angekommen" ist aber genau der, auf den es
+ankommt. Dasselbe Muster wie beim leeren Draft-Feld und beim toten
+Long-Press im Chat.
+
+### Der Formationswechsel behält dieselbe Elf
+
+Gewünscht im selben Zug: *„Wenn die Aufstellung geändert wird, sollen dieselben
+elf Spieler im Kader bleiben. Wenn dann aber eine Positionsgruppe verringert
+wird, geht einer raus. Dafür ist dann in der Positionsgruppe, wo mehrere Leute
+dazukommen, ein freies Feld."*
+
+`_buildSlots` füllte bei jedem Wechsel **auf**: bestehende Auswahl zuerst, Rest
+mit den punktbesten Bankspielern. Von 4-4-2 auf 3-5-2 hieß das: ein Verteidiger
+raus (richtig) **und** ein fremder Mittelfeldspieler rein (falsch). Der
+Formationsknopf war damit ein Knopf für den Kader, und der Wechsel ließ sich
+nicht zurücknehmen, ohne von Hand nachzuziehen.
+
+`umbauAufFormation()` rechnet jetzt rein positionsweise und kennt weder Punkte
+noch Bank:
+
+- **Reihenfolge bleibt** — wird eine Gruppe kleiner, geht der *letzte* der
+  Reihe raus. Vorhersagbar; „der schwächste" wäre es nicht.
+- **Leere Plätze fallen zuerst weg** — `[A, null, B, C]` auf drei ergibt
+  `[A, B, C]`, nicht `[A, null, B]`. Sonst verlöre man einen Spieler an eine
+  Lücke, die man nie besetzt hatte.
+- **Neue Plätze bleiben leer.** Darum ging es: Die Lücke ist die Einladung,
+  den herausgefallenen Spieler dort wieder hineinzusetzen.
+
+Weil die Elf immer elf Plätze hat, ist die Zahl der Herausgefallenen stets
+gleich der Zahl der neuen Lücken — der Test prüft das über alle Formationen.
+
+Eine Folge, die man kennen muss: Nach einem Formationswechsel ist die Elf
+**unvollständig** und wird daher nicht gespeichert. Das ist gewollt und steht
+rot in der Fußzeile; vorher war sie durch das Auffüllen immer „gültig", und
+genau deshalb fiel der ungefragte Tausch nie auf.
+
+Geprüft wird beides — die reine Funktion in `test/formation_umbau_test.dart`
+**und** die Verdrahtung im echten Editor
+(`test/aufstellung_sofort_speichern_test.dart`). Dieselbe Regel an zwei Stellen
+zu prüfen ist hier keine Doppelung: Die Verzögerung beim Speichern war ein
+Detail des Widgets und wäre in keiner Logikprüfung aufgefallen.
+
+### Ein Drop verschob rückwirkend Punkte (0113–0115)
+
+Gemeldet, und zu Recht scharf: *„Wenn man einen Spieler, der am Wochenende in
+der Startelf stand, droppt, beeinflusst das im Nachhinein die Punkte. Das darf
+auf keinen Fall passieren."*
+
+**Es waren zwei Fehler, und beide gehen auf meine eigenen Zeilen zurück.**
+
+**Erstens der Trigger aus 0094.** Er räumt einen abgegebenen Spieler aus den
+Aufstellungen, gefiltert auf `round >= fantasy_laufende_runde(...)`, mit dem
+Kommentar „nur die laufende und kommende Runden; vergangene Spieltage sind
+Geschichte". Genau das war der Denkfehler: **Die laufende Runde ist die, die
+gerade gewertet wird.** Ihre Elf ist keine Planung mehr, sondern eine Wette,
+die läuft.
+
+Dieselbe Zeile lief einmalig als Stapel (0094, Zeile 266) — am 30.08. um 09:15,
+**mitten in Spieltag 1**. Drei Aufstellungen wurden beschnitten; in
+MatchUp! #1 verloren Eric (Nadiem Amiri) und Majusch (Serhou Guirassy) je einen
+Startelf-Platz aus einem Trade vom Vortag.
+
+**Zweitens, und das war der eigentliche Grund, warum eine Reparatur der
+Aufstellung allein nichts gebracht hätte:** `computeSideData` filterte die
+Startelf gegen `rosterPlayers` — den Bestand von *jetzt*. Ein zurückgeschriebener
+Spieler wäre stumm wieder herausgefallen. Die gespeicherte Elf ist jetzt die
+Auskunft; aufgelöst wird über den Spielerpool, nicht über den Kader. **Geprüft
+wird beim Schreiben** (`fantasy_set_lineup` nimmt nur eigene Spieler an), nicht
+beim Lesen.
+
+**Die richtige Grenze ist der Anpfiff seines Vereins**, nicht der erste Anpfiff
+der Runde. 0113 sperrte die ganze Runde und ging damit zu weit: Wer freitags
+einen Sonntagsspieler abgibt, muss ihn auch aus der Elf verlieren — sonst
+punktete am Sonntag jemand für ein Team, das ihn seit Freitag nicht mehr hat.
+0115 setzt deshalb dieselbe Grenze wie die Aufstellungssperre aus 0084.
+
+Elegant daran: **Vergangene Spieltage brauchen keine eigene Regel mehr.** Dort
+liegt sein Anpfiff in der Vergangenheit, also ist er dort eingefroren. Genau die
+zweite Regel („round >= laufende Runde") war ja der Fehler.
+
+**Die Reparatur stellt nur das Eindeutige wieder her**: ein Manager, dem genau
+ein Platz fehlt und der vor dem Stapellauf genau einen Abgang hatte. Wo es
+mehrdeutig wäre, bleibt die Lücke stehen — raten wäre schlimmer als eine Lücke,
+die man sieht.
+
+**0114 war ein Nachtrag, weil 0113s Reparatur nicht griff:** Sie verglich die
+fehlenden Plätze gegen `fantasy_squad_size` — den **ganzen Kader** (16) statt
+der Startelf (11). Damit fehlten rechnerisch sechs Plätze bei einem Abgang, die
+Eindeutigkeitsprüfung schlug fehl, und es wurde nichts geschrieben. Der Filter
+war zu streng statt falsch: Der Schaden blieb, aber es entstand kein neuer.
+`fantasy_startelf_groesse` gibt es jetzt als eigenen Helfer — dass diese Zahl an
+zwei Stellen verschieden gerechnet wurde, war der ganze Fehler.
+
+Gegen die Produktion nachgemessen (mit Rollback): Ein Spieler aus Spieltag 1
+lässt sich abgeben, ohne dass die Elf schrumpft (11 → 11); einer aus dem noch
+nicht angepfiffenen Spieltag 2 fällt sehr wohl heraus (11 → 10).
+
+**Und dann war es trotzdem noch falsch.** Gemeldet: *„Erics Punkte hat es nicht
+geändert."* Die Elf sah korrekt aus, die Summe blieb dieselbe — weil sie aus
+einer **zweiten** Funktion kommt: `effectiveTotalsForRound` speist Tabelle,
+H2H-Bilanz, MatchUp-Karte und Detailkopf, und sie baute ihre Punkteliste
+ebenfalls allein aus dem Kader von jetzt. Im Kommentar von `chosenLineup` stand
+der Fehler sogar ausgeschrieben als Absicht: „Spieler, die nicht mehr im Kader
+sind, werden ignoriert."
+
+**Zwei Wege, dieselbe Frage — und ich hatte nur einen geprüft.** Der Test, den
+ich zum ersten Anlauf geschrieben hatte, war grün, während die Anzeige falsch
+blieb: Er fragte nur `computeSideData`. Die Regel steht jetzt an drei Stellen
+gleich (Aufstellungsansicht, Tabellensumme, Rückblick), und der Test fragt alle
+drei. Ohne die Korrektur fallen vier seiner acht Fälle.
+
+**Die Lehre, wieder einmal dieselbe:** Wo eine Größe an mehr als einer Stelle
+gerechnet wird, prüft ein Test einer Stelle gar nichts. `formatPoints`,
+`vierStuermerBrauchenVierAbwehr` und die Vereinsnamen sind dieselbe Geschichte —
+hier war es die Startelf-Summe.
+
+### Die Regel für Kaderbewegungen, in einem Satz
+
+**Ein Spieler ist ab dem Anpfiff seines Vereins für diesen Spieltag
+festgeschrieben** — nicht ab dem ersten Anpfiff der Runde, nicht ab der
+Waiver-Frist. Vorher zählt er für den, dem er gerade gehört; ab seinem Anstoß
+für den, der ihn aufgestellt hatte, und zwar endgültig.
+
+Daraus folgt alles Übrige:
+
+| | vor seinem Anpfiff | nach seinem Anpfiff |
+|---|---|---|
+| droppen / traden | geht; er fällt aus der Elf | **geht auch** — er bleibt in der Elf |
+| ihn holen | geht, aufstellbar | nur per Antrag, zählt ab nächstem Spieltag |
+| Elf ändern | geht | gesperrt für ihn (0084) |
+| seine Punkte | wandern mit dem Kader | bleiben, wo sie sind |
+
+**Der Riegel sitzt an der Aufstellung, nicht an der Kaderbewegung.** Bis 0116
+verboten `fantasy_drop_player` und `fantasy_add_free_agent`, einen laufenden
+Spieler abzugeben („Er steht in deiner Elf und sein Spiel läuft schon"). Das
+war der richtige Schutz zum falschen Zeitpunkt: Seit 0115 nimmt der Trigger
+einen Spieler nur noch aus Aufstellungen, deren Anpfiff für ihn **noch
+aussteht** — der Schutz hängt also am Trigger und gilt damit für **jeden** Weg,
+der eine Kaderzeile löscht: Drop, Free-Agency-Tausch, Waiver-Zuteilung, Trade.
+
+Damit waren die beiden Ausnahmen kein Schutz mehr, sondern nur noch eine
+Einschränkung ohne Zweck. Auf Ansage sind sie weg: *„Trotzdem kann man Spieler
+während des Spieltags droppen oder traden. Sie müssen dann nur trotzdem im
+MatchUp-Kader bleiben."*
+
+**Nachgemessen statt behauptet** (Rollback-Proben gegen die Produktion). Ich
+hatte hier vorher eine Lücke gemeldet — die Waiver-Zuteilung umgehe die
+Elf-Prüfung. Das war falsch: Sie löscht eine Kaderzeile, also greift der
+Trigger. Nachgestellt: Elf bleibt bei 11.
+
+| Probe | Ergebnis |
+|---|---|
+| Waiver-Abgang aus angepfiffener Elf | 11 → 11 |
+| `fantasy_drop_player` auf Spieltag-1-Starter | geht durch, Kaderplatz weg, Elf 11 → 11 |
+| Derselbe Drop, Spieltag 2 (Anpfiff Fr) | Spieltag 1 bleibt 11, Spieltag 2 fällt auf 10 |
+
+Der Bestätigungsdialog sagt das jetzt auch: „Hat sein Spiel schon angepfiffen,
+bleibt er für diesen Spieltag in deiner Elf und punktet weiter für dich." Die
+Frage stellt sich genau in dem Moment, in dem man droppt.
+
+**Und die Lücke bleibt, wo sie entstanden ist.** Gemeldet als zweite Hälfte
+derselben Sache: *„Die Position bleibt dann erstmal leer und der neue Spieler
+kommt auf die Bank."*
+
+Solange der Aufstellungs-Schirm **offen** blieb, stimmte das schon: Die Slots
+bleiben stehen, der gedroppte Platz wird leer. Beim **Wiederöffnen** wird die
+Elf aber aus der gespeicherten Liste neu aufgebaut — und zehn Spieler sind
+keine gültige Formation. Der alte Weg nahm dann die *erste besetzbare*: Aus
+4-4-2 ohne einen Verteidiger wurde 3-4-3, und ein Stürmer rückte in die Elf,
+den niemand aufgestellt hatte.
+
+`formationFuerElf` (`logic/formation_fuer_elf.dart`) wählt jetzt die Formation
+mit dem **kleinsten Überschuss** — jeder gesetzte Spieler bleibt stehen, es
+entstehen genau so viele Lücken, wie Spieler fehlen.
+
+**Der Gleichstand brauchte einen Maßstab.** Fehlt aus 4-4-2 ein Verteidiger,
+sind 3-4-3, 3-5-2 und 4-4-2 alle „einen Spieler entfernt"; der Reihe nach
+genommen gewinnt 3-4-3. Entschieden wird deshalb nach Nähe zur
+**Grundformation der Liga** (`RosterConfig.def/mid/fwd`) — das Nächstbeste zu
+„wie es vorher aussah", und im Gegensatz zur Reihenfolge kein Zufall.
+
+Ein neu geholter Spieler landet ohne Zutun auf der Bank: Er kommt in
+`fantasy_rosters`, nicht in `fantasy_lineups`. Die Lücke bleibt also stehen,
+bis man sie selbst füllt.
+
+### Wer keinen Torwart hat, spielt mit zehn (0120)
+
+Gemeldet: *„Bei Lewins Aufstellung passt irgendetwas gar nicht. Das muss
+unbedingt bearbeitet werden."* Der Befund: Sein Kader hatte **14 Spieler und
+keinen einzigen Torwart**. Jede Formation dieser App verlangt genau einen —
+ohne ihn nimmt `fantasy_set_lineup` gar keine Elf an, der Schirm steht
+dauerhaft auf „Nicht gespeichert – die Elf ist noch nicht vollständig", und er
+geht ohne eigenes Zutun mit null Punkten in jeden Spieltag.
+
+**Die Daten waren richtig, die Folge war es nicht.** Am 02.09.2026 um 19:33
+hat der Abgangs-Lauf aus 0117 zwei Spieler aus seinem Kader genommen. Bei der
+Quelle nachgeprüft, statt es zu vermuten:
+
+| Spieler | wohin | wann |
+|---|---|---|
+| Michael Zetterer (sein einziger TW) | Leeds United | 29.08.2026 |
+| Hugo Larsson | Fulham | 01.09.2026 |
+
+Beide haben die Bundesliga wirklich verlassen, der Prune hat korrekt
+gearbeitet. **Der Fehler liegt darin, was danach nicht passierte.**
+
+**Entschieden: die Torwartposition bleibt leer, die anderen zehn bleiben
+besetzt.** Der naheliegende Weg wäre gewesen, ihm einen freien Torwart in den
+Kader zu setzen — das hätte für ihn eine Kaderentscheidung getroffen, die ihm
+gehört. Eine leere Position kostet ihn die Punkte dieses einen Platzes; ein
+aufgezwungener Spieler kostet ihn den Kaderplatz.
+
+Die Ausnahme hängt am **Kader, nicht an der Auswahl**: Wer einen Torwart hat,
+muss ihn aufstellen. Sonst wäre aus der Notlösung eine frei wählbare Formation
+mit zehn Feldspielern geworden. **Die Regel steht deshalb zweimal** — in
+`fantasy_set_lineup` (0120) und in `RosterConfig.isValidFormation`
+(`torwartImKader`). Dieselbe bewusste Doppelung wie `tip_scoring.dart` ↔
+SQL-View; laufen sie auseinander, zeigt die App eine Elf als gültig, die der
+Server ablehnt.
+
+**Warum der Server die Elf zusätzlich selbst einträgt.** Die gelockerte Regel
+allein half dem Betroffenen nicht: Die App schickt eine unvollständige Elf gar
+nicht erst ab (`naechsterSpeicherSchritt` → `unvollstaendig`), er käme also
+bis zum nächsten Release an keine gespeicherte Aufstellung. `fantasy_zehn_ohne_torwart()`
+trägt sie ein — nach Einsatzminuten dieser Saison, dann nach Namen. **Keine
+Punktewertung in SQL:** Die steht in Dart, und eine zweite Fassung davon wäre
+genau die Doppelung, die in diesem Projekt schon dreimal auseinanderlief.
+
+Drei Sicherungen darin, jede aus einem Fehler dieses Projekts gelernt:
+
+- **Nur vor dem ersten Anpfiff der Runde.** Die Funktion schreibt direkt in
+  `fantasy_lineups` und geht damit an der Sperre je Spieler (0084) vorbei;
+  ohne die Bedingung könnte sie mitten im Spieltag Punkte verschieben — der
+  Fehler aus 0113–0115.
+- **Ligafilter auf `bundesliga` und `sportmonks:`.** Der erste Entwurf sah
+  Runde 2 *aller* Wettbewerbe: Die 2. Liga stößt am selben Wochenende früher
+  an, und die Bedingung war erfüllt, bevor in der Bundesliga ein Ball rollte.
+  Genau die Lücke, die 0107/0108 schon einmal gekostet hat.
+- **Eine vorhandene Aufstellung wird nie überschrieben**, auch keine
+  unvollständige — dieselbe Zusage wie in 0110.
+
+Gegen die Produktion nachgemessen (Rollback-Proben): Lewin darf zehn
+Feldspieler speichern, ein Manager **mit** Torwart bekommt weiterhin
+„Aufstellung braucht genau 11 Spieler"; der Lauf trägt genau eine Elf ein und
+der zweite Lauf null. Danach ausgespielt, und die Elf steht.
+
+**Und die leere Position war nicht zu sehen.** Sofort danach gemeldet: *„Aber
+dass der TW leer ist, wird nicht angezeigt."* In der Duell-Ansicht
+(`matchup_lineups.dart`) war die unbesetzte Zelle ein blanker
+`SizedBox(height: 60)`, und stand auf **beiden** Seiten kein Torwart,
+verschwand der ganze Positionsblock über `if (hs.isEmpty && as.isEmpty)`. Wer
+draufschaute, sah eine ordentliche Aufstellung mit einer Reihe weniger.
+
+**Zum vierten Mal derselbe Fehler in diesem Projekt: Ein Zustand „hier fehlt
+jemand" sah aus wie „alles in Ordnung"** — nach dem leeren Feld im
+Draft-Brett, dem Phantom in der Elf und dem stillen Auto-Speichern.
+
+Jetzt steht dort `_FehlendePosition`: goldener Kreis mit Ausrufezeichen, „Kein
+Torwart", darunter „Position unbesetzt". Gold, weil es kein Fehler ist,
+sondern etwas, das noch zu tun ist — dieselbe Farbe wie „Aufstellung · Noch
+nicht gestellt" auf der Liga-Übersicht.
+
+**Die Unterscheidung, auf die es dabei ankommt:** Eine leere Zelle in der
+Abwehr-, Mittelfeld- oder Sturmreihe heißt **nicht**, dass dort jemand fehlt —
+sie heißt, dass die Gegenseite eine andere Formation spielt (4-4-2 gegen
+3-5-2). Eine Warnung wäre dort schlicht falsch. Nur der Torwart hat eine feste
+Zahl (`roster.gk`); die Blöcke bekommen sie als `pflicht` gereicht, alle
+anderen `null`. Die Vorschau `fehlender_torwart.png` stellt genau diese drei
+Fälle nebeneinander, und die Messungen daneben halten sie fest: dreimal „Kein
+Torwart", kein einziges „Kein Abwehrspieler".
+
+**Der Aufstellungs-Editor war nicht betroffen** — er zeigt leere Plätze seit
+jeher als `_LeererPlatz` mit „+". Der Fehler saß allein dort, wo man **fremde**
+Aufstellungen ansieht, und genau dort ist er gemeldet worden.
+
+**Nebenbefund, unabhängig davon:** `spielerprofil_vorschau_test` fiel an
+diesem Tag ohne jede Codeänderung um. Der dritte Spieltag seiner festen
+Fixtures war der 04.09. — also *heute* —, der freie Spieler rutschte damit auf
+den Waiver, und aus „Holen" wurde „Antrag". `showPlayerProfile` nimmt jetzt
+ein optionales `jetzt`, wie der Free-Agency-Schirm seit 0107. **Eine Uhr, die
+man stellen kann, ist die einzige Art, ein zeitabhängiges Bild fest
+einzuchecken** — und ein Test, der irgendwann von selbst rot wird, ist ein
+Test, den man sich abgewöhnt zu lesen.
+
+### Das Ligaprofil zeigt die aktuelle Aufstellung
+
+Gewünscht: *„Bitte bau ein, dass das Profil der Ligateilnehmer für alle anderen
+immer die aktuelle Aufstellung anzeigt."* Drei Gründe, warum es das nicht tat,
+und alle drei standen in einem Schirm **ohne Vorschau**.
+
+- **Es las die Anzeigerunde statt der Aufstellungsrunde.**
+  `fantasyCurrentRoundProvider` lässt einen beendeten Spieltag bis zur
+  Waiver-Frist stehen (Montag 15:00), während alle längst den nächsten
+  stellen. In diesem Fenster zeigte das Profil die Elf der Vorwoche und hieß
+  trotzdem „Aufstellung". Es liest jetzt
+  `fantasyAufstellungsRundeProvider` — dieselbe Runde, die auch der
+  Aufstellungs-Editor öffnet. Während eines laufenden Spieltags sind beide
+  gleich; der Unterschied entsteht nur in genau diesem Fenster.
+- **Der `?? 34`-Notnagel war zurück.** Er hat in diesem Projekt schon einmal
+  eine Aufstellung auf Spieltag 34 *geschrieben*; hier **las** er von dort,
+  fand nie eine Elf und zeigte stattdessen die gerechnete. Solange die Runde
+  lädt, wird jetzt gewartet, nicht geraten.
+- **„Noch nicht gestellt" sah aus wie eine Aufstellung.** Ohne gespeicherte Elf
+  rendert der Schirm `bestEleven` — richtig, denn danach wird der Manager auch
+  gewertet. Sie ohne ein Wort hinzustellen war der Fehler: Für einen fremden
+  Manager ist das eine Behauptung über eine Entscheidung, die er nie getroffen
+  hat. Darüber steht jetzt eine goldene Zeile, die sagt, was es ist.
+
+**Ein Schloss statt eines Farbpunkts** (04.09.2026). Unter jedem Spieler des
+Feldes saß ein 9 Punkt großer Kreis in der Positionsfarbe. Er sagte zweierlei
+gleichzeitig und beides schlecht: Als **Positionshinweis** war er überflüssig —
+auf einem Spielfeld sagt die Reihe, wer Torwart und wer Stürmer ist —, und als
+**Zustandshinweis** sagte er nichts, weil er wie Schmuck aussah. Gemeldet als
+*„wenn die Kader nicht mehr bearbeitet werden können, ist dort nur noch ein
+Punkt in der Farbe der Position; das möchte ich als Schloss und alles
+einfarbig"*.
+
+**Einfarbig ist dabei keine Sparsamkeit, sondern die Aussage.** Vier
+Positionsfarben nebeneinander lesen sich als Gliederung; elf gleiche Schlösser
+lesen sich als ein Zustand, der für alle gilt.
+
+Die Marke steht als `GesperrtMarke` an einer Stelle und wird **an beiden**
+benutzt: im Ligaprofil und im Aufstellungs-Editor, wo derselbe Zweig bisher
+seinen eigenen Kreis baute. Zwei Wege in denselben Zustand dürfen nicht
+verschieden aussehen — und der Editor zeigte für einen angepfiffenen Spieler
+schon immer genau dieses Schloss.
+
+**Und der unbesetzte Torwartplatz war auch hier unsichtbar.** Seit 0120 kann
+eine Elf zehn Mann haben; die Torwartreihe rendert dann als leere `Row`, und
+das Feld sieht aus wie eine ordentliche Aufstellung mit einer Bahn weniger.
+Dieselbe Marke wie in der Duell-Ansicht steht jetzt auf dem Platz. **Nur der
+Torwart hat eine feste Zahl** — eine kürzere Abwehr- oder Mittelfeldreihe ist
+bloß eine andere Formation und wird nicht gemeldet.
+
+**Beim Bauen der Vorschau kam ein echter Absturzpfad hoch:**
+`FriendActionButton` griff in seinem `build` direkt auf
+`Supabase.instance.client` zu. Das wirft eine Assertion, wenn es die Instanz
+nicht gibt — im Test, und schwerer wiegend bei fehlgeschlagener
+Initialisierung im Release-Build, wo es den ganzen Schirm mitreißt und als
+graue Fläche ohne Meldung endet. **Exakt die Falle, die schon einmal den
+Favoriten-Tab erwischt hat**, und die Regel dagegen steht seit damals in dieser
+Datei. Er prüft jetzt `isSupabaseConfigured` und liest den Nutzer aus
+`currentUserProvider`.
+
+Angesehen über `test/managerprofil_vorschau_test.dart` mit drei Bildern
+(gestellt · noch nicht gestellt · ohne Torwart) — die drei Zustände, die sich
+unterscheiden müssen und es vorher nicht taten. Der Spielplan darin hat drei
+abgepfiffene Runden, damit die Aufstellungsrunde **fest** auf 3 steht: Ein
+Bild, das an `DateTime.now()` hängt, wird irgendwann von selbst rot.
+
+### Das Ligaprofil zeigt die Saison
+
+Gewünscht: *„In den Profilen der Mitspieler einen Tab, in dem man den Verlauf
+ihrer Saison sehen kann — die Ergebnisse der vorherigen Spiele und den
+Spielplan der zukünftigen."*
+
+Das Ligaprofil hat zwei Reiter: **Aufstellung** (wie bisher) und **Saison**
+(`ui/manager_saison_tab.dart`). Oben eine Leiste mit Bilanz (S-U-N), Platz und
+erzielten Punkten, darunter die **Ergebnisse** je Spieltag (Gegner, beide
+Punktzahlen, Marke S/U/N) und der **Spielplan** der kommenden Spieltage mit
+Gegner und Anpfifftag. Ein Tipp auf eine Zeile öffnet das Profil des Gegners.
+
+**Dieselbe Rechnung wie die Tabelle, nicht eine zweite.** Reihenfolge der
+Manager und Punkte je gewertetem Spieltag stehen jetzt in `h2hGrundlage`
+(`logic/h2h_grundlage.dart`), und **die Tabelle benutzt sie ebenfalls**.
+Vorher stand die Rechnung inline im Tabellen-Schirm; eine Kopie im Profil wäre
+die nächste Stelle gewesen, an der zwei Bilanzen auseinanderlaufen. Die
+Paarungen je Spieltag kommen aus `saisonverlauf` (`logic/saisonverlauf.dart`)
+über denselben `roundPairings`; `test/saisonverlauf_test.dart` prüft für jeden
+Manager, dass Siege, Unentschieden und Niederlagen genau `h2hStandings`
+entsprechen.
+
+Drei Regeln darin:
+
+- **Gewertet heißt abgepfiffen** (`gewerteteRunden`). Der laufende Spieltag
+  steht im Spielplan mit „läuft", nicht als Zwischenergebnis.
+- **Nur die reguläre Saison.** Ab dem Playoff-Start paart das Bracket, nicht
+  der Round-Robin; der Reiter endet davor und sagt das in einer Zeile.
+- **Spielfrei ist kein Duell.** Bei ungerader Teilnehmerzahl steht der
+  Spieltag als „spielfrei" da, ohne Punkte und ohne Marke — dieselbe Regel wie
+  in `h2hStandings`.
+
+Farbe tragen nur Sieg (grün) und Niederlage (rot), das Unentschieden bleibt
+neutral — dieselbe Regel wie bei den Trade-Ausgängen.
+
+**Der Kopf zeigt den Platz ohne Teilnehmerzahl** („2." statt „2. / 18") und
+neben den erzielten Punkten den **Schnitt je Duell** (auf Ansage,
+14.10.2026). Dieselbe Zahl steht seitdem als eigene Spalte **Ø** in der
+Liga-Tabelle, zwischen Bilanz und Punkten: Die Gesamtpunkte vergleichen nur,
+solange alle gleich oft gespielt haben — ein spielfreier Spieltag kostet
+sonst eine Woche Punkte. Gerechnet wird `pointsFor / played`, spielfreie
+Spieltage zählen nicht mit. Für die Spalte sind Bilanz (74 → 56) und Lücke
+(10 → 6) schmaler geworden; die Namen schrumpfen dadurch etwas früher, bleiben
+aber ganz stehen.
+
+Angesehen über `test/managerprofil_vorschau_test.dart`
+(`managerprofil_saison.png`), mit vier Managern, einem Sieg, einer Niederlage
+und einem offenen Spieltag. Der Test braucht `initializeDateFormatting`, weil
+der Spielplan die Anpfifftage deutsch schreibt.
+
+### Der Spielerschnitt zählt nur Einsätze (16.10.2026)
+
+Auf Ansage, gemeldet an Eric Martel: Ø 5,1 — gespielt hatte er an **zwei**
+Spieltagen (4 und 5, 25 und 70 Minuten), die übrigen gingen als Nullen ein.
+Seitdem gilt für **jede** Ø-Zahl eines Spielers: Summe durch Einsätze, und ein
+Einsatz ist ein Spieltag mit Spielzeit (Minuten über 0); wer nur im Kader
+stand, zählt nicht.
+
+- **Eine Stelle:** `SpielerSchnitt.schnitt` (= `punkteJeEinsatz`, ohne Einsatz
+  0, angezeigt als Strich). Die Spielerliste rechnet mit
+  `einsaetzeJeSpieler` (`logic/saison_punkte.dart`), derselben Zählung.
+- **Gilt auch für Prognose und Hochrechnung** (`projektion.dart`,
+  `duellPrognose`) — sie summieren dieselben Zahlen, die auf den Karten
+  stehen. Eine Prognose mit anderen Schnitten als die Karten wäre nicht
+  nachzuvollziehen. Folge, die man kennen muss: Ein Spieler mit einem einzigen
+  starken Einsatz geht mit diesem Wert in die Prognose ein.
+- Im Profil heißt die Zahl „Ø je Einsatz", die Minuten daneben ebenfalls je
+  Einsatz. `punkteJeSpieltag` bleibt im Modell, wird aber nicht mehr angezeigt.
+  **Der Abschnitt darunter beschreibt den Stand davor** („geblieben ist der
+  Schnitt je Spieltag").
+
+Gehalten von `test/schnitt_je_einsatz_test.dart`.
+
+### Das Spielerprofil handelt jetzt selbst
+
+Gewünscht: *„Ich möchte, dass direkt über die Profile ein Knopf für Trade, Drop
+oder Pick-up (je nach Status des Teams) eingebaut wird. Außerdem eine Anzeige
+für durchschnittliche Minuten und durchschnittliche Punkte."*
+
+**Der freie Spieler hatte keinen Knopf.** Eigener Spieler → Traden + Droppen,
+fremder → Traden mit dem Besitzer, **frei → `SizedBox.shrink()`**. Man sah, dass
+jemand frei ist, und musste zurück in die Free Agency, um ihn zu holen.
+
+**Gebaut ist der Knopf nicht neu, sondern breit.** `PlayerActionButton` bekommt
+ein `breit`-Flag und rendert dann statt des runden Symbols einen beschrifteten
+Knopf. Damit gelten im Profil **dieselben Regeln wie in der Liste**, ohne sie zu
+wiederholen: Waiver-Antrag statt Holen, wenn er auf dem Wire liegt oder sein
+Verein angepfiffen hat; das Abgabe-Blatt bei vollem Kader. (Die U20-Sperre
+stand hier ebenfalls — sie ist mit dem Dynasty-Modus entfallen.) Eine zweite
+Entscheidungslogik im Profil wäre genau die Sorte Doppelung, die in dieser
+Datei ein Dutzend Mal schiefgegangen ist.
+
+Wo nichts zu tun ist, steht **ein Satz statt eines toten Knopfes**: „In deinem
+Kader", „Antrag läuft". Ein Knopf, der nichts kann, wäre schlechter als eine
+Auskunft — dieselbe Regel wie beim Tippspiel-Schalter im dritten Zustand.
+
+**Ein Schnitt im Bild, zwei in der Rechnung.**
+
+| | Nenner | sagt |
+|---|---|---|
+| je Spieltag | alle gewerteten Spieltage | der Erwartungswert für nächste Woche |
+| je Einsatz | nur Spieltage mit Minuten | was er kann, wenn er spielt |
+
+`spielerSchnitt` rechnet **beide** — der Trade-Schirm und das Profil zeigen
+aber nur den **ersten**. Im Profil standen sie eine Zeit lang nebeneinander,
+mit Punkten und Minuten je Spalte: vier Zahlen, zwei Nenner, und die Rückfrage
+lautete „durchschnittliche Punkte, durchschnittliche Minuten ist doppelt, da
+verstehe ich nicht". **Zwei Mittelwerte derselben Sache erklären sich nicht
+selbst** — sie brauchen einen Absatz Text, und den liest auf einer
+Spielerkarte niemand.
+
+Geblieben ist der Schnitt je Spieltag. `punkteJeEinsatz` bleibt im Modell: Es
+ist gerechnet, geprüft und der natürliche Ort, falls die Auskunft je in einer
+eigenen Ansicht gebraucht wird.
+
+**Und der ganze Reiter ist eine Form ruhiger geworden** („sieht unordentlich
+aus, die Boxen sind unförmig"): Statt zweier getönter Kacheln über einem
+breiten Kasten steht dort **eine Leiste** mit vier Zahlen — Punkte, Ø je
+Spieltag, Ø Minuten, Einsätze —, durch Haarlinien geteilt. Drei Formen für vier
+Zahlen waren drei angefangene Gedanken.
+
+**Die Tabelle zeigt alle Spieltage der Saison, mit Gegner.** Vorher endete sie
+beim aktuellen Spieltag, und es war nicht zu sehen, gegen wen es weitergeht —
+die Frage vor einem Trade. Jetzt steht neben jedem Spieltag das Kürzel des
+Gegners, auswärts mit `@`; noch nicht gewertete Spieltage sind gedämpft, tragen
+Striche statt Nullen und reagieren nicht auf Tippen (es gibt nichts
+aufzuschlüsseln). Der Verein wird über `vereinKanonisch` zugeordnet — „1. FSV
+Mainz 05" und „FSV Mainz 05" sind derselbe Verein (siehe Migration 0108).
+
+Zwei Regeln in `logic/spieler_schnitt.dart`, beide schon einmal an anderer
+Stelle in dieser App falsch gewesen:
+
+- **Ein Spieltag zählt nur, wenn er gewertet ist** — erkennbar daran, dass
+  irgendein Spieler dort Daten hat. Ein Spieltag, der erst kommt, darf den
+  Schnitt nicht drücken („noch nicht gespielt ist kein Nullpunktespiel").
+- **Ohne eine einzige Minute gibt es keinen Einsatz-Schnitt**, sondern `null`
+  und den Satz „Noch kein Einsatz". Eine 0 wäre eine Aussage über etwas, das nie
+  stattfand.
+
+Angesehen über `test/spielerprofil_vorschau_test.dart`, das jetzt **vier**
+Fälle zeigt — neu der freie Spieler mit „Holen". Gerechnet wird in
+`test/spieler_schnitt_test.dart`.
+
+### Der Rückblick schneidet am Abpfiff ab
+
+Gemeldet: *„SFV03 hatte keine 230 Punkte auf der Bank."* Stimmt — der Rückblick
+rechnete mit dem **heutigen** Kader. Wer nach dem Spieltag geholt wurde, stand
+darin, und seine Punkte aus jenem Spieltag landeten auf der Bank des neuen
+Besitzers. Wer abgegeben wurde, fehlte umgekehrt.
+
+Ein Rückblick auf einen abgeschlossenen Spieltag muss den Stand von damals
+benutzen. Die Bewegungen dafür stehen seit Migration 0096 mit Zeitstempel in
+`fantasy_roster_moves` — dieselbe Quelle, aus der auch der Transfers-Bereich
+lebt. `kaderAm` rechnet rückwärts: Ein **Zugang** nach dem Stichtag wird
+herausgenommen, ein **Abgang** wieder eingesetzt.
+
+Der Schlüssel ist **Manager und Spieler**, nicht der Spieler allein. Ein Trade
+ist für den einen ein Abgang und für den anderen ein Zugang, beide zur selben
+Zeit; über den Spieler allein hebt sich das gegenseitig auf.
+
+**Der Stichtag ist „letzter Anpfiff plus zwei Stunden".** Eine echte Abpfiffzeit
+liefert keine der beiden Quellen; zwei Stunden liegen bei jedem Spiel auf der
+sicheren Seite, und dieselbe Annahme steht serverseitig schon in
+`fantasy_trade_frei_ab`.
+
+Ohne Bewegungen bleibt es der heutige Kader — für einen laufenden Spieltag
+genau richtig.
+
+### Die Vorschau trägt wieder Farbe
+
+Die MatchUp-Karte war vor dem Anpfiff ganz ohne Hauch, nach der Regel „Farbe
+nur, wo etwas ansteht": Grün heißt in dieser App „hier läuft etwas", und
+Samstag läuft noch nichts. Auf dem Schirm war sie damit die **einzige graue
+Karte zwischen lauter Zuständen** — gemeldet als „zu langweilig".
+
+Auf Ansage wieder eingefärbt, in derselben Stärke wie ein beendeter Spieltag
+(10 %). Die beiden verwechselt trotzdem niemand: Marke („Vorschau" gegen
+„Beendet"), Punktestand und Balken unterscheiden sie deutlicher, als ein
+fehlender Hauch es je getan hat. **Die Regel bleibt für Flächen und Ränder;
+für den Hauch einer Karte, die ohnehin zum Bereich gehört, war sie zu streng.**
+
+### „Spieler" mit zwei Reitern, der Transfermarkt auf der Übersicht (16.10.2026)
+
+Auf Ansage: Free Agency, Trades und Transfers raus aus dem Kader-Reiter, rein
+in die Übersicht, „wo dann der Fokus auf diese Bereiche gerichtet ist";
+die Free Agency heißt jetzt **„Spieler"**.
+
+- **`FreeAgencyScreen` trägt den Titel „Spieler"** und zwei Reiter
+  (`LeiseReiter`, Versalien): **Verfügbar** — nur freie Spieler, nach
+  Saisonpunkten, mit dem Waiver-Balken darüber — und **Leaders** — alle
+  Spieler nach Saisonpunkten, mit Rang vorn und Besitzer in der Zeile, egal
+  wem sie gehören; ein Umschalter **„Alle Spieler / Nur Free Agents"** blendet
+  die vergebenen aus, der Rang bleibt der in der ganzen Liga. Suche und
+  Positionsfilter gelten für beide. **Kein Vereinsname in der Zeile** — das
+  Wappen sagt ihn; dort steht nur noch, wem er gehört und ob er ausfällt. Der Klassenname
+  ist geblieben; die Gruppe „IN KADERN" ist mit dem Leaders-Reiter entfallen.
+- **Übersicht, Abschnitt „Transfermarkt"** direkt unter Duell und Rückblick:
+  zwei große Kacheln (`_FokusKachel`) — Spieler und Trades, Letztere mit
+  rotem Zähler und „Ein Angebot wartet" / „N warten auf den Spieltag" —, darunter
+  die Zeile Transfers. „Liga" trägt keine Transfers mehr. **Der Abschnitt
+  „Mein Team" mit der Zeile Aufstellung ist seit dem 17.10.2026 ganz weg**
+  (auf Ansage — sie führte nur in den Kader-Reiter nebenan); mit ihr
+  `meineFormationProvider` und der goldene Hinweis „Noch nicht gestellt".
+- **Der Kader-Reiter ist nur noch die Elf**: Die drei Kacheln über dem Feld
+  (`_MiniAction`) sind gelöscht; die Zeile über vorgemerkte Trades bleibt, weil
+  sie die Aufstellung betrifft.
+
+Gehalten von `free_agency_vorschau_test.dart` (Verfügbar ohne vergebene
+Spieler, Leaders nur nach Punkten, Besitzer steht dran; Bilder
+`free_agency_vorschau.png` und `spieler_leaders.png`) und
+`liga_uebersicht_vorschau_test.dart`.
+
+### Eine Spielerliste statt zwei (Free Agency schluckt die Spielersuche)
+
+Gewünscht: *„Wir ersetzen die Spielersuche im Kadertab mit den Liga-Transfers;
+dafür werden im Tab Free Agency auch alle Spieler angezeigt, die in Kadern
+sitzen. Oben erst die freien, dann die im Kader, sortiert nach den erzielten
+Punkten der laufenden Saison."*
+
+Der Zusammenhang ist der Punkt: Die Spielersuche (`player_pool_screen.dart`)
+zeigte **dieselbe Liste** wie die Free Agency, nur mit allen Spielern und
+alphabetisch. Zwei Listen derselben Sache nebeneinander waren eine stehende
+Fehlerquelle — mehrfach steht in dieser Datei „dieselbe Regel wie in der Free
+Agency", weil eine Korrektur an beiden Stellen nachgezogen werden musste (der
+Profil-Tipp, die `ChoiceChip`s, `vereinSpieltGerade`). Die Datei ist gelöscht,
+die Free Agency kann jetzt beides.
+
+**Die Reihung** steht in `logic/saison_punkte.dart`, nicht im Schirm:
+
+- `saisonPunkte` summiert je Spieler über alle Spieltage, mit dem Scoring
+  **dieser Liga** — zwei Ligen kommen für denselben Spieler auf verschiedene
+  Zahlen, die Reihenfolge gehört also zur Liga und nicht zum Spieler.
+- `freieZuerst` sortiert erst nach Gruppe, dann nach Punkten, dann nach Namen.
+  Die Gruppentrennung ist keine Kosmetik, sondern die Handlung: **oben holen,
+  unten fragen.** Gemischt stünde der beste Spieler der Liga ganz oben und wäre
+  nicht zu haben.
+- Der Name ist der Gleichstands-Entscheider, damit sich die Liste zwischen zwei
+  Aufbauten nicht umsortiert.
+- **Kein Eintrag ist etwas anderes als null Punkte.** Wer nie gespielt hat,
+  steht nicht in der Karte und bekommt in der Zeile keine Zahl — „0" wäre eine
+  Behauptung über jemanden, der gar nicht auf dem Platz stand. Sortiert wird er
+  wie eine Null; hingeschrieben wird nichts.
+
+Die Punkte **stehen in der Zeile**. Eine Reihenfolge ohne sichtbaren Grund
+liest sich wie keine.
+
+**Und daneben der Schnitt** (05.09.2026, auf Ansage). Die Zeile trägt jetzt
+zwei Zahlen übereinander: die Saisonsumme oben, „Ø je Spieltag" darunter. Beide
+zusammen sind die Frage, die man an einen freien Spieler hat — die Summe sagt,
+was er gebracht hat, der Schnitt, was er je Spieltag bringt. Wer im Winter kam
+oder verletzt war, hat eine kleine Summe und kann trotzdem der bessere sein;
+dieselbe Begründung wie auf dem Trade-Schirm.
+
+**Den Platz gab „Waiver bis Mo, 15:00" her.** Der Satz stand wortgleich in
+jeder betroffenen Zeile, obwohl die Frist für alle dieselbe ist und **einmal**
+im Balken über der Liste steht. *„Ich brauche das nicht bei jedem, dort lieber
+mehr Platz für die Punkte insgesamt und die durchschnittlichen."* Die Regel
+dahinter ist dieselbe wie bei „LIVE" in der Tipp-Tabelle und der Uhrzeit im
+Live-Tab: **Eine Auskunft, die sich je Zeile nicht unterscheidet, gehört nicht
+in die Zeile.** Dass ein Spieler auf dem Wire liegt, sagt weiterhin sein
+goldener Antragsknopf am rechten Rand.
+
+**Der Nenner ist eine Zahl für die ganze Liste**, kein zweiter Durchlauf je
+Spieler: `gewerteteSpieltage(saison)` zählt die Runden, in denen überhaupt
+gewertet wurde — ein gewerteter Spieltag ohne diesen Spieler zählt für ihn als
+Null, genau wie in `spielerSchnitt.punkteJeSpieltag`.
+
+**Die Vorschau hat dafür einen zweiten Spieltag bekommen.** Mit nur einem sind
+Summe und Schnitt dieselbe Zahl — die Zeile zeigte zweimal dasselbe, und der
+Unterschied, um den es geht, wäre nie im Bild gewesen.
+
+**Was dabei wegfällt:** Die freien Spieler waren vorher so sortiert, dass die
+frisch gedroppten vom Waiver-Wire oben standen („die spannenden Neuzugänge").
+Das schlägt die Punktregel jetzt; ein Wire-Spieler ohne Einsätze rutscht nach
+unten. Sein Zustand steht weiter in seiner Zeile, und der Waiver-Hinweisbalken
+über der Liste bleibt.
+
+Die Kapitelmarke „IN KADERN" sitzt **über** der ersten Kaderzeile statt als
+eigener Listeneintrag: So bleibt `itemCount` die Zahl der Spieler, und eine
+leere Gruppe erzeugt keine Überschrift über nichts.
+
+Im Kader-Tab steht an der Stelle der Spielersuche jetzt **Transfers** (blau,
+wie die Zeile in der Übersicht) — das ist die Frage, die der Kader-Tab sonst
+nirgends beantwortet.
+
+Geprüft in `test/saison_punkte_test.dart` (Summe über Spieltage, fremde
+Spieler in den Stats stören nicht, Gruppen vor Punkten, Eingabeliste bleibt
+unangetastet) und in `test/free_agency_vorschau_test.dart`, das die
+**Reihenfolge auf dem Schirm** zusichert statt sie nur abzubilden — ein Golden
+sagt „so sah es aus", nicht „so muss es sein".
+
+**Falle beim Umbau:** Die Waiver-Vorschau tippte auf „Mein Spieler 0", um einen
+Abgang zu wählen. Seit die Liste auch Kaderspieler zeigt, steht der Name
+zweimal auf dem Schirm — einmal dahinter in der Liste, einmal im Blatt. Der
+Test suchte plötzlich zwei Treffer und fiel über `tap()`. Er sucht jetzt
+innerhalb des `BottomSheet`.
+
+### Der Tippspiel-Schalter fragt nach — und geht in beide Richtungen
+
+Gemeldet: *„Wenn man in den Ligaeinstellungen das Tippspiel aktiviert, wird es
+direkt gemacht ohne Nachfragen. Außerdem fehlt die Option, es zu
+deaktivieren."*
+
+Beides war **derselbe Fehler**, einmal von vorn und einmal von hinten gesehen:
+Die Zeile stand unter der Bedingung `!l.tipEnabled`, schaltete beim Tippen
+sofort um — und verschwand damit. Ein Fingertipp daneben war endgültig, ohne
+dass irgendetwas daran endgültig sein müsste. Dazu trug sie ein Chevron und
+versprach damit, irgendwohin zu führen, statt zu handeln.
+
+Jetzt: Rückfrage in **beide** Richtungen, und die Zeile bleibt stehen.
+
+**Der dritte Zustand ist der interessante.** Die Übersicht zeigt das Tippspiel,
+sobald es **eine Runde gibt** — `if (league.tipEnabled || tipRound != null)`.
+Steht die Runde, bewirkt der Merker also gar nichts mehr. Ein Schalter, der
+dann noch dazustünde, wäre schlimmer als keiner: Er würde sich bedienen lassen
+und nichts ändern. Deshalb wird die Zeile dort zur **Auskunft** — gedämpft,
+ohne Chevron, mit dem Namen der Runde und dem Hinweis, dass es nur im Tippspiel
+selbst endet (dort gibt es „Tippspiel löschen" in `tip_settings_sheet.dart`).
+
+| Zustand | Zeile | Wirkung |
+|---|---|---|
+| aus | „einschalten" | Rückfrage, dann erscheint die Zeile auf der Übersicht |
+| an, keine Runde | „ausschalten" | Rückfrage, dann verschwindet sie wieder |
+| Runde steht | „läuft" (gedämpft) | keine — der Weg führt ins Tippspiel |
+
+Geprüft in `test/tippspiel_schalter_test.dart` mit einem Repository, das sich
+die Aufrufe merkt: **vor** der Antwort darf nichts geschrieben werden,
+Abbrechen schreibt gar nichts, und im dritten Zustand wird kein Schalter
+angeboten. Ohne die Korrektur fallen alle drei.
+
+Zwei Fallen, die dabei Zeit gekostet haben:
+
+- **`SupabaseClient(...)` im Test hinterlässt einen Timer** (`startAutoRefresh`)
+  und der Test scheitert am Ende an „A Timer is still pending". Mit
+  `authOptions: AuthClientOptions(autoRefreshToken: false)` ist Ruhe.
+- **`scrollUntilVisible` läuft endlos**, wenn der Text nie auftaucht — der Test
+  hängt dann, statt zu scheitern. Und die Tippspiel-Gruppe sitzt so weit unten,
+  dass sie auf einem Telefonschirm **gar nicht gebaut** ist; `find.text` findet
+  nur Gebautes. Der Test setzt deshalb einen 2400 Punkte hohen Schirm.
+
+Die beiden Vorschauen dazu zeigen die Einstellungen erstmals **vollständig**
+(`fantasy_einstellungen_tippspiel_an.png`, `…_laeuft.png`) — die ältere
+Vorschau reicht nur bis „Playoff-Einstellungen". Ein Golden von der `ListTile`
+allein war übrigens nutzlos: Sie malt keinen Grund, das Bild war weiß auf weiß.
+
+### Transfers — was auf mich wartet, und was die Liga macht
+
+Beides lag vorher verstreut: eingehende Trade-Angebote im Trade-Schirm, eigene
+Waiver-Anträge hinter einem Symbol in der Free-Agency-Kopfzeile, und die
+Bewegungen der anderen **nirgends** — man erfuhr sie höchstens nebenbei im
+Liga-Chat, wenn man gerade hinsah. Im Liga-Abschnitt der Übersicht steht jetzt
+über dem Chat die Zeile **Transfers**; dahinter zwei Reiter, weil es zwei
+Fragen sind: „muss ich etwas tun?" und „was ist los?".
+
+**Für die zweite Seite gab es keine Quelle.** `fantasy_rosters` kennt nur den
+Bestand — `acquired_via` und `acquired_at` sagen, wie und wann jemand in einen
+Kader kam. Wer einen Kader *verlässt*, verschwindet spurlos: Die Zeile wird
+gelöscht. Eine Liste „Kader-Bewegungen" ließe sich daraus nur zur Hälfte bauen,
+und die fehlende Hälfte ist genau die, die man sucht („wen hat er abgegeben?").
+
+Migration 0096 legt deshalb `fantasy_roster_moves` an, gefüllt von einem
+**Trigger auf `fantasy_rosters`** — dieselbe Begründung wie beim Kaderlimit
+(0083) und beim Aufstellungs-Aufräumen (0094). Drei Fälle:
+
+| Vorgang | Was protokolliert wird |
+|---|---|
+| `insert` | Zugang, mit `weg` = `acquired_via` |
+| `delete` | Abgang, **ohne** `weg` |
+| `update` von `manager_id` | Abgang **und** Zugang, beide `weg = trade` |
+
+Zwei Entscheidungen darin sind wichtig:
+
+- **Beim Abgang bleibt `weg` leer**, und das ist Absicht. Die Datenbank sieht
+  beim Löschen einer Kaderzeile nicht, ob ein Drop, eine Waiver-Abgabe oder
+  eine Admin-Korrektur dahintersteckt. Etwas zu raten wäre schlimmer als nichts
+  zu sagen.
+- **Ein Trade ist zwei Bewegungen.** Er läuft über ein `update` von
+  `manager_id`, nicht über Delete+Insert; wer nur auf `delete` hört, sieht
+  Trades gar nicht.
+- **Beim Löschen der Liga wird nichts protokolliert** (0139, 19.10.2026).
+  Die Kaskade löscht die Kaderzeilen, und der Trigger schrieb für jede einen
+  Abgang — mit der `league_id` einer Liga, die schon weg war. Der
+  Fremdschlüssel lehnte das ab (23503), und **seit 0096 ließ sich keine Liga
+  mit Kader mehr löschen** („Löschen fehlgeschlagen"). Der Trigger prüft
+  jetzt, ob die Liga noch existiert. Nachgestellt per Rollback-Probe an
+  „Testtesttest": vorher 23503, nachher gelöscht.
+
+**Zurückgefüllt wurden zuerst nur die Zugänge** (364 Zeilen aus dem Bestand,
+mit ihrem echten Zeitstempel), mit der Begründung, Abgänge seien nirgends
+festgehalten. **Der zweite Teil war falsch** — und es fiel sofort auf, weil in
+der Liga-Liste zu jedem Zugang der Preis fehlte. Abgänge stehen sehr wohl da,
+nur nicht in `fantasy_rosters` (Migration 0097 trägt sie nach):
+
+| Quelle | Was sie hergibt | Verlässlichkeit |
+|---|---|---|
+| `fantasy_trade_items.giver` | wer im Trade abgegeben hat | ID-basiert |
+| `fantasy_waiver_claims.drop_player_id` | Abgang eines gewonnenen Antrags | ID-basiert |
+| Systemnachricht im Liga-Chat | Free Agency und reine Drops | Text, siehe unten |
+
+(Diese dritte Quelle gibt es seit 0106 nicht mehr — die Rückfüllung war
+einmalig, ihr Ergebnis steht im Protokoll. Siehe „Der Chat meldet keine
+Kaderbewegungen mehr".)
+
+Der dritte Weg klingt nach Raten, ist es aber nicht, und zwar aus zwei
+**nachgemessenen** Gründen: Die Nachricht entsteht in derselben Transaktion wie
+die Bewegung (`fantasy_post_system_message` wird aus `fantasy_add_free_agent`
+heraus gerufen), ihr `created_at` ist deshalb exakt der Zeitstempel des Zugangs
+— geprüft, `2026-08-29 11:54:40.781945` steht auf beiden. Und es gibt **keine
+mehrdeutigen Spielernamen** im Pool (gezählt: null Namen kommen zweimal vor),
+Name → ID ist also eindeutig.
+
+Dazu prüft sich die Rekonstruktion selbst: Bei „X verpflichtet und Y abgegeben"
+muss zu diesem Zeitstempel eine Zugangszeile für **genau diesen X** stehen.
+Passt sie nicht, wird die Zeile übersprungen statt geraten. Der Manager kommt
+aus der Zugangszeile, nicht aus dem Nutzernamen im Text — die schwächere
+Zuordnung wird nur dort benutzt, wo es keine Zugangszeile gibt (reiner Drop),
+und dann zusätzlich gegen die Mitgliederliste geprüft.
+
+Ergebnis: 24 Abgänge nachgetragen, davon **19 als vollständiger Vorgang
+gepaart**. Nachgesehen an bekannten Fällen — „tamara +Medina −Osterhage" deckt
+sich mit der Chat-Nachricht, und der Trade steht korrekt je Manager gespiegelt
+(Eric +Guirassy −Amiri ↔ Majusch +Amiri −Guirassy). Ein Zugang um 07:34 und ein
+Drop um 07:31 desselben Managers bleiben dabei **getrennt** — zwei Aktionen,
+nicht eine; genau dafür trägt der Schlüssel die Mikrosekunde.
+
+Was danach fehlt, fehlt wirklich: Drops aus der Zeit vor den Systemnachrichten
+und Admin-Korrekturen. Die bleiben aus, statt sie zu erfinden.
+
+**Und die Trade-Rückfüllung war trotzdem falsch — sie wartete auf den zweiten
+Tausch.** Gemeldet an einem konkreten Fall: Nicolas Kristof ging erst von
+hollmannleonard zu SFV03 (28.08. 17:58:47) und dann von SFV03 zu julius_eggy
+(18:34:33). Im Protokoll stand hollmanns Abgang auf **18:34:33**, und SFV03s
+Zugang um 17:58 fehlte ganz.
+
+Die Ursache: 0097 hängte jede Trade-Position an die vorhandene Zugangszeile
+desselben Spielers — und die stammt aus `fantasy_rosters` und kennt nur den
+**aktuellen** Besitzer. Wer zweimal getauscht wurde, hat dort genau einen
+Eintrag, den letzten. Der erste Trade bekam damit den Zeitstempel des zweiten,
+und der Zwischenbesitzer verschwand. Solange ein Spieler nur einmal getauscht
+wird, fällt das nicht auf: Dann ist die einzige Zugangszeile zufällig die
+richtige. Von 27 Trade-Positionen betraf es genau einen Spieler.
+
+Migration 0098 baut alle Trade-Bewegungen deshalb aus `fantasy_trades` und
+`fantasy_trade_items` neu auf — dort steht jeder Tausch vollständig, mit
+eigenem `executed_at` (nachgezählt: alle sechs angenommenen Trades tragen es).
+Die anderen Wege (Draft, Free Agency, Waiver, Drops) bleiben unberührt.
+
+**Die Lehre:** Ein abgeleiteter Bestand ist keine Quelle für Geschichte. Wer
+Vergangenes rekonstruiert, nimmt die Tabelle, die das Ereignis festhält — nicht
+die, die den Zustand danach zeigt. Gehalten von einem Test, der genau diesen
+Fall nachstellt (`derselbe Spieler zweimal getradet bleibt zwei Ereignisse`).
+
+**Die Lehre:** „Es ist nirgends festgehalten" ist eine Behauptung, die man
+prüft, bevor man sie zur Begründung macht. Hier stand es an drei Stellen.
+
+**Der Draft steht nicht in der Liga-Liste.** Er erzeugt bei sechzehn Teams
+Hunderte Zeilen und begrübe jede Free-Agency-Meldung darunter; wer den Draft
+nachlesen will, hat dafür das Board. Er bleibt im Protokoll, damit die eigene
+Seite „woher kam dieser Spieler?" beantworten kann.
+
+**Ein Vorgang, nicht zwei Zeilen.** Wer einen Spieler holt, gibt meist im
+selben Atemzug einen ab. Im Protokoll sind das zwei Zeilen, und untereinander
+gestellt sahen sie aus wie zwei unabhängige Ereignisse: „X verpflichtet" über
+„Y abgegeben", ohne dass etwas sagt, dass Y **für** X gehen musste. Genau das
+ist aber die Auskunft, die man sucht.
+
+**Ein Trade steht in einer Box.** Er erzeugt je Manager einen Vorgang;
+nebeneinander gestellt wären das dieselbe Auskunft zweimal, spiegelverkehrt
+(„Eric +Guirassy −Amiri" über „Majusch +Amiri −Guirassy"). `ereignisseAus`
+führt die beiden Seiten zusammen — und zwar **über den tatsächlichen Tausch,
+nicht über die Zeit allein**. Das ist die Stelle, an der die naheliegende
+Lösung falsch wäre: `fantasy_faellige_trades_ausfuehren` (0088) arbeitet
+**alle** fälligen Trades in einer Transaktion ab, sie tragen also denselben
+Zeitstempel. Wer nur nach Zeit gruppiert, klebt fremde Tausche aneinander und
+zeigt Manager als Partner, die nie miteinander gehandelt haben. Maßgeblich ist
+deshalb: Die Gegenseite ist die, deren **Zugänge genau meine Abgänge** sind und
+umgekehrt. Fehlt sie (etwa weil die Rückfüllung sie nicht rekonstruieren
+konnte), steht die eine Seite allein — lieber halb als falsch. Beides steht als
+eigener Test da.
+
+**Kein „↔" im Text.** Rajdhani hat das Zeichen nicht; in der Vorschau
+stand dort ein leeres Kästchen, und auf dem Gerät hinge die Anzeige an einer
+Schrift-Ersatzkette. Der Tauschpfeil ist ein Symbol, kein Buchstabe — dieselbe
+Regel wie im Trade-Schirm. Im Kopf steht „Trade · A und B".
+
+Zusammengefasst wird über **Manager und Zeitstempel** (`vorgaengeAus` in
+`logic/transfer_vorgaenge.dart`, rein und getestet). Das ist keine Schätzung:
+Beide Zeilen entstehen in derselben Transaktion, und Postgres' `now()` liefert
+die Transaktionszeit — die Werte sind **exakt** gleich. Nachgemessen an einem
+echten Trade: beide Zeilen auf `05:47:17.294999`. Der Schlüssel trägt die Zeit
+deshalb auf die Mikrosekunde; wer rundet, klebt zwei unabhängige Vorgänge
+derselben Minute aneinander. Ein Trade bleibt dabei **je Manager getrennt** —
+„Eric bekommt Guirassy und gibt Amiri" und „Majusch bekommt Amiri und gibt
+Guirassy" sind zwei Auskünfte, nicht eine.
+
+**Die Marktlage des Abgegebenen stand kurzzeitig darunter** („liegt auf dem
+Waiver — nur per Antrag" in Gold, „ist wieder frei" in Grün) und ist auf
+ausdrücklichen Wunsch wieder raus: Sie machte jede Karte um eine volle Zeile
+höher und brachte zwei weitere Signalfarben in eine Liste, die ohnehin schon
+Grün und Rot für die Richtung benutzt. Wer wissen will, ob ein Spieler zu haben
+ist, sieht das in der Free Agency am Knopf — dort gehört die Auskunft hin, weil
+man dort danach handelt. Die Regel dafür (`marktlage` in
+`logic/transfer_vorgaenge.dart`) bleibt samt Tests stehen; sie ist die
+Grundlage, falls die Auskunft je in leiserer Form zurückkommt.
+
+Die Kacheln sind hier **schmaler als im Trade-Angebot** (124 × 42 statt
+152 × 46): Dort steht eine je Zeile, hier stehen zwei nebeneinander plus Pfeil.
+
+**Das Design folgt den Trade-Angeboten**, weil es dieselbe Sorte Inhalt ist:
+Kartengrund, Haarlinie, `SpielerKachel` in der kompakten Fassung (46 × 152),
+und **Farbe nur, wo etwas ansteht** — die Marke „Wartet auf dich" trägt Rot und
+eine Zahl, „Offene Waiver-Anträge" Gold, alles andere bleibt grau. In der
+Liga-Liste trennen sich Zu- und Abgang durch Richtung und Farbe des Pfeils,
+nicht durch verschiedene Formen: Es ist dieselbe Sorte Ereignis.
+
+Die Zeile in der Übersicht führt beide Zahlen zusammen
+(`offeneTransfersProvider`: eingehende Angebote plus eigene offene Anträge) —
+zwei Zähler an einer Zeile wären einer zu viel.
+
+Angesehen über `test/transfers_vorschau_test.dart`. **Der Bildvergleich läuft
+nur mit `--update-goldens`**: Die Liga-Seite gruppiert nach „Heute"/„Gestern"
+und schreibt Uhrzeiten hin, beides aus `DateTime.now()` — ein fest
+eingecheckter Vergleich wäre nicht erst am nächsten Tag rot, sondern in der
+nächsten Minute. Was gehalten werden muss, steht als Messung daneben und läuft
+bei jedem Durchlauf: dass Angebote und Anträge auf der eigenen Seite landen,
+dass der Draft aus der Liga-Liste fällt, und dass Zu- **und** Abgang darin
+vorkommen.
+
+### Tipps nachtragen: ein Speichern je Spieltag (0126)
+
+Gemeldet am 13.09.2026: *„Wenn man im Tippspiel nachträgliche Tipps nachträgt,
+muss man jedes einzelne speichern können. Das bitte so ändern, dass alle
+nachgetragenen Tipps pro Spieltag dann einmal nur gespeichert werden müssen."*
+
+Der Nachtrag-Schirm trug je Zeile einen eigenen Speichern-Knopf — bei einem
+Bundesliga-Spieltag **neun Knöpfe und neun Aufrufe**. Die Umständlichkeit war
+dabei nur die Hälfte:
+
+- **Neun Einzelaufrufe können halb durchlaufen.** Scheitert der fünfte, stehen
+  vier Tipps und fünf fehlen — und niemand sieht den Spieltag als halb
+  nachgetragen an.
+- **Jeder Aufruf prüfte dieselben drei Dinge neu**: Ersteller? Mitglied?
+  Spiel gespiegelt? Die ersten beiden hängen an der Runde, nicht am Spiel.
+
+`tip_admin_set_tips` nimmt deshalb ein JSON-Array und schreibt **alles oder
+nichts**; die Prüfungen stehen vor der Schleife. `tip_admin_set_tip` bleibt
+unverändert daneben — ein einzelner Nachtrag geht weiter, und eine ältere
+App-Version ruft ihn noch.
+
+**Ein unbekanntes Spiel bricht den ganzen Block ab**, statt übersprungen zu
+werden. Sonst stünde am Ende „gespeichert" und ein Tipp fehlte trotzdem —
+genau die Sorte stiller Teilerfolg, gegen die diese Datei an einem Dutzend
+Stellen argumentiert. Nachgemessen mit Rollback: Zwei Tipps, der zweite auf
+eine erfundene Fixture-ID, Ergebnis `Spiel gibtesnicht noch nicht
+gespiegelt` — und **null** Zeilen in `tips`.
+
+**Am Client sind die Eingabefelder nach oben gewandert.** Solange jede Zeile
+ihren eigenen Knopf trug, durfte sie ihre Controller selbst halten; ein Knopf
+für den Spieltag muss alle neun Felder gleichzeitig lesen. Ihr Schlüssel trägt
+Mitglied **und** Spiel — sonst schriebe ein stehen gebliebener Controller die
+Zahlen des vorigen Mitglieds in den nächsten Nachtrag.
+
+**Und die Frage „was geht überhaupt an den Server?" ist jetzt eine
+Entscheidung** (`logic/nachtrag.dart`, rein und getestet), wo sie vorher
+trivial war:
+
+| Zeile | was passiert |
+|---|---|
+| beide Felder leer | übersprungen — leer heißt „nicht getippt", nicht 0:0 |
+| **ein** Feld gefüllt | **Fehler**, nichts wird gespeichert |
+| unverändert zum gespeicherten Tipp | übersprungen, zählt aber im Bericht |
+| gefüllt und geändert | geht mit |
+
+Die halbe Zeile ist der Grund für die ganze Prüfung: Wer neun Spiele tippt und
+bei einem die zweite Zahl vergisst, bekäme sonst ein stilles „gespeichert" und
+einen fehlenden Tipp.
+
+Der Knopf sitzt unten als eigene Leiste, nicht am Ende der Liste — dieselbe
+Stelle wie in allen Formularen dieser App. Bei neun Spielen ist das Ende der
+Liste weit weg.
+
+### Der Chat meldet keine Kaderbewegungen mehr (0106)
+
+Gewünscht, sobald der Transfers-Bereich stand: *„Die Trade Nachrichten und
+Roster Moves im Liga Chat können entfernt werden, da ja jetzt ein Extra
+Bereich dafür existiert."* Es waren **99 automatische Systemzeilen in acht
+Wochen** plus vier Trade-Meldungen — bei 124 echten Nachrichten insgesamt also
+knapp die Hälfte des Verlaufs, und dazwischen gingen die Gespräche unter.
+
+Zwei Wege posteten, und das war beim Aufräumen der eigentliche Fund:
+
+- **Server** — `fantasy_add_free_agent`, `fantasy_drop_player`,
+  `fantasy_admin_add`, `fantasy_admin_drop` und `fantasy_process_due_waivers`
+  riefen `fantasy_post_system_message` (✅ 🔻 🛠️ 📥).
+- **App** — die Trade-Meldung (🔄) kam nicht vom Server, sondern aus
+  `trade_screen.dart` (`_postTradeToChat`) als **ganz normale Nachricht** mit
+  Absender. Wer nur nach `is_system` gesucht hätte, hätte sie stehen lassen.
+
+Die Funktionen stehen in 0106 **vollständig** drin, aus der laufenden
+Datenbank gezogen (`pg_get_functiondef`) und nur um die `perform`-Zeilen
+gekürzt; danach zurückgelesen und gegen den Stand davor verglichen — genau
+diese Zeilen fehlen, sonst nichts. Sie aus 0029/0032/0044/0088/0094/0095
+zusammenzusuchen wäre ein Rückschritt gewesen, jede dieser Migrationen hat sie
+seither angefasst.
+
+**Es geht nichts verloren.** Das Protokoll `fantasy_roster_moves` (0096) hängt
+an einem Trigger auf `fantasy_rosters` und erfasst jeden Weg — auch die
+Admin-Korrektur und den Waiver-Zuschlag. 391 Zeilen stehen dort; die
+Chat-Meldungen waren die zweite, schlechtere Kopie. **Aber:** Migration 0097
+hat die historischen Abgänge aus genau diesen Chat-Texten rekonstruiert. Das
+Ergebnis steht im Protokoll und bleibt, die Quelle ist weg — wer die
+Rückfüllung je wiederholen will, muss aus der Sicherung arbeiten
+(`~/Projekte/matchup-sicherungen/0106_geloeschte_chatmeldungen.jsonl`, 103
+Zeilen, bewusst **nicht** im Repo: öffentlich, und es ist Chatinhalt).
+
+**Eine Meldung bleibt:** die ⚠️-Warnung aus `fantasy_trade_ausfuehren`, dass
+ein vorgemerkter Trade hinfällig geworden ist. Sie meldet nicht, was geschehen
+ist, sondern dass etwas Erwartetes **nicht** geschehen ist — dafür hat der
+Transfers-Bereich keinen Platz, und wer auf den Spieler wartet, muss es
+erfahren. `fantasy_post_system_message` und `_SystemLine` bleiben dafür stehen.
+
+Vor dem Löschen geprüft: **keine** der 103 Nachrichten ist Ziel einer Antwort
+(`reply_to`), es reißt also kein Zitat auf. Der Filter für die App-Meldungen
+ist ein strenger Präfix (`'🔄 Trade angenommen: %'`), nicht eine Suche nach
+„Trade" — im Verlauf steht eine echte Nachricht, die nur aus dem Emoji 🙂‍↔️
+besteht, und die hätte eine großzügigere Regel mitgenommen.
+
+### Kaderbewegungen stehen wieder im Liga-Chat — als Karten (17.10.2026)
+
+Auf Ansage, mit einem Sleeper-Screenshot: „@Name made a roster move." und
+darunter die Spieler mit grünem Plus (Zugang) und rotem Minus (Abgang); gilt
+für Free Agency, Waiver und Trades. **Rücknahme von 0106 — aber nicht als
+Text in der Datenbank.** Die App setzt die Meldungen aus dem Kaderprotokoll
+zusammen (`kaderMeldungen`, `ui/kader_meldung.dart`; dieselbe Quelle und
+dieselbe Trade-Zusammenführung `ereignisseAus` wie der Transfers-Bereich) und
+mischt sie nach Zeit zwischen die Nachrichten. Damit stehen auch alle
+vergangenen Bewegungen da, nichts ist doppelt gespeichert, und die Gründe von
+0106 (Textzeilen, die den Verlauf füllten) gelten nicht mehr. Der Draft fehlt
+bewusst.
+
+- `LeagueChat.systemBuilder` zeichnet eine Systemnachricht eigen; die
+  Kaderbewegungen tragen IDs mit dem Präfix `kader:`. Die gewöhnliche
+  Systemzeile (`_SystemLine`, etwa die Remis-Meldung) trägt seitdem dieselbe
+  Absenderzeile — Liga-Zeichen (`ChatLigaZeichen`) und Text — statt des grün
+  getönten Kastens.
+- Systemnachrichten lösen die Linie „Neue Nachrichten" nicht aus.
+- Ein Tipp auf einen Spieler öffnet sein Profil.
+
+Gehalten von `test/kader_im_chat_test.dart` (`kader_im_chat.png`).
+
+### Ein Chat beginnt unten, nicht irgendwo
+
+Gemeldet: „Wenn man in einen Chat reingeht, ist man immer irgendwo. Bitte so
+ändern, dass man immer bei der neuesten Nachricht ganz unten landet."
+
+Die Liste stand normal herum und sprang im ersten Frame per
+`jumpTo(maxScrollExtent)` ans Ende. **Das ist eine geschätzte Zahl:** Eine
+`ListView.builder` kennt die Höhe ungebauter Zeilen nicht, und Chatblasen sind
+verschieden hoch — je länger der Verlauf, desto weiter daneben. Nachgeladene
+Avatare verschoben es zusätzlich.
+
+Jetzt ist die Liste **umgedreht** (`reverse: true`, gebaut über
+`rows.length - 1 - i`): Offset 0 ist das untere Ende. Sie beginnt dort, ohne
+dass jemand etwas rechnet, und bleibt dort, wenn eine Nachricht dazukommt. Wer
+weiter oben liest, bleibt stehen — nachgeführt wird nur, wer ohnehin fast unten
+war (`offset <= 220`).
+
+Gehalten von `test/chat_unten_test.dart`: sechzig Nachrichten mit
+unterschiedlich hohen Blasen, danach muss die letzte im Bild sein und die erste
+gar nicht gebaut. Gegengeprüft — ohne `reverse` findet der Test die letzte
+Nachricht nicht.
+
+### Ungelesen war eine Zahl ohne Ort
+
+Gemeldet: *„Mir werden ungelesene Nachrichten angezeigt. Wenn ich aber auf die
+Nachrichten gehe, kann ich nicht erkennen, welche damit gemeint sind."*
+
+Zwei Ursachen, und die zweite ist die interessantere:
+
+- **Die Gesprächsliste kennzeichnete gar nichts.** Sie zeigte Name, Vorschau
+  und Uhrzeit — für gelesene und ungelesene Gespräche identisch, während der
+  rote Zähler am Nachrichten-Symbol „8" behauptete. Gerechnet hat nur der
+  Zähler.
+- **Der Verlauf löschte den Beweis beim Öffnen.** `markRead(DateTime.now())`
+  lief in jedem `build`; in dem Moment, in dem man nachsehen wollte, welche
+  Nachrichten neu sind, waren sie es nicht mehr.
+
+Die Zahl kommt jetzt aus `unreadDmByPartnerProvider` — **einer** Regel je
+Gesprächspartner, aus der sich der Gesamtzähler summiert. Zwei Stellen, die
+dieselbe Frage getrennt beantworten, sind in dieser Datei oft genug
+schiefgegangen.
+
+**Die Liste sagt, welches Gespräch**: Name fetter, Vorschau heller, Uhrzeit rot
+und ein roter Zähler mit der Anzahl — dieselbe Marke wie am Nachrichten-Symbol,
+aus derselben Regel.
+
+**Der Verlauf sagt, welche Nachricht**: Der Schirm hält den Lesestand von
+**vor** dem Öffnen einmal fest und reicht ihn als `neuAb` in `LeagueChat`; dort
+steht davor die Linie „Neue Nachrichten". Zwei Feinheiten, beide als Test:
+
+* **Nur einmal je Verlauf.** Eine Linie über jeder neuen Nachricht wäre keine
+  Grenze mehr, sondern ein Muster.
+* **Eigene Nachrichten lösen sie nicht aus.** Was man selbst geschrieben hat,
+  hat man gelesen — sonst stünde die Linie ausgerechnet über der eigenen
+  letzten Antwort.
+
+**Der Stand wird erst gemerkt, wenn er geladen ist.** `dmLastReadProvider` holt
+ihn aus den Einstellungen und liefert im ersten Frame `null`; hielte man das
+fest, stünde die Linie über der allerersten Nachricht des ganzen Verlaufs.
+
+### Nachrichten lassen sich kopieren — und der tote Griff
+
+Gemeldet: *„Wir brauchen außerdem die Funktion, dass man im Chat Nachrichten
+kopieren sowie einfügen kann. Das funktioniert irgendwie nicht."*
+
+Dahinter steckten zwei Dinge, und das zweite ist das lehrreiche:
+
+1. Es gab **überhaupt keinen** Kopierweg. Der Rumpf einer Blase war ein
+   schlichtes `Text`, das Aktionsblatt hinter dem Long-Press kannte genau
+   einen Eintrag: „Antworten". Kein `SelectableText`, kein `Clipboard`,
+   nirgends im Modul.
+2. Der Long-Press selbst hing komplett an `onReply`:
+   `onLongPress: onReply == null ? null : …`. In **Direktnachrichten** läuft
+   der Chat mit `enableReply: false` — dort war der Griff also tot. Man hielt
+   auf eine Nachricht, und nichts geschah.
+
+Punkt 2 erklärt das „irgendwie": Ein Griff, der nichts tut, ist von einem
+fehlenden Griff nicht zu unterscheiden — dasselbe Muster wie beim leeren
+Draft-Feld und beim stillen Autospeichern. Wer in der Liga probiert hätte,
+hätte wenigstens *ein* Menü gesehen und gemerkt, dass „Kopieren" fehlt; wer
+es in einer DM probierte, bekam gar keine Rückmeldung und konnte nur
+schließen, die Funktion sei kaputt.
+
+Jetzt: **Kopieren steht immer im Blatt, Antworten nur, wo es geht.** Der
+Long-Press ist unbedingt scharf. Nach dem Kopieren bestätigt eine Snackbar
+(„Nachricht kopiert") — sonst wäre der erfolgreiche Kopiervorgang wieder
+nicht vom fehlgeschlagenen zu unterscheiden.
+
+**Einfügen** brauchte keinen Code: Die Eingabezeile ist ein gewöhnliches
+`TextField` ohne `readOnly`, ohne abgeschaltete `enableInteractiveSelection`
+und ohne eigenen `contextMenuBuilder` — das System-Menü mit „Einfügen" ist
+also da. Es war nur nie etwas in der Zwischenablage, weil Punkt 1 fehlte.
+`test/chat_kopieren_test.dart` hält die drei Zusicherungen fest, damit sie
+nicht später versehentlich zugedreht werden.
+
+Der Test prüft **beide** Chat-Sorten. Ohne die Korrektur fällt der
+Liga-Fall am fehlenden Eintrag durch und der DM-Fall schon am Long-Press —
+hätte er nur den Liga-Fall abgefragt, wäre die eigentlich gemeldete Stelle
+grün geblieben.
+
+### Das Karussell darf beim Nachladen nicht zurückspringen
+
+Gemeldet: *„Wenn man zwischen den MatchUps hin und her wischt und dann nach
+unten geht oder auf ein Spielerprofil, schmeißt es einen zurück auf das
+erste."*
+
+Die Ursache stand am Anfang von `MatchupsBody.build`:
+
+```dart
+if (managersAsync.isLoading || poolAsync.isLoading) {
+  return const Center(child: CircularProgressIndicator());
+}
+```
+
+Ein früher `return` **ersetzt den ganzen Teilbaum**. Der `PageView` wird
+abgebaut, und beim Wiederaufbau beginnt der Controller wieder bei
+`initialPage`. Ausgelöst hat das **jede** Auffrischung: Der Spielerpool wird
+nachgeladen, sobald ein Profil aufgeht, und `fantasyManagersProvider` meldet
+beim Wiederverbinden ebenfalls kurz „lädt".
+
+**Maßgeblich ist, ob Daten da sind — nicht, ob gerade geladen wird.** Der
+Spinner erscheint jetzt nur beim allerersten Laden (`valueOrNull == null`);
+ein Nachladen über vorhandenen Daten sieht man gar nicht, und Riverpod liefert
+dabei den alten Stand mit (`valueOrNull` statt `requireValue`).
+
+**Das war aber nur der halbe Fehler**, und die zweite Meldung sagte genau,
+welche Hälfte fehlte: *„Der Strich ist noch auf dem dritten MatchUp, angezeigt
+wird aber das erste, und ein Wisch nach rechts führt zum zweiten."* Ein Punkt,
+der bleibt, und eine Karte, die springt — das heißt: Der **State lebt weiter**
+(`_bannerPage` trägt den Punkt), nur die **Scroll-Position des `PageView`**
+ist neu.
+
+Die Ursache ist, wo das Karussell sitzt: in einem gewöhnlichen `ListView`,
+darunter die Aufstellungen der gewischten Paarung — zwei mal elf Spieler.
+Scrollt man dorthin, verlässt das Karussell den **250-Punkte-Vorrat**
+(`cacheExtent`) und wird abgebaut. Beim Zurückscrollen entsteht eine neue
+Scroll-Position.
+
+**`PageController.keepPage` steht auf `true` und tut trotzdem nichts** — das
+ist die Falle. `PageStorage` schreibt und liest nur, wenn im Widget-Pfad ein
+`PageStorageKey` liegt; fehlt er, ist die Kennung leer und beide Aufrufe
+kehren stillschweigend zurück. Die neue Position beginnt dann bei
+`initialPage`, also beim ersten MatchUp. Ein `PageStorageKey` am `PageView`
+behebt es.
+
+Gehalten von `test/matchup_karussell_test.dart`. Der Test brauchte drei
+Anläufe, und die ersten beiden waren **stumm grün** — ohne echte Kader ist die
+Liste nur 33 Punkte länger als das Fenster, das Karussell fällt gar nicht aus
+dem Vorrat, und der Fehler tritt nicht auf. Er stellt deshalb achtzehn
+Manager mit vollen Kadern und Aufstellungen, prüft die Vorbedingung
+ausdrücklich (`findsNothing`, das Karussell **muss** abgebaut worden sein) und
+ist gegengeprüft: **ohne den Schlüssel meldet er `100000` statt `100002`.**
+
+Die Lehre für den Testbau: Eine Vorbedingung, die man nicht prüft, ist die
+Stelle, an der ein Test grün wird, ohne etwas zu zeigen.
+
+### Eine Quelle für den Spielplan, nicht zwei
+
+Gemeldet: *„Wenn ich innerhalb einer Fantasy-Liga auf ein Spiel gehe, wird mir
+keine Aufstellung angezeigt, keine Spieldetails, keine Tabelle, nichts. Das
+bitte so machen wie im Live-Tab."*
+
+**Es war genau eine Zeile.** `fantasySeasonFixturesProvider` holte den
+Spielplan fest bei `OpenLigaDbProvider()`, alles andere in der App über
+`sportsProviderFor(league)` — und die Bundesliga steht dort auf `sportmonks`.
+Die Fixture-IDs aus der Fantasy-Liga hießen damit `openligadb:…`, und
+`matchDetailProvider` leitet den Adapter **aus dem Präfix** ab. Für OpenLigaDB
+gibt es weder Aufstellung noch Spielverlauf: Der Tipp führte auf eine Seite,
+die nichts zeigen konnte.
+
+**Derselbe Riss hatte schon einmal eine Woche gekostet.** „Man kann ihn
+aufnehmen, es passiert überhaupt nichts" (0107) entstand daraus, dass der
+Client OpenLigaDB las und der Server über `sportmonks:`-Zeilen rechnete. Die
+Notiz „umgestellt ist das nicht — es wäre ein eigener Umbau" stand seitdem in
+dieser Datei. Er ist jetzt gemacht.
+
+**Der Preis ist die Schreibweise der Vereinsnamen**, und der ist bekannt:
+`players.club` trägt die OpenLigaDB-Form („1. FC Köln"), Sportmonks schreibt
+kürzer („FC Köln") — bei **sieben von achtzehn** Vereinen. Jeder Abgleich
+zwischen Kader und Spielplan läuft deshalb jetzt über `vereinKanonisch`:
+
+| Stelle | was sie tut |
+|---|---|
+| `anpfiffJeVerein` | schlüsselt die Karte kanonisch |
+| `spielerGesperrt`, `vereinSpieltGerade` | schlagen kanonisch nach |
+| `spielFuerPrognose` | findet das Spiel des Vereins |
+| `naechstesSpiel` | Gegner und Anstoß in der Punktebox |
+| `vereinAufWire` | das Waiver-Fenster |
+
+**Ohne das wäre die Aufstellungssperre still ausgefallen** — „kein Spiel
+gefunden" heißt dort „nicht gesperrt", die Elf ließe sich also mitten im
+laufenden Spiel ändern. Es ist dieselbe Reparatur, die der Server in Migration
+0108 hinter sich hat; sie stand nur auf der Client-Seite noch aus.
+
+Gehalten von `test/eine_spielplanquelle_test.dart`: Der Wächter liest die
+Provider-Datei und lässt kein `OpenLigaDbProvider(` mehr im Rumpf dieses
+Providers zu — dieselbe Bauart wie `knopfnamen_test` und `kartenkanten_test`.
+Daneben stehen die sieben Namenspaare **und die Gegenprobe**, dass keine zwei
+Vereine auf dieselbe kanonische Form fallen: Ein zu grober Vergleich wäre
+schlimmer als ein zu strenger, er verwechselte zwei Vereine.
+
+**Am Gerät nachgesehen**, und zwar an der Schreibweise: In der Spielplanzeile
+der Liga-Übersicht steht seitdem „FC Köln" statt „1. FC Köln". Das ist der
+Beweis, dass die Umstellung greift — synthetische Tipps und Wischgesten nimmt
+der Simulator dafür ohnehin nicht zuverlässig an.
+
+### Und derselbe Fehler noch einmal — mit `hasError`
+
+Gemeldet: *„Wenn ich auf dem MatchUp-Tab bin, während Spiele laufen, muss ich
+alle 3 Sekunden erneut laden, obwohl es eine Verbindung abbricht. Das ist sehr,
+sehr anstrengend."*
+
+Der `isLoading`-Zweig war repariert, der **Fehlerzweig daneben nicht**. Er hing
+weiter an „ist ein Fehler gemeldet?" statt an „gibt es etwas zu zeigen?" — und
+`fantasyManagersProvider` ist ein Realtime-Stream: Reißt die Verbindung ab (an
+einem Spieltag immer wieder), meldet er einen Fehler **und liefert den letzten
+Stand trotzdem mit**. Der Tab wurde damit gegen „Matchups konnten nicht geladen
+werden" samt Knopf getauscht, obwohl die Daten vollständig dalagen — und weil
+es wieder ein früher `return` war, fiel das Karussell dabei auch noch auf das
+erste MatchUp zurück.
+
+**Dieselbe Regel gilt jetzt an drei weiteren Stellen**, die alle dieselbe Form
+hatten:
+
+| Schirm | vorher | jetzt |
+|---|---|---|
+| MatchUp-Tab | `error != null` → Fehlerschirm | nur ohne Daten |
+| Startbildschirm, Ligen | `leagues.hasError` → Fehlerkarte statt Reihe | `&& list == null` |
+| Startbildschirm, Tipprunden | `rounds.hasError` | `&& standalone == null` |
+| Live-Tab | `hasError` → Wettbewerb fällt aus der Tafel | Spielplan zählt, wenn vorhanden |
+
+**Der zweite Test hat einen echten Absturzpfad freigelegt.** Der
+`PageController` entstand als `late final`-Ausdruck, lief also erst beim ersten
+Zugriff — und wenn der Schirm nie ein Karussell gebaut hatte (weil er auf dem
+Fehler- oder Ladezustand stand), war dieser erste Zugriff das `dispose()`. Dort
+ist `ref` schon tot: *„Cannot use ref after the widget was disposed"*, geworfen
+beim Verlassen des Tabs. Er entsteht jetzt in `initState`, wo `ref.read`
+erlaubt und der Zeitpunkt eindeutig ist. Ohne den Gegenprobe-Fall („ohne jede
+Daten meldet er den Fehler weiterhin") wäre er nicht aufgefallen.
+
+**Die Regel darüber hinaus:** Ein `isLoading`-Zweig, der den Schirm ersetzt,
+ist nur beim Erstaufbau richtig. Danach wirft er jeden Zustand weg, den der
+Nutzer aufgebaut hat — Wischposition, Scrollstand, aufgeklappte Bereiche. Das
+ist derselbe Fehler wie „man muss die App neu starten", nur andersherum: Dort
+fragte nichts nach, hier wird bei jeder Antwort alles verworfen.
+
+Gehalten von `test/matchup_karussell_test.dart`. Er wischt eine Seite weiter,
+löst ein Nachladen aus und prüft die Seite danach — **gegengeprüft: ohne den
+Fix meldet er `100000` statt `100001`**, also den Rückfall auf das erste
+MatchUp.
+
+**Nebenbei die Enge im Kopf der Karte behoben:** Kopfzeile und Inhalt sind
+Geschwister in einer `spaceBetween`-Spalte, und bei viel Inhalt — live ist der
+Inhalt am größten — fiel der Zwischenraum auf null zusammen; der LIVE-Chip
+klebte an der Oberkante des Avatars darunter. Die Kopfzeile hat jetzt einen
+garantierten Fuß von `Abstand.s`.
+
+
+**Und der dritte Weg, gemeldet nach dem zweiten:** *„Wenn man den Tab wechselt
+und zurück auf den MatchUp-Tab geht, landet man wieder beim ersten MatchUp."*
+
+Diesmal saß der Fehler nicht am `PageView`, sondern **daneben**. Es gab zwei
+Merker für eine Sache:
+
+| Was | Woher | Überlebt einen Reiterwechsel |
+|---|---|---|
+| Die Karte oben | Scroll-Position des `PageView` (`PageStorage`) | ja |
+| Die Aufstellungen darunter, die Punkte | `_bannerPage` im State | **nein** |
+
+`TabBarView` baut den Reiter ab, sobald man weit genug weg ist — nachgemessen
+gilt das **auch für den direkten Nachbarn**: Sowohl der Weg über „Kader" als
+auch über „Tabelle" ließ den Teilbaum sterben. Damit stand `_bannerPage` wieder
+auf 0, die Karte oben aber weiter auf dem dritten MatchUp. Unten stand deshalb
+wieder die eigene Paarung — und weil die eigene immer auf Platz 1 einsortiert
+wird, las sich das als „es zeigt mir wieder SFV03 gegen JojoAcz".
+
+Behoben, indem die Zahl aus dem State verschwindet:
+`matchupKarussellSeiteProvider` (`StateProvider.family<int, String>`, Schlüssel
+ist die Liga). Der Controller startet daraus (`initialPage`), die Punkte und
+die Aufstellungen lesen daraus — **ein Merker, nicht zwei**, und er überlebt
+sowohl den Abbau des Reiters als auch das Wegscrollen.
+
+**Was der Test vorher nicht sah.** Die erste Fassung des Reiter-Tests prüfte
+nur `controller.page` — und die war ja richtig. Sie lief grün, während das
+Gerät den Fehler zeigte. Erst die Zusicherung auf das, was **unter** dem
+Karussell steht (`MatchupLineups.homeName`), hat ihn eingefangen. Dieselbe
+Lehre wie beim zweiten Anlauf, nur andersherum: Wer nur die Hälfte des Paares
+misst, misst an der Meldung vorbei. Alle vier Fälle prüfen jetzt beides.
+### Eine Kante für alle Karten
+
+Gemeldet als Design-Kritik, und sie stimmte: Auf der Liga-Übersicht standen
+drei Sorten Karten untereinander, und jede fasste ihre Kante anders.
+
+| Karte | Rand | Fläche |
+|---|---|---|
+| MatchUp-Kasten | Akzentfarbe bei 45 % — **rot, solange live** | Kartengrund + Hauch |
+| Rückblick | Gold bei 40 % | **Gold bei 10 %** |
+| Mein Team / Liga | graue Haarlinie | Kartengrund |
+
+Drei Behandlungen für dieselbe Sorte Objekt — und die beiden lauten sahen aus,
+als sei dort etwas zu tun, wo nur etwas zu lesen war. Der Rückblick war der
+schlimmste Fall: eine **goldene Fläche** für eine Bilanz der vergangenen Woche,
+bei der nichts ansteht.
+
+**Auf dunklem Grund entsteht Tiefe über die Fläche, nicht über die Kante.**
+Deshalb gilt jetzt: eine Haarlinie (`dividerColor`) für alle, und der
+Unterschied liegt in der Flächenstufe. Farbe trägt eine Karte nur als **Hauch
+aus der Ecke** — derselbe Schimmer wie bei den Ligakarten auf dem
+Startbildschirm, bei drei Vierteln der Diagonale verklungen. Er sagt „das
+gehört zu diesem Bereich", nicht „hier musst du hin".
+
+Damit das nicht wieder auseinanderläuft, steht die Hülle als `Karte`
+(`app/widgets/karte.dart`) an einer Stelle: Kartengrund oder eine Stufe höher
+(`KartenStufe`), Haarlinie, optionaler Hauch, optionales `onTap`. Rückblick und
+Zeilengruppen benutzen sie; der MatchUp-Kasten baut seine Fläche wegen des
+`Stack` darin noch selbst, trägt aber dieselbe Kante.
+
+**Auch „live" bekommt keinen farbigen Rand mehr.** Dass ein Spieltag läuft,
+sagen der kräftigere Hauch, der rote Punkt und das Wort „LIVE" — nachgesehen in
+`test/goldens/matchup_banner_vorschau.png`: Der Zustand liest sich unverändert
+klar, nur ohne den lautesten Strich des Schirms.
+
+**Voraussetzung dafür war das Aufräumen der Flächenleiter** (siehe „Verboten:
+grün gestochene Flächen"). Solange `surfaceContainer*` grün gestochen war,
+hätte „Tiefe über die Fläche" nur mehr Grün bedeutet.
+
+**Die Regel gilt für die ganze App**, nicht nur für die Liga-Übersicht.
+Nachgezogen wurden: die Ligakarten auf dem Startbildschirm (Kante war ein
+22-%-Ton der Bereichsfarbe), der Auftrags-Kopf und die Aktionskacheln der
+Liga-Übersicht, der MatchUp-Detailkopf, die Playoff-Karte und der Infokasten
+der Einstellungen. Alle trugen dasselbe Muster: **getönte Fläche bei 10–14 %
+plus farbige Kante bei 30–50 %.**
+
+**Die Trennlinie verläuft zwischen Karte und Zustand**, nicht zwischen
+„wichtig" und „unwichtig":
+
+| Farbe an der Kante | erlaubt? |
+|---|---|
+| Behälter, Karte, Abschnitt | **nein** — Haarlinie, Farbe als Hauch |
+| etwas wartet (roter Zähler) | ja |
+| etwas ist ausgewählt (Spielerkachel, Slot) | ja |
+| etwas ist kaputt (Auto-Pick-Warnung, Fehler) | ja |
+| Richtung im Inhalt (rein/raus im Bestätigungsblatt) | ja |
+| Chips, Pillen, Avatare, Ringe | ja — keine Karten |
+
+Gehalten von `test/kartenkanten_test.dart`. Er liest `lib/` und sucht
+**kartenähnliche** Ränder mit Farbe: ein `Border.all`, dessen Farbe weder
+`dividerColor` noch `outlineVariant` ist, in einer Dekoration ab Radius 12 —
+kleinere Elemente fallen heraus.
+
+**Die Schwelle stand auf 14 und war damit zu grob** (gemeldet am 08.09.2026:
+*„einmal die Umrandung des Kastens in gelb, obwohl wir eine Regel festgelegt
+hatten … auch die kleinen Boxen auf der Übersicht"*). Radius 12 über die volle
+Breite ist eine Karte, keine Pille — der Wächter hat diese Klasse nie gesehen,
+und entsprechend hatte sich das verbotene Muster wieder eingenistet: **getönte
+Fläche bei 10 % plus farbige Kante bei 45 bis 55 %**, an sechs Stellen.
+Behoben an vier davon (Fortschreibungs-Hinweis und Urteil im
+Aufstellungsreiter, Ausfallzeile im Profil, Liga-Einladung im Chat), die
+Symbolkachel der Liga-Übersicht hat ihren Rand ersatzlos verloren — ihre
+getönte Fläche sagte dasselbe schon.
+
+**Und die Dekoration steht jetzt einmal da**, als `kartenDeko()` neben
+`Karte` (`app/widgets/karte.dart`). Sie war in der `Karte` eingebaut und damit
+für jeden Kasten unerreichbar, der keine `Karte` sein kann — eine
+Hinweiszeile mit eigenem Polster, ein Urteil, das im ruhigen Fall gar keine
+Fläche trägt. Genau die haben die Regel dann jedes Mal neu und falsch
+nachgebaut. Jede verbleibende Stelle steht dort
+**namentlich mit Anzahl und Grund**; kommt eine dazu, wird der Test rot, und
+wer sie einträgt, muss sagen warum. Verschwindet eine, fällt das auch auf,
+sonst wächst die Liste und niemand räumt sie. Dasselbe Muster wie bei
+`punkte_formatierung_test.dart` — es hat sich als das einzige erwiesen, das
+eine Stilregel über Monate hält.
+
+### Sieben Vereine ohne Spielplan im Profil
+
+Gemeldet: *„Warum liegt für Schalke 04 kein Spielplan vor? Vorhin hatte ich das
+auch bei Köln."* Ich habe zuerst am falschen Ende gesucht — Favoriten-Schlüssel,
+Endpunkt, Cache, alles in Ordnung. **Der entscheidende Hinweis kam nach:** *„Im
+Live-Tab sind die Spielpläne von Köln und Schalke ja da. Die fehlen nur im
+Spielerprofil."*
+
+Damit war es kein Datenproblem, sondern ein Vergleich. Der Spielplan-Reiter im
+Profil prüfte `f.home.name == club`, **buchstabengenau**. `players.club` trägt
+die OpenLigaDB-Schreibweise, der Spielplan die von Sportmonks, und bei **sieben
+von achtzehn** Vereinen gehen sie auseinander — genau die Liste aus Migration
+0108: Köln, Schalke, Mainz, Werder, Union, Elversberg, Paderborn.
+
+**Warum ausgerechnet dort und nirgends sonst:** Der Live-Tab liest beide Seiten
+aus derselben Quelle und muss nichts abgleichen. Ein Abgleich entsteht erst,
+wo ein Name aus dem **Kader** auf einen Namen aus dem **Spielplan** trifft — und
+das ist im Profil der Fall, weil der Reiter den Verein des Spielers kennt und
+dessen Partien sucht.
+
+`spieleDesVereins` (`logic/naechstes_spiel.dart`) vergleicht ab jetzt über
+`vereinKanonisch`. Dieselbe Reparatur wie an fünf anderen Client-Stellen; diese
+eine war übersehen worden, weil sie beim Umbau auf Sportmonks nicht in der
+Liste stand.
+
+**Die Lehre für die Fehlersuche, nicht für den Code:** „Es fehlt bei Köln und
+Schalke" nannte die Ursache bereits — es sind zwei der sieben Namen, an denen
+dieses Projekt schon zweimal hängengeblieben ist. Ich habe stattdessen Cache
+und Endpunkt geprüft. **Wenn ein Fehler genau die Vereine trifft, die in zwei
+Quellen verschieden heißen, ist es der Name.**
+
+Gehalten von `test/spielplan_im_profil_test.dart`, das alle sieben Paare
+einzeln durchgeht.
+
+### Eine leere Antwort wird nicht gemerkt
+
+Gemeldet: *„Warum liegt für Schalke 04 kein Spielplan vor? Vorhin hatte ich das
+auch bei Köln."*
+
+**Nicht nachgestellt.** Geprüft und in Ordnung: Der Favoriten-Schlüssel ist
+`sportmonks:67` (kein Altbestand — es gibt in `user_favorites` überhaupt keinen
+Team-Schlüssel ohne `sportmonks:`-Präfix), der Endpunkt liefert für 67 und für
+Köln (3320) je 20 Partien, auch im Achterpaket parallel, und die Antwort trägt
+weder eine fehlende Anstoßzeit noch ein fehlendes Team, an dem das Parsen
+scheitern könnte.
+
+Was auffiel: **Der Cache der Function merkt sich auch eine leere Liste.**
+`readCache` gibt `{fixtures: []}` zurück, und `if (cached)` ist darauf wahr —
+zwei Minuten lang bekommt danach **jeder** dieselbe leere Antwort. Aus einer
+Störung werden so zwei Minuten Störung. Genau die Sorte Verstärker, die zu
+einem Fehler passt, der mal den einen und mal den anderen Verein trifft und von
+selbst wieder verschwindet.
+
+`writeCacheWennGefuellt` schreibt deshalb nichts, wenn die Liste leer ist —
+für `teamFixtures`, `seasonFixtures` und `standings`. Ein Verein hat immer
+Spiele, eine Liga hat immer eine Tabelle.
+
+**Nicht für `topscorers`.** Dort ist leer eine gültige Auskunft: Der DFB-Pokal
+hat keine Torjägerliste, und genau diese Zeile stand beim Nachsehen im Cache.
+Wer die Regel dorthin ausweitet, holt sie bei jedem Aufruf neu.
+
+Nachgemessen: Ein Abruf mit einer ID, die es nicht gibt, liefert weiterhin
+`{fixtures: []}` — und legt **keine** Cache-Zeile mehr an. Die beiden
+Altlasten von dieser Sorte (`teamFixtures:100` und `:139`, IDs aus der
+OpenLigaDB-Zeit, seit dem 21.08. leer im Cache) sind gelöscht.
+
+**Offen bleibt die eigentliche Ursache.** Wenn es wieder auftritt: Bleibt es
+länger als zwei Minuten stehen, liegt es nicht am Cache.
+
+### Verletzt und gesperrt
+
+Die Daten lagen die ganze Zeit im gebuchten Plan, nur hatte sie nie jemand
+geholt: `include=sidelined` auf Verein oder Spiel. Ein Request für die ganze
+Liga liefert alle 18 Vereine samt Ausfallliste.
+
+| | |
+|---|---|
+| Vereine mit Daten | 18 von 18 |
+| offene Einträge | 105 |
+| davon in unserem Pool | 85 |
+| Verletzungen / Sperren | 81 / 4 |
+
+Zuordnung über `sportmonks:<id>` = `players.id`, also kein Namensraten. Eine
+Zeile je Ausfall, nicht je Spieler: Ein Spieler kann gleichzeitig gesperrt
+**und** verletzt sein, und genau das kommt in den Messdaten vor.
+
+**Die Quelle widerspricht sich selbst, und das musste abgefangen werden.** Von
+den 85 Einträgen betrafen **acht** Spieler, die am 1. Spieltag 74 bis 90
+Minuten auf dem Platz standen. Josha Vagnoman hat sogar getroffen und ist dort
+seit **März 2025** als „Muscular problems" geführt, Jeff Chabot seit März 2025
+als „Ill" — ihr `completed`-Feld steht auf `false`, obwohl der Ausfall
+offensichtlich vorbei ist. Ein Symbol „verletzt" an einem Spieler, der gerade
+neunzig Minuten gemacht hat, wäre schlimmer als gar keins: Es sähe aus wie eine
+Auskunft.
+
+Geprüft wird deshalb gegen **unsere eigenen Daten** (`player_absences_v`,
+Migration 0101): Liegt ein Einsatz **nach** dem Beginn des Ausfalls, ist der
+Ausfall überholt. Minuten in `player_match_stats` sind das Gegenteil von
+„fällt aus". Die Regel trennt sauber — Daiki Hashioka fällt *nicht* heraus:
+Sein Ausfall beginnt am 29.08., und am 29.08. hat er gespielt, er hat sich also
+im Spiel verletzt.
+
+**Der Klartext zum Grund kostet einmalig 35 Requests.** Es gibt keinen
+Sammelabruf für Typen, nur `/core/types/<id>`; deshalb die Tabelle
+`sideline_types`, die das Ergebnis behält. Gemessen: erster Lauf 38 Requests,
+jeder weitere **2**.
+
+**Übersetzt wird am Server** (Migration 0132, seit dem 11.10.2026). Bis dahin
+stand die Übersetzung in der App — eine Liste der 35 Gründe vom 30.08.2026,
+mit dem englischen Wortlaut als Rückfall. Gemeldet: *„Warum stehen die
+Verletzungen auf Englisch drin, bitte nur deutsch."* Die Quelle bringt laufend
+neue Gründe; `sideline_types` war bis dahin auf **177** gewachsen, und jeder,
+den die Liste nicht kannte, stand englisch da.
+
+Jetzt trägt `sideline_types.name_de` die Übersetzung, und `player_absences_v`
+gibt sie als `grund_quelle` aus. Das greift **ohne Update** in jeder
+App-Version, weil `grund` einen Wortlaut, den seine Liste nicht kennt,
+unverändert durchreicht. Ein Typ ohne Übersetzung erscheint als „Verletzung"
+bzw. „Sperre" — **nie englisch**. `sync-absences` meldet solche Typen in seiner
+Antwort (`ohneDeutsch`); dann gehört eine Zeile `update sideline_types set
+name_de = …` in eine Migration.
+
+Wo es steht:
+
+- **An der Spielerkachel** ein Symbol **neben der Position** — rot mit
+  Verbotszeichen für die Sperre, gold mit Kreuz für die Verletzung. Es hat
+  zwei Umzüge hinter sich: oben links überlappte es auf einer 42 Punkte hohen
+  Kachel den Namen, oben rechts lag es auf dem Wappen und überschnitt sich mit
+  ihm (gemeldet an der Trade-Auswahl, wo die Kacheln am größten sind). In der
+  Zeile mit der Position nimmt es nichts weg und steht bei den übrigen
+  Angaben zum Spieler. **Die dunkle Unterlage trägt dabei die Farbe**: Gold
+  auf der gelben Abwehr-Kachel wäre unsichtbar.
+- **Auf dem Spielfeld** ein Punkt unten links am Wappen. Oben links sitzt schon
+  die Spielsperre („sein Spiel läuft") — zwei verschiedene Aussagen dürfen
+  nicht dieselbe Ecke teilen.
+- **In der Free Agency** im Untertitel („FC Augsburg · verletzt"), in der Farbe
+  des Ausfalls. Einen verletzten Spieler zu holen ist dort der teuerste Fehler.
+- **Im Spielerprofil** der genaue Grund samt Beginn und verpassten Spielen:
+  „Verletzt · Verletzung der hinteren Oberschenkelmuskulatur — seit 24. August
+  2026 · 2 Spiele verpasst".
+
+Ist beides eingetragen, gewinnt die **Sperre**: Sie ist die verlässlichere
+Auskunft, weil sie an einem bekannten Tag endet.
+
+## Liga-Übersicht — „C, das Duell führt"
+
+Fünfter Schirm nach demselben Verfahren (`design/liga-uebersicht/`).
+**Besonderheit:** Dieser Screen sieht in drei Phasen verschieden aus — Aufbau,
+Draft, Saison. Richtung C beschreibt nur die Saison; für die beiden anderen
+Phasen ist Richtung A umgesetzt, sonst hätte der Schirm in zwei von drei
+Zuständen keinen Kopf.
+
+- **Der Draft startet nur nach Rückfrage**, und zwar auf jedem Weg. Die
+  Bestätigung samt Start liegt in `ui/draft_start.dart`
+  (`draftStartenMitBestaetigung`) — der Knopf im Draft-Raum und der im
+  Auftrags-Kopf rufen dieselbe Stelle. Der Kopf-Knopf **öffnete vorher nur den
+  Raum**, obwohl er „Draft starten" hieß: ein Knopf, der ankündigt zu starten
+  und stattdessen navigiert. Nach dem Start führt er in den Raum, weil dort ab
+  jetzt die Uhr läuft.
+- **In der Saison führt das eigene Duell** (`MatchupHero`, gab es schon). Im
+  Aufbau und im Draft steht dort `_NaechsterSchritt`: **ein** Auftrag, groß,
+  mit dem Knopf dazu — „Noch 7 Plätze frei · Spieler einladen / Draft
+  starten", „Der Draft läuft · Zum Draft". Vorher stand dort eine 165 Punkte
+  hohe Zustandskarte („Setup") mit halbtransparentem Dekor-Chevron, die nicht
+  antippbar war; was zu tun ist, steckte hinter einer Kachel weiter unten. Ein
+  Zustand ist kein Auftrag.
+- **Der Kasten „Als Nächstes" hat Luft** (19.10.2026, gemeldet:
+  „zusammengequetscht"). Marke schräg in Gold, der Titel groß („Noch 8 Plätze
+  frei"), darunter ein schmaler Balken „2 von 10 Teams", **kein Erklärsatz**,
+  die Knöpfe untereinander in voller Breite und 50 hoch — „Spieler einladen"
+  gold, „Draft starten" mit Haarlinie statt grün. Hülle ist `Karte` mit
+  goldenem Hauch. Vorschau `liga_vor_dem_draft_vorschau_test.dart`; der
+  Zustand vor dem Draft stand vorher in keiner.
+  **Die Rückfrage danach ist ein Blatt**, kein `AlertDialog` mehr
+  (`draft_start.dart`, `_StartBlatt`): „DRAFT STARTEN?" schräg, die Eckdaten
+  als `EinstellungsZeile`n (Teams, Reihenfolge, Zeit je Pick, Runden), ein
+  Satz mit Schloss, dass es endgültig ist, dann „Draft starten" gold in voller
+  Breite und „Abbrechen" grau. Gilt für beide Wege (Kasten und Draft-Raum).
+  **Seit demselben Tag bearbeitbar** (auf Ansage): Zeit je Pick (−/+ durch
+  `DraftPickTime`), Runden (14–30, `WertStepper`) und Reihenfolge
+  (Zufällig/Manuell, bei Manuell „Reihenfolge festlegen ›" zu
+  `DraftOrderPage`) — dieselben Grenzen wie `DraftSettingsPage`. Geänderte
+  Werte schreibt `updateDraftSettings` **vor** dem Start (die Pause bleibt,
+  wie sie war); unverändert wird gleich gestartet.
+- **„Schnellzugriff" ist weg** — die Rubrik über zwei gefüllten Kacheln. Es
+  sind zwei Zeilengruppen geworden: **Mein Team** (Aufstellung, Free Agency,
+  Trades) und **Liga** (Draft-Raum, Tippspiel, Chat, Einladen), jeweils unter
+  einer Kapitelmarke, mit leisem Zusatz rechts („läuft", „3 dabei") und rotem
+  Zähler nur da, wo etwas wartet.
+- **Der grüne Reiterbalken ist weg.** `SegmentedTabBar` steckt an acht Stellen
+  in der App und bleibt dort; hier steht `LeiseReiter`
+  (`app/widgets/leise_reiter.dart`), gemeinsam mit dem Favoriten-Tab.
+  **Die Leiste nimmt die volle Breite ein**, jeder Reiter denselben Anteil.
+  Vorher standen die Wörter links zusammengedrängt in einer waagerecht
+  scrollbaren Zeile, und rechts blieb Leere — die Leiste sah aus wie ein
+  angefangener Satz. Damit ist auch das Scrollen weg: Passt ein Wort nicht,
+  schrumpft es (`FittedBox`), wie überall sonst.
+  **Reihenfolge seit dem 16.10.2026: MatchUp · Kader · Übersicht ·
+  Tabelle** (auf Ansage). Die Liga öffnet auf MatchUp, solange der Draft
+  durch ist, sonst auf der Übersicht — davor stünde der MatchUp-Reiter leer
+  (`LigaReiter.start`). Positionen nie als Zahl, immer über `LigaReiter`; der
+  Sprung vom Duell-Kasten in den MatchUp-Reiter liest von dort.
+  **Seit dem 14.10.2026 trägt die Liga-Leiste keine Symbole mehr**, sondern
+  nur die Wörter in Versalien (`versalien: true`, 13 Punkt, leicht gesperrt —
+  die Schreibweise der Kapitelmarken), auf Ansage. Die Leiste ist damit
+  wieder 52 statt 74 Punkte hoch. Der folgende Absatz beschreibt die
+  Fassung davor; die Regel „alle oder keiner" gilt weiter.
+  **Symbole trägt eine Leiste entweder überall oder nirgends** — `symbole`
+  ist ein Bauplan je Reiter, und `LeiseReiter` besteht per Zusicherung darauf,
+  dass die Karte so viele Einträge hat wie es Reiter gibt. Der Anlass: Die
+  Liga-Leiste trug an zweiter Stelle das Markenzeichen *anstelle* des Wortes,
+  ein unbeschrifteter Reiter zwischen drei beschrifteten. Das las sich nicht
+  als Marke, sondern als Bruch („Das bricht den visuellen Fluss der
+  Menüleiste"). Jetzt trägt dort **jeder Reiter Symbol und Wort**
+  (Übersicht · MatchUp · Kader · Tabelle), das Markenzeichen sitzt im
+  Symbolplatz des zweiten — aktiv in den Markenfarben (grün|rot), ruhend
+  einfarbig mitgedämpft wie die Nachbarsymbole; sonst riefe das Logo als
+  einziges Element dauerhaft laut. Die Symbole sind **ein Satz**, alle vier aus
+  derselben Strichstärke (`grid_view_outlined`, Chevron, `people_outline`,
+  `leaderboard_outlined`) — gemischt gefüllte und umrissene Symbole fielen in
+  der Vorschau sofort auseinander. Die Leiste wächst dafür von 52 auf 74; die
+  zweizeiligen Reiter haben **feste Zeilenhöhen**, damit ein Zeichen die Marke
+  nicht gegen die Nachbarreiter verschiebt. Die schmaleren Leisten (Favoriten,
+  Transfers, Spielerprofil) bleiben reine Wortleisten — der Satz gilt je
+  Leiste, nicht je App.
+  **`preferredSize` und die Höhe im Aufbau müssen dieselbe Zahl sein.** Beim
+  Umbau stand im `build` noch die alte Konstante, während `preferredSize`
+  schon 74 meldete: Die `AppBar` reservierte den Platz, die Leiste selbst
+  blieb 52 hoch und lief unten über. Beide lesen jetzt `preferredSize.height`.
+  Der Text aus `titel` bleibt in jedem Fall stehen: als Beschriftung für die
+  Vorlesehilfe — ein Logo ohne Namen ist für VoiceOver eine stumme
+  Schaltfläche.
+  **Die erste Fassung war dafür zu leise** und hatte einen Platzierungsfehler:
+  ein 2 px breiter Rahmenstrich über die volle Wortbreite, hart auf der
+  Unterkante der Leiste — und weil sie im `AppBar.bottom` sitzt, begann direkt
+  darunter die erste Karte. Der Strich sah aus, als gehöre er zu ihr
+  („klebt an der MatchUp-Box"). Jetzt: eine **kurze gerundete Marke** statt
+  eines Unterstrichs, sie **wächst hinein** statt umzuspringen, und darunter
+  liegen Luft und eine Haarlinie über die volle Breite — dieselbe Trennung wie
+  bei den Kapitelmarken. Die Höhe ist von 44 auf 52 gegangen.
+  **Falle dabei, dieselbe wie in den Fantasy-Einstellungen:**
+  `AnimatedDefaultTextStyle` *ersetzt* den Stil, es ergänzt ihn nicht. Ein
+  blankes `TextStyle` verliert damit die `fontFamily` — in der Vorschau wurden
+  die Reiter zu leeren Kästchen, auf dem Gerät wäre es stumm Roboto statt
+  Rajdhani gewesen. Der Stil leitet sich deshalb per `copyWith` aus
+  `Theme.of(context).textTheme` ab. Ohne
+  `test/leise_reiter_vorschau_test.dart` wäre das durchgegangen; die Vorschau
+  zeigt beide Einbauorte (vier Wörter im `AppBar.bottom`, zwei mitten im
+  Schirm) und **unter jeder Leiste eine angedeutete Karte** — ohne die ließe
+  sich der Abstand, um den es ging, gar nicht beurteilen.
+- **Der Spieltag benutzt die gemeinsame Zeilenform** (`fixturesWithDateHeaders`).
+  Er kam als `Fixture` und wird dafür auf `TeamFixture` gedreht — dieselben
+  Felder, anderer Einstiegspunkt in dieselben Daten. Drei Darstellungen
+  derselben Liste waren zwei zu viel.
+
+  **Je Anstoßzeit ein Kopf, nicht je Spiel einer** (04.09.2026). Die Schleife
+  rechnete `lastDay` mit und benutzte es nirgends — beide Zweige ihres `if`
+  taten dasselbe, der Kopf wurde **immer** ausgegeben. In einer Vereinsliste
+  fiel das nie auf, weil dort je Datum ohnehin nur eine Partie steht; auf dem
+  Spieltag der Liga-Übersicht standen neun Köpfe über neun Spielen, fünf davon
+  Wort für Wort gleich. Gemeldet als *„Das ist anstrengend, wenn du immer das
+  Datum dazwischen hast."*
+
+  Gruppiert wird auf die **Minute**; die Uhrzeit wandert damit in den Kopf, wo
+  sie einmal statt fünfmal steht, und in der Zeile hält ein gedämpfter Strich
+  die Spalte besetzt — sonst liefen die Namen beider Mannschaften an die
+  Ränder auseinander. Dieselbe Entscheidung wie im Live-Tab und im Tippspiel.
+  **Die Gegenprobe steht als eigener Test daneben:** Eine Vereins- oder
+  Favoritenliste ändert sich nicht, weil dort jede Partie ihren eigenen Anstoß
+  trägt und damit weiter ihren eigenen Kopf bekommt.
+
+**Die Zeilen waren „trostlos" — und das lag nicht an den Zeilen, sondern an
+dem, was sie nicht sagten.** Zwischen dem Duell-Kasten oben und dem Spieltag
+unten, beides Bereiche mit Fläche und Inhalt, lagen fünf nackte Zeilen mit je
+**einem Wort**. Man konnte nicht erkennen, ob die eigene Elf steht, ob ein
+Trade wartet oder ob im Chat etwas Neues liegt. Drei Änderungen:
+
+- **Der Hinweis steht unter dem Wort, nicht daneben.** Rechtsbündig war er ein
+  Zusatz, den man übersah; als zweite Zeile gibt er der Zeile Inhalt.
+- **Die Zeilen sagen jetzt etwas.** „Aufstellung · Noch nicht gestellt" bzw.
+  „Steht · 4-4-2" (`meineFormationProvider`), „N Trades warten auf den
+  Spieltag", „Neue Nachrichten". Wo es nichts zu sagen gibt (Free Agency),
+  bleibt die Zeile einzeilig — ein erfundener Untertitel wäre Füllmaterial.
+- **Jede Gruppe steht auf eigener Fläche** (`_Zeilengruppe`: Kartengrund,
+  Haarlinie, runde Ecken) — dieselbe Sprache wie die Karten auf dem
+  Startbildschirm. **Keine gefüllten Kacheln**: Die gab es hier schon einmal
+  als „Schnellzugriff", und sie nahmen den halben Schirm ein.
+
+Dabei ist aufgefallen, dass `_TipTile` seine Zeile **selbst** zeichnete —
+blankes Symbol statt getönter Kachel, andere Abstände, andere Schriftgröße. In
+der Gruppe fiel das sofort auf; sie benutzt jetzt dieselbe `_LigaZeile`. Deren
+`onTap` darf dafür `null` sein (gesperrtes Tippspiel) und bekommt dann **kein**
+`InkWell` — eine Zeile, die auf Tippen reagiert und nichts tut, verspricht
+etwas, das es nicht gibt.
+
+**Seit dieser Überarbeitung gibt es doch eine Vorschau**
+(`test/liga_uebersicht_vorschau_test.dart`). Sie war der Grund, den Schirm
+überhaupt beurteilen zu können: Auf dem Gerät sieht man ihn nur in dem Zustand,
+in dem die eigene Liga zufällig gerade ist. Drei Dinge braucht sie —
+`initializeDateFormatting('de_DE')` für den Spieltags-Block,
+`SharedPreferences.setMockInitialValues({})` für den Ungelesen-Hinweis am
+Liga-Chat, und **echte Fixtures**: Ohne sie ist die untere Bildschirmhälfte
+leer, und man diagnostiziert einen Schirm, den es so nicht gibt.
+
+## Seitenmenü — „B, das Menü trägt Inhalt"
+
+Vierter Schirm nach demselben Verfahren (`design/seitenmenue/`), gewählt wurde
+**B**: Das Menü beantwortet beim Öffnen die Frage, für die man es aufmacht —
+**wer will was von mir?**
+
+- **Offene Freundschaftsanfragen und die letzten Gespräche stehen darin**, mit
+  Namen und Vorschautext, höchstens drei je Abschnitt (`_maxZeilen`); darunter
+  „Alle Anfragen"/„Alle Chats". Mehr würde aus dem Menü einen zweiten
+  Chat-Screen neben dem echten machen.
+- **Kein Grün mehr.** Vorher trugen drei Icon-Kacheln und der Ring um den
+  Avatar das Markengrün — obwohl Grün in dieser App „hier läuft etwas" heißt
+  und dort nichts lief. Schlimmer: Die echten Signale (rote Zahl, roter Punkt)
+  standen direkt daneben und mussten dagegen ankommen. Jetzt hat nur Farbe,
+  was wartet: „2 neu" an der Abschnittsmarke, ein roter Punkt je Zeile.
+- **Der Eintrag „Profil" ist entfallen** — er stand für dasselbe Ziel wie der
+  Kopf darüber ein zweites Mal. Der Kopf heißt jetzt „Profil & Einstellungen".
+- **Die Abschnittsmarke ist dieselbe wie im Live- und Favoriten-Tab** (Wort,
+  Haarlinie bis an den Rand, rechts der Hinweis auf Offenes). Ein Menü ist kein
+  Grund für ein eigenes Gliederungsmuster.
+- **Leere Abschnitte fallen auf schlichte Zeilen zurück** („Freunde
+  verwalten", „Nachricht schreiben"). Eine Überschrift mit nichts darunter
+  wäre schlimmer als der alte Zustand.
+
+Damit lädt das Menü **Daten** — vorher war es reine Navigation. Es zeigt, was
+da ist, und wartet nicht: Fehlen Namen oder Bilder noch, stehen die Zeilen mit
+dem, was schon bekannt ist.
+
+Angesehen wird es über `test/seitenmenue_vorschau_test.dart`. Der
+Bildvergleich ist hier **fest** eingeschaltet — anders als bei den drei
+Schirmen steht im Menü kein Datum, das Bild ist von Tag zu Tag gleich. Der
+Test braucht `SharedPreferences.setMockInitialValues({})`, weil der
+Ungelesen-Punkt je Gespräch seine Lesemarke von dort holt.
+
+## Favoriten-Tab — „A, der Verein führt""
+
+Dritter Schirm nach demselben Verfahren: Diagnose plus drei Richtungen als
+Design-Canvas (`design/favoriten/`), gewählt wurde **A**.
+
+- **Kein Titel „Favoriten"** — er war die größte Schrift des Schirms für eine
+  Auskunft, die die Navileiste gibt. Den Kopf bildet die **Wappenreihe**
+  selbst: das gewählte Wappen 52 Punkte und voll deckend, die übrigen 40 und
+  auf 55 % zurückgenommen. **Ohne Beschriftung** — vorher trugen 32er-Wappen
+  eine 9,5-Punkt-Zeile, in der „Borussia Dortmund" zweizeilig umbrach;
+  ausgerechnet die wichtigste Auswahl des Schirms war sein Kleinstes. Am Ende
+  der Reihe sitzen die beiden Aktionen (sortieren, hinzufügen) als runde
+  Knöpfe.
+- **Der Vereinsname ist die Überschrift**, darunter Wettbewerb und
+  Tabellenplatz („Bundesliga · Platz 12"). Der Platz kommt über die
+  **Team-ID** aus `leagueTableProvider`, nicht über den Namen: „1. FC Köln"
+  und „FC Köln" stehen in denselben Daten nebeneinander, ein Namensvergleich
+  träfe mal und mal nicht. Fehlt die Tabelle (Pokal, Saisonstart, noch am
+  Laden), bleibt es beim Wettbewerb allein.
+- **Der Reiter ist eine leise Textumschaltung** mit Unterstrich. Vorher lag
+  dort eine ganze Zeile in Signalgrün — das lauteste Element des Schirms, um
+  zwei Optionen anzusagen. Grün heißt in dieser App „hier läuft etwas"; ein
+  Reiter läuft nicht.
+- **Die Spiele sind Zeilen statt Karten**, und zwar dieselben wie im Live-Tab:
+  Wappen an den Außenkanten, Namen direkt daneben, Uhrzeit oder Ergebnis in
+  der Mitte. Vorher stand es genau andersherum (Wappen innen, Namen außen) —
+  zwei Schirme, die dieselbe Liste zeigen, fluchteten nicht miteinander.
+  Datum, Wettbewerb und Spieltag stehen in **einer** Zeile darüber; vorher
+  ergaben vier Spiele acht Blöcke, weil das Datum über der Box stand und
+  Wettbewerb plus Spieltag noch einmal darin.
+
+**Das trifft die Vereinsseite mit** (`club_screen.dart`): Sie benutzt
+`fixturesWithDateHeaders`/`TeamFixtureCard` aus `app/widgets/`. Bewusst nicht
+abgekoppelt — zwei Darstellungen derselben Liste wären beim nächsten
+Feinschliff sofort wieder auseinandergelaufen.
+
+#### Der Spielplan beginnt beim nächsten Spiel
+
+Zwei Meldungen im Abstand von zwei Tagen, und zusammen ergeben sie eine
+Anordnung, die keine gewöhnliche Liste hergibt:
+
+1. *„Bei den Favoriten müssen die vorherigen Spiele auch zu sehen sein"*
+   (03.09.2026). Sie *waren* da, aber ganz unten: Der Spielplan reicht 150 Tage
+   nach vorn, bis zu den Ergebnissen scrollte man an zwanzig Zeilen vorbei.
+   **Was man nicht findet, gibt es nicht.** Antwort damals: drei Blöcke —
+   *Zuletzt* (die drei jüngsten Ergebnisse), *Nächste Spiele*, *Frühere
+   Ergebnisse*.
+2. *„Die nächsten Spiele sollen ganz oben angezeigt werden. Dann kann man aber
+   trotzdem noch nach oben wischen, und dort steht dann ‚Vorherige Spiele
+   anzeigen'. Die gehen dann von oben nach unten, sodass die zuletzt
+   passierten ganz unten sind."* (05.09.2026)
+
+Die erste Antwort war die falsche Hälfte: Sie machte die Ergebnisse auffindbar
+und schob dafür die Frage „wer kommt jetzt?" hinter drei Zeilen Vergangenheit.
+**Beides geht nur, wenn die Liste nicht am Anfang beginnt.**
+
+`SpielplanAnsicht` (`app/widgets/team_fixture_list.dart`) ist deshalb ein
+`CustomScrollView` mit **`center`**: Der Anker sitzt auf der Kapitelmarke
+*Nächste Spiele*, alles Vergangene liegt **darüber**. Der Schirm öffnet bei der
+Trennstelle; nach oben wischen führt in die Saison zurück.
+
+Drei Dinge daran sind nicht offensichtlich:
+
+- **Slivers vor dem Anker wachsen nach oben**, ihr Kind 0 liegt direkt über der
+  Trennstelle. Die Liste wird dort deshalb **rückwärts indiziert**
+  (`oben[oben.length - 1 - i]`) — dieselbe Technik wie `reverse: true` im Chat.
+  Reversiert wird die **fertige Widget-Liste**, nicht die Fixtures: Ein
+  Datumskopf muss über seinen Spielen bleiben.
+- **Die Ergebnisse stehen aufsteigend**, ältestes oben. Das jüngste sitzt damit
+  unmittelbar über dem nächsten Spiel — genau da, wo man es sucht, und der
+  Block *Zuletzt* wird überflüssig.
+- **Das Aufklappen verschiebt nichts.** Die Zeilen entstehen oberhalb des
+  Ankers, die Scroll-Position bleibt stehen. Eine gewöhnliche Liste müsste
+  dafür die Höhe des Nachgewachsenen schätzen — dieselbe Rechnerei, die den
+  Chat einmal „irgendwo" landen ließ.
+
+Solange nichts aufgeklappt ist, steht über der Trennstelle **eine** Zeile:
+*Vorherige Spiele anzeigen* mit der Anzahl daneben. Gibt es keine kommenden
+Spiele mehr, ist die Vergangenheit der ganze Inhalt und steht offen da — ein
+Knopf wäre dann eine Hürde vor dem Einzigen, was da ist.
+
+**Die Vereinsseite benutzt dasselbe Widget.** Sie teilte sich mit dem
+Favoriten-Tab schon `spielplanAbschnitte`; nur den einen Schirm umzubauen hätte
+genau die zwei Darstellungen erzeugt, gegen die diese Teilung angelegt wurde.
+
+**Der Preis, den man kennen muss: Zum Neuladen zieht man am oberen Ende**, also
+über den Ergebnissen. An der Trennstelle liegt Inhalt darüber, dort holt ein
+Zug nach unten die Vergangenheit — und genau das ist gewollt.
+
+Angesehen über `test/spielplan_anker_vorschau_test.dart` mit **drei** Bildern
+(Ruhe · Griff · aufgeklappt): Der Griff liegt im Ruhezustand außer Sicht, ein
+Bild davon kann ihn gar nicht zeigen. Gemessen wird in
+`test/spielplan_anker_test.dart` — gegengeprüft, ohne `center:` fallen drei von
+fünf Fällen. Den Favoriten-Tab als Ganzes zeigt weiter
+`test/favoriten_vorschau_test.dart`; wie bei den anderen Vorschauen läuft der
+Bildvergleich nur mit `--update-goldens`.
+
+### Der Ladeschirm wartet jetzt auf den ganzen Homescreen
+
+Gewünscht: *„Bitte verlänger den Ladescreen der App, bis das Match über den
+Ligen geladen hat und die News da sind."*
+
+`homeBereitProvider` wartete auf **Ligen und Tipprunden** — mit einer
+ausdrücklich hingeschriebenen Begründung: „News, Favoritenspiele und offene
+Tipps kommen nach und füllen sich sichtbar auf — darauf zu warten hieße, den
+Startschirm an die langsamste Quelle zu hängen."
+
+Das Argument stimmt technisch und war in der Sache trotzdem falsch. „Füllt
+sich sichtbar auf" ist aus der Nähe eine Beschreibung, aus der Entfernung ein
+Symptom: Der Schirm blendete ab, und **danach** wuchsen die Kopfkarte mit dem
+nächsten Spiel und der Newsblock nach. Der Screen sprang unter dem Daumen —
+und zwar an der auffälligsten Stelle, ganz oben.
+
+Jetzt hängt der Schirm an allen vier Quellen, die den Homescreen von oben nach
+unten füllen: `favoritenSpieleProvider` (die Kopfkarte),
+`myFantasyLeaguesProvider`, `myRoundsProvider` und `newsProvider`.
+
+Drei Dinge, die dabei zusammenpassen mussten:
+
+- **`isLoading` ist bei einem Fehler falsch.** Eine Quelle, die scheitert, hält
+  den Schirm also nicht fest — sie ist fertig, nur eben ohne Inhalt. Ohne diese
+  Eigenschaft stünde der Schirm bei jedem Netzausfall bis zur Notbremse.
+- **Die Notbremse musste mit.** Sie stand auf 8 Sekunden, als nur zwei
+  Datenbankabfragen gewartet wurden. Die News gehen über eine Edge Function
+  nach draußen; kalt dauert das auch mal ein paar Sekunden. Eine Bremse, die
+  kürzer ist als ein realistisch langsamer Abruf, macht aus dem Notfall den
+  Normalfall — die Verlängerung wäre wirkungslos geblieben. Jetzt 12 Sekunden,
+  und ein Tipp überspringt weiterhin sofort.
+- **Das Newsthema steht nur noch einmal da** (`homeNewsThema` in
+  `features/news/providers.dart`). Vorher hätten Schirm und Homescreen je ein
+  eigenes `'transfers'` getragen — genau die Kopplung, die man erst merkt, wenn
+  sie bricht: Der Schirm wartete dann auf ein Thema, das niemand anzeigt.
+
+Nebenwirkung, und eine gute: Die vier Abfragen laufen jetzt schon während des
+Intros und liegen fertig im Cache, wenn der Homescreen zum ersten Mal baut.
+
+`test/ladeschirm_wartet_test.dart` prüft **jede** Quelle einzeln — sonst könnte
+eine wieder herausfallen, ohne dass es auffällt — dazu den Fehlerfall und die
+beiden Abkürzungen (ohne Server, ohne Anmeldung).
+
+## Startbildschirm
+
+Zwei Schirme hintereinander, und nur der zweite lässt sich animieren:
+
+1. **Nativ** (`ios/Runner/Base.lproj/LaunchScreen.storyboard`) — zeigt das
+   Betriebssystem, bevor Flutter läuft. Statisch, nicht animierbar. Das
+   `LaunchImage`-Asset ist deshalb **absichtlich leer** (1×1 transparent);
+   sichtbar ist nur die Hintergrundfarbe, dieselbe wie `MatchUpColors.base`.
+   Stünde dort wieder das Logo, sähe man es erst fertig, dann verschwinden
+   und in der Flutter-Animation neu einfliegen.
+   **iOS merkt sich den Startbildschirm.** Ein `flutter run` über die
+   installierte App zeigt weiter den alten — erst
+   `xcrun simctl uninstall <udid> app.matchup.mobile` (bzw. App löschen)
+   räumt den Zwischenspeicher. Wer eine Änderung daran prüft, ohne vorher zu
+   deinstallieren, misst den alten Stand. Achtung: das löscht auch die
+   Anmeldung im Simulator.
+2. **Flutter** (`app/widgets/matchup_splash.dart`) — die grüne Markenhälfte
+   fährt von oben ein, die rote von unten, sie treffen sich in der Mitte,
+   dann erscheint die Wortmarke. Steht der Schirm danach und wartet auf
+   Daten, läuft eine Welle aus drei Punkten in den Markenfarben von links
+   nach rechts (der aktive streckt sich zur Kapsel) — sonst wäre nicht zu
+   unterscheiden, ob geladen wird oder etwas hängt. Ein Tipp überspringt.
+
+Die App wird **erst gebaut, wenn der Schirm weggeht** — nicht schon nach dem
+Intro. Animation und Aufbau teilen sich denselben Thread, und der Aufbau des
+Homescreens hält ihn im Debug-Build sekundenlang an. Baut die App früher,
+friert ausgerechnet die Ladeanzeige ein, während geladen wird. Solange
+gewartet wird, gehört der Thread der Animation; abgeblendet wird erst im
+Frame **nach** dem Aufbau (`addPostFrameCallback`), sonst ruckelt die
+Überblendung genauso.
+
+Danach **bleibt der Schirm stehen, bis `homeBereitProvider` wahr ist** (Ligen
+und Tipprunden geladen; News, Favoritenspiele und offene Tipps füllen sich
+danach sichtbar auf — an die langsamste Quelle darf der Startschirm nicht
+gehängt werden). Weil er damit an fremden Daten hängt, gibt es eine
+Notbremse von 8 Sekunden; danach wird abgeblendet, komme was wolle. Ein Tipp
+überspringt.
+
+Der Text darin steht in einem `Material`. Ohne das zeichnet Flutter Text
+ohne Unterlage mit dem gelben Doppelstrich — das sah wie ein Designfehler
+aus, war aber der eingebaute Hinweis „missing Material widget".
+
+Im Debug-Build auf dem Simulator dauert der Aufbau sichtbar lange;
+**Release/Profile lassen sich auf dem iOS-Simulator nicht starten**
+(„Releasemode is not supported by iPhone 17 Pro"), gemessen ist der echte
+Ablauf also nur auf einem Gerät.
+
+## Live-Update (immer nach Änderungen)
+
+Simulator **und** Web-Demo nach jeder Änderung auf den neuesten Stand bringen,
+nicht erst auf Nachfrage:
+
+- **Simulator (auf dem MacBook):** soll **durchgehend mitlaufen**. Dafür
+  abgekoppelt starten und über eine PID-Datei steuern — sonst reißt das Ende
+  eines Shell-Kommandos die App mit („Lost connection to device"):
+  ```sh
+  nohup flutter run -d <udid> --pid-file=/tmp/flutter.pid \
+    > /tmp/live.log 2>&1 < /dev/null & disown
+  kill -USR1 "$(cat /tmp/flutter.pid)"   # Hot-Reload
+  kill -USR2 "$(cat /tmp/flutter.pid)"   # Hot-Restart (Provider/Struktur)
+  xcrun simctl launch <udid> app.matchup.mobile   # App nach vorn holen
+  ```
+  `setsid` gibt es auf macOS **nicht**; `nohup … & disown` genügt. `flutter
+  run` nie an ein Kommando hängen, das ein Timeout haben kann.
+  **„Restarted application in 2 ms" ist kein Fehlersignal** — ob der Restart
+  wirkte, sieht man daran, dass die App wieder auf dem Home-Tab steht.
+  **Hot-Restart schreibt den Code nicht in die installierte App.** Er landet
+  in einem Wegwerf-Ordner (`…/Data/Application/<id>/tmp/…/main.dart.dill`),
+  auf den nur die laufende `flutter run`-Sitzung zeigt; das Bundle
+  (`Runner.app/…/flutter_assets/kernel_blob.bin`) bleibt auf dem Stand des
+  letzten Builds. Stirbt die Sitzung und startet die App kalt, läuft wieder
+  der alte Code — für den, der draufschaut, sieht das aus, als wäre die
+  Arbeit verschwunden. Daraus zwei Regeln:
+  * Nach einer abgeschlossenen Änderung einmal **neu installieren**
+    (`flutter run` neu starten), nicht nur hot-restarten. Ob es gewirkt hat,
+    zeigt der Zeitstempel von `kernel_blob.bin` — der muss neu sein.
+  * **`Lost connection to device` heißt nicht „App tot"**, sondern „ab jetzt
+    zeigt sie alten Code". Die App läuft weiter (im Simulator per
+    `xcrun simctl spawn <udid> launchctl list | grep matchup` sichtbar), nur
+    hängt niemand mehr am anderen Ende. Häufigster Auslöser: das MacBook war
+    im Ruhezustand.
+  Screenshots aus einer laufenden Sitzung belegen deshalb nur, dass der Code
+  **im Speicher** stimmt — nicht, dass er auf dem Gerät liegt.
+  Den Stand per `xcrun simctl io <udid> screenshot`
+  prüfen. Tippen geht doch — über die Fensterkoordinaten des Simulators:
+  ```sh
+  osascript -e 'tell application "System Events" to tell process "Simulator" \
+    to click at {X, Y}'   # Fensterposition/-größe vorher per AppleScript holen
+  ```
+  Deep-Links (Passwort-Reset) lassen sich so komplett durchspielen:
+  `xcrun simctl terminate <udid> app.matchup.mobile`, dann
+  `xcrun simctl openurl <udid> "app.matchup.mobile://login-callback/#access_token=X&type=recovery"`
+  — iOS fragt „In MatchUp öffnen?", der Klick bestätigt.
+  **Synthetische Taps sind unzuverlässig:** Die Navi-Kapsel schwebt
+  (`extendBody`), daneben liegt der Inhalt — Fehlklicks öffnen News-Links im
+  In-App-Browser. Für Layout-Prüfungen sind **Golden-Vorschauen** unter
+  `test/goldens/` das verlässlichere Mittel (`flutter test --update-goldens
+  test/<name>_preview_test.dart`, dann die PNG ansehen). Genau so ist
+  aufgefallen, dass Heim/Auswärts auf dem Spielfeld vertauscht waren.
+- **Android-Emulator (Gegentest vor einem Play-Upload):** AVD `matchup_pixel`
+  (Pixel 7, Android 36, arm64). Steuerung geht hier zuverlässiger als im
+  iOS-Simulator, weil `adb` Taps und Text direkt annimmt:
+  ```sh
+  ~/Library/Android/sdk/emulator/emulator -avd matchup_pixel -no-boot-anim \
+    > /tmp/emulator.log 2>&1 < /dev/null & disown
+  adb wait-for-device && adb install -r build/app/outputs/flutter-apk/app-release.apk
+  adb shell am start -n app.matchup.mobile/.MainActivity   # nicht `monkey`, s. u.
+  adb exec-out screencap -p > /tmp/android.png
+  adb shell input tap X Y; adb shell input text "…"; adb shell input keyevent 61  # 61 = TAB
+  ```
+  **Direkt nach `adb install` scheitert ein Start per `monkey`** („VM exiting
+  with result code -5"): der Paketmanager ist eine Sekunde später fertig als
+  das `Success`. `am start` benutzen, das sieht wie ein Absturz aus, ist aber
+  keiner. **Zwischen zwei Feldern per TAB wechseln, nicht per Tap** — die
+  Tastatur schiebt das Layout hoch, ein Tap auf die vorher notierte Koordinate
+  landet dann im falschen Feld.
+  Ob der Release-Build wirklich am Server hängt, zeigt eine Anmeldung mit
+  Fantasie-Daten: „E-Mail oder Passwort ist falsch" kommt von Supabase, ist
+  also der Beweis für den Round-Trip (und damit für die `INTERNET`-Berechtigung).
+- **Web-Demo:** mit dem Build-/Deploy-Ablauf oben neu nach `gh-pages` pushen
+  und live verifizieren (md5 von `main.dart.js` gegen den Build vergleichen;
   GitHub Pages propagiert ~15–60 s).
