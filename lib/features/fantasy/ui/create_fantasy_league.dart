@@ -49,7 +49,7 @@ class _CreateFantasyLeagueScreenState
   /// **Kader-Limits, schon beim Anlegen.** `null` = keine Einschränkung, und
   /// das ist der Standard: Eine stillschweigend eingeführte Obergrenze wäre
   /// eine Regel, die niemand gewählt hat. Wer sie will, schaltet sie hier ein
-  /// — oder später unter Regeln & Format.
+  /// — oder später in den Einstellungen unter Draft.
   final Map<PlayerPosition, int?> _limits = {
     for (final pos in PlayerPosition.values) pos: null,
   };

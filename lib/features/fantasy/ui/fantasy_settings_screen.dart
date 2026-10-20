@@ -136,10 +136,17 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
         children: [
-          // Liga-Identität (nur Ersteller).
-          if (isOwner) ...[
-            _Section('Liga'),
-            _settingsGroup(context, [
+          // **Nach Themen geordnet** (20.10.2026, auf Ansage: „sehr
+          // durcheinander — mal dort Draft, mal da Draft"). Vorher stand das
+          // Draft-Board in einer eigenen Gruppe oben, die Draft-Einstellungen
+          // und der Reset unter „Regeln & Format", Teilnehmerzahl und Admin
+          // wieder woanders und das Einladen ganz unten. Jetzt: Liga, Mein
+          // Team, Draft, Spielregeln, Tippspiel, Gefahrenzone.
+
+          // --- Liga: wer, wie sichtbar, wie viele -------------------------
+          _Section('Liga'),
+          _settingsGroup(context, [
+            if (isOwner) ...[
               ListTile(
                 leading: Icon(Icons.drive_file_rename_outline),
                 title: const Text('Liga-Name ändern'),
@@ -181,31 +188,33 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-            ]),
-          ],
-
-          // Der Draft — für alle, nicht nur den Ersteller. Nach dem letzten
-          // Pick verschwindet der Draft-Raum aus der Liga-Übersicht
-          // (`if (!draftFullyDone)`), und damit war das Board nicht mehr
-          // erreichbar. Hier kommt man wieder heran.
-          if (l.draftStatus != DraftStatus.setup) ...[
-            _Section('Draft'),
-            _settingsGroup(context, [
+            ],
+            ListTile(
+              leading: Icon(Icons.groups_outlined),
+              title: const Text('Teilnehmerzahl'),
+              subtitle: Text(
+                l.maxTeams != null
+                    ? 'Höchstens ${l.maxTeams} Teams'
+                    : 'Ohne eigenes Limit — höchstens 18',
+              ),
+              trailing: const _Chevron(),
+              onTap: () => open(LeagueSettingsPage(league: l)),
+            ),
+            if (isOwner)
               ListTile(
-                leading: const Icon(Icons.grid_on_outlined),
-                title: const Text('Draft-Board'),
-                subtitle: Text(
-                  l.draftStatus == DraftStatus.done
-                      ? 'Nachschauen, wer wen gezogen hat'
-                      : 'Der Draft läuft gerade',
+                leading: Icon(Icons.admin_panel_settings_outlined),
+                title: const Text('Mitglieder & Kader verwalten'),
+                subtitle: const Text(
+                  'Kicken, verwaiste Teams zuweisen, Kader bearbeiten',
                 ),
                 trailing: const _Chevron(),
-                onTap: () => open(DraftBoardScreen(league: l)),
+                onTap: () => open(FantasyAdminScreen(league: l)),
               ),
-            ]),
-          ],
+          ]),
+          const SizedBox(height: 10),
+          _InviteBanner(code: l.inviteCode),
 
-          // Persönliches.
+          // --- Mein Team --------------------------------------------------
           _Section('Mein Team'),
           _settingsGroup(context, [
             ListTile(
@@ -221,8 +230,46 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             ),
           ]),
 
-          // Spielregeln & Format.
-          _Section('Regeln & Format'),
+          // --- Draft: alles, was den Draft betrifft, an einer Stelle -------
+          // Das Board für alle, nicht nur den Ersteller. Nach dem letzten
+          // Pick verschwindet der Draft-Raum aus der Liga-Übersicht, und
+          // hier kommt man wieder heran.
+          _Section('Draft'),
+          _settingsGroup(context, [
+            if (l.draftStatus != DraftStatus.setup)
+              ListTile(
+                leading: const Icon(Icons.grid_on_outlined),
+                title: const Text('Draft-Board'),
+                subtitle: Text(
+                  l.draftStatus == DraftStatus.done
+                      ? 'Nachschauen, wer wen gezogen hat'
+                      : 'Der Draft läuft gerade',
+                ),
+                trailing: const _Chevron(),
+                onTap: () => open(DraftBoardScreen(league: l)),
+              ),
+            ListTile(
+              leading: Icon(Icons.sports_outlined),
+              title: const Text('Draft-Einstellungen'),
+              subtitle: Text(
+                '${l.pickTime.label} · ${l.rounds} Runden${l.hasPause ? ' · Pause' : ''}',
+              ),
+              trailing: const _Chevron(),
+              onTap: () => open(DraftSettingsPage(league: l)),
+            ),
+            // Reset zur Winterpause (0143) gehört zum Draft: Er leert die
+            // Kader und startet den zweiten.
+            ListTile(
+              leading: const Icon(Icons.restart_alt),
+              title: const Text('Reset zur Winterpause'),
+              subtitle: Text(ResetPage.text(l)),
+              trailing: const _Chevron(),
+              onTap: () => open(ResetPage(league: l)),
+            ),
+          ]),
+
+          // --- Spielregeln: wonach gewertet wird ---------------------------
+          _Section('Spielregeln'),
           _settingsGroup(context, [
             ListTile(
               leading: Icon(Icons.calculate_outlined),
@@ -233,34 +280,6 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 MaterialPageRoute(builder: (_) => const ScoringInfoScreen()),
               ),
             ),
-            // Die Teilnehmerzahl. Die Seite dahinter gab es schon, sie war nur
-            // von nirgendwo zu erreichen — `LeagueSettingsPage` wurde in
-            // keiner Datei geöffnet. Wer die Zahl nach dem Anlegen ändern
-            // wollte, fand im Zahnrad Draft, Playoffs, Punkte und
-            // Sichtbarkeit, aber nichts für die Liga-Größe.
-            ListTile(
-              leading: Icon(Icons.groups_outlined),
-              title: const Text('Teilnehmerzahl'),
-              subtitle: Text(
-                l.maxTeams != null
-                    ? 'Höchstens ${l.maxTeams} Teams'
-                    : 'Ohne eigenes Limit — höchstens 18',
-              ),
-              trailing: const _Chevron(),
-              onTap: () => open(LeagueSettingsPage(league: l)),
-            ),
-            ListTile(
-              leading: Icon(Icons.sports_outlined),
-              title: const Text('Draft-Einstellungen'),
-              subtitle: Text(
-                '${l.pickTime.label} · ${l.rounds} Runden${l.hasPause ? ' · Pause' : ''}',
-              ),
-              trailing: const _Chevron(),
-              onTap: () => open(DraftSettingsPage(league: l)),
-            ),
-            // Kader-Limits je Position. Nur der Ersteller darf sie ändern
-            // (das erzwingt die RLS ohnehin); anzeigen tun wir sie allen,
-            // damit jeder die Regel kennt, nach der er draftet.
             ListTile(
               leading: const Icon(Icons.groups_outlined),
               title: const Text('Kader-Limits'),
@@ -268,23 +287,12 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               trailing: const _Chevron(),
               onTap: () => open(KaderLimitsPage(league: l)),
             ),
-            // Unentschieden bei knappem Ausgang (16.10.2026). Für alle
-            // sichtbar — es ist eine Regel, nach der jeder gewertet wird.
             ListTile(
               leading: const Icon(Icons.balance_outlined),
               title: const Text('Unentschieden'),
               subtitle: Text(RemisGrenzeEditor.text(l.remisGrenze)),
               trailing: const _Chevron(),
               onTap: () => open(RemisGrenzePage(league: l)),
-            ),
-            // Reset zur Winterpause (0143). Für alle sichtbar — es ist eine
-            // Regel, nach der die ganze Liga spielt.
-            ListTile(
-              leading: const Icon(Icons.restart_alt),
-              title: const Text('Reset zur Winterpause'),
-              subtitle: Text(ResetPage.text(l)),
-              trailing: const _Chevron(),
-              onTap: () => open(ResetPage(league: l)),
             ),
             ListTile(
               leading: Icon(Icons.emoji_events_outlined),
@@ -298,25 +306,6 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
               onTap: () => open(PlayoffSettingsPage(league: l)),
             ),
           ]),
-
-          // **Kein Saison-Rollover mehr.** Er führte eine Dynasty-Liga in die
-          // nächste Saison (Kader bleibt, danach U20-Draft) — beides gibt es
-          // seit dem 27.09.2026 nicht mehr. Im Redraft wird jede Saison neu
-          // gedraftet, dafür braucht es keine Aktion in den Einstellungen.
-          if (isOwner) ...[
-            _Section('Admin'),
-            _settingsGroup(context, [
-              ListTile(
-                leading: Icon(Icons.admin_panel_settings_outlined),
-                title: const Text('Mitglieder & Kader verwalten'),
-                subtitle: const Text(
-                  'Kicken, verwaiste Teams zuweisen, Kader bearbeiten',
-                ),
-                trailing: const _Chevron(),
-                onTap: () => open(FantasyAdminScreen(league: l)),
-              ),
-            ]),
-          ],
 
           // Ligainternes Tippspiel — **in beide Richtungen**, und keine
           // Richtung ohne Rückfrage. Vorher schaltete ein Fingertipp direkt
@@ -422,10 +411,6 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 onTap: () => _confirmLeave(context, ref, l),
               ),
           ], farbe: _grpGefahr),
-
-          // Mitspieler einladen — ganz unten.
-          _Section('Einladen'),
-          _InviteBanner(code: l.inviteCode),
         ],
       ),
     );
@@ -639,7 +624,8 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
       final choice = await rueckfrageWahl<String>(
         context,
         titel: 'Liga löschen?',
-        text: '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
+        text:
+            '„${l.name}" wird mit allen Drafts, Kadern und Daten endgültig '
             'gelöscht.\n\nZur Liga gehört das Tippspiel „${tipRound.name}". '
             'Behältst du es, bleibt es als eigenständige Tipprunde bestehen.',
         knoepfe: const [
@@ -1940,7 +1926,7 @@ class _InviteBanner extends StatelessWidget {
   }
 }
 
-/// **Unentschieden bei knappem Ausgang** — eigene Seite unter Regeln & Format.
+/// **Unentschieden bei knappem Ausgang** — eigene Seite unter Spielregeln.
 ///
 /// Anders als die Draft-Einstellungen ist sie die ganze Saison änderbar, und
 /// sie wirkt **rückwirkend**: Die Bilanz wird bei jedem Aufruf aus den
@@ -2025,8 +2011,7 @@ class _RemisGrenzePageState extends ConsumerState<RemisGrenzePage> {
   }
 }
 
-
-/// **Reset zur Winterpause** (0143) — eigene Seite unter Regeln & Format.
+/// **Reset zur Winterpause** (0143) — eigene Seite unter Draft.
 ///
 /// Änderbar, solange der Reset nicht stattgefunden hat und der 24.12. nicht
 /// erreicht ist (dieselbe Regel prüft ein Trigger in der Datenbank).
@@ -2081,7 +2066,8 @@ class _ResetPageState extends ConsumerState<ResetPage> {
   Widget build(BuildContext context) {
     final l = widget.league;
     final isOwner = ref.watch(currentUserProvider)?.id == l.createdBy;
-    final aenderbar = isOwner && l.resetAenderbar(widget.jetzt ?? DateTime.now());
+    final aenderbar =
+        isOwner && l.resetAenderbar(widget.jetzt ?? DateTime.now());
     return Scaffold(
       appBar: AppBar(title: const Text('Reset')),
       body: ListView(
@@ -2096,7 +2082,8 @@ class _ResetPageState extends ConsumerState<ResetPage> {
           const SizedBox(height: 12),
           _Hinweis(
             gut: true,
-            text: 'Am 24.12. gehen alle Spieler zurück in den Pool. Siege, '
+            text:
+                'Am 24.12. gehen alle Spieler zurück in den Pool. Siege, '
                 'Unentschieden und Niederlagen bleiben in der Tabelle. Danach '
                 'startet der Admin einen neuen Draft für die Rückrunde: Der '
                 'Tabellenletzte pickt zuerst, der Erste zuletzt, dann Snake. '
@@ -2109,15 +2096,14 @@ class _ResetPageState extends ConsumerState<ResetPage> {
               text: !isOwner
                   ? 'Nur der Ersteller der Liga kann das ändern.'
                   : l.resetErfolgtAt != null
-                      ? 'Der Reset hat stattgefunden.'
-                      : 'Nach dem 24.12. lässt sich das nicht mehr ändern.',
+                  ? 'Der Reset hat stattgefunden.'
+                  : 'Nach dem 24.12. lässt sich das nicht mehr ändern.',
             ),
           ],
           if (aenderbar) ...[
             const SizedBox(height: 20),
             FilledButton(
-              onPressed:
-                  (_saving || _wert == l.resetAktiv) ? null : _speichern,
+              onPressed: (_saving || _wert == l.resetAktiv) ? null : _speichern,
               child: MitLadekreis(
                 laedt: _saving,
                 child: const Text('Speichern'),

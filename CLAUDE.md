@@ -1160,7 +1160,7 @@ Teilnehmerzahl schon immer bearbeiten. Sie wurde nur **in keiner Datei
 geöffnet**: Im Zahnrad standen Draft-, Playoff-, Punkte- und
 Sichtbarkeits-Einstellungen, aber nichts, was zur Liga-Größe führte. Wer sie
 nach dem Anlegen ändern wollte, hatte keinen Weg dorthin. Jetzt steht unter
-„Regeln & Format" die Kachel **Teilnehmerzahl** mit dem aktuellen Stand im
+„Liga" (seit 20.10.2026; vorher „Regeln & Format") die Kachel **Teilnehmerzahl** mit dem aktuellen Stand im
 Untertitel.
 
 Zwei Dinge, die dabei mit hochkamen:
@@ -2518,6 +2518,16 @@ Höhe (der Live-Tab hält den Platz selbst frei und liest dieselbe Zahl).
 
 ## Fantasy-Einstellungen
 
+**Nach Themen geordnet seit dem 20.10.2026** (auf Ansage: „sehr
+durcheinander — mal dort Draft, mal da Draft"): **Liga** (Name, Logo,
+Sichtbarkeit — nur Ersteller —, Teilnehmerzahl, Mitglieder verwalten, darunter
+der Einladungscode), **Mein Team** (Teamname), **Draft** (Draft-Board, sobald
+gedraftet ist, Draft-Einstellungen, Reset zur Winterpause), **Spielregeln**
+(Punktevergabe, Kader-Limits, Unentschieden, Playoffs), **Tippspiel**,
+**Gefahrenzone**. Die Gruppen „Regeln & Format", „Admin" und „Einladen" gibt
+es nicht mehr. Der Abschnitt darunter beschreibt die Gruppenfarben von
+damals; geblieben ist nur das Rot der Gefahrenzone.
+
 Kein eigener Canvas — der Schirm bekommt die Sprache, die die anderen fünf
 inzwischen sprechen. Drei Befunde, drei Änderungen:
 
@@ -2991,7 +3001,7 @@ etwas meldet (Uhr abgelaufen, Auto-Pick-Warnung).
 ### Reset zur Winterpause (0143, 20.10.2026)
 
 Auf Ansage: eine Ligaeinstellung (beim Erstellen unter „Winterpause", später
-unter Regeln & Format › **Reset zur Winterpause**), änderbar bis zum Reset.
+unter Draft › **Reset zur Winterpause**), änderbar bis zum Reset.
 Am **24.12. der Saison** (00:00 Berlin, `fantasy_reset_termin`; 2026/27
 zwischen Spieltag 14 am 19.12. und 15 am 09.01.) leert der Cron
 `fantasy-reset` (alle 10 Min., `fantasy_resets_faellig`) alle Kader, storniert
@@ -3172,7 +3182,7 @@ bekommt er *gar keine* gültige Elf mehr zusammen. Fünf Kaderplätze waren tot.
 
 - **Fehlt ein `max…`-Schlüssel, gilt kein Limit.** Absicht: Als das entstand,
   liefen zwei Drafts, und eine stillschweigend eingeführte Obergrenze hätte sie
-  mitten im Lauf blockiert. Wer Limits will, setzt sie unter *Regeln & Format →
+  mitten im Lauf blockiert. Wer Limits will, setzt sie unter *Spielregeln →
   Kader-Limits*.
 - **Bestehende Kader brechen nicht.** Der Trigger prüft nur beim *Hinzufügen*;
   wer schon darüber liegt, behält seine Spieler und kann auf dieser Position
@@ -4367,7 +4377,7 @@ höchstens `remis_grenze` Punkte auseinander, endet das Duell unentschieden
 (`null` = aus, nur Punktgleichheit). **Einstellbar 5 bis 50 in
 Fünferschritten, Standard 10** (seit 19.10.2026, Migration 0138 mit Check;
 vorher 1–20 und Standard 5) — beim Erstellen (`RemisGrenzeEditor`,
-`WertStepper(schritt: 5)`) und unter Regeln & Format (`RemisGrenzePage`, nur
+`WertStepper(schritt: 5)`) und unter Spielregeln (`RemisGrenzePage`, nur
 der Ersteller ändert, alle sehen sie). Ein alter Wert wird beim Anzeigen auf
 den nächsten erlaubten gezogen (`RemisGrenzeEditor.erlaubt`); beim Einspielen
 von 0138 hatte keine Liga die Regel an.
