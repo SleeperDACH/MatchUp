@@ -8,6 +8,76 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.8.0+12 — 21. Oktober 2026
+
+15 Commits seit 1.7.1+11. Der Schwerpunkt: **Reset zur Winterpause** — eine
+zweite Saisonhälfte mit neuem Draft, und Picks dafür, die man schon in der
+Hinrunde handeln kann. Dazu ein deutlich ruhigeres Design in der ganzen App.
+
+### Neu
+
+- **Reset zur Winterpause.** Ligaeinstellung unter *Draft*. Am 24.12. werden
+  alle Kader geleert, die Tabelle bleibt. Danach startet der Admin den
+  Reset-Draft im Snake — der Tabellenletzte pickt zuerst.
+- **Picks für den Reset-Draft handeln.** Während der Hinrunde lassen sich
+  die eigenen Picks tauschen — gegen Picks, gegen Spieler oder gemischt. Im
+  Trade-Schirm stehen sie unter den Spielern, im Kader unter der Bank. Das
+  **Draft-Board** auf der Übersicht zeigt, wo du nach der aktuellen Tabelle
+  stündest, und wem gehandelte Picks jetzt gehören.
+- **Nach jedem Draft steht eine Elf.** Wer nichts macht, spielt mit seinen
+  ersten Picks in einer 4-3-3. Was du selbst aufstellst, gilt immer. Endet
+  der Draft mitten im Spieltag, zählt die Elf ab dem nächsten.
+- **Aufstellen per Ziehen, auch über Positionen.** Spieler kurz halten und
+  auf einen Platz ziehen. Ein Mittelfeldspieler auf einen Sturmplatz macht
+  aus 3-4-3 ein 3-5-2 — die Formation passt sich an.
+- **Unentschieden bei knappem Ausgang.** Je Liga einstellbar (5 bis 50
+  Punkte Abstand, Standard 10).
+- **Spieler-Bereich** statt Free Agency, mit den Reitern *Verfügbar* und
+  *Leaders*.
+- **Kaderbewegungen, Waiver und Trades als Karten im Liga-Chat.**
+- **Der Admin kann den Draft pausieren** und fortsetzen; die Restzeit bleibt
+  erhalten.
+- **Wochenrückblick mit Push**, sobald der Spieltag umstellt.
+- **Live-Benachrichtigungen ohne Favorit** — für einzelne Vereine oder ganze
+  Wettbewerbe, über die Glocke im Live-Tab.
+- **Tipp-Erinnerung individuell:** beliebige Zeitpunkte vor Anpfiff,
+  Standard 2 Stunden und 30 Minuten.
+- **Anmeldung mit Google** auf iPhone und Android.
+- **Tabellenzonen** in den Ligatabellen (Meister, Europa, Relegation,
+  Abstieg).
+
+### Geändert
+
+- **Ruhigeres Design überall:** weniger Kästen, vier Schriftgrößen,
+  Überschriften schräg, Farbe nur, wo sie etwas bedeutet.
+- **Liga-Reiter in neuer Reihenfolge:** MatchUp · Kader · Übersicht ·
+  Tabelle. Die Tabelle zeigt oben alle Duelle des Spieltags.
+- **Spielerprofil nach Sleeper** mit Übersicht, Rang und den nächsten
+  Gegnern.
+- **Draft-Board ohne Farbflächen:** Position als Strich am Rand, oben rechts
+  das Vereinswappen, deine eigenen Picks grün umrandet.
+- **Trade-Partnerwahl** ohne Positionsfarben, mit Punkteschnitt je Spieler.
+- **Einstellungen der Fantasy-Liga** nach Themen geordnet: Liga, Mein Team,
+  Draft, Spielregeln.
+- **Rückfragen und Eingaben** erscheinen als Blatt von unten statt als
+  Kasten in der Mitte.
+- **Favoriten-Tab** aufgeräumt; Spiele ohne feste Anstoßzeit zeigen „Zeit
+  offen" statt „01:00".
+- **Wettbewerbs-Kacheln im Live-Tab** ohne Farbflächen.
+- **Kader:** kompakte Kacheln mit Ø und Heim/Auswärts, die Bank als
+  Wischreihe.
+- Avatar-Emojis werden immer bunt angezeigt.
+
+### Behoben
+
+- **Jedes Gerät zeigt dieselbe Ligatabelle** — vorher konnten nach einem
+  Spieltag verschiedene Stände auf verschiedenen Handys stehen.
+- Der Aufstellungs-Editor setzt nie mehr selbst einen Spieler in eine Lücke.
+- Der Punkteschnitt eines Spielers zählt nur Spiele, in denen er gespielt hat.
+- Die Kopfkarte auf dem Startbildschirm zeigt den Live-Stand.
+- Ligen mit Kader lassen sich wieder löschen.
+- Tipp-Erinnerungen kommen nicht mehr doppelt.
+
 ## 1.7.1+11 — 14. Oktober 2026
 
 9 Commits seit 1.7.0+10. Der Schwerpunkt: **Der MatchUp-Tab erzählt das
