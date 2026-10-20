@@ -278,4 +278,40 @@ void main() {
     expect(find.text('Nicht gespeichert – neuer Versuch läuft'), findsOneWidget,
         reason: '„Speichere …" wäre hier eine Lüge');
   });
+
+  testWidgets(
+      'Ziehen von der Bank auf eine andere Gruppe passt die Formation an',
+      (tester) async {
+    final repo = await _aufbauen(tester);
+    Finder name(String n) => find.byWidgetPredicate(
+        (w) => w is Text && (w.data ?? '').toLowerCase() == n.toLowerCase());
+    Future<void> ziehe(String von, String auf) async {
+      final g = await tester.startGesture(tester.getCenter(name(von)));
+      await tester.pump(const Duration(milliseconds: 400));
+      await g.moveTo(tester.getCenter(name(auf).first));
+      await tester.pump();
+      await g.up();
+      await tester.pumpAndSettle();
+    }
+
+    // Die Saat ohne Punkte ist 3-4-3; mid5 sitzt auf der Bank.
+    expect(name('mid5'), findsOneWidget, reason: 'mid5 muss auf der Bank sitzen');
+    final vorher = repo.versuche.length;
+
+    // Auf einen Abwehrplatz wäre 2-5-3 — nicht erlaubt: Meldung, nichts gespeichert.
+    await ziehe('mid5', 'def1');
+    expect(find.textContaining('2-5-3'), findsOneWidget);
+    expect(repo.versuche.length, vorher);
+
+    // Auf einen Sturmplatz: 3-5-2, gespeichert, fwd1 auf der Bank.
+    await ziehe('mid5', 'fwd1');
+    expect(repo.versuche.length, greaterThan(vorher));
+    final elf = repo.versuche.last;
+    expect(elf, hasLength(11));
+    expect(elf, contains('mid5'));
+    expect(elf, isNot(contains('fwd1')));
+    expect(elf.where((id) => id.startsWith('def')).length, 3);
+    expect(elf.where((id) => id.startsWith('mid')).length, 5);
+    expect(elf.where((id) => id.startsWith('fwd')).length, 2);
+  });
 }

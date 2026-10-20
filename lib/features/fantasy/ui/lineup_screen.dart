@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import '../../../app/widgets/kapitelmarke.dart';
 import 'meine_picks.dart';
+import '../logic/wechsel_mit_formation.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app/theme.dart';
@@ -801,15 +802,40 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     for (final e in s.entries) e.key: [...e.value],
   };
 
-  /// Spieler per Drag & Drop auf einen Platz ziehen. Gleiche Position ist
-  /// durch das DragTarget garantiert: vom Feld → Tausch der beiden Plätze,
-  /// von der Bank → der bisherige Spieler rückt auf die Bank.
+  /// Spieler per Drag & Drop auf einen Platz ziehen: vom Feld → Tausch der
+  /// beiden Plätze, von der Bank → der bisherige Spieler rückt auf die Bank.
+  /// Von der Bank auf eine **andere Positionsgruppe** passt sich die
+  /// Formation an (`wechselMitFormation`); geht sie nicht, sagt eine Meldung
+  /// warum, und nichts ändert sich.
   void _applyDrop(
     Map<PlayerPosition, List<String?>> slots,
     _DragData data,
     PlayerPosition pos,
     int index,
   ) {
+    if (data.pos != pos) {
+      final w = wechselMitFormation(
+        slots: slots,
+        spielerId: data.playerId,
+        spielerPos: data.pos,
+        von: data.from,
+        zielPos: pos,
+        zielIndex: index,
+        roster: _roster,
+        torwartImKader: (slots[PlayerPosition.gk]?.length ?? 0) > 0,
+      );
+      if (w.fehler != null) {
+        HapticFeedback.heavyImpact();
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(w.fehler!)));
+        return;
+      }
+      HapticFeedback.selectionClick();
+      setState(() => _slots = w.slots);
+      _autoSave(sofort: true);
+      return;
+    }
     final next = _copy(slots);
     final occupant = next[pos]![index];
     final from = data.from;
@@ -1093,9 +1119,15 @@ class _Pitch extends StatelessWidget {
     // rückwirkend für ein laufendes Spiel.
     final platzZu = player != null && gesperrt.contains(player.id);
     return DragTarget<_DragData>(
+      // Gleiche Position wie bisher; **von der Bank auch auf eine andere
+      // Gruppe** — dann passt sich die Formation an (`wechselMitFormation`).
+      // Der Torwart bleibt außen vor, seine Zahl steht fest.
       onWillAcceptWithDetails: (d) =>
           onDrop != null &&
-          d.data.pos == pos &&
+          (d.data.pos == pos ||
+              (d.data.from == null &&
+                  d.data.pos != PlayerPosition.gk &&
+                  pos != PlayerPosition.gk)) &&
           d.data.from != (pos, i) &&
           !platzZu &&
           !gesperrt.contains(d.data.playerId),
@@ -1122,6 +1154,9 @@ class _Pitch extends StatelessWidget {
         if (player == null || onDrop == null || platzZu) return slot;
         final data = _DragData(playerId: player.id, pos: pos, from: (pos, i));
         return LongPressDraggable<_DragData>(
+          // Kurz halten genügt — mit der Standardzeit (0,5 s) fühlte sich das
+          // Ziehen an, als gäbe es es nicht.
+          delay: const Duration(milliseconds: 250),
           data: data,
           dragAnchorStrategy: pointerDragAnchorStrategy,
           feedback: _DragFeedback(
@@ -1905,6 +1940,7 @@ class _Bench extends ConsumerWidget {
     if (onDropToBench == null || zu) return tappable;
     final data = _DragData(playerId: p.id, pos: p.position);
     return LongPressDraggable<_DragData>(
+      delay: const Duration(milliseconds: 250),
       data: data,
       dragAnchorStrategy: pointerDragAnchorStrategy,
       feedback: _DragFeedback(player: p, iconUrl: clubIcons[p.club]),

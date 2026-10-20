@@ -3498,6 +3498,21 @@ Gehalten von `test/luecke_bleibt_leer_test.dart` (zehn gespeicherte Spieler,
 Bankspieler mit laufendem Spiel); gegengeprüft — mit dem alten Auffüllen fällt
 er.
 
+### Ziehen über Positionsgruppen hinweg (20.10.2026)
+
+Auf Ansage: Ein Bankspieler lässt sich per Ziehen (kurz halten, 250 ms statt
+der Standard-0,5 s) auch auf den Platz einer **anderen** Positionsgruppe
+legen; die Formation passt sich an. Mittelfeldspieler auf Sturmplatz: der
+Stürmer geht auf die Bank, aus 3-4-3 wird 3-5-2. Regel in
+`logic/wechsel_mit_formation.dart`: Zielgruppe verliert den Platz, die
+Gruppe des Spielers bekommt einen am Ende dazu, die übrigen zehn bleiben.
+Nicht erlaubt (Meldung, nichts ändert sich): Torwart gegen Feldspieler,
+Feld-zu-Feld über Gruppen, eine Formation außerhalb der Spannen der Liga
+(„2-5-3 ist in dieser Liga keine erlaubte Formation"). Gesperrte Plätze und
+Spieler bleiben gesperrt wie bisher. Gehalten von
+`wechsel_mit_formation_test.dart` und einem Zieh-Fall in
+`aufstellung_sofort_speichern_test.dart` (abgelehnt und gültig).
+
 ### Die Aufstellung sperrt je Spieler, nicht je Spieltag
 
 Vorher galt **ein** Riegel für alles: `fantasy_round_deadline` liefert den
