@@ -3102,6 +3102,14 @@ Reset fest und wird bis dahin nach der **aktuellen** Tabelle angezeigt
   Spalte des ursprünglichen Teams (nach Manager eingeordnet überschrieben
   sich zwei Picks desselben Teams in einer Runde) und nennt in der Zelle den
   neuen Besitzer.
+- **Gehandelt wird Runde + Team, nie die Nummer** (21.10.2026, auf Ansage,
+  am Beispiel: wer „den Pick von Big Bang" holt und Big Bang danach in der
+  Tabelle steigt, hat weiter Big Bangs Pick, jetzt eben mit späterer Nummer).
+  Gespeichert war es schon immer so; die **Anzeige** folgt seitdem
+  `pickBeschriftung`: vor dem Reset „Runde 1 · Big Bang" vorn und „aktuell
+  1.01" dahinter, ab dem Reset (`PickSlot.fest`) die Nummer vorn. Gilt für
+  Pick-Kachel, Liste unter der Bank, Kopfzeile des Tauschs („R1 · Big Bang")
+  und Partnerwahl. Das Board zeigt weiter Nummern — es ist die Reihenfolge.
 - **Wo man es sieht:** Übersicht › Reset-Draft (eigene Picks als Marken,
   „Draft-Board" → `DraftBoardScreen(phase: 'reset')`, vor dem Reset die
   Vorschau nach aktueller Tabelle), Kader-Reiter unter der Bank (Liste

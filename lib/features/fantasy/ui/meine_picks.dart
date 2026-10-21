@@ -10,9 +10,10 @@ import '../providers.dart';
 /// **Die eigenen Picks für den Reset-Draft** (0145) — auf der Übersicht
 /// kompakt als Reihe, im Kader-Reiter unter der Bank als Liste.
 ///
-/// Die Nummer („2.07") ist die nach der **aktuellen** Tabelle; sie steht erst
-/// mit dem Reset fest. Ein erhandelter Pick nennt, von wem er kommt. Ohne
-/// Reset in der Liga zeigt der Baustein nichts.
+/// Gehandelt wird **Runde + Team**, nicht die Nummer (`pickBeschriftung`):
+/// Vor dem Reset steht „Runde 1 · Big Bang" vorn und „aktuell 1.01"
+/// dahinter, danach die feste Nummer. Ohne Reset in der Liga zeigt der
+/// Baustein nichts.
 class MeinePicks extends ConsumerWidget {
   const MeinePicks({super.key, required this.league, this.kompakt = false});
 
@@ -48,8 +49,14 @@ class MeinePicks extends ConsumerWidget {
       );
     }
 
-    String? herkunft(PickSlot p) =>
-        p.gehandelt ? 'von ${nameVon[p.ursprung] ?? '?'}' : null;
+    String team(PickSlot p) =>
+        p.ursprung == myId ? 'eigener' : (nameVon[p.ursprung] ?? '?');
+    ({String titel, String? zusatz}) text(PickSlot p) => pickBeschriftung(
+          runde: p.runde,
+          team: team(p),
+          code: p.code,
+          fest: p.fest,
+        );
 
     if (kompakt) {
       return SizedBox(
@@ -62,7 +69,7 @@ class MeinePicks extends ConsumerWidget {
               runSpacing: 6,
               children: [
                 for (final p in meine)
-                  _PickMarke(code: p.code, erhandelt: p.gehandelt),
+                  _PickMarke(code: text(p).titel, erhandelt: p.gehandelt),
               ],
             ),
             const SizedBox(height: 8),
@@ -91,29 +98,29 @@ class MeinePicks extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Row(
               children: [
-                SizedBox(
-                  width: 52,
+                if (p.gehandelt) ...[
+                  Icon(Icons.swap_horiz,
+                      size: 16, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(
                   child: Text(
-                    p.code,
+                    text(p).titel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: Schrift.titel,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: [FontFeature.tabularFigures()],
+                      fontSize: Schrift.text,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                Expanded(
-                  child: Text(
-                    'Runde ${p.runde}',
-                    style: const TextStyle(fontSize: Schrift.text),
-                  ),
-                ),
-                if (herkunft(p) case final h?)
+                if (text(p).zusatz case final z?)
                   Text(
-                    h,
+                    z,
                     style: TextStyle(
                       fontSize: Schrift.label,
                       color: scheme.onSurfaceVariant,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
               ],
@@ -164,19 +171,23 @@ class _PickMarke extends StatelessWidget {
 
 /// **Ein Pick als Karte** — im Trade-Schirm neben den Spielerkarten, in
 /// derselben Größe, damit ein Angebot aus Spielern und Picks wie eines
-/// aussieht. Oben die Nummer nach der aktuellen Tabelle („Pick 2.07"),
-/// darunter Runde und das Team, aus dessen Reihe der Pick stammt.
+/// aussieht. Beschriftet nach `pickBeschriftung`: vor dem Reset „Runde 1 ·
+/// Big Bang" mit „aktuell 1.01" darunter, danach die feste Nummer vorn.
 class PickKachel extends StatelessWidget {
   const PickKachel({
     super.key,
     required this.runde,
     required this.team,
     this.code,
+    this.fest = false,
     this.hervor = false,
     this.onTap,
     this.hoehe = 62,
     this.breite,
   });
+
+  /// Die Nummer steht fest (ab dem Reset).
+  final bool fest;
 
   final int runde;
 
@@ -196,10 +207,16 @@ class PickKachel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final klein = hoehe < 55;
+    final text = pickBeschriftung(
+      runde: runde,
+      team: team,
+      code: code,
+      fest: fest,
+    );
     return Semantics(
       button: onTap != null,
       selected: hervor,
-      label: 'Pick ${code ?? ''}, Runde $runde, $team',
+      label: [text.titel, ?text.zusatz].join(', '),
       excludeSemantics: true,
       child: Material(
         color: hervor
@@ -246,10 +263,10 @@ class PickKachel extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            code == null ? 'Pick R$runde' : 'Pick $code',
+                            text.titel,
                             maxLines: 1,
                             style: TextStyle(
-                              fontSize: klein ? Schrift.text : 15,
+                              fontSize: Schrift.text,
                               fontWeight: FontWeight.w800,
                               fontFeatures: const [
                                 FontFeature.tabularFigures(),
@@ -257,15 +274,19 @@ class PickKachel extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Text(
-                          'Runde $runde · $team',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: Schrift.label,
-                            color: scheme.onSurfaceVariant,
+                        if (text.zusatz case final z?)
+                          Text(
+                            z,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: Schrift.label,
+                              color: scheme.onSurfaceVariant,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),

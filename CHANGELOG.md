@@ -21,7 +21,10 @@ Hinrunde handeln kann. Dazu ein deutlich ruhigeres Design in der ganzen App.
   Reset-Draft im Snake — der Tabellenletzte pickt zuerst.
 - **Picks für den Reset-Draft handeln.** Während der Hinrunde lassen sich
   die eigenen Picks tauschen — gegen Picks, gegen Spieler oder gemischt. Im
-  Trade-Schirm stehen sie unter den Spielern, im Kader unter der Bank. Das
+  Trade-Schirm stehen sie unter den Spielern, im Kader unter der Bank.
+  Gehandelt wird der Pick eines Teams („Runde 1 · Big Bang"), nicht eine
+  feste Nummer: Steigt das Team in der Tabelle, wandert der Pick mit. Bis
+  zum Reset steht die Nummer deshalb als „aktuell 1.01" dabei. Das
   **Draft-Board** auf der Übersicht zeigt, wo du nach der aktuellen Tabelle
   stündest, und wem gehandelte Picks jetzt gehören.
 - **Nach jedem Draft steht eine Elf.** Wer nichts macht, spielt mit seinen

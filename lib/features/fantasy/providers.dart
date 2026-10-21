@@ -277,6 +277,7 @@ final resetPicksProvider =
     reihenfolge: reihenfolge,
     runden: league.rounds,
     rechte: rechte,
+    fest: league.resetErfolgtAt != null,
   );
 });
 

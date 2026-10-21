@@ -210,6 +210,7 @@ class TradePartnerList extends ConsumerWidget {
                     enabled: !closed,
                     schnitt: schnitt,
                     picks: slots == null ? null : picksVon(slots, m.userId),
+                    nameVon: {for (final x in managers) x.userId: x.display},
                     onOpen: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => TradeComposeScreen(
@@ -249,7 +250,11 @@ class _ParticipantColumn extends StatelessWidget {
     required this.onOpen,
     this.schnitt = const {},
     this.picks,
+    this.nameVon = const {},
   });
+
+  /// Anzeigenamen der Manager — für erhandelte Picks („R1 · Big Bang").
+  final Map<String, String> nameVon;
 
   final FantasyManager manager;
   final List<FantasyPlayer> players;
@@ -300,7 +305,11 @@ class _ParticipantColumn extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    pk.code,
+                    pk.fest
+                        ? pk.code
+                        : pk.ursprung == manager.userId
+                        ? 'R${pk.runde}'
+                        : 'R${pk.runde} · ${nameVon[pk.ursprung] ?? '?'}',
                     style: const TextStyle(
                       fontSize: Schrift.label,
                       fontWeight: FontWeight.w700,
@@ -704,6 +713,7 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
                 bekomme: requestSel,
                 gebePicks: offerPickSel,
                 bekommePicks: requestPickSel,
+                nameVon: nameVon,
                 clubIcons: clubIcons,
                 punkte: punkte,
               ),
@@ -948,6 +958,7 @@ class _ConfirmOfferSheet extends StatelessWidget {
                     runde: p.runde,
                     team: nameVon[p.ursprung] ?? '?',
                     code: p.code,
+                    fest: p.fest,
                     hervor: true,
                     hoehe: 46,
                     breite: 152,
@@ -1149,7 +1160,11 @@ class _Geschaeft extends StatelessWidget {
     required this.punkte,
     this.gebePicks = const [],
     this.bekommePicks = const [],
+    this.nameVon = const {},
   });
+
+  /// Anzeigenamen — ein Pick heißt „R1 · Big Bang", nicht „Pick 1.01".
+  final Map<String, String> nameVon;
 
   final List<FantasyPlayer> gebe;
   final List<FantasyPlayer> bekomme;
@@ -1307,7 +1322,9 @@ class _Geschaeft extends StatelessWidget {
                     size: 13, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Text(
-                  'Pick ${p.code}',
+                  p.fest
+                      ? 'Pick ${p.code}'
+                      : 'R${p.runde} · ${nameVon[p.ursprung] ?? '?'}',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -1460,6 +1477,7 @@ class _RosterColumn extends StatelessWidget {
             runde: pick.runde,
             team: nameVon[pick.ursprung] ?? '?',
             code: pick.code,
+            fest: pick.fest,
             hervor: selectedPicks.contains(pick.key),
             onTap: onTogglePick == null ? null : () => onTogglePick!(pick.key),
           ),
@@ -1788,6 +1806,7 @@ class TradeCard extends ConsumerWidget {
               runde: p.runde,
               team: nameVon[p.ursprung] ?? '?',
               code: codeVon[p.key],
+              fest: slots?.firstOrNull?.fest ?? false,
               hervor: true,
               hoehe: 46,
               breite: 152,

@@ -72,9 +72,17 @@ class PickSlot {
     required this.nummerInRunde,
     required this.ursprung,
     required this.besitzer,
+    this.fest = false,
   });
 
   final int runde;
+
+  /// **Steht die Nummer fest?** Erst mit dem Reset (24.12.) — davor ist sie
+  /// eine Hochrechnung aus der aktuellen Tabelle. Gehandelt wird nie die
+  /// Nummer, sondern **Runde + ursprüngliches Team**; steigt das Team in der
+  /// Tabelle, wandert sein Pick mit (auf Ansage, 21.10.2026). Die Anzeige
+  /// nennt deshalb vorher Runde und Team zuerst und die Nummer als „aktuell".
+  final bool fest;
 
   /// 1-basiert, nach Snake (ungerade Runden vorwärts, gerade rückwärts).
   final int nummerInRunde;
@@ -98,6 +106,7 @@ List<PickSlot> resetPicks({
   required List<String> reihenfolge,
   required int runden,
   required Map<PickKey, String> rechte,
+  bool fest = false,
 }) {
   final n = reihenfolge.length;
   return [
@@ -109,6 +118,7 @@ List<PickSlot> resetPicks({
           ursprung: reihenfolge[r.isOdd ? i : n - 1 - i],
           besitzer:
               besitzerVon(rechte, r, reihenfolge[r.isOdd ? i : n - 1 - i]),
+          fest: fest,
         ),
   ];
 }
@@ -143,3 +153,21 @@ bool picksHandelbar(FantasyLeague league) =>
     league.resetAktiv &&
     league.resetErfolgtAt == null &&
     league.draftStatus == DraftStatus.done;
+
+/// **Wie ein Pick beschriftet wird** (21.10.2026, auf Ansage). Gehandelt wird
+/// „Runde 1 von Big Bang", nicht „1.01": Steigt Big Bang in der Tabelle,
+/// wandert sein Pick mit. Vor dem Reset steht deshalb Runde und Team vorn und
+/// die Nummer als „aktuell …" dahinter; ab dem Reset ist die Nummer fest und
+/// steht vorn.
+({String titel, String? zusatz}) pickBeschriftung({
+  required int runde,
+  required String team,
+  String? code,
+  bool fest = false,
+}) =>
+    fest && code != null
+        ? (titel: 'Pick $code', zusatz: 'Runde $runde · $team')
+        : (
+            titel: 'Runde $runde · $team',
+            zusatz: code == null ? null : 'aktuell $code',
+          );

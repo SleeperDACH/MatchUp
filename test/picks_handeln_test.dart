@@ -46,6 +46,38 @@ void main() {
     });
   });
 
+  group('Gehandelt wird Runde + Team, nicht die Nummer', () {
+    test('steigt das Team in der Tabelle, wandert der Pick mit', () {
+      // SFV ('a') hat Runde 1 von Big Bang ('c') erhandelt.
+      final rechte = rechteKarte(const [
+        DraftRecht(runde: 1, ursprung: 'c', besitzer: 'a'),
+      ]);
+      // Heute ist Big Bang Letzter: Der Pick ist die 1.01.
+      final heute = resetPicks(
+          reihenfolge: const ['c', 'b', 'a'], runden: 1, rechte: rechte);
+      final vorher = heute.firstWhere((p) => p.ursprung == 'c');
+      expect(vorher.code, '1.01');
+      expect(vorher.besitzer, 'a');
+      // Big Bang klettert nach oben: derselbe Pick ist jetzt die 1.03 —
+      // und gehört weiter SFV.
+      final spaeter = resetPicks(
+          reihenfolge: const ['b', 'a', 'c'], runden: 1, rechte: rechte);
+      final nachher = spaeter.firstWhere((p) => p.ursprung == 'c');
+      expect(nachher.code, '1.03');
+      expect(nachher.besitzer, 'a');
+    });
+
+    test('Beschriftung: vor dem Reset Runde + Team, danach die Nummer', () {
+      final offen = pickBeschriftung(runde: 1, team: 'Big Bang', code: '1.01');
+      expect(offen.titel, 'Runde 1 · Big Bang');
+      expect(offen.zusatz, 'aktuell 1.01');
+      final fest = pickBeschriftung(
+          runde: 1, team: 'Big Bang', code: '1.11', fest: true);
+      expect(fest.titel, 'Pick 1.11');
+      expect(fest.zusatz, 'Runde 1 · Big Bang');
+    });
+  });
+
   group('amZugMitRechten', () {
     final managers = [
       for (final (i, id) in folge.indexed)
@@ -207,7 +239,9 @@ void main() {
     expect(find.text('Dein Pick'), findsOneWidget);
     // Eigene Picks: 1.01 (erhandelt), 1.03, 3.03, 4.01 — 2.03 ist an eric.
     expect(find.text('1.01'), findsWidgets);
-    expect(find.text('von lennart'), findsOneWidget);
+    // Die Liste nennt Runde und Team vorn, die Nummer als „aktuell".
+    expect(find.text('Runde 1 · lennart'), findsWidgets);
+    expect(find.text('aktuell 1.01'), findsWidgets);
     expect(find.textContaining('1 abgegeben'), findsOneWidget);
 
     await expectLater(
