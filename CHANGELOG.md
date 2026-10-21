@@ -67,8 +67,9 @@ Hinrunde handeln kann. Dazu ein deutlich ruhigeres Design in der ganzen App.
 - **Favoriten-Tab** aufgeräumt; Spiele ohne feste Anstoßzeit zeigen „Zeit
   offen" statt „01:00".
 - **Wettbewerbs-Kacheln im Live-Tab** ohne Farbflächen.
-- **Kader:** kompakte Kacheln mit Ø und Heim/Auswärts, die Bank als
-  Wischreihe.
+- **Kader:** Die Spieler stehen ohne Kasten auf dem Rasen — Wappen,
+  darunter Name und eine Zeile mit Heim/Auswärts, Gegner und Ø. Die Bank
+  läuft als Wischreihe mit Karten.
 - Avatar-Emojis werden immer bunt angezeigt.
 
 ### Behoben

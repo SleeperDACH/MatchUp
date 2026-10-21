@@ -22,6 +22,7 @@ class SpielMarke extends StatelessWidget {
     this.farbe,
     this.groesse = Schrift.label,
     this.mitZeit = true,
+    this.buchstabe = false,
   });
 
   final NaechstesSpiel spiel;
@@ -32,6 +33,10 @@ class SpielMarke extends StatelessWidget {
   /// Tag und Anstoß dahinter (MatchUp). Ohne Zeit (Kader) steht „Heim"
   /// bzw. „Auswärts" ausgeschrieben statt der Kurzmarke.
   final bool mitZeit;
+
+  /// H/A im Kästchen auch ohne Zeit — für die Zeile unter dem Namensschild
+  /// auf dem Rasen, wo „Auswärts" die Schrift zu klein zwang (21.10.2026).
+  final bool buchstabe;
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +51,7 @@ class SpielMarke extends StatelessWidget {
     final team = spiel.gegnerTeam;
     // **Heim/Auswärts als Marke, nicht als „@"** (19.10.2026, auf Ansage).
     // Mit Zeit ein Buchstabe im Kästchen (H/A), ohne Zeit das Wort.
-    final marke = mitZeit
+    final marke = (mitZeit || buchstabe)
         ? Container(
             padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
             decoration: BoxDecoration(

@@ -1244,8 +1244,6 @@ class _Slot extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = player;
     final ausfall = _ausfall(ref, p);
-    // **Der einzige farbige Strich auf der Karte** — siehe Namensfeld unten.
-    final farbe = positionColor(pos);
     // **Eine Zahl steht nur da, wenn sie etwas bedeutet.** Vor dem Anpfiff
     // seines Vereins gibt es keine Leistung dieses Spieltags — angezeigt wurde
     // trotzdem eine Zahl, und zwischen zwei Spieltagen kam sie aus der
@@ -1287,11 +1285,10 @@ class _Slot extends ConsumerWidget {
                 width: breite,
                 child: p == null
                     ? _LeererPlatz(pos: pos)
-                    : _SpielerKachelFeld(
+                    : _SpielerAufRasen(
                         spieler: p,
                         schnitt: schnitt,
                         iconUrl: iconUrl,
-                        farbe: farbe,
                         ausfall: ausfall,
                         spiel: spiel,
                         gesperrt: gesperrt,
@@ -1680,6 +1677,213 @@ class _SpielerKachelFeld extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// **Ein Spieler auf dem Rasen — ohne Kasten** (21.10.2026, auf Ansage: „mit
+/// dem Kaderbereich, wie dort die Spieler auf dem Spielfeld sind, noch nicht
+/// zufrieden … Name, Logo und Durchschnittspunkte müssen mit rein").
+///
+/// Vorher standen elf dunkle Karten auf dem Rasen, jede mit einem bunten
+/// Tauschkreis an der Ecke und einem Positionsstrich am Fuß — das Feld war
+/// eine Fläche aus Kästen, und der Rasen darunter nur noch Rand. Jetzt nach
+/// dem Muster von Sleeper und FPL: **Das Wappen steht auf dem Rasen**,
+/// darunter ein schmales, deckendes Namensschild (Nachname, weiß, fett) und
+/// darunter eine hellere Zeile mit Heim/Auswärts samt Gegnerwappen und dem Ø
+/// — läuft sein Spiel, stehen dort die Punkte. Die Position sagt die Reihe;
+/// Tausch und Schloss sind ein kleiner **neutraler** Kreis am Wappen.
+///
+/// Deckend, nicht durchscheinend: Auf dem Rasen ist Durchscheinendes schon
+/// einmal als „verschwommen" gemeldet worden. Die Bank behält die Karte
+/// ([_SpielerKachelFeld]) — auf schwarzem Grund ginge ein dunkles Schild unter.
+class _SpielerAufRasen extends StatelessWidget {
+  const _SpielerAufRasen({
+    required this.spieler,
+    required this.iconUrl,
+    required this.ausfall,
+    required this.spiel,
+    required this.gesperrt,
+    required this.zeigePunkte,
+    required this.punkte,
+    required this.onTausch,
+    required this.tauschLabel,
+    this.schnitt,
+  });
+
+  final FantasyPlayer spieler;
+  final String? iconUrl;
+  final PlayerAbsence? ausfall;
+  final NaechstesSpiel? spiel;
+  final bool gesperrt;
+  final bool zeigePunkte;
+  final double? punkte;
+  final double? schnitt;
+  final VoidCallback? onTausch;
+  final String tauschLabel;
+
+  /// Feste Höhe, damit eine Reihe nicht schief steht, egal ob vor, während
+  /// oder nach dem Spiel: Wappen 34 + 5 + Schild 19 + Zeile 17 = 75.
+  static const hoehe = 76.0;
+
+  static const _schild = Color(0xFF111111);
+  static const _zeile = Color(0xFF2B2B2B);
+
+  @override
+  Widget build(BuildContext context) {
+    final leise = Colors.white.withValues(alpha: 0.75);
+    final nachname = _SpielerKachelFeld._kurz(spieler.name);
+
+    final Widget unten;
+    if (zeigePunkte) {
+      unten = Text(
+        formatPoints(punkte ?? 0),
+        style: TextStyle(
+          color: (punkte ?? 0) < 0 ? const Color(0xFFF23030) : MatchUpColors.snow,
+          fontSize: Schrift.label,
+          fontWeight: FontWeight.w800,
+          height: 1.0,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      );
+    } else {
+      unten = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (spiel != null)
+            SpielMarke(
+                spiel: spiel!,
+                farbe: leise,
+                mitZeit: false,
+                buchstabe: true,
+                wappen: 12)
+          else
+            Text('frei',
+                style: TextStyle(
+                    fontSize: Schrift.mikro, height: 1.0, color: leise)),
+          if (schnitt != null) ...[
+            const SizedBox(width: 5),
+            Text(
+              'Ø ${formatPoints(schnitt!)}',
+              style: const TextStyle(
+                fontSize: Schrift.label,
+                fontWeight: FontWeight.w700,
+                height: 1.0,
+                color: MatchUpColors.snow,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    final ecke = Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: _schild,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+      ),
+      child: Icon(
+        onTausch == null ? Icons.lock_outline : Icons.swap_horiz,
+        size: 12,
+        color: MatchUpColors.snow,
+      ),
+    );
+
+    return SizedBox(
+      height: hoehe,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // **Volle Kachelbreite**, damit der Kreis rechts oben *innerhalb*
+          // liegt: Flutter nimmt Tipps außerhalb eines Elements nicht an —
+          // ein Kreis, der über den Rand ragt, wäre nur zum Ansehen da.
+          SizedBox(
+            width: double.infinity,
+            height: 34,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Opacity(
+                  opacity: gesperrt ? 0.6 : 1,
+                  child: ClubBadge(
+                      club: spieler.club, iconUrl: iconUrl, size: 32),
+                ),
+                if (ausfall != null)
+                  Align(
+                    alignment: const Alignment(-0.45, 1),
+                    child: AusfallZeichen(ausfall: ausfall!, size: 15),
+                  ),
+                // Rechts neben dem Wappen statt darauf.
+                Positioned(
+                  top: onTausch == null ? 0 : -6,
+                  right: onTausch == null ? 0 : -6,
+                  child: onTausch == null
+                      ? ecke
+                      // Der Name bleibt für die Vorlesehilfe — sonst hießen
+                      // alle elf Knöpfe „Schaltfläche".
+                      : Semantics(
+                          button: true,
+                          label: tauschLabel,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: onTausch,
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: ecke,
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 5),
+          // Namensschild und Zeile darunter als ein Stück: oben dunkel und
+          // fett, unten eine Stufe heller.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  height: 19,
+                  color: _schild,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      nachname,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: gesperrt
+                            ? MatchUpColors.snow.withValues(alpha: 0.6)
+                            : MatchUpColors.snow,
+                        fontSize: Schrift.text,
+                        fontWeight: FontWeight.w800,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  height: 17,
+                  color: _zeile,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  alignment: Alignment.center,
+                  child: FittedBox(fit: BoxFit.scaleDown, child: unten),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

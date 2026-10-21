@@ -324,14 +324,17 @@ void main() {
     // **Jede Kachel gleich hoch** — mit Punkten (Spiel läuft) wie mit
     // Anstoßzeit (Spiel kommt). Gemeldet am 17.10.2026: „die Boxen sehen
     // verschoben aus, wenn das Spiel läuft".
-    final hoehen = {
-      for (final e in find
-          .byWidgetPredicate(
-              (w) => w.runtimeType.toString() == '_SpielerKachelFeld')
-          .evaluate())
-        (e.renderObject! as RenderBox).size.height,
-    };
-    expect(hoehen, hasLength(1), reason: 'verschiedene Höhen: $hoehen');
+    // Feld (`_SpielerAufRasen`, seit 21.10.2026 ohne Kasten) und Bank
+    // (`_SpielerKachelFeld`) je für sich.
+    for (final typ in ['_SpielerAufRasen', '_SpielerKachelFeld']) {
+      final hoehen = {
+        for (final e in find
+            .byWidgetPredicate((w) => w.runtimeType.toString() == typ)
+            .evaluate())
+          (e.renderObject! as RenderBox).size.height,
+      };
+      expect(hoehen, hasLength(1), reason: '$typ: verschiedene Höhen $hoehen');
+    }
 
     // Das Bild trägt Tage relativ zu heute — verglichen wird nur beim
     // Aufnehmen, die Messungen darüber laufen immer.

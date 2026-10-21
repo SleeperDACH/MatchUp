@@ -3301,6 +3301,22 @@ sonst feuern sie erst beim Commit, den ein Probelauf mit Rollback nie erreicht.
 
 ### Das Spielfeld im Kader-Tab
 
+**Seit dem 21.10.2026 stehen die Spieler ohne Kasten auf dem Rasen**
+(`_SpielerAufRasen`, auf Ansage: „mit dem Kaderbereich … noch nicht
+zufrieden; Name, Logo und Durchschnittspunkte müssen mit rein"). Nach dem
+Muster von Sleeper und FPL: Wappen 32 direkt auf dem Rasen, darunter ein
+deckendes Namensschild (`#111111`, Nachname w800) und eine Stufe heller
+(`#2B2B2B`) die Zeile mit H/A-Kästchen, Gegnerwappen und Ø — während des
+Spiels die Punkte. Kein Positionsstrich (die Reihe sagt die Position), Tausch
+und Schloss als kleiner **neutraler** Kreis rechts oben. Feste Höhe 76.
+**Der Kreis muss innerhalb des Wappenbereichs liegen**, der deshalb die volle
+Kachelbreite hat: Flutter nimmt Tipps außerhalb eines Elements nicht an — im
+ersten Wurf ragte der Kreis über den Rand und war nicht mehr bedienbar, die
+Editor-Tests haben es gefunden. Die **Bank behält die Karten**
+(`_SpielerKachelFeld`): Auf schwarzem Grund ginge ein dunkles Schild unter.
+`SpielMarke(buchstabe: true)` setzt H/A auch ohne Zeit — „Auswärts" als Wort
+zwang die Zeile zu klein. Die Beschreibung darunter ist der Stand davor.
+
 Gemeldet: „Die Namen sehen doof aus, die Punkte sind zu klein, die
 Tauschknöpfe sind in Ordnung, können aber besser. Außerdem muss das Aussehen
 besser sein, wenn man an der Aufstellung nichts mehr ändern kann."
