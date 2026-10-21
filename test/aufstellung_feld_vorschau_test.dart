@@ -326,7 +326,7 @@ void main() {
     // verschoben aus, wenn das Spiel läuft".
     // Feld (`_SpielerAufRasen`, seit 21.10.2026 ohne Kasten) und Bank
     // (`_SpielerKachelFeld`) je für sich.
-    for (final typ in ['_SpielerAufRasen', '_SpielerKachelFeld']) {
+    for (final typ in ['_SpielerAufRasen']) {
       final hoehen = {
         for (final e in find
             .byWidgetPredicate((w) => w.runtimeType.toString() == typ)

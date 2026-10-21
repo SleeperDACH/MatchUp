@@ -1407,280 +1407,6 @@ class _ProjektionsBox extends StatelessWidget {
   }
 }
 
-/// Gegner und Anstoß klein in der oberen Ecke einer Spielerkachel.
-///
-/// Zwei Zeilen statt einer: „@BVB Sa 15:30" nebeneinander passte neben dem
-/// Tauschknopf nicht in 68 Punkte Breite.
-/// **Ein Spieler auf dem Feld — eine Auskunft je Zeile.**
-///
-/// Vorher drängten sich in der Kopfzeile einer 68 Punkte breiten Kachel
-/// Gegner, Anstoß, Ausfall-Zeichen und Tauschknopf; was nicht passte,
-/// schrumpfte — bei einem verletzten Spieler stand „FCA Sa 15:30" in 7 Punkt
-/// da, und „SCHLOTTERBECK" in Versalien kaum lesbar (gemeldet als
-/// „zusammengequetscht", 16.10.2026). Jetzt:
-///
-/// * **Wappen** oben in der Mitte, das Ausfall-Zeichen an seiner Ecke;
-/// * **Name** darunter, in normaler Schreibung (Versalien laufen breiter);
-/// * **Gegner und Anstoß** in einer Zeile am Fuß — bzw. die Punkte, sobald
-///   sein Spiel läuft;
-/// * **Tausch oder Schloss** als kleiner Kreis an der oberen rechten Ecke,
-///   außerhalb des Inhalts.
-///
-/// Die Position steht als Strich an der Unterkante — dieselbe Regel wie
-/// überall: Farbe als Akzent, nicht als Fläche.
-class _SpielerKachelFeld extends StatelessWidget {
-  const _SpielerKachelFeld({
-    required this.spieler,
-    required this.iconUrl,
-    required this.farbe,
-    required this.ausfall,
-    required this.spiel,
-    required this.gesperrt,
-    required this.zeigePunkte,
-    required this.punkte,
-    required this.onTausch,
-    required this.tauschLabel,
-    this.ohneEcke = false,
-    this.ausfallFlaeche = false,
-    this.schnitt,
-  });
-
-  /// Ø je Einsatz der laufenden Saison (19.10.2026, auf Ansage) — `null`
-  /// ohne Einsatz; dann steht ein Strich, damit die Kacheln gleich hoch
-  /// bleiben.
-  final double? schnitt;
-
-  /// **Auf der Bank trägt ein Ausfall die ganze Fläche** (17.10.2026, auf
-  /// Ansage): gold bei Verletzung, rot bei Sperre. Auf dem Feld bleibt es beim
-  /// Zeichen am Wappen — dort sagt das Schloss bzw. der Tauschknopf schon
-  /// genug, und elf getönte Kacheln wären keine Hervorhebung mehr. In der
-  /// Bank ist es die Frage, die man stellt: wen kann ich überhaupt bringen?
-  final bool ausfallFlaeche;
-
-  /// Auf der Bank gibt es keinen Tauschknopf — die Ecke zeigt dort nur das
-  /// Schloss, wenn sein Spiel läuft, sonst nichts.
-  final bool ohneEcke;
-
-  final FantasyPlayer spieler;
-  final String? iconUrl;
-  final Color farbe;
-  final PlayerAbsence? ausfall;
-  final NaechstesSpiel? spiel;
-  final bool gesperrt;
-  final bool zeigePunkte;
-  final double? punkte;
-  final VoidCallback? onTausch;
-  final String tauschLabel;
-
-  /// Feste Maße der Kachel — **kompakt seit dem 19.10.2026** (auf Ansage:
-  /// „nicht ganz so fett, schmaler, dünner, kleiner"): Polster 6 + Wappen 26
-  /// + 4 + Name 16 + 3 + Fuß 14 + 1 + Ø 12 + Polster 5 + Rand 2 = 89, plus 1
-  /// Luft. Vorher 108 hoch, Wappen 30, Name extrafett.
-  static const _kachelHoehe = 90.0;
-  static const _schnittHoehe = 12.0;
-  static const _nameHoehe = 16.0;
-  static const _fussHoehe = 14.0;
-
-  static String _kurz(String name) {
-    final teile = name.trim().split(' ');
-    return teile.length > 1 ? teile.last : name;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final leise = Colors.white.withValues(alpha: 0.7);
-
-    final Widget fuss;
-    if (zeigePunkte) {
-      fuss = Text(
-        formatPoints(punkte ?? 0),
-        style: TextStyle(
-          color: (punkte ?? 0) < 0 ? const Color(0xFFF23030) : MatchUpColors.snow,
-          fontSize: Schrift.text,
-          fontWeight: FontWeight.w800,
-          height: 1.0,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
-      );
-    } else if (spiel != null) {
-      // **Wappen statt Kürzel** (19.10.2026): „FCA · Sa 15:30" in fetter
-      // Kleinschrift war die unruhigste Zeile der Kachel.
-      // Im Kader nur Heim/Auswärts und der Gegner, ohne Tag und Zeit
-      // (19.10.2026, auf Ansage).
-      fuss = SpielMarke(spiel: spiel!, farbe: leise, mitZeit: false);
-    } else {
-      fuss = Text('spielfrei',
-          style: TextStyle(fontSize: Schrift.label, height: 1.0, color: leise));
-    }
-
-    // **Immer gleich hoch** (17.10.2026, gemeldet: „die Boxen sehen
-    // verschoben aus, wenn das Spiel läuft bzw. durch ist"). Am Fuß stand vor
-    // dem Spiel der Termin in 11 Punkt, danach die Punktzahl in 14 — die
-    // Kachel wuchs um ein paar Punkte, und die Reihe stand schief. Jetzt hat
-    // die Kachel eine feste Höhe und der Fuß einen festen Platz; was hinein
-    // muss, schrumpft.
-    final karte = Container(
-      height: _kachelHoehe,
-      padding: const EdgeInsets.fromLTRB(5, 6, 5, 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        // Deckend, nicht durchscheinend — auf dem Rasen ist alles
-        // Durchscheinende schon einmal als „verschwommen" gemeldet worden.
-        // Getönt wird **deckend** (aufgemischt), nicht durchscheinend.
-        color: ausfallFlaeche && ausfall != null
-            ? Color.alphaBlend(
-                ausfallFarbe(ausfall!).withValues(alpha: 0.30),
-                scheme.surfaceContainer)
-            : scheme.surfaceContainer,
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Wappen mit dem Ausfall-Zeichen an der Ecke.
-          SizedBox(
-            width: 32,
-            height: 26,
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
-              children: [
-                Opacity(
-                  opacity: gesperrt ? 0.55 : 1,
-                  child: ClubBadge(
-                      club: spieler.club, iconUrl: iconUrl, size: 24),
-                ),
-                if (ausfall != null)
-                  Positioned(
-                    right: -4,
-                    bottom: -2,
-                    child: AusfallZeichen(ausfall: ausfall!, size: 14),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          // **Schrumpfen statt kappen** — aber in normaler Schreibung, die
-          // weniger schrumpfen muss als Versalien.
-          SizedBox(
-            height: _nameHoehe,
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  _kurz(spieler.name),
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    color: gesperrt
-                        ? MatchUpColors.snow.withValues(alpha: 0.6)
-                        : MatchUpColors.snow,
-                    fontSize: Schrift.text,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 3),
-          SizedBox(
-            height: _fussHoehe,
-            child: Center(
-              child: FittedBox(fit: BoxFit.scaleDown, child: fuss),
-            ),
-          ),
-          const SizedBox(height: 1),
-          SizedBox(
-            height: _schnittHoehe,
-            child: Center(
-              child: Text(
-                schnitt == null ? '' : 'Ø ${formatPoints(schnitt!)}',
-                style: TextStyle(
-                  fontSize: Schrift.label,
-                  fontWeight: FontWeight.w600,
-                  height: 1.0,
-                  color: leise,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // Tausch bzw. Schloss als Kreis an der Ecke — außerhalb des Inhalts, so
-    // dass ihm nichts weichen muss.
-    final ecke = Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: scheme.surfaceContainerHighest,
-        border: Border.all(
-          color: onTausch == null
-              ? Theme.of(context).dividerColor
-              : farbe.withValues(alpha: 0.8),
-        ),
-      ),
-      child: Icon(
-        onTausch == null ? Icons.lock_outline : Icons.swap_horiz,
-        size: 13,
-        color: onTausch == null ? leise : farbe,
-      ),
-    );
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        karte,
-        // Die Position als Strich an der Unterkante — in der Karte, nicht
-        // als Rand: Ungleiche Ränder vertragen sich nicht mit runden Ecken.
-        Positioned(
-          left: 14,
-          right: 14,
-          bottom: 0,
-          height: 2,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: farbe.withValues(alpha: 0.9),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(2)),
-            ),
-          ),
-        ),
-        if (!ohneEcke)
-        Positioned(
-          // Mit Tastfläche (6 Punkte Polster) sitzt der Kreis an derselben
-          // Stelle wie ohne.
-          top: onTausch == null ? -7 : -13,
-          right: onTausch == null ? -7 : -13,
-          child: onTausch == null
-              ? ecke
-              // **Der Name bleibt für die Vorlesehilfe.** Ohne ihn hießen alle
-              // elf Knöpfe „Schaltfläche" — der Zustand, den
-              // `knopfnamen_test` verbietet. Die Tastfläche ist größer als
-              // der Kreis.
-              : Semantics(
-                  button: true,
-                  label: tauschLabel,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onTausch,
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: ecke,
-                    ),
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-}
-
 /// **Ein Spieler auf dem Rasen — ohne Kasten** (21.10.2026, auf Ansage: „mit
 /// dem Kaderbereich, wie dort die Spieler auf dem Spielfeld sind, noch nicht
 /// zufrieden … Name, Logo und Durchschnittspunkte müssen mit rein").
@@ -1709,7 +1435,20 @@ class _SpielerAufRasen extends StatelessWidget {
     required this.onTausch,
     required this.tauschLabel,
     this.schnitt,
+    this.aufBank = false,
+    this.ohneEcke = false,
   });
+
+  /// **Auf der Bank** (21.10.2026, auf Ansage „auf der Bank bitte auch in die
+  /// Richtung"): dieselbe Form, aber die Schilder eine Stufe heller, damit
+  /// sie sich vom schwarzen Grund abheben; die Position als Strich unter dem
+  /// Schild (dort sagt sie keine Reihe); ein Ausfall färbt das Namensschild
+  /// gold bzw. rot — vorher die ganze Karte (17.10.2026, ausdrücklich
+  /// gewollt: „wen kann ich überhaupt bringen?").
+  final bool aufBank;
+
+  /// Kein Kreis an der Ecke (Bank ohne laufendes Spiel).
+  final bool ohneEcke;
 
   final FantasyPlayer spieler;
   final String? iconUrl;
@@ -1728,11 +1467,25 @@ class _SpielerAufRasen extends StatelessWidget {
 
   static const _schild = Color(0xFF111111);
   static const _zeile = Color(0xFF2B2B2B);
+  static const _schildBank = Color(0xFF1E1E1E);
+  static const _zeileBank = Color(0xFF2E2E2E);
+
+  static String _kurz(String name) {
+    final teile = name.trim().split(' ');
+    return teile.length > 1 ? teile.last : name;
+  }
 
   @override
   Widget build(BuildContext context) {
     final leise = Colors.white.withValues(alpha: 0.75);
-    final nachname = _SpielerKachelFeld._kurz(spieler.name);
+    final nachname = _kurz(spieler.name);
+    final schildGrund = aufBank
+        ? (ausfall != null
+            ? Color.alphaBlend(
+                ausfallFarbe(ausfall!).withValues(alpha: 0.45), _schildBank)
+            : _schildBank)
+        : _schild;
+    final zeileGrund = aufBank ? _zeileBank : _zeile;
 
     final Widget unten;
     if (zeigePunkte) {
@@ -1818,6 +1571,7 @@ class _SpielerAufRasen extends StatelessWidget {
                     child: AusfallZeichen(ausfall: ausfall!, size: 15),
                   ),
                 // Rechts neben dem Wappen statt darauf.
+                if (!ohneEcke)
                 Positioned(
                   top: onTausch == null ? 0 : -6,
                   right: onTausch == null ? 0 : -6,
@@ -1852,7 +1606,7 @@ class _SpielerAufRasen extends StatelessWidget {
               children: [
                 Container(
                   height: 19,
-                  color: _schild,
+                  color: schildGrund,
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   alignment: Alignment.center,
                   child: FittedBox(
@@ -1873,12 +1627,14 @@ class _SpielerAufRasen extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  height: 17,
-                  color: _zeile,
+                  height: aufBank ? 15 : 17,
+                  color: zeileGrund,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   alignment: Alignment.center,
                   child: FittedBox(fit: BoxFit.scaleDown, child: unten),
                 ),
+                if (aufBank)
+                  Container(height: 2, color: positionColor(spieler.position)),
               ],
             ),
           ),
@@ -2064,7 +1820,7 @@ class _Bench extends ConsumerWidget {
                   // Sortiert nach Position, dann Punkten; freie Kaderplätze
                   // stehen als eigene Karte am Ende.
                   SizedBox(
-                    height: _SpielerKachelFeld._kachelHoehe + 8,
+                    height: _SpielerAufRasen.hoehe + 8,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       clipBehavior: Clip.none,
@@ -2118,11 +1874,11 @@ class _Bench extends ConsumerWidget {
 
   Widget _bankKarte(WidgetRef ref, FantasyPlayer p) {
     final zu = gesperrt.contains(p.id);
-    final karte = _SpielerKachelFeld(
+    final karte = _SpielerAufRasen(
+      aufBank: true,
       spieler: p,
       schnitt: schnitte[p.id],
       iconUrl: clubIcons[p.club],
-      farbe: positionColor(p.position),
       // Der Ausfall steht am Wappen — die Bank ist die Liste, aus der man
       // den Ersatz holt.
       ausfall: ausfallFuer(ref, p.id),
@@ -2133,7 +1889,6 @@ class _Bench extends ConsumerWidget {
       onTausch: null,
       tauschLabel: '',
       ohneEcke: !zu,
-      ausfallFlaeche: true,
     );
     // Tippen → Profil; langes Drücken → aufs Feld ziehen.
     final tappable = GestureDetector(
@@ -2164,7 +1919,7 @@ class _Bench extends ConsumerWidget {
         borderRadius: BorderRadius.circular(14),
         onTap: onOpenFreeAgency,
         child: Container(
-          height: _SpielerKachelFeld._kachelHoehe,
+          height: _SpielerAufRasen.hoehe,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: Theme.of(context).dividerColor),

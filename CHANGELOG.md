@@ -69,7 +69,8 @@ Hinrunde handeln kann. Dazu ein deutlich ruhigeres Design in der ganzen App.
 - **Wettbewerbs-Kacheln im Live-Tab** ohne Farbflächen.
 - **Kader:** Die Spieler stehen ohne Kasten auf dem Rasen — Wappen,
   darunter Name und eine Zeile mit Heim/Auswärts, Gegner und Ø. Die Bank
-  läuft als Wischreihe mit Karten.
+  sieht genauso aus; ein verletzter oder gesperrter Spieler hat dort ein
+  goldenes bzw. rotes Namensschild.
 - Avatar-Emojis werden immer bunt angezeigt.
 
 ### Behoben

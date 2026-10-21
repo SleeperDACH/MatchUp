@@ -3312,8 +3312,11 @@ und Schloss als kleiner **neutraler** Kreis rechts oben. Feste Höhe 76.
 **Der Kreis muss innerhalb des Wappenbereichs liegen**, der deshalb die volle
 Kachelbreite hat: Flutter nimmt Tipps außerhalb eines Elements nicht an — im
 ersten Wurf ragte der Kreis über den Rand und war nicht mehr bedienbar, die
-Editor-Tests haben es gefunden. Die **Bank behält die Karten**
-(`_SpielerKachelFeld`): Auf schwarzem Grund ginge ein dunkles Schild unter.
+Editor-Tests haben es gefunden. **Die Bank folgt am selben Tag**
+(`aufBank: true`, auf Ansage): Schilder eine Stufe heller (`#1E1E1E`/
+`#2E2E2E`) gegen den schwarzen Grund, die Position als 2-Punkt-Strich unter
+dem Schild (dort sagt sie keine Reihe), ein Ausfall färbt das Namensschild
+gold bzw. rot statt der ganzen Karte. `_SpielerKachelFeld` ist gelöscht.
 `SpielMarke(buchstabe: true)` setzt H/A auch ohne Zeit — „Auswärts" als Wort
 zwang die Zeile zu klein. Die Beschreibung darunter ist der Stand davor.
 
