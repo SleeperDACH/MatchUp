@@ -5199,6 +5199,32 @@ ist von einem Erfolg nicht zu unterscheiden. Wo ein Blatt etwas abschicken
 soll, muss der Abschicken-Knopf immer sichtbar sein — und wenn er nicht kann,
 muss er sagen, warum.
 
+### Ausfälle verlässlicher (0146, 27.10.2026)
+
+Auf Ansage („Bekommen wir das hin, dass die Verletzungsmeldungen verlässlich
+sind?"). Nachgemessen: 98 sichtbare Ausfälle, 50 verletzte Auswechslungen
+in sieben Spieltagen, 30 davon ohne Meldung der Quelle. Vier Stellen:
+
+- **Ein offizieller Kader nach dem Verletzungstag hebt die Verletzung auf.**
+  `predicted_lineups.bestaetigt` (Startelf oder Bank, 0118) an einem
+  späteren **Tag** (deutsche Zeit) als `seit` → `ueberholt`. Die Quelle
+  schließt Ausfälle oft nicht; bisher griff nur die eigene Bundesliga-Minute.
+  Anlass: Robin Zentner, „Handverletzung" seit 14.09., am 27.10. im Kader.
+- **„Verletzt ausgewechselt" verdeckt nur noch eine Meldung zum selben
+  Vorfall** (Verletzung mit Beginn ab dem Tag vor dem Spiel). Vorher reichte
+  *irgendein* Eintrag, auch eine alte Sperre.
+- **`sync-absences` löscht bei verdächtiger Antwort nichts** (unter 15
+  Vereinen oder weniger als die Hälfte der bisherigen Ausfälle): nur
+  ergänzen, Antwort 502, die Wache sieht es. Vorher räumte ein einziger
+  Fehlschlag der Quelle die ganze Tabelle — eine Stunde lang war die Liga fit.
+- **Takt alle 15 Minuten** (vorher stündlich, :41), zwei Requests je Lauf.
+  Dazu `name_de` für Zahnoperation (722) und Nackenprellung (1017).
+
+Rollback-Probe: sichtbar 98 → 97 (Zentner). **Was bleibt:** Die Quelle
+meldet Verletzungen spät und unvollständig; besser als ihre Meldungen plus
+die eigenen Beobachtungen (Auswechslung, Kader, Minuten) wird es ohne eine
+redaktionelle Quelle nicht.
+
 ### Verletzt ausgewechselt zählt als Ausfall (0122)
 
 Gemeldet: *„Filippo Mane wurde im zweiten Spiel nach 32 Minuten

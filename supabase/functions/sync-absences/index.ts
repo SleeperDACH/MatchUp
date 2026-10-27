@@ -147,6 +147,35 @@ Deno.serve(async (req) => {
     .is("name_de", null)
     .in("id", [...typIds]);
 
+  // 4b) **Eine verdaechtige Antwort loescht nichts** (27.10.2026). Vorher
+  //     raeumte ein einziger Fehlschlag der Quelle (Drosselung, Ausfall,
+  //     halbe Antwort) die ganze Tabelle leer: `gefiltert` war leer, und der
+  //     Zweig unten loeschte jede Zeile — eine Stunde lang galt die ganze Liga
+  //     als fit. Jetzt: Kommen weniger als 15 Vereine zurueck oder weniger als
+  //     die Haelfte der bisherigen Ausfaelle, wird nur ergaenzt, nicht
+  //     geloescht, und die Antwort ist ein Fehler (die Wache aus 0127 sieht
+  //     jede Nicht-2xx-Antwort).
+  const vereine = (teams?.data ?? []).length;
+  const { count: bisher } = await supabase
+    .from("player_absences")
+    .select("id", { count: "exact", head: true });
+  const verdaechtig = vereine < 15 ||
+    ((bisher ?? 0) > 20 && gefiltert.length < (bisher ?? 0) / 2);
+  if (verdaechtig) {
+    if (gefiltert.length > 0) {
+      await supabase.from("player_absences").upsert(gefiltert, {
+        onConflict: "id",
+      });
+    }
+    return Response.json({
+      error: "Antwort der Quelle unvollstaendig — nichts geloescht",
+      vereine,
+      gefunden: zeilen.length,
+      bisher,
+      requests,
+    }, { status: 502 });
+  }
+
   // 5) Schreiben und Aufraeumen. **Erst upserten, dann loeschen**, damit
   //    zwischen beiden Schritten nie eine leere Liste steht.
   if (gefiltert.length > 0) {
