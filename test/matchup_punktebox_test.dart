@@ -102,10 +102,12 @@ final _spiele = [
 Widget _rahmen({
   required Map<String, PlayerMatchStats> stats,
   double gastJe = 12.0,
+  List<Fixture>? spiele,
 }) =>
     ProviderScope(
       overrides: [
-        fantasySeasonFixturesProvider.overrideWith((ref) async => _spiele),
+        fantasySeasonFixturesProvider
+            .overrideWith((ref) async => spiele ?? _spiele),
         clubIconsProvider.overrideWith((ref) async => const {}),
         playerPoolProvider.overrideWith((ref) async => _elf('h')),
         currentUserProvider.overrideWith((ref) => User(
@@ -287,5 +289,69 @@ void main() {
     }
 
     expect(_punkteBox('Jonas Urbig'), findsNothing);
+  });
+
+  testWidgets('Läuft sein Spiel, stehen die Punkte grün', (tester) async {
+    tester.view.physicalSize = const Size(402 * 3, 1200 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    final live = [
+      Fixture(
+        id: 'sportmonks:1',
+        leagueId: 'bundesliga',
+        season: 2026,
+        round: 2,
+        roundName: 'Spieltag 2',
+        kickoff: DateTime.now().subtract(const Duration(minutes: 40)),
+        home: const TeamRef(
+            id: 'fcb', name: 'FC Bayern München', shortName: 'FCB'),
+        away: const TeamRef(
+            id: 'bvb', name: 'Borussia Dortmund', shortName: 'BVB'),
+        status: FixtureStatus.live,
+        homeScore: 1,
+        awayScore: 0,
+      ),
+    ];
+    await tester.pumpWidget(
+        _rahmen(stats: {'hgk': _torwartTag}, gastJe: -8.5, spiele: live));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    final inPunktzahl =
+        find.descendant(of: find.byType(Punktzahl), matching: find.byType(Text));
+    final plus =
+        tester.widgetList<Text>(inPunktzahl).where((t) => t.data == '12');
+    expect(plus, isNotEmpty);
+    for (final t in plus) {
+      expect(t.style?.color, MatchUpColors.green);
+    }
+    // Minus bleibt rot, auch während des Spiels.
+    final rot = Theme.of(tester.element(find.byType(MatchupLineups)))
+        .colorScheme
+        .error;
+    for (final t in tester
+        .widgetList<Text>(inPunktzahl)
+        .where((t) => (t.data ?? '').startsWith('-8'))) {
+      expect(t.style?.color, rot);
+    }
+  });
+
+  testWidgets('Nach dem Abpfiff sind die Punkte nicht mehr grün',
+      (tester) async {
+    tester.view.physicalSize = const Size(402 * 3, 1200 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_rahmen(stats: {'hgk': _torwartTag}));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    final inPunktzahl =
+        find.descendant(of: find.byType(Punktzahl), matching: find.byType(Text));
+    expect(
+      tester
+          .widgetList<Text>(inPunktzahl)
+          .where((t) => t.style?.color == MatchUpColors.green),
+      isEmpty,
+    );
   });
 }

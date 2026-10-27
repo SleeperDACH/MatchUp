@@ -1489,10 +1489,16 @@ class _SpielerAufRasen extends StatelessWidget {
 
     final Widget unten;
     if (zeigePunkte) {
+      // Läuft sein Spiel, grün (27.10.2026); Minus bleibt rot.
+      final laeuft = spiel?.status == FixtureStatus.live;
       unten = Text(
         formatPoints(punkte ?? 0),
         style: TextStyle(
-          color: (punkte ?? 0) < 0 ? const Color(0xFFF23030) : MatchUpColors.snow,
+          color: (punkte ?? 0) < 0
+              ? const Color(0xFFF23030)
+              : laeuft
+              ? MatchUpColors.green
+              : MatchUpColors.snow,
           fontSize: Schrift.label,
           fontWeight: FontWeight.w800,
           height: 1.0,
