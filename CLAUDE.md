@@ -1263,6 +1263,16 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
 - **Ein angenommener Trade geht an die ganze Liga**: Anbieter „Trade
   angenommen", alle übrigen außer dem Annehmenden „Trade in <Liga>" mit beiden
   Seiten. Gemeldet beim Annehmen, nicht beim Vollzug nach dem Spieltag (0088).
+- **Live-Push schneller** (0148, 27.10.2026, auf Ansage: „kommt ziemlich
+  spät nach dem Tor"). Gemessen: zwei Minutentakte hintereinander — Erkennen
+  im Mittel 30 s nach dem Eintrag bei der Quelle, und `push-versand` lief in
+  derselben Sekunde wie `sync-live`, war meist vorher fertig und ließ den
+  Auftrag eine Minute liegen (Anpfiff/Abpfiff: genau 60 s). Jetzt `sync-live`
+  alle **15 Sekunden** (pg_cron 1.6 kann Sekunden; ohne laufendes Spiel kein
+  Request, sonst ~240/h) und `push_live_abgleich` stößt den Versand selbst
+  an (`wache_anstossen('push-versand')`), sobald es Aufträge gab. Rollback-
+  Probe: ein Aufruf an `/functions/v1/push` in der pg_net-Schlange. Übrig
+  bleibt die Zeit, bis Sportmonks das Tor kennt.
 - **Tor-Push: oben wer getroffen hat, unten das Spiel** (0147, 27.10.2026,
   auf Ansage). Titel „Tor für FC Bayern München (Michael Olise, 90+5.)",
   mit „Elfmeter" in der Klammer; beim Eigentor „Eigentor! (Spieler, 12.)"
