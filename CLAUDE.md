@@ -1275,12 +1275,13 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
   bleibt die Zeit, bis Sportmonks das Tor kennt.
 - **Live-Meldungen mit Kurznamen** (27.10.2026, auf Ansage): „Hamburg 1:3
   Frankfurt" statt „Hamburger SV 1:3 Eintracht Frankfurt" — in Anpfiff, Tor,
-  Karte, Halbzeit und Abpfiff. `sync-live` kürzt `heim`, `gast` und `team`
+  Karte, Halbzeit und Abpfiff; Tor-Titel ohne „für" (0148). `sync-live` kürzt `heim`, `gast` und `team`
   mit `kurznamen.ts`, einer Kopie von `vereinsKurzname`; **die Tabelle steht
   zweimal**, `test/push_kurznamen_test.dart` vergleicht sie. Andere Push-Sorten
   enthalten keine Vereinsnamen.
 - **Tor-Push: oben wer getroffen hat, unten das Spiel** (0147, 27.10.2026,
-  auf Ansage). Titel „Tor für FC Bayern München (Michael Olise, 90+5.)",
+  auf Ansage). Titel „Tor Bayern (Michael Olise, 90+5.)" (bis 0148 „Tor für
+  FC Bayern München …"),
   mit „Elfmeter" in der Klammer; beim Eigentor „Eigentor! (Spieler, 12.)"
   ohne Verein, weil die Zuordnung der Quelle nicht sicher ist; ohne
   Torschütze und Minute nur „Tor!". Text: „SC Freiburg 1:3 FC Bayern

@@ -14,6 +14,9 @@
 --   wurde (`wache_anstossen`, 0127).
 --
 -- Was bleibt, ist die Zeit, bis die Quelle das Tor kennt.
+--
+-- Nebenbei (auf Ansage, selber Tag): „Tor Bremen (…)" statt „Tor für Bremen
+-- (…)" — das „für" war ein Wort zu viel.
 
 select cron.alter_job(
   (select jobid from cron.job where jobname = 'sync-live'),
@@ -79,7 +82,7 @@ begin
       v_titel := concat_ws(' ',
         case
           when e->>'art' = 'eigentor' then 'Eigentor!'
-          when e->>'team' is not null then format('Tor für %s', e->>'team')
+          when e->>'team' is not null then format('Tor %s', e->>'team')
           else 'Tor!'
         end,
         -- Ohne Torschütze und Minute keine leere Klammer.
