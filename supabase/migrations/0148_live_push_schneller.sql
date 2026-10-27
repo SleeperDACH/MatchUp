@@ -7,8 +7,8 @@
 -- Abgleich den Auftrag angelegt hat, und dann wartet der Auftrag eine weitere
 -- Minute. Anpfiff und Abpfiff gingen genau 60 s nach dem Erkennen raus.
 --
--- * `sync-live` alle 15 Sekunden (pg_cron ≥ 1.5 kann Sekunden). Kostet nur,
---   solange ein Spiel läuft: ein Sportmonks-Request je Lauf, gut 240 je
+-- * `sync-live` alle 10 Sekunden (pg_cron ≥ 1.5 kann Sekunden). Kostet nur,
+--   solange ein Spiel läuft: ein Sportmonks-Request je Lauf, rund 360 je
 --   Stunde; ohne Kandidaten kehrt die Function ohne Request um.
 -- * `push_live_abgleich` stößt den Versand selbst an, sobald etwas angelegt
 --   wurde (`wache_anstossen`, 0127).
@@ -17,7 +17,7 @@
 
 select cron.alter_job(
   (select jobid from cron.job where jobname = 'sync-live'),
-  schedule := '15 seconds'
+  schedule := '10 seconds'
 );
 
 CREATE OR REPLACE FUNCTION public.push_live_abgleich(p jsonb)
