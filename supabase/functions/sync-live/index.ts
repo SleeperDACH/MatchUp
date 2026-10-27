@@ -20,6 +20,7 @@
 // Ohne JWT erreichbar (--no-verify-jwt), verlangt Header `x-sync-secret`.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { vereinsKurzname } from "./kurznamen.ts";
 
 const BASE = "https://api.sportmonks.com/v3/football";
 // Sportmonks-WAF blockt ohne Browser-User-Agent mit 403.
@@ -84,8 +85,11 @@ function schnappschuss(f: any) {
   const heim = parts.find((p: any) => p?.meta?.location === "home") ?? parts[0];
   // deno-lint-ignore no-explicit-any
   const gast = parts.find((p: any) => p?.meta?.location === "away") ?? parts[1];
+  // **Kurznamen wie in der App** (27.10.2026): „Hamburg 1:3 Frankfurt" statt
+  // „Hamburger SV 1:3 Eintracht Frankfurt". Die Namen dienen nur dem Text
+  // der Meldung; wer sie bekommt, entscheiden `heim_key`/`gast_key`.
   const name = new Map<number, string>();
-  for (const p of parts) name.set(p.id, p.name);
+  for (const p of parts) name.set(p.id, vereinsKurzname(p.name ?? ""));
 
   const ereignisse = [];
   for (const e of f.events ?? []) {
@@ -104,8 +108,8 @@ function schnappschuss(f: any) {
   return {
     fixture_id: `sportmonks:${f.id}`,
     zustand: String(f.state?.state ?? "NS").toUpperCase(),
-    heim: heim?.name ?? "?",
-    gast: gast?.name ?? "?",
+    heim: heim ? vereinsKurzname(heim.name ?? "?") : "?",
+    gast: gast ? vereinsKurzname(gast.name ?? "?") : "?",
     heim_key: heim ? `sportmonks:${heim.id}` : null,
     gast_key: gast ? `sportmonks:${gast.id}` : null,
     tore_heim: heim ? tore(f.scores, "home") : null,
