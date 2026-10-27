@@ -1263,6 +1263,12 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
 - **Ein angenommener Trade geht an die ganze Liga**: Anbieter „Trade
   angenommen", alle übrigen außer dem Annehmenden „Trade in <Liga>" mit beiden
   Seiten. Gemeldet beim Annehmen, nicht beim Vollzug nach dem Spieltag (0088).
+- **Tor-Push: oben wer getroffen hat, unten das Spiel** (0147, 27.10.2026,
+  auf Ansage). Titel „Tor für FC Bayern München (Michael Olise, 90+5.)",
+  mit „Elfmeter" in der Klammer; beim Eigentor „Eigentor! (Spieler, 12.)"
+  ohne Verein, weil die Zuordnung der Quelle nicht sicher ist; ohne
+  Torschütze und Minute nur „Tor!". Text: „SC Freiburg 1:3 FC Bayern
+  München". Rollback-Probe mit der echten Funktion: drei Aufträge.
 - **Live meldet nur an Fans** — wer einen der beiden Vereine als
   `user_favorites`-Team hat; Liga-Favoriten zählen nicht. `sync-live` holt die
   Spiele mit Anstoß von −4 h bis +5 min samt Ereignissen bei Sportmonks
