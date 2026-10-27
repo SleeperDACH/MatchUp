@@ -1819,9 +1819,12 @@ DFB-Pokal, der wird mir nicht angezeigt … es soll die Liga und auch der Pokal
 angezeigt werden, und dann muss dort ‚Englische Woche' stehen"). Hat ein
 Favorit zwischen dem vorigen Montag 15:00 und Freitag ein Spiel (Pokal,
 Europapokal, Nachholspiel), beginnt das Fenster schon dort
-(`favoritenFenster`): Montag 15:00 bis Montag 15:00, beide Teile zusammen.
-Der Abschnitt heißt dann **„Englische Woche"**, die Spanne beginnt am ersten
-Spieltag, und die Kopfkarte nimmt den nächsten Anpfiff — also das Pokalspiel.
+(`favoritenFenster`). **Getrennt, nicht zusammen** (auf Ansage am selben
+Tag, nach einem ersten Wurf mit beiden Teilen in einer Liste): Bis Freitag
+00:00 zeigt der Abschnitt **nur** die Spiele unter der Woche und heißt
+**„Englische Woche"** (Spanne erster bis letzter Spieltag), ab Freitag wieder
+„Mein Wochenende" ohne sie. Die Kopfkarte nimmt den nächsten Anpfiff im
+jeweiligen Fenster — Dienstag also das Pokalspiel.
 Der Satz, der hier vorher stand („Partien am Dienstag und Mittwoch fallen
 bewusst heraus … wer das ändern will, ändert zuerst den Namen"), ist damit
 erledigt: Der Name ändert sich mit. Gehalten in `mein_wochenende_test.dart`.

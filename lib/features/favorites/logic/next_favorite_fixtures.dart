@@ -36,24 +36,28 @@ import '../../../core/models/team_fixture.dart';
   return (von: von, bis: bis);
 }
 
-/// **Englische Woche** (27.10.2026, auf Ansage: „diese Woche DFB-Pokal, der
-/// wird mir nicht angezeigt … es soll die Liga und auch der Pokal angezeigt
-/// werden, und dann muss dort ‚Englische Woche' stehen").
+/// **Englische Woche** (27.10.2026, auf Ansage). Der erste Wurf hängte die
+/// Spiele unter der Woche vor das Wochenende; gewünscht ist die Trennung:
+/// *„Von Dienstag bis Donnerstag die Spiele als Englische Woche markieren,
+/// dann das Wochenende wieder rausnehmen, und dann Mein Wochenende Freitag bis
+/// Sonntag."*
 ///
-/// Das Fenster aus [fussballWoche] beginnt Freitag 00:00 — ein Pokalspiel am
-/// Dienstag oder Mittwoch fiel heraus, auch aus der Kopfkarte. Hat ein
-/// Favorit zwischen dem **vorigen Montag 15:00** und Freitag ein Spiel
-/// (Pokal, Europapokal, Nachholspiel), beginnt das Fenster schon dort: Montag
-/// 15:00 bis Montag 15:00, beide Teile zusammen. Ohne solches Spiel bleibt
-/// es das Wochenende.
+/// Vor Freitag 00:00 gilt deshalb: Hat ein Favorit zwischen Montag 15:00 und
+/// Freitag ein Spiel (Pokal, Europapokal, Nachholspiel), zeigt der Abschnitt
+/// **nur diese Spiele** und heißt „Englische Woche". Ab Freitag 00:00 — und in
+/// Wochen ohne solches Spiel immer — gilt das Wochenende aus [fussballWoche]
+/// (bis Montag 15:00, damit ein Montagsspiel nicht herausfällt).
 ({DateTime von, DateTime bis, bool englisch}) favoritenFenster({
   required List<TeamFixture> fixtures,
   required DateTime jetzt,
 }) {
   final w = fussballWoche(jetzt);
   final unterDerWoche = w.bis.subtract(const Duration(days: 7));
-  final englisch = fixtures.any((f) => _imFenster(f, unterDerWoche, w.von));
-  return (von: englisch ? unterDerWoche : w.von, bis: w.bis, englisch: englisch);
+  final englisch = jetzt.isBefore(w.von) &&
+      fixtures.any((f) => _imFenster(f, unterDerWoche, w.von));
+  return englisch
+      ? (von: unterDerWoche, bis: w.von, englisch: true)
+      : (von: w.von, bis: w.bis, englisch: false);
 }
 
 /// Alle Spiele der favorisierten Vereine in dieser Fußballwoche.
@@ -67,8 +71,8 @@ import '../../../core/models/team_fixture.dart';
 /// Erwartet die zusammengeführten Spielpläne der Favoriten (ein Eintrag kann
 /// doppelt vorkommen, wenn zwei Favoriten gegeneinander spielen).
 ///
-/// **Partien unter der Woche** gehören seit dem 27.10.2026 dazu, sobald es
-/// welche gibt — dann ist es eine Englische Woche ([favoritenFenster]).
+/// **Partien unter der Woche** stehen von Montag 15:00 bis Freitag allein
+/// als Englische Woche da, sobald es welche gibt ([favoritenFenster]).
 ///
 /// Pur gehalten (keine Provider, kein Netz), damit die Regel prüfbar bleibt —
 /// sie hat mehr Kanten, als sie aussieht: Fenstergrenze in lokaler Zeit,

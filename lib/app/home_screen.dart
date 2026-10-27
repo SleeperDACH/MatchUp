@@ -869,7 +869,7 @@ class _FavoritenSpiele extends ConsumerWidget {
     // enden und verschwieg genau den Tag, um den es ging.
     final spanne =
         '${DateFormat('d.', 'de_DE').format(ab)} – '
-        '${DateFormat('d. MMM', 'de_DE').format(woche.bis)}';
+        '${DateFormat('d. MMM', 'de_DE').format(woche.englisch ? spiele.last.kickoff.toLocal() : woche.bis)}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(
