@@ -1814,10 +1814,17 @@ Drei Dinge, die daran hängen:
   verschwieg damit genau den Tag, um den die Änderung ging. Im Bild sofort zu
   sehen, im Code nicht.
 
-**Was bewusst herausfällt:** Partien am Dienstag und Mittwoch. Der Abschnitt
-heißt „Mein Wochenende", und ein englisches Spiel gehört nicht hinein; den
-vollständigen Spielplan zeigt der Favoriten-Tab. Wer das ändern will, ändert
-zuerst den Namen.
+**Englische Woche seit dem 27.10.2026** (auf Ansage: „diese Woche
+DFB-Pokal, der wird mir nicht angezeigt … es soll die Liga und auch der Pokal
+angezeigt werden, und dann muss dort ‚Englische Woche' stehen"). Hat ein
+Favorit zwischen dem vorigen Montag 15:00 und Freitag ein Spiel (Pokal,
+Europapokal, Nachholspiel), beginnt das Fenster schon dort
+(`favoritenFenster`): Montag 15:00 bis Montag 15:00, beide Teile zusammen.
+Der Abschnitt heißt dann **„Englische Woche"**, die Spanne beginnt am ersten
+Spieltag, und die Kopfkarte nimmt den nächsten Anpfiff — also das Pokalspiel.
+Der Satz, der hier vorher stand („Partien am Dienstag und Mittwoch fallen
+bewusst heraus … wer das ändern will, ändert zuerst den Namen"), ist damit
+erledigt: Der Name ändert sich mit. Gehalten in `mein_wochenende_test.dart`.
 
 Gerechnet wird in `test/mein_wochenende_test.dart`, mit dem Montag als
 Scharnier in vier Fällen (10:00, genau 15:00, 15:01, mitten in der Woche). Die

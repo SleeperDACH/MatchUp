@@ -860,19 +860,26 @@ class _FavoritenSpiele extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     // **Der Zusatz nennt die Spanne, nicht den Tag.** Der Abschnitt läuft über
     // vier Tage; ein einzelnes Datum darüber wäre für drei davon falsch.
-    final woche = fussballWoche(DateTime.now());
+    // Englische Woche (Pokal & Co. unter der Woche): eigener Titel, und die
+    // Spanne beginnt am ersten Spieltag statt am Montag des Fensters.
+    final woche = favoritenFenster(fixtures: spiele, jetzt: DateTime.now());
+    final ab = woche.englisch ? spiele.first.kickoff.toLocal() : woche.von;
     // **Der Montag gehört dazu.** `bis` ist Montag 15:00, das Datum davon ist
     // der Montag selbst — einen Tag abzuziehen ließ die Spanne am Sonntag
     // enden und verschwieg genau den Tag, um den es ging.
     final spanne =
-        '${DateFormat('d.', 'de_DE').format(woche.von)} – '
+        '${DateFormat('d.', 'de_DE').format(ab)} – '
         '${DateFormat('d. MMM', 'de_DE').format(woche.bis)}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          abschnittsKopf(context, 'Mein Wochenende', zusatz: spanne),
+          abschnittsKopf(
+            context,
+            woche.englisch ? 'Englische Woche' : 'Mein Wochenende',
+            zusatz: spanne,
+          ),
           Container(
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),

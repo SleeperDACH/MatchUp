@@ -36,6 +36,26 @@ import '../../../core/models/team_fixture.dart';
   return (von: von, bis: bis);
 }
 
+/// **Englische Woche** (27.10.2026, auf Ansage: „diese Woche DFB-Pokal, der
+/// wird mir nicht angezeigt … es soll die Liga und auch der Pokal angezeigt
+/// werden, und dann muss dort ‚Englische Woche' stehen").
+///
+/// Das Fenster aus [fussballWoche] beginnt Freitag 00:00 — ein Pokalspiel am
+/// Dienstag oder Mittwoch fiel heraus, auch aus der Kopfkarte. Hat ein
+/// Favorit zwischen dem **vorigen Montag 15:00** und Freitag ein Spiel
+/// (Pokal, Europapokal, Nachholspiel), beginnt das Fenster schon dort: Montag
+/// 15:00 bis Montag 15:00, beide Teile zusammen. Ohne solches Spiel bleibt
+/// es das Wochenende.
+({DateTime von, DateTime bis, bool englisch}) favoritenFenster({
+  required List<TeamFixture> fixtures,
+  required DateTime jetzt,
+}) {
+  final w = fussballWoche(jetzt);
+  final unterDerWoche = w.bis.subtract(const Duration(days: 7));
+  final englisch = fixtures.any((f) => _imFenster(f, unterDerWoche, w.von));
+  return (von: englisch ? unterDerWoche : w.von, bis: w.bis, englisch: englisch);
+}
+
 /// Alle Spiele der favorisierten Vereine in dieser Fußballwoche.
 ///
 /// **Auch die gespielten.** Genau darum ging es: Bis zum Montag soll das
@@ -47,10 +67,8 @@ import '../../../core/models/team_fixture.dart';
 /// Erwartet die zusammengeführten Spielpläne der Favoriten (ein Eintrag kann
 /// doppelt vorkommen, wenn zwei Favoriten gegeneinander spielen).
 ///
-/// **Was bewusst herausfällt:** Partien unter der Woche, also Dienstag und
-/// Mittwoch. Der Abschnitt heißt „Mein Wochenende", und ein englisches Spiel
-/// gehört nicht hinein; für den vollständigen Spielplan gibt es den
-/// Favoriten-Tab.
+/// **Partien unter der Woche** gehören seit dem 27.10.2026 dazu, sobald es
+/// welche gibt — dann ist es eine Englische Woche ([favoritenFenster]).
 ///
 /// Pur gehalten (keine Provider, kein Netz), damit die Regel prüfbar bleibt —
 /// sie hat mehr Kanten, als sie aussieht: Fenstergrenze in lokaler Zeit,
@@ -59,7 +77,7 @@ List<TeamFixture> wochenendSpiele({
   required List<TeamFixture> fixtures,
   required DateTime jetzt,
 }) {
-  final fenster = fussballWoche(jetzt);
+  final fenster = favoritenFenster(fixtures: fixtures, jetzt: jetzt);
   final gesehen = <String>{};
   final drin = <TeamFixture>[
     for (final f in fixtures)

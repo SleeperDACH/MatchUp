@@ -78,8 +78,11 @@ void main() {
         ],
         jetzt: samstag,
       );
+      // Seit dem 27.10.2026 gehört das Donnerstagsspiel dazu: Mit einem Spiel
+      // unter der Woche ist es eine Englische Woche. Der Dienstag danach liegt
+      // nach Montag 15:00 und gehört weiter zur nächsten.
       expect([for (final f in spiele) f.home.name],
-          ['Freitag', 'Samstag', 'Sonntag', 'Montag']);
+          ['Donnerstag', 'Freitag', 'Samstag', 'Sonntag', 'Montag']);
     });
 
     test('ein Montagabendspiel fällt heraus', () {
@@ -121,6 +124,45 @@ void main() {
         ),
         isEmpty,
       );
+    });
+  });
+
+  group('Englische Woche (27.10.2026)', () {
+    // Dienstag, 27.10.2026, morgens. Pokal am Dienstagabend, Liga am Samstag.
+    final jetzt = DateTime(2026, 10, 27, 9);
+    final pokal = _f('Pokal', DateTime(2026, 10, 27, 20, 45));
+    final liga = _f('Liga', DateTime(2026, 10, 31, 15, 30));
+
+    test('Pokal unter der Woche und Liga am Wochenende stehen beide drin', () {
+      final spiele = wochenendSpiele(fixtures: [liga, pokal], jetzt: jetzt);
+      expect([for (final f in spiele) f.home.name], ['Pokal', 'Liga']);
+      final w = favoritenFenster(fixtures: [liga, pokal], jetzt: jetzt);
+      expect(w.englisch, isTrue);
+      expect(w.von, DateTime(2026, 10, 26, 15)); // Montag 15:00
+      expect(w.bis, DateTime(2026, 11, 2, 15));
+    });
+
+    test('ohne Spiel unter der Woche bleibt es das Wochenende', () {
+      final w = favoritenFenster(fixtures: [liga], jetzt: jetzt);
+      expect(w.englisch, isFalse);
+      expect(w.von, DateTime(2026, 10, 30)); // Freitag 00:00
+    });
+
+    test('der Pokal steht bis Montag 15:00 mit Ergebnis drin', () {
+      final gespielt = _f('Pokal', DateTime(2026, 10, 27, 20, 45), tore: 2);
+      final spiele = wochenendSpiele(
+        fixtures: [liga, gespielt],
+        jetzt: DateTime(2026, 11, 1, 18), // Sonntag
+      );
+      expect(spiele, hasLength(2));
+    });
+
+    test('das Pokalspiel der Vorwoche zählt nach Montag 15:00 nicht mehr', () {
+      final w = favoritenFenster(
+        fixtures: [pokal, liga],
+        jetzt: DateTime(2026, 11, 2, 16), // Montag nach 15:00
+      );
+      expect(w.englisch, isFalse);
     });
   });
 }
