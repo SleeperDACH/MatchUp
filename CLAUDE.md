@@ -2001,6 +2001,14 @@ POST-Body**. Ein `?nocache=1` an der URL wird stillschweigend ignoriert, und
 man misst den alten Cache — genau das ist beim ersten Prüflauf passiert und
 sah aus, als hätte der Deploy nichts bewirkt.
 
+**Seit dem 27.10.2026 in voller Größe** (auf Ansage: „die Grafik der Bilder
+in den News ist wirklich nicht gut"). Die Kachel ist auf dem iPhone gut
+1100 Pixel breit; angefordert waren 640 (ARD, Zeit), 520 (Spiegel) und 250
+(n-tv). `grossesBild` in der Function `news` schreibt je Bilddienst auf eine
+gemessene große Stufe um: ARD `?width=1280`, Spiegel `_w1200_r1.778_` (nur
+diese Paarung, w1280/w1024 sind 404), Zeit `original__1280x720`, n-tv
+`Img_16_9/1200`. Der Absatz darunter beschreibt die 640 von damals.
+
 **Die Bildbreite ist nicht frei wählbar.** Der Bilddienst der Sportschau kennt
 nur bestimmte Stufen: 1920, 1280, 960, 640, 512, 384 und 320 antworten mit
 200 — **800 und 480 mit 400**. Der erste Versuch schrieb 800 in die URL, und

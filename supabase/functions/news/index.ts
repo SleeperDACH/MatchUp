@@ -301,19 +301,42 @@ function bild(block: string): string {
     block.match(/<media:content[^>]+url=["']([^"']+)["']/i) ??
     block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i) ??
     block.match(/<img[^>]+src=["']([^"']+)["']/i);
-  let url = treffer ? decode(treffer[1]) : "";
+  const url = treffer ? decode(treffer[1]) : "";
   if (!/^https?:\/\//i.test(url)) return "";
-  // Sportschau liefert 1920 Pixel breite Bilder (240 KB); auf einer Kachel von
-  // 116 × 74 Punkten sind das ein paar hundert Kilobyte für nichts. 640 reicht
-  // auch bei dreifacher Pixeldichte und wiegt 38 KB.
-  //
-  // **Die Breite ist nicht frei wählbar:** Der Bilddienst kennt nur bestimmte
-  // Stufen. Gemessen am 03.09.2026 antworten 1920, 1280, 960, 640, 512, 384
-  // und 320 mit 200 — **800 und 480 dagegen mit 400**. Der erste Versuch stand
-  // auf 800, und die Liste zeigte lauter Ersatzflächen.
-  url = url.replace(/([?&]width=)\d+/i, "$1640");
+  return grossesBild(url);
+}
+
+// **Jede Quelle in einer Fassung, die auf dem Handy scharf ist** (27.10.2026,
+// auf Ansage: „die Grafik der Bilder in den News ist wirklich nicht gut").
+// Die Kachel auf dem Startbildschirm ist rund 370 Punkte breit, auf dem
+// iPhone also gut 1100 Pixel. Angefordert waren 640 (ARD), 640 (Zeit), 520
+// (Spiegel) und **250** (n-tv) — hochgezogen wirkten sie verwaschen. Die
+// Bilddienste kennen nur bestimmte Stufen; gemessen am 27.10.2026, alle 200:
+//
+// | Quelle | Muster | jetzt |
+// |---|---|---|
+// | ARD (Sportschau, MDR, NDR …) | `?width=` | 1280 (≈ 110 KB) |
+// | Spiegel | `_w…_r…_` | `_w1200_r1.778_` — nur diese Paarung, w1280/w1024 sind 404 |
+// | Zeit | `original__BxH` | `1280x720` |
+// | n-tv | `Img_4_3/250` | `Img_16_9/1200` |
+//
+// Ein Muster, das nicht passt, lässt die Adresse, wie sie kam.
+function grossesBild(url: string): string {
+  if (/[?&]width=\d+/i.test(url)) {
+    return url.replace(/([?&]width=)\d+/i, (_m, p: string) => `${p}1280`);
+  }
+  if (/cdn\.prod\.www\.spiegel\.de\/images\//i.test(url)) {
+    return url.replace(/_w\d+_r[\d.]+_/, "_w1200_r1.778_");
+  }
+  if (/img\.zeit\.de\//i.test(url)) {
+    return url.replace(/original__\d+x\d+/, "original__1280x720");
+  }
+  if (/n-tv\.de\/img\//i.test(url)) {
+    return url.replace(/\/Img_[\d_]+\/\d+\//, "/Img_16_9/1200/");
+  }
   return url;
 }
+
 
 function parseRss(
   xml: string,
