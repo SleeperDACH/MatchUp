@@ -3647,6 +3647,9 @@ zuordnen. `kMatchupBannerHoehe` ist dadurch von 206 auf 176 gesunken.
 | läuft | Stand | „Prognose 190,2" (Hochrechnung) | schärft sich mit jedem Abpfiff |
 | beendet | Endstand | „Prognose 180,4" (die von vor dem Spieltag) | Wort: Sieg / Niederlage |
 
+**Seit dem 27.10.2026 steht nach dem Spieltag nur noch „Endstand"** (auf
+Ansage: „nachdem ein Spieltag vorbei ist, braucht dort nicht mehr Prognose
+stehen"); der folgende Absatz beschreibt den Stand davor.
 **Nach dem letzten Abpfiff steht wieder die Prognose von vor dem Spieltag**
 (19.10.2026, auf Ansage), zum Vergleich mit dem Endstand. Sie ist nicht
 gespeichert, sondern wird in `duellPrognose` nachgerechnet, wie sie damals
@@ -4274,6 +4277,12 @@ Positionsüberschrift darüber, und für den, der Farben nicht unterscheidet, is
 das Wort dort die einzige Auskunft.
 
 ### Minuspunkte stehen rot da
+
+**Laufende Spiele stehen grün** (27.10.2026, auf Ansage: „die Punktzahlen bei
+Spielern, die gerade spielen, andersfarbig"): MatchUp-Zeile (`spielZeile
+.laeuft`) und Kader-Feld/Bank (`NaechstesSpiel.status == live`). Grün heißt
+„hier läuft etwas"; Rot bleibt für Minus und gewinnt. Gehalten in
+`matchup_punktebox_test.dart` (live grün, abgepfiffen nicht).
 
 Auf Ansage: *„Wenn Spieler Minuspunkte machen, die Zahl bitte rot anzeigen."*
 Ein Minuszeichen vor einer sonst gleich aussehenden Zahl überliest man in
