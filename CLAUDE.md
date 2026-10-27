@@ -3671,7 +3671,7 @@ zuordnen. `kMatchupBannerHoehe` ist dadurch von 206 auf 176 gesunken.
 | läuft | Stand | „Prognose 190,2" (Hochrechnung) | schärft sich mit jedem Abpfiff |
 | beendet | Endstand | „Prognose 180,4" (die von vor dem Spieltag) | Wort: Sieg / Niederlage |
 
-**Seit dem 27.10.2026 steht nach dem Spieltag nur noch „Endstand"** (auf
+**Seit dem 27.10.2026 steht nach dem Spieltag nur noch die Zahl** (auf
 Ansage: „nachdem ein Spieltag vorbei ist, braucht dort nicht mehr Prognose
 stehen"); der folgende Absatz beschreibt den Stand davor.
 **Nach dem letzten Abpfiff steht wieder die Prognose von vor dem Spieltag**

@@ -883,11 +883,11 @@ class _Seite extends StatelessWidget {
     }
 
     // Klein darunter: was die große Zahl ist, bzw. wo es hinläuft.
-    // **Nach dem Spieltag keine Prognose mehr** (27.10.2026, auf Ansage;
-    // vom 19.10. bis dahin stand dort die Prognose von vorher zum
-    // Vergleich). Ist alles abgepfiffen, gibt es nur noch den Endstand.
+    // **Nach dem Spieltag nur die Zahl** (27.10.2026, auf Ansage: erst die
+    // Prognose von vorher weg, dann auch das Wort „Endstand"). Dass es der
+    // Endstand ist, sagt SIEG/NIEDERLAGE darunter.
     final klein = beendet
-        ? 'Endstand'
+        ? ''
         : started
         ? (erwartet == null ? 'Live' : 'Prognose ${formatPoints(erwartet!)}')
         : (erwartet == null ? '' : 'Prognose');
