@@ -286,6 +286,19 @@ final myRoundsProvider = FutureProvider<List<TipRound>>((ref) {
   return ref.watch(tipRoundRepositoryProvider).myRounds();
 });
 
+/// Die MatchUp Tippliga (Tippspiel für alle). Sichtbar auch ohne
+/// Mitgliedschaft; `null` ohne Server oder ohne Anmeldung.
+final tippligaProvider = FutureProvider<Tippliga?>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null || !AppConfig.isSupabaseConfigured) {
+    return Future.value(null);
+  }
+  // Hängt an der eigenen Rundenliste: Wer beitritt oder austritt, lädt die
+  // neu — und damit stimmt auch „Mitspielen" gegen „dabei".
+  ref.watch(myRoundsProvider);
+  return ref.watch(tipRoundRepositoryProvider).tippliga();
+});
+
 /// Eigene Tipp-Bilanz über alle Tipprunden — für das Profil-Dashboard.
 final myTipStatsProvider = FutureProvider<TipStats>((ref) async {
   final myId = ref.watch(currentUserProvider)?.id;

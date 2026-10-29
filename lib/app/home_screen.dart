@@ -111,8 +111,10 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 18),
               // Noch gar keine Liga (Fantasy + Tippspiel beide leer geladen):
               // statt zweier leerer Abschnitte ein großer Einstieg.
-              if (_beideLeer(ref))
-                const _Appear(delayMs: 80, child: _NoLeaguesHero())
+              if (_beideLeer(ref)) ...[
+                const _Appear(delayMs: 80, child: _NoLeaguesHero()),
+                const SizedBox(height: 18),
+              ]
               else ...[
                 // Der Abschnitt mit Inhalt steht oben. Wer nur ein Tippspiel
                 // hat, sah sonst zuerst eine leere Ligareihe, in der nur die
@@ -139,6 +141,9 @@ class HomeScreen extends ConsumerWidget {
               ],
               // Die Abschnitte bringen ihren Abstand schon mit.
               const SizedBox(height: 4),
+              // **Getrennt von den eigenen Ligen** (auf Ansage): Die Tippliga
+              // gehört allen, nicht einem selbst — eigener kleiner Abschnitt.
+              const _Appear(delayMs: 160, child: _FuerAlle()),
               const _Appear(delayMs: 190, child: _FavoritenSpiele()),
               const _Appear(delayMs: 220, child: _NewsSection()),
             ],
@@ -153,7 +158,8 @@ class HomeScreen extends ConsumerWidget {
   List<TipRound>? _standaloneRounds(WidgetRef ref) => ref
       .watch(myRoundsProvider)
       .valueOrNull
-      ?.where((r) => !r.isFantasyLinked)
+      // Die Tippliga steht getrennt im Abschnitt „Für alle".
+      ?.where((r) => !r.isFantasyLinked && !r.istGlobal)
       .toList();
 
   bool _beideLeer(WidgetRef ref) =>
@@ -1824,6 +1830,148 @@ class _TipRoundStreifen extends ConsumerWidget {
 /// Seit der Wettbewerb nicht mehr darübersteht, trägt der Streifen nur noch
 /// den Namen — bei 76 stand über ihm eine leere Zeile (auf Ansage: 58).
 const double _kStreifenHoehe = 58;
+
+/// **Abschnitt „Für alle": die MatchUp Tippliga** — das Tippspiel für alle,
+/// nur 1. Bundesliga (Migration 0150).
+///
+/// Eine schmale Zeile unter den eigenen Tippspielen, **getrennt** davon und
+/// bewusst klein (auf Ansage, 29.10.2026: erst stand sie als großer Streifen
+/// ganz oben im Tippspiel-Abschnitt und sah aus wie eine der eigenen Runden).
+/// Nicht dabei: „27 dabei" und ein kleiner Knopf „Mitspielen", der beitritt
+/// und die Runde öffnet — Beitritt per Knopf statt automatisch, damit in der
+/// Tabelle nur steht, wer tippt. Dabei: die Zeile öffnet die Runde. Gibt es
+/// keine Tippliga (lokaler Modus, Fehler), fehlt der ganze Abschnitt.
+/// Die Farbe der Tippliga: das Marken-Rot (auf Ansage „eher rötlich statt
+/// gelb") — Gelb gehört den eigenen Tipprunden, Grün den Ligen.
+const Color _kTippligaRot = MatchUpColors.red;
+
+class _FuerAlle extends ConsumerStatefulWidget {
+  const _FuerAlle();
+
+  @override
+  ConsumerState<_FuerAlle> createState() => _FuerAlleState();
+}
+
+class _FuerAlleState extends ConsumerState<_FuerAlle> {
+  bool _laeuft = false;
+
+  Future<void> _oeffnen(TipRound runde) async {
+    activateRound(ref, runde);
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => LeagueScreen(round: runde)),
+    );
+  }
+
+  Future<void> _mitspielen() async {
+    setState(() => _laeuft = true);
+    try {
+      final runde =
+          await ref.read(tipRoundRepositoryProvider).tippligaBeitreten();
+      ref.invalidate(myRoundsProvider);
+      if (!mounted) return;
+      await _oeffnen(runde);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Beitreten hat nicht geklappt: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _laeuft = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final liga = ref.watch(tippligaProvider).valueOrNull;
+    if (liga == null) return const SizedBox.shrink();
+    final runde = liga.mitglied
+        ? ref
+              .watch(myRoundsProvider)
+              .valueOrNull
+              ?.where((r) => r.id == liga.id)
+              .firstOrNull
+        : null;
+    final scheme = Theme.of(context).colorScheme;
+
+    final zeile = Row(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: _kTippligaRot,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: const MatchUpChevron(size: 14, color: Colors.white),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: liga.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                TextSpan(
+                  text: '  ·  ${liga.mitspieler} dabei',
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: Schrift.text),
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (runde != null)
+          Icon(Icons.chevron_right, size: 20, color: scheme.onSurfaceVariant)
+        else
+          FilledButton(
+            onPressed: _laeuft ? null : _mitspielen,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              tapTargetSize: MaterialTapTargetSize.padded,
+              shape: const StadiumBorder(),
+              textStyle: const TextStyle(
+                fontFamily: Schrift.familie,
+                fontSize: Schrift.label + 1,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            child: Text(_laeuft ? '…' : 'Mitspielen'),
+          ),
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        abschnittsKopf(context, 'Für alle'),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: runde != null
+                ? () => _oeffnen(runde)
+                : (_laeuft ? null : _mitspielen),
+            // Derselbe Hauch aus der Ecke wie bei Ligen und Tipprunden, in
+            // Rot: eigene Farbe für das, was allen gehört.
+            child: Ink(
+              decoration: _kartenFlaeche(context, _kTippligaRot),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              child: zeile,
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+}
 
 /// Zeichen einer Tipprunde: eigenes Logo, sonst die MatchUp-Marke in Gold.
 class _RoundMark extends StatelessWidget {

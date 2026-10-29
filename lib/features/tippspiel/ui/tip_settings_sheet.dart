@@ -336,7 +336,8 @@ class _TipSettingsScreen extends ConsumerWidget {
       // etwas, das man mehrmals am Spieltag ansieht, für eine Sache, die man
       // einmal beim Anlegen braucht. Er steht jetzt neben „Mitglieder
       // einladen", also bei der Frage, die ihn aufwirft.
-      if (!round.isFantasyLinked)
+      // Die Tippliga ist offen für alle — ein Code wäre eine Tür ohne Wand.
+      if (!round.isFantasyLinked && !round.istGlobal)
         _Zeile(
           icon: Icons.vpn_key_outlined,
           titel: 'Einladungscode',
@@ -488,7 +489,9 @@ class _TipSettingsScreen extends ConsumerWidget {
                 gefahr: true,
                 onTap: isCreator ? confirmLeaveAsAdmin : confirmLeave,
               ),
-              if (isCreator)
+              // Die Tippliga gehört allen und ist nicht löschbar (auch
+              // serverseitig, Migration 0150).
+              if (isCreator && !round.istGlobal)
                 _Zeile(
                   icon: Icons.delete_outline,
                   titel: 'Tippspiel löschen',

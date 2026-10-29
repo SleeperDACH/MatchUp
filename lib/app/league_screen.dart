@@ -41,7 +41,9 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
     // Ligainternes Tippspiel (an eine Fantasy-Liga gekoppelt) nutzt den Chat
     // der Liga — daher hier kein eigener Liga-/Chat-Tab. Die Regeln stehen
     // stattdessen in den Einstellungen (Zahnrad).
-    final linked = round.isFantasyLinked;
+    // Die MatchUp Tippliga hat ebenfalls keinen Chat (Migration 0150: Fremde
+    // schreiben sich nicht, es gibt keine Moderation) — dieselbe Behandlung.
+    final linked = round.isFantasyLinked || round.istGlobal;
 
     // Im Head-to-Head-Modus liegt zwischen Tabelle und Liga ein „Duelle"-Tab.
     final h2h = round.scoring.headToHead;

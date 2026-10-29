@@ -18,6 +18,7 @@ class TipRound {
     this.visibility = 'private',
     this.joinPolicy = 'open',
     this.fantasyLeagueId,
+    this.istGlobal = false,
   }) : leagueIds = leagueIds ?? const [];
 
   final String id;
@@ -56,6 +57,10 @@ class TipRound {
   /// sich Mitglieder und Chat mit der Liga. `null` = eigenständige Tipprunde.
   final String? fantasyLeagueId;
 
+  /// Die **MatchUp Tippliga** — das Tippspiel für alle (Migration 0150):
+  /// kein Chat, kein Einladungscode, nicht löschbar.
+  final bool istGlobal;
+
   bool get isPublic => visibility == 'public';
   bool get isInviteOnly => joinPolicy == 'invite';
   bool get isFantasyLinked => fantasyLeagueId != null;
@@ -75,6 +80,7 @@ class TipRound {
         visibility: visibility,
         joinPolicy: joinPolicy,
         fantasyLeagueId: fantasyLeagueId,
+        istGlobal: istGlobal,
       );
 
   factory TipRound.fromJson(Map<String, dynamic> json) => TipRound(
@@ -94,6 +100,7 @@ class TipRound {
         visibility: json['visibility'] as String? ?? 'private',
         joinPolicy: json['join_policy'] as String? ?? 'open',
         fantasyLeagueId: json['fantasy_league_id'] as String?,
+        istGlobal: json['ist_global'] as bool? ?? false,
       );
 }
 
@@ -161,3 +168,26 @@ class MemberTip {
       );
 }
 
+
+/// Was der Startbildschirm über die Tippliga weiß, auch ohne Mitgliedschaft
+/// (RPC `tippliga()`).
+class Tippliga {
+  const Tippliga({
+    required this.id,
+    required this.name,
+    required this.mitglied,
+    required this.mitspieler,
+  });
+
+  final String id;
+  final String name;
+  final bool mitglied;
+  final int mitspieler;
+
+  factory Tippliga.fromJson(Map<String, dynamic> json) => Tippliga(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        mitglied: json['mitglied'] as bool? ?? false,
+        mitspieler: (json['mitspieler'] as num?)?.toInt() ?? 0,
+      );
+}

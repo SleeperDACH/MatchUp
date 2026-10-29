@@ -280,6 +280,10 @@ Future<void> _bauen(WidgetTester tester, {bool ohneFavoriten = false}) async {
         unreadDmCountProvider.overrideWith((ref) => 18),
         myFantasyLeaguesProvider.overrideWith((ref) => Stream.value(ligen)),
         myRoundsProvider.overrideWith((ref) async => runden),
+        // Die Tippliga, noch nicht beigetreten — der Zustand mit „Mitspielen".
+        tippligaProvider.overrideWith((ref) async => const Tippliga(
+            id: 'tippliga', name: 'MatchUp Tippliga', mitglied: false,
+            mitspieler: 27)),
         favoritenSpieleProvider
             .overrideWith((ref) async => ohneFavoriten ? const [] : spiele),
         fantasyManagersProvider.overrideWith(

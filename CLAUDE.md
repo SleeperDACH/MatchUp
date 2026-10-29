@@ -6154,6 +6154,44 @@ ein Tipp auf das Team zeigt Spielplan und Tabelle.
 Gehalten von `test/team_form_test.dart` und `test/tipp_form_vorschau_test.dart`
 (`tipp_form.png`).
 
+### Die MatchUp Tippliga — ein Tippspiel für alle (0150, 29.10.2026)
+
+Auf Ansage, als erster Punkt aus der Nutzer-Analyse: Wer sich allein
+anmeldet, fand keine Runde (9 von 32 Konten in keiner Liga, keine einzige
+öffentliche Tipprunde). Die Tippliga ist für jeden da, **nur 1. Bundesliga**,
+Standardwertung 4/3/2, Admin ist SFV03.
+
+- **Eine gewöhnliche Tipprunde mit `ist_global`.** Tippen, Wertung, Tabelle,
+  Erinnerungen und Verlassen laufen über die vorhandenen Wege. Je Saison eine
+  (`tip_rounds_tippliga_je_saison`); für 2027/28 legt man eine neue an,
+  `tippliga()` nimmt die jüngste.
+- **Beitritt per Knopf, nicht automatisch** (entschieden): In der Tabelle
+  steht nur, wer tippt, und Erinnerungen bekommt nur, wer mitspielen will.
+  `tippliga()` (security definer) zeigt Name, Mitgliedschaft und
+  Mitspielerzahl auch Nichtmitgliedern — die RLS auf `tip_rounds` bleibt
+  dafür unangetastet, `myRounds()` liefert die Tippliga erst nach dem
+  Beitritt. `tippliga_beitreten()` ist mehrfach harmlos.
+- **Kein Chat** (entschieden; keine Melde-/Blockierfunktion): Die Insert-
+  Policy auf `tip_round_messages` lehnt ab, die App behandelt die Runde wie
+  eine gekoppelte (kein Liga-Reiter, Regeln übers Zahnrad).
+- **Nicht löschbar**, auch nicht vom Admin (Delete-Policy und kein
+  „Löschen" in den Einstellungen); kein Einladungscode in den Einstellungen.
+- **Homescreen: eigener Abschnitt „Für alle"** (`_FuerAlle`), unter den
+  eigenen Tippspielen und vor „Mein Wochenende" — **getrennt von den eigenen
+  Ligen und klein** (auf Ansage; ein erster Wurf stand als großer goldener
+  Streifen oben im Tippspiel-Abschnitt und las sich wie eine eigene Runde).
+  Eine Zeile mit rotem Hauch (`_kartenFlaeche` in `_kTippligaRot`, auf Ansage „eher rötlich statt gelb"): kleines rotes Zeichen, Name, „N dabei",
+  rechts „Mitspielen" (tritt bei und öffnet die Runde) bzw. ein Pfeil. Aus
+  der Liste der eigenen Runden ist die Tippliga herausgefiltert. Der
+  Ladeschirm wartet auf `tippligaProvider` (`ladeschirm_wartet_test`).
+- **Was bei Wachstum klemmt:** Die Tabelle rechnet in der App aus allen
+  Tipps aller Mitglieder. Bei 30 Spielern egal, bei einigen Tausend nicht —
+  dann die Tabelle serverseitig rechnen (`tip_round_standings` gibt es).
+
+Rollback-Probe als Nutzer ohne Liga: Runde sichtbar über `tippliga()`
+(1 Spieler), eigene Runden 0 → nach Beitritt 1, zweiter Beitritt ändert die
+Zahl nicht, Chatnachricht abgelehnt.
+
 ### Zonen in der Ligatabelle (19.10.2026)
 
 Auf Ansage: Meister, Champions League, Europa League, Conference League,

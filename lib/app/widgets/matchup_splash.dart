@@ -41,6 +41,9 @@ final homeBereitProvider = Provider<bool>((ref) {
   if (ref.watch(currentUserProvider) == null) return true;
   return !ref.watch(myFantasyLeaguesProvider).isLoading &&
       !ref.watch(myRoundsProvider).isLoading &&
+      // Die Tippliga steht im Tippspiel-Abschnitt ganz oben; ohne sie spränge
+      // der Abschnitt nach dem Abblenden um einen Streifen nach unten.
+      !ref.watch(tippligaProvider).isLoading &&
       !ref.watch(favoritenSpieleProvider).isLoading &&
       !ref.watch(newsProvider(homeNewsThema)).isLoading;
 });

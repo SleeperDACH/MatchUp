@@ -49,6 +49,7 @@ ProviderContainer _behaelter({
   _Zustand runden = _Zustand.fertig,
   _Zustand favoriten = _Zustand.fertig,
   _Zustand news = _Zustand.fertig,
+  _Zustand tippliga = _Zustand.fertig,
   bool angemeldet = true,
 }) {
   Future<List<T>> quelle<T>(_Zustand z) => switch (z) {
@@ -66,6 +67,11 @@ ProviderContainer _behaelter({
       favoritenSpieleProvider
           .overrideWith((ref) => quelle<TeamFixture>(favoriten)),
       newsProvider.overrideWith((ref, thema) => quelle<NewsItem>(news)),
+      tippligaProvider.overrideWith((ref) => switch (tippliga) {
+            _Zustand.laedt => _haengt<Tippliga?>(),
+            _Zustand.fertig => Future.value(null),
+            _Zustand.fehler => Future.error(Exception('Netz weg')),
+          }),
     ],
   );
 }
@@ -116,6 +122,7 @@ void main() {
       // Das „Match über den Ligen" — die Kopfkarte mit dem nächsten Spiel.
       ('Favoritenspiele', _behaelter(favoriten: _Zustand.laedt)),
       ('News', _behaelter(news: _Zustand.laedt)),
+      ('Tippliga', _behaelter(tippliga: _Zustand.laedt)),
     ]) {
       final (name, c) = fall;
       addTearDown(c.dispose);
@@ -127,6 +134,7 @@ void main() {
     for (final c in [
       _behaelter(favoriten: _Zustand.fehler),
       _behaelter(news: _Zustand.fehler),
+      _behaelter(tippliga: _Zustand.fehler),
     ]) {
       addTearDown(c.dispose);
       expect(await _bereit(c), isTrue);

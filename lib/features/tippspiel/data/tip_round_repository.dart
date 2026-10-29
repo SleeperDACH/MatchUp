@@ -15,6 +15,19 @@ class TipRoundRepository {
 
   final SupabaseClient _client;
 
+  /// Die MatchUp Tippliga, für jeden sichtbar; `null`, wenn es keine gibt.
+  Future<Tippliga?> tippliga() async {
+    final rows = await _client.rpc<List<dynamic>>('tippliga');
+    if (rows.isEmpty) return null;
+    return Tippliga.fromJson(rows.first as Map<String, dynamic>);
+  }
+
+  /// Tritt der Tippliga bei (mehrfach harmlos) und liefert die Runde.
+  Future<TipRound> tippligaBeitreten() async {
+    final id = await _client.rpc<String>('tippliga_beitreten');
+    return fetchRound(id);
+  }
+
   Future<List<TipRound>> myRounds() async {
     final rows = await _client
         .from('tip_rounds')
