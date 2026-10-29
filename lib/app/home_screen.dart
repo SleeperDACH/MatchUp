@@ -1906,23 +1906,35 @@ class _FuerAlleState extends ConsumerState<_FuerAlle> {
           child: const MatchUpChevron(size: 14, color: Colors.white),
         ),
         const SizedBox(width: 10),
+        // Name oben, Mitspieler klein darunter: In einer Zeile nebeneinander
+        // schnitt der Knopf „Mitspielen" die Zahl ab („27 d…").
         Expanded(
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: liga.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Versalien und kursiv wie jede Überschrift der App (auf
+              // Ansage) — der Name ist hier der Titel der Zeile.
+              Text(
+                liga.name.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: Schrift.text,
+                  fontWeight: Schrift.ueberschriftGewicht,
+                  fontStyle: Schrift.ueberschriftStil,
+                  letterSpacing: 0.3,
                 ),
-                TextSpan(
-                  text: '  ·  ${liga.mitspieler} dabei',
-                  style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
+              Text(
+                '${liga.mitspieler} dabei',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: Schrift.label,
+                  color: scheme.onSurfaceVariant,
                 ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: Schrift.text),
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 8),

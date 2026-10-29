@@ -282,7 +282,7 @@ Future<void> _bauen(WidgetTester tester, {bool ohneFavoriten = false}) async {
         myRoundsProvider.overrideWith((ref) async => runden),
         // Die Tippliga, noch nicht beigetreten — der Zustand mit „Mitspielen".
         tippligaProvider.overrideWith((ref) async => const Tippliga(
-            id: 'tippliga', name: 'MatchUp Tippliga', mitglied: false,
+            id: 'tippliga', name: 'Globales Tippspiel', mitglied: false,
             mitspieler: 27)),
         favoritenSpieleProvider
             .overrideWith((ref) async => ohneFavoriten ? const [] : spiele),

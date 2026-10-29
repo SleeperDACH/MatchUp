@@ -6154,7 +6154,12 @@ ein Tipp auf das Team zeigt Spielplan und Tabelle.
 Gehalten von `test/team_form_test.dart` und `test/tipp_form_vorschau_test.dart`
 (`tipp_form.png`).
 
-### Die MatchUp Tippliga — ein Tippspiel für alle (0150, 29.10.2026)
+### Das Globale Tippspiel (früher „MatchUp Tippliga“) — für alle (0150/0151, 29.10.2026)
+
+Seit 0151 heißt die Runde **„Globales Tippspiel“**; in der Zeile steht der
+Name in Versalien und kursiv wie jede Überschrift (auf Ansage). Im Code
+heißt sie weiter `Tippliga` (`tippliga()`, `tippligaProvider`).
+
 
 Auf Ansage, als erster Punkt aus der Nutzer-Analyse: Wer sich allein
 anmeldet, fand keine Runde (9 von 32 Konten in keiner Liga, keine einzige
