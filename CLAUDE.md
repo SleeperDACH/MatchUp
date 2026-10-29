@@ -6055,6 +6055,28 @@ Was das Bild sofort zeigte:
   flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
   ist die Beschriftung, das Ergebnis die Auskunft.
 
+### Form und Vereinsseite auf der Tippkarte (29.10.2026)
+
+Auf Ansage: unter jedem Team die Form der letzten fünf Spiele (S/U/N), und
+ein Tipp auf das Team zeigt Spielplan und Tabelle.
+
+- **Die Form kommt aus den Saison-Spielplänen**, die der Tippen-Tab ohnehin
+  lädt (`teamFormProvider` → `formVor` in `logic/team_form.dart`) — kein
+  Abruf je Verein. Gezählt werden Spiele mit Endergebnis **vor** dem
+  getippten Anpfiff, älteste links; ein alter Spieltag zeigt also die Form
+  von damals. **Im Pokal zählt die Liga-Form** (`formQuellen`: Bundesliga,
+  2. Liga, 3. Liga — die erste, die den Verein kennt). Ohne passenden
+  Spielplan steht keine Zeile da.
+- **Farbe im Buchstaben, nicht als Fläche** (`FormLeiste`): S grün, N rot, U
+  grau auf neutralem Kästchen. Zehn bunte Kästchen je Karte wären die rote
+  Wäsche des Live-Tabs noch einmal.
+- **Ein Tipp auf Wappen oder Name öffnet die Vereinsseite** (`ClubLink`,
+  Reiter Spielplan · Tabelle · Kader · News) mit der Liga des Spiels; im
+  Pokal ohne Liga, die Seite leitet sie selbst ab.
+
+Gehalten von `test/team_form_test.dart` und `test/tipp_form_vorschau_test.dart`
+(`tipp_form.png`).
+
 ### Zonen in der Ligatabelle (19.10.2026)
 
 Auf Ansage: Meister, Champions League, Europa League, Conference League,

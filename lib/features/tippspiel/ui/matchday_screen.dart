@@ -11,6 +11,9 @@ import '../../../core/models/models.dart';
 import '../data/tip_store.dart';
 import '../logic/tip_scoring.dart';
 import '../logic/tip_weeks.dart';
+import '../logic/team_form.dart';
+import '../../../app/club_screen.dart';
+import '../../../app/theme.dart';
 import '../models/tip.dart';
 import '../providers.dart';
 import 'round_selector.dart';
@@ -335,10 +338,10 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
               children: [
                 Row(
                   children: [
-                    Expanded(child: _TeamLabel(team: fixture.home)),
+                    Expanded(child: _TeamLabel(fixture: fixture, heim: true)),
                     center,
                     Expanded(
-                      child: _TeamLabel(team: fixture.away, alignEnd: true),
+                      child: _TeamLabel(fixture: fixture, heim: false),
                     ),
                   ],
                 ),
@@ -648,14 +651,19 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
   }
 }
 
-class _TeamLabel extends StatelessWidget {
-  const _TeamLabel({required this.team, this.alignEnd = false});
+/// Wappen, Name und darunter die Form der letzten fünf Spiele. Ein Tipp
+/// öffnet die Vereinsseite (Spielplan, Tabelle) — dieselbe wie aus dem
+/// Live-Tab, damit „wie steht der eigentlich?" beim Tippen eine Antwort hat.
+class _TeamLabel extends ConsumerWidget {
+  const _TeamLabel({required this.fixture, required this.heim});
 
-  final TeamRef team;
-  final bool alignEnd;
+  final Fixture fixture;
+  final bool heim;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final team = heim ? fixture.home : fixture.away;
+    final alignEnd = !heim;
     // Wappen außen, Name innen — so stehen die beiden Logos an den Rändern
     // der Karte und die Namen rücken an die Tippfelder in der Mitte.
     // Der Name bleibt zweizeilig, damit auch „Borussia Mönchengladbach"
@@ -671,17 +679,95 @@ class _TeamLabel extends StatelessWidget {
       ),
     );
     final badge = TeamBadge(team: team, size: _badgeSize);
-    return Row(
-      mainAxisAlignment: alignEnd
-          ? MainAxisAlignment.end
-          : MainAxisAlignment.start,
-      children: alignEnd
-          ? [name, const SizedBox(width: 7), badge]
-          : [badge, const SizedBox(width: 7), name],
+    final form = ref.watch(teamFormProvider((
+      leagueId: fixture.leagueId,
+      teamId: team.id,
+      vor: fixture.kickoff,
+    )));
+    // Im Pokal gibt es keine Pokaltabelle — die Vereinsseite leitet die Liga
+    // dann selbst ab.
+    final liga = fixture.leagueId == Leagues.dfbPokal.id ? null : fixture.leagueId;
+    return ClubLink(
+      team: team,
+      leagueId: liga,
+      child: Column(
+        crossAxisAlignment:
+            alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment:
+                alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: alignEnd
+                ? [name, const SizedBox(width: 7), badge]
+                : [badge, const SizedBox(width: 7), name],
+          ),
+          if (form != null && form.isNotEmpty) ...[
+            const SizedBox(height: Abstand.halb + 2),
+            FormLeiste(ergebnisse: form),
+          ],
+        ],
+      ),
     );
   }
 
   static const _badgeSize = 22.0;
+}
+
+/// Die Form als Reihe kleiner Buchstaben: S grün, N rot, U grau — auf
+/// neutraler Unterlage, nicht als Farbfläche. Neun Karten mit je zehn bunten
+/// Kästchen wären die „rote Wäsche" des Live-Tabs noch einmal; die Farbe
+/// sitzt im Buchstaben, wo sie gut und schlecht trennt, ohne zu rufen.
+class FormLeiste extends StatelessWidget {
+  const FormLeiste({super.key, required this.ergebnisse});
+
+  final List<FormErgebnis> ergebnisse;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Color farbe(FormErgebnis e) => switch (e) {
+          FormErgebnis.sieg => MatchUpColors.green,
+          FormErgebnis.niederlage => scheme.error,
+          FormErgebnis.remis => scheme.onSurfaceVariant,
+        };
+    String wort(FormErgebnis e) => switch (e) {
+          FormErgebnis.sieg => 'Sieg',
+          FormErgebnis.remis => 'Unentschieden',
+          FormErgebnis.niederlage => 'Niederlage',
+        };
+    return Semantics(
+      label: 'Form der letzten ${ergebnisse.length} Spiele: '
+          '${ergebnisse.map(wort).join(', ')}',
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < ergebnisse.length; i++) ...[
+              if (i > 0) const SizedBox(width: 3),
+              Container(
+                width: 16,
+                height: 16,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  ergebnisse[i].buchstabe,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: Schrift.label,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                        color: farbe(ergebnisse[i]),
+                      ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _CenterInfo extends StatelessWidget {

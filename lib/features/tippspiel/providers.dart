@@ -18,6 +18,7 @@ import 'data/tip_round_repository.dart';
 import 'data/tip_store.dart';
 import 'logic/tip_stats.dart';
 import 'logic/tip_weeks.dart';
+import 'logic/team_form.dart';
 import 'models/chat_message.dart';
 import 'models/tip.dart';
 import 'models/tip_round.dart';
@@ -114,6 +115,25 @@ final leagueSeasonFixturesProvider =
   final league = Leagues.byId(leagueId);
   final season = league.seasonFor(DateTime.now());
   return sportsProviderFor(league).getSeasonFixtures(league, season);
+});
+
+/// Form einer Mannschaft vor einem Spiel (letzte fünf Ergebnisse, älteste
+/// zuerst) — gelesen aus den Saison-Spielplänen, die der Tippen-Tab ohnehin
+/// lädt; kein zusätzlicher Abruf je Verein. `null`, solange kein passender
+/// Spielplan geladen ist oder die Mannschaft darin nicht vorkommt: Dann steht
+/// keine Formzeile da, statt einer leeren, die wie „keine Spiele" aussähe.
+final teamFormProvider = Provider.family<List<FormErgebnis>?,
+    ({String leagueId, String teamId, DateTime vor})>((ref, k) {
+  for (final id in formQuellen(k.leagueId)) {
+    if (!Leagues.all.any((l) => l.id == id)) continue;
+    final spiele = ref.watch(leagueSeasonFixturesProvider(id)).valueOrNull;
+    if (spiele == null) continue;
+    final kennt =
+        spiele.any((f) => f.home.id == k.teamId || f.away.id == k.teamId);
+    if (!kennt) continue;
+    return formVor(spiele, k.teamId, k.vor);
+  }
+  return null;
 });
 
 /// Die aktuellen Stände aller Sportmonks-Ligen, nach Fixture-ID — für den
