@@ -1331,6 +1331,17 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
 - **Kein `channel_id` im Android-Teil der Nachricht.** Ein Kanal, den die App
   nicht angelegt hat, kann dazu führen, dass Android 8+ die Benachrichtigung
   gar nicht anzeigt; ohne Angabe nimmt das Firebase-SDK seinen Standardkanal.
+- **Wer die Fantasy-Liga verlässt, verlässt ihr Tippspiel** (0149,
+  29.10.2026, gemeldet: Tipp-Erinnerungen nach dem Austritt). 0064 ließ
+  Austritte in `tip_round_members` bewusst stehen — die Mitgliedschaft ist
+  aber die Empfängerliste für Tipp-Erinnerungen und Runden-Chat und macht die
+  Runde sichtbar. `fantasy_member_sync_tip` hört jetzt auch auf
+  `vacant`/`pending` → wahr und auf `delete` (Verlassen, Kick, Übergabe
+  laufen über `_fantasy_vacate`) und löscht die Mitgliedschaft. Tipps bleiben
+  stehen (die Tabelle rechnet über Mitglieder; wer zurückkommt, findet sie
+  wieder). War der Austretende Runden-Admin, geht das Amt an den Liga-Admin.
+  Bestand: zwei verwaiste Manager in „BuLi 26/27", beide ohne Tipp, entfernt.
+  Rollback-Probe: Austritt 1 → 0, Rückkehr 0 → 1, Admin-Übergabe korrekt.
 
 ## Befehle
 
