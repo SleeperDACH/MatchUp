@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 
 /// Warnhinweis, wenn ein Kader das Limit ([limit] = Kadergröße) überschreitet:
@@ -18,27 +19,26 @@ class RosterLimitBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (count <= limit) return const SizedBox.shrink();
-    const red = Color(0xFFF23030);
     final over = count - limit;
     return Container(
       margin: margin,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: red.withValues(alpha: 0.14),
+        color: context.farben.rot.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: red.withValues(alpha: 0.6)),
+        border: Border.all(color: context.farben.rot.withValues(alpha: 0.6)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber, color: red, size: 20),
+          Icon(Icons.warning_amber, color: context.farben.rot, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Kaderlimit überschritten: $count/$limit Spieler',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: red)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: context.farben.rot)),
                 const SizedBox(height: 2),
                 Text(
                   'Keine Punkte, solange der Kader zu groß ist. Gib noch '

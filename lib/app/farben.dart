@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'theme.dart';
+
 /// Die Signal- und Zustandsfarben der App — **je Helligkeit eine Fassung**.
 ///
 /// Bis zum hellen Modus standen diese Farben als feste Werte quer durch den
@@ -30,6 +32,7 @@ class MatchUpFarben extends ThemeExtension<MatchUpFarben> {
     required this.auswahlKante,
     required this.naviGlas,
     required this.schimmer,
+    required this.vorne,
   });
 
   /// Grün: ich / gut / läuft. Als Schrift, Symbol und Strich.
@@ -71,6 +74,11 @@ class MatchUpFarben extends ThemeExtension<MatchUpFarben> {
   /// Prozent); auf Hell ein ebenso leiser Schatten.
   final Color schimmer;
 
+  /// Die stärkste Schrift: reines Weiß auf Dunkel, Schwarz auf Hell. Für die
+  /// Stellen, die im dunklen Modus bewusst Weiß statt Snow tragen (große
+  /// Zahlen, Namen im MatchUp-Kasten).
+  final Color vorne;
+
   static const dunkel = MatchUpFarben(
     gruen: Color(0xFF4ADE6A),
     rot: Color(0xFFF23030),
@@ -82,10 +90,14 @@ class MatchUpFarben extends ThemeExtension<MatchUpFarben> {
     silber: Color(0xFFC4CBD4),
     bronze: Color(0xFFCD8B4E),
     neutral: Color(0xFF9AA0AA),
-    auswahlFlaeche: Color(0x24EDEFF4), // Snow 14 %
-    auswahlKante: Color(0x8CEDEFF4), // Snow 55 %
-    naviGlas: Color(0x94000000), // Schwarz 58 %
-    schimmer: Color(0x14FFFFFF),
+    // Exakt die Werte, die vorher als `withValues(alpha: …)` im Code standen —
+    // als Hexwert gerundet wichen sie um eine Stufe ab, und der dunkle Modus
+    // soll sich um keinen Pixel ändern.
+    auswahlFlaeche: Color.from(alpha: 0.14, red: 237 / 255, green: 239 / 255, blue: 244 / 255),
+    auswahlKante: Color.from(alpha: 0.55, red: 237 / 255, green: 239 / 255, blue: 244 / 255),
+    naviGlas: Color.from(alpha: 0.58, red: 0, green: 0, blue: 0),
+    schimmer: Color.from(alpha: 0.08, red: 1, green: 1, blue: 1),
+    vorne: Color(0xFFFFFFFF),
   );
 
   static const hell = MatchUpFarben(
@@ -103,6 +115,7 @@ class MatchUpFarben extends ThemeExtension<MatchUpFarben> {
     auswahlKante: Color(0x73000000), // Schwarz 45 %
     naviGlas: Color(0xE0FFFFFF), // Weiß 88 %
     schimmer: Color(0x0A000000),
+    vorne: Color(0xFF000000),
   );
 
   @override
@@ -127,6 +140,7 @@ class MatchUpFarben extends ThemeExtension<MatchUpFarben> {
       auswahlKante: l(auswahlKante, other.auswahlKante),
       naviGlas: l(naviGlas, other.naviGlas),
       schimmer: l(schimmer, other.schimmer),
+      vorne: l(vorne, other.vorne),
     );
   }
 }
@@ -139,4 +153,24 @@ extension MatchUpFarbenContext on BuildContext {
 
   /// Wahr im hellen Modus.
   bool get istHell => Theme.of(this).brightness == Brightness.light;
+}
+
+/// Ein Bereich, der **in beiden Modi dunkel** bleibt: das Spielfeld, Bilder
+/// mit dunklem Grund. Der Rasen ist Inhalt wie ein Foto — auf ihm stehen
+/// weiße Namen, und eine Kachel, die sich nach dem hellen Theme richtet, wäre
+/// dort weiß auf hellem Kasten (so geschehen beim Prognose-Kasten).
+///
+/// Alles darunter liest das dunkle Theme — auch was später dazukommt.
+class DunkleInsel extends StatelessWidget {
+  const DunkleInsel({super.key, required this.child});
+
+  final Widget child;
+
+  static final _dunkel = buildAppTheme(brightness: Brightness.dark);
+
+  @override
+  Widget build(BuildContext context) {
+    if (!context.istHell) return child;
+    return Theme(data: _dunkel, child: child);
+  }
 }

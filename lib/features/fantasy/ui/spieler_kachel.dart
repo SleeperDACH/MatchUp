@@ -1,5 +1,5 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
-import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/typografie.dart';
@@ -86,7 +86,7 @@ class SpielerKachel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final farbe = positionColor(spieler.position);
+    final farbe = positionColor(spieler.position, context.farben);
     final ausfall =
         (ref.watch(absencesProvider).valueOrNull ?? const {})[spieler.id];
 
@@ -105,7 +105,10 @@ class SpielerKachel extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final vg = scheme.onSurface;
     final flaeche = hervor
-        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.10),
+        ? Color.alphaBlend(
+            context.istHell
+                ? context.farben.auswahlFlaeche
+                : Colors.white.withValues(alpha: 0.10),
             Theme.of(context).cardColor)
         : Theme.of(context).cardColor;
 
@@ -120,7 +123,7 @@ class SpielerKachel extends ConsumerWidget {
         border: Border.all(
           // Die Kante sagt „gewählt", sonst ist es die Haarlinie aller Karten.
           color: hervor && mitHaken
-              ? Colors.white.withValues(alpha: 0.85)
+              ? context.farben.vorne.withValues(alpha: 0.85)
               : Theme.of(context).dividerColor,
           width: hervor && mitHaken ? 1.5 : 1,
         ),
@@ -190,8 +193,8 @@ class SpielerKachel extends ConsumerWidget {
                             : Icons.medical_services_outlined,
                         size: klein ? 11 : 13,
                         color: ausfall.gesperrt
-                            ? const Color(0xFFF23030)
-                            : const Color(0xFFFFC83D),
+                            ? context.farben.rot
+                            : context.farben.gold,
                       ),
                     ],
                     if (punkte != null) ...[
@@ -219,15 +222,15 @@ class SpielerKachel extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(left: 4),
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: context.farben.vorne,
                   shape: BoxShape.circle,
                 ),
                 padding: const EdgeInsets.all(2),
                 child: Icon(
                   Icons.check,
                   size: 15,
-                  color: MatchUpColors.base,
+                  color: scheme.surface,
                   weight: 900,
                 ),
               ),

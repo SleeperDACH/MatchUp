@@ -1,3 +1,4 @@
+import 'farben.dart';
 import 'package:flutter/material.dart';
 import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +12,6 @@ import '../features/news/providers.dart';
 import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'widgets/team_fixture_list.dart';
-import 'theme.dart';
 import 'widgets/liga_tabelle.dart';
 import 'widgets/segmented_tab_bar.dart';
 import '../core/data/neu_laden.dart';
@@ -237,11 +237,11 @@ class _KaderZeile extends StatelessWidget {
           ),
           if (member.captain) ...[
             const SizedBox(width: 6),
-            const Text('C',
+            Text('C',
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 11,
-                    color: MatchUpColors.green)),
+                    color: context.farben.gruen)),
           ],
         ],
       ),

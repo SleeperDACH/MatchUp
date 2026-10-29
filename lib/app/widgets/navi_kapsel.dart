@@ -1,9 +1,9 @@
+import '../farben.dart';
 import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import '../theme.dart';
 import '../typografie.dart';
 
 /// Maße der schwebenden Navi-Kapsel.
@@ -80,13 +80,16 @@ class NaviKapsel extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.58),
+            // Dunkles Glas auf Dunkel, helles auf Hell — die Leiste liegt über
+            // allem, was ein Tab zeigt, und muss in beiden Modi den eigenen
+            // Grund halten.
+            color: context.farben.naviGlas,
             // Nur oben eine Kante — die drei anderen Seiten liegen am
             // Bildschirmrand. Es ist dieselbe Haarlinie, die in dieser App
             // jede Karte von ihrem Grund trennt.
             border: Border(
               top: BorderSide(
-                color: MatchUpColors.snow.withValues(alpha: 0.10),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
                 width: 0.8,
               ),
             ),
@@ -148,9 +151,8 @@ class _Ziel extends StatelessWidget {
     // steht. Die Ruhenden bleiben trotzdem lesbar: 0,55 ist gedämpft genug,
     // dass das aktive Symbol heraussticht, und hell genug, dass „Live" und
     // „Favoriten" nicht erraten werden müssen.
-    final farbe = aktiv
-        ? MatchUpColors.snow
-        : MatchUpColors.snow.withValues(alpha: 0.55);
+    final vorne = Theme.of(context).colorScheme.onSurface;
+    final farbe = aktiv ? vorne : vorne.withValues(alpha: 0.55);
 
     return Semantics(
       button: true,
@@ -164,8 +166,8 @@ class _Ziel extends StatelessWidget {
         // gut zwanzig Punkte tot, und ein Tipp knapp daneben täte nichts.
         child: InkWell(
           onTap: onTap,
-          splashColor: MatchUpColors.snow.withValues(alpha: 0.05),
-          highlightColor: MatchUpColors.snow.withValues(alpha: 0.03),
+          splashColor: vorne.withValues(alpha: 0.05),
+          highlightColor: vorne.withValues(alpha: 0.03),
           // **Nur der Text wird ausgeschlossen, nicht der Knopf.** Lag das
           // `ExcludeSemantics` außen um den `InkWell`, verschwand mit dem
           // doppelten Wort auch dessen Tipp-Aktion: Die Vorlesehilfe kannte

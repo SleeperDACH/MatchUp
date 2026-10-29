@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -129,7 +130,6 @@ class _StartBlatt extends StatefulWidget {
 }
 
 class _StartBlattState extends State<_StartBlatt> {
-  static const _gold = Color(0xFFFFC83D);
 
   late DraftPickTime _pickTime = widget.league.pickTime;
   late int _runden = widget.league.rounds.clamp(
@@ -260,7 +260,7 @@ class _StartBlattState extends State<_StartBlatt> {
             const SizedBox(height: 14),
             Row(
               children: [
-                const Icon(Icons.lock_outline, size: 16, color: _gold),
+                Icon(Icons.lock_outline, size: 16, color: context.farben.gold),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -286,7 +286,7 @@ class _StartBlattState extends State<_StartBlatt> {
                 ),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: _gold,
+                backgroundColor: context.farben.gold,
                 foregroundColor: scheme.surface,
                 minimumSize: hoch,
               ),

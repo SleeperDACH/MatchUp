@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/typografie.dart';
@@ -23,8 +24,6 @@ import '../providers.dart';
 import '../../../core/ui/app_avatar.dart';
 
 // MatchUp-Palette (wie in der Übersicht): grün normal, rot solange live.
-const _cGreen = Color(0xFF4ADE6A);
-const _cRed = Color(0xFFF23030);
 
 /// Höhe, die ein [MatchupBanner] mitsamt Rändern braucht.
 ///
@@ -281,9 +280,12 @@ class HeroShell extends StatelessWidget {
     // eingefärbt, in derselben Stärke wie ein beendeter Spieltag:
     // Unterschieden werden die beiden ohnehin deutlicher durch Marke
     // („Vorschau" gegen „Beendet"), Punktestand und Balken.
+    // Auf Weiß trägt Farbe viel stärker als auf Schwarz — derselbe Anteil
+    // machte den Kasten im hellen Modus rosa. Dort halb so viel.
+    final staerke = context.istHell ? 0.5 : 1.0;
     final hauch = live
-        ? accent.withValues(alpha: 0.22)
-        : accent.withValues(alpha: 0.10);
+        ? accent.withValues(alpha: 0.22 * staerke)
+        : accent.withValues(alpha: 0.10 * staerke);
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(18),
@@ -320,19 +322,26 @@ class HeroShell extends StatelessWidget {
                 // zu 30 % — der Kasten trägt Zahlen, und die brauchen ruhigen
                 // Grund. Unterer Bildrand (beleuchteter Rasen mit Linien),
                 // nur im dunklen Modus: Das Foto ist fast schwarz.
-                if (Theme.of(context).brightness == Brightness.dark)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: 0.30,
-                        child: Image.asset(
-                          'assets/images/spiel_bg.jpg',
-                          fit: BoxFit.cover,
-                          alignment: Alignment.bottomCenter,
-                        ),
-                      ),
+                // Im hellen Modus dasselbe Bild unter einem weißen Schleier —
+                // sichtbar, aber hell (29.10.2026, auf Ansage).
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: context.istHell ? 1 : 0.30,
+                      child: context.istHell
+                          ? Image.asset(
+                              'assets/images/spiel_linien.png',
+                              fit: BoxFit.cover,
+                              alignment: Alignment.bottomCenter,
+                            )
+                          : Image.asset(
+                              'assets/images/spiel_bg.jpg',
+                              fit: BoxFit.cover,
+                              alignment: Alignment.bottomCenter,
+                            ),
                     ),
                   ),
+                ),
                 // **Keine Kopfzeile mehr.** Sie trug ein Blitzsymbol, das Wort
                 // MATCHUP, den Spieltag und eine Status-Pille — vier
                 // Auskünfte in 11 bis 13 Punkt über dem, worum es geht.
@@ -414,7 +423,7 @@ class HeroAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: dim ? Colors.white.withValues(alpha: 0.28) : accent,
+          color: dim ? context.farben.vorne.withValues(alpha: 0.28) : accent,
           width: 2.5,
         ),
         boxShadow: dim
@@ -460,12 +469,13 @@ const kChanceNeutral = Color(0xFF9AA0AA);
 /// **Unter drei Prozentpunkten Unterschied ist niemand Favorit.** 51 zu 49 ist
 /// ein Münzwurf, und ihn grün gegen rot zu stellen behauptet eine Überlegen-
 /// heit, die im Rauschen liegt.
-(Color, Color) chanceFarben(int linksProzent) {
+(Color, Color) chanceFarben(int linksProzent,
+    [MatchUpFarben f = MatchUpFarben.dunkel]) {
   final rechtsProzent = 100 - linksProzent;
   if ((linksProzent - rechtsProzent).abs() < 3) {
-    return (kChanceNeutral, kChanceNeutral);
+    return (f.neutral, f.neutral);
   }
-  return linksProzent > rechtsProzent ? (_cGreen, _cRed) : (_cRed, _cGreen);
+  return linksProzent > rechtsProzent ? (f.gruen, f.rot) : (f.rot, f.gruen);
 }
 
 // ---------------------------------------------------------------------------
@@ -705,7 +715,7 @@ class MatchupBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = live ? _cRed : _cGreen;
+    final accent = live ? context.farben.rot : context.farben.gruen;
     final beendet = started && !live;
 
     if (awayName == null) {
@@ -744,7 +754,7 @@ class MatchupBanner extends StatelessWidget {
               style: TextStyle(
                 fontSize: Schrift.titel,
                 fontWeight: FontWeight.w700,
-                color: Colors.white.withValues(alpha: 0.7),
+                color: context.farben.vorne.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -857,7 +867,7 @@ class _Seite extends StatelessWidget {
           fontSize: Schrift.gross,
           fontWeight: FontWeight.w800,
           height: 1,
-          color: Colors.white.withValues(alpha: verloren ? 0.6 : 1),
+          color: context.farben.vorne.withValues(alpha: verloren ? 0.6 : 1),
         ),
       );
     } else if (erwartet != null) {
@@ -867,7 +877,7 @@ class _Seite extends StatelessWidget {
           fontSize: Schrift.gross,
           fontWeight: FontWeight.w800,
           height: 1,
-          color: Colors.white.withValues(alpha: 0.55),
+          color: context.farben.vorne.withValues(alpha: 0.55),
         ),
       );
     } else {
@@ -877,7 +887,7 @@ class _Seite extends StatelessWidget {
           fontSize: Schrift.gross,
           fontWeight: FontWeight.w800,
           height: 1,
-          color: Colors.white.withValues(alpha: 0.4),
+          color: context.farben.vorne.withValues(alpha: 0.4),
         ),
       );
     }
@@ -909,7 +919,7 @@ class _Seite extends StatelessWidget {
               fontSize: Schrift.label,
               fontWeight: FontWeight.w600,
               height: 1,
-              color: Colors.white.withValues(alpha: 0.5),
+              color: context.farben.vorne.withValues(alpha: 0.5),
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -921,7 +931,7 @@ class _Seite extends StatelessWidget {
       onTap: onName,
       child: HeroAvatar(
         name: name,
-        accent: me ? _cGreen : Colors.white.withValues(alpha: 0.35),
+        accent: me ? context.farben.gruen : context.farben.vorne.withValues(alpha: 0.35),
         dim: verloren,
         imageUrl: avatar?.url,
         emoji: avatar?.emoji,
@@ -988,12 +998,12 @@ class _ChanceZeile extends StatelessWidget {
     if (beendet) {
       text = sieg ? 'Sieg' : (niederlage ? 'Niederlage' : 'Unentschieden');
       anteil = sieg ? 1 : (niederlage ? 0 : 0.5);
-      farbe = sieg ? _cGreen : (niederlage ? _cRed : kChanceNeutral);
+      farbe = sieg ? context.farben.gruen : (niederlage ? context.farben.rot : context.farben.neutral);
     } else if (chance != null) {
       final prozent = (chance! * 100).round().clamp(0, 100);
       text = '$prozent % Sieg';
       anteil = chance!;
-      farbe = chanceFarben(prozent.clamp(1, 99)).$1;
+      farbe = chanceFarben(prozent.clamp(1, 99), context.farben).$1;
     } else {
       // Ohne Grundlage keine Zahl — aber dieselbe Höhe, damit beide Seiten
       // und alle Karten des Karussells gleich stehen.
@@ -1023,7 +1033,7 @@ class _ChanceZeile extends StatelessWidget {
               height: 4,
               child: Stack(
                 children: [
-                  Container(color: Colors.white.withValues(alpha: 0.08)),
+                  Container(color: context.farben.vorne.withValues(alpha: 0.08)),
                   // Der Balken wächst von der Außenkante nach innen.
                   Align(
                     alignment: links
@@ -1079,12 +1089,12 @@ class _NameZeilen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final leise = Colors.white.withValues(alpha: 0.55);
+    final leise = context.farben.vorne.withValues(alpha: 0.55);
     final serie = bilanz?.serie;
     final (pfeil, buchstabe, farbe) = switch (serie?.ausgang) {
-      DuellAusgang.sieg => ('▲', 'S', _cGreen),
-      DuellAusgang.niederlage => ('▼', 'N', _cRed),
-      _ => ('■', 'U', kChanceNeutral),
+      DuellAusgang.sieg => ('▲', 'S', context.farben.gruen),
+      DuellAusgang.niederlage => ('▼', 'N', context.farben.rot),
+      _ => ('■', 'U', context.farben.neutral),
     };
     return Column(
       crossAxisAlignment: links
@@ -1101,7 +1111,7 @@ class _NameZeilen extends StatelessWidget {
             fontSize: Schrift.titel,
             fontWeight: me ? FontWeight.w800 : FontWeight.w700,
             height: 1.15,
-            color: Colors.white,
+            color: context.farben.vorne,
           ),
         ),
         if (bilanz?.zeile != null) ...[
@@ -1179,7 +1189,7 @@ class _Mitte extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 letterSpacing: live ? 1 : 0.3,
                 height: 1.2,
-                color: live ? _cRed : Colors.white.withValues(alpha: 0.5),
+                color: live ? context.farben.rot : context.farben.vorne.withValues(alpha: 0.5),
               ),
             ),
           ],

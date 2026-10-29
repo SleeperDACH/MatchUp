@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,13 +45,15 @@ void showManagerProfile(
   required String managerId,
   required String managerName,
 }) {
-  Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => ManagerProfileScreen(
-      league: league,
-      managerId: managerId,
-      managerName: managerName,
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => ManagerProfileScreen(
+        league: league,
+        managerId: managerId,
+        managerName: managerName,
+      ),
     ),
-  ));
+  );
 }
 
 class ManagerProfileScreen extends ConsumerWidget {
@@ -81,22 +84,24 @@ class ManagerProfileScreen extends ConsumerWidget {
     final rundeAsync = ref.watch(fantasyAufstellungsRundeProvider);
     final round = rundeAsync.valueOrNull;
     final poolAsync = ref.watch(playerPoolProvider);
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
-    final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
+    final lineups =
+        ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
         const <FantasyLineup>[];
     final stats = round == null
         ? const <String, PlayerMatchStats>{}
         : (ref.watch(roundStatsProvider(round)).valueOrNull ??
-            const <String, PlayerMatchStats>{});
+              const <String, PlayerMatchStats>{});
     final clubIcons =
         ref.watch(clubIconsProvider).valueOrNull ?? const <String, String?>{};
     final myId = ref.watch(currentUserProvider)?.id;
-    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
+    final managers =
+        ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
         const <FantasyManager>[];
     final isMe = managerId == myId;
-    final manager =
-        managers.where((m) => m.userId == managerId).firstOrNull;
+    final manager = managers.where((m) => m.userId == managerId).firstOrNull;
     final display = manager?.display ?? managerName;
     // Zweiter Name (echter Nutzername) nur zeigen, wenn ein Teamname gesetzt ist.
     final showUsername =
@@ -105,144 +110,177 @@ class ManagerProfileScreen extends ConsumerWidget {
     final aufstellungsKopf = Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Text(
-          round == null ? 'Aufstellung' : 'Aufstellung · Spieltag $round',
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        round == null ? 'Aufstellung' : 'Aufstellung · Spieltag $round',
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppAvatar(
-              imageUrl: manager?.avatarUrl,
-              emoji: manager?.avatarEmoji,
-              colorHex: manager?.avatarColor,
-              fallbackText: display,
-              size: 32,
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(display, overflow: TextOverflow.ellipsis),
-                  if (showUsername)
-                    Text('@${manager.username}',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant)),
-                ],
+        appBar: AppBar(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppAvatar(
+                imageUrl: manager?.avatarUrl,
+                emoji: manager?.avatarEmoji,
+                colorHex: manager?.avatarColor,
+                fallbackText: display,
+                size: 32,
               ),
-            ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(display, overflow: TextOverflow.ellipsis),
+                    if (showUsername)
+                      Text(
+                        '@${manager.username}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // Zwei Reiter: was er diese Woche stellt, und wie seine Saison läuft.
+          bottom: const LeiseReiter(titel: ['Aufstellung', 'Saison']),
+        ),
+        body: TabBarView(
+          children: [
+            round == null
+                ? const Skelett()
+                : poolAsync.when(
+                    loading: () => const Skelett(),
+                    error: (e, _) => Center(child: Text('Fehler: $e')),
+                    data: (pool) {
+                      final byId = {for (final p in pool) p.id: p};
+                      final rosterPlayers = [
+                        for (final r in roster)
+                          if (r.managerId == managerId &&
+                              byId[r.playerId] != null)
+                            byId[r.playerId]!,
+                      ];
+                      if (rosterPlayers.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'Dieser Manager hat noch keinen Kader.',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+
+                      final points = {
+                        for (final p in rosterPlayers)
+                          p: scorePlayer(
+                            stats[p.id] ?? const PlayerMatchStats(),
+                            p.position,
+                            league.scoring,
+                          ),
+                      };
+
+                      // **Gestellt oder gerechnet — und das muss man unterscheiden.**
+                      // Ohne gespeicherte Elf zeigte der Schirm `bestEleven`, und zwar
+                      // ununterscheidbar von einer echten. Für einen fremden Manager ist
+                      // das eine Behauptung über eine Entscheidung, die er nie getroffen
+                      // hat. Gezeigt wird sie weiterhin (danach wird er auch gewertet),
+                      // aber sie sagt jetzt, was sie ist.
+                      final saved = lineups
+                          .where(
+                            (l) => l.managerId == managerId && l.round == round,
+                          )
+                          .map((l) => l.playerIds)
+                          .firstOrNull;
+                      final gestellt = saved != null && saved.isNotEmpty;
+                      final Set<String> starterIds = gestellt
+                          ? {
+                              for (final id in saved)
+                                if (byId.containsKey(id)) id,
+                            }
+                          : bestEleven(points, league.roster).starterIds;
+
+                      final starters = [
+                        for (final p in rosterPlayers)
+                          if (starterIds.contains(p.id)) p,
+                      ];
+                      final bench =
+                          [
+                            for (final p in rosterPlayers)
+                              if (!starterIds.contains(p.id)) p,
+                          ]..sort(
+                            (a, b) => a.position.index != b.position.index
+                                ? a.position.index.compareTo(b.position.index)
+                                : (points[b] ?? 0).compareTo(points[a] ?? 0),
+                          );
+
+                      final byPos = <PlayerPosition, List<FantasyPlayer>>{};
+                      for (final p in starters) {
+                        byPos.putIfAbsent(p.position, () => []).add(p);
+                      }
+
+                      void openPlayer(FantasyPlayer p) => showPlayerProfile(
+                        context,
+                        league: league,
+                        player: p,
+                        clubIcon: clubIcons[p.club],
+                        isMine: isMe,
+                      );
+
+                      // **Auch der fremde Kader sagt, wer ausfällt.** Vor einem Trade ist
+                      // das die erste Frage, und sie stand bisher nur im Profil jedes
+                      // einzelnen Spielers.
+                      final ausfaelle =
+                          ref.watch(absencesProvider).valueOrNull ??
+                          const <String, PlayerAbsence>{};
+
+                      return ListView(
+                        children: [
+                          aufstellungsKopf,
+                          if (!isMe) _actions(context, ref, managers),
+                          if (!gestellt) _nochNichtGestellt(context),
+                          _pitch(
+                            context,
+                            byPos,
+                            points,
+                            clubIcons,
+                            ausfaelle,
+                            openPlayer,
+                          ),
+                          _bench(
+                            context,
+                            bench,
+                            points,
+                            clubIcons,
+                            ausfaelle,
+                            openPlayer,
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    },
+                  ),
+            ManagerSaisonTab(league: league, managerId: managerId),
           ],
         ),
-        // Zwei Reiter: was er diese Woche stellt, und wie seine Saison läuft.
-        bottom: const LeiseReiter(titel: ['Aufstellung', 'Saison']),
-      ),
-      body: TabBarView(
-        children: [
-      round == null
-          ? const Skelett()
-          : poolAsync.when(
-        loading: () => const Skelett(),
-        error: (e, _) => Center(child: Text('Fehler: $e')),
-        data: (pool) {
-          final byId = {for (final p in pool) p.id: p};
-          final rosterPlayers = [
-            for (final r in roster)
-              if (r.managerId == managerId && byId[r.playerId] != null)
-                byId[r.playerId]!
-          ];
-          if (rosterPlayers.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('Dieser Manager hat noch keinen Kader.',
-                    textAlign: TextAlign.center),
-              ),
-            );
-          }
-
-          final points = {
-            for (final p in rosterPlayers)
-              p: scorePlayer(stats[p.id] ?? const PlayerMatchStats(),
-                  p.position, league.scoring)
-          };
-
-          // **Gestellt oder gerechnet — und das muss man unterscheiden.**
-          // Ohne gespeicherte Elf zeigte der Schirm `bestEleven`, und zwar
-          // ununterscheidbar von einer echten. Für einen fremden Manager ist
-          // das eine Behauptung über eine Entscheidung, die er nie getroffen
-          // hat. Gezeigt wird sie weiterhin (danach wird er auch gewertet),
-          // aber sie sagt jetzt, was sie ist.
-          final saved = lineups
-              .where((l) => l.managerId == managerId && l.round == round)
-              .map((l) => l.playerIds)
-              .firstOrNull;
-          final gestellt = saved != null && saved.isNotEmpty;
-          final Set<String> starterIds = gestellt
-              ? {
-                  for (final id in saved)
-                    if (byId.containsKey(id)) id
-                }
-              : bestEleven(points, league.roster).starterIds;
-
-          final starters = [
-            for (final p in rosterPlayers)
-              if (starterIds.contains(p.id)) p
-          ];
-          final bench = [
-            for (final p in rosterPlayers)
-              if (!starterIds.contains(p.id)) p
-          ]..sort((a, b) => a.position.index != b.position.index
-              ? a.position.index.compareTo(b.position.index)
-              : (points[b] ?? 0).compareTo(points[a] ?? 0));
-
-          final byPos = <PlayerPosition, List<FantasyPlayer>>{};
-          for (final p in starters) {
-            byPos.putIfAbsent(p.position, () => []).add(p);
-          }
-
-          void openPlayer(FantasyPlayer p) => showPlayerProfile(
-                context,
-                league: league,
-                player: p,
-                clubIcon: clubIcons[p.club],
-                isMine: isMe,
-              );
-
-          // **Auch der fremde Kader sagt, wer ausfällt.** Vor einem Trade ist
-          // das die erste Frage, und sie stand bisher nur im Profil jedes
-          // einzelnen Spielers.
-          final ausfaelle = ref.watch(absencesProvider).valueOrNull ??
-              const <String, PlayerAbsence>{};
-
-          return ListView(
-            children: [
-              aufstellungsKopf,
-              if (!isMe) _actions(context, ref, managers),
-              if (!gestellt) _nochNichtGestellt(context),
-              _pitch(context, byPos, points, clubIcons, ausfaelle, openPlayer),
-              _bench(context, bench, points, clubIcons, ausfaelle, openPlayer),
-              const SizedBox(height: 20),
-            ],
-          );
-        },
-      ),
-          ManagerSaisonTab(league: league, managerId: managerId),
-        ],
-      ),
       ),
     );
   }
 
   Widget _actions(
-      BuildContext context, WidgetRef ref, List<FantasyManager> managers) {
+    BuildContext context,
+    WidgetRef ref,
+    List<FantasyManager> managers,
+  ) {
     FantasyManager? m;
     for (final x in managers) {
       if (x.userId == managerId) {
@@ -266,20 +304,26 @@ class ManagerProfileScreen extends ConsumerWidget {
                 child: FilledButton(
                   onPressed: m == null
                       ? null
-                      : () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) =>
-                              TradeComposeScreen(league: league, partner: m!))),
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                TradeComposeScreen(league: league, partner: m!),
+                          ),
+                        ),
                   child: const Text('Trade'),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
                       builder: (_) => ConversationScreen(
-                            partnerId: managerId,
-                            partnerName: managerName,
-                          ))),
+                        partnerId: managerId,
+                        partnerName: managerName,
+                      ),
+                    ),
+                  ),
                   child: const Text('Nachricht'),
                 ),
               ),
@@ -297,12 +341,12 @@ class ManagerProfileScreen extends ConsumerWidget {
   /// hinzustellen war der Fehler: Dann sieht eine Rechnung aus wie eine
   /// Entscheidung.
   Widget _nochNichtGestellt(BuildContext context) {
-    const gold = Color(0xFFFFC83D);
+    final gold = context.farben.gold;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       child: Row(
         children: [
-          const Icon(Icons.schedule_outlined, size: 16, color: gold),
+          Icon(Icons.schedule_outlined, size: 16, color: gold),
           const SizedBox(width: 7),
           Expanded(
             child: Text(
@@ -326,112 +370,131 @@ class ManagerProfileScreen extends ConsumerWidget {
     Map<String, PlayerAbsence> ausfaelle,
     void Function(FantasyPlayer) onTap,
   ) {
-    return Container(
-      margin: const EdgeInsets.all(12),
-      height: 420,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: pitchGradient,
-      ),
-      child: CustomPaint(
-        // **Mit Streifen.** Sie waren aus, weil sechs Bahnen auf den 200
-        // Punkten des Draft-Raums Unruhe sind — dieses Feld ist aber 420 hoch,
-        // und ohne sie las es sich als grüne Fläche statt als Rasen.
-        painter: const PitchLinesPainter(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-          child: Column(
-            children: [
-              for (final pos in _pitchOrder)
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      for (final p in (byPos[pos] ?? const <FantasyPlayer>[]))
-                        _pitchPlayer(p, points[p] ?? 0.0, clubIcons[p.club],
-                            ausfaelle[p.id], () => onTap(p)),
-                      // **Ein unbesetzter Torwartplatz ist keine leere Reihe.**
-                      // Verlässt der einzige Torwart die Bundesliga, nimmt ihn
-                      // der Abgangs-Lauf aus dem Kader (0117) und die Elf hat
-                      // zehn Mann (0120). Ohne Marke rendert die Reihe als
-                      // Nichts, und das Feld sieht aus wie eine ordentliche
-                      // Aufstellung mit einer Bahn weniger. Nur der Torwart
-                      // hat eine feste Zahl — Abwehr, Mittelfeld und Sturm
-                      // stehen in Spannen, dort ist eine kürzere Reihe bloß
-                      // eine andere Formation.
-                      if (pos == PlayerPosition.gk &&
-                          (byPos[pos]?.length ?? 0) < league.roster.gk)
-                        const _LeereFeldposition(),
-                    ],
+    return DunkleInsel(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        height: 420,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: pitchGradient,
+        ),
+        child: CustomPaint(
+          // **Mit Streifen.** Sie waren aus, weil sechs Bahnen auf den 200
+          // Punkten des Draft-Raums Unruhe sind — dieses Feld ist aber 420 hoch,
+          // und ohne sie las es sich als grüne Fläche statt als Rasen.
+          painter: const PitchLinesPainter(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+            child: Column(
+              children: [
+                for (final pos in _pitchOrder)
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        for (final p in (byPos[pos] ?? const <FantasyPlayer>[]))
+                          _pitchPlayer(
+                            p,
+                            points[p] ?? 0.0,
+                            clubIcons[p.club],
+                            ausfaelle[p.id],
+                            () => onTap(p),
+                          ),
+                        // **Ein unbesetzter Torwartplatz ist keine leere Reihe.**
+                        // Verlässt der einzige Torwart die Bundesliga, nimmt ihn
+                        // der Abgangs-Lauf aus dem Kader (0117) und die Elf hat
+                        // zehn Mann (0120). Ohne Marke rendert die Reihe als
+                        // Nichts, und das Feld sieht aus wie eine ordentliche
+                        // Aufstellung mit einer Bahn weniger. Nur der Torwart
+                        // hat eine feste Zahl — Abwehr, Mittelfeld und Sturm
+                        // stehen in Spannen, dort ist eine kürzere Reihe bloß
+                        // eine andere Formation.
+                        if (pos == PlayerPosition.gk &&
+                            (byPos[pos]?.length ?? 0) < league.roster.gk)
+                          const _LeereFeldposition(),
+                      ],
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _pitchPlayer(FantasyPlayer p, double pts, String? icon,
-      PlayerAbsence? ausfall, VoidCallback onTap) {
+  Widget _pitchPlayer(
+    FantasyPlayer p,
+    double pts,
+    String? icon,
+    PlayerAbsence? ausfall,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-      width: 66,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              ClubBadge(club: p.club, iconUrl: icon, size: 42),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(formatPoints(pts),
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: Colors.black38,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+        width: 66,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              alignment: Alignment.bottomRight,
               children: [
-                if (ausfall != null) ...[
-                  AusfallZeichen(ausfall: ausfall, size: 11),
-                  const SizedBox(width: 3),
-                ],
-                Flexible(
-                  child: Text(_short(p.name),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 11)),
+                ClubBadge(club: p.club, iconUrl: icon, size: 42),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    formatPoints(pts),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 3),
-          // **Ein Schloss, kein Farbpunkt.** Dieses Feld ist zum Ansehen da;
-          // die Marke sagt das, statt eine Position zu wiederholen, die die
-          // Reihe ohnehin sagt. Siehe [GesperrtMarke].
-          const GesperrtMarke(size: 18),
-        ],
-      ),
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.black38,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (ausfall != null) ...[
+                    AusfallZeichen(ausfall: ausfall, size: 11),
+                    const SizedBox(width: 3),
+                  ],
+                  Flexible(
+                    child: Text(
+                      _short(p.name),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 3),
+            // **Ein Schloss, kein Farbpunkt.** Dieses Feld ist zum Ansehen da;
+            // die Marke sagt das, statt eine Position zu wiederholen, die die
+            // Reihe ohnehin sagt. Siehe [GesperrtMarke].
+            const GesperrtMarke(size: 18),
+          ],
+        ),
       ),
     );
   }
@@ -450,18 +513,20 @@ class ManagerProfileScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Bank (${bench.length})',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: scheme.onSurfaceVariant)),
+          Text(
+            'Bank (${bench.length})',
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
+          ),
           const SizedBox(height: 6),
           if (bench.isEmpty)
-            Text('Alle Spieler stehen in der Startelf.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant))
+            Text(
+              'Alle Spieler stehen in der Startelf.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            )
           else
             for (final pos in _benchOrder)
               if (bench.any((p) => p.position == pos)) ...[
@@ -473,16 +538,21 @@ class ManagerProfileScreen extends ConsumerWidget {
                         width: 10,
                         height: 10,
                         decoration: BoxDecoration(
-                            color: positionColor(pos), shape: BoxShape.circle),
+                          color: positionColor(pos, context.farben),
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       const SizedBox(width: 6),
-                      Text(pos.label,
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelMedium
-                              ?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.bold)),
+                      Text(
+                        pos.label,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
                     ],
                   ),
                 ),
@@ -496,19 +566,24 @@ class ManagerProfileScreen extends ConsumerWidget {
                           onTap: () => onTap(p),
                           child: Chip(
                             avatar: ClubBadge(
-                                club: p.club,
-                                iconUrl: clubIcons[p.club],
-                                size: 22),
+                              club: p.club,
+                              iconUrl: clubIcons[p.club],
+                              size: 22,
+                            ),
                             side: BorderSide(
-                                color: positionColor(p.position)
-                                    .withValues(alpha: 0.6)),
+                              color: positionColor(
+                                p.position,
+                                context.farben,
+                              ).withValues(alpha: 0.6),
+                            ),
                             // Zeichen hinter dem Namen — wie auf der Bank des
                             // eigenen Kaders.
                             label: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                    '${_short(p.name)} · ${formatPoints(points[p] ?? 0)}'),
+                                  '${_short(p.name)} · ${formatPoints(points[p] ?? 0)}',
+                                ),
                                 if (ausfaelle[p.id] != null) ...[
                                   const SizedBox(width: 5),
                                   AusfallZeichen(ausfall: ausfaelle[p.id]!),
@@ -555,7 +630,11 @@ class _LeereFeldposition extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.45),
               border: Border.all(color: gold.withValues(alpha: 0.7), width: 2),
             ),
-            child: const Icon(Icons.priority_high_outlined, color: gold, size: 20),
+            child: const Icon(
+              Icons.priority_high_outlined,
+              color: gold,
+              size: 20,
+            ),
           ),
           const SizedBox(height: 4),
           const Text(

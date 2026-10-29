@@ -1,7 +1,7 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 
-import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/transfer_deal.dart';
@@ -201,11 +201,11 @@ class _ClubFilterBar extends StatelessWidget {
                     shape: BoxShape.circle,
                     // Gewählt ist hell, wie jede Auswahl in dieser App.
                     color: selected == c
-                        ? MatchUpColors.snow.withValues(alpha: 0.14)
+                        ? context.farben.auswahlFlaeche
                         : Colors.transparent,
                     border: Border.all(
                       color: selected == c
-                          ? MatchUpColors.snow.withValues(alpha: 0.75)
+                          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75)
                           : Colors.transparent,
                       width: 2,
                     ),
@@ -262,13 +262,11 @@ class _DealTile extends StatelessWidget {
   final TransferDeal deal;
   final bool incoming;
 
-  static const _green = Color(0xFF4ADE6A);
-  static const _red = Color(0xFFF23030);
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final accent = incoming ? _green : _red;
+    final accent = incoming ? context.farben.gruen : context.farben.rot;
     // Beim Zugang ist das aufnehmende Team der Bundesligist (Wappen links),
     // beim Abgang das abgebende.
     final clubLogo = incoming ? deal.toLogo : deal.fromLogo;

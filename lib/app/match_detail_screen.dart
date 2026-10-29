@@ -1,3 +1,4 @@
+import 'farben.dart';
 import 'dart:async';
 
 import '../core/logic/tabellen_zonen.dart';
@@ -142,7 +143,7 @@ class _Header extends StatelessWidget {
                     '${d.homeScore}:${d.awayScore}',
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: live ? MatchUpColors.red : scheme.onSurface,
+                      color: live ? context.farben.rot : scheme.onSurface,
                     ),
                   )
                 else
@@ -190,10 +191,10 @@ class _Header extends StatelessWidget {
                             : d.istPause
                             ? 'Halbzeit'
                             : 'LIVE',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: MatchUpColors.red,
+                          color: context.farben.rot,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -427,10 +428,10 @@ class _EventRow extends StatelessWidget {
     // Eigentor waere das eine Vorlage zum eigenen Tor.
     final eigentor = t == 'owngoal';
     final color = switch (t) {
-      'yellowcard' => const Color(0xFFFFC83D),
-      'redcard' || 'yellowredcard' => MatchUpColors.red,
-      'owngoal' => MatchUpColors.red,
-      'goal' || 'penalty' => MatchUpColors.green,
+      'yellowcard' => context.farben.gold,
+      'redcard' || 'yellowredcard' => context.farben.rot,
+      'owngoal' => context.farben.rot,
+      'goal' || 'penalty' => context.farben.gruen,
       _ => scheme.onSurfaceVariant,
     };
     // Wechsel: grüner Pfeil rein, roter Pfeil raus.
@@ -460,7 +461,7 @@ class _EventRow extends StatelessWidget {
           Text(
             'Eigentor',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: MatchUpColors.red,
+              color: context.farben.rot,
               fontWeight: FontWeight.w700,
             ),
           )
@@ -513,13 +514,13 @@ class _SubArrows extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
+    return SizedBox(
       width: 16,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.arrow_upward, size: 12, color: MatchUpColors.green),
-          Icon(Icons.arrow_downward, size: 12, color: MatchUpColors.red),
+          Icon(Icons.arrow_upward, size: 12, color: context.farben.gruen),
+          Icon(Icons.arrow_downward, size: 12, color: context.farben.rot),
         ],
       ),
     );
@@ -1228,11 +1229,11 @@ class _StatRow extends StatelessWidget {
     // Mehr = grün, weniger = rot, gleich = neutral.
     final neutral = scheme.onSurfaceVariant;
     final homeColor = stat.home > stat.away
-        ? MatchUpColors.green
-        : (stat.home < stat.away ? MatchUpColors.red : neutral);
+        ? context.farben.gruen
+        : (stat.home < stat.away ? context.farben.rot : neutral);
     final awayColor = stat.away > stat.home
-        ? MatchUpColors.green
-        : (stat.away < stat.home ? MatchUpColors.red : neutral);
+        ? context.farben.gruen
+        : (stat.away < stat.home ? context.farben.rot : neutral);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(

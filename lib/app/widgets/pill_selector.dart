@@ -1,6 +1,6 @@
+import '../farben.dart';
 import 'package:flutter/material.dart';
 
-import '../theme.dart';
 
 /// Auswahl-Pille in der Sprache der [SegmentedTabBar]: aktiv eine weich
 /// gefüllte grüne Pille mit grüner Schrift, inaktiv nur gedämpfter Text.
@@ -65,7 +65,7 @@ class PillChip extends StatelessWidget {
     // wie beim gefüllten Knopf und in der Navigationsleiste.
     return Material(
       color: selected
-          ? MatchUpColors.snow.withValues(alpha: 0.14)
+          ? context.farben.auswahlFlaeche
           : Colors.transparent,
       // Entweder `shape` **oder** `borderRadius` — `Material` verbietet
       // beides zusammen per Assertion.
@@ -75,7 +75,7 @@ class PillChip extends StatelessWidget {
               borderRadius: BorderRadius.circular(11),
               side: BorderSide(
                 color: selected
-                    ? MatchUpColors.snow.withValues(alpha: 0.55)
+                    ? context.farben.auswahlKante
                     : scheme.outlineVariant,
               ),
             )
@@ -106,7 +106,7 @@ class PillChip extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                     color: selected
-                        ? MatchUpColors.snow
+                        ? scheme.onSurface
                         : scheme.onSurfaceVariant,
                   ),
                 ),

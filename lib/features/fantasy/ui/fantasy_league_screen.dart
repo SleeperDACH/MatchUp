@@ -1,8 +1,8 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/league_screen.dart';
-import '../../../app/theme.dart';
 import '../../../app/widgets/vibrant_league_title.dart';
 import '../../../app/widgets/team_fixture_list.dart';
 import '../../../core/models/models.dart';
@@ -393,7 +393,6 @@ class _NaechsterSchritt extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final gold = const Color(0xFFFFC83D);
 
     void openRoom() => Navigator.of(
       context,
@@ -470,7 +469,7 @@ class _NaechsterSchritt extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Karte(
-        hauch: gold,
+        hauch: context.farben.gold,
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -478,7 +477,7 @@ class _NaechsterSchritt extends ConsumerWidget {
             Text(
               'ALS NÄCHSTES',
               style: TextStyle(
-                color: gold,
+                color: context.farben.gold,
                 fontSize: Schrift.label,
                 fontWeight: Schrift.ueberschriftGewicht,
                 fontStyle: Schrift.ueberschriftStil,
@@ -512,7 +511,7 @@ class _NaechsterSchritt extends ConsumerWidget {
                 child: LinearProgressIndicator(
                   value: (belegt / gesamt).clamp(0.0, 1.0),
                   minHeight: 6,
-                  color: gold,
+                  color: context.farben.gold,
                   backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
                 ),
               ),
@@ -530,7 +529,7 @@ class _NaechsterSchritt extends ConsumerWidget {
             FilledButton(
               onPressed: tun,
               style: FilledButton.styleFrom(
-                backgroundColor: gold,
+                backgroundColor: context.farben.gold,
                 foregroundColor: scheme.surface,
                 minimumSize: hoch,
               ),
@@ -843,7 +842,7 @@ class _LigaZeile extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: MatchUpColors.red,
+                      color: context.farben.rot,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(

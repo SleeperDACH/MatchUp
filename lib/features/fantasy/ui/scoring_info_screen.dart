@@ -1,6 +1,6 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 
-import '../../../app/theme.dart';
 import '../../../app/widgets/pill_selector.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../logic/fantasy_scoring_rules.dart';
@@ -34,10 +34,10 @@ class _ScoringInfoScreenState extends State<ScoringInfoScreen> {
   /// Farbe je Position — dieselbe Gliederung durch Farbe wie in den
   /// Einstellungen: Sie trennt die Bereiche, statt zu schmücken.
   Color _farbe(PlayerPosition p) => switch (p) {
-    PlayerPosition.gk => const Color(0xFFFFC83D),
-    PlayerPosition.def => const Color(0xFF5B9DF9),
-    PlayerPosition.mid => const Color(0xFF4FC3A1),
-    PlayerPosition.fwd => MatchUpColors.red,
+    PlayerPosition.gk => context.farben.gold,
+    PlayerPosition.def => context.farben.blau,
+    PlayerPosition.mid => context.farben.tuerkis,
+    PlayerPosition.fwd => context.farben.rot,
   };
 
   @override
@@ -355,7 +355,7 @@ class _Zeile extends StatelessWidget {
               fontWeight: FontWeight.w700,
               color: punkte == 0
                   ? scheme.onSurfaceVariant
-                  : (positiv ? MatchUpColors.green : MatchUpColors.red),
+                  : (positiv ? context.farben.gruen : context.farben.rot),
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),

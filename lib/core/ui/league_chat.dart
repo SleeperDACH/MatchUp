@@ -1,10 +1,10 @@
+import '../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../app/widgets/skelett.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../app/theme.dart';
 import '../../app/typografie.dart';
 import '../models/chat_message.dart';
 import 'app_avatar.dart';
@@ -386,25 +386,24 @@ class _NeuTrenner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const rot = MatchUpColors.red;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          Expanded(child: Container(height: 1, color: rot.withValues(alpha: 0.45))),
+          Expanded(child: Container(height: 1, color: context.farben.rot.withValues(alpha: 0.45))),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               'Neue Nachrichten',
               style: TextStyle(
-                color: rot,
+                color: context.farben.rot,
                 fontSize: Schrift.label,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.3,
               ),
             ),
           ),
-          Expanded(child: Container(height: 1, color: rot.withValues(alpha: 0.45))),
+          Expanded(child: Container(height: 1, color: context.farben.rot.withValues(alpha: 0.45))),
         ],
       ),
     );

@@ -1,6 +1,6 @@
+import '../farben.dart';
 import 'package:flutter/material.dart';
 
-import '../theme.dart';
 
 /// Tab-Leiste als Segment-Steuerung: der aktive Reiter sitzt in einer weich
 /// gefüllten Pille, die übrigen sind nur gedämpfter Text.
@@ -57,14 +57,14 @@ class SegmentedTabBar extends StatelessWidget implements PreferredSizeWidget {
         // Dieselbe helle Auswahl wie bei `PillChip` und in der
         // Navigationsleiste — Grün bleibt dem vorbehalten, was läuft.
         indicator: BoxDecoration(
-          color: MatchUpColors.snow.withValues(alpha: 0.14),
+          color: context.farben.auswahlFlaeche,
           borderRadius: BorderRadius.circular(11),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         indicatorPadding: EdgeInsets.symmetric(vertical: _hasIcons ? 3 : 5),
         dividerColor: Colors.transparent,
         dividerHeight: 0,
-        labelColor: MatchUpColors.snow,
+        labelColor: Theme.of(context).colorScheme.onSurface,
         unselectedLabelColor: scheme.onSurfaceVariant,
         labelStyle:
             const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),

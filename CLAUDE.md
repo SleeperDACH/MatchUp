@@ -232,6 +232,75 @@ je nach Gerät eine fremde Fläche auf). **Das App-Icon behält seinen Grund**
 Flächen — weißer Hauptknopf, gefüllte Positionsmarken. Dort war der Blaustich
 nie zu sehen, und Schwarz auf Weiß ist der stärkere Kontrast.
 
+## Heller Modus (seit 29.10.2026)
+
+**Dunkel bleibt der Standard**; hell ist eine Wahl unter Profil ›
+Darstellung (`app/darstellung.dart`, gespeichert in SharedPreferences unter
+`darstellung`, in `main()` **vor** `runApp` gelesen, sonst blitzt beim Start
+Schwarz auf). Der Grund ist **reines Apple-Weiß** (`#FFFFFF`), Karten liegen
+als `#F2F2F7` darauf, Haarlinie `#D8D8DE`, Sekundärschrift `#6E6E73`.
+
+**Der dunkle Modus hat sich dabei um keinen Pixel geändert** — alle 152
+Vorschau-Goldens liefen nach dem Umbau unverändert durch. Das ist die
+Messlatte für jede weitere Änderung an Farben.
+
+Die Regeln, die daraus folgen:
+
+- **Keine Signalfarbe mehr als fester Wert.** Grün, Rot, Gold, Blau, Türkis,
+  Orange, Violett, Silber, Bronze und das neutrale Grau stehen in
+  `MatchUpFarben` (`app/farben.dart`, ThemeExtension), Zugriff über
+  `context.farben`. Die dunkle Fassung sind exakt die alten Werte, die helle
+  dieselben Töne dunkler gesetzt — **gemessen** lagen Markengrün und Gold auf
+  Weiß bei 1,8:1 und 1,6:1, also unlesbar. `test/hell_kontrast_test.dart`
+  hält jede helle Signalfarbe bei ≥ 4,5:1 auf Weiß und ≥ 4:1 auf Karten und
+  sichert die dunklen Werte gegen Änderung.
+- **„Weiß" heißt „Vordergrund".** Für Schrift `scheme.onSurface` (Snow auf
+  Dunkel, Schwarz auf Hell); wo im dunklen Modus bewusst **reines** Weiß statt
+  Snow stand (MatchUp-Kasten, Liga-Titel, Spielerprofil-Kopf, Punktzahl),
+  `context.farben.vorne`. „Gewählt" ist `auswahlFlaeche`/`auswahlKante`.
+- **Fläche plus Schrift paarweise denken.** Ein grüner Knopf heißt
+  `scheme.primary` + `scheme.onPrimary` (dunkel: Grün/Schwarz, hell:
+  Dunkelgrün/Weiß), der gefüllte Hauptknopf `onSurface` auf `surface`.
+  Aktionsknöpfe und Medaillen setzen ihre Schrift auf Hell weiß
+  (`context.istHell`).
+- **Inseln bleiben dunkel**: das Spielfeld (alle vier Rasen stecken in
+  `DunkleInsel`, das ihnen das dunkle Theme gibt — sonst stand der
+  Prognose-Kasten weiß auf weiß), Stadion- und Startbilder, die
+  Vereinsfarben-Köpfe im Spieldetail, **Login und Startbildschirm** (Marke;
+  der Login trägt das dunkle Theme selbst). `positionColor(pos, farben)` und
+  `ausfallFarbe(a, farben)` nehmen ohne zweites Argument die dunkle Fassung —
+  richtig für den Rasen, auf hellen Flächen `context.farben` übergeben.
+  Tabellenzonen über `zonenFarbe(context, zone)`.
+- **Farbe trägt auf Weiß stärker.** Der Hauch des MatchUp-Kastens steht auf
+  Hell bei halber Stärke; mit dem dunklen Wert war der Kasten live rosa.
+- **Das Stadionbild wird auf Hell zur Linienzeichnung** (Kopfkarte und
+  MatchUp-Kasten, auf Ansage: „die Linien klar schwarz"). Hell zeigt statt
+  des Fotos `assets/images/spiel_linien.png` — die Feldlinien desselben Fotos
+  als scharfe schwarze Striche auf transparentem Grund, **gleich groß wie
+  `spiel_bg.jpg`**, damit Ausschnitt und Lage übereinstimmen. Zwei Wege davor
+  sind gescheitert, und der Grund ist gemessen: Ein weißer Schleier über dem
+  Nachtfoto machte die Karte grau und trüb; ein Filter auf die Helligkeit
+  trennt Linien und Flutlicht nicht — die Linien liegen im Foto bei
+  L ≈ 33–160 (Median 64), der Schein daneben bis 64. Erzeugt wurde die
+  Zeichnung deshalb einmalig über den **lokalen Kontrast** (Pixel minus
+  Gaußunschärfe σ 6, ab 12 verstärkt ×8, Tribüne oberhalb der hinteren
+  Seitenlinie abgeschnitten, Einzelpunkte unter 60 Pixeln entfernt). Wer das
+  Foto tauscht, muss die Zeichnung neu erzeugen.
+- **Ligakarten ohne Grau darunter.** Markengrün über grauer Fläche ergab ein
+  trübes, „verschwommenes" Pastell. Hell mischt die Farbe in reines Weiß
+  (20 % → 6 %), das Wasserzeichen steht bei 38 % statt 16 %.
+- **Die Bank im Kader ist auf Hell hell**: weißes Namensschild mit
+  Haarlinie, darunter die Kartenfläche, Schrift dunkel, ein Ausfall tönt das
+  Schild gold/rot (16 %). Auf dem Rasen bleiben die Schilder dunkel.
+- **Prüfen:** Die Vorschau-Tests lassen sich hell rendern, indem man
+  `buildAppTheme()` vorübergehend durch
+  `buildAppTheme(brightness: Brightness.light)` ersetzt und mit
+  `--update-goldens` läuft — danach `test/` per `git checkout` zurück.
+  Im Simulator schreibt man die Wahl über
+  `xcrun simctl spawn <udid> defaults write <Container>/Library/Preferences/app.matchup.mobile flutter.darstellung -string hell`
+  (ein direkter `defaults write` auf die Datei wird vom Simulator wieder
+  überschrieben) und startet neu.
+
 ## Verboten: grün gestochene Flächen
 
 **Keine Fläche dieser App trägt einen Grünstich. Das ist keine Vorliebe,
@@ -1567,6 +1636,14 @@ und ohne Favoriten oben eine Leiste zur Auswahl.
   Texte brechen um (`home_kopf_test`).
 - **Die Tipprunden sind eine Zeilengruppe** statt gestapelter Goldbalken,
   volle Breite wie „Mein Wochenende". Das Gold bleibt im Zeichen der Runde.
+  **Überholt seit dem 29.10.2026** (auf Ansage: „länglich bleiben, aber in
+  die Richtung Fantasy"): Je Runde ein eigener länglicher Kasten
+  (`_TipRoundStreifen`, Höhe `_kStreifenHoehe` 58, Name mittig) in der Sprache der
+  Ligakarten — `_kartenFlaeche` in Gold, das MatchUp-Zeichen (72) als
+  Wasserzeichen rechts aus der Kante, der Name schräg in `Schrift.gross`
+  unten links — kein Wettbewerb darüber (stand kurz da, auf Ansage raus). Kein goldenes Kästchen,
+  kein Pfeil; eine Runde mit eigenem Logo zeigt es links als Kreis. Was
+  Ligen und Tippspiel trennt, sind Form (Karte gegen Streifen) und Farbe.
 - Kopfkarte, Ligakarten (Hauch in der Ecke), „Mein Wochenende" und News
   bleiben, wie sie sind — sie waren jeweils ausdrücklich so gewollt.
 

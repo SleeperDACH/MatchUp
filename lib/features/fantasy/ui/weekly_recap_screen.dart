@@ -1,5 +1,5 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
-import '../../../app/theme.dart';
 import '../../../app/typografie.dart';
 import '../../../app/widgets/kapitelmarke.dart';
 import '../../../app/widgets/punktzahl.dart';
@@ -22,7 +22,6 @@ import '../logic/kader_am.dart';
 import '../models/roster_move.dart';
 
 // Award-Palette (abgestimmt auf die MatchUp-Übersicht).
-const _cGold = Color(0xFFFFC83D);
 
 /// Öffnet das Wochen-Recap einer Liga (optional für einen bestimmten Spieltag).
 void showWeeklyRecap(
@@ -402,7 +401,7 @@ class _TeamDerWoche extends StatelessWidget {
   Widget build(BuildContext context) {
     final grau = Theme.of(context).colorScheme.onSurfaceVariant;
     return Karte(
-      hauch: _cGold,
+      hauch: context.farben.gold,
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       onTap: onTap,
       child: Row(
@@ -412,10 +411,10 @@ class _TeamDerWoche extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'TEAM DER WOCHE',
                   style: TextStyle(
-                    color: _cGold,
+                    color: context.farben.gold,
                     fontSize: Schrift.label,
                     fontWeight: Schrift.ueberschriftGewicht,
                     fontStyle: Schrift.ueberschriftStil,
@@ -432,7 +431,7 @@ class _TeamDerWoche extends StatelessWidget {
                       fontSize: Schrift.gross,
                       fontWeight: Schrift.ueberschriftGewicht,
                       fontStyle: Schrift.ueberschriftStil,
-                      color: ich ? MatchUpColors.green : null,
+                      color: ich ? context.farben.gruen : null,
                     ),
                   ),
                 ),
@@ -520,7 +519,7 @@ class _AwardZeile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: Schrift.text,
                       fontWeight: FontWeight.w700,
-                      color: ich ? MatchUpColors.green : null,
+                      color: ich ? context.farben.gruen : null,
                     ),
                   ),
                   if (unter != null)
@@ -646,7 +645,7 @@ class WeeklyRecapCard extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Karte(
-        hauch: _cGold,
+        hauch: context.farben.gold,
         radius: 18,
         padding: const EdgeInsets.all(16),
         onTap: () => showWeeklyRecap(context, league: league, round: current),
@@ -657,8 +656,8 @@ class WeeklyRecapCard extends ConsumerWidget {
               children: [
                 Text(
                   'RÜCKBLICK · SPIELTAG ${recap.round}',
-                  style: const TextStyle(
-                    color: _cGold,
+                  style: TextStyle(
+                    color: context.farben.gold,
                     fontSize: Schrift.label,
                     fontWeight: Schrift.ueberschriftGewicht,
                     fontStyle: Schrift.ueberschriftStil,

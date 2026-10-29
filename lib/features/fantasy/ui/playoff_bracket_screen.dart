@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +22,6 @@ class PlayoffBracketScreen extends ConsumerWidget {
 
   final FantasyLeague league;
 
-  static const _gold = Color(0xFFFFC83D);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -133,11 +133,11 @@ class PlayoffBracketScreen extends ConsumerWidget {
     return scaffold(ListView(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
       children: [
-        _PlanBanner(plan: plan, gold: _gold),
+        _PlanBanner(plan: plan, gold: context.farben.gold),
         const SizedBox(height: 12),
         if (bracket.complete) ...[
           _SectionHeader(
-              icon: Icons.emoji_events_outlined, title: 'Endplatzierung', color: _gold),
+              icon: Icons.emoji_events_outlined, title: 'Endplatzierung', color: context.farben.gold),
           for (final p in bracket.placements)
             _PlacementRow(
               place: p.place,
@@ -149,7 +149,7 @@ class PlayoffBracketScreen extends ConsumerWidget {
           const SizedBox(height: 16),
         ],
         _SectionHeader(
-            icon: Icons.account_tree_outlined, title: 'Winner-Bracket', color: _gold),
+            icon: Icons.account_tree_outlined, title: 'Winner-Bracket', color: context.farben.gold),
         _Legend(text: 'Plätze 1–${bracket.playoffTeams} · Setzung aus der Tabelle'),
         for (final r in bracket.winners)
           _RoundBlock(
@@ -157,7 +157,7 @@ class PlayoffBracketScreen extends ConsumerWidget {
               nameOf: nameOf,
               avatarOf: avatarOf,
               myId: myId,
-              accent: _gold),
+              accent: context.farben.gold),
         if (bracket.consolation.isNotEmpty) ...[
           const SizedBox(height: 16),
           _SectionHeader(
@@ -426,9 +426,9 @@ class _SideRow extends StatelessWidget {
               )),
         ),
         if (winner)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(right: 6),
-            child: Icon(Icons.check_circle, size: 16, color: Color(0xFF4ADE6A)),
+            child: Icon(Icons.check_circle, size: 16, color: context.farben.gruen),
           ),
         if (slot.managerId != null)
           Text(formatPoints(points),
@@ -455,7 +455,7 @@ class _StatusChip extends StatelessWidget {
       color = scheme.onSurfaceVariant;
     } else if (match.isLive) {
       text = 'live';
-      color = const Color(0xFFF23030);
+      color = context.farben.rot;
     } else {
       text = 'Spieltag ${match.startMatchday}'
           '${match.weeks == 2 ? '–${match.startMatchday + 1}' : ''}';
@@ -488,9 +488,10 @@ class _PlacementRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (bg, fg) = switch (place) {
-      1 => (const Color(0xFFFFC83D), Colors.black),
-      2 => (const Color(0xFFC4CBD4), Colors.black),
-      3 => (const Color(0xFFCD8B4E), Colors.white),
+      // Auf Hell sind die Medaillenfarben dunkel gesetzt — darauf weiß.
+      1 => (context.farben.gold, context.istHell ? Colors.white : Colors.black),
+      2 => (context.farben.silber, context.istHell ? Colors.white : Colors.black),
+      3 => (context.farben.bronze, Colors.white),
       _ => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
     };
     return Container(

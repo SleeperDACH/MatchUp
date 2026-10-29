@@ -1,3 +1,4 @@
+import 'farben.dart';
 import 'package:flutter/material.dart';
 import '../core/logic/vereins_kuerzel.dart';
 import 'widgets/skelett.dart';
@@ -216,10 +217,10 @@ class HomeScreen extends ConsumerWidget {
         // Wer noch keine Liga hat, braucht den Einstieg — sonst stünde hier
         // eine leere Überschrift. Als Zeile statt als Karte: so nimmt er ein
         // Sechstel des Platzes und sagt nebenbei, wozu das gut ist.
-        const _CreateRow(
+        _CreateRow(
           text: 'Fantasy-Liga anlegen',
           hint: 'Draften, Kader managen, Saison spielen',
-          farbe: MatchUpColors.green,
+          farbe: context.farben.gruen,
         )
       else
         // Hier hängt **keine** „+"-Karte mehr hinter den Ligen. Sie stand die
@@ -269,10 +270,10 @@ class HomeScreen extends ConsumerWidget {
           child: const Skelett(),
         )
       else if (standalone.isEmpty)
-        const _CreateRow(
+        _CreateRow(
           text: 'Tippspiel anlegen',
           hint: 'Spieltage tippen, Punkte sammeln',
-          farbe: _kTipGold,
+          farbe: context.farben.gold,
         )
       else
         // **Streifen statt Karten** (auf Ansage, 03.09.2026). Die Tipprunden
@@ -291,22 +292,20 @@ class HomeScreen extends ConsumerWidget {
         // bleibt als Identität im Zeichen der Runde.
         // Volle Breite wie „Mein Wochenende" darunter — eingerückt stand die
         // Gruppe schmaler da als ihr Nachbar.
-        Container(
-          decoration: kartenDeko(context),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (final (i, r) in standalone.indexed) ...[
-                if (i > 0)
-                  Divider(
-                    height: 1,
-                    indent: 56,
-                    color: Theme.of(context).dividerColor,
-                  ),
-                _TipRoundStreifen(round: r),
-              ],
+        //
+        // **Seit dem 29.10.2026 je Runde ein eigener Kasten** (auf Ansage:
+        // „länglich bleiben, aber in die Richtung Fantasy"). Dieselbe Sprache
+        // wie die Ligakarten darüber — Hauch aus der Ecke, Wasserzeichen,
+        // Name schräg unten links —, aber über die volle Breite und flacher.
+        // Was die beiden Bereiche trennt, sind Form und Farbe: Karten in
+        // Grün, Streifen in Gold.
+        Column(
+          children: [
+            for (final (i, r) in standalone.indexed) ...[
+              if (i > 0) const SizedBox(height: Abstand.s),
+              _TipRoundStreifen(round: r),
             ],
-          ),
+          ],
         ),
     ];
   }
@@ -539,8 +538,11 @@ class _NaechstesSpiel extends ConsumerWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               // **Das Stadion bei Flutlicht liegt hinter der Karte.**
-              // Nur im dunklen Modus: Das Bild ist fast schwarz, im hellen
-              // Modus stünde dunkler Text darauf.
+              // **Im hellen Modus dasselbe Bild unter einem weißen Schleier**
+              // (29.10.2026, auf Ansage: „soll weiterhin zu sehen sein, nur
+              // heller"). Ohne Schleier stünde dunkle Schrift auf einem fast
+              // schwarzen Foto; mit ihm bleiben Rasen und Linien als helles
+              // Relief, und die Vereinsfarben scheinen leicht durch.
               image: dark
                   ? const DecorationImage(
                       image: AssetImage('assets/images/spiel_bg.jpg'),
@@ -552,7 +554,13 @@ class _NaechstesSpiel extends ConsumerWidget {
                       // ohne dass er die Karte laut macht.
                       alignment: Alignment.bottomCenter,
                     )
-                  : null,
+                  // Hell: dieselben Feldlinien als scharfe schwarze Zeichnung
+                  // (`spiel_linien.png`, siehe CLAUDE.md „Heller Modus").
+                  : const DecorationImage(
+                      image: AssetImage('assets/images/spiel_linien.png'),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.bottomCenter,
+                    ),
               // **Die Farben der beiden Vereine**, von links und rechts
               // hereingezogen — aber nur als Andeutung an den Rändern. Seit
               // der Hof hinter den Wappen weg ist, ist das die einzige Stelle,
@@ -651,13 +659,13 @@ class _NaechstesSpiel extends ConsumerWidget {
                             // Farbe nur, wo etwas ansteht: an einem gewöhnlichen
                             // Spieltag in drei Wochen bleibt die Ecke leer.
                             if (laeuft)
-                              const _Marke(
+                              _Marke(
                                 text: 'LIVE',
-                                farbe: MatchUpColors.red,
+                                farbe: context.farben.rot,
                                 pulsiert: true,
                               )
                             else if (_istHeute(anstoss))
-                              const _Marke(text: 'HEUTE', farbe: _kTipGold),
+                              _Marke(text: 'HEUTE', farbe: context.farben.gold),
                           ],
                         ),
                       ),
@@ -682,7 +690,7 @@ class _NaechstesSpiel extends ConsumerWidget {
                                       letterSpacing: -1,
                                       height: 1.0,
                                       color: laeuft
-                                          ? MatchUpColors.red
+                                          ? context.farben.rot
                                           : scheme.onSurface,
                                       // Tabellenziffern: die Zahl steht mittig
                                       // zwischen zwei Wappen und darf beim
@@ -812,7 +820,7 @@ Color _heroGrund(ColorScheme scheme, bool dark, Color? verein) {
     scheme.surface,
   );
   if (verein == null) return grund;
-  return Color.alphaBlend(verein.withValues(alpha: dark ? 0.16 : 0.10), grund);
+  return Color.alphaBlend(verein.withValues(alpha: dark ? 0.16 : 0.18), grund);
 }
 
 /// Fällt der Anstoß auf den heutigen Tag?
@@ -1011,7 +1019,7 @@ class _FavoritSpielZeile extends StatelessWidget {
                             : anstoss,
                         style: TextStyle(
                           color: laeuft
-                              ? MatchUpColors.red
+                              ? context.farben.rot
                               : scheme.onSurfaceVariant,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -1430,6 +1438,8 @@ double kartenHoehe(BuildContext context, double basis) =>
 const double _kKartenHoehe = 92;
 
 /// Marken-Gold des Tippspiels (Fallback, wenn die Runde kein Logo hat).
+/// Tippspiel-Gold als **Fläche** (Marke der Tipprunde, Bildkarte). Als Schrift
+/// und Zeichen gilt `context.farben.gold` — auf Weiß wäre dieses hier unlesbar.
 const Color _kTipGold = Color(0xFFFFC83D);
 
 /// Abstand zwischen zwei Karten der Reihe.
@@ -1465,6 +1475,26 @@ BoxDecoration _kartenFlaeche(BuildContext context, Color farbe) {
     scheme.surfaceContainerHighest.withValues(alpha: 0.45),
     scheme.surface,
   );
+  // **Im hellen Modus ohne Grau darunter** (29.10.2026, auf Ansage: „die
+  // verschwommenen Farben sehen bei Hell nicht gut aus"). Das Markengrün über
+  // einer grauen Fläche ergab ein trübes Pastell, das wie verwischt aussah.
+  // Hell mischt die Farbe deshalb in reines Weiß und läuft nicht ins Graue
+  // aus, sondern in einen leichten Rest derselben Farbe — die Karte bleibt
+  // farbig, aber klar.
+  if (!dark) {
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(16),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color.alphaBlend(farbe.withValues(alpha: 0.20), Colors.white),
+          Color.alphaBlend(farbe.withValues(alpha: 0.06), Colors.white),
+        ],
+      ),
+      border: Border.all(color: Theme.of(context).dividerColor, width: 0.8),
+    );
+  }
   return BoxDecoration(
     borderRadius: BorderRadius.circular(16),
     gradient: LinearGradient(
@@ -1554,9 +1584,13 @@ class _FantasyLeagueCard extends ConsumerWidget {
                     Positioned(
                       right: -12,
                       top: -10,
+                      // Auf Hell kräftiger: 16 % Grün auf Weiß war ein
+                      // blasser Fleck ohne Kontur.
                       child: MatchUpChevron(
                         size: 64,
-                        color: farbe.withValues(alpha: 0.16),
+                        color: farbe.withValues(
+                          alpha: context.istHell ? 0.38 : 0.16,
+                        ),
                       ),
                     ),
                   Column(
@@ -1674,14 +1708,14 @@ class _LeagueMark extends StatelessWidget {
 /// sind Höhe, Marke und Farbe. Der Preis steht in [_kKartenHoehe]: Der Name
 /// muss auf zwei Zeilen passen, und „Bundesliga +1" schrumpft, statt zu
 /// kappen.
-/// **Eine Tipprunde als flacher Streifen über die volle Breite.**
-///
-/// Marke links, Name und Wettbewerb daneben, rechts der Zähler offener
-/// Beitritte und der Pfeil. Höhe 62 — flach genug, dass drei Runden nicht den
-/// halben Schirm nehmen, hoch genug für die 44 Punkte Tastfläche.
-///
-/// Die Farbe der Runde trägt wie bei den Karten nur den **Hauch aus der Ecke**
-/// (`_kartenFlaeche`), nicht die Fläche.
+/// **Eine Tipprunde als länglicher Kasten über die volle Breite** — in der
+/// Sprache der Fantasy-Ligakarten (29.10.2026, auf Ansage): Hauch aus der
+/// Ecke (`_kartenFlaeche`), das MatchUp-Zeichen als Wasserzeichen rechts, der
+/// Name schräg unten links — sonst nichts (der Wettbewerb stand einen Tag
+/// lang klein darüber und ist auf Ansage wieder raus). Eine Runde mit
+/// eigenem Logo zeigt es links als Kreis statt des Wasserzeichens. Der Pfeil
+/// am Ende ist entfallen — die Ligakarten tragen auch keinen; dass man
+/// draufdrücken kann, sagt die Form.
 class _TipRoundStreifen extends ConsumerWidget {
   const _TipRoundStreifen({required this.round});
 
@@ -1689,10 +1723,6 @@ class _TipRoundStreifen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final league = Leagues.byId(round.leagueId);
-    final extra = round.competitions.length - 1;
-    final wettbewerb = extra > 0 ? '${league.name} +$extra' : league.name;
     final farbe = parseColor(round.logoColor) ?? _kTipGold;
 
     final myId = ref.watch(currentUserProvider)?.id;
@@ -1703,65 +1733,85 @@ class _TipRoundStreifen extends ConsumerWidget {
               0)
         : 0;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          activateRound(ref, round);
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
-        },
-        child: Ink(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 11, 10, 11),
-            child: Row(
-              children: [
-                _RoundMark(round: round, farbe: farbe, size: 34),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        round.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: Schrift.titel,
-                          fontWeight: Schrift.ueberschriftGewicht,
-                          fontStyle: Schrift.ueberschriftStil,
-                          // 1.05 schnitt die Unterlängen ab — siehe
-                          // „Tinntest". Rundennamen kommen aus freier
-                          // Eingabe, da steht irgendwann ein „g".
-                          height: 1.2,
+    final eigenesLogo =
+        (round.logoUrl != null && round.logoUrl!.isNotEmpty) ||
+        (round.logoEmoji != null && round.logoEmoji!.isNotEmpty);
+
+    return _PressScale(
+      child: SizedBox(
+        height: kartenHoehe(context, _kStreifenHoehe),
+        child: Material(
+          color: Colors.transparent,
+          // Schneidet das Wasserzeichen an der Kante ab.
+          clipBehavior: Clip.antiAlias,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: () {
+              activateRound(ref, round);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => LeagueScreen(round: round)),
+              );
+            },
+            child: Ink(
+              decoration: _kartenFlaeche(context, farbe),
+              child: Stack(
+                children: [
+                  // Das MatchUp-Zeichen in Gold läuft rechts aus der Kante —
+                  // wie bei den Ligakarten, nur liegend statt in der Ecke.
+                  if (!eigenesLogo)
+                    Positioned(
+                      right: -10,
+                      top: -12,
+                      child: MatchUpChevron(
+                        size: 72,
+                        color: farbe.withValues(
+                          alpha: context.istHell ? 0.42 : 0.16,
                         ),
                       ),
-                      Text(
-                        wettbewerb,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: scheme.onSurface.withValues(alpha: 0.72),
-                          fontSize: Schrift.label,
-                          fontWeight: FontWeight.w600,
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      // Ohne Wettbewerb darüber steht der Name mittig —
+                      // unten links ließ er eine leere Zeile über sich.
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (eigenesLogo) ...[
+                          _RoundMark(round: round, farbe: farbe, size: 34),
+                          const SizedBox(width: 11),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                round.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: Schrift.gross,
+                                  fontWeight: Schrift.ueberschriftGewicht,
+                                  fontStyle: Schrift.ueberschriftStil,
+                                  letterSpacing: -0.3,
+                                  // 1.05 schnitt die Unterlängen ab — siehe
+                                  // „Tinntest". Rundennamen kommen aus freier
+                                  // Eingabe, da steht irgendwann ein „g".
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        if (pending > 0) ...[
+                          const SizedBox(width: 8),
+                          _CountBadge(count: pending),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-                if (pending > 0) ...[
-                  const SizedBox(width: 8),
-                  _CountBadge(count: pending),
                 ],
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1769,6 +1819,11 @@ class _TipRoundStreifen extends ConsumerWidget {
     );
   }
 }
+
+/// Höhe des Tipprunden-Streifens: deutlich flacher als die Ligakarten (92).
+/// Seit der Wettbewerb nicht mehr darübersteht, trägt der Streifen nur noch
+/// den Namen — bei 76 stand über ihm eine leere Zeile (auf Ansage: 58).
+const double _kStreifenHoehe = 58;
 
 /// Zeichen einer Tipprunde: eigenes Logo, sonst die MatchUp-Marke in Gold.
 class _RoundMark extends StatelessWidget {
@@ -2053,18 +2108,18 @@ class _MatchUpTitle extends StatelessWidget {
         // breiter, deshalb leicht gesperrt statt eng wie vorher.
         Text.rich(
           TextSpan(
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
               fontStyle: FontStyle.italic,
               letterSpacing: 0.4,
-              color: MatchUpColors.snow,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
-            children: const [
-              TextSpan(text: 'MATCH'),
+            children: [
+              const TextSpan(text: 'MATCH'),
               TextSpan(
                 text: 'UP',
-                style: TextStyle(color: MatchUpColors.green),
+                style: TextStyle(color: context.farben.gruen),
               ),
             ],
           ),

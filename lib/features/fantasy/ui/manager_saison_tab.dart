@@ -1,9 +1,9 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../app/theme.dart';
 import '../../../app/typografie.dart';
 import '../../../app/widgets/karte.dart';
 import '../../../app/widgets/kapitelmarke.dart';
@@ -418,7 +418,7 @@ class _AusgangMarke extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final (buchstabe, farbe, wort) = switch (ausgang) {
-      DuellAusgang.sieg => ('S', MatchUpColors.green, 'Sieg'),
+      DuellAusgang.sieg => ('S', context.farben.gruen, 'Sieg'),
       DuellAusgang.niederlage => ('N', scheme.error, 'Niederlage'),
       DuellAusgang.unentschieden => (
         'U',

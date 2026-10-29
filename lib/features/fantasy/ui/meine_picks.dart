@@ -49,8 +49,8 @@ class MeinePicks extends ConsumerWidget {
       );
     }
 
-    String team(PickSlot p) =>
-        p.ursprung == myId ? 'eigener' : (nameVon[p.ursprung] ?? '?');
+    String? team(PickSlot p) =>
+        p.ursprung == myId ? null : (nameVon[p.ursprung] ?? '?');
     ({String titel, String? zusatz}) text(PickSlot p) => pickBeschriftung(
           runde: p.runde,
           team: team(p),

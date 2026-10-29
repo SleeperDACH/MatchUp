@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../core/ui/rueckfrage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,9 +14,6 @@ import 'club_badge.dart';
 import 'player_profile_sheet.dart';
 import 'trade_screen.dart';
 
-const _cAdd = Color(0xFF4ADE6A); // grün — freien Spieler holen
-const _cWaiver = Color(0xFFFFC83D); // gelb — Waiver-Antrag
-const _cTrade = Color(0xFFF23030); // rot — Trade (fremdes Team)
 
 /// Kleiner Aktions-Button für einen Spieler (Free Agency & Spielersuche):
 /// grün „Holen" (frei), gelb „Waiver" (auf dem Wire), rot „Trade" (in fremdem
@@ -91,7 +89,7 @@ class PlayerActionButton extends ConsumerWidget {
       }
       return _knopf(
         context,
-        color: _cTrade,
+        color: context.farben.rot,
         fg: Colors.white,
         icon: Icons.swap_horiz,
         label: 'Trade anbieten',
@@ -111,8 +109,8 @@ class PlayerActionButton extends ConsumerWidget {
       }
       return _knopf(
         context,
-        color: _cWaiver,
-        fg: Colors.black,
+        color: context.farben.gold,
+        fg: context.istHell ? Colors.white : Colors.black,
         icon: Icons.schedule_outlined,
         label: 'Waiver-Antrag stellen',
         onTap: () => _claim(context, ref),
@@ -120,8 +118,8 @@ class PlayerActionButton extends ConsumerWidget {
     }
     return _knopf(
       context,
-      color: _cAdd,
-      fg: Colors.black,
+      color: context.farben.gruen,
+      fg: context.istHell ? Colors.white : Colors.black,
       icon: Icons.add,
       label: 'Holen',
       onTap: () => _add(context, ref),
@@ -490,14 +488,14 @@ class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
                 shrinkWrap: true,
                 padding: const EdgeInsets.fromLTRB(20, 6, 12, 0),
                 children: [
-                  const _Marke(text: 'Kommt rein', farbe: _cAdd),
+                  _Marke(text: 'Kommt rein', farbe: context.farben.gruen),
                   _zeile(widget.incoming, auswahl: null),
                   if (widget.mode != _DropMode.none) ...[
                     _Marke(
                       text: widget.mode == _DropMode.mustDrop
                           ? 'Wer macht Platz?'
                           : 'Wer macht Platz? (optional)',
-                      farbe: _cTrade,
+                      farbe: context.farben.rot,
                     ),
                     for (final (i, p) in sorted.indexed) ...[
                       if (i > 0) const EinstellungsTrenner(),
@@ -516,11 +514,11 @@ class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
                   children: [
                     // **Ein grauer Knopf sagt nicht, was fehlt.**
                     if (!canConfirm) ...[
-                      const Text(
+                      Text(
                         'Wähle oben, wer Platz macht.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: _cWaiver,
+                          color: context.farben.gold,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -593,7 +591,7 @@ class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
 
     final gewaehlt = auswahl == true;
     return Material(
-      color: gewaehlt ? _cTrade.withValues(alpha: 0.12) : Colors.transparent,
+      color: gewaehlt ? context.farben.rot.withValues(alpha: 0.12) : Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -610,7 +608,7 @@ class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
                 Icon(
                   gewaehlt ? Icons.check_circle : Icons.radio_button_unchecked,
                   size: 22,
-                  color: gewaehlt ? _cTrade : scheme.onSurfaceVariant,
+                  color: gewaehlt ? context.farben.rot : scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 12),
               ],
@@ -666,7 +664,7 @@ class _Marke extends StatelessWidget {
     padding: const EdgeInsets.only(top: 18, bottom: 4),
     child: Row(
       children: [
-        Icon(farbe == _cAdd ? Icons.add : Icons.remove, size: 16, color: farbe),
+        Icon(farbe == context.farben.gruen ? Icons.add : Icons.remove, size: 16, color: farbe),
         const SizedBox(width: 6),
         Text(
           text.toUpperCase(),

@@ -1,3 +1,4 @@
+import 'farben.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -16,7 +17,6 @@ import 'club_screen.dart';
 import 'league_overview_screen.dart';
 import 'widgets/navi_kapsel.dart' show navBarBottomInset, navBarHeight;
 import 'match_detail_screen.dart';
-import 'theme.dart';
 import 'typografie.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/pulsing_dot.dart';
@@ -441,7 +441,7 @@ class _ZeitKopf extends StatelessWidget {
               letterSpacing: 0.2,
               fontFeatures: const [FontFeature.tabularFigures()],
               color: laeuft
-                  ? MatchUpColors.red
+                  ? context.farben.rot
                   : scheme.onSurface.withValues(alpha: 0.72),
             ),
           ),
@@ -457,7 +457,7 @@ class _ZeitKopf extends StatelessWidget {
                 fontSize: Schrift.label,
                 fontWeight: FontWeight.w600,
                 color: laeuft
-                    ? MatchUpColors.red
+                    ? context.farben.rot
                     : scheme.onSurfaceVariant.withValues(alpha: 0.75),
               ),
             ),
@@ -505,10 +505,10 @@ class _Kopf extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               live == 1 ? '1 live' : '$live live',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: MatchUpColors.red,
+                color: context.farben.rot,
               ),
             ),
           ],
@@ -710,7 +710,7 @@ class _SpielZeile extends StatelessWidget {
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
                               color: live
-                                  ? MatchUpColors.red
+                                  ? context.farben.rot
                                   : scheme.onSurfaceVariant,
                               fontFeatures: const [FontFeature.tabularFigures()],
                             ),
@@ -978,7 +978,7 @@ class _DateStripState extends State<_DateStrip> {
             // Der Punkt beantwortet: Wird an dem Tag gespielt? Rot heißt,
             // dort läuft gerade etwas.
             final punkt = hatLive
-                ? MatchUpColors.red
+                ? context.farben.rot
                 : (hatSpiele
                     ? scheme.onSurfaceVariant
                     : Colors.transparent);

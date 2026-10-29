@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -108,11 +109,11 @@ class _MeineSeite extends ConsumerWidget {
         if (eingehend.isNotEmpty) ...[
           // Nur hier ist wirklich etwas von mir gewollt — deshalb trägt allein
           // diese Marke eine Zahl.
-          _Marke('Wartet auf dich', zahl: eingehend.length, farbe: _kRot),
+          _Marke('Wartet auf dich', zahl: eingehend.length, farbe: context.farben.rot),
           for (final t in eingehend) TradeCard(tradeId: t.id, inList: true),
         ],
         if (offeneAntraege.isNotEmpty) ...[
-          const _Marke('Offene Waiver-Anträge', farbe: _kGold),
+          _Marke('Offene Waiver-Anträge', farbe: context.farben.gold),
           for (final c in offeneAntraege)
             _AntragKarte(league: league, claim: c),
         ],
@@ -168,7 +169,7 @@ class _AntragKarte extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.schedule_outlined, size: 16, color: _kGold),
+                Icon(Icons.schedule_outlined, size: 16, color: context.farben.gold),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -418,7 +419,7 @@ class _VorgangsKarte extends ConsumerWidget {
                     size: 15,
                     color: ereignis.istTrade
                         ? scheme.onSurfaceVariant
-                        : (erste.nurAbgang ? _kRot : _kGruen)),
+                        : (erste.nurAbgang ? context.farben.rot : context.farben.gruen)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(kopf,
@@ -456,7 +457,7 @@ class _VorgangsKarte extends ConsumerWidget {
                                 fontSize: 11,
                                 color: scheme.onSurfaceVariant)),
                       ),
-                      Icon(Icons.south_west, size: 13, color: _kGruen),
+                      Icon(Icons.south_west, size: 13, color: context.farben.gruen),
                       const SizedBox(width: 6),
                       Wrap(
                         spacing: 6,
@@ -488,9 +489,6 @@ class _VorgangsKarte extends ConsumerWidget {
 
 // ---------------------------------------------------------------------------
 
-const _kGruen = Color(0xFF4ADE6A);
-const _kRot = Color(0xFFF23030);
-const _kGold = Color(0xFFFFC83D);
 
 /// Kapitelmarke wie überall sonst: farbiger Strich, Wort, Haarlinie bis an den
 /// Rand. Eine Zahl trägt sie nur, wo etwas wartet.

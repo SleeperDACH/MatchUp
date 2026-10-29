@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 
 import 'news_bild.dart';
@@ -25,7 +26,6 @@ class NewsTile extends StatelessWidget {
   final NewsItem item;
   final bool dealStyle;
 
-  static const _green = Color(0xFF4ADE6A);
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +46,7 @@ class NewsTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (dealStyle) ...[
-                const Icon(Icons.check_circle, size: 18, color: _green),
+                Icon(Icons.check_circle, size: 18, color: context.farben.gruen),
                 const SizedBox(width: 8),
               ] else ...[
                 // **Dieselbe Kachel wie auf dem Startbildschirm.** Wer die

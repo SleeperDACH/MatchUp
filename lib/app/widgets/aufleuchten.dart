@@ -1,3 +1,4 @@
+import '../farben.dart';
 import 'package:flutter/material.dart';
 
 /// **Leuchtet einmal kurz auf, wenn [zaehler] steigt** — beim Tor.
@@ -52,7 +53,7 @@ class _AufleuchtenState extends State<Aufleuchten>
 
   @override
   Widget build(BuildContext context) {
-    final farbe = widget.farbe ?? Colors.white;
+    final farbe = widget.farbe ?? context.farben.vorne;
     return Stack(
       children: [
         widget.child,

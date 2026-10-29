@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -7,11 +8,18 @@ import '../../../core/util/club_logos.dart';
 import '../models/fantasy_models.dart';
 
 /// Positionsfarben: TW blau, ABW gelb, MF grün, ST rot.
-Color positionColor(PlayerPosition pos) => switch (pos) {
-      PlayerPosition.gk => const Color(0xFF5B9DF9),
-      PlayerPosition.def => const Color(0xFFFFC83D),
-      PlayerPosition.mid => const Color(0xFF4ADE6A),
-      PlayerPosition.fwd => const Color(0xFFF23030),
+///
+/// [farben] ist die Fassung des aktuellen Themes (`context.farben`). Ohne
+/// Angabe die dunkle — richtig für das **Spielfeld**, das in beiden Modi ein
+/// dunkler Rasen bleibt. Auf einer hellen Fläche muss die helle Fassung
+/// übergeben werden, sonst steht dort Gelb auf Weiß.
+Color positionColor(PlayerPosition pos,
+        [MatchUpFarben farben = MatchUpFarben.dunkel]) =>
+    switch (pos) {
+      PlayerPosition.gk => farben.blau,
+      PlayerPosition.def => farben.gold,
+      PlayerPosition.mid => farben.gruen,
+      PlayerPosition.fwd => farben.rot,
     };
 
 /// Vereinslogo als flächenfüllender Hintergrund (BoxFit.cover). Ohne Logo
@@ -78,7 +86,7 @@ class PositionPill extends StatelessWidget {
     // Punkt 3, 15.10.2026). Die Pille war eine volle Farbfläche — in einer
     // Liste mit zwanzig Spielern zwanzig bunte Klötze, die nichts anderes
     // sagten als die Spalte daneben.
-    final color = positionColor(pos);
+    final color = positionColor(pos, context.farben);
     final scheme = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,

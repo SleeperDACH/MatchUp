@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'dart:async';
 import '../logic/reset_draft.dart';
 import '../logic/draft_rechte.dart';
@@ -20,7 +21,6 @@ import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'draft_start.dart';
 import '../../../app/typografie.dart';
-import '../../../app/theme.dart' show MatchUpColors;
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/ui/rueckfrage.dart';
 import '../logic/fantasy_scoring_engine.dart';
@@ -706,7 +706,7 @@ class _ChatTabIcon extends StatelessWidget {
               width: 9,
               height: 9,
               decoration: BoxDecoration(
-                color: _cBoardRed,
+                color: context.farben.rot,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: Theme.of(context).colorScheme.surface,
@@ -817,14 +817,14 @@ class _AutoPickBar extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(12, 10, 12, 6),
         padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
         decoration: BoxDecoration(
-          color: _cBoardRed.withValues(alpha: 0.12),
+          color: context.farben.rot.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _cBoardRed.withValues(alpha: 0.45)),
+          border: Border.all(color: context.farben.rot.withValues(alpha: 0.45)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.auto_mode_outlined, color: _cBoardRed, size: 24),
-            const SizedBox(width: 12),
+            Icon(Icons.auto_mode_outlined, color: context.farben.rot, size: 24),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1391,23 +1391,25 @@ class _MyTeamTab extends StatelessWidget {
             ).textTheme.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
-          Container(
-            height: 440,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: pitchGradient,
-            ),
-            child: CustomPaint(
-              painter: const PitchLinesPainter(mitStreifen: false),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 14,
-                  horizontal: 4,
-                ),
-                child: Column(
-                  children: [
-                    for (final pos in _pitchOrder) Expanded(child: _row(pos)),
-                  ],
+          DunkleInsel(
+            child: Container(
+              height: 440,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: pitchGradient,
+              ),
+              child: CustomPaint(
+                painter: const PitchLinesPainter(mitStreifen: false),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 4,
+                  ),
+                  child: Column(
+                    children: [
+                      for (final pos in _pitchOrder) Expanded(child: _row(pos)),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1654,7 +1656,6 @@ class _BoardCol {
 // jeder gedrafteten Zelle — gemeldet als „viel zu bunt, man blickt gar nicht
 // durch". Geblieben ist Hell für den Zustand und ein 6-Punkt-Punkt für die
 // Position.
-const _cBoardRed = Color(0xFFF23030);
 
 /// „Nico Schlotterbeck" → „Nico". Leer, wenn der Name nur aus einem Wort
 /// besteht — dann trägt die untere Zeile alles, und eine leere Zeile darüber
@@ -1671,7 +1672,6 @@ String _nachname(String voll) {
 }
 
 /// Hell — das Zeichen dieser App für „gewählt / das bist du“.
-const _cSchnee = Color(0xFFEDEFF4);
 
 /// Kopfzelle einer Board-Spalte: Kartengrund und Haarlinie, hell für den
 /// Zug, neutral für Platzhalter) plus optionales „AUTO"-Badge.
@@ -1704,7 +1704,7 @@ class _BoardHeaderCell extends StatelessWidget {
     // bist du" sagt.
     final grund = isCurrent
         ? Color.alphaBlend(
-            _cSchnee.withValues(alpha: 0.16),
+            Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.16),
             Theme.of(context).cardColor,
           )
         : Theme.of(context).cardColor;
@@ -1724,7 +1724,7 @@ class _BoardHeaderCell extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isCurrent
-              ? _cSchnee.withValues(alpha: 0.55)
+              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55)
               : Theme.of(context).dividerColor,
         ),
       ),
@@ -1892,7 +1892,7 @@ class DraftBoard extends StatelessWidget {
                         color: c.userId == null
                             ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
                             : c.mine
-                            ? MatchUpColors.green
+                            ? context.farben.gruen
                             : scheme.onSurface,
                       ),
                     ),
@@ -1930,7 +1930,9 @@ class DraftBoard extends StatelessWidget {
                       meiner: () {
                         final u = cols[s].userId;
                         if (u == null || myId == null) return false;
-                        final b = rechte == null ? u : besitzerVon(rechte!, r, u);
+                        final b = rechte == null
+                            ? u
+                            : besitzerVon(rechte!, r, u);
                         return b == myId;
                       }(),
                       besitzerName: () {
@@ -2008,7 +2010,9 @@ class DraftBoard extends StatelessWidget {
     // Grün heißt in dieser App „ich" — als Rahmen und Schrift, nie als
     // Fläche (siehe „Verboten: grün gestochene Flächen").
     final grund = grund0;
-    final strich = player == null ? null : positionColor(player.position);
+    final strich = player == null
+        ? null
+        : positionColor(player.position, context.farben);
 
     return Container(
       width: _colW,
@@ -2025,9 +2029,9 @@ class DraftBoard extends StatelessWidget {
         // dann kräftiger.
         border: Border.all(
           color: meiner
-              ? MatchUpColors.green.withValues(alpha: isCurrent ? 1 : 0.75)
+              ? context.farben.gruen.withValues(alpha: isCurrent ? 1 : 0.75)
               : isCurrent
-              ? _cSchnee.withValues(alpha: 0.65)
+              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)
               : Theme.of(context).dividerColor,
           width: meiner ? (isCurrent ? 2 : 1.5) : (isCurrent ? 1.4 : 1),
         ),
@@ -2064,10 +2068,10 @@ class DraftBoard extends StatelessWidget {
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                         color: meiner
-                        ? MatchUpColors.green
-                        : scheme.onSurfaceVariant.withValues(
-                            alpha: placeholder ? 0.5 : 0.85,
-                          ),
+                            ? context.farben.gruen
+                            : scheme.onSurfaceVariant.withValues(
+                                alpha: placeholder ? 0.5 : 0.85,
+                              ),
                       ),
                     ),
                     if (pick?.isAuto ?? false) ...[

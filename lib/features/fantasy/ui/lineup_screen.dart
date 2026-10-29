@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -150,9 +151,11 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
       unawaited(
         _repo!
             .setLineup(widget.league.id, _effRound!, _lastIds)
-            .then((_) => _container?.invalidate(
-                  leagueLineupsProvider(widget.league.id),
-                ))
+            .then(
+              (_) => _container?.invalidate(
+                leagueLineupsProvider(widget.league.id),
+              ),
+            )
             .catchError((Object e) => debugPrint('[AUFSTELLUNG] Flush: $e')),
       );
     }
@@ -316,8 +319,10 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
         if (_fehlversuche == 1) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Speichern fehlgeschlagen: $e — versuche es '
-                  'weiter.'),
+              content: Text(
+                'Speichern fehlgeschlagen: $e — versuche es '
+                'weiter.',
+              ),
             ),
           );
         }
@@ -358,10 +363,7 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
     final jetzt = DateTime.now();
 
     return poolAsync.when(
-      loading: () => const SizedBox(
-        height: 320,
-        child: Skelett(),
-      ),
+      loading: () => const SizedBox(height: 320, child: Skelett()),
       error: (e, _) =>
           SizedBox(height: 320, child: Center(child: Text('Fehler: $e'))),
       data: (pool) {
@@ -441,8 +443,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
         // Ausnahme wäre danach keine Elf mehr gültig, und der Schirm stünde
         // für immer auf „noch nicht vollständig". Dieselbe Regel steht in
         // `fantasy_set_lineup` (Migration 0120).
-        final hatTorwart =
-            myPlayers.any((p) => p.position == PlayerPosition.gk);
+        final hatTorwart = myPlayers.any(
+          (p) => p.position == PlayerPosition.gk,
+        );
         final valid = _roster.isValidFormation(
           gkCount: slots[PlayerPosition.gk]?.whereType<String>().length ?? 0,
           defCount: slots[PlayerPosition.def]?.whereType<String>().length ?? 0,
@@ -497,7 +500,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
         // Ø je Einsatz auf jeder Kachel — dieselbe Zahl wie im Profil, nur
         // über abgepfiffene Spieltage.
         final fertig = gewerteteRunden(
-            ref.watch(abgepfiffeneRundenProvider), saison.keys);
+          ref.watch(abgepfiffeneRundenProvider),
+          saison.keys,
+        );
         final gewertet = {
           for (final e in saison.entries)
             if (fertig.contains(e.key)) e.key: e.value,
@@ -614,7 +619,8 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
               onOpenProfile: _openProfile,
               onOpenFreeAgency: _openFreeAgency,
               onDropToBench: allesZu ? null : (data) => _benchDrop(slots, data),
-              spiele: ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+              spiele:
+                  ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
                   const <Fixture>[],
               runde: round,
               gesperrt: gesperrt,
@@ -685,8 +691,9 @@ class _LineupEditorState extends ConsumerState<LineupEditor> {
                               SpeicherAnzeige.laeuft => 'Speichere …',
                               SpeicherAnzeige.gespeichert => 'Gespeichert',
                             },
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: farbe),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: farbe),
                           ),
                         ),
                       ],
@@ -927,60 +934,70 @@ class _FormationChips extends StatelessWidget {
               // Seed wird das ein stumpfes Oliv, das zu nichts sonst in der
               // App passt (siehe CLAUDE.md). Fällt mit neun Formationen noch
               // mehr auf als mit acht.
-              child: Builder(builder: (context) {
-                // **Geht nicht mehr, weil zu viele schon gespielt haben** —
-                // gedämpft und mit Schloss, ein Tipp sagt warum. Alles andere
-                // bleibt wählbar wie bisher.
-                final blockiert = fm == current
-                    ? null
-                    : formationGesperrtWeil(
-                        slots: slots, formation: fm, gesperrt: gesperrt);
-                if (blockiert != null) {
-                  return Semantics(
-                    button: true,
-                    label: '${fm.$1}-${fm.$2}-${fm.$3}, nicht wählbar: '
-                        '$blockiert',
-                    excludeSemantics: true,
-                    child: PillChip(
-                      label: '${fm.$1}-${fm.$2}-${fm.$3}',
-                      selected: false,
-                      gedaempft: true,
-                      leading: const Icon(Icons.lock_outline, size: 13),
-                      onTap: () {
-                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('${fm.$1}-${fm.$2}-${fm.$3} geht '
-                              'nicht mehr: $blockiert — ihre Spiele laufen '
-                              'oder sind vorbei.'),
-                        ));
-                      },
-                    ),
-                  );
-                }
-                return PillChip(
-                label: '${fm.$1}-${fm.$2}-${fm.$3}',
-                // **Nicht gedämpft.** Die Dämpfung liegt bei 38 % Deckkraft
-                // und liest sich als „gesperrt" — und gesperrt ist hier nichts
-                // mehr. Dass ein Platz leer bleibt, sagt das Feld selbst: ein
-                // gestrichelter Kreis, wo niemand steht.
-                selected: fm == current,
-                // **Umstellen zuerst, Hinweis danach.** Der Hinweis sagt, was
-                // leer bleibt — er verhindert nichts mehr.
-                onTap: () {
-                  onSelected(fm);
-                  final grund = fehlt(fm);
-                  if (grund == null) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${fm.$1}-${fm.$2}-${fm.$3}: '
-                        'Dir fehlt $grund — der Platz bleibt frei.',
+              child: Builder(
+                builder: (context) {
+                  // **Geht nicht mehr, weil zu viele schon gespielt haben** —
+                  // gedämpft und mit Schloss, ein Tipp sagt warum. Alles andere
+                  // bleibt wählbar wie bisher.
+                  final blockiert = fm == current
+                      ? null
+                      : formationGesperrtWeil(
+                          slots: slots,
+                          formation: fm,
+                          gesperrt: gesperrt,
+                        );
+                  if (blockiert != null) {
+                    return Semantics(
+                      button: true,
+                      label:
+                          '${fm.$1}-${fm.$2}-${fm.$3}, nicht wählbar: '
+                          '$blockiert',
+                      excludeSemantics: true,
+                      child: PillChip(
+                        label: '${fm.$1}-${fm.$2}-${fm.$3}',
+                        selected: false,
+                        gedaempft: true,
+                        leading: const Icon(Icons.lock_outline, size: 13),
+                        onTap: () {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '${fm.$1}-${fm.$2}-${fm.$3} geht '
+                                'nicht mehr: $blockiert — ihre Spiele laufen '
+                                'oder sind vorbei.',
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    ),
+                    );
+                  }
+                  return PillChip(
+                    label: '${fm.$1}-${fm.$2}-${fm.$3}',
+                    // **Nicht gedämpft.** Die Dämpfung liegt bei 38 % Deckkraft
+                    // und liest sich als „gesperrt" — und gesperrt ist hier nichts
+                    // mehr. Dass ein Platz leer bleibt, sagt das Feld selbst: ein
+                    // gestrichelter Kreis, wo niemand steht.
+                    selected: fm == current,
+                    // **Umstellen zuerst, Hinweis danach.** Der Hinweis sagt, was
+                    // leer bleibt — er verhindert nichts mehr.
+                    onTap: () {
+                      onSelected(fm);
+                      final grund = fehlt(fm);
+                      if (grund == null) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '${fm.$1}-${fm.$2}-${fm.$3}: '
+                            'Dir fehlt $grund — der Platz bleibt frei.',
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
-              );
-              }),
+              ),
             ),
         ],
       ),
@@ -1040,72 +1057,69 @@ class _Pitch extends StatelessWidget {
     // **Höher als früher (470 statt 420).** Der Platz kommt den Spielern
     // zugute: größeres Wappen, lesbarer Name, eine Punktzahl, die man nicht
     // suchen muss. Bei 420 stand alles davon im selben Raum wie vorher.
-    return Container(
-      margin: const EdgeInsets.all(12),
-      // 440 seit der kompakten Kachel (19.10.2026, 90 hoch); vorher 500 für
-      // die 108 hohe.
-      height: 440,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: pitchGradient,
-        // Dieselbe Haarlinie wie an jeder Karte dieser App.
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: CustomPaint(
-        painter: const PitchLinesPainter(),
-        child: Stack(
-          children: [
-            Padding(
-              // Vier Punkte weniger oben und unten: Sie fehlten den Reihen,
-              // seit die Kachel Gegner und Anstoß als eigene Zeilen trägt.
-              // Geholt werden sie am Rand des Rasens, nicht an der Schrift —
-              // kleiner setzen hieße, genau das aufzugeben, worum es ging.
-              padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
-              child: Column(
-                children: [
-                  for (final pos in _pitchOrder)
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // **Die Prognose steht links neben dem Torwart.**
-                          // Dort ist die einzige Reihe mit Platz: Ein Torwart
-                          // teilt sich die Breite mit niemandem. Der leere
-                          // Kasten auf der Gegenseite hält ihn trotzdem in der
-                          // Mitte — ohne ihn rutschte er um die halbe Boxbreite
-                          // nach rechts, und die Elf stünde schief auf dem Feld.
-                          if (pos == PlayerPosition.gk && projektion != null)
-                            SizedBox(
-                              width: _prognoseBreite,
-                              child: _ProjektionsBox(werte: projektion!),
-                            ),
-                          // **Jeder Platz nimmt seinen Anteil an der Reihe.**
-                          // Vorher war er 76 Punkte breit, fest: Fünf davon
-                          // sind 380 und passen auf keinen Telefonschirm — bei
-                          // einer 3-5-2 lief die Mittelfeldreihe über.
-                          for (var i = 0; i < (slots[pos]?.length ?? 0); i++)
-                            Expanded(child: _slotTarget(pos, i)),
-                          if (pos == PlayerPosition.gk && projektion != null)
-                            const SizedBox(width: _prognoseBreite),
-                        ],
+    return DunkleInsel(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        // 440 seit der kompakten Kachel (19.10.2026, 90 hoch); vorher 500 für
+        // die 108 hohe.
+        height: 440,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: pitchGradient,
+          // Dieselbe Haarlinie wie an jeder Karte dieser App.
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: CustomPaint(
+          painter: const PitchLinesPainter(),
+          child: Stack(
+            children: [
+              Padding(
+                // Vier Punkte weniger oben und unten: Sie fehlten den Reihen,
+                // seit die Kachel Gegner und Anstoß als eigene Zeilen trägt.
+                // Geholt werden sie am Rand des Rasens, nicht an der Schrift —
+                // kleiner setzen hieße, genau das aufzugeben, worum es ging.
+                padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
+                child: Column(
+                  children: [
+                    for (final pos in _pitchOrder)
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            // **Die Prognose steht links neben dem Torwart.**
+                            // Dort ist die einzige Reihe mit Platz: Ein Torwart
+                            // teilt sich die Breite mit niemandem. Der leere
+                            // Kasten auf der Gegenseite hält ihn trotzdem in der
+                            // Mitte — ohne ihn rutschte er um die halbe Boxbreite
+                            // nach rechts, und die Elf stünde schief auf dem Feld.
+                            if (pos == PlayerPosition.gk && projektion != null)
+                              SizedBox(
+                                width: _prognoseBreite,
+                                child: _ProjektionsBox(werte: projektion!),
+                              ),
+                            // **Jeder Platz nimmt seinen Anteil an der Reihe.**
+                            // Vorher war er 76 Punkte breit, fest: Fünf davon
+                            // sind 380 und passen auf keinen Telefonschirm — bei
+                            // einer 3-5-2 lief die Mittelfeldreihe über.
+                            for (var i = 0; i < (slots[pos]?.length ?? 0); i++)
+                              Expanded(child: _slotTarget(pos, i)),
+                            if (pos == PlayerPosition.gk && projektion != null)
+                              const SizedBox(width: _prognoseBreite),
+                          ],
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            // **Steht die Elf, sagt es das Feld selbst.** Vorher stand darüber
-            // eine graue Textzeile, die neben dem Rasen kaum auffiel — und der
-            // wichtigste Zustand dieses Schirms ist genau der, in dem nichts
-            // mehr geht.
-            if (allesZu)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                child: _Sperrband(),
-              ),
-          ],
+              // **Steht die Elf, sagt es das Feld selbst.** Vorher stand darüber
+              // eine graue Textzeile, die neben dem Rasen kaum auffiel — und der
+              // wichtigste Zustand dieses Schirms ist genau der, in dem nichts
+              // mehr geht.
+              if (allesZu)
+                Positioned(left: 0, right: 0, top: 0, child: _Sperrband()),
+            ],
+          ),
         ),
       ),
     );
@@ -1277,30 +1291,32 @@ class _Slot extends ConsumerWidget {
             // waren das Maß der Fünferkette — und galten damit auch für den
             // Torwart, der die ganze Breite hat. Jetzt nimmt die Kachel, was
             // die Reihe hergibt, höchstens [_kachelMax].
-            child: LayoutBuilder(builder: (context, c) {
-              final breite = c.maxWidth.isFinite
-                  ? c.maxWidth.clamp(_kachelBreite, _kachelMax).toDouble()
-                  : _kachelMax;
-              return SizedBox(
-                width: breite,
-                child: p == null
-                    ? _LeererPlatz(pos: pos)
-                    : _SpielerAufRasen(
-                        spieler: p,
-                        schnitt: schnitt,
-                        iconUrl: iconUrl,
-                        ausfall: ausfall,
-                        spiel: spiel,
-                        gesperrt: gesperrt,
-                        zeigePunkte: zeigePunkte,
-                        punkte: points,
-                        onTausch: (gesperrt || onEditPosition == null)
-                            ? null
-                            : onEditPosition,
-                        tauschLabel: '${pos.label} tauschen',
-                      ),
-              );
-            }),
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final breite = c.maxWidth.isFinite
+                    ? c.maxWidth.clamp(_kachelBreite, _kachelMax).toDouble()
+                    : _kachelMax;
+                return SizedBox(
+                  width: breite,
+                  child: p == null
+                      ? _LeererPlatz(pos: pos)
+                      : _SpielerAufRasen(
+                          spieler: p,
+                          schnitt: schnitt,
+                          iconUrl: iconUrl,
+                          ausfall: ausfall,
+                          spiel: spiel,
+                          gesperrt: gesperrt,
+                          zeigePunkte: zeigePunkte,
+                          punkte: points,
+                          onTausch: (gesperrt || onEditPosition == null)
+                              ? null
+                              : onEditPosition,
+                          tauschLabel: '${pos.label} tauschen',
+                        ),
+                );
+              },
+            ),
           ),
           // **Kein Kreis mehr unter der Karte.** Tausch und Schloss stehen in
           // der Kopfzeile der Kachel; der eigene Knopf darunter kostete jede
@@ -1477,15 +1493,39 @@ class _SpielerAufRasen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final leise = Colors.white.withValues(alpha: 0.75);
+    // **Die Bank im hellen Modus ist hell.** Auf dem Rasen bleiben die
+    // Schilder dunkel (der Rasen ist eine `DunkleInsel`), die Bank steht aber
+    // auf dem weißen Grund — dunkle Schilder darauf sahen aus wie Fremdkörper.
+    // Hell heißt: weißes Schild mit Haarlinie, darunter die Kartenfläche,
+    // Schrift dunkel; ein Ausfall tönt das Schild gold bzw. rot.
+    final hellBank = aufBank && context.istHell;
+    final scheme = Theme.of(context).colorScheme;
+    final farben = context.farben;
+    final vorne = hellBank ? scheme.onSurface : MatchUpColors.snow;
+    final leise = hellBank
+        ? scheme.onSurfaceVariant
+        : Colors.white.withValues(alpha: 0.75);
     final nachname = _kurz(spieler.name);
-    final schildGrund = aufBank
+    final schildGrund = hellBank
         ? (ausfall != null
-            ? Color.alphaBlend(
-                ausfallFarbe(ausfall!).withValues(alpha: 0.45), _schildBank)
-            : _schildBank)
+              ? Color.alphaBlend(
+                  ausfallFarbe(ausfall!, farben).withValues(alpha: 0.16),
+                  Colors.white,
+                )
+              : Colors.white)
+        : aufBank
+        ? (ausfall != null
+              ? Color.alphaBlend(
+                  ausfallFarbe(ausfall!).withValues(alpha: 0.45),
+                  _schildBank,
+                )
+              : _schildBank)
         : _schild;
-    final zeileGrund = aufBank ? _zeileBank : _zeile;
+    final zeileGrund = hellBank
+        ? scheme.surfaceContainer
+        : aufBank
+        ? _zeileBank
+        : _zeile;
 
     final Widget unten;
     if (zeigePunkte) {
@@ -1495,10 +1535,10 @@ class _SpielerAufRasen extends StatelessWidget {
         formatPoints(punkte ?? 0),
         style: TextStyle(
           color: (punkte ?? 0) < 0
-              ? const Color(0xFFF23030)
+              ? (hellBank ? farben.rot : const Color(0xFFF23030))
               : laeuft
-              ? MatchUpColors.green
-              : MatchUpColors.snow,
+              ? (hellBank ? farben.gruen : MatchUpColors.green)
+              : vorne,
           fontSize: Schrift.label,
           fontWeight: FontWeight.w800,
           height: 1.0,
@@ -1511,25 +1551,31 @@ class _SpielerAufRasen extends StatelessWidget {
         children: [
           if (spiel != null)
             SpielMarke(
-                spiel: spiel!,
-                farbe: leise,
-                mitZeit: false,
-                buchstabe: true,
-                wappen: 12)
+              spiel: spiel!,
+              farbe: leise,
+              mitZeit: false,
+              buchstabe: true,
+              wappen: 12,
+            )
           else
-            Text('frei',
-                style: TextStyle(
-                    fontSize: Schrift.mikro, height: 1.0, color: leise)),
+            Text(
+              'frei',
+              style: TextStyle(
+                fontSize: Schrift.mikro,
+                height: 1.0,
+                color: leise,
+              ),
+            ),
           if (schnitt != null) ...[
             const SizedBox(width: 5),
             Text(
               'Ø ${formatPoints(schnitt!)}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: Schrift.label,
                 fontWeight: FontWeight.w700,
                 height: 1.0,
-                color: MatchUpColors.snow,
-                fontFeatures: [FontFeature.tabularFigures()],
+                color: vorne,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],
@@ -1569,7 +1615,10 @@ class _SpielerAufRasen extends StatelessWidget {
                 Opacity(
                   opacity: gesperrt ? 0.6 : 1,
                   child: ClubBadge(
-                      club: spieler.club, iconUrl: iconUrl, size: 32),
+                    club: spieler.club,
+                    iconUrl: iconUrl,
+                    size: 32,
+                  ),
                 ),
                 if (ausfall != null)
                   Align(
@@ -1578,70 +1627,86 @@ class _SpielerAufRasen extends StatelessWidget {
                   ),
                 // Rechts neben dem Wappen statt darauf.
                 if (!ohneEcke)
-                Positioned(
-                  top: onTausch == null ? 0 : -6,
-                  right: onTausch == null ? 0 : -6,
-                  child: onTausch == null
-                      ? ecke
-                      // Der Name bleibt für die Vorlesehilfe — sonst hießen
-                      // alle elf Knöpfe „Schaltfläche".
-                      : Semantics(
-                          button: true,
-                          label: tauschLabel,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: onTausch,
-                            child: Padding(
-                              padding: const EdgeInsets.all(6),
-                              child: ecke,
+                  Positioned(
+                    top: onTausch == null ? 0 : -6,
+                    right: onTausch == null ? 0 : -6,
+                    child: onTausch == null
+                        ? ecke
+                        // Der Name bleibt für die Vorlesehilfe — sonst hießen
+                        // alle elf Knöpfe „Schaltfläche".
+                        : Semantics(
+                            button: true,
+                            label: tauschLabel,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: onTausch,
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: ecke,
+                              ),
                             ),
                           ),
-                        ),
-                ),
+                  ),
               ],
             ),
           ),
           const SizedBox(height: 5),
           // Namensschild und Zeile darunter als ein Stück: oben dunkel und
           // fett, unten eine Stufe heller.
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  height: 19,
-                  color: schildGrund,
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  alignment: Alignment.center,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      nachname,
-                      maxLines: 1,
-                      softWrap: false,
-                      style: TextStyle(
-                        color: gesperrt
-                            ? MatchUpColors.snow.withValues(alpha: 0.6)
-                            : MatchUpColors.snow,
-                        fontSize: Schrift.text,
-                        fontWeight: FontWeight.w800,
-                        height: 1.0,
+          Container(
+            // Auf Weiß braucht das Schild eine Kante, sonst verläuft es mit
+            // dem Grund.
+            foregroundDecoration: hellBank
+                ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  )
+                : null,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    height: 19,
+                    color: schildGrund,
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    alignment: Alignment.center,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        nachname,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                          color: gesperrt
+                              ? vorne.withValues(alpha: 0.6)
+                              : vorne,
+                          fontSize: Schrift.text,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Container(
-                  height: aufBank ? 15 : 17,
-                  color: zeileGrund,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  alignment: Alignment.center,
-                  child: FittedBox(fit: BoxFit.scaleDown, child: unten),
-                ),
-                if (aufBank)
-                  Container(height: 2, color: positionColor(spieler.position)),
-              ],
+                  Container(
+                    height: aufBank ? 15 : 17,
+                    color: zeileGrund,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    alignment: Alignment.center,
+                    child: FittedBox(fit: BoxFit.scaleDown, child: unten),
+                  ),
+                  if (aufBank)
+                    Container(
+                      height: 2,
+                      color: positionColor(
+                        spieler.position,
+                        hellBank ? farben : MatchUpFarben.dunkel,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1680,32 +1745,32 @@ class _Sperrband extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.black.withValues(alpha: 0.72),
-              Colors.black.withValues(alpha: 0.42),
-            ],
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.black.withValues(alpha: 0.72),
+          Colors.black.withValues(alpha: 0.42),
+        ],
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.lock, size: 14, color: Color(0xFFFFC83D)),
+        const SizedBox(width: 7),
+        Text(
+          'Aufstellung steht — alle Spiele laufen',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.92),
+            fontSize: Schrift.label,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.lock, size: 14, color: Color(0xFFFFC83D)),
-            const SizedBox(width: 7),
-            Text(
-              'Aufstellung steht — alle Spiele laufen',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.92),
-                fontSize: Schrift.label,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 }
 
 /// Spieler-Avatar als Drag-Vorschau unter dem Finger.
@@ -1935,11 +2000,14 @@ class _Bench extends ConsumerWidget {
             children: [
               Icon(Icons.add, size: 22, color: scheme.onSurfaceVariant),
               const SizedBox(height: 6),
-              Text('Frei',
-                  style: TextStyle(
-                      fontSize: Schrift.label,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant)),
+              Text(
+                'Frei',
+                style: TextStyle(
+                  fontSize: Schrift.label,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),

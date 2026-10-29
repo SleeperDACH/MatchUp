@@ -1,6 +1,6 @@
+import '../../app/farben.dart';
 import 'package:flutter/material.dart';
 
-import '../../app/theme.dart';
 
 /// Eine auswählbare Option mit Symbol, Titel und einer Zeile Begründung.
 ///
@@ -31,7 +31,7 @@ class OptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final ton = farbe ?? MatchUpColors.green;
+    final ton = farbe ?? context.farben.gruen;
     return Material(
       color: Colors.transparent,
       child: InkWell(

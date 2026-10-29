@@ -4,7 +4,6 @@ import '../../../app/widgets/skelett.dart';
 import '../../../app/widgets/info_knopf.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme.dart';
 import '../../../app/typografie.dart';
 import '../../../core/ui/app_avatar.dart';
 import '../../auth/providers.dart';
@@ -1369,19 +1368,19 @@ class _SendeKnopf extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (laeuft)
-              const SizedBox(
+              SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: MatchUpColors.base,
+                  color: scheme.surface,
                 ),
               )
             else
               Icon(
                 Icons.send,
                 size: 18,
-                color: an ? MatchUpColors.base : scheme.onSurfaceVariant,
+                color: an ? scheme.surface : scheme.onSurfaceVariant,
               ),
             const SizedBox(width: 8),
             // Die Zahlen standen hier, weil der Tausch sonst nirgends
@@ -1921,8 +1920,8 @@ class TradeCard extends ConsumerWidget {
                       // Rot, und ohne Grün verliert Rot sein Gegenüber.
                       child: FilledButton(
                         style: FilledButton.styleFrom(
-                          backgroundColor: MatchUpColors.green,
-                          foregroundColor: MatchUpColors.base,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                         ),
                         onPressed: () => _respond(context, ref, trade, true),
                         child: const Text('Annehmen'),

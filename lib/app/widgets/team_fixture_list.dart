@@ -1,3 +1,4 @@
+import '../farben.dart';
 import 'package:flutter/material.dart';
 import '../../core/logic/vereins_kuerzel.dart';
 import 'package:intl/intl.dart';
@@ -6,7 +7,6 @@ import '../../core/models/models.dart';
 import '../../core/models/team_fixture.dart';
 import '../../features/tippspiel/ui/team_badge.dart';
 import '../match_detail_screen.dart';
-import '../theme.dart';
 import 'karte.dart';
 import 'pulsing_dot.dart';
 
@@ -473,7 +473,7 @@ class TeamFixtureCard extends StatelessWidget {
 
     return Material(
       color: live
-          ? MatchUpColors.red.withValues(alpha: 0.07)
+          ? context.farben.rot.withValues(alpha: 0.07)
           : Colors.transparent,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
@@ -511,7 +511,7 @@ class TeamFixtureCard extends StatelessWidget {
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: live
-                              ? MatchUpColors.red
+                              ? context.farben.rot
                               : scheme.onSurfaceVariant,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
@@ -567,7 +567,7 @@ class TeamFixtureCard extends StatelessWidget {
               SizedBox(
                 width: 13,
                 child: live
-                    ? const Align(
+                    ? Align(
                         alignment: Alignment.centerRight,
                         child: PulsingDot(size: 7),
                       )

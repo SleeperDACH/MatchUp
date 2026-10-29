@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
-import '../../../app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/app_avatar.dart';
@@ -365,8 +364,8 @@ class _SearchResultRow extends ConsumerWidget {
       // „Annehmen" ist eine Zustimmung und steht gegen das Ablehnen daneben.
       FriendStatus.incoming => FilledButton(
           style: FilledButton.styleFrom(
-            backgroundColor: MatchUpColors.green,
-            foregroundColor: MatchUpColors.base,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
           ),
           onPressed: () => repo.accept(user.id),
           child: const Text('Annehmen')),

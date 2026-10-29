@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/punktzahl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +7,6 @@ import '../logic/wertungs_kader.dart';
 import '../../auth/providers.dart';
 import '../logic/aufstellung_uebernahme.dart';
 import '../logic/fantasy_scoring_engine.dart';
-import '../../../app/theme.dart';
 import '../logic/spieler_schnitt.dart';
 import '../logic/spieler_kurzzeile.dart';
 import '../models/fantasy_models.dart';
@@ -430,7 +430,7 @@ class MatchupLineups extends ConsumerWidget {
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                color: positionColor(pos),
+                color: positionColor(pos, context.farben),
                 shape: BoxShape.circle,
               ),
             ),
@@ -657,7 +657,7 @@ class _PlayerRow extends StatelessWidget {
       if (fehltPos == null) return const SizedBox(height: 60);
       return _FehlendePosition(pos: fehltPos);
     }
-    final pos = positionColor(player.position);
+    final pos = positionColor(player.position, context.farben);
     final ausfall = ausfaelle[player.id];
     // **Die Box nimmt den Tipp selbst an**, wenn es etwas aufzuschlüsseln
     // gibt. Ein inneres `GestureDetector` gewinnt gegen das umgebende
@@ -707,7 +707,7 @@ class _PlayerRow extends StatelessWidget {
               fontWeight: FontWeight.w800,
               height: 1.1,
               color: laeuft && gespielt
-                  ? MatchUpColors.green
+                  ? context.farben.gruen
                   : gespielt
                   ? scheme.onSurface
                   : scheme.onSurfaceVariant.withValues(alpha: 0.6),
@@ -846,7 +846,7 @@ class _PlayerRow extends StatelessWidget {
         child: Aufleuchten(
           key: ValueKey(player.id),
           zaehler: stats[player.id]?.goals ?? 0,
-          farbe: mine ? MatchUpColors.green : null,
+          farbe: mine ? context.farben.gruen : null,
           child: PositionsStrich(
             farbe: pos,
             links: start,
@@ -1047,7 +1047,7 @@ class _BenchSection extends StatelessWidget {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: positionColor(p.position),
+                          color: positionColor(p.position, context.farben),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -1248,7 +1248,7 @@ class _SpielZeileText extends StatelessWidget {
     // Läuft oder beendet: das Ergebnis, dahinter das Wappen des Gegners.
     final ausgang = z.ausgang;
     final farbe = switch (ausgang) {
-      VereinsAusgang.sieg => MatchUpColors.green,
+      VereinsAusgang.sieg => context.farben.gruen,
       VereinsAusgang.niederlage => scheme.error,
       _ => basis.color,
     };
@@ -1331,7 +1331,6 @@ class _FehlendePosition extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const gold = Color(0xFFFFC83D);
     return SizedBox(
       height: 60,
       child: Row(
@@ -1341,13 +1340,13 @@ class _FehlendePosition extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: gold.withValues(alpha: 0.12),
-              border: Border.all(color: gold.withValues(alpha: 0.55)),
+              color: context.farben.gold.withValues(alpha: 0.12),
+              border: Border.all(color: context.farben.gold.withValues(alpha: 0.55)),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.priority_high_outlined,
               size: 17,
-              color: gold,
+              color: context.farben.gold,
             ),
           ),
           const SizedBox(width: 8),
@@ -1367,10 +1366,10 @@ class _FehlendePosition extends StatelessWidget {
                   },
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: Schrift.text,
                     fontWeight: FontWeight.w700,
-                    color: gold,
+                    color: context.farben.gold,
                   ),
                 ),
                 Text(
@@ -1379,7 +1378,7 @@ class _FehlendePosition extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: Schrift.label,
-                    color: gold.withValues(alpha: 0.75),
+                    color: context.farben.gold.withValues(alpha: 0.75),
                   ),
                 ),
               ],

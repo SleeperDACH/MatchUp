@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +7,6 @@ import '../../../core/ui/app_avatar.dart';
 import '../models/direct_message.dart';
 import '../providers.dart';
 import 'conversation_screen.dart';
-import '../../../app/theme.dart';
 import '../../../app/typografie.dart';
 
 /// Übersicht der Direktnachrichten (ligaübergreifend), erreichbar über das
@@ -114,7 +114,7 @@ class ConversationsScreen extends ConsumerWidget {
                     Text(
                       _time(c.lastMessage.createdAt),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: offen > 0 ? MatchUpColors.red : null,
+                            color: offen > 0 ? context.farben.rot : null,
                           ),
                     ),
                     if (offen > 0) ...[
@@ -126,7 +126,7 @@ class ConversationsScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
-                          color: MatchUpColors.red,
+                          color: context.farben.rot,
                           borderRadius: BorderRadius.circular(9),
                         ),
                         constraints: const BoxConstraints(minWidth: 18),

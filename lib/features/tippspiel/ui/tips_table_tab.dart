@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -23,7 +24,6 @@ import '../../../app/widgets/punktzahl.dart';
 import '../../../core/data/sportmonks/sportmonks_provider.dart';
 
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
-const Color _liveColor = Color(0xFFF23030); // MatchUp Red — Live-Spiele
 
 /// Feste Höhen für die zwei nebeneinanderliegenden Tabellenhälften
 /// (eingefrorene Namen + scrollende Ergebnisse) — nur so fluchten die
@@ -489,9 +489,6 @@ class _NameCell extends StatelessWidget {
   final bool isMe;
   final AvatarInfo? avatar;
 
-  static const _up = Color(0xFF2ECC71);
-  static const _down = Color(0xFFF23030);
-  static const _gold = Color(0xFFFFC83D);
 
   @override
   Widget build(BuildContext context) {
@@ -508,11 +505,11 @@ class _NameCell extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 11,
-                color: rank == 1 ? _gold : scheme.onSurfaceVariant,
+                color: rank == 1 ? context.farben.gold : scheme.onSurfaceVariant,
               ),
             ),
           ),
-          SizedBox(width: 12, child: _arrow()),
+          SizedBox(width: 12, child: _arrow(context)),
           AppAvatar(
             imageUrl: avatar?.url,
             emoji: avatar?.emoji,
@@ -544,14 +541,14 @@ class _NameCell extends StatelessWidget {
     );
   }
 
-  Widget _arrow() {
+  Widget _arrow(BuildContext context) {
     final m = movement;
     if (m == null) return const SizedBox.shrink();
     if (m > 0) {
-      return const Icon(Icons.arrow_drop_up, color: _up, size: 20);
+      return Icon(Icons.arrow_drop_up, color: context.farben.gruen, size: 20);
     }
     if (m < 0) {
-      return const Icon(Icons.arrow_drop_down, color: _down, size: 20);
+      return Icon(Icons.arrow_drop_down, color: context.farben.rot, size: 20);
     }
     return const Icon(Icons.remove, color: Colors.grey, size: 10);
   }
@@ -597,7 +594,7 @@ class _FixtureHeader extends StatelessWidget {
               : '–',
           style: small?.copyWith(
             fontWeight: FontWeight.bold,
-            color: live ? _liveColor : null,
+            color: live ? context.farben.rot : null,
             fontFeatures: gleichbreiteZiffern,
           ),
         ),
@@ -674,7 +671,7 @@ class _TipCell extends StatelessWidget {
     // der Zahl; er braucht keine zweite Spur.
     final exakt = base >= rules.exact;
     final color = live
-        ? _liveColor
+        ? context.farben.rot
         : points == 0
         ? scheme.onSurfaceVariant
         : exakt

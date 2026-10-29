@@ -14,4 +14,7 @@ import '../models/fantasy_models.dart';
 /// trotzdem: Sie ist der eine Ort, an dem diese Zuordnung steht, und alle
 /// Aufrufer lesen sie weiter. Ligen unterscheiden sich über Name, Zustand und
 /// ein eigenes Logo, dessen Farbe diese hier sticht.
+///
+/// Als Fläche und Hauch gemeint, deshalb das Markengrün selbst — auf Hell
+/// wie auf Dunkel.
 Color leagueColor(FantasyMode mode) => MatchUpColors.green;

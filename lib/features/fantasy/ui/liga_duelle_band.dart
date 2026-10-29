@@ -1,7 +1,7 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme.dart';
 import '../../../app/typografie.dart';
 import '../../../app/widgets/karte.dart';
 import '../../../app/widgets/punktzahl.dart';
@@ -253,7 +253,7 @@ class _DuellKarte extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1,
                       color: live
-                          ? MatchUpColors.red
+                          ? context.farben.rot
                           : scheme.onSurfaceVariant,
                     ),
                   ),
@@ -309,11 +309,11 @@ class _Zeile extends StatelessWidget {
     if (beendet) {
       final sieg = ausgang > 0;
       klein = sieg ? 'SIEG' : (verloren ? 'NIEDERLAGE' : 'REMIS');
-      kleinFarbe = sieg ? MatchUpColors.green : (verloren ? MatchUpColors.red : kChanceNeutral);
+      kleinFarbe = sieg ? context.farben.gruen : (verloren ? context.farben.rot : context.farben.neutral);
     } else if (seite.chance != null) {
       final prozent = (seite.chance! * 100).round().clamp(0, 100);
       klein = '$prozent % SIEG';
-      kleinFarbe = chanceFarben(prozent.clamp(1, 99)).$1;
+      kleinFarbe = chanceFarben(prozent.clamp(1, 99), context.farben).$1;
     } else {
       klein = null;
       kleinFarbe = scheme.onSurfaceVariant;
@@ -321,9 +321,9 @@ class _Zeile extends StatelessWidget {
 
     final serie = seite.bilanz.serie;
     final (pfeil, buchstabe, serieFarbe) = switch (serie?.ausgang) {
-      DuellAusgang.sieg => ('▲', 'S', MatchUpColors.green),
-      DuellAusgang.niederlage => ('▼', 'N', MatchUpColors.red),
-      _ => ('■', 'U', kChanceNeutral),
+      DuellAusgang.sieg => ('▲', 'S', context.farben.gruen),
+      DuellAusgang.niederlage => ('▼', 'N', context.farben.rot),
+      _ => ('■', 'U', context.farben.neutral),
     };
 
     return Row(

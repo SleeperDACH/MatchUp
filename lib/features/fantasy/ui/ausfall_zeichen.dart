@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -39,7 +40,7 @@ class AusfallZeichen extends StatelessWidget {
         child: Icon(
           ausfall.gesperrt ? Icons.block_outlined : Icons.medical_services_outlined,
           size: size,
-          color: ausfallFarbe(ausfall),
+          color: ausfallFarbe(ausfall, context.farben),
         ),
       ),
     );
@@ -47,8 +48,11 @@ class AusfallZeichen extends StatelessWidget {
 }
 
 /// Rot = Sperre, Gold = Verletzung.
-Color ausfallFarbe(PlayerAbsence a) =>
-    a.gesperrt ? const Color(0xFFF23030) : const Color(0xFFFFC83D);
+///
+/// [farben] ist die Fassung des aktuellen Themes; ohne Angabe die dunkle —
+/// für Stellen auf dem Spielfeld, das in beiden Modi dunkel bleibt.
+Color ausfallFarbe(PlayerAbsence a, [MatchUpFarben farben = MatchUpFarben.dunkel]) =>
+    a.gesperrt ? farben.rot : farben.gold;
 
 /// Der Ausfall eines Spielers, oder `null`.
 ///

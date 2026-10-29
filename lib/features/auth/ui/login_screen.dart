@@ -18,24 +18,31 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Bewusst markenfest dunkel (auch im Light-Theme): der Anmeldescreen ist
-    // der erste Marken-Eindruck.
-    return Scaffold(
-      backgroundColor: MatchUpColors.base,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF16241B), // grüner Schimmer oben
-              MatchUpColors.base,
-              MatchUpColors.base,
-            ],
-            stops: [0.0, 0.45, 1.0],
+    // der erste Marken-Eindruck. **Das ganze Theme, nicht nur der Grund** —
+    // sonst stünden im hellen Modus weiße Eingabefelder und dunkle Schrift
+    // auf diesem schwarzen Grund.
+    return Theme(
+      data: _dunkel,
+      child: Scaffold(
+        backgroundColor: MatchUpColors.base,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF16241B), // grüner Schimmer oben
+                MatchUpColors.base,
+                MatchUpColors.base,
+              ],
+              stops: [0.0, 0.45, 1.0],
+            ),
           ),
+          child: const SafeArea(child: LoginForm()),
         ),
-        child: const SafeArea(child: LoginForm()),
       ),
     );
   }
+
+  static final _dunkel = buildAppTheme(brightness: Brightness.dark);
 }

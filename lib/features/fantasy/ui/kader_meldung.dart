@@ -1,6 +1,6 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 
-import '../../../app/theme.dart';
 import '../../../app/typografie.dart';
 import '../../../app/widgets/karte.dart';
 import '../../../core/logic/vereins_kuerzel.dart';
@@ -221,7 +221,7 @@ class _Spieler extends StatelessWidget {
                   height: 18,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: rein ? MatchUpColors.green : MatchUpColors.red,
+                    color: rein ? context.farben.gruen : context.farben.rot,
                     border: Border.all(color: scheme.surface, width: 2),
                   ),
                   child: Icon(rein ? Icons.add : Icons.remove,

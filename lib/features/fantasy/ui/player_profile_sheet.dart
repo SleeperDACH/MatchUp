@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -532,7 +533,8 @@ class _PlayerProfileSheet extends ConsumerWidget {
     final ok = await rueckfrage(
       context,
       titel: '${player.name} droppen?',
-      text: 'Der Spieler verlässt deinen Kader und kommt für 24 Stunden auf '
+      text:
+          'Der Spieler verlässt deinen Kader und kommt für 24 Stunden auf '
           'den Waiver-Wire. Sein Platz bleibt frei, bis du nachlegst.\n\n'
           'Hat sein Spiel schon angepfiffen, bleibt er für diesen Spieltag '
           'in deiner Elf und punktet weiter für dich.',
@@ -1202,45 +1204,47 @@ class _Formationsfeld extends StatelessWidget {
     final reihen = elf.reihen;
     // Von hinten nach vorn gerechnet, von vorn nach hinten gezeichnet.
     final vonVorn = reihen.reversed.toList();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      height: 340,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: pitchGradient,
-      ),
-      child: CustomPaint(
-        painter: const PitchLinesPainter(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
-          child: Column(
-            children: [
-              for (final reihe in vonVorn)
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      for (final s in reihe)
-                        Flexible(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap:
-                                s.offen ||
-                                    s.playerId == ich ||
-                                    !oeffnet(s.playerId)
-                                ? null
-                                : () => onTip(s.playerId),
-                            child: _Feldspieler(
-                              spieler: s,
-                              verein: verein,
-                              hervor: s.playerId == ich,
+    return DunkleInsel(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        height: 340,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: pitchGradient,
+        ),
+        child: CustomPaint(
+          painter: const PitchLinesPainter(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+            child: Column(
+              children: [
+                for (final reihe in vonVorn)
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        for (final s in reihe)
+                          Flexible(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap:
+                                  s.offen ||
+                                      s.playerId == ich ||
+                                      !oeffnet(s.playerId)
+                                  ? null
+                                  : () => onTip(s.playerId),
+                              child: _Feldspieler(
+                                spieler: s,
+                                verein: verein,
+                                hervor: s.playerId == ich,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1624,7 +1628,7 @@ class _Urteil extends StatelessWidget {
     // nichts zu tun, und die Zeile bleibt still. Grün wäre hier doppelt
     // falsch: Es heißt in dieser App „hier läuft etwas", und es lief schon
     // einmal als Dauerfarbe durch dieses Profil.
-    final farbe = drin ? scheme.onSurfaceVariant : const Color(0xFFFFC83D);
+    final farbe = drin ? scheme.onSurfaceVariant : context.farben.gold;
     final text = ausRunde != null
         ? (drin
               ? 'Stand am $ausRunde. Spieltag in der Startelf'
@@ -1789,9 +1793,7 @@ class _Ausfallzeile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final a = (ref.watch(absencesProvider).valueOrNull ?? const {})[playerId];
     if (a == null) return const SizedBox.shrink();
-    final farbe = a.gesperrt
-        ? const Color(0xFFF23030)
-        : const Color(0xFFFFC83D);
+    final farbe = a.gesperrt ? context.farben.rot : context.farben.gold;
 
     final teile = <String>[
       if (a.seit != null)

@@ -1,3 +1,4 @@
+import '../farben.dart';
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
@@ -39,9 +40,9 @@ class MatchUpLogo extends StatelessWidget {
           color: wordColor,
           height: 1.0,
         ),
-        children: const [
+        children: [
           TextSpan(text: 'Match'),
-          TextSpan(text: 'Up', style: TextStyle(color: MatchUpColors.green)),
+          TextSpan(text: 'Up', style: TextStyle(color: context.farben.gruen)),
         ],
       ),
     );

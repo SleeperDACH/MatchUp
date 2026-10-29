@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../app/widgets/skelett.dart';
 import '../../../app/widgets/kapitelmarke.dart';
@@ -15,10 +16,8 @@ import 'manager_profile_screen.dart';
 import 'playoff_bracket_screen.dart';
 import 'weekly_recap_screen.dart';
 import 'liga_duelle_band.dart';
-import 'matchup_hero.dart' show kChanceNeutral;
 import '../logic/saisonverlauf.dart';
 import '../logic/playoff.dart';
-import '../../../app/theme.dart';
 
 /// Eigenständiger Screen (mit AppBar) — dünne Hülle um [FantasyTableBody].
 class FantasyTableScreen extends StatelessWidget {
@@ -358,12 +357,11 @@ class _BracketButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const gold = Color(0xFFFFC83D);
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
       child: Material(
-        color: gold.withValues(alpha: 0.12),
+        color: context.farben.gold.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -373,8 +371,8 @@ class _BracketButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                const Icon(Icons.account_tree_outlined, color: gold),
-                const SizedBox(width: 12),
+                Icon(Icons.account_tree_outlined, color: context.farben.gold),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,9 +433,6 @@ class _TabellenZeile extends StatelessWidget {
   final bool me;
   final VoidCallback onTap;
 
-  static const _gold = Color(0xFFFFC83D);
-  static const _silber = Color(0xFFC4CBD4);
-  static const _bronze = Color(0xFFCD8B4E);
 
   @override
   Widget build(BuildContext context) {
@@ -445,9 +440,9 @@ class _TabellenZeile extends StatelessWidget {
     final r = record;
     final m = manager;
     final rangFarbe = switch (rank) {
-      1 => _gold,
-      2 => _silber,
-      3 => _bronze,
+      1 => context.farben.gold,
+      2 => context.farben.silber,
+      3 => context.farben.bronze,
       _ => scheme.onSurfaceVariant,
     };
     final zahlStil = TextStyle(
@@ -466,9 +461,9 @@ class _TabellenZeile extends StatelessWidget {
         );
 
     final (pfeil, buchstabe, serieFarbe) = switch (serie?.ausgang) {
-      DuellAusgang.sieg => ('▲', 'S', MatchUpColors.green),
-      DuellAusgang.niederlage => ('▼', 'N', MatchUpColors.red),
-      _ => ('■', 'U', kChanceNeutral),
+      DuellAusgang.sieg => ('▲', 'S', context.farben.gruen),
+      DuellAusgang.niederlage => ('▼', 'N', context.farben.rot),
+      _ => ('■', 'U', context.farben.neutral),
     };
     final hatTeamname = m?.teamName != null && m!.teamName!.trim().isNotEmpty;
 
@@ -508,8 +503,8 @@ class _TabellenZeile extends StatelessWidget {
                         fontSize: Schrift.label,
                         fontWeight: FontWeight.w800,
                         color: bewegung! > 0
-                            ? MatchUpColors.green
-                            : MatchUpColors.red,
+                            ? context.farben.gruen
+                            : context.farben.rot,
                       ),
                     ),
                 ],

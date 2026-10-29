@@ -1,10 +1,10 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../core/ui/rueckfrage.dart';
 import '../../../app/widgets/skelett.dart';
 import '../../../app/widgets/mit_ladekreis.dart';
 import '../../../core/ui/einstellungs_zeile.dart';
 
-import '../../../app/theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -360,7 +360,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
             ]),
           ],
 
-          _Section('Gefahrenzone', farbe: _grpGefahr),
+          _Section('Gefahrenzone', farbe: context.farben.rot),
           _settingsGroup(context, [
             if (isOwner) ...[
               // Admin kann verlassen, muss dabei die Adminrechte übergeben.
@@ -410,7 +410,7 @@ class FantasyLeagueSettingsScreen extends ConsumerWidget {
                 ),
                 onTap: () => _confirmLeave(context, ref, l),
               ),
-          ], farbe: _grpGefahr),
+          ], farbe: context.farben.rot),
         ],
       ),
     );
@@ -1131,7 +1131,6 @@ class _PlayoffSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFFFFC83D); // MatchUp-Gold für Playoffs
     final scheme = Theme.of(context).colorScheme;
     if (!plan.isValid) {
       return _Note(
@@ -1144,7 +1143,7 @@ class _PlayoffSummary extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: accent),
+          Icon(icon, size: 18, color: context.farben.gold),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1167,7 +1166,7 @@ class _PlayoffSummary extends StatelessWidget {
           stops: const [0.0, 0.75],
           colors: [
             Color.alphaBlend(
-              accent.withValues(alpha: 0.12),
+              context.farben.gold.withValues(alpha: 0.12),
               Theme.of(context).cardColor,
             ),
             Theme.of(context).cardColor,
@@ -1524,7 +1523,6 @@ class _Chevron extends StatelessWidget {
 /// Vorher hatte jede Gruppe ihren eigenen Ton (grün, türkis, gold, blau) —
 /// fünf Farben, die gliederten, aber nichts bedeuteten. Rot dagegen sagt
 /// etwas: Was hier steht, lässt sich nicht zurücknehmen.
-const _grpGefahr = MatchUpColors.red;
 
 /// **Kader-Limits je Position.**
 ///

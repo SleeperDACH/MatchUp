@@ -1,3 +1,4 @@
+import '../farben.dart';
 import 'package:flutter/material.dart';
 import '../../core/logic/tabellen_zonen.dart';
 import 'zonen_rang.dart';
@@ -8,7 +9,6 @@ import '../../core/data/neu_laden.dart';
 import '../../core/models/models.dart';
 import '../../features/tippspiel/providers.dart';
 import '../../features/tippspiel/ui/team_badge.dart';
-import '../theme.dart';
 import 'tabellen_punkte.dart';
 
 /// **Die Ligatabelle — einmal gebaut, überall dieselbe.**
@@ -125,7 +125,7 @@ class TabellenZeile extends StatelessWidget {
     return Container(
       // Die eigene Mannschaft hervorheben — sonst sucht man sie in 18 Zeilen.
       color: eigene
-          ? MatchUpColors.green.withValues(alpha: 0.12)
+          ? context.farben.gruen.withValues(alpha: 0.12)
           : Colors.transparent,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: Row(

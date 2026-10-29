@@ -20,6 +20,7 @@
 ///    Die Kante bleibt die Haarlinie.
 library;
 
+import 'farben.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,7 +34,6 @@ import '../features/tippspiel/ui/team_badge.dart';
 import 'typografie.dart';
 import 'widgets/karte.dart';
 
-const _kGold = Color(0xFFFFC83D);
 
 /// Ob die Leiste erscheint — rein, damit es prüfbar ist.
 bool zeigeFavoritWahl({
@@ -64,14 +64,14 @@ class FavoritWahl extends ConsumerWidget {
 
     // Kein eigener Abstand nach unten: Den bringt die Kopfkarten-Stelle mit.
     return Container(
-      decoration: kartenDeko(context, hauch: _kGold),
+      decoration: kartenDeko(context, hauch: context.farben.gold),
       padding: const EdgeInsets.fromLTRB(14, 14, 6, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.star_border, size: 20, color: _kGold),
+              Icon(Icons.star_border, size: 20, color: context.farben.gold),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(

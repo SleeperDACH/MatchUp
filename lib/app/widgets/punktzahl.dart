@@ -14,6 +14,7 @@
 ///   stehen auch Spalten untereinander (Tabelle, Aufstellung) ruhig.
 library;
 
+import '../farben.dart';
 import 'package:flutter/material.dart';
 
 import '../../features/fantasy/logic/fantasy_scoring_engine.dart';
@@ -85,7 +86,7 @@ class Punktzahl extends StatelessWidget {
             fontSize: basis.fontSize! * bruchAnteil,
             // Etwas leiser, aber nicht verschluckt: Wer genau hinsieht, muss
             // die Zehntel noch lesen können.
-            color: (basis.color ?? Colors.white).withValues(alpha: 0.72),
+            color: (basis.color ?? context.farben.vorne).withValues(alpha: 0.72),
           );
     return Text.rich(
       TextSpan(

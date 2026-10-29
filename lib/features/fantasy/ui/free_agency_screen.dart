@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -348,8 +349,8 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                             ? null
                             : TextStyle(
                                 color: ausfaelle[p.id]!.gesperrt
-                                    ? const Color(0xFFF23030)
-                                    : const Color(0xFFFFC83D),
+                                    ? context.farben.rot
+                                    : context.farben.gold,
                               ),
                       ),
                     ),
@@ -516,14 +517,13 @@ class _WaiverBanner extends StatelessWidget {
     // Oliv, und ein olivgrüner Balken über der ganzen Breite sagt nichts —
     // hier läuft nichts, hier steht eine Regel. Die Farbe des Waivers ist
     // Gold, und sie trägt nur den Hauch, den ein Hinweis braucht.
-    const gold = Color(0xFFFFC83D);
     return Container(
       width: double.infinity,
-      color: gold.withValues(alpha: 0.10),
+      color: context.farben.gold.withValues(alpha: 0.10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.schedule_outlined, size: 18, color: gold),
+          Icon(Icons.schedule_outlined, size: 18, color: context.farben.gold),
           const SizedBox(width: 8),
           // **Die Auskunft, nicht die Regel** (Design-Ideen Punkt 4). Wie
           // der Waiver arbeitet, steht hinter dem ⓘ — gelesen wird es

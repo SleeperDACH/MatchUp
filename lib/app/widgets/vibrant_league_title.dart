@@ -1,3 +1,4 @@
+import '../farben.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/ui/app_avatar.dart';
@@ -30,14 +31,14 @@ class VibrantLeagueTitle extends StatelessWidget {
       name,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
+      style: TextStyle(
         // Schräg wie die Wortmarke — Liganamen sind Überschriften.
         fontWeight: Schrift.ueberschriftGewicht,
         fontStyle: Schrift.ueberschriftStil,
         fontSize: 24,
         letterSpacing: -0.4,
         height: 1.0,
-        color: Colors.white,
+        color: context.farben.vorne,
       ),
     );
 

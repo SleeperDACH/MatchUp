@@ -1,3 +1,4 @@
+import 'farben.dart';
 import 'darstellung.dart';
 import 'package:flutter/material.dart';
 import '../core/ui/rueckfrage.dart';
@@ -494,9 +495,6 @@ class _StatsSection extends ConsumerWidget {
   /// Abschnitts-Titel und mit Hinweistext, falls noch keine Bilanz vorliegt.
   final bool standalone;
 
-  static const _exactColor = Color(0xFF2ECC71);
-  static const _diffColor = Color(0xFF4FC3A1);
-  static const _tendColor = Color(0xFFFFC83D);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -531,19 +529,19 @@ class _StatsSection extends ConsumerWidget {
             _StatTile(
               label: 'Exakt',
               value: quote(stats.exact),
-              accent: _exactColor,
+              accent: context.farben.gruen,
             ),
             const SizedBox(width: 10),
             _StatTile(
               label: 'Tordifferenz',
               value: quote(stats.goalDiff),
-              accent: _diffColor,
+              accent: context.farben.tuerkis,
             ),
             const SizedBox(width: 10),
             _StatTile(
               label: 'Tendenz',
               value: quote(stats.tendency),
-              accent: _tendColor,
+              accent: context.farben.gold,
             ),
           ],
         ),
@@ -629,9 +627,9 @@ class _BreakdownBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final segments = <(int, Color, String)>[
-      (stats.exact, _StatsSection._exactColor, 'Exakt'),
-      (stats.goalDiff, _StatsSection._diffColor, 'Tordiff.'),
-      (stats.tendency, _StatsSection._tendColor, 'Tendenz'),
+      (stats.exact, context.farben.gruen, 'Exakt'),
+      (stats.goalDiff, context.farben.tuerkis, 'Tordiff.'),
+      (stats.tendency, context.farben.gold, 'Tendenz'),
       (stats.missed, scheme.surfaceContainerHighest, 'Daneben'),
     ];
     return Column(

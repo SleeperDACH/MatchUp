@@ -1,7 +1,24 @@
 import 'package:flutter/material.dart';
 
 import '../../core/logic/tabellen_zonen.dart';
+import '../farben.dart';
 import '../typografie.dart';
+
+/// Farbe einer Zone im aktuellen Modus. Auf Dunkel die festen Werte der
+/// Zone, auf Hell dieselben Töne in der Fassung, die auf Weiß lesbar ist —
+/// ein gelber Strich auf Weiß verschwindet sonst.
+Color zonenFarbe(BuildContext context, TabellenZone zone) {
+  if (!context.istHell) return zone.farbe;
+  final f = context.farben;
+  return switch (zone) {
+    TabellenZone.meister || TabellenZone.aufstieg => f.gold,
+    TabellenZone.championsLeague => f.blau,
+    TabellenZone.europaLeague => f.orange,
+    TabellenZone.conferenceLeague => f.tuerkis,
+    TabellenZone.relegation => f.violett,
+    TabellenZone.abstieg => f.rot,
+  };
+}
 
 /// Der Platz einer Tabellenzeile mit **einem farbigen Strich davor** — der
 /// Zone (Meister, Champions League, Abstieg …). Farbe als Strich, nicht als
@@ -29,7 +46,9 @@ class ZonenRang extends StatelessWidget {
               width: 3,
               height: 18,
               decoration: BoxDecoration(
-                color: zone?.farbe ?? Colors.transparent,
+                color: zone == null
+                    ? Colors.transparent
+                    : zonenFarbe(context, zone!),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -74,7 +93,7 @@ class ZonenLegende extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration:
-                      BoxDecoration(color: z.farbe, shape: BoxShape.circle),
+                      BoxDecoration(color: zonenFarbe(context, z), shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 6),
                 Text(z.name,

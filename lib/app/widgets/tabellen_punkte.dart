@@ -1,7 +1,7 @@
+import '../farben.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/models/models.dart';
-import '../theme.dart';
 
 /// **Die Punktzahl einer Tabellenzeile — rot, solange sie sich noch ändern
 /// kann.**
@@ -30,7 +30,7 @@ class TabellenPunkte extends StatelessWidget {
       textAlign: TextAlign.end,
       style: TextStyle(
         fontWeight: FontWeight.bold,
-        color: live ? MatchUpColors.red : null,
+        color: live ? context.farben.rot : null,
         // Gleichbreite Ziffern: Die Spalte steht still, während der Wert
         // während eines Spiels von 34 auf 37 springt.
         fontFeatures: const [FontFeature.tabularFigures()],

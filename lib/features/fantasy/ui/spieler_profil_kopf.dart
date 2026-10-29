@@ -9,6 +9,7 @@
 /// Spieltage mit Prognose.
 library;
 
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,7 +33,6 @@ import 'punkte_aufschluesselung.dart';
 const _versalSchraeg = TextStyle(
   fontWeight: Schrift.ueberschriftGewicht,
   fontStyle: Schrift.ueberschriftStil,
-  color: Colors.white,
   height: 1.05,
 );
 
@@ -94,7 +94,7 @@ class SpielerProfilKopf extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     vereinsKurzname(player.club).toUpperCase(),
-                    style: _versalSchraeg.copyWith(fontSize: Schrift.titel),
+                    style: _versalSchraeg.copyWith(color: context.farben.vorne, fontSize: Schrift.titel),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -107,7 +107,7 @@ class SpielerProfilKopf extends StatelessWidget {
                       width: 7,
                       height: 7,
                       decoration: BoxDecoration(
-                        color: positionColor(player.position),
+                        color: positionColor(player.position, context.farben),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -147,7 +147,7 @@ class SpielerProfilKopf extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       vorname.toUpperCase(),
-                      style: _versalSchraeg.copyWith(fontSize: Schrift.titel),
+                      style: _versalSchraeg.copyWith(color: context.farben.vorne, fontSize: Schrift.titel),
                     ),
                   ),
                 // Schrumpfen statt kappen — „SCHLOTTERBECK" in 230 Punkten.
@@ -156,7 +156,7 @@ class SpielerProfilKopf extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     nachname.toUpperCase(),
-                    style: _versalSchraeg.copyWith(fontSize: Schrift.gross),
+                    style: _versalSchraeg.copyWith(color: context.farben.vorne, fontSize: Schrift.gross),
                   ),
                 ),
                 const SizedBox(height: 12),

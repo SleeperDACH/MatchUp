@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 
 /// **Das Titelbild einer Meldung** — an einer Stelle, für alle Listen.
@@ -28,16 +29,15 @@ class NewsBild extends StatelessWidget {
   final double radius;
 
   /// Blau des News-Bereichs (Abschnittsmarke auf dem Startbildschirm).
-  static const _blau = Color(0xFF5B9DF9);
 
   @override
   Widget build(BuildContext context) {
     final ersatz = ColoredBox(
-      color: _blau.withValues(alpha: 0.14),
+      color: context.farben.blau.withValues(alpha: 0.14),
       child: Center(
         child: Icon(Icons.newspaper_outlined,
             size: hoehe.isFinite ? hoehe * 0.32 : 34,
-            color: _blau.withValues(alpha: 0.75)),
+            color: context.farben.blau.withValues(alpha: 0.75)),
       ),
     );
     return ClipRRect(

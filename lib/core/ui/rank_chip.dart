@@ -1,3 +1,4 @@
+import '../../app/farben.dart';
 import 'package:flutter/material.dart';
 
 /// Kleiner Platzierungs-Chip für Liga-Zeilen: „Platz [rank]/[total]".
@@ -8,13 +9,12 @@ class RankChip extends StatelessWidget {
   final int rank;
   final int total;
 
-  static const _gold = Color(0xFFFFC83D);
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final top = rank == 1;
-    final color = top ? _gold : scheme.onSurfaceVariant;
+    final color = top ? context.farben.gold : scheme.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(

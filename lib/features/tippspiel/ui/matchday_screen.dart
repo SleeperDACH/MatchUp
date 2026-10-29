@@ -1,3 +1,4 @@
+import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../app/widgets/skelett.dart';
@@ -13,7 +14,6 @@ import '../logic/tip_scoring.dart';
 import '../logic/tip_weeks.dart';
 import '../logic/team_form.dart';
 import '../../../app/club_screen.dart';
-import '../../../app/theme.dart';
 import '../models/tip.dart';
 import '../providers.dart';
 import 'round_selector.dart';
@@ -726,7 +726,7 @@ class FormLeiste extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     Color farbe(FormErgebnis e) => switch (e) {
-          FormErgebnis.sieg => MatchUpColors.green,
+          FormErgebnis.sieg => context.farben.gruen,
           FormErgebnis.niederlage => scheme.error,
           FormErgebnis.remis => scheme.onSurfaceVariant,
         };
@@ -857,7 +857,7 @@ class _SavedHint extends StatelessWidget {
     // App sonst „hier läuft gerade etwas" meint. Sie steht jetzt grau; rot
     // bleibt, was noch nicht abgeschickt ist.
     final (IconData icon, Color? color, String label) = dirty
-        ? (Icons.edit_outlined, const Color(0xFFF23030), 'Nicht gespeichert')
+        ? (Icons.edit_outlined, context.farben.rot, 'Nicht gespeichert')
         : saved
         ? (Icons.check, null, 'Gespeichert')
         : (Icons.remove, Colors.transparent, '');

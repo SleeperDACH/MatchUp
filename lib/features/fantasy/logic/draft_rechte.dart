@@ -159,15 +159,17 @@ bool picksHandelbar(FantasyLeague league) =>
 /// wandert sein Pick mit. Vor dem Reset steht deshalb Runde und Team vorn und
 /// die Nummer als „aktuell …" dahinter; ab dem Reset ist die Nummer fest und
 /// steht vorn.
+///
+/// [team] `null` heißt: der eigene Pick — dann steht nur die Runde da. Ein
+/// „eigener" dahinter sagte nichts, was die Liste nicht ohnehin sagt.
 ({String titel, String? zusatz}) pickBeschriftung({
   required int runde,
-  required String team,
+  required String? team,
   String? code,
   bool fest = false,
-}) =>
-    fest && code != null
-        ? (titel: 'Pick $code', zusatz: 'Runde $runde · $team')
-        : (
-            titel: 'Runde $runde · $team',
-            zusatz: code == null ? null : 'aktuell $code',
-          );
+}) {
+  final rundeTeam = team == null ? 'Runde $runde' : 'Runde $runde · $team';
+  return fest && code != null
+      ? (titel: 'Pick $code', zusatz: rundeTeam)
+      : (titel: rundeTeam, zusatz: code == null ? null : 'aktuell $code');
+}

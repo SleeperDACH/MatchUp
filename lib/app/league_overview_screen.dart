@@ -1,3 +1,4 @@
+import 'farben.dart';
 import 'package:flutter/material.dart';
 import '../core/logic/tabellen_zonen.dart';
 import 'widgets/zonen_rang.dart';
@@ -14,7 +15,6 @@ import '../features/tippspiel/providers.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'club_screen.dart';
 import 'match_detail_screen.dart';
-import 'theme.dart';
 import 'widgets/league_logo.dart';
 import 'widgets/segmented_tab_bar.dart';
 import 'widgets/tabellen_punkte.dart';
@@ -694,12 +694,12 @@ class _SlotWindow extends StatelessWidget {
                 ),
                 if (live) ...[
                   const Spacer(),
-                  const Text(
+                  Text(
                     '● LIVE',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: MatchUpColors.red,
+                      color: context.farben.rot,
                     ),
                   ),
                 ],
@@ -761,7 +761,7 @@ class _SlotGame extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
-                        color: live ? MatchUpColors.red : scheme.onSurface,
+                        color: live ? context.farben.rot : scheme.onSurface,
                       ),
                     )
                   : Text(
