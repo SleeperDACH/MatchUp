@@ -1,3 +1,4 @@
+import 'app/darstellung.dart';
 import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -85,7 +86,15 @@ Future<void> main() async {
     }
   }
 
-  runApp(const ProviderScope(child: FantasyApp()));
+  // Die Darstellung vor dem ersten Frame lesen, sonst blitzt im hellen
+  // Modus beim Start erst Schwarz auf.
+  final darstellung = await ladeDarstellung();
+  runApp(ProviderScope(
+    overrides: [
+      darstellungProvider.overrideWith((ref) => DarstellungNotifier(darstellung)),
+    ],
+    child: const FantasyApp(),
+  ));
 }
 
 /// Läuft in einem **eigenen Isolate**, wenn eine Benachrichtigung eintrifft,
@@ -154,9 +163,11 @@ class FantasyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Tippspiel',
-      // MatchUp ist dark-only — kein Hell-Modus.
-      theme: buildAppTheme(brightness: Brightness.dark),
-      themeMode: ThemeMode.dark,
+      // Dunkel ist der Standard; hell ist eine Wahl unter Profil ›
+      // Darstellung (`darstellung.dart`).
+      theme: buildAppTheme(brightness: Brightness.light),
+      darkTheme: buildAppTheme(brightness: Brightness.dark),
+      themeMode: ref.watch(darstellungProvider).modus,
       // Der Splash liegt **über** dem Gate, damit die App darunter schon
       // aufbaut und lädt, während die Marke einfährt.
       home: const MatchUpSplash(child: _RootGate()),

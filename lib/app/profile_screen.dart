@@ -1,3 +1,4 @@
+import 'darstellung.dart';
 import 'package:flutter/material.dart';
 import '../core/ui/rueckfrage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -250,6 +251,14 @@ class _Profile extends ConsumerWidget {
           label: 'Benachrichtigungen',
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const PushEinstellungenScreen()),
+          ),
+        ),
+        _SettingTile(
+          icon: Icons.contrast,
+          label: 'Darstellung',
+          subtitle: ref.watch(darstellungProvider).wort,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const DarstellungScreen()),
           ),
         ),
         _SettingTile(

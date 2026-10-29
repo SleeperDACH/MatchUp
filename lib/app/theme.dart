@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'farben.dart';
 
 import 'typografie.dart';
 
@@ -42,12 +45,26 @@ class MatchUpColors {
   /// sich der alte Ton (`#A6ACBA`) als kühles Grau-Blau.
   static const _mutedText = Color(0xFFAAAAAA);
 
-  // Helle Variante (Light-Theme): heller Grund, dunkle Schrift, gleiche Akzente.
-  static const _lightBg = Color(0xFFF5F6F8);
-  static const _lightCard = Colors.white;
-  static const _lightHigh = Color(0xFFE8EAF0);
-  static const _lightDivider = Color(0xFFE1E3EA);
-  static const _lightMuted = Color(0xFF5F636E);
+  // **Heller Modus (seit 29.10.2026): reines Apple-Weiß als Grund.** Die
+  // Leiter steigt von dort in neutralen Grautönen *nach unten* — Karten
+  // liegen als `#F2F2F7` (Apples `secondarySystemBackground`) auf Weiß, nicht
+  // als Weiß auf Grau. Auf Dunkel trägt die Fläche die Tiefe; auf Hell genauso,
+  // nur in der anderen Richtung. Kein Kanal führt, damit `fromSeed` auch hier
+  // keinen Grünstich einschleppt (`flaechen_neutral_test`).
+  static const _lightBg = Color(0xFFFFFFFF);
+  static const _lightLowest = Color(0xFFFFFFFF);
+  static const _lightLow = Color(0xFFFFFFFF);
+  static const _lightCard = Color(0xFFF2F2F7);
+  static const _lightMid = Color(0xFFEAEAEF);
+  static const _lightHigh = Color(0xFFE3E3E8);
+  static const _lightDim = Color(0xFFE5E5EA);
+  static const _lightDivider = Color(0xFFD8D8DE);
+
+  /// Sekundärtext auf Weiß — Apples `secondaryLabel`, 5,1:1.
+  static const _lightMuted = Color(0xFF6E6E73);
+
+  /// Schrift auf Weiß. Reines Schwarz wie Apples `label`.
+  static const _lightText = Color(0xFF000000);
 }
 
 /// MatchUp-Theme für die gewünschte [brightness]. Dark bleibt der markante
@@ -60,16 +77,24 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
   // Grund durchschimmert und ein feiner Licht-Rand die Kante fasst.
   final glassCard = (dark ? MatchUpColors._surfaceCard : MatchUpColors._lightCard)
       .withValues(alpha: dark ? 0.72 : 0.80);
-  final glassBorder = Colors.white.withValues(alpha: dark ? 0.10 : 0.55);
+  final glassBorder = dark
+      ? Colors.white.withValues(alpha: 0.10)
+      : MatchUpColors._lightDivider;
+  final farben = dark ? MatchUpFarben.dunkel : MatchUpFarben.hell;
+  // Schrift auf der Fläche und ihr Gegenstück (die Fläche unter einem
+  // gefüllten Knopf). Im Dunkeln Snow auf Schwarz, im Hellen umgekehrt.
+  final text = dark ? MatchUpColors.snow : MatchUpColors._lightText;
 
   final scheme = ColorScheme.fromSeed(
     seedColor: MatchUpColors.green,
     brightness: brightness,
   ).copyWith(
-    primary: MatchUpColors.green,
-    onPrimary: MatchUpColors.base,
+    // Auf Weiß ist das Markengrün als Schrift unlesbar (1,8:1) — `primary`
+    // wird dort als Text und Symbol benutzt, also die dunklere Fassung.
+    primary: farben.gruen,
+    onPrimary: dark ? MatchUpColors.base : Colors.white,
     surface: bg,
-    onSurface: dark ? MatchUpColors.snow : MatchUpColors.base,
+    onSurface: text,
     onSurfaceVariant: dark ? MatchUpColors._mutedText : MatchUpColors._lightMuted,
     // **Die ganze Flächenleiter neutral halten, nicht nur die oberste Stufe.**
     //
@@ -85,20 +110,20 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
     // eine eigene Fläche verpasst; das war die Behandlung eines Symptoms —
     // hier steht die Ursache.
     surfaceContainerLowest:
-        dark ? MatchUpColors._surfaceLowest : MatchUpColors._lightCard,
+        dark ? MatchUpColors._surfaceLowest : MatchUpColors._lightLowest,
     surfaceContainerLow:
-        dark ? MatchUpColors._surfaceLow : MatchUpColors._lightCard,
+        dark ? MatchUpColors._surfaceLow : MatchUpColors._lightLow,
     surfaceContainer:
         dark ? MatchUpColors._surfaceCard : MatchUpColors._lightCard,
     surfaceContainerHigh:
-        dark ? MatchUpColors._surfaceMid : MatchUpColors._lightHigh,
+        dark ? MatchUpColors._surfaceMid : MatchUpColors._lightMid,
     surfaceContainerHighest:
         dark ? MatchUpColors._surfaceHigh : MatchUpColors._lightHigh,
     // `surfaceDim` und `surfaceBright` gehören zur selben Leiter und wurden
     // beim ersten Anlauf übersehen — der Wächtertest hat sie gefunden.
-    surfaceDim: dark ? MatchUpColors._surfaceLowest : MatchUpColors._lightHigh,
-    surfaceBright: dark ? MatchUpColors._surfaceMid : MatchUpColors._lightCard,
-    error: MatchUpColors.red,
+    surfaceDim: dark ? MatchUpColors._surfaceLowest : MatchUpColors._lightDim,
+    surfaceBright: dark ? MatchUpColors._surfaceMid : MatchUpColors._lightBg,
+    error: farben.rot,
     onError: dark ? MatchUpColors.snow : Colors.white,
     outlineVariant: dark ? MatchUpColors._divider : MatchUpColors._lightDivider,
   );
@@ -112,8 +137,9 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
     // die für eine normale Grotesk gedacht ist, nicht für eine schmale.
     // `Schrift` in `typografie.dart` trägt die Stufen; jeder Stil dort nennt
     // die Familie ausdrücklich, weil ein Theme-Stil den aufgelösten *ersetzt*.
+    extensions: [farben],
     textTheme: matchUpTextTheme(
-        dark ? MatchUpColors.snow : MatchUpColors.base,
+        text,
         dark ? MatchUpColors._mutedText : MatchUpColors._lightMuted),
     scaffoldBackgroundColor: bg,
     dividerColor: scheme.outlineVariant,
@@ -123,6 +149,10 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
       scrolledUnderElevation: 0,
       elevation: 0,
       centerTitle: true,
+      // Statusleiste passend zum Grund: helle Symbole auf Schwarz, dunkle auf
+      // Weiß — sonst stehen Uhrzeit und Akku weiß auf weiß.
+      systemOverlayStyle:
+          dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       // Auffälliger, „dicker" Titel in condensed Schrift — überall einheitlich
       // (wie die überarbeitete Liga-Kopfzeile, siehe VibrantLeagueTitle).
       titleTextStyle: TextStyle(
@@ -173,8 +203,8 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
     // setzen ihre Farbe ausdrücklich.
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: dark ? MatchUpColors.snow : MatchUpColors.base,
-        foregroundColor: dark ? MatchUpColors.base : MatchUpColors.snow,
+        backgroundColor: text,
+        foregroundColor: bg,
         disabledBackgroundColor: scheme.surfaceContainerHigh,
         disabledForegroundColor: scheme.onSurfaceVariant,
         elevation: 0,
@@ -195,12 +225,12 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
     // sollen gleich aussehen, sonst heißt „ausgewählt" unten im Bild zweierlei.
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: cardColor,
-      indicatorColor: MatchUpColors.snow.withValues(alpha: 0.14),
+      indicatorColor: farben.auswahlFlaeche,
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           color: states.contains(WidgetState.selected)
-              ? MatchUpColors.snow
-              : MatchUpColors.snow.withValues(alpha: 0.45),
+              ? text
+              : text.withValues(alpha: dark ? 0.45 : 0.55),
         ),
       ),
       // Die Familie muss auch hier stehen — ein Stil in einem Theme-Feld
@@ -213,8 +243,8 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
               ? FontWeight.w800
               : FontWeight.w500,
           color: states.contains(WidgetState.selected)
-              ? MatchUpColors.snow
-              : MatchUpColors.snow.withValues(alpha: 0.45),
+              ? text
+              : text.withValues(alpha: dark ? 0.45 : 0.55),
         ),
       ),
     ),
@@ -245,7 +275,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.dark}) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: dark ? MatchUpColors.base : MatchUpColors._lightCard,
+      fillColor: dark ? MatchUpColors.base : MatchUpColors._lightBg,
       contentPadding: EdgeInsets.zero,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
