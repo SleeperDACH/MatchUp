@@ -7,7 +7,7 @@ import 'package:matchup/app/live_screen.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
-import 'package:matchup/features/auth/ui/live_vorschau_screen.dart';
+import 'package:matchup/app/gast_shell.dart';
 import 'package:matchup/features/tippspiel/providers.dart';
 
 import 'support/schrift.dart';
@@ -227,7 +227,7 @@ void main() {
         matchesGoldenFile('goldens/live_vorschau_ruhig.png'));
   });
 
-  testWidgets('Vorschau ohne Konto: keine Glocke, unten „Konto erstellen"',
+  testWidgets('Gastmodus: Live voll, Home und Favoriten bitten um Anmeldung',
       (tester) async {
     final vorher = AppConfig.supabaseInitialized;
     AppConfig.supabaseInitialized = true;
@@ -237,50 +237,47 @@ void main() {
     addTearDown(tester.view.reset);
 
     final n = DateTime.now();
-    bool? antwort;
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          leagueSeasonFixturesProvider.overrideWith(
-            (ref, id) async => id == 'bundesliga'
-                ? [
-                    _fx('v1', 'bundesliga', 'VfB Stuttgart', '1. FC Köln',
-                        DateTime(n.year, n.month, n.day, 20, 30)),
-                  ]
-                : const <Fixture>[],
-          ),
-        ],
-        child: MaterialApp(
-          theme: buildAppTheme(),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () async => antwort = await Navigator.of(context)
-                    .push<bool>(MaterialPageRoute(
-                        builder: (_) => const LiveVorschauScreen())),
-                child: const Text('reinschauen'),
-              ),
-            ),
-          ),
-        ),
+    final behaelter = ProviderContainer(overrides: [
+      leagueSeasonFixturesProvider.overrideWith(
+        (ref, id) async => id == 'bundesliga'
+            ? [
+                _fx('v1', 'bundesliga', 'VfB Stuttgart', '1. FC Köln',
+                    DateTime(n.year, n.month, n.day, 20, 30)),
+              ]
+            : const <Fixture>[],
       ),
-    );
-    await tester.tap(find.text('reinschauen'));
+    ]);
+    addTearDown(behaelter.dispose);
+    behaelter.read(gastModusProvider.notifier).state = true;
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: behaelter,
+      child: MaterialApp(theme: buildAppTheme(), home: const GastShell()),
+    ));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 120));
     }
-    expect(find.text('Vorschau'), findsOneWidget);
+    // Start auf Live: Spiele da, keine Glocke (Live-Meldungen brauchen ein
+    // Konto), die Navileiste wie angemeldet.
+    expect(find.textContaining('Stuttgart'), findsWidgets);
     expect(find.byTooltip('Live-Benachrichtigungen für Vereine und Ligen'),
         findsNothing);
-    expect(find.textContaining('Stuttgart'), findsWidgets);
+    expect(find.bySemanticsLabel('Favoriten'), findsOneWidget);
     if (autoUpdateGoldenFiles) {
-      await expectLater(find.byType(LiveVorschauScreen),
-          matchesGoldenFile('goldens/live_ohne_konto.png'));
+      await expectLater(
+          find.byType(GastShell), matchesGoldenFile('goldens/gast_live.png'));
     }
-    await tester.tap(find.text('Konto erstellen'));
-    for (var i = 0; i < 6; i++) {
-      await tester.pump(const Duration(milliseconds: 120));
-    }
-    expect(antwort, isTrue);
+
+    // Home ohne Konto: Hinweis und „Anmelden".
+    await tester.tap(find.bySemanticsLabel('Home'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('DEINE LIGEN'), findsOneWidget);
+    await expectLater(
+        find.byType(GastShell), matchesGoldenFile('goldens/gast_home.png'));
+    await tester.tap(find.text('Anmelden'));
+    await tester.pump();
+    expect(behaelter.read(gastModusProvider), isFalse,
+        reason: '„Anmelden" beendet den Gastmodus — das Gate zeigt dann die '
+            'Anmeldung');
   });
 }

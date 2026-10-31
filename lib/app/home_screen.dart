@@ -1926,17 +1926,8 @@ class _FuerAlleState extends ConsumerState<_FuerAlle> {
 
     final zeile = Row(
       children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: _kTippligaRot,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          alignment: Alignment.center,
-          child: const MatchUpChevron(size: 14, color: Colors.white),
-        ),
-        const SizedBox(width: 10),
+        // Kein rotes Kästchen mit Zeichen mehr davor (31.10.2026, auf
+        // Ansage) — die Farbe trägt der Hauch der Zeile.
         // Name oben, Mitspieler klein darunter: In einer Zeile nebeneinander
         // schnitt der Knopf „Mitspielen" die Zahl ab („27 d…").
         Expanded(
@@ -1958,7 +1949,7 @@ class _FuerAlleState extends ConsumerState<_FuerAlle> {
                 ),
               ),
               Text(
-                '${liga.mitspieler} dabei',
+                '${liga.mitspieler} Teilnehmer',
                 maxLines: 1,
                 style: TextStyle(
                   fontSize: Schrift.label,

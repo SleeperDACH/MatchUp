@@ -492,6 +492,12 @@ gilt das Raster ab sofort.
   gedacht, im Client zu liegen (RLS schützt, nicht Geheimhaltung); der
   Service-Role-Key gehört niemals in die App. Überschreiben (z. B. Staging)
   geht weiter per `--dart-define=SUPABASE_URL=…` `…_ANON_KEY=…`.
+- **Nach dem Abmelden kein eigenes `pop()`** (31.10.2026, gemeldet:
+  „Konto gelöscht, auf einmal Black Screen"). Sobald sich der Nutzer ändert,
+  schließt `RouteReset` im Gate alles über der ersten Route. Wer danach noch
+  selbst `navigator.pop()` ruft (Konto löschen schloss so seinen
+  Fortschritts-Dialog), nimmt die erste Route weg — der Navigator ist leer,
+  der Schirm schwarz. Nur `popUntil((r) => r.isFirst)` benutzen.
 - **`isSupabaseConfigured` heißt „Server jetzt benutzbar"**, nicht „Keys da":
   es prüft zusätzlich `AppConfig.supabaseInitialized`, das nur `main()` nach
   erfolgreichem `Supabase.initialize` setzt. Ohne diese Trennung greift jeder
@@ -1316,6 +1322,40 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
   Die Funktion prüft den Schlüssel jetzt gegen alle Aufträge (Rollback-Probe:
   erster Lauf 8, zweiter nach Versand 0). Der Schlüssel trägt den Zeitpunkt
   mit (`tipps:<runde>:<user>:<anstoß>:<minuten>`).
+- **Tore folgen dem Spielstand** (0157, 31.10.2026, gemeldet an
+  Bayern–Dortmund: „Tor Dortmund, nochmal Tor Dortmund, Kein Tor Dortmund —
+  da stand es schon 1:0 für Bayern, wofür keine Nachricht kam"). Die Quelle
+  hatte das Tor gelöscht und **unter neuer ID** wieder angelegt (zweite
+  Meldung), und das Bayern-Tor stand im **Stand**, aber noch nicht in den
+  Ereignissen (keine Meldung). Löst die Tor-Logik aus 0154 ab:
+  `push_live_stand.tore` führt je Seite einen Stapel gemeldeter Tore plus
+  benutzte Ereignis-IDs. Steigt der Stand einer Seite → „Tor" mit den
+  Einzelheiten des **neuesten** unbenutzten Tor-Ereignisses dieser Seite
+  (fehlt es, bis 25 s warten, dann ohne); sinkt er → „Kein Tor <Verein>
+  (<Minute>.)", und liegengebliebene Tor-Ereignisse der Seite gelten als
+  benutzt. Neue IDs ohne Standänderung lösen nichts aus; die Seite kommt aus
+  dem Stand, auch beim Eigentor. Erstsicht und Altbestand übernehmen den
+  Stand still (`push_live_tore_start`). Karten bleiben am Ereignis.
+  Rollback-Probe mit dem echten Ablauf: Tor → (neue ID: nichts) → Kein Tor →
+  Tor Bayern (sobald das Ereignis da ist) → nächstes Dortmund-Tor mit dem
+  richtigen Namen → Eigentor bei der richtigen Seite.
+  **Form seit 0159** (auf Ansage; 0158 brachte den Ball statt „Tor"):
+  Minute vorn, nur der Nachname (`push_nachname`, letzter Namensteil wie
+  `namensTeile` in der App), „VAR" statt „Kein Tor" — „⚽ Dortmund (34.
+  Bellingham)", „⚽ Bayern (38. Kane, Elfmeter)", „⚽ Dortmund (70.
+  Eigentor Upamecano)", „❌ VAR Dortmund (34.)"; darunter der Stand.
+- **Eine Erinnerung für alle Tippspiele** (0155, 31.10.2026, auf Ansage;
+  gewählt aus drei Entwürfen: „je Anstoß, aber Tippspiele zusammen"). Vorher
+  je Tippspiel, Anstoß und Zeitpunkt eine Meldung — ein Nutzer in drei
+  Runden bekam am Wochenende 23.–26.10. 27 Stück. Jetzt je Nutzer, Anstoß
+  und Zeitpunkt eine. Seit 0156 in derselben Form wie Tor und Anpfiff:
+  Titel „Noch nicht getippt (5 Spiele, 15:30)", Text eine Zeile mit den
+  Namen der Runden („BuLi 26/27 · Knapp daneben"). Gezählt werden
+  verschiedene Spiele. Ein Tippspiel → Ziel Tippen-Reiter, mehrere → ohne
+  Ziel (Homescreen). Schlüssel `tipps:<user>:<anstoß>:<minuten>`; Aufträge
+  im alten Format (mit Runde) zählen als gemeldet, damit der Umstieg nichts
+  doppelt schickt. Rollback-Probe: zwei Runden, zwei Spiele → eine Meldung,
+  zweiter Lauf 0.
 - **Die Einstellungen sind nach Bereichen geschnitten** (0131): Fantasy,
   Tippspiel, Live, Allgemein. **Seit dem 18.10.2026 in zwei Ebenen** (auf
   Ansage): `PushEinstellungenScreen` zeigt nur die vier Bereiche als Zeilen
@@ -1356,7 +1396,8 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
   korrigiert hatten. `push_live_stand` merkt sich gemeldete Tore (`tore`)
   und die Torsumme; fehlt ein gemeldetes Tor **und** gibt es einen Beleg
   (`tor_aberkannt` aus `sync-live` oder weniger Tore als zuletzt), geht
-  „Kein Tor Mainz (Königsdörffer, 65.)" mit dem aktuellen Stand raus
+  „Kein Tor Mainz (65.)" mit dem aktuellen Stand raus (seit 0156 ohne
+  Torschützen, auf Ansage)
   (Sorte `live_tore`, Schlüssel `z<id>`). Ein Tor, das nur mit neuer ID
   wiederkommt, löst nichts aus. Rollback-Probe: zweiter Versandlauf 0
   Aufträge; Tor weg + Stand sinkt → „Kein Tor"; neue ID → nichts.
@@ -6210,7 +6251,7 @@ Standardwertung 4/3/2, Admin ist SFV03.
   eigenen Tippspielen und vor „Mein Wochenende" — **getrennt von den eigenen
   Ligen und klein** (auf Ansage; ein erster Wurf stand als großer goldener
   Streifen oben im Tippspiel-Abschnitt und las sich wie eine eigene Runde).
-  Eine Zeile mit rotem Hauch (`_kartenFlaeche` in `_kTippligaRot`, auf Ansage „eher rötlich statt gelb"): kleines rotes Zeichen, Name, „N dabei",
+  Eine Zeile mit rotem Hauch (`_kartenFlaeche` in `_kTippligaRot`, auf Ansage „eher rötlich statt gelb"): Name, „N Teilnehmer" (seit 31.10.2026; das rote Zeichen davor ist auf Ansage entfallen),
   rechts „Mitspielen" (tritt bei und öffnet die Runde) bzw. ein Pfeil. Aus
   der Liste der eigenen Runden ist die Tippliga herausgefiltert. Der
   Ladeschirm wartet auf `tippligaProvider` (`ladeschirm_wartet_test`).
@@ -6430,6 +6471,13 @@ Benachrichtigungen.
   ersten Verein. Gespeichert wird **erst bei „Weiter"**, sonst schaltete das
   Gate schon beim ersten Wappen um. Scheitert das Speichern, bleibt der
   Schirm mit Hinweis stehen.
+- **Erst umschalten, wenn die Kopfkarte steht** (31.10.2026, gemeldet: „es
+  verzögert kurz, bis oben das Fenster mit der Partie kommt … sieht billig
+  aus"). Der Ladeschirm ist beim ersten Start fertig, bevor es Vereine gibt.
+  „Weiter" setzt `vereinsWahlLaeuftProvider`, das Gate hält die Auswahl
+  stehen, bis `favoritenSpieleProvider` geladen ist (höchstens 8 s) und
+  Stadionbild und beide Wappen vorgeladen sind (höchstens 3 s); der Knopf
+  zeigt solange „Einen Moment …".
 - **Die Systemabfrage kommt nicht mehr beim ersten Homescreen.** Vorher rief
   `MainShell` sofort `_pushAnmelden()` — wer da „Nicht erlauben" tippt,
   bekommt die iOS-Abfrage nie wieder. Jetzt `_pushPruefen()` nach dem
@@ -6458,17 +6506,23 @@ stand klein ganz unten, und ohne Konto sah man nichts von der App.
   „Konto erstellen". Hat man selbst umgeschaltet, bleibt es dabei.
 - **„Weiter mit Google / Apple"** statt „Mit … anmelden" — die Knöpfe legen
   auch neue Konten an.
-- **„Erst mal reinschauen"** unter der Karte öffnet `LiveVorschauScreen`
-  (`features/auth/ui/`): der Live-Tab (`LiveScreen(vorschau: true)`, ohne
-  Glocke und ohne Platz für die Navileiste), unten „Konto erstellen", das
-  zurück auf Registrieren schaltet. **Geht ohne Sitzung**: Die Function
-  `sportmonks` nimmt den Publishable-Key (nachgemessen: `kind: live` → 200).
-  Vereinsseiten und Spieldetails sind von dort erreichbar; der
-  Favoriten-Stern tut ohne Nutzer nichts (`FavoritesNotifier._repo` ist null).
+- **„Erst mal reinschauen" öffnet den Gastmodus** (seit 31.10.2026, auf
+  Ansage; davor ein eigener Vorschau-Schirm `LiveVorschauScreen`, gelöscht):
+  `gastModusProvider` → das Gate zeigt `GastShell` (`app/gast_shell.dart`),
+  dieselbe Hülle mit Navileiste, Start auf Live (`LiveScreen(gast: true)`:
+  ohne Glocke, sonst der volle Tab samt Vereinsseiten und Spieldetails).
+  Home und Favoriten zeigen „Deine Ligen" / „Deine Favoriten" mit Knopf
+  „Anmelden", der den Gastmodus beendet. Mit jeder Anmeldung endet er
+  ebenfalls (`ref.listen` im Gate), sonst stünde man nach dem Abmelden als
+  Gast da. **Geht ohne Sitzung**: Die Function `sportmonks` nimmt den
+  Publishable-Key (nachgemessen: `kind: live` → 200). Der Favoriten-Stern
+  tut ohne Nutzer nichts (`FavoritesNotifier._repo` ist null).
+- Wortmarke als „MATCHUP" in Versalien und kursiv (`MatchUpLogo(versal:
+  true)`), „ERST MAL REINSCHAUEN" ebenso.
 - Logo 64 statt 88, damit der Vorschau-Link auf einem iPhone ohne Scrollen
   im Bild steht — `login_social_preview_test` misst das mit echten
-  Safe-Area-Rändern (`login_iphone.png`), dazu `login_zurueck.png` und
-  `live_ohne_konto.png` (in `live_vorschau_test`).
+  Safe-Area-Rändern (`login_iphone.png`), dazu `login_zurueck.png`, `gast_live.png` und
+  `gast_home.png` (in `live_vorschau_test`).
 
 ### Glossar im Profil (29.10.2026)
 

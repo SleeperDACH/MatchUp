@@ -10,6 +10,8 @@ import '../../../app/widgets/skelett.dart';
 import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/models/models.dart';
 import '../../tippspiel/ui/team_badge.dart';
+import '../../../app/home_favorites.dart';
+import '../../../core/util/club_logos.dart';
 import '../favorites.dart';
 
 /// **Vereinsauswahl beim ersten Start** (29.10.2026, Punkt 5 der
@@ -67,19 +69,57 @@ class _VereinsWahlScreenState extends ConsumerState<VereinsWahlScreen> {
   Future<void> _weiter() async {
     if (_gewaehlt.isEmpty) return;
     setState(() => _speichert = true);
-    final notifier = ref.read(favoritesProvider.notifier);
-    for (final (team, liga) in _gewaehlt.values) {
-      await notifier.toggle(Favorite.team(team, liga));
+    final laeuft = ref.read(vereinsWahlLaeuftProvider.notifier);
+    // Das Gate wartet, bis der Homescreen fertig aussieht (siehe unten).
+    laeuft.state = true;
+    try {
+      final notifier = ref.read(favoritesProvider.notifier);
+      for (final (team, liga) in _gewaehlt.values) {
+        await notifier.toggle(Favorite.team(team, liga));
+      }
+      if (!mounted) return;
+      // Hat nichts geklappt (offline), bleibt der Schirm stehen — mit Grund.
+      if (ref.read(vereinsWahlNoetigProvider)) {
+        setState(() => _speichert = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Speichern hat nicht geklappt. Bitte noch einmal.'),
+          ),
+        );
+        return;
+      }
+      await _homescreenVorladen();
+    } finally {
+      laeuft.state = false;
     }
-    if (!mounted) return;
-    // Hat nichts geklappt (offline), bleibt der Schirm stehen — mit Grund.
-    if (ref.read(vereinsWahlNoetigProvider)) {
-      setState(() => _speichert = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Speichern hat nicht geklappt. Bitte noch einmal.'),
-        ),
-      );
+  }
+
+  /// **Erst umschalten, wenn die Kopfkarte steht** (31.10.2026): das Spiel
+  /// des Vereins samt beiden Wappen und dem Stadionbild. Höchstens 8
+  /// Sekunden — danach wird trotzdem umgeschaltet, ein Funkloch darf nicht
+  /// auf der Auswahl festhalten. Fehler zählen als fertig.
+  Future<void> _homescreenVorladen() async {
+    try {
+      final spiele = await ref
+          .read(favoritenSpieleProvider.future)
+          .timeout(const Duration(seconds: 8));
+      if (!mounted) return;
+      final bilder = <Future<void>>[
+        precacheImage(const AssetImage('assets/images/spiel_bg.jpg'), context),
+      ];
+      if (spiele.isNotEmpty) {
+        final s = spiele.first;
+        for (final team in [s.home, s.away]) {
+          final url = clubLogoUrl(team.name, team.iconUrl);
+          if (url != null && !url.toLowerCase().endsWith('.svg')) {
+            bilder.add(precacheImage(NetworkImage(url), context));
+          }
+        }
+      }
+      await Future.wait(bilder).timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // Zeitüberschreitung oder Ladefehler: umschalten, der Homescreen zeigt
+      // dann, was da ist.
     }
   }
 

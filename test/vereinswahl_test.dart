@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:matchup/core/models/team_fixture.dart';
+import 'package:matchup/app/home_favorites.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/models/models.dart';
 import 'package:matchup/features/favorites/favorites.dart';
@@ -96,5 +100,41 @@ void main() {
     expect(speicher.gespeichert.map((f) => f.label),
         ['Hamburger SV', 'SC Freiburg']);
     expect(behaelter.read(vereinsWahlNoetigProvider), isFalse);
+    // Das Vorladen der Bilder hat ein Zeitlimit von 3 s; im Test kommt kein
+    // Bild zurück, also läuft es ab.
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('Das Gate wartet, bis das Spiel für die Kopfkarte geladen ist',
+      (tester) async {
+    final speicher = _Speicher();
+    final spiele = Completer<List<TeamFixture>>();
+    final behaelter = ProviderContainer(overrides: [
+      favoritesProvider.overrideWith((ref) => FavoritesNotifier(speicher)),
+      leagueTeamsProvider.overrideWith((ref, id) => AsyncValue.data(_teams)),
+      favoritenSpieleProvider.overrideWith((ref) => spiele.future),
+    ]);
+    addTearDown(behaelter.dispose);
+    behaelter.listen(vereinsWahlNoetigProvider, (_, _) {});
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: behaelter,
+      child: const MaterialApp(home: VereinsWahlScreen()),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Freiburg'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Weiter'));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // Gespeichert, aber das Spiel lädt noch: Die Auswahl bleibt stehen.
+    expect(behaelter.read(vereinsWahlNoetigProvider), isFalse);
+    expect(behaelter.read(vereinsWahlLaeuftProvider), isTrue,
+        reason: 'sonst schaltet das Gate auf einen halb leeren Homescreen');
+    expect(find.text('Einen Moment …'), findsOneWidget);
+
+    spiele.complete(const []);
+    await tester.pump(const Duration(seconds: 4));
+    expect(behaelter.read(vereinsWahlLaeuftProvider), isFalse);
   });
 }

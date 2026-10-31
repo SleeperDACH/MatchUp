@@ -236,6 +236,13 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
 /// Hat das Konto noch keinen Lieblingsverein? Dann kommt nach der Anmeldung
 /// die Vereinsauswahl (`VereinsWahlScreen`). `false`, solange nicht geladen
 /// ist — offline soll niemand vor einer Auswahl festhängen.
+/// **Die Vereinsauswahl läuft noch** (31.10.2026, gemeldet: „nach Konto
+/// erstellen verzögert es kurz, bis oben das Fenster mit der Partie kommt …
+/// das sieht billig aus"). Solange gespeichert und das Spiel für die
+/// Kopfkarte geladen wird, hält das Gate die Auswahl stehen — sonst schaltete
+/// es beim ersten gespeicherten Verein auf einen halb leeren Homescreen.
+final vereinsWahlLaeuftProvider = StateProvider<bool>((ref) => false);
+
 final vereinsWahlNoetigProvider = Provider<bool>((ref) {
   final favoriten = ref.watch(favoritesProvider);
   final notifier = ref.read(favoritesProvider.notifier);

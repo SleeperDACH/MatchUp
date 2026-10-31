@@ -14,7 +14,12 @@ class MatchUpLogo extends StatelessWidget {
     this.fontSize,
     this.vertical = false,
     this.wordColor = MatchUpColors.snow,
+    this.versal = false,
   });
+
+  /// „MATCHUP" in Versalien und kursiv — wie im Kopf der App und auf dem
+  /// Ladeschirm (31.10.2026, auf Ansage für den Anmeldeschirm).
+  final bool versal;
 
   /// Höhe des Chevrons in logischen Pixeln.
   final double chevronSize;
@@ -36,13 +41,17 @@ class MatchUpLogo extends StatelessWidget {
         style: TextStyle(
           fontSize: fs,
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.5,
+          fontStyle: versal ? FontStyle.italic : null,
+          letterSpacing: versal ? 0.4 : -0.5,
           color: wordColor,
           height: 1.0,
         ),
         children: [
-          TextSpan(text: 'Match'),
-          TextSpan(text: 'Up', style: TextStyle(color: context.farben.gruen)),
+          TextSpan(text: versal ? 'MATCH' : 'Match'),
+          TextSpan(
+            text: versal ? 'UP' : 'Up',
+            style: TextStyle(color: context.farben.gruen),
+          ),
         ],
       ),
     );

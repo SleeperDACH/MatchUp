@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../../../app/typografie.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,7 +11,7 @@ import '../../../app/widgets/pill_selector.dart';
 import '../../../core/ui/eingabe_blatt.dart';
 import '../auth_repository.dart';
 import '../providers.dart';
-import 'live_vorschau_screen.dart';
+import '../../../app/gast_shell.dart';
 import 'social_buttons.dart';
 
 /// Login/Registrierung — eingebettet im Runden-Tab, solange niemand
@@ -287,7 +289,11 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               children: [
                 // Großes Marken-Logo als Hero.
                 const Center(
-                  child: MatchUpLogo(chevronSize: 64, vertical: true),
+                  child: MatchUpLogo(
+                    chevronSize: 64,
+                    vertical: true,
+                    versal: true,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -323,7 +329,15 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 TextButton.icon(
                   onPressed: _busy ? null : _vorschau,
                   icon: const Icon(Icons.play_circle_outline),
-                  label: const Text('Erst mal reinschauen'),
+                  // Versalien und kursiv wie die Wortmarke (31.10.2026, auf Ansage).
+                  label: const Text(
+                    'ERST MAL REINSCHAUEN',
+                    style: TextStyle(
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white.withValues(alpha: 0.82),
                     minimumSize: const Size.fromHeight(44),
@@ -343,14 +357,10 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     _error = null;
   });
 
-  /// Der Live-Tab ohne Konto; „Konto erstellen" darin kommt als `true`
-  /// zurück und schaltet hier auf Registrieren.
-  Future<void> _vorschau() async {
-    final registrieren = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => const LiveVorschauScreen()));
-    if (registrieren == true && mounted) _modus(true);
-  }
+  /// **Gastmodus** (31.10.2026): die App ohne Konto, Live-Tab voll nutzbar.
+  /// Das Gate in `main.dart` zeigt dann `GastShell`; „Anmelden" dort führt
+  /// hierher zurück.
+  void _vorschau() => ref.read(gastModusProvider.notifier).state = true;
 
   /// Eingabefelder, Aktions- und Wechsel-Buttons (innerhalb der Glaskarte).
   Widget _buildFormBody(

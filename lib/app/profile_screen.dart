@@ -487,11 +487,17 @@ Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
   );
   try {
     await ref.read(authRepositoryProvider).deleteAccount();
-    navigator.pop(); // Fortschritts-Dialog schließen
+    // **Kein `pop()` hier** (31.10.2026, gemeldet: „Konto gelöscht, auf
+    // einmal Black Screen"). `deleteAccount` meldet ab; das Gate tauscht
+    // darauf den Inhalt, und `RouteReset` schließt schon alles über der
+    // ersten Route — den Fortschritts-Dialog eingeschlossen. Ein `pop()`
+    // danach nahm die erste Route selbst weg, und der Navigator war leer.
+    // `popUntil(isFirst)` kann die erste Route nie entfernen.
     navigator.popUntil((r) => r.isFirst);
     messenger.showSnackBar(const SnackBar(content: Text('Konto gelöscht.')));
   } catch (e) {
-    navigator.pop();
+    // Hier ist noch jemand angemeldet, der Dialog steht also noch.
+    if (navigator.canPop()) navigator.pop();
     messenger.showSnackBar(
       SnackBar(content: Text('Löschen fehlgeschlagen: $e')),
     );

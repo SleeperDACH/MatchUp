@@ -145,8 +145,8 @@ void main() {
     addTearDown(tester.view.resetPadding);
     await tester.pumpWidget(_screen(google: true, apple: true));
     await tester.pumpAndSettle();
-    expect(find.text('Erst mal reinschauen'), findsOneWidget);
-    expect(tester.getBottomLeft(find.text('Erst mal reinschauen')).dy,
+    expect(find.text('ERST MAL REINSCHAUEN'), findsOneWidget);
+    expect(tester.getBottomLeft(find.text('ERST MAL REINSCHAUEN')).dy,
         lessThan(874 - 34));
     await expectLater(
       find.byType(MaterialApp),

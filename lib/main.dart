@@ -12,6 +12,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'app/gast_shell.dart';
 import 'app/main_shell.dart';
 import 'app/theme.dart';
 import 'app/widgets/matchup_splash.dart';
@@ -196,7 +197,17 @@ class _RootGate extends ConsumerWidget {
         : null;
     // Beim ersten Start (kein Lieblingsverein im Konto) zuerst die
     // Vereinsauswahl — Punkt 5 der Nutzer-Analyse.
-    final vereinsWahl = user != null && ref.watch(vereinsWahlNoetigProvider);
+    final vereinsWahl =
+        user != null &&
+        (ref.watch(vereinsWahlNoetigProvider) ||
+            ref.watch(vereinsWahlLaeuftProvider));
+    // Gastmodus („Erst mal reinschauen"): ohne Konto die App mit Live-Tab.
+    // Mit der Anmeldung endet er, sonst stünde man nach dem Abmelden wieder
+    // als Gast da statt vor der Anmeldung.
+    final gast = ref.watch(gastModusProvider);
+    ref.listen(currentUserProvider, (_, neu) {
+      if (neu != null) ref.read(gastModusProvider.notifier).state = false;
+    });
     return ValueListenableBuilder<bool>(
       valueListenable: passwordRecoveryMode,
       builder: (context, recovery, _) {
@@ -213,7 +224,7 @@ class _RootGate extends ConsumerWidget {
           inhalt = const MainShell();
         } else {
           inhalt = user == null
-              ? const LoginScreen()
+              ? (gast ? const GastShell() : const LoginScreen())
               : vereinsWahl
               ? const VereinsWahlScreen()
               : const MainShell();

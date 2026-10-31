@@ -54,12 +54,12 @@ class _LiveItem {
 /// Rand. Was daran nicht trug, steht in `design/live/` — die Diagnose und die
 /// drei Richtungen, aus denen „B — Tafel" gewählt wurde.
 class LiveScreen extends ConsumerStatefulWidget {
-  const LiveScreen({super.key, this.vorschau = false});
+  const LiveScreen({super.key, this.gast = false});
 
-  /// **Vorschau ohne Konto** (vom Anmeldeschirm, 29.10.2026): ohne Glocke —
-  /// Live-Meldungen brauchen ein Konto — und ohne den Platz für die
-  /// Navileiste, die es dort nicht gibt.
-  final bool vorschau;
+  /// **Ohne Konto** (Gastmodus vom Anmeldeschirm, 31.10.2026): ohne Glocke —
+  /// Live-Meldungen brauchen ein Konto. Sonst derselbe Tab wie angemeldet,
+  /// samt Navileiste darunter.
+  final bool gast;
 
   @override
   ConsumerState<LiveScreen> createState() => _LiveScreenState();
@@ -193,11 +193,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             // Kopfzeile: der gewählte Tag, und rechts, was gerade läuft. Der
             // Titel „Live" stand hier als größte Schrift des Schirms und trug
             // keine Information — in welchem Tab man ist, sagt die Navileiste.
-            _Kopf(
-              tag: _selectedDay,
-              live: liveHeute,
-              mitGlocke: !widget.vorschau,
-            ),
+            _Kopf(tag: _selectedDay, live: liveHeute, mitGlocke: !widget.gast),
             _DateStrip(
               days: days,
               today: today,
@@ -221,14 +217,13 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             // dieser Column (`extendBody` in der MainShell), ihr Platz muss
             // hier also selbst frei gehalten werden.
             SizedBox(
-              height: widget.vorschau
-                  ? MediaQuery.viewPaddingOf(context).bottom + 8
-                  : math.max(
-                          MediaQuery.viewPaddingOf(context).bottom,
-                          navBarBottomInset,
-                        ) +
-                        navBarHeight +
-                        _navBarGap,
+              height:
+                  math.max(
+                    MediaQuery.viewPaddingOf(context).bottom,
+                    navBarBottomInset,
+                  ) +
+                  navBarHeight +
+                  _navBarGap,
             ),
           ],
         ),
