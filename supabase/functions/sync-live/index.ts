@@ -37,6 +37,7 @@ const EV_OWNGOAL = 15;
 const EV_PENALTY_GOAL = 16;
 const EV_RED = 20;
 const EV_YELLOW_RED = 21;
+const EV_VAR = 10;
 
 const ART: Record<number, string> = {
   [EV_GOAL]: "tor",
@@ -93,6 +94,23 @@ function schnappschuss(f: any) {
 
   const ereignisse = [];
   for (const e of f.events ?? []) {
+    // **VAR: Tor aberkannt** (0154). Sportmonks löscht das Tor-Ereignis und
+    // legt ein VAR-Ereignis (Typ 10) mit „Goal disallowed" an; das ist der
+    // Beleg, mit dem push_live_abgleich „Kein Tor" meldet.
+    if (
+      e.type_id === EV_VAR && typeof e.id === "number" &&
+      /goal\s*(disallowed|cancel)/i.test(String(e.addition ?? ""))
+    ) {
+      ereignisse.push({
+        id: e.id,
+        art: "tor_aberkannt",
+        minute: minute(e),
+        spieler: e.player_name ?? null,
+        team: name.get(e.participant_id) ?? null,
+        stand: null,
+      });
+      continue;
+    }
     const art = ART[e.type_id as number];
     if (!art || typeof e.id !== "number") continue;
     ereignisse.push({

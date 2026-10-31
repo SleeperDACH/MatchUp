@@ -1342,6 +1342,24 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
   an (`wache_anstossen('push-versand')`), sobald es Aufträge gab. Rollback-
   Probe: ein Aufruf an `/functions/v1/push` in der pg_net-Schlange. Übrig
   bleibt die Zeit, bis Sportmonks das Tor kennt.
+- **Kein Dreifachversand, und „Kein Tor" nach VAR** (0154, 31.10.2026,
+  gemeldet: „der Anstoß kam dreimal pro Partie" und „ein zurückgenommenes
+  Tor wird nicht gemeldet"). In `push_auftraege` stand jeder Auftrag
+  **einmal** — verdoppelt hat der Versand: Seit 0148 stößt
+  `push_live_abgleich` ihn **je Spiel** an, beim gemeinsamen Anpfiff liefen
+  fünf Läufe gleichzeitig und lasen dieselben offenen Aufträge. Jetzt
+  beansprucht `push` über `push_auftraege_holen` (`for update skip
+  locked`, Spalte `in_arbeit_seit`, nach 2 Minuten wieder frei).
+  **„Kein Tor":** Sportmonks löscht das Tor-Ereignis nach VAR und legt ein
+  VAR-Ereignis (Typ 10, `addition` „Goal disallowed") an — nachgesehen an
+  zehn Fällen seit dem 17.10., in denen wir den Treffer gemeldet und nie
+  korrigiert hatten. `push_live_stand` merkt sich gemeldete Tore (`tore`)
+  und die Torsumme; fehlt ein gemeldetes Tor **und** gibt es einen Beleg
+  (`tor_aberkannt` aus `sync-live` oder weniger Tore als zuletzt), geht
+  „Kein Tor Mainz (Königsdörffer, 65.)" mit dem aktuellen Stand raus
+  (Sorte `live_tore`, Schlüssel `z<id>`). Ein Tor, das nur mit neuer ID
+  wiederkommt, löst nichts aus. Rollback-Probe: zweiter Versandlauf 0
+  Aufträge; Tor weg + Stand sinkt → „Kein Tor"; neue ID → nichts.
 - **Live-Meldungen mit Kurznamen** (27.10.2026, auf Ansage): „Hamburg 1:3
   Frankfurt" statt „Hamburger SV 1:3 Eintracht Frankfurt" — in Anpfiff, Tor,
   Karte, Halbzeit und Abpfiff; Tor-Titel ohne „für" (0148). `sync-live` kürzt `heim`, `gast` und `team`

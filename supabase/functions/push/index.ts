@@ -198,13 +198,15 @@ Deno.serve(async (req) => {
   );
 
   // Schritt eins ist immer die eigene Tabelle.
-  const { data: auftraege, error } = await supabase
-    .from("push_auftraege")
-    .select("id, user_id, kategorie, titel, text, ziel, versuche, erstellt_at")
-    .is("gesendet_at", null)
-    .lt("versuche", MAX_VERSUCHE)
-    .order("erstellt_at", { ascending: true })
-    .limit(PRO_LAUF);
+  // **Beanspruchen statt nur lesen** (0154, 31.10.2026): Seit 0148 laufen
+  // beim gemeinsamen Anpfiff mehrere Versandläufe gleichzeitig; jeder las
+  // dieselben offenen Aufträge, und der Anpfiff kam dreimal. Die Funktion
+  // markiert die Aufträge atomar (for update skip locked) als in Arbeit —
+  // ein zweiter Lauf bekommt sie nicht.
+  const { data: auftraege, error } = await supabase.rpc(
+    "push_auftraege_holen",
+    { p_limit: PRO_LAUF, p_max: MAX_VERSUCHE },
+  );
 
   if (error) {
     return Response.json({ fehler: error.message }, { status: 500 });
@@ -287,6 +289,8 @@ Deno.serve(async (req) => {
       await supabase.from("push_auftraege")
         .update({
           versuche,
+          // Wieder freigeben, damit der nächste Lauf es erneut versucht.
+          in_arbeit_seit: null,
           fehler: versuche >= MAX_VERSUCHE
             ? `aufgegeben: ${letzterFehler ?? ""}`
             : letzterFehler ?? null,
