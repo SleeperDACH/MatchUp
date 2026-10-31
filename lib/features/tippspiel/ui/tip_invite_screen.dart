@@ -1,3 +1,4 @@
+import '../../einladung/einladung.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -58,7 +59,9 @@ class _TipInvitePlayersScreenState
   Future<void> _invite(String userId) async {
     final r = widget.round;
     try {
-      await ref.read(messagingRepositoryProvider).sendMessage(
+      await ref
+          .read(messagingRepositoryProvider)
+          .sendMessage(
             userId,
             '🎯 Einladung zum Tippspiel „${r.name}" — tritt direkt bei!',
             inviteLeagueId: r.id,
@@ -66,12 +69,14 @@ class _TipInvitePlayersScreenState
           );
       if (!mounted) return;
       setState(() => _invited.add(userId));
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Einladung gesendet')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Einladung gesendet')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
   }
 
@@ -87,11 +92,13 @@ class _TipInvitePlayersScreenState
 
     // Freunde zuerst, dann Chat-Partner ohne Freundschaft; Mitglieder raus.
     final friends = ref.watch(friendsProvider);
-    final partners = [for (final c in ref.watch(conversationsProvider)) c.partnerId];
+    final partners = [
+      for (final c in ref.watch(conversationsProvider)) c.partnerId,
+    ];
     final seen = <String>{};
     final ids = [
       for (final id in [...friends, ...partners])
-        if (seen.add(id) && !memberIds.contains(id)) id
+        if (seen.add(id) && !memberIds.contains(id)) id,
     ];
     final names = {
       ...?ref.watch(conversationNamesProvider).valueOrNull,
@@ -105,13 +112,20 @@ class _TipInvitePlayersScreenState
     // Offene Beitrittsanfragen (öffentlich–auf Einladung) für den Admin.
     final pending =
         ref.watch(tipJoinRequestsProvider(widget.round.id)).valueOrNull ??
-            const [];
+        const [];
 
     return Scaffold(
-      appBar:
-          AppBar(centerTitle: true, title: const Text('Mitglieder einladen')),
+      appBar: AppBar(
+        centerTitle: true,
+        title: const Text('Mitglieder einladen'),
+      ),
       body: Column(
         children: [
+          EinladungsLinkKnopf(
+            code: widget.round.inviteCode,
+            name: widget.round.name,
+            art: 'Tipprunde',
+          ),
           if (pending.isNotEmpty)
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 260),
@@ -141,19 +155,19 @@ class _TipInvitePlayersScreenState
             child: _query.trim().isNotEmpty
                 ? _searchList(memberIds)
                 : (ids.isEmpty
-                    ? _emptyHint()
-                    : ListView(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        children: [
-                          for (final id in ids)
-                            _InviteRow(
-                              name: names[id] ?? '…',
-                              avatar: avatars[id],
-                              invited: _invited.contains(id),
-                              onInvite: () => _invite(id),
-                            ),
-                        ],
-                      )),
+                      ? _emptyHint()
+                      : ListView(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          children: [
+                            for (final id in ids)
+                              _InviteRow(
+                                name: names[id] ?? '…',
+                                avatar: avatars[id],
+                                invited: _invited.contains(id),
+                                onInvite: () => _invite(id),
+                              ),
+                          ],
+                        )),
           ),
         ],
       ),
@@ -161,19 +175,19 @@ class _TipInvitePlayersScreenState
   }
 
   Widget _emptyHint() => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Noch keine Chats oder Freunde — such oben nach einem Benutzernamen.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+    child: Padding(
+      padding: EdgeInsets.all(24),
+      child: Text(
+        'Noch keine Chats oder Freunde — such oben nach einem Benutzernamen.',
+        textAlign: TextAlign.center,
+      ),
+    ),
+  );
 
   Widget _searchList(Set<String> memberIds) {
     final results = [
       for (final u in _results)
-        if (!memberIds.contains(u.id)) u
+        if (!memberIds.contains(u.id)) u,
     ];
     if (results.isEmpty && !_searching) {
       return const Center(child: Text('Keine Treffer.'));
@@ -209,17 +223,16 @@ class _InviteRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: AppAvatar(
-          imageUrl: avatar?.url,
-          emoji: avatar?.emoji,
-          colorHex: avatar?.color,
-          fallbackText: name,
-          size: 44),
+        imageUrl: avatar?.url,
+        emoji: avatar?.emoji,
+        colorHex: avatar?.color,
+        fallbackText: name,
+        size: 44,
+      ),
       title: Text(name),
       trailing: invited
           ? const Chip(label: Text('Eingeladen'))
-          : FilledButton(
-              onPressed: onInvite,
-              child: const Text('Einladen')),
+          : FilledButton(onPressed: onInvite, child: const Text('Einladen')),
     );
   }
 }

@@ -758,9 +758,7 @@ class _DraftSettingsPageState extends ConsumerState<DraftSettingsPage> {
                       ],
                       onChanged: (t) => setState(() => _pickTime = t!),
                     )
-                  : _ReadValue(
-                      '${_pickTime.label} · ${_pickTime.isLive ? 'Live' : 'Slow'}',
-                    ),
+                  : _ReadValue('${_pickTime.label} · ${_pickTime.ablauf}'),
             ),
             const Divider(height: 1),
             _SettingRow(
@@ -1543,18 +1541,23 @@ class _Chevron extends StatelessWidget {
 /// Untertitel der Kader-Limit-Zeile: „TW 2 · ABW 6 · MF 6 · ST 5" oder der
 /// Hinweis, dass keine Grenze gilt.
 String _kaderLimitText(RosterConfig r) {
+  final verein = r.maxJeVerein == null
+      ? ''
+      : ' · höchstens ${r.maxJeVerein} je Verein';
   if (r.maxGk == null &&
       r.maxDef == null &&
       r.maxMid == null &&
       r.maxFwd == null) {
-    return 'Keine Obergrenze je Position';
+    return r.maxJeVerein == null
+        ? 'Keine Obergrenze je Position'
+        : 'Höchstens ${r.maxJeVerein} Spieler je Verein';
   }
   // **Kein „∞".** Rajdhani hat das Zeichen nicht (Barlow Condensed hatte es);
   // in der Zeile stünde ein leeres Kästchen. „frei" sagt dasselbe und liest
   // sich auch vor.
   String t(String k, int? v) => '$k ${v ?? 'frei'}';
   return '${t('TW', r.maxGk)} · ${t('ABW', r.maxDef)} · '
-      '${t('MF', r.maxMid)} · ${t('ST', r.maxFwd)}';
+      '${t('MF', r.maxMid)} · ${t('ST', r.maxFwd)}$verein';
 }
 
 class KaderLimitsPage extends ConsumerStatefulWidget {
@@ -1570,6 +1573,7 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
   /// Limit je Position, `null` = keine Einschränkung. Jede Position steht für
   /// sich: Man kann die Torhüter deckeln und Mittelfeld und Sturm offen lassen.
   final _limit = <PlayerPosition, int?>{};
+  late int? _vereinsLimit = widget.league.roster.maxJeVerein;
   bool _saving = false;
 
   RosterConfig get _r => widget.league.roster;
@@ -1601,6 +1605,7 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
     maxDef: _limit[PlayerPosition.def],
     maxMid: _limit[PlayerPosition.mid],
     maxFwd: _limit[PlayerPosition.fwd],
+    maxJeVerein: _vereinsLimit,
   );
 
   /// Beides kommt aus dem Editor — er trägt die Regel, nicht dieser Schirm.
@@ -1696,6 +1701,14 @@ class _KaderLimitsPageState extends ConsumerState<KaderLimitsPage> {
           ]),
           const SizedBox(height: 12),
           _Hinweis(gut: _reichtFuerKader, text: _hinweisText()),
+          const SizedBox(height: 16),
+          // Vereins-Limit (0153): höchstens N Spieler desselben Vereins.
+          _CardColumn([
+            VereinsLimitEditor(
+              wert: _vereinsLimit,
+              onChanged: (v) => setState(() => _vereinsLimit = v),
+            ),
+          ]),
           if (darueber > 0) ...[
             const SizedBox(height: 8),
             _Hinweis(

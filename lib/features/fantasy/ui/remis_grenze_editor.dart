@@ -37,7 +37,7 @@ class RemisGrenzeEditor extends StatelessWidget {
 
   /// Kurzfassung für Untertitel und Erklärungen.
   static String text(double? wert) => wert == null
-      ? 'Nur bei Punktgleichheit'
+      ? 'Aus: nur Siege und Niederlagen, Tabelle als Bilanz'
       : 'Bis ${formatPoints(wert)} Punkte Abstand';
 
   @override
@@ -52,9 +52,13 @@ class RemisGrenzeEditor extends StatelessWidget {
         // sagte, was die Zahl ohnehin sagt.
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Bei knappem Ausgang',
-              style: TextStyle(
-                  fontSize: Schrift.text, fontWeight: FontWeight.w600)),
+          title: const Text(
+            'Bei knappem Ausgang',
+            style: TextStyle(
+              fontSize: Schrift.text,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           subtitle: Text(text(wert)),
           value: an,
           onChanged: aenderbar
@@ -85,10 +89,13 @@ class RemisGrenzeEditor extends StatelessWidget {
                     onChanged: (v) => onChanged(v.toDouble()),
                   )
                 else
-                  Text(formatPoints(wert!),
-                      style: const TextStyle(
-                          fontSize: Schrift.titel,
-                          fontWeight: FontWeight.w800)),
+                  Text(
+                    formatPoints(wert!),
+                    style: const TextStyle(
+                      fontSize: Schrift.titel,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
               ],
             ),
           ),

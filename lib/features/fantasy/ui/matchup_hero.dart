@@ -469,8 +469,10 @@ const kChanceNeutral = Color(0xFF9AA0AA);
 /// **Unter drei Prozentpunkten Unterschied ist niemand Favorit.** 51 zu 49 ist
 /// ein Münzwurf, und ihn grün gegen rot zu stellen behauptet eine Überlegen-
 /// heit, die im Rauschen liegt.
-(Color, Color) chanceFarben(int linksProzent,
-    [MatchUpFarben f = MatchUpFarben.dunkel]) {
+(Color, Color) chanceFarben(
+  int linksProzent, [
+  MatchUpFarben f = MatchUpFarben.dunkel,
+]) {
   final rechtsProzent = 100 - linksProzent;
   if ((linksProzent - rechtsProzent).abs() < 3) {
     return (f.neutral, f.neutral);
@@ -598,7 +600,12 @@ typedef BannerSerie = ({DuellAusgang ausgang, int anzahl});
 /// Platz, Bilanz (S-U-N) und Serie eines Managers — aus derselben
 /// [h2hGrundlage] wie die Tabelle, damit beide dasselbe sagen.
 BannerBilanz bannerBilanz(H2HGrundlage g, String managerId) {
-  final standings = h2hStandings(g.ids, g.summen, remisGrenze: g.remis);
+  final standings = h2hStandings(
+    g.ids,
+    g.summen,
+    remisGrenze: g.remis,
+    bilanz: g.bilanz,
+  );
   if (standings.every((r) => r.played == 0)) return (zeile: null, serie: null);
   final i = standings.indexWhere((r) => r.managerId == managerId);
   if (i < 0) return (zeile: null, serie: null);
@@ -611,7 +618,10 @@ BannerBilanz bannerBilanz(H2HGrundlage g, String managerId) {
     remisGrenze: g.remis,
   );
   return (
-    zeile: 'P${i + 1} · ${r.wins}-${r.ties}-${r.losses}',
+    // Ohne Remis-Regel die NFL-Bilanz (S-N), sonst S-U-N.
+    zeile: g.bilanz
+        ? 'P${i + 1} · ${r.nflBilanz}'
+        : 'P${i + 1} · ${r.wins}-${r.ties}-${r.losses}',
     serie: serie(verlauf),
   );
 }
@@ -931,7 +941,9 @@ class _Seite extends StatelessWidget {
       onTap: onName,
       child: HeroAvatar(
         name: name,
-        accent: me ? context.farben.gruen : context.farben.vorne.withValues(alpha: 0.35),
+        accent: me
+            ? context.farben.gruen
+            : context.farben.vorne.withValues(alpha: 0.35),
         dim: verloren,
         imageUrl: avatar?.url,
         emoji: avatar?.emoji,
@@ -998,7 +1010,9 @@ class _ChanceZeile extends StatelessWidget {
     if (beendet) {
       text = sieg ? 'Sieg' : (niederlage ? 'Niederlage' : 'Unentschieden');
       anteil = sieg ? 1 : (niederlage ? 0 : 0.5);
-      farbe = sieg ? context.farben.gruen : (niederlage ? context.farben.rot : context.farben.neutral);
+      farbe = sieg
+          ? context.farben.gruen
+          : (niederlage ? context.farben.rot : context.farben.neutral);
     } else if (chance != null) {
       final prozent = (chance! * 100).round().clamp(0, 100);
       text = '$prozent % Sieg';
@@ -1033,7 +1047,9 @@ class _ChanceZeile extends StatelessWidget {
               height: 4,
               child: Stack(
                 children: [
-                  Container(color: context.farben.vorne.withValues(alpha: 0.08)),
+                  Container(
+                    color: context.farben.vorne.withValues(alpha: 0.08),
+                  ),
                   // Der Balken wächst von der Außenkante nach innen.
                   Align(
                     alignment: links
@@ -1189,7 +1205,9 @@ class _Mitte extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 letterSpacing: live ? 1 : 0.3,
                 height: 1.2,
-                color: live ? context.farben.rot : context.farben.vorne.withValues(alpha: 0.5),
+                color: live
+                    ? context.farben.rot
+                    : context.farben.vorne.withValues(alpha: 0.5),
               ),
             ),
           ],

@@ -36,21 +36,25 @@ import 'models/trade.dart';
 import 'logic/waiver_fenster.dart';
 
 final fantasyLeagueRepositoryProvider = Provider<FantasyLeagueRepository>(
-    (ref) => FantasyLeagueRepository(Supabase.instance.client));
+  (ref) => FantasyLeagueRepository(Supabase.instance.client),
+);
 
-final draftRepositoryProvider =
-    Provider<DraftRepository>((ref) => DraftRepository(Supabase.instance.client));
+final draftRepositoryProvider = Provider<DraftRepository>(
+  (ref) => DraftRepository(Supabase.instance.client),
+);
 
 /// Datenquelle für Spielerpool und (später) Live-Punkte. Mit Server der
 /// DB-Pool; ohne Konfiguration der Offline-Seed.
-final fantasyDataProvider = Provider<FantasyDataProvider>((ref) =>
-    AppConfig.isSupabaseConfigured
-        ? DbFantasyDataProvider(Supabase.instance.client)
-        : const SeedFantasyDataProvider());
+final fantasyDataProvider = Provider<FantasyDataProvider>(
+  (ref) => AppConfig.isSupabaseConfigured
+      ? DbFantasyDataProvider(Supabase.instance.client)
+      : const SeedFantasyDataProvider(),
+);
 
 /// Startjahr der aktuellen Fantasy-Saison (Bundesliga-Rhythmus).
-final fantasySeasonProvider =
-    Provider<int>((ref) => Leagues.bundesliga.seasonFor(DateTime.now()));
+final fantasySeasonProvider = Provider<int>(
+  (ref) => Leagues.bundesliga.seasonFor(DateTime.now()),
+);
 
 /// Die eigenen Fantasy-Ligen — **live**.
 ///
@@ -81,53 +85,68 @@ final myFantasyLeaguesProvider = StreamProvider<List<FantasyLeague>>((ref) {
 /// über HTTP und verbindet sich mit wachsendem Abstand neu.
 final fantasyManagersProvider =
     StreamProvider.family<List<FantasyManager>, String>((ref, leagueId) {
-  final repo = ref.watch(fantasyLeagueRepositoryProvider);
-  return liveMitRueckfall(
-    abfrage: () => repo.managers(leagueId),
-    strom: () =>
-        repo.memberChanges(leagueId).asyncMap((_) => repo.managers(leagueId)),
-  );
-});
+      final repo = ref.watch(fantasyLeagueRepositoryProvider);
+      return liveMitRueckfall(
+        abfrage: () => repo.managers(leagueId),
+        strom: () => repo
+            .memberChanges(leagueId)
+            .asyncMap((_) => repo.managers(leagueId)),
+      );
+    });
 
 /// Verwaiste Teams einer Liga (für die Admin-Zuweisung).
-final vacantTeamsProvider =
-    FutureProvider.family<List<FantasyManager>, String>((ref, leagueId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).vacantTeams(leagueId);
-});
+final vacantTeamsProvider = FutureProvider.family<List<FantasyManager>, String>(
+  (ref, leagueId) {
+    return ref.watch(fantasyLeagueRepositoryProvider).vacantTeams(leagueId);
+  },
+);
 
 /// Nach Draft-Start beigetretene Mitglieder ohne Team (warten auf Zuweisung).
 final pendingMembersProvider =
     FutureProvider.family<List<FantasyManager>, String>((ref, leagueId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).pendingMembers(leagueId);
-});
+      return ref
+          .watch(fantasyLeagueRepositoryProvider)
+          .pendingMembers(leagueId);
+    });
 
 /// Aktuelle Kader der Liga in Echtzeit (Draft + Free Agency).
 ///
 /// **Nach einem Reset (0143) ein [WertungsKader]**: nach außen derselbe
 /// aktuelle Kader, dazu der Kader vor dem Reset für die Wertung der
 /// Hinrunde ([kaderFuerRunde]). Ohne Reset die schlichte Liste.
-final leagueRosterProvider =
-    StreamProvider.family<List<RosterEntry>, String>((ref, leagueId) {
+final leagueRosterProvider = StreamProvider.family<List<RosterEntry>, String>((
+  ref,
+  leagueId,
+) {
   final reset = ref.watch(_resetKaderProvider(leagueId));
   return ref
       .watch(fantasyLeagueRepositoryProvider)
       .rosterStream(leagueId)
-      .map((r) => reset == null
-          ? r
-          : WertungsKader(r,
-              vorReset: reset.vorher, ersteRundeNachReset: reset.ersteRunde));
+      .map(
+        (r) => reset == null
+            ? r
+            : WertungsKader(
+                r,
+                vorReset: reset.vorher,
+                ersteRundeNachReset: reset.ersteRunde,
+              ),
+      );
 });
 
 /// Kader vor dem Reset und erste Runde danach — `null` ohne Reset oder
 /// solange Protokoll oder Spielplan laden. Ein Wert mit Inhaltsgleichheit:
 /// Im Reset-Draft ändert jeder Pick Liga und Protokoll, und ohne sie würde
 /// der Kaderstrom bei jedem Pick neu abonniert.
-final _resetKaderProvider =
-    Provider.family<ResetKader?, String>((ref, leagueId) {
-  final info = ref.watch(myFantasyLeaguesProvider.select((v) {
-    final l = v.valueOrNull?.where((l) => l.id == leagueId).firstOrNull;
-    return l?.resetErfolgtAt == null ? null : l!.season;
-  }));
+final _resetKaderProvider = Provider.family<ResetKader?, String>((
+  ref,
+  leagueId,
+) {
+  final info = ref.watch(
+    myFantasyLeaguesProvider.select((v) {
+      final l = v.valueOrNull?.where((l) => l.id == leagueId).firstOrNull;
+      return l?.resetErfolgtAt == null ? null : l!.season;
+    }),
+  );
   if (info == null) return null;
   final moves = ref.watch(rosterMovesProvider(leagueId)).valueOrNull;
   final fixtures = ref.watch(fantasySeasonFixturesProvider).valueOrNull;
@@ -140,38 +159,45 @@ final _resetKaderProvider =
 /// Live-Stream der Chat-Nachrichten einer Fantasy-Liga (älteste zuerst).
 final fantasyMessagesProvider =
     StreamProvider.family<List<ChatMessage>, String>((ref, leagueId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).messageStream(leagueId);
-});
+      return ref.watch(fantasyLeagueRepositoryProvider).messageStream(leagueId);
+    });
 
 /// Ungelesene Nachrichten im Liga-Chat? Lokale „gelesen bis"-Marke pro Gerät
 /// (teilt sich den generischen Marker mit dem Tippspiel-Chat; Schlüssel =
 /// league_id, kollidiert nicht mit den Runden-IDs).
-final fantasyUnreadChatProvider = Provider.family<bool, String>((ref, leagueId) {
+final fantasyUnreadChatProvider = Provider.family<bool, String>((
+  ref,
+  leagueId,
+) {
   final myId = ref.watch(currentUserProvider)?.id;
   final lastRead = ref.watch(chatLastReadProvider(leagueId));
   final messages =
       ref.watch(fantasyMessagesProvider(leagueId)).valueOrNull ?? const [];
-  return messages.any((m) =>
-      m.userId != myId && (lastRead == null || m.createdAt.isAfter(lastRead)));
+  return messages.any(
+    (m) =>
+        m.userId != myId && (lastRead == null || m.createdAt.isAfter(lastRead)),
+  );
 });
 
 /// Trade-Angebote einer Liga (RLS: nur eigene Beteiligung) in Echtzeit.
-final leagueTradesProvider =
-    StreamProvider.family<List<TradeOffer>, String>((ref, leagueId) {
+final leagueTradesProvider = StreamProvider.family<List<TradeOffer>, String>((
+  ref,
+  leagueId,
+) {
   return ref.watch(fantasyLeagueRepositoryProvider).tradesStream(leagueId);
 });
 
 /// Anzahl offener Trade-Angebote, die an mich gerichtet sind (eingehend,
 /// noch nicht beantwortet) — für den auffälligen Hinweis am Trade-Button.
-final incomingTradeOffersProvider =
-    Provider.family<int, String>((ref, leagueId) {
+final incomingTradeOffersProvider = Provider.family<int, String>((
+  ref,
+  leagueId,
+) {
   final myId = ref.watch(currentUserProvider)?.id;
   if (myId == null) return 0;
   final trades =
       ref.watch(leagueTradesProvider(leagueId)).valueOrNull ?? const [];
-  return trades
-      .where((t) => t.toManager == myId && t.status.isPending)
-      .length;
+  return trades.where((t) => t.toManager == myId && t.status.isPending).length;
 });
 
 /// Meine **vorgemerkten** Trades: angenommen, aber die Spieler haben den Kader
@@ -181,8 +207,10 @@ final incomingTradeOffersProvider =
 /// Spiel der Runde — sonst nähme er einem Manager mitten in der Wertung einen
 /// Spieler aus der Elf. Dazwischen liegt ein Zustand, den es vorher nicht gab
 /// und den der Kader-Tab zeigen muss: „abgemacht, aber noch nicht vollzogen".
-final vorgemerkteTradesProvider =
-    Provider.family<List<TradeOffer>, String>((ref, leagueId) {
+final vorgemerkteTradesProvider = Provider.family<List<TradeOffer>, String>((
+  ref,
+  leagueId,
+) {
   final myId = ref.watch(currentUserProvider)?.id;
   if (myId == null) return const [];
   final trades =
@@ -191,25 +219,28 @@ final vorgemerkteTradesProvider =
     for (final t in trades)
       if (t.wartetAufAusfuehrung &&
           (t.fromManager == myId || t.toManager == myId))
-        t
-  ]..sort((a, b) => (a.executeAfter ?? a.createdAt)
-      .compareTo(b.executeAfter ?? b.createdAt));
+        t,
+  ]..sort(
+    (a, b) => (a.executeAfter ?? a.createdAt).compareTo(
+      b.executeAfter ?? b.createdAt,
+    ),
+  );
 });
 
 /// Einzelnes Trade-Angebot samt Positionen (für die Chat-Karte).
-final tradeDetailProvider = FutureProvider.family<
-    ({TradeOffer trade, List<TradeItem> items, List<TradePick> picks})?,
-    String>((ref, tradeId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).tradeById(tradeId);
-});
+final tradeDetailProvider =
+    FutureProvider.family<
+      ({TradeOffer trade, List<TradeItem> items, List<TradePick> picks})?,
+      String
+    >((ref, tradeId) {
+      return ref.watch(fantasyLeagueRepositoryProvider).tradeById(tradeId);
+    });
 
 /// Positionen aller eigenen Trades, gruppiert nach `trade_id` (Echtzeit).
-final tradeItemsProvider =
-    StreamProvider<Map<String, List<TradeItem>>>((ref) {
-  return ref
-      .watch(fantasyLeagueRepositoryProvider)
-      .tradeItemsStream()
-      .map((items) {
+final tradeItemsProvider = StreamProvider<Map<String, List<TradeItem>>>((ref) {
+  return ref.watch(fantasyLeagueRepositoryProvider).tradeItemsStream().map((
+    items,
+  ) {
     final byTrade = <String, List<TradeItem>>{};
     for (final it in items) {
       byTrade.putIfAbsent(it.tradeId, () => []).add(it);
@@ -219,12 +250,10 @@ final tradeItemsProvider =
 });
 
 /// Picks aller eigenen Trades, gruppiert nach `trade_id` (Echtzeit, 0145).
-final tradePicksProvider =
-    StreamProvider<Map<String, List<TradePick>>>((ref) {
-  return ref
-      .watch(fantasyLeagueRepositoryProvider)
-      .tradePicksStream()
-      .map((picks) {
+final tradePicksProvider = StreamProvider<Map<String, List<TradePick>>>((ref) {
+  return ref.watch(fantasyLeagueRepositoryProvider).tradePicksStream().map((
+    picks,
+  ) {
     final byTrade = <String, List<TradePick>>{};
     for (final p in picks) {
       byTrade.putIfAbsent(p.tradeId, () => []).add(p);
@@ -234,21 +263,24 @@ final tradePicksProvider =
 });
 
 /// Gehandelte Picks für den Reset-Draft, als Nachschlagetabelle (0145).
-final draftRechteProvider =
-    StreamProvider.family<Map<PickKey, String>, String>((ref, leagueId) {
-  return ref
-      .watch(fantasyLeagueRepositoryProvider)
-      .draftRechteStream(leagueId)
-      .map(rechteKarte);
-});
+final draftRechteProvider = StreamProvider.family<Map<PickKey, String>, String>(
+  (ref, leagueId) {
+    return ref
+        .watch(fantasyLeagueRepositoryProvider)
+        .draftRechteStream(leagueId)
+        .map(rechteKarte);
+  },
+);
 
 /// **Alle Picks des Reset-Drafts mit ihrem Besitzer.** Vor dem Reset in der
 /// Reihenfolge der aktuellen Tabelle (Tabellenletzter zuerst, Snake) — wo
 /// man gerade stünde. Ab dem Reset-Draft in der festgeschriebenen Folge
 /// (`reset_position`). `null`, solange etwas lädt oder die Liga keinen Reset
 /// hat.
-final resetPicksProvider =
-    Provider.family<List<PickSlot>?, String>((ref, leagueId) {
+final resetPicksProvider = Provider.family<List<PickSlot>?, String>((
+  ref,
+  leagueId,
+) {
   final league = ref
       .watch(myFantasyLeaguesProvider)
       .valueOrNull
@@ -282,22 +314,28 @@ final resetPicksProvider =
 });
 
 /// Spieler-IDs auf dem Waiver-Wire (nach Drop claim-only) in Echtzeit.
-final waiverPlayersProvider =
-    StreamProvider.family<Set<String>, String>((ref, leagueId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).waiverPlayersStream(leagueId);
+final waiverPlayersProvider = StreamProvider.family<Set<String>, String>((
+  ref,
+  leagueId,
+) {
+  return ref
+      .watch(fantasyLeagueRepositoryProvider)
+      .waiverPlayersStream(leagueId);
 });
 
 /// Eigene Waiver-Anträge der Liga in Echtzeit.
-final myWaiverClaimsProvider =
-    StreamProvider.family<List<WaiverClaim>, String>((ref, leagueId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).myWaiverClaimsStream(leagueId);
-});
+final myWaiverClaimsProvider = StreamProvider.family<List<WaiverClaim>, String>(
+  (ref, leagueId) {
+    return ref
+        .watch(fantasyLeagueRepositoryProvider)
+        .myWaiverClaimsStream(leagueId);
+  },
+);
 
 /// **Ausfälle je Spieler** — verletzt oder gesperrt (Echtzeit).
 ///
 /// Leer im lokalen Modus; die Oberfläche zeigt dann schlicht kein Symbol.
-final absencesProvider =
-    StreamProvider<Map<String, PlayerAbsence>>((ref) {
+final absencesProvider = StreamProvider<Map<String, PlayerAbsence>>((ref) {
   if (!AppConfig.isSupabaseConfigured) {
     return Stream.value(const <String, PlayerAbsence>{});
   }
@@ -305,8 +343,10 @@ final absencesProvider =
 });
 
 /// **Kaderbewegungen der Liga**, jüngste zuerst (Echtzeit).
-final rosterMovesProvider =
-    StreamProvider.family<List<RosterMove>, String>((ref, leagueId) {
+final rosterMovesProvider = StreamProvider.family<List<RosterMove>, String>((
+  ref,
+  leagueId,
+) {
   return ref.watch(fantasyLeagueRepositoryProvider).rosterMovesStream(leagueId);
 });
 
@@ -317,29 +357,35 @@ final rosterMovesProvider =
 /// zwei — und weil es dieselbe Frage beantwortet: „muss ich da hin?"
 final offeneTransfersProvider = Provider.family<int, String>((ref, leagueId) {
   final eingehend = ref.watch(incomingTradeOffersProvider(leagueId));
-  final antraege = ref.watch(myWaiverClaimsProvider(leagueId)).valueOrNull ??
+  final antraege =
+      ref.watch(myWaiverClaimsProvider(leagueId)).valueOrNull ??
       const <WaiverClaim>[];
   return eingehend + antraege.where((c) => c.status.isPending).length;
 });
 
 /// Nächste Runde + Waiver-Deadline (2 Tage vor Anstoß) der Saison.
-final waiverWindowProvider =
-    FutureProvider<({int? round, DateTime? deadline})>((ref) {
-  final season = ref.watch(fantasySeasonProvider);
-  return ref.watch(fantasyLeagueRepositoryProvider).waiverWindow(season);
-});
+final waiverWindowProvider = FutureProvider<({int? round, DateTime? deadline})>(
+  (ref) {
+    final season = ref.watch(fantasySeasonProvider);
+    return ref.watch(fantasyLeagueRepositoryProvider).waiverWindow(season);
+  },
+);
 
 /// Alle manuellen Aufstellungen einer Liga in Echtzeit (alle Spieltage).
 final leagueLineupsProvider =
     StreamProvider.family<List<FantasyLineup>, String>((ref, leagueId) {
-  return ref.watch(fantasyLeagueRepositoryProvider).lineupsStream(leagueId);
-});
+      return ref.watch(fantasyLeagueRepositoryProvider).lineupsStream(leagueId);
+    });
 
 /// Aufstellungs-Deadline (erster Anstoß) eines Spieltags der Saison.
-final roundDeadlineProvider =
-    FutureProvider.family<DateTime?, int>((ref, round) {
+final roundDeadlineProvider = FutureProvider.family<DateTime?, int>((
+  ref,
+  round,
+) {
   final season = ref.watch(fantasySeasonProvider);
-  return ref.watch(fantasyLeagueRepositoryProvider).roundDeadline(season, round);
+  return ref
+      .watch(fantasyLeagueRepositoryProvider)
+      .roundDeadline(season, round);
 });
 
 final playerPoolProvider = FutureProvider<List<FantasyPlayer>>((ref) {
@@ -394,20 +440,26 @@ final clubIconsProvider = FutureProvider<Map<String, String?>>((ref) async {
 // ------------------------------------------------------------------
 
 /// Liga-Zustand in Echtzeit (Draft-Status, Picks, Deadline).
-final draftLeagueProvider =
-    StreamProvider.family<FantasyLeague?, String>((ref, leagueId) {
+final draftLeagueProvider = StreamProvider.family<FantasyLeague?, String>((
+  ref,
+  leagueId,
+) {
   return ref.watch(draftRepositoryProvider).leagueStream(leagueId);
 });
 
 /// Alle Picks der Liga in Echtzeit.
-final draftPicksProvider =
-    StreamProvider.family<List<DraftPick>, String>((ref, leagueId) {
+final draftPicksProvider = StreamProvider.family<List<DraftPick>, String>((
+  ref,
+  leagueId,
+) {
   return ref.watch(draftRepositoryProvider).picksStream(leagueId);
 });
 
 /// Eigene Draft-Queue (Spieler-IDs nach Rang) in Echtzeit.
-final draftQueueProvider =
-    StreamProvider.family<List<String>, String>((ref, leagueId) {
+final draftQueueProvider = StreamProvider.family<List<String>, String>((
+  ref,
+  leagueId,
+) {
   return ref.watch(draftRepositoryProvider).queueStream(leagueId);
 });
 
@@ -415,8 +467,9 @@ final draftQueueProvider =
 // Scoring (Stats-Feed: serverseitig gespiegelt, Fallback live OpenLigaDB)
 // ------------------------------------------------------------------
 
-final roundScoringServiceProvider =
-    Provider<RoundScoringService>((ref) => RoundScoringService());
+final roundScoringServiceProvider = Provider<RoundScoringService>(
+  (ref) => RoundScoringService(),
+);
 
 /// Quelle der Roh-Stats: mit Supabase die Tabelle player_match_stats
 /// (Quelle der Wahrheit, Schema bereit für Assists/Karten/Minuten), sonst
@@ -430,8 +483,9 @@ final fantasyStatsSourceProvider = Provider<FantasyStatsSource>((ref) {
 
 /// Roh-Aggregate der letzten Saison je Spieler (aus player_season_totals) —
 /// Basis für die Draft-Reihung „bester zuerst". Leer im lokalen Modus.
-final lastSeasonTotalsProvider =
-    FutureProvider<Map<String, SeasonTotals>>((ref) async {
+final lastSeasonTotalsProvider = FutureProvider<Map<String, SeasonTotals>>((
+  ref,
+) async {
   if (!AppConfig.isSupabaseConfigured) return const {};
   final lastSeason = ref.watch(fantasySeasonProvider) - 1;
   final rows = await Supabase.instance.client
@@ -439,8 +493,7 @@ final lastSeasonTotalsProvider =
       .select()
       .eq('season', lastSeason);
   return {
-    for (final r in rows)
-      r['player_id'] as String: SeasonTotals.fromJson(r),
+    for (final r in rows) r['player_id'] as String: SeasonTotals.fromJson(r),
   };
 });
 
@@ -456,19 +509,23 @@ final lastSeasonTotalsProvider =
 /// stellt sie erst ein bis zwei Tage vor Anpfiff bereit (gemessen 29.08.2026);
 /// die Oberfläche muss diesen Zustand eigens zeigen.
 final prognoseElfProvider =
-    FutureProvider.family<PrognoseElf?, ({String club, int runde})>(
-        (ref, k) async {
-  if (!AppConfig.isSupabaseConfigured) return null;
-  final season = ref.watch(fantasySeasonProvider);
-  final rows = await Supabase.instance.client
-      .from('predicted_lineups_v')
-      .select()
-      .eq('season', season)
-      .eq('round', k.runde)
-      .eq('club', k.club);
-  return PrognoseElf.ausZeilen(
-      k.club, List<Map<String, dynamic>>.from(rows));
-});
+    FutureProvider.family<PrognoseElf?, ({String club, int runde})>((
+      ref,
+      k,
+    ) async {
+      if (!AppConfig.isSupabaseConfigured) return null;
+      final season = ref.watch(fantasySeasonProvider);
+      final rows = await Supabase.instance.client
+          .from('predicted_lineups_v')
+          .select()
+          .eq('season', season)
+          .eq('round', k.runde)
+          .eq('club', k.club);
+      return PrognoseElf.ausZeilen(
+        k.club,
+        List<Map<String, dynamic>>.from(rows),
+      );
+    });
 
 /// **Die fortgeschriebene Elf** eines Vereins — die Rückfallebene für die
 /// Tage, an denen es noch keine Prognose gibt.
@@ -483,46 +540,50 @@ final prognoseElfProvider =
 /// Gerechnet wird in `logic/fortschreibung.dart`; hier steht nur, woher die
 /// vier Zutaten kommen. `null` heißt: Es gibt keine gemeldete Elf, aus der
 /// sich etwas fortschreiben ließe.
-final fortgeschriebeneElfProvider =
-    FutureProvider.family<PrognoseElf?, String>((ref, club) async {
-  final spiele = await ref.watch(fantasySeasonFixturesProvider.future);
-  final zuletzt = letztesGespieltes(spiele, club);
-  if (zuletzt == null) return null;
+final fortgeschriebeneElfProvider = FutureProvider.family<PrognoseElf?, String>(
+  (ref, club) async {
+    final spiele = await ref.watch(fantasySeasonFixturesProvider.future);
+    final zuletzt = letztesGespieltes(spiele, club);
+    if (zuletzt == null) return null;
 
-  final letzte =
-      await ref.watch(prognoseElfProvider((club: club, runde: zuletzt.round)).future);
-  if (letzte == null) return null;
+    final letzte = await ref.watch(
+      prognoseElfProvider((club: club, runde: zuletzt.round)).future,
+    );
+    if (letzte == null) return null;
 
-  final pool = await ref.watch(playerPoolProvider.future);
-  final kader = [
-    for (final p in pool)
-      if (vereinKanonisch(p.club) == vereinKanonisch(club)) p,
-  ];
+    final pool = await ref.watch(playerPoolProvider.future);
+    final kader = [
+      for (final p in pool)
+        if (vereinKanonisch(p.club) == vereinKanonisch(club)) p,
+    ];
 
-  final ausfaelle =
-      ref.watch(absencesProvider).valueOrNull ?? const <String, PlayerAbsence>{};
+    final ausfaelle =
+        ref.watch(absencesProvider).valueOrNull ??
+        const <String, PlayerAbsence>{};
 
-  // **Minuten über die ganze Saison, nicht nur den letzten Spieltag.** Wer
-  // nominell der Ersatz ist, zeigt sich an der Einsatzzeit über mehrere
-  // Spiele; ein einzelner Spieltag, an dem der Stammspieler pausierte, würde
-  // sonst den Falschen nach vorn holen.
-  final saison = ref.watch(seasonStatsProvider).valueOrNull ??
-      const <int, Map<String, PlayerMatchStats>>{};
-  final minuten = <String, int>{};
-  for (final runde in saison.values) {
-    for (final e in runde.entries) {
-      minuten[e.key] = (minuten[e.key] ?? 0) + e.value.minutes;
+    // **Minuten über die ganze Saison, nicht nur den letzten Spieltag.** Wer
+    // nominell der Ersatz ist, zeigt sich an der Einsatzzeit über mehrere
+    // Spiele; ein einzelner Spieltag, an dem der Stammspieler pausierte, würde
+    // sonst den Falschen nach vorn holen.
+    final saison =
+        ref.watch(seasonStatsProvider).valueOrNull ??
+        const <int, Map<String, PlayerMatchStats>>{};
+    final minuten = <String, int>{};
+    for (final runde in saison.values) {
+      for (final e in runde.entries) {
+        minuten[e.key] = (minuten[e.key] ?? 0) + e.value.minutes;
+      }
     }
-  }
 
-  return fortgeschriebeneElf(
-    letzte: letzte,
-    ausRunde: zuletzt.round,
-    vereinsKader: kader,
-    faelltAus: faelltAusFuer(ausfaelle, kader),
-    minuten: minuten,
-  );
-});
+    return fortgeschriebeneElf(
+      letzte: letzte,
+      ausRunde: zuletzt.round,
+      vereinsKader: kader,
+      faelltAus: faelltAusFuer(ausfaelle, kader),
+      minuten: minuten,
+    );
+  },
+);
 
 /// Aktueller bzw. letzter Bundesliga-Spieltag (Standard für die Anzeige).
 /// Alle Bundesliga-Fixtures der Fantasy-Saison (Anstoßzeiten, Teams,
@@ -549,8 +610,9 @@ final fortgeschriebeneElfProvider =
 /// hinter sich hat, jetzt auch hier.
 final fantasySeasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
   final season = ref.watch(fantasySeasonProvider);
-  return sportsProviderFor(Leagues.bundesliga)
-      .getSeasonFixtures(Leagues.bundesliga, season);
+  return sportsProviderFor(
+    Leagues.bundesliga,
+  ).getSeasonFixtures(Leagues.bundesliga, season);
 });
 
 /// Aktueller Fantasy-Spieltag: er läuft bis zur **Waiver-Frist**, also Montag
@@ -592,10 +654,16 @@ final fantasyAufstellungsRundeProvider = FutureProvider<int>((ref) async {
 /// mehr aufzustellen, und eine Runde 35 wäre eine Erfindung.
 int aufstellungsRunde(List<Fixture> fixtures, DateTime now) {
   final aktuell = currentFantasyRound(fixtures, now);
-  final dieser = [for (final f in fixtures) if (f.round == aktuell) f];
+  final dieser = [
+    for (final f in fixtures)
+      if (f.round == aktuell) f,
+  ];
   if (dieser.isEmpty) return aktuell;
   if (!dieser.every((f) => f.status == FixtureStatus.finished)) return aktuell;
-  final spaeter = [for (final f in fixtures) if (f.round > aktuell) f.round];
+  final spaeter = [
+    for (final f in fixtures)
+      if (f.round > aktuell) f.round,
+  ];
   if (spaeter.isEmpty) return aktuell;
   return spaeter.reduce((a, b) => a < b ? a : b);
 }
@@ -618,7 +686,11 @@ int currentFantasyRound(List<Fixture> fixtures, DateTime now) {
 /// [currentFantasyRound] weiterspringt und der Server die Push-Meldung
 /// schickt (`fantasy_rueckblick_melden`, 0141). Vorher war der Rückblick ab
 /// dem letzten Abpfiff sichtbar, also schon Sonntagabend.
-bool rueckblickVeroeffentlicht(List<Fixture> fixtures, int runde, DateTime now) {
+bool rueckblickVeroeffentlicht(
+  List<Fixture> fixtures,
+  int runde,
+  DateTime now,
+) {
   final frist = waiverFrist(fixtures, runde);
   return frist != null && !now.isBefore(frist);
 }
@@ -635,8 +707,9 @@ int? recapRunde(List<Fixture> fixtures, DateTime now) {
     if (rueckblickVeroeffentlicht(fixtures, r, now)) veroeffentlicht = r;
   }
   if (veroeffentlicht == null) return null;
-  final naechsterLaeuft = fixtures.any((f) =>
-      f.round > veroeffentlicht! && !f.kickoff.toLocal().isAfter(now));
+  final naechsterLaeuft = fixtures.any(
+    (f) => f.round > veroeffentlicht! && !f.kickoff.toLocal().isAfter(now),
+  );
   return naechsterLaeuft ? null : veroeffentlicht;
 }
 
@@ -654,14 +727,17 @@ final veroeffentlichteRueckblickeProvider = Provider<List<int>>((ref) {
   DateTime? naechste;
   for (final r in runden) {
     final frist = waiverFrist(fixtures, r);
-    if (frist != null && frist.isAfter(jetzt) &&
+    if (frist != null &&
+        frist.isAfter(jetzt) &&
         (naechste == null || frist.isBefore(naechste))) {
       naechste = frist;
     }
   }
   if (naechste != null) {
-    final t = Timer(naechste.difference(jetzt) + const Duration(seconds: 5),
-        ref.invalidateSelf);
+    final t = Timer(
+      naechste.difference(jetzt) + const Duration(seconds: 5),
+      ref.invalidateSelf,
+    );
     ref.onDispose(t.cancel);
   }
   return fertig;
@@ -684,8 +760,9 @@ bool roundIsLive(List<Fixture> roundFixtures, DateTime now) {
       .map((f) => f.kickoff)
       .reduce((a, b) => a.isBefore(b) ? a : b);
   if (now.isBefore(firstKick)) return false;
-  final allFinished =
-      roundFixtures.every((f) => f.status == FixtureStatus.finished);
+  final allFinished = roundFixtures.every(
+    (f) => f.status == FixtureStatus.finished,
+  );
   return !allFinished;
 }
 
@@ -730,9 +807,11 @@ const spielDauerSicher = Duration(hours: 3);
 /// gingen auseinander (gemeldet 19.10.2026).
 bool rundeDurch(List<Fixture> spiele, DateTime jetzt) =>
     spiele.isNotEmpty &&
-    spiele.every((f) =>
-        f.status == FixtureStatus.finished ||
-        jetzt.isAfter(f.kickoff.add(spielDauerSicher)));
+    spiele.every(
+      (f) =>
+          f.status == FixtureStatus.finished ||
+          jetzt.isAfter(f.kickoff.add(spielDauerSicher)),
+    );
 
 /// Alle **abgepfiffenen** Spieltage der Saison, aufsteigend — die Spieltage,
 /// für die es einen Recap zum Nachschlagen gibt.
@@ -746,7 +825,7 @@ final abgepfiffeneRundenProvider = Provider<List<int>>((ref) {
   }
   final fertig = [
     for (final e in proRunde.entries)
-      if (rundeDurch(e.value, jetzt)) e.key
+      if (rundeDurch(e.value, jetzt)) e.key,
   ]..sort();
 
   // **Ein Wecker auf den nächsten Zeitpunkt, an dem ein Spieltag nach der
@@ -764,8 +843,10 @@ final abgepfiffeneRundenProvider = Provider<List<int>>((ref) {
     }
   }
   if (naechste != null) {
-    final t = Timer(naechste.difference(jetzt) + const Duration(seconds: 5),
-        ref.invalidateSelf);
+    final t = Timer(
+      naechste.difference(jetzt) + const Duration(seconds: 5),
+      ref.invalidateSelf,
+    );
     ref.onDispose(t.cancel);
   }
   return fertig;
@@ -802,36 +883,40 @@ Set<int> gewerteteRunden(List<int> abgepfiffen, Iterable<int> mitDaten) {
 /// der Provider ohnehin neu auf und stellt den nächsten. Läuft nichts, wird
 /// kein Timer gestellt — außerhalb der Spielfenster fragt die App also nicht.
 final roundStatsProvider =
-    FutureProvider.family<Map<String, PlayerMatchStats>, int>((ref, round) async {
-  final pool = await ref.watch(playerPoolProvider.future);
-  final season = ref.watch(fantasySeasonProvider);
-  final stats = await ref
-      .watch(fantasyStatsSourceProvider)
-      .roundStats(pool: pool, season: season, round: round);
+    FutureProvider.family<Map<String, PlayerMatchStats>, int>((
+      ref,
+      round,
+    ) async {
+      final pool = await ref.watch(playerPoolProvider.future);
+      final season = ref.watch(fantasySeasonProvider);
+      final stats = await ref
+          .watch(fantasyStatsSourceProvider)
+          .roundStats(pool: pool, season: season, round: round);
 
-  if (ref.watch(roundIsLiveProvider(round))) {
-    final timer = Timer(_liveStatsTakt, () {
-      // Die Spielpläne mit auffrischen: Ohne sie bliebe der Spieltag nach dem
-      // Abpfiff für immer „live", und die App fragte bis zum Neustart weiter.
-      ref.invalidate(fantasySeasonFixturesProvider);
-      // **Und die Ausfälle.** Wer verletzt vom Platz geht, steht Minuten
-      // später in `verletzt_ausgewechselt` — geschrieben von demselben
-      // `sync-stats`-Lauf, der auch diese Punkte liefert. Die Klingel im
-      // Repository hängt an `player_absences`, und die rührt sich dabei
-      // nicht; ohne diese Zeile käme die Verletzung erst beim nächsten
-      // App-Start an.
-      ref.invalidate(absencesProvider);
-      ref.invalidateSelf();
+      if (ref.watch(roundIsLiveProvider(round))) {
+        final timer = Timer(_liveStatsTakt, () {
+          // Die Spielpläne mit auffrischen: Ohne sie bliebe der Spieltag nach dem
+          // Abpfiff für immer „live", und die App fragte bis zum Neustart weiter.
+          ref.invalidate(fantasySeasonFixturesProvider);
+          // **Und die Ausfälle.** Wer verletzt vom Platz geht, steht Minuten
+          // später in `verletzt_ausgewechselt` — geschrieben von demselben
+          // `sync-stats`-Lauf, der auch diese Punkte liefert. Die Klingel im
+          // Repository hängt an `player_absences`, und die rührt sich dabei
+          // nicht; ohne diese Zeile käme die Verletzung erst beim nächsten
+          // App-Start an.
+          ref.invalidate(absencesProvider);
+          ref.invalidateSelf();
+        });
+        ref.onDispose(timer.cancel);
+      }
+      return stats;
     });
-    ref.onDispose(timer.cancel);
-  }
-  return stats;
-});
 
 /// Alle gespielten Spieltage der Saison (Spieltag → Spieler-ID → Stats);
 /// Grundlage der Head-to-Head-Bilanz. Leer ohne serverseitige Stats.
-final seasonStatsProvider =
-    FutureProvider<Map<int, Map<String, PlayerMatchStats>>>((ref) async {
+final seasonStatsProvider = FutureProvider<Map<int, Map<String, PlayerMatchStats>>>((
+  ref,
+) async {
   final season = ref.watch(fantasySeasonProvider);
   // **Die Statistik ist nie älter als der letzte abgepfiffene Spieltag**
   // (19.10.2026, gemeldet: „jedem werden unterschiedliche Tabellen
@@ -859,9 +944,11 @@ final seasonStatsProvider =
 /// Datenbank sie nicht hat (Stand 19.10.2026: nur 2026 gespiegelt).
 final vorsaisonStatsProvider =
     FutureProvider<Map<int, Map<String, PlayerMatchStats>>>((ref) {
-  final season = ref.watch(fantasySeasonProvider);
-  return ref.watch(fantasyStatsSourceProvider).seasonStats(season: season - 1);
-});
+      final season = ref.watch(fantasySeasonProvider);
+      return ref
+          .watch(fantasyStatsSourceProvider)
+          .seasonStats(season: season - 1);
+    });
 
 /// Mein H2H-Tabellenplatz in einer Liga — `null`, solange nichts feststeht:
 /// Draft nicht fertig, weniger als zwei Manager, Daten noch nicht geladen
@@ -872,64 +959,69 @@ final vorsaisonStatsProvider =
 /// fest, verdrängt er den Zustandstext) — und ein Widget kann man nicht
 /// fragen, ob es etwas gezeichnet hat. Der Chip liest jetzt hier mit, damit
 /// es die Wertung nicht zweimal gibt.
-final myFantasyRankProvider =
-    Provider.family<({int rank, int total})?, String>((ref, leagueId) {
-  final league = ref
-      .watch(myFantasyLeaguesProvider)
-      .valueOrNull
-      ?.where((l) => l.id == leagueId)
-      .firstOrNull;
-  if (league == null || league.draftStatus != DraftStatus.done) return null;
+final myFantasyRankProvider = Provider.family<({int rank, int total})?, String>(
+  (ref, leagueId) {
+    final league = ref
+        .watch(myFantasyLeaguesProvider)
+        .valueOrNull
+        ?.where((l) => l.id == leagueId)
+        .firstOrNull;
+    if (league == null || league.draftStatus != DraftStatus.done) return null;
 
-  final myId = ref.watch(currentUserProvider)?.id;
-  final managers = ref.watch(fantasyManagersProvider(leagueId)).valueOrNull;
-  final pool = ref.watch(playerPoolProvider).valueOrNull;
-  final roster = ref.watch(leagueRosterProvider(leagueId)).valueOrNull;
-  final seasonStats = ref.watch(seasonStatsProvider).valueOrNull;
-  final lineups = ref.watch(leagueLineupsProvider(leagueId)).valueOrNull;
+    final myId = ref.watch(currentUserProvider)?.id;
+    final managers = ref.watch(fantasyManagersProvider(leagueId)).valueOrNull;
+    final pool = ref.watch(playerPoolProvider).valueOrNull;
+    final roster = ref.watch(leagueRosterProvider(leagueId)).valueOrNull;
+    final seasonStats = ref.watch(seasonStatsProvider).valueOrNull;
+    final lineups = ref.watch(leagueLineupsProvider(leagueId)).valueOrNull;
 
-  if (myId == null ||
-      managers == null ||
-      managers.length < 2 ||
-      pool == null ||
-      roster == null ||
-      seasonStats == null) {
-    return null;
-  }
+    if (myId == null ||
+        managers == null ||
+        managers.length < 2 ||
+        pool == null ||
+        roster == null ||
+        seasonStats == null) {
+      return null;
+    }
 
-  final playerById = {for (final p in pool) p.id: p};
-  final ids = managers.map((m) => m.userId).toList()
-    ..sort((a, b) {
-      final pa =
-          managers.firstWhere((m) => m.userId == a).draftPosition ?? 1 << 30;
-      final pb =
-          managers.firstWhere((m) => m.userId == b).draftPosition ?? 1 << 30;
-      return pa != pb ? pa.compareTo(pb) : a.compareTo(b);
-    });
+    final playerById = {for (final p in pool) p.id: p};
+    final ids = managers.map((m) => m.userId).toList()
+      ..sort((a, b) {
+        final pa =
+            managers.firstWhere((m) => m.userId == a).draftPosition ?? 1 << 30;
+        final pb =
+            managers.firstWhere((m) => m.userId == b).draftPosition ?? 1 << 30;
+        return pa != pb ? pa.compareTo(pb) : a.compareTo(b);
+      });
 
-  final totalsByRound = <int, Map<String, double>>{
-    for (final entry in seasonStats.entries)
-      entry.key: effectiveTotalsForRound(
-        stats: entry.value,
-        round: entry.key,
-        managers: managers,
-        roster: roster,
-        playerById: playerById,
-        lineups: lineups ?? const <FantasyLineup>[],
-        scoring: league.scoring,
-        rosterConfig: league.roster,
-      )
-  };
-  final standings = h2hStandings(ids, totalsByRound,
-      remisGrenze: league.remisGrenze ?? 0);
-  // Vor dem ersten gewerteten Spieltag stehen alle auf null — das ist kein
-  // Tabellenplatz, sondern eine Reihenfolge nach Zufall.
-  if (standings.every((r) => r.played == 0)) return null;
+    final totalsByRound = <int, Map<String, double>>{
+      for (final entry in seasonStats.entries)
+        entry.key: effectiveTotalsForRound(
+          stats: entry.value,
+          round: entry.key,
+          managers: managers,
+          roster: roster,
+          playerById: playerById,
+          lineups: lineups ?? const <FantasyLineup>[],
+          scoring: league.scoring,
+          rosterConfig: league.roster,
+        ),
+    };
+    final standings = h2hStandings(
+      ids,
+      totalsByRound,
+      remisGrenze: league.remisGrenze ?? 0,
+      bilanz: league.remisGrenze == null,
+    );
+    // Vor dem ersten gewerteten Spieltag stehen alle auf null — das ist kein
+    // Tabellenplatz, sondern eine Reihenfolge nach Zufall.
+    if (standings.every((r) => r.played == 0)) return null;
 
-  final idx = standings.indexWhere((r) => r.managerId == myId);
-  if (idx < 0) return null;
-  return (rank: idx + 1, total: managers.length);
-});
+    final idx = standings.indexWhere((r) => r.managerId == myId);
+    if (idx < 0) return null;
+    return (rank: idx + 1, total: managers.length);
+  },
+);
 
 /// **Wie stark die Wochensummen dieser Liga schwanken** — die Grundlage der
 /// Siegchance, oder `null`, solange sich nichts messen lässt.
@@ -945,8 +1037,10 @@ final myFantasyRankProvider =
 /// mittags Zwischenstände und ließe die Liga ruhiger aussehen, als sie ist —
 /// dieselbe Falle, wegen der die H2H-Bilanz schon auf `gewerteteRunden`
 /// filtert.
-final fantasyWochenStreuungProvider =
-    Provider.family<double?, String>((ref, leagueId) {
+final fantasyWochenStreuungProvider = Provider.family<double?, String>((
+  ref,
+  leagueId,
+) {
   final league = ref
       .watch(myFantasyLeaguesProvider)
       .valueOrNull
@@ -1018,43 +1112,48 @@ final poolVollstaendigProvider = Provider.family<bool, String>((ref, leagueId) {
 
 final _poolNachgeladenFuer = <String>{};
 
-
 /// **Pick-Folge des Reset-Drafts** (0143): die Manager vom Tabellenletzten
 /// zum Ersten — aus derselben Rechnung wie der Tabellen-Reiter
 /// (`h2hGrundlage` + `h2hStandings`). `null`, solange etwas lädt.
-final resetReihenfolgeProvider =
-    Provider.family<List<FantasyManager>?, String>((ref, leagueId) {
-  final league = ref
-      .watch(myFantasyLeaguesProvider)
-      .valueOrNull
-      ?.where((l) => l.id == leagueId)
-      .firstOrNull;
-  final managers = ref.watch(fantasyManagersProvider(leagueId)).valueOrNull;
-  final pool = ref.watch(playerPoolProvider).valueOrNull;
-  final roster = ref.watch(leagueRosterProvider(leagueId)).valueOrNull;
-  final lineups = ref.watch(leagueLineupsProvider(leagueId)).valueOrNull;
-  final stats = ref.watch(seasonStatsProvider).valueOrNull;
-  if (league == null ||
-      managers == null ||
-      pool == null ||
-      roster == null ||
-      lineups == null ||
-      stats == null) {
-    return null;
-  }
-  final g = h2hGrundlage(
-    league: league,
-    managers: managers,
-    roster: roster,
-    lineups: lineups,
-    playerById: {for (final p in pool) p.id: p},
-    seasonStats: stats,
-    abgepfiffen: ref.watch(abgepfiffeneRundenProvider),
-  );
-  final standings = h2hStandings(g.ids, g.summen, remisGrenze: g.remis);
-  final byId = {for (final m in managers) m.userId: m};
-  return [
-    for (final id in resetReihenfolge(standings))
-      if (byId[id] != null) byId[id]!,
-  ];
-});
+final resetReihenfolgeProvider = Provider.family<List<FantasyManager>?, String>(
+  (ref, leagueId) {
+    final league = ref
+        .watch(myFantasyLeaguesProvider)
+        .valueOrNull
+        ?.where((l) => l.id == leagueId)
+        .firstOrNull;
+    final managers = ref.watch(fantasyManagersProvider(leagueId)).valueOrNull;
+    final pool = ref.watch(playerPoolProvider).valueOrNull;
+    final roster = ref.watch(leagueRosterProvider(leagueId)).valueOrNull;
+    final lineups = ref.watch(leagueLineupsProvider(leagueId)).valueOrNull;
+    final stats = ref.watch(seasonStatsProvider).valueOrNull;
+    if (league == null ||
+        managers == null ||
+        pool == null ||
+        roster == null ||
+        lineups == null ||
+        stats == null) {
+      return null;
+    }
+    final g = h2hGrundlage(
+      league: league,
+      managers: managers,
+      roster: roster,
+      lineups: lineups,
+      playerById: {for (final p in pool) p.id: p},
+      seasonStats: stats,
+      abgepfiffen: ref.watch(abgepfiffeneRundenProvider),
+    );
+    final standings = h2hStandings(
+      g.ids,
+      g.summen,
+      remisGrenze: g.remis,
+      bilanz: g.bilanz,
+    );
+    final byId = {for (final m in managers) m.userId: m};
+    return [
+      for (final id in resetReihenfolge(standings))
+        if (byId[id] != null) byId[id]!,
+    ];
+  },
+);

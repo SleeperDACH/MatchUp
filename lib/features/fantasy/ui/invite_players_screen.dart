@@ -1,3 +1,4 @@
+import '../../einladung/einladung.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -56,7 +57,9 @@ class _InvitePlayersScreenState extends ConsumerState<InvitePlayersScreen> {
   Future<void> _invite(String userId) async {
     final l = widget.league;
     try {
-      await ref.read(messagingRepositoryProvider).sendMessage(
+      await ref
+          .read(messagingRepositoryProvider)
+          .sendMessage(
             userId,
             '🎮 Einladung zur Fantasy-Liga „${l.name}" — tritt direkt bei!',
             inviteLeagueId: l.id,
@@ -64,12 +67,14 @@ class _InvitePlayersScreenState extends ConsumerState<InvitePlayersScreen> {
           );
       if (!mounted) return;
       setState(() => _invited.add(userId));
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Einladung gesendet')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Einladung gesendet')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
     }
   }
 
@@ -90,11 +95,13 @@ class _InvitePlayersScreenState extends ConsumerState<InvitePlayersScreen> {
 
     // Freunde zuerst, dann Chat-Partner ohne Freundschaft; Mitglieder raus.
     final friends = ref.watch(friendsProvider);
-    final partners = [for (final c in ref.watch(conversationsProvider)) c.partnerId];
+    final partners = [
+      for (final c in ref.watch(conversationsProvider)) c.partnerId,
+    ];
     final seen = <String>{};
     final ids = [
       for (final id in [...friends, ...partners])
-        if (seen.add(id) && !memberIds.contains(id)) id
+        if (seen.add(id) && !memberIds.contains(id)) id,
     ];
     final names = {
       ...?ref.watch(conversationNamesProvider).valueOrNull,
@@ -110,12 +117,17 @@ class _InvitePlayersScreenState extends ConsumerState<InvitePlayersScreen> {
     // Nicht-Admins nichts).
     final pending =
         ref.watch(fantasyJoinRequestsProvider(widget.league.id)).valueOrNull ??
-            const [];
+        const [];
 
     return Scaffold(
       appBar: AppBar(centerTitle: true, title: const Text('Spieler einladen')),
       body: Column(
         children: [
+          EinladungsLinkKnopf(
+            code: widget.league.inviteCode,
+            name: widget.league.name,
+            art: 'Fantasy-Liga',
+          ),
           if (pending.isNotEmpty)
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 260),
@@ -145,19 +157,19 @@ class _InvitePlayersScreenState extends ConsumerState<InvitePlayersScreen> {
             child: _query.trim().isNotEmpty
                 ? _searchList(memberIds)
                 : (ids.isEmpty
-                    ? _emptyHint()
-                    : ListView(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        children: [
-                          for (final id in ids)
-                            _InviteRow(
-                              name: names[id] ?? '…',
-                              avatar: avatars[id],
-                              invited: _invited.contains(id),
-                              onInvite: () => _invite(id),
-                            ),
-                        ],
-                      )),
+                      ? _emptyHint()
+                      : ListView(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          children: [
+                            for (final id in ids)
+                              _InviteRow(
+                                name: names[id] ?? '…',
+                                avatar: avatars[id],
+                                invited: _invited.contains(id),
+                                onInvite: () => _invite(id),
+                              ),
+                          ],
+                        )),
           ),
         ],
       ),
@@ -165,20 +177,20 @@ class _InvitePlayersScreenState extends ConsumerState<InvitePlayersScreen> {
   }
 
   Widget _emptyHint() => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Noch keine Chats oder Freunde — such oben nach einem Benutzernamen.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+    child: Padding(
+      padding: EdgeInsets.all(24),
+      child: Text(
+        'Noch keine Chats oder Freunde — such oben nach einem Benutzernamen.',
+        textAlign: TextAlign.center,
+      ),
+    ),
+  );
 
   Widget _searchList(Set<String> memberIds) {
     // Bereits beigetretene Mitglieder aus den Treffern entfernen.
     final results = [
       for (final u in _results)
-        if (!memberIds.contains(u.id)) u
+        if (!memberIds.contains(u.id)) u,
     ];
     if (results.isEmpty && !_searching) {
       return const Center(child: Text('Keine Treffer.'));
@@ -214,17 +226,16 @@ class _InviteRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: AppAvatar(
-          imageUrl: avatar?.url,
-          emoji: avatar?.emoji,
-          colorHex: avatar?.color,
-          fallbackText: name,
-          size: 44),
+        imageUrl: avatar?.url,
+        emoji: avatar?.emoji,
+        colorHex: avatar?.color,
+        fallbackText: name,
+        size: 44,
+      ),
       title: Text(name),
       trailing: invited
           ? const Chip(label: Text('Eingeladen'))
-          : FilledButton(
-              onPressed: onInvite,
-              child: const Text('Einladen')),
+          : FilledButton(onPressed: onInvite, child: const Text('Einladen')),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matchup/app/home_favorites.dart';
+import 'package:matchup/features/favorites/favorites.dart';
 import 'package:matchup/app/widgets/matchup_splash.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/features/auth/providers.dart';
@@ -67,6 +68,7 @@ ProviderContainer _behaelter({
       favoritenSpieleProvider
           .overrideWith((ref) => quelle<TeamFixture>(favoriten)),
       newsProvider.overrideWith((ref, thema) => quelle<NewsItem>(news)),
+      favoritenFertigProvider.overrideWith((ref) => true),
       tippligaProvider.overrideWith((ref) => switch (tippliga) {
             _Zustand.laedt => _haengt<Tippliga?>(),
             _Zustand.fertig => Future.value(null),

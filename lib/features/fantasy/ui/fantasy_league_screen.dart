@@ -1,3 +1,5 @@
+import '../../../app/erklaerungen.dart';
+import '../../../app/widgets/info_knopf.dart';
 import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -171,8 +173,7 @@ class _OverviewTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Während des Resets (0143) gibt es keinen Transfermarkt: Die Kader
     // sind leer, und der Server lehnt jeden Zugang außer dem Draft ab.
-    final drafted =
-        league.draftStatus != DraftStatus.setup && !league.imReset;
+    final drafted = league.draftStatus != DraftStatus.setup && !league.imReset;
     final draftFullyDone = league.draftStatus == DraftStatus.done;
     // Die Saison läuft auch während des Resets — Tabelle und Rückblick
     // bleiben, nur das Duell oben weicht dem Auftrag „Reset-Draft".
@@ -318,8 +319,7 @@ class _OverviewTab extends ConsumerWidget {
               hinweis: league.resetErfolgtAt == null
                   ? 'Wo du gerade stehst'
                   : 'Reihenfolge steht fest',
-              onTap: () =>
-                  go(DraftBoardScreen(league: league, phase: 'reset')),
+              onTap: () => go(DraftBoardScreen(league: league, phase: 'reset')),
             ),
           ]),
         ],
@@ -398,15 +398,48 @@ class _NaechsterSchritt extends ConsumerWidget {
       context,
     ).push(MaterialPageRoute(builder: (_) => DraftRoomScreen(league: league)));
 
+    // **Die frische Liga sagt, was als Nächstes passiert** (30.10.2026,
+    // Punkt 10 der Nutzer-Analyse: „nach dem Anlegen ist sie leer, bis die
+    // Freunde beitreten"). Freie Plätze im Titel (mit richtigem Singular),
+    // darunter ein Satz, wann der Draft sinnvoll ist — und sind alle dabei,
+    // ist „Draft starten" der Hauptknopf statt „Spieler einladen".
+    final frei = league.maxTeams != null && managerZahl != null
+        ? (league.maxTeams! - managerZahl!).clamp(0, 99)
+        : null;
+    void starten() async {
+      final gestartet = await draftStartenMitBestaetigung(context, ref, league);
+      // Nach dem Start gehört man in den Raum — dort läuft ab jetzt die Uhr.
+      if (gestartet && context.mounted) openRoom();
+    }
+
+    final voll = frei == 0;
+    final hinweis = league.draftStatus != DraftStatus.setup
+        ? null
+        : !voll
+        ? 'Lade deine Freunde ein und starte den Draft, wenn alle dabei '
+              'sind — danach steht die Zahl der Teams fest.'
+        : isAdmin
+        ? league.pickTime.ablaufSatz
+        : 'Jetzt fehlt nur der Draft — den startet der Ersteller der Liga.';
+
     final (
       String titel,
       String knopf,
       VoidCallback tun,
     ) = switch (league.draftStatus) {
+      DraftStatus.setup when voll && isAdmin => (
+        'Alle Teams sind dabei',
+        'Draft starten',
+        starten,
+      ),
       DraftStatus.setup =>
-        league.maxTeams != null && managerZahl != null
+        frei != null
             ? (
-                'Noch ${(league.maxTeams! - managerZahl!).clamp(0, 99)} Plätze frei',
+                voll
+                    ? 'Alle Teams sind dabei'
+                    : frei == 1
+                    ? 'Noch 1 Platz frei'
+                    : 'Noch $frei Plätze frei',
                 'Spieler einladen',
                 () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -425,17 +458,21 @@ class _NaechsterSchritt extends ConsumerWidget {
               ),
       // **Reset zur Winterpause** (0143): Der Admin startet den Draft
       // selbst, alle anderen warten im Raum.
-      DraftStatus.reset => isAdmin
-          ? (
-              'Reset zur Winterpause',
-              'Reset-Draft starten',
-              () async {
-                final gestartet =
-                    await draftStartenMitBestaetigung(context, ref, league);
-                if (gestartet && context.mounted) openRoom();
-              },
-            )
-          : ('Reset zur Winterpause', 'Zum Draft-Raum', openRoom),
+      DraftStatus.reset =>
+        isAdmin
+            ? (
+                'Reset zur Winterpause',
+                'Reset-Draft starten',
+                () async {
+                  final gestartet = await draftStartenMitBestaetigung(
+                    context,
+                    ref,
+                    league,
+                  );
+                  if (gestartet && context.mounted) openRoom();
+                },
+              )
+            : ('Reset zur Winterpause', 'Zum Draft-Raum', openRoom),
       DraftStatus.drafting => (
         league.draftPhase == 'reset'
             ? 'Der Reset-Draft läuft'
@@ -474,15 +511,36 @@ class _NaechsterSchritt extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'ALS NÄCHSTES',
-              style: TextStyle(
-                color: context.farben.gold,
-                fontSize: Schrift.label,
-                fontWeight: Schrift.ueberschriftGewicht,
-                fontStyle: Schrift.ueberschriftStil,
-                letterSpacing: 1.3,
-              ),
+            // Vor dem Draft weiß ein neuer Nutzer meist nicht, was einer ist
+            // — das Fragezeichen erklärt es, ohne Text in den Kasten zu legen.
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'ALS NÄCHSTES',
+                    style: TextStyle(
+                      color: context.farben.gold,
+                      fontSize: Schrift.label,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
+                      letterSpacing: 1.3,
+                    ),
+                  ),
+                ),
+                // 44 Punkte Tastfläche, ohne die Zeile auf 44 hochzudrücken.
+                SizedBox(
+                  width: 44,
+                  height: 14,
+                  child: OverflowBox(
+                    maxHeight: 44,
+                    child: InfoKnopf(
+                      titel: erklaerungDraft.titel,
+                      text: erklaerungDraft.text,
+                      frage: true,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             Text(
@@ -493,6 +551,17 @@ class _NaechsterSchritt extends ConsumerWidget {
                 height: 1.15,
               ),
             ),
+            if (hinweis != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                hinweis,
+                style: TextStyle(
+                  fontSize: Schrift.text,
+                  height: 1.35,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             if (league.draftStatus == DraftStatus.reset) ...[
               const SizedBox(height: 8),
               Text(
@@ -539,7 +608,9 @@ class _NaechsterSchritt extends ConsumerWidget {
             // nicht läuft. Der Knopf **startet** ihn auch, statt bloß den Raum
             // zu öffnen; die Rückfrage steckt in `draftStartenMitBestaetigung`
             // und kommt auf beiden Wegen.
-            if (isAdmin && league.draftStatus == DraftStatus.setup) ...[
+            if (isAdmin &&
+                league.draftStatus == DraftStatus.setup &&
+                !voll) ...[
               const SizedBox(height: 10),
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
@@ -548,16 +619,7 @@ class _NaechsterSchritt extends ConsumerWidget {
                   foregroundColor: scheme.onSurface,
                   side: BorderSide(color: Theme.of(context).dividerColor),
                 ),
-                onPressed: () async {
-                  final gestartet = await draftStartenMitBestaetigung(
-                    context,
-                    ref,
-                    league,
-                  );
-                  // Nach dem Start gehört man in den Raum — dort läuft ab
-                  // jetzt die Uhr.
-                  if (gestartet && context.mounted) openRoom();
-                },
+                onPressed: starten,
                 child: const Text('Draft starten'),
               ),
             ],

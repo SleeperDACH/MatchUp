@@ -175,7 +175,7 @@ void main() {
     // Kobel", siehe `_kurzerName`): In einen Kreis von 50 Punkten passt
     // nichts Längeres. Der volle Name steht in der Kopfzeile des Blatts —
     // darauf prüft die Erwartung unten.
-    await tester.tap(find.text('G. Kobel'));
+    await tester.tap(find.text('G. KOBEL'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -219,7 +219,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('G. Kobel'));
+    await tester.tap(find.text('G. KOBEL'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -227,7 +227,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    await tester.tap(find.text('N. Schlotterbeck').last);
+    await tester.tap(find.text('N. SCHLOTTERBECK').last);
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

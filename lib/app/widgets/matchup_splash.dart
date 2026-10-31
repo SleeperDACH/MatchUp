@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../features/auth/providers.dart';
 import '../../features/fantasy/providers.dart';
+import '../../features/favorites/favorites.dart';
 import '../../features/news/providers.dart';
 import '../../features/tippspiel/providers.dart';
 import '../home_favorites.dart';
@@ -44,6 +45,9 @@ final homeBereitProvider = Provider<bool>((ref) {
       // Die Tippliga steht im Tippspiel-Abschnitt ganz oben; ohne sie spränge
       // der Abschnitt nach dem Abblenden um einen Streifen nach unten.
       !ref.watch(tippligaProvider).isLoading &&
+      // Erst wenn klar ist, ob schon Vereine gewählt sind — sonst stünde
+      // beim ersten Start kurz der Homescreen und dann die Vereinsauswahl.
+      ref.watch(favoritenFertigProvider) &&
       !ref.watch(favoritenSpieleProvider).isLoading &&
       !ref.watch(newsProvider(homeNewsThema)).isLoading;
 });
@@ -310,7 +314,10 @@ class _GeteilteMarke extends StatelessWidget {
           ),
           Transform.translate(
             offset: Offset(0, weg * strecke),
-            child: ClipRect(clipper: const _Haelfte(links: false), child: marke),
+            child: ClipRect(
+              clipper: const _Haelfte(links: false),
+              child: marke,
+            ),
           ),
         ],
       ),
@@ -358,7 +365,10 @@ class _Wortmarke extends StatelessWidget {
         ),
         children: const [
           TextSpan(text: 'MATCH'),
-          TextSpan(text: 'UP', style: TextStyle(color: MatchUpColors.green)),
+          TextSpan(
+            text: 'UP',
+            style: TextStyle(color: MatchUpColors.green),
+          ),
         ],
       ),
       semanticsLabel: 'MatchUp',

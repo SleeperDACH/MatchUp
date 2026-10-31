@@ -37,50 +37,47 @@ class Favorite {
   final int? sortOrder;
 
   Favorite copyWith({int? sortOrder}) => Favorite(
-        type: type,
-        key: key,
-        label: label,
-        leagueId: leagueId,
-        shortName: shortName,
-        iconUrl: iconUrl,
-        sortOrder: sortOrder ?? this.sortOrder,
-      );
+    type: type,
+    key: key,
+    label: label,
+    leagueId: leagueId,
+    shortName: shortName,
+    iconUrl: iconUrl,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
 
   factory Favorite.team(TeamRef team, String leagueId) => Favorite(
-        type: FavoriteType.team,
-        key: team.id,
-        label: team.name,
-        leagueId: leagueId,
-        shortName: team.shortName,
-        iconUrl: team.iconUrl,
-      );
+    type: FavoriteType.team,
+    key: team.id,
+    label: team.name,
+    leagueId: leagueId,
+    shortName: team.shortName,
+    iconUrl: team.iconUrl,
+  );
 
-  factory Favorite.league(LeagueInfo league) => Favorite(
-        type: FavoriteType.league,
-        key: league.id,
-        label: league.name,
-      );
+  factory Favorite.league(LeagueInfo league) =>
+      Favorite(type: FavoriteType.league, key: league.id, label: league.name);
 
   factory Favorite.fromRow(Map<String, dynamic> r) => Favorite(
-        type: r['fav_type'] == 'league' ? FavoriteType.league : FavoriteType.team,
-        key: r['key'] as String,
-        label: r['label'] as String,
-        leagueId: r['league_id'] as String?,
-        shortName: r['short_name'] as String?,
-        iconUrl: r['icon_url'] as String?,
-        sortOrder: (r['sort_order'] as num?)?.toInt(),
-      );
+    type: r['fav_type'] == 'league' ? FavoriteType.league : FavoriteType.team,
+    key: r['key'] as String,
+    label: r['label'] as String,
+    leagueId: r['league_id'] as String?,
+    shortName: r['short_name'] as String?,
+    iconUrl: r['icon_url'] as String?,
+    sortOrder: (r['sort_order'] as num?)?.toInt(),
+  );
 
   Map<String, dynamic> toRow(String userId) => {
-        'user_id': userId,
-        'fav_type': type.name,
-        'key': key,
-        'label': label,
-        'league_id': leagueId,
-        'short_name': shortName,
-        'icon_url': iconUrl,
-        'sort_order': sortOrder,
-      };
+    'user_id': userId,
+    'fav_type': type.name,
+    'key': key,
+    'label': label,
+    'league_id': leagueId,
+    'short_name': shortName,
+    'icon_url': iconUrl,
+    'sort_order': sortOrder,
+  };
 }
 
 class FavoritesRepository {
@@ -111,14 +108,15 @@ class FavoritesRepository {
   Future<void> reorder(List<Favorite> ordered) async {
     final rows = [
       for (var i = 0; i < ordered.length; i++)
-        ordered[i].copyWith(sortOrder: i).toRow(_uid)
+        ordered[i].copyWith(sortOrder: i).toRow(_uid),
     ];
     await _client.from('user_favorites').upsert(rows);
   }
 }
 
 final favoritesRepositoryProvider = Provider<FavoritesRepository>(
-    (ref) => FavoritesRepository(Supabase.instance.client));
+  (ref) => FavoritesRepository(Supabase.instance.client),
+);
 
 /// Favoriten des angemeldeten Nutzers (leere Liste, solange niemand
 /// angemeldet ist). Optimistisches Umschalten mit Persistenz.
@@ -131,11 +129,13 @@ final favoritesRepositoryProvider = Provider<FavoritesRepository>(
 /// `enabled` prüft deshalb beides: Server da *und* jemand angemeldet.
 final favoritesProvider =
     StateNotifierProvider<FavoritesNotifier, List<Favorite>>((ref) {
-  final enabled =
-      AppConfig.isSupabaseConfigured && ref.watch(currentUserProvider) != null;
-  return FavoritesNotifier(
-      enabled ? ref.read(favoritesRepositoryProvider) : null);
-});
+      final enabled =
+          AppConfig.isSupabaseConfigured &&
+          ref.watch(currentUserProvider) != null;
+      return FavoritesNotifier(
+        enabled ? ref.read(favoritesRepositoryProvider) : null,
+      );
+    });
 
 class FavoritesNotifier extends StateNotifier<List<Favorite>> {
   FavoritesNotifier(this._repo) : super(const []) {
@@ -151,14 +151,26 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
   /// kurz die Favoriten-Auswahl, auch dem, der zehn hat.
   bool geladen = false;
 
+  /// Ob der Ladeversuch vorbei ist — erfolgreich oder nicht. Der Ladeschirm
+  /// wartet darauf, damit die Vereinsauswahl beim ersten Start nicht kurz
+  /// hinter einem fertigen Homescreen auftaucht; ein Fehlschlag hält ihn
+  /// trotzdem nicht fest.
+  bool fertig = false;
+
   Future<void> _load() async {
     try {
       final geladeneListe = await _repo!.load();
       geladen = true;
-      state = geladeneListe;
+      fertig = true;
+      // Immer eine neue Liste: Wer auf „geladen" hört (Vereinsauswahl beim
+      // ersten Start), erführe sonst bei einer leeren Liste nichts davon —
+      // die Notifier melden nur, wenn sich der Zustand ändert.
+      state = [...geladeneListe];
     } catch (_) {
       // Offline o. ä.: Die Liste bleibt leer, gilt aber nicht als geladen —
       // eine Aufforderung „wähle einen Verein" wäre dann eine falsche Auskunft.
+      fertig = true;
+      state = [...state]; // meldet „fertig" an alle, die zuhören
     }
   }
 
@@ -169,8 +181,10 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
   /// eine davon, blieb die andere liegen — im Favoriten-Tab stand dann weiter
   /// das Wappen, während Spielplan und News leer waren, weil die alte ID bei
   /// Sportmonks nichts liefert.
-  List<Favorite> findAll(FavoriteType type, String key) =>
-      [for (final f in state) if (matchesFavorite(f, type, key)) f];
+  List<Favorite> findAll(FavoriteType type, String key) => [
+    for (final f in state)
+      if (matchesFavorite(f, type, key)) f,
+  ];
 
   bool isFavorite(FavoriteType type, String key) =>
       findAll(type, key).isNotEmpty;
@@ -186,7 +200,7 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
     state = vorhanden.isNotEmpty
         ? [
             for (final f in state)
-              if (!vorhanden.any((v) => v.type == f.type && v.key == f.key)) f
+              if (!vorhanden.any((v) => v.type == f.type && v.key == f.key)) f,
           ]
         : [...state, fav];
     try {
@@ -208,7 +222,8 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
     if (repo == null) return;
     final previous = state;
     state = [
-      for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i)
+      for (var i = 0; i < ordered.length; i++)
+        ordered[i].copyWith(sortOrder: i),
     ];
     try {
       await repo.reorder(ordered);
@@ -218,10 +233,28 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
   }
 }
 
+/// Hat das Konto noch keinen Lieblingsverein? Dann kommt nach der Anmeldung
+/// die Vereinsauswahl (`VereinsWahlScreen`). `false`, solange nicht geladen
+/// ist — offline soll niemand vor einer Auswahl festhängen.
+final vereinsWahlNoetigProvider = Provider<bool>((ref) {
+  final favoriten = ref.watch(favoritesProvider);
+  final notifier = ref.read(favoritesProvider.notifier);
+  return notifier.geladen && !favoriten.any((f) => f.type == FavoriteType.team);
+});
+
+/// Ob die Favoriten fertig geladen sind (oder das Laden gescheitert ist) —
+/// für den Ladeschirm.
+final favoritenFertigProvider = Provider<bool>((ref) {
+  ref.watch(favoritesProvider);
+  return ref.read(favoritesProvider.notifier).fertig;
+});
+
 /// Teams einer Liga (für die Favoriten-Auswahl), abgeleitet aus dem
 /// Saison-Spielplan und nach Name sortiert.
-final leagueTeamsProvider =
-    Provider.family<AsyncValue<List<TeamRef>>, String>((ref, leagueId) {
+final leagueTeamsProvider = Provider.family<AsyncValue<List<TeamRef>>, String>((
+  ref,
+  leagueId,
+) {
   return ref.watch(leagueSeasonFixturesProvider(leagueId)).whenData((fixtures) {
     final byId = <String, TeamRef>{};
     for (final f in fixtures) {
@@ -244,25 +277,28 @@ final leagueTeamsProvider =
 /// im Vereins-Screen) und diese Nachzügler deshalb nicht enthalten darf.
 final leaguePickerTeamsProvider =
     Provider.family<AsyncValue<List<TeamRef>>, String>((ref, leagueId) {
-  final favs = ref.watch(favoritesProvider);
-  return ref.watch(leagueTeamsProvider(leagueId)).whenData((teams) {
-    final bekannt = {for (final t in teams) teamIdOf(t.id)};
-    final ergaenzt = [...teams];
-    for (final f in favs) {
-      if (f.type != FavoriteType.team || f.leagueId != leagueId) continue;
-      if (!bekannt.add(teamIdOf(f.key))) continue;
-      ergaenzt.add(TeamRef(
-        id: f.key,
-        name: f.label,
-        shortName: f.shortName ?? f.label,
-        iconUrl: f.iconUrl,
-      ));
-    }
-    if (ergaenzt.length == teams.length) return teams;
-    return ergaenzt
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-  });
-});
+      final favs = ref.watch(favoritesProvider);
+      return ref.watch(leagueTeamsProvider(leagueId)).whenData((teams) {
+        final bekannt = {for (final t in teams) teamIdOf(t.id)};
+        final ergaenzt = [...teams];
+        for (final f in favs) {
+          if (f.type != FavoriteType.team || f.leagueId != leagueId) continue;
+          if (!bekannt.add(teamIdOf(f.key))) continue;
+          ergaenzt.add(
+            TeamRef(
+              id: f.key,
+              name: f.label,
+              shortName: f.shortName ?? f.label,
+              iconUrl: f.iconUrl,
+            ),
+          );
+        }
+        if (ergaenzt.length == teams.length) return teams;
+        return ergaenzt..sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+      });
+    });
 
 /// Lässt sich zu diesem Team-Favoriten überhaupt etwas laden? Spielplan und
 /// News laufen über Sportmonks; ein Schlüssel aus einer früheren Quelle
@@ -298,8 +334,10 @@ String teamIdOf(String favoriteKey) => favoriteKey.split(':').last;
 /// Spielplan eines favorisierten Teams (wettbewerbsübergreifend). Family-Key
 /// ist die reine Sportmonks-Team-ID ([teamIdOf]). Braucht die
 /// Server-Verbindung.
-final teamFixturesProvider =
-    FutureProvider.family<List<TeamFixture>, String>((ref, teamId) {
+final teamFixturesProvider = FutureProvider.family<List<TeamFixture>, String>((
+  ref,
+  teamId,
+) {
   if (!AppConfig.isSupabaseConfigured) return Future.value(const []);
   return SupabaseSportmonksProvider().getTeamFixtures(teamId);
 });
@@ -307,8 +345,10 @@ final teamFixturesProvider =
 /// Kader eines Vereins. Family-Key ist die reine Sportmonks-Team-ID.
 /// Braucht die Server-Verbindung; der Kader wird serverseitig einen Tag
 /// gecacht (er ändert sich nur bei Transfers).
-final teamSquadProvider =
-    FutureProvider.family<List<SquadMember>, String>((ref, teamId) {
+final teamSquadProvider = FutureProvider.family<List<SquadMember>, String>((
+  ref,
+  teamId,
+) {
   if (!AppConfig.isSupabaseConfigured) return Future.value(const []);
   return SupabaseSportmonksProvider().getSquad(teamId);
 });

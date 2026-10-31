@@ -195,10 +195,11 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  player.name,
+                  player.name.toUpperCase(),
                   style: const TextStyle(
                     fontSize: Schrift.titel,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: Schrift.ueberschriftGewicht,
+                    fontStyle: Schrift.ueberschriftStil,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1171,7 +1172,13 @@ class _AvailableTabState extends State<_AvailableTab> {
                           ),
                         ],
                       ),
-                      title: Text(p.name),
+                      title: Text(
+                        p.name.toUpperCase(),
+                        style: const TextStyle(
+                          fontWeight: Schrift.ueberschriftGewicht,
+                          fontStyle: Schrift.ueberschriftStil,
+                        ),
+                      ),
                       // **Position und Schnitt statt Vereinsname** (19.10.2026,
                       // auf Ansage): Das Wappen sagt den Verein; der Punkt
                       // allein sagte fast nichts.
@@ -1309,7 +1316,13 @@ class _QueueTab extends StatelessWidget {
                     style: TextStyle(fontSize: 11, color: scheme.primary),
                   ),
                 ),
-                title: Text(p.name),
+                title: Text(
+                  p.name.toUpperCase(),
+                  style: const TextStyle(
+                    fontWeight: Schrift.ueberschriftGewicht,
+                    fontStyle: Schrift.ueberschriftStil,
+                  ),
+                ),
                 subtitle: Text(schnitt.zeile(p)),
                 onTap: canPick ? () => onPick(p) : null,
                 trailing: Row(
@@ -1486,10 +1499,11 @@ class _MyTeamTab extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                _short(p.name),
+                _short(p.name).toUpperCase(),
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: Schrift.ueberschriftGewicht,
+                  fontStyle: Schrift.ueberschriftStil,
                   color: positionColor(pos),
                 ),
               ),
@@ -1583,7 +1597,7 @@ class _MyTeamTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              p == null ? pos.short : _short(p.name),
+              p == null ? pos.short : _short(p.name).toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               // Name/Positionskürzel in der Positionsfarbe.
@@ -2131,10 +2145,11 @@ class DraftBoard extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        _vorname(player.name),
+                        _vorname(player.name).toUpperCase(),
                         maxLines: 1,
                         style: TextStyle(
                           fontSize: 11,
+                          fontStyle: Schrift.ueberschriftStil,
                           height: 1.1,
                           color: scheme.onSurface.withValues(alpha: 0.75),
                         ),
@@ -2144,12 +2159,13 @@ class DraftBoard extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      _nachname(player.name),
+                      _nachname(player.name).toUpperCase(),
                       maxLines: 1,
                       style: TextStyle(
                         fontSize: 14,
                         height: 1.1,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: Schrift.ueberschriftGewicht,
+                        fontStyle: Schrift.ueberschriftStil,
                         color: scheme.onSurface,
                       ),
                     ),

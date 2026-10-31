@@ -311,7 +311,15 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                 // unterscheidet, gehört nicht in die Zeile.
                 title: Row(
                   children: [
-                    Expanded(child: Text(p.name)),
+                    Expanded(
+                      child: Text(
+                        p.name.toUpperCase(),
+                        style: const TextStyle(
+                          fontWeight: Schrift.ueberschriftGewicht,
+                          fontStyle: Schrift.ueberschriftStil,
+                        ),
+                      ),
+                    ),
                     if (punkte[p.id] != null) ...[
                       const SizedBox(width: 8),
                       Punktzahl(
@@ -433,49 +441,58 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                           ),
                         ],
                       ),
-                      Builder(builder: (context) {
-                        final rangVon = {
-                          for (final (i, p) in leaders.indexed) p.id: i + 1,
-                        };
-                        final sichtbar = _leadersNurFrei
-                            ? [
-                                for (final p in leaders)
-                                  if (!rosteredIds.contains(p.id)) p,
-                              ]
-                            : leaders;
-                        return Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-                              child: Row(
-                                children: [
-                                  _chip(
-                                    'Alle Spieler',
-                                    !_leadersNurFrei,
-                                    () =>
-                                        setState(() => _leadersNurFrei = false),
-                                  ),
-                                  _chip(
-                                    'Nur Free Agents',
-                                    _leadersNurFrei,
-                                    () =>
-                                        setState(() => _leadersNurFrei = true),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: ListView.builder(
-                                itemCount: sichtbar.length,
-                                itemBuilder: (context, i) => zeileFuer(
-                                  sichtbar[i],
-                                  rang: rangVon[sichtbar[i].id],
+                      Builder(
+                        builder: (context) {
+                          final rangVon = {
+                            for (final (i, p) in leaders.indexed) p.id: i + 1,
+                          };
+                          final sichtbar = _leadersNurFrei
+                              ? [
+                                  for (final p in leaders)
+                                    if (!rosteredIds.contains(p.id)) p,
+                                ]
+                              : leaders;
+                          return Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  4,
+                                  12,
+                                  0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    _chip(
+                                      'Alle Spieler',
+                                      !_leadersNurFrei,
+                                      () => setState(
+                                        () => _leadersNurFrei = false,
+                                      ),
+                                    ),
+                                    _chip(
+                                      'Nur Free Agents',
+                                      _leadersNurFrei,
+                                      () => setState(
+                                        () => _leadersNurFrei = true,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                          ],
-                        );
-                      }),
+                              Expanded(
+                                child: ListView.builder(
+                                  itemCount: sichtbar.length,
+                                  itemBuilder: (context, i) => zeileFuer(
+                                    sichtbar[i],
+                                    rang: rangVon[sichtbar[i].id],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),

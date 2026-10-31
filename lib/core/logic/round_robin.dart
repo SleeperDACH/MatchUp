@@ -76,21 +76,26 @@ class H2HRecord {
   /// Tabellenpunkte: 3 für Sieg, 1 für Unentschieden, 0 für Niederlage.
   int get points => wins * 3 + ties;
 
+  /// Siegquote wie in der NFL: Unentschieden zählt als halber Sieg.
+  double get siegquote => played == 0 ? 0 : (wins + ties / 2) / played;
+
+  /// Bilanz wie in der NFL: „5-2", mit Unentschieden „5-2-1".
+  String get nflBilanz => ties == 0 ? '$wins-$losses' : '$wins-$losses-$ties';
+
   H2HRecord _add({
     int win = 0,
     int loss = 0,
     int tie = 0,
     double pf = 0,
     double pa = 0,
-  }) =>
-      H2HRecord(
-        managerId: managerId,
-        wins: wins + win,
-        losses: losses + loss,
-        ties: ties + tie,
-        pointsFor: pointsFor + pf,
-        pointsAgainst: pointsAgainst + pa,
-      );
+  }) => H2HRecord(
+    managerId: managerId,
+    wins: wins + win,
+    losses: losses + loss,
+    ties: ties + tie,
+    pointsFor: pointsFor + pf,
+    pointsAgainst: pointsAgainst + pa,
+  );
 }
 
 /// **Ausgang eines Duells aus Sicht von [eigene]**: 1 Sieg, 0 Unentschieden,
@@ -119,6 +124,7 @@ List<H2HRecord> h2hStandings(
   List<String> ids,
   Map<int, Map<String, num>> totalsByRound, {
   num remisGrenze = 0,
+  bool bilanz = false,
 }) {
   var records = {for (final id in ids) id: H2HRecord(managerId: id)};
 
@@ -144,7 +150,16 @@ List<H2HRecord> h2hStandings(
 
   final list = records.values.toList();
   list.sort((a, b) {
-    if (a.points != b.points) return b.points.compareTo(a.points);
+    // **Bilanz statt Punkte** (30.10.2026, auf Ansage): Ohne die Remis-Regel
+    // zählen nur Siege und Niederlagen, sortiert nach Siegquote wie in der
+    // NFL — spielfreie Spieltage verzerren so nichts.
+    if (bilanz) {
+      if (a.siegquote != b.siegquote) {
+        return b.siegquote.compareTo(a.siegquote);
+      }
+    } else if (a.points != b.points) {
+      return b.points.compareTo(a.points);
+    }
     // Bei Punktgleichstand: mehr insgesamt erzielte Spielerpunkte zuerst.
     if (a.pointsFor != b.pointsFor) return b.pointsFor.compareTo(a.pointsFor);
     final da = a.pointsFor - a.pointsAgainst;

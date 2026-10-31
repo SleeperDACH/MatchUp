@@ -22,30 +22,35 @@ class PlayoffBracketScreen extends ConsumerWidget {
 
   final FantasyLeague league;
 
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final managersAsync = ref.watch(fantasyManagersProvider(league.id));
     final poolAsync = ref.watch(playerPoolProvider);
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
-    final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
+    final lineups =
+        ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
         const <FantasyLineup>[];
     final seasonStatsAsync = ref.watch(seasonStatsProvider);
     final allFx =
-        ref.watch(fantasySeasonFixturesProvider).valueOrNull ?? const <Fixture>[];
+        ref.watch(fantasySeasonFixturesProvider).valueOrNull ??
+        const <Fixture>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
     Widget scaffold(Widget body) => Scaffold(
-          appBar: AppBar(title: const Text('Playoff-Bracket')),
-          body: body,
-        );
+      appBar: AppBar(title: const Text('Playoff-Bracket')),
+      body: body,
+    );
 
     if (!league.hasPlayoffs) {
-      return scaffold(const _Hint(
+      return scaffold(
+        const _Hint(
           'Für diese Liga sind noch keine Playoffs konfiguriert. Das lässt '
-          'sich in den Liga-Einstellungen anpassen.'));
+          'sich in den Liga-Einstellungen anpassen.',
+        ),
+      );
     }
     // Nur wenn nichts dasteht — sonst ersetzt jedes Nachladen den Bracket.
     if (managersAsync.valueOrNull == null || poolAsync.valueOrNull == null) {
@@ -53,13 +58,17 @@ class PlayoffBracketScreen extends ConsumerWidget {
     }
     final managers = managersAsync.valueOrNull ?? const <FantasyManager>[];
     if (managers.length < 2) {
-      return scaffold(const _Hint(
+      return scaffold(
+        const _Hint(
           'Der Bracket braucht mindestens zwei Teams. Teile den '
-          'Einladungscode, um die Liga zu füllen.'));
+          'Einladungscode, um die Liga zu füllen.',
+        ),
+      );
     }
     final pool = poolAsync.valueOrNull ?? const <FantasyPlayer>[];
     final playerById = {for (final p in pool) p.id: p};
-    final seasonStats = seasonStatsAsync.valueOrNull ??
+    final seasonStats =
+        seasonStatsAsync.valueOrNull ??
         const <int, Map<String, PlayerMatchStats>>{};
 
     // Stabile Reihenfolge (Draft-Position) für den Round-Robin der Bilanz.
@@ -74,7 +83,11 @@ class PlayoffBracketScreen extends ConsumerWidget {
     final nameOf = {for (final m in managers) m.userId: m.display};
     final avatarOf = {
       for (final m in managers)
-        m.userId: (url: m.avatarUrl, emoji: m.avatarEmoji, color: m.avatarColor)
+        m.userId: (
+          url: m.avatarUrl,
+          emoji: m.avatarEmoji,
+          color: m.avatarColor,
+        ),
     };
 
     // Effektive H2H-Punkte je gewertetem Spieltag.
@@ -89,7 +102,7 @@ class PlayoffBracketScreen extends ConsumerWidget {
           lineups: lineups,
           scoring: league.scoring,
           rosterConfig: league.roster,
-        )
+        ),
     };
 
     final plan = computePlayoffPlan(
@@ -102,11 +115,16 @@ class PlayoffBracketScreen extends ConsumerWidget {
     // Setzung: Endstand der regulären Saison (nur Spieltage vor Playoff-Start).
     final regularTotals = {
       for (final e in totalsByRound.entries)
-        if (e.key < plan.startRound) e.key: e.value
+        if (e.key < plan.startRound) e.key: e.value,
     };
     final seeding = [
-      for (final r in h2hStandings(ids, regularTotals,
-          remisGrenze: league.remisGrenze ?? 0)) r.managerId
+      for (final r in h2hStandings(
+        ids,
+        regularTotals,
+        remisGrenze: league.remisGrenze ?? 0,
+        bilanz: league.remisGrenze == null,
+      ))
+        r.managerId,
     ];
 
     // Abgeschlossene Spieltage (alle Spiele beendet).
@@ -116,7 +134,8 @@ class PlayoffBracketScreen extends ConsumerWidget {
       (byMd[f.round] ??= []).add(f);
     }
     byMd.forEach((md, fx) {
-      if (fx.isNotEmpty && fx.every((f) => f.status == FixtureStatus.finished)) {
+      if (fx.isNotEmpty &&
+          fx.every((f) => f.status == FixtureStatus.finished)) {
         finished.add(md);
       }
     });
@@ -130,61 +149,76 @@ class PlayoffBracketScreen extends ConsumerWidget {
       finishedMatchdays: finished,
     );
 
-    return scaffold(ListView(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-      children: [
-        _PlanBanner(plan: plan, gold: context.farben.gold),
-        const SizedBox(height: 12),
-        if (bracket.complete) ...[
-          _SectionHeader(
-              icon: Icons.emoji_events_outlined, title: 'Endplatzierung', color: context.farben.gold),
-          for (final p in bracket.placements)
-            _PlacementRow(
-              place: p.place,
-              name: nameOf[p.managerId] ?? '?',
-              avatar: avatarOf[p.managerId],
-              me: p.managerId == myId,
-              playoff: p.place <= bracket.playoffTeams,
+    return scaffold(
+      ListView(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        children: [
+          _PlanBanner(plan: plan, gold: context.farben.gold),
+          const SizedBox(height: 12),
+          if (bracket.complete) ...[
+            _SectionHeader(
+              icon: Icons.emoji_events_outlined,
+              title: 'Endplatzierung',
+              color: context.farben.gold,
             ),
-          const SizedBox(height: 16),
-        ],
-        _SectionHeader(
-            icon: Icons.account_tree_outlined, title: 'Winner-Bracket', color: context.farben.gold),
-        _Legend(text: 'Plätze 1–${bracket.playoffTeams} · Setzung aus der Tabelle'),
-        for (final r in bracket.winners)
-          _RoundBlock(
+            for (final p in bracket.placements)
+              _PlacementRow(
+                place: p.place,
+                name: nameOf[p.managerId] ?? '?',
+                avatar: avatarOf[p.managerId],
+                me: p.managerId == myId,
+                playoff: p.place <= bracket.playoffTeams,
+              ),
+            const SizedBox(height: 16),
+          ],
+          _SectionHeader(
+            icon: Icons.account_tree_outlined,
+            title: 'Winner-Bracket',
+            color: context.farben.gold,
+          ),
+          _Legend(
+            text: 'Plätze 1–${bracket.playoffTeams} · Setzung aus der Tabelle',
+          ),
+          for (final r in bracket.winners)
+            _RoundBlock(
               round: r,
               nameOf: nameOf,
               avatarOf: avatarOf,
               myId: myId,
-              accent: context.farben.gold),
-        if (bracket.consolation.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _SectionHeader(
+              accent: context.farben.gold,
+            ),
+          if (bracket.consolation.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _SectionHeader(
               icon: Icons.shield_moon_outlined,
               title: 'Loser-Bracket',
-              color: scheme.onSurfaceVariant),
-          _Legend(
-              text: 'Plätze ${bracket.playoffTeams + 1}–${bracket.placements.length}'
-                  ' · restliche Abschlussplätze'),
-          for (final r in bracket.consolation)
-            _RoundBlock(
+              color: scheme.onSurfaceVariant,
+            ),
+            _Legend(
+              text:
+                  'Plätze ${bracket.playoffTeams + 1}–${bracket.placements.length}'
+                  ' · restliche Abschlussplätze',
+            ),
+            for (final r in bracket.consolation)
+              _RoundBlock(
                 round: r,
                 nameOf: nameOf,
                 avatarOf: avatarOf,
                 myId: myId,
-                accent: scheme.onSurfaceVariant),
+                accent: scheme.onSurfaceVariant,
+              ),
+          ],
+          const SizedBox(height: 12),
+          _Hint(
+            bracket.complete
+                ? 'Alle Plätze ausgespielt.'
+                : 'Setzung aus dem Endstand der regulären Saison. Ergebnisse und '
+                      'Platzierungen stehen fest, sobald die jeweiligen '
+                      'Playoff-Spieltage beendet sind.',
+          ),
         ],
-        const SizedBox(height: 12),
-        _Hint(
-          bracket.complete
-              ? 'Alle Plätze ausgespielt.'
-              : 'Setzung aus dem Endstand der regulären Saison. Ergebnisse und '
-                  'Platzierungen stehen fest, sobald die jeweiligen '
-                  'Playoff-Spieltage beendet sind.',
-        ),
-      ],
-    ));
+      ),
+    );
   }
 }
 
@@ -207,7 +241,9 @@ class _PlanBanner extends StatelessWidget {
           stops: const [0.0, 0.75],
           colors: [
             Color.alphaBlend(
-                gold.withValues(alpha: 0.12), Theme.of(context).cardColor),
+              gold.withValues(alpha: 0.12),
+              Theme.of(context).cardColor,
+            ),
             Theme.of(context).cardColor,
           ],
         ),
@@ -221,14 +257,17 @@ class _PlanBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Playoffs ab Spieltag ${plan.startRound}',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  'Playoffs ab Spieltag ${plan.startRound}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 Text(
                   '${plan.rounds} Runden × '
                   '${plan.weeksPerRound == 2 ? '2 Wochen' : '1 Woche'} · '
                   'Trade-Deadline Spieltag ${plan.tradeDeadlineRound}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant),
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -240,8 +279,11 @@ class _PlanBanner extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(
-      {required this.icon, required this.title, required this.color});
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    required this.color,
+  });
   final IconData icon;
   final String title;
   final Color color;
@@ -254,11 +296,12 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: color),
           const SizedBox(width: 8),
-          Text(title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );
@@ -273,9 +316,12 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-      child: Text(text,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
@@ -303,11 +349,12 @@ class _RoundBlock extends StatelessWidget {
       children: [
         for (final m in round.matches)
           _MatchCard(
-              match: m,
-              nameOf: nameOf,
-              avatarOf: avatarOf,
-              myId: myId,
-              accent: accent),
+            match: m,
+            nameOf: nameOf,
+            avatarOf: avatarOf,
+            myId: myId,
+            accent: accent,
+          ),
       ],
     );
   }
@@ -338,29 +385,35 @@ class _MatchCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(match.label,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.bold, color: accent)),
+                Text(
+                  match.label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: accent,
+                  ),
+                ),
                 const Spacer(),
                 _StatusChip(match: match),
               ],
             ),
             const SizedBox(height: 6),
             _SideRow(
-                slot: match.home,
-                points: match.homePoints,
-                winner: match.decided && match.winnerId == match.home.managerId,
-                nameOf: nameOf,
-                avatarOf: avatarOf,
-                myId: myId),
+              slot: match.home,
+              points: match.homePoints,
+              winner: match.decided && match.winnerId == match.home.managerId,
+              nameOf: nameOf,
+              avatarOf: avatarOf,
+              myId: myId,
+            ),
             const SizedBox(height: 4),
             _SideRow(
-                slot: match.away,
-                points: match.awayPoints,
-                winner: match.decided && match.winnerId == match.away.managerId,
-                nameOf: nameOf,
-                avatarOf: avatarOf,
-                myId: myId),
+              slot: match.away,
+              points: match.awayPoints,
+              winner: match.decided && match.winnerId == match.away.managerId,
+              nameOf: nameOf,
+              avatarOf: avatarOf,
+              myId: myId,
+            ),
           ],
         ),
       ),
@@ -399,11 +452,14 @@ class _SideRow extends StatelessWidget {
         if (slot.seed != null)
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: Text('${slot.seed}',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold)),
+            child: Text(
+              '${slot.seed}',
+              style: TextStyle(
+                fontSize: 11,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         AppAvatar(
           imageUrl: av?.url,
@@ -415,27 +471,34 @@ class _SideRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: winner || me ? FontWeight.bold : FontWeight.normal,
-                color: slot.managerId == null
-                    ? scheme.onSurfaceVariant
-                    : null,
-              )),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: winner || me ? FontWeight.bold : FontWeight.normal,
+              color: slot.managerId == null ? scheme.onSurfaceVariant : null,
+            ),
+          ),
         ),
         if (winner)
           Padding(
             padding: EdgeInsets.only(right: 6),
-            child: Icon(Icons.check_circle, size: 16, color: context.farben.gruen),
+            child: Icon(
+              Icons.check_circle,
+              size: 16,
+              color: context.farben.gruen,
+            ),
           ),
         if (slot.managerId != null)
-          Text(formatPoints(points),
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
-                  color: winner ? scheme.onSurface : scheme.onSurfaceVariant)),
+          Text(
+            formatPoints(points),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: winner ? scheme.onSurface : scheme.onSurfaceVariant,
+            ),
+          ),
       ],
     );
   }
@@ -457,15 +520,18 @@ class _StatusChip extends StatelessWidget {
       text = 'live';
       color = context.farben.rot;
     } else {
-      text = 'Spieltag ${match.startMatchday}'
+      text =
+          'Spieltag ${match.startMatchday}'
           '${match.weeks == 2 ? '–${match.startMatchday + 1}' : ''}';
       color = scheme.onSurfaceVariant;
     }
-    return Text(text,
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: color, fontWeight: FontWeight.bold));
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: color,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 }
 
@@ -490,7 +556,10 @@ class _PlacementRow extends StatelessWidget {
     final (bg, fg) = switch (place) {
       // Auf Hell sind die Medaillenfarben dunkel gesetzt — darauf weiß.
       1 => (context.farben.gold, context.istHell ? Colors.white : Colors.black),
-      2 => (context.farben.silber, context.istHell ? Colors.white : Colors.black),
+      2 => (
+        context.farben.silber,
+        context.istHell ? Colors.white : Colors.black,
+      ),
       3 => (context.farben.bronze, Colors.white),
       _ => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
     };
@@ -513,9 +582,14 @@ class _PlacementRow extends StatelessWidget {
             height: 28,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-            child: Text('$place',
-                style: TextStyle(
-                    color: fg, fontWeight: FontWeight.bold, fontSize: 14)),
+            child: Text(
+              '$place',
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
           ),
           const SizedBox(width: 10),
           AppAvatar(
@@ -527,16 +601,22 @@ class _PlacementRow extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontWeight: me ? FontWeight.bold : FontWeight.w600)),
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: me ? FontWeight.bold : FontWeight.w600,
+              ),
+            ),
           ),
           if (!playoff)
-            Text('Trost',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant)),
+            Text(
+              'Trost',
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
         ],
       ),
     );
@@ -551,10 +631,13 @@ class _Hint extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Text(text,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

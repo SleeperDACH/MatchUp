@@ -31,11 +31,12 @@ const kaderMeldungPraefix = 'kader:';
 
 /// Die Kaderbewegungen als Chat-Einträge, jeweils mit ihrem Ereignis.
 Map<String, ({ChatMessage nachricht, TransferEreignis ereignis})>
-    kaderMeldungen(List<RosterMove> moves) {
+kaderMeldungen(List<RosterMove> moves) {
   final out = <String, ({ChatMessage nachricht, TransferEreignis ereignis})>{};
   for (final e in ereignisseAus(moves)) {
     if (e.weg == 'draft') continue;
-    final id = '$kaderMeldungPraefix${e.passiertAm.microsecondsSinceEpoch}'
+    final id =
+        '$kaderMeldungPraefix${e.passiertAm.microsecondsSinceEpoch}'
         ':${e.seiten.map((s) => s.managerId).join('+')}';
     out[id] = (
       nachricht: ChatMessage(
@@ -78,11 +79,13 @@ class KaderMeldung extends StatelessWidget {
     return switch (s.weg) {
       'waiver' => '${n(s.managerId)} hat einen Waiver-Antrag gewonnen.',
       'trade' => '${n(s.managerId)} hat getauscht.',
-      'abgewandert' => 'Bei ${n(s.managerId)} hat ein Spieler die '
-          'Bundesliga verlassen.',
-      _ => s.nurAbgang
-          ? '${n(s.managerId)} hat einen Spieler abgegeben.'
-          : '${n(s.managerId)} hat den Kader geändert.',
+      'abgewandert' =>
+        'Bei ${n(s.managerId)} hat ein Spieler die '
+            'Bundesliga verlassen.',
+      _ =>
+        s.nurAbgang
+            ? '${n(s.managerId)} hat einen Spieler abgegeben.'
+            : '${n(s.managerId)} hat den Kader geändert.',
     };
   }
 
@@ -93,22 +96,22 @@ class KaderMeldung extends StatelessWidget {
     // abgibt — die Zugänge beider Seiten sagen also alles.
     final List<({String? kopf, List<(RosterMove, bool)> kacheln})> gruppen =
         ereignis.istTrade
-            ? [
-                for (final s in ereignis.seiten)
-                  (
-                    kopf: namen[s.managerId] ?? '?',
-                    kacheln: [for (final m in s.rein) (m, true)],
-                  ),
-              ]
-            : [
-                (
-                  kopf: null,
-                  kacheln: [
-                    for (final m in ereignis.seiten.single.rein) (m, true),
-                    for (final m in ereignis.seiten.single.raus) (m, false),
-                  ],
-                ),
-              ];
+        ? [
+            for (final s in ereignis.seiten)
+              (
+                kopf: namen[s.managerId] ?? '?',
+                kacheln: [for (final m in s.rein) (m, true)],
+              ),
+          ]
+        : [
+            (
+              kopf: null,
+              kacheln: [
+                for (final m in ereignis.seiten.single.rein) (m, true),
+                for (final m in ereignis.seiten.single.raus) (m, false),
+              ],
+            ),
+          ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
@@ -125,9 +128,9 @@ class KaderMeldung extends StatelessWidget {
                 Text(
                   _satz(),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -224,8 +227,11 @@ class _Spieler extends StatelessWidget {
                     color: rein ? context.farben.gruen : context.farben.rot,
                     border: Border.all(color: scheme.surface, width: 2),
                   ),
-                  child: Icon(rein ? Icons.add : Icons.remove,
-                      size: 11, color: Colors.white),
+                  child: Icon(
+                    rein ? Icons.add : Icons.remove,
+                    size: 11,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -237,15 +243,20 @@ class _Spieler extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              p == null ? id : SpielerKachel.kurzerName(p.name),
+              p == null ? id : SpielerKachel.kurzerName(p.name).toUpperCase(),
               style: const TextStyle(
-                  fontSize: Schrift.text, fontWeight: FontWeight.w700),
+                fontSize: Schrift.text,
+                fontWeight: Schrift.ueberschriftGewicht,
+                fontStyle: Schrift.ueberschriftStil,
+              ),
             ),
             if (p != null)
               Text(
                 '${p.position.short} · ${vereinsKuerzel(p.club)}',
                 style: TextStyle(
-                    fontSize: Schrift.label, color: scheme.onSurfaceVariant),
+                  fontSize: Schrift.label,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
           ],
         ),

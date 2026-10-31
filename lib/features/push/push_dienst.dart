@@ -75,6 +75,23 @@ class PushDienst {
       (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.android);
 
+  /// Wie das System über Benachrichtigungen entschieden hat, **ohne** zu
+  /// fragen. `null`, wenn Push hier nicht geht (Web, Firebase fehlt).
+  /// Grundlage für die eigene Frage vor der Systemabfrage (`push_frage.dart`):
+  /// Wer schon erlaubt hat, wird nicht gefragt; wer abgelehnt hat, auch nicht
+  /// — die Systemabfrage käme ohnehin nicht mehr.
+  Future<AuthorizationStatus?> erlaubnisStatus() async {
+    if (!moeglich) return null;
+    try {
+      final einstellungen = await FirebaseMessaging.instance
+          .getNotificationSettings();
+      return einstellungen.authorizationStatus;
+    } catch (e) {
+      debugPrint('Push-Status nicht lesbar: $e');
+      return null;
+    }
+  }
+
   /// Fragt die Berechtigung ab, registriert den Token und hört auf Antippen.
   ///
   /// Mehrfach aufrufbar: Der zweite Aufruf tut nichts. Aufgerufen wird sie
@@ -131,8 +148,7 @@ class PushDienst {
 
       // Kaltstart aus der Benachrichtigung heraus.
       final start = await messaging.getInitialMessage();
-      final startZiel =
-          start == null ? null : PushZiel.ausDaten(start.data);
+      final startZiel = start == null ? null : PushZiel.ausDaten(start.data);
       if (startZiel != null) beimAntippen(startZiel);
 
       // App lief im Hintergrund und wurde angetippt.
@@ -160,11 +176,15 @@ class PushDienst {
     _token = token;
     _fuerNutzer = uid;
     try {
-      await _client.rpc('push_geraet_melden', params: {
-        'p_token': token,
-        'p_plattform':
-            defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
-      });
+      await _client.rpc(
+        'push_geraet_melden',
+        params: {
+          'p_token': token,
+          'p_plattform': defaultTargetPlatform == TargetPlatform.iOS
+              ? 'ios'
+              : 'android',
+        },
+      );
     } catch (e) {
       debugPrint('Push: Token konnte nicht gespeichert werden: $e');
     }

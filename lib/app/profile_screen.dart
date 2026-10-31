@@ -18,6 +18,7 @@ import '../features/push/push_dienst.dart';
 import '../features/push/ui/push_einstellungen_screen.dart';
 import '../features/tippspiel/logic/tip_stats.dart';
 import '../features/tippspiel/providers.dart';
+import 'glossar_screen.dart';
 import 'impressum_screen.dart';
 import 'typografie.dart';
 import 'widgets/kapitelmarke.dart';
@@ -258,9 +259,19 @@ class _Profile extends ConsumerWidget {
           icon: Icons.contrast,
           label: 'Darstellung',
           subtitle: ref.watch(darstellungProvider).wort,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const DarstellungScreen()),
-          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const DarstellungScreen())),
+        ),
+        // Glossar (29.10.2026, Punkt 7): Draft, Waiver, Trade & Co. an
+        // einer Stelle erklärt.
+        _SettingTile(
+          icon: Icons.menu_book_outlined,
+          label: 'Glossar',
+          subtitle: 'Draft, Waiver, Trade & Co.',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const GlossarScreen())),
         ),
         _SettingTile(
           icon: Icons.leaderboard_outlined,
@@ -494,7 +505,6 @@ class _StatsSection extends ConsumerWidget {
   /// Auf einem eigenen Screen (kein eingebetteter Abschnitt): dann ohne
   /// Abschnitts-Titel und mit Hinweistext, falls noch keine Bilanz vorliegt.
   final bool standalone;
-
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

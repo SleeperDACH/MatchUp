@@ -185,9 +185,9 @@ void main() {
     // nach Saisonpunkten.
     final frei = namen();
     expect(frei.take(3).toList(),
-        ['Hyun-seok Hong', 'Andreas Hanche-Olsen', 'Marius Wolf'],
+        ['HYUN-SEOK HONG', 'ANDREAS HANCHE-OLSEN', 'MARIUS WOLF'],
         reason: '49,5 vor 28 vor 18 — freie Spieler nach Punkten');
-    expect(frei, isNot(contains('Serhou Guirassy')),
+    expect(frei, isNot(contains('SERHOU GUIRASSY')),
         reason: 'ein vergebener Spieler steht nicht unter „Verfügbar"');
     expect(find.text('Spieler'), findsOneWidget, reason: 'der neue Titel');
 
@@ -203,9 +203,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
     final alle = namen();
-    expect(alle, contains('Serhou Guirassy'),
+    expect(alle, contains('SERHOU GUIRASSY'),
         reason: 'in den Leaders stehen auch vergebene Spieler');
-    expect(alle.indexOf('Serhou Guirassy'), lessThan(alle.indexOf('Marius Wolf')),
+    expect(alle.indexOf('SERHOU GUIRASSY'), lessThan(alle.indexOf('MARIUS WOLF')),
         reason: 'sortiert nur nach Punkten, nicht nach frei/vergeben');
     expect(find.textContaining('JojoAcz44'), findsOneWidget,
         reason: 'Wem der Spieler gehört, muss dranstehen');
@@ -225,8 +225,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
     final nurFrei = namen();
-    expect(nurFrei, isNot(contains('Serhou Guirassy')));
-    expect(nurFrei, contains('Marius Wolf'));
+    expect(nurFrei, isNot(contains('SERHOU GUIRASSY')));
+    expect(nurFrei, contains('MARIUS WOLF'));
   });
 
   testWidgets('Vorschau: Waiver-Antrag bei vollem Kader', (tester) async {
@@ -343,7 +343,7 @@ void main() {
     // in Kadern zeigt, steht derselbe Name zweimal auf dem Schirm: einmal in
     // der Liste dahinter, einmal in der Auswahl des Abgangs.
     await tester.tap(find.descendant(
-        of: find.byType(BottomSheet), matching: find.text('Mein Spieler 0')));
+        of: find.byType(BottomSheet), matching: find.text('MEIN SPIELER 0')));
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
@@ -443,7 +443,7 @@ void main() {
     }
 
     expect(find.byType(BottomSheet), findsNothing);
-    await tester.tap(find.text('Andreas Hanche-Olsen'));
+    await tester.tap(find.text('ANDREAS HANCHE-OLSEN'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

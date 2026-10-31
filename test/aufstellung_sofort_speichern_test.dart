@@ -171,7 +171,7 @@ Future<void> _wechsle(WidgetTester tester, String raus, String rein) async {
   await tester.tap(_tauschKnopf(raus));
   await tester.pumpAndSettle();
   // In der Auswahl steht der volle Name, auf dem Platz nur das letzte Wort.
-  await tester.tap(find.text('Spieler $rein'));
+  await tester.tap(find.text('SPIELER ${rein.toUpperCase()}'));
   await tester.pumpAndSettle();
 }
 
@@ -185,7 +185,7 @@ void main() {
 
     await tester.tap(_tauschKnopf('def1'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Spieler def5'));
+    await tester.tap(find.text('SPIELER DEF5'));
     // **Nur ein Bild weiter** — kein Vorspulen. Genau hier lag die Lücke:
     // Vorher passierte in diesem Moment nichts, und was danach kam
     // (Schirmwechsel, Funkloch), entschied über die Aufstellung.

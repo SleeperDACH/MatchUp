@@ -57,10 +57,25 @@ enum DraftPickTime {
   /// Grobe Einordnung für die UI: bis 10 Minuten gilt als Live-Draft.
   bool get isLive => seconds <= 600;
 
+  /// **Wie der Draft abläuft, in Alltagssprache** (30.10.2026, Punkt 9 der
+  /// Nutzer-Analyse: „Viele denken bei Draft, alle müssten gleichzeitig
+  /// online sein"). Kurz, für die Zeile unter „Zeit je Pick".
+  String get ablauf =>
+      isLive ? 'Alle gleichzeitig online' : 'Kein Termin nötig';
+
+  /// Der Satz dazu, wo über den Draft entschieden wird (Anlegen, Start,
+  /// „Als Nächstes") — mit der eingestellten Zeit.
+  String get ablaufSatz => isLive
+      ? 'Jeder hat $label je Pick, dafür solltet ihr gleichzeitig online '
+            'sein. Mit mehr Zeit je Pick (bis zu einem Tag) braucht es keinen '
+            'Termin — wer nicht dran denkt, bekommt automatisch einen Spieler.'
+      : 'Kein Termin nötig: Jeder hat $label je Pick, sonst wählt die App '
+            'automatisch.';
+
   static DraftPickTime fromSeconds(int seconds) => values.firstWhere(
-        (t) => t.seconds == seconds,
-        orElse: () => DraftPickTime.m1,
-      );
+    (t) => t.seconds == seconds,
+    orElse: () => DraftPickTime.m1,
+  );
 }
 
 /// `reset` (0143): Die Kader sind zur Winterpause geleert, der Admin hat den
@@ -68,9 +83,10 @@ enum DraftPickTime {
 /// `setup`.
 enum DraftStatus { setup, reset, drafting, done }
 
-DraftStatus _draftStatusFromId(String id) =>
-    DraftStatus.values.firstWhere((s) => s.name == id,
-        orElse: () => DraftStatus.setup);
+DraftStatus _draftStatusFromId(String id) => DraftStatus.values.firstWhere(
+  (s) => s.name == id,
+  orElse: () => DraftStatus.setup,
+);
 
 enum PlayerPosition {
   gk('TW', 'Tor'),
@@ -83,10 +99,8 @@ enum PlayerPosition {
   final String short;
   final String label;
 
-  static PlayerPosition fromId(String id) => values.firstWhere(
-        (p) => p.name == id,
-        orElse: () => PlayerPosition.mid,
-      );
+  static PlayerPosition fromId(String id) =>
+      values.firstWhere((p) => p.name == id, orElse: () => PlayerPosition.mid);
 }
 
 /// Konfigurierbares Punkteschema im Kickbase-Stil. Die echten
@@ -122,28 +136,28 @@ class FantasyScoring {
   static const kickbaseStyle = FantasyScoring();
 
   factory FantasyScoring.fromJson(Map<String, dynamic> json) => FantasyScoring(
-        appearance: json['appearance'] as int? ?? 2,
-        goalGk: json['goalGk'] as int? ?? 6,
-        goalDef: json['goalDef'] as int? ?? 6,
-        goalMid: json['goalMid'] as int? ?? 5,
-        goalFwd: json['goalFwd'] as int? ?? 4,
-        assist: json['assist'] as int? ?? 3,
-        cleanSheetGkDef: json['cleanSheetGkDef'] as int? ?? 4,
-        yellowCard: json['yellowCard'] as int? ?? -1,
-        redCard: json['redCard'] as int? ?? -3,
-      );
+    appearance: json['appearance'] as int? ?? 2,
+    goalGk: json['goalGk'] as int? ?? 6,
+    goalDef: json['goalDef'] as int? ?? 6,
+    goalMid: json['goalMid'] as int? ?? 5,
+    goalFwd: json['goalFwd'] as int? ?? 4,
+    assist: json['assist'] as int? ?? 3,
+    cleanSheetGkDef: json['cleanSheetGkDef'] as int? ?? 4,
+    yellowCard: json['yellowCard'] as int? ?? -1,
+    redCard: json['redCard'] as int? ?? -3,
+  );
 
   Map<String, dynamic> toJson() => {
-        'appearance': appearance,
-        'goalGk': goalGk,
-        'goalDef': goalDef,
-        'goalMid': goalMid,
-        'goalFwd': goalFwd,
-        'assist': assist,
-        'cleanSheetGkDef': cleanSheetGkDef,
-        'yellowCard': yellowCard,
-        'redCard': redCard,
-      };
+    'appearance': appearance,
+    'goalGk': goalGk,
+    'goalDef': goalDef,
+    'goalMid': goalMid,
+    'goalFwd': goalFwd,
+    'assist': assist,
+    'cleanSheetGkDef': cleanSheetGkDef,
+    'yellowCard': yellowCard,
+    'redCard': redCard,
+  };
 }
 
 /// Aufbau eines Kaders: Startelf-Slots pro Position plus Bank.
@@ -164,6 +178,7 @@ class RosterConfig {
     this.maxDef,
     this.maxMid,
     this.maxFwd,
+    this.maxJeVerein,
   });
 
   /// Kader-Zusammensetzung (Anzahl der gedrafteten Spieler je „Basis"-Slot
@@ -210,15 +225,20 @@ class RosterConfig {
   final int? maxMid;
   final int? maxFwd;
 
+  /// **Vereins-Limit** (0153, 30.10.2026): höchstens so viele Spieler
+  /// desselben Vereins im Kader, `null` = unbegrenzt. Erzwungen im selben
+  /// Trigger wie die Positionslimits und im Auto-Pick.
+  final int? maxJeVerein;
+
   static const standard = RosterConfig();
 
   /// Limit für eine Position, `null` = unbegrenzt.
   int? limitFor(PlayerPosition pos) => switch (pos) {
-        PlayerPosition.gk => maxGk,
-        PlayerPosition.def => maxDef,
-        PlayerPosition.mid => maxMid,
-        PlayerPosition.fwd => maxFwd,
-      };
+    PlayerPosition.gk => maxGk,
+    PlayerPosition.def => maxDef,
+    PlayerPosition.mid => maxMid,
+    PlayerPosition.fwd => maxFwd,
+  };
 
   /// Sind die Limits zusammen groß genug für einen vollen Kader?
   ///
@@ -243,36 +263,37 @@ class RosterConfig {
   /// Neue Konfiguration mit geänderter Rundenzahl (= Kadergröße). Die
   /// Startelf bleibt fix; die Differenz landet auf der Bank.
   RosterConfig withRounds(int rounds) => RosterConfig(
-        gk: gk,
-        def: def,
-        mid: mid,
-        fwd: fwd,
-        bench: (rounds - starters).clamp(0, 99),
-        defMin: defMin,
-        defMax: defMax,
-        midMin: midMin,
-        midMax: midMax,
-        fwdMin: fwdMin,
-        fwdMax: fwdMax,
-        maxGk: maxGk,
-        maxDef: maxDef,
-        maxMid: maxMid,
-        maxFwd: maxFwd,
-      );
+    gk: gk,
+    def: def,
+    mid: mid,
+    fwd: fwd,
+    bench: (rounds - starters).clamp(0, 99),
+    defMin: defMin,
+    defMax: defMax,
+    midMin: midMin,
+    midMax: midMax,
+    fwdMin: fwdMin,
+    fwdMax: fwdMax,
+    maxGk: maxGk,
+    maxDef: maxDef,
+    maxMid: maxMid,
+    maxFwd: maxFwd,
+    maxJeVerein: maxJeVerein,
+  );
 
   int minFor(PlayerPosition pos) => switch (pos) {
-        PlayerPosition.gk => gk,
-        PlayerPosition.def => defMin,
-        PlayerPosition.mid => midMin,
-        PlayerPosition.fwd => fwdMin,
-      };
+    PlayerPosition.gk => gk,
+    PlayerPosition.def => defMin,
+    PlayerPosition.mid => midMin,
+    PlayerPosition.fwd => fwdMin,
+  };
 
   int maxFor(PlayerPosition pos) => switch (pos) {
-        PlayerPosition.gk => gk,
-        PlayerPosition.def => defMax,
-        PlayerPosition.mid => midMax,
-        PlayerPosition.fwd => fwdMax,
-      };
+    PlayerPosition.gk => gk,
+    PlayerPosition.def => defMax,
+    PlayerPosition.mid => midMax,
+    PlayerPosition.fwd => fwdMax,
+  };
 
   /// **Vier Stürmer nur mit mindestens vier Abwehrspielern.**
   ///
@@ -331,8 +352,7 @@ class RosterConfig {
     required int defCount,
     required int midCount,
     required int fwdCount,
-  }) =>
-      '$defCount-$midCount-$fwdCount';
+  }) => '$defCount-$midCount-$fwdCount';
 
   /// Alle gültigen Feldspieler-Formationen `(def, mid, fwd)` — Torwart ist
   /// immer [gk], die Summe ergibt [starters]. Sortiert nach ABW, dann MF.
@@ -347,48 +367,52 @@ class RosterConfig {
         out.add((d, m, f));
       }
     }
-    out.sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
+    out.sort(
+      (a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2),
+    );
     return out;
   }
 
   factory RosterConfig.fromJson(Map<String, dynamic> json) => RosterConfig(
-        gk: json['gk'] as int? ?? 1,
-        def: json['def'] as int? ?? 4,
-        mid: json['mid'] as int? ?? 4,
-        fwd: json['fwd'] as int? ?? 2,
-        bench: json['bench'] as int? ?? 5,
-        defMin: json['defMin'] as int? ?? 3,
-        defMax: json['defMax'] as int? ?? 5,
-        midMin: json['midMin'] as int? ?? 2,
-        midMax: json['midMax'] as int? ?? 5,
-        fwdMin: json['fwdMin'] as int? ?? 1,
-        fwdMax: json['fwdMax'] as int? ?? 3,
-        maxGk: (json['maxGk'] as num?)?.toInt(),
-        maxDef: (json['maxDef'] as num?)?.toInt(),
-        maxMid: (json['maxMid'] as num?)?.toInt(),
-        maxFwd: (json['maxFwd'] as num?)?.toInt(),
-      );
+    gk: json['gk'] as int? ?? 1,
+    def: json['def'] as int? ?? 4,
+    mid: json['mid'] as int? ?? 4,
+    fwd: json['fwd'] as int? ?? 2,
+    bench: json['bench'] as int? ?? 5,
+    defMin: json['defMin'] as int? ?? 3,
+    defMax: json['defMax'] as int? ?? 5,
+    midMin: json['midMin'] as int? ?? 2,
+    midMax: json['midMax'] as int? ?? 5,
+    fwdMin: json['fwdMin'] as int? ?? 1,
+    fwdMax: json['fwdMax'] as int? ?? 3,
+    maxGk: (json['maxGk'] as num?)?.toInt(),
+    maxDef: (json['maxDef'] as num?)?.toInt(),
+    maxMid: (json['maxMid'] as num?)?.toInt(),
+    maxFwd: (json['maxFwd'] as num?)?.toInt(),
+    maxJeVerein: (json['maxJeVerein'] as num?)?.toInt(),
+  );
 
   Map<String, dynamic> toJson() => {
-        'gk': gk,
-        'def': def,
-        'mid': mid,
-        'fwd': fwd,
-        'bench': bench,
-        'defMin': defMin,
-        'defMax': defMax,
-        'midMin': midMin,
-        'midMax': midMax,
-        'fwdMin': fwdMin,
-        'fwdMax': fwdMax,
-        // Nur schreiben, was gesetzt ist: Ein `null` in der JSONB und ein
-        // fehlender Schlüssel bedeuten für die SQL dasselbe (unbegrenzt),
-        // aber der fehlende Schlüssel sagt es klarer.
-        if (maxGk != null) 'maxGk': maxGk,
-        if (maxDef != null) 'maxDef': maxDef,
-        if (maxMid != null) 'maxMid': maxMid,
-        if (maxFwd != null) 'maxFwd': maxFwd,
-      };
+    'gk': gk,
+    'def': def,
+    'mid': mid,
+    'fwd': fwd,
+    'bench': bench,
+    'defMin': defMin,
+    'defMax': defMax,
+    'midMin': midMin,
+    'midMax': midMax,
+    'fwdMin': fwdMin,
+    'fwdMax': fwdMax,
+    // Nur schreiben, was gesetzt ist: Ein `null` in der JSONB und ein
+    // fehlender Schlüssel bedeuten für die SQL dasselbe (unbegrenzt),
+    // aber der fehlende Schlüssel sagt es klarer.
+    if (maxGk != null) 'maxGk': maxGk,
+    if (maxDef != null) 'maxDef': maxDef,
+    if (maxMid != null) 'maxMid': maxMid,
+    if (maxFwd != null) 'maxFwd': maxFwd,
+    if (maxJeVerein != null) 'maxJeVerein': maxJeVerein,
+  };
 }
 
 /// Ein Spieler im Pool. Alter und U20-Status werden zu einem Stichtag
@@ -431,7 +455,8 @@ class FantasyPlayer {
 
   int ageOn(DateTime date) {
     var age = date.year - birthDate.year;
-    final hadBirthday = date.month > birthDate.month ||
+    final hadBirthday =
+        date.month > birthDate.month ||
         (date.month == birthDate.month && date.day >= birthDate.day);
     if (!hadBirthday) age--;
     return age;
@@ -456,29 +481,29 @@ class FantasyPlayer {
       isRookieFor(season) && !DateTime.now().isBefore(DateTime(season, 9, 5));
 
   factory FantasyPlayer.fromJson(Map<String, dynamic> json) => FantasyPlayer(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        position: PlayerPosition.fromId(json['position'] as String),
-        club: json['club'] as String,
-        birthDate: DateTime.parse(json['birth_date'] as String),
-        nationality: json['nationality'] as String,
-        isForeignNewcomer: json['is_foreign_newcomer'] as bool? ?? false,
-        abgangAm: json['abgang_am'] == null
-            ? null
-            : DateTime.parse(json['abgang_am'] as String).toLocal(),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    position: PlayerPosition.fromId(json['position'] as String),
+    club: json['club'] as String,
+    birthDate: DateTime.parse(json['birth_date'] as String),
+    nationality: json['nationality'] as String,
+    isForeignNewcomer: json['is_foreign_newcomer'] as bool? ?? false,
+    abgangAm: json['abgang_am'] == null
+        ? null
+        : DateTime.parse(json['abgang_am'] as String).toLocal(),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'position': position.name,
-        'club': club,
-        'birth_date':
-            '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
-        'nationality': nationality,
-        'is_foreign_newcomer': isForeignNewcomer,
-        'abgang_am': abgangAm?.toUtc().toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'position': position.name,
+    'club': club,
+    'birth_date':
+        '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+    'nationality': nationality,
+    'is_foreign_newcomer': isForeignNewcomer,
+    'abgang_am': abgangAm?.toUtc().toIso8601String(),
+  };
 }
 
 /// Eine Fantasy-Liga (= Wettbewerb mehrerer Manager).
@@ -625,46 +650,48 @@ class FantasyLeague {
   bool get isInviteOnly => joinPolicy == 'invite';
 
   factory FantasyLeague.fromJson(Map<String, dynamic> json) => FantasyLeague(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        mode: FantasyMode.fromId(json['mode'] as String),
-        season: json['season'] as int,
-        pickTime: DraftPickTime.fromSeconds(json['draft_pick_seconds'] as int),
-        scoring: FantasyScoringRules.fromJson(
-            (json['scoring'] as Map<String, dynamic>?) ?? const {}),
-        roster: RosterConfig.fromJson(
-            (json['roster'] as Map<String, dynamic>?) ?? const {}),
-        inviteCode: json['invite_code'] as String,
-        draftStatus: _draftStatusFromId(json['draft_status'] as String),
-        createdBy: json['created_by'] as String,
-        picksMade: json['picks_made'] as int? ?? 0,
-        currentPickDeadline: json['current_pick_deadline'] == null
-            ? null
-            : DateTime.parse(json['current_pick_deadline'] as String),
-        draftPausiertRest: intervallAusText(json['draft_pausiert_rest']),
-        // `u20_rounds` und `u20_draft_pending` stehen in der Datenbank
-        // weiter, werden hier aber bewusst **nicht** mehr gelesen.
-        // `draft_phase` ist seit 0143 wieder in Gebrauch (`reset`).
-        maxTeams: json['max_teams'] as int?,
-        pauseStart: json['draft_pause_start'] as int?,
-        pauseEnd: json['draft_pause_end'] as int?,
-        playoffTeams: json['playoff_teams'] as int?,
-        playoffWeeks: json['playoff_weeks'] as int?,
-        tradeDeadlineOffset: json['trade_deadline_offset'] as int?,
-        draftOrderMode: json['draft_order_mode'] as String? ?? 'auto',
-        logoUrl: json['logo_url'] as String?,
-        logoEmoji: json['logo_emoji'] as String?,
-        logoColor: json['logo_color'] as String?,
-        visibility: json['visibility'] as String? ?? 'private',
-        joinPolicy: json['join_policy'] as String? ?? 'open',
-        tipEnabled: json['tip_enabled'] as bool? ?? false,
-        remisGrenze: (json['remis_grenze'] as num?)?.toDouble(),
-        draftPhase: json['draft_phase'] as String? ?? 'startup',
-        resetAktiv: json['reset_aktiv'] as bool? ?? false,
-        resetErfolgtAt: json['reset_erfolgt_at'] == null
-            ? null
-            : DateTime.parse(json['reset_erfolgt_at'] as String),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    mode: FantasyMode.fromId(json['mode'] as String),
+    season: json['season'] as int,
+    pickTime: DraftPickTime.fromSeconds(json['draft_pick_seconds'] as int),
+    scoring: FantasyScoringRules.fromJson(
+      (json['scoring'] as Map<String, dynamic>?) ?? const {},
+    ),
+    roster: RosterConfig.fromJson(
+      (json['roster'] as Map<String, dynamic>?) ?? const {},
+    ),
+    inviteCode: json['invite_code'] as String,
+    draftStatus: _draftStatusFromId(json['draft_status'] as String),
+    createdBy: json['created_by'] as String,
+    picksMade: json['picks_made'] as int? ?? 0,
+    currentPickDeadline: json['current_pick_deadline'] == null
+        ? null
+        : DateTime.parse(json['current_pick_deadline'] as String),
+    draftPausiertRest: intervallAusText(json['draft_pausiert_rest']),
+    // `u20_rounds` und `u20_draft_pending` stehen in der Datenbank
+    // weiter, werden hier aber bewusst **nicht** mehr gelesen.
+    // `draft_phase` ist seit 0143 wieder in Gebrauch (`reset`).
+    maxTeams: json['max_teams'] as int?,
+    pauseStart: json['draft_pause_start'] as int?,
+    pauseEnd: json['draft_pause_end'] as int?,
+    playoffTeams: json['playoff_teams'] as int?,
+    playoffWeeks: json['playoff_weeks'] as int?,
+    tradeDeadlineOffset: json['trade_deadline_offset'] as int?,
+    draftOrderMode: json['draft_order_mode'] as String? ?? 'auto',
+    logoUrl: json['logo_url'] as String?,
+    logoEmoji: json['logo_emoji'] as String?,
+    logoColor: json['logo_color'] as String?,
+    visibility: json['visibility'] as String? ?? 'private',
+    joinPolicy: json['join_policy'] as String? ?? 'open',
+    tipEnabled: json['tip_enabled'] as bool? ?? false,
+    remisGrenze: (json['remis_grenze'] as num?)?.toDouble(),
+    draftPhase: json['draft_phase'] as String? ?? 'startup',
+    resetAktiv: json['reset_aktiv'] as bool? ?? false,
+    resetErfolgtAt: json['reset_erfolgt_at'] == null
+        ? null
+        : DateTime.parse(json['reset_erfolgt_at'] as String),
+  );
 
   /// Picks pro Manager im Draft (= Kadergröße).
   ///
@@ -686,10 +713,10 @@ class RosterEntry {
   final String acquiredVia; // draft | fa | waiver
 
   factory RosterEntry.fromJson(Map<String, dynamic> json) => RosterEntry(
-        managerId: json['manager_id'] as String,
-        playerId: json['player_id'] as String,
-        acquiredVia: json['acquired_via'] as String? ?? 'draft',
-      );
+    managerId: json['manager_id'] as String,
+    playerId: json['player_id'] as String,
+    acquiredVia: json['acquired_via'] as String? ?? 'draft',
+  );
 }
 
 /// Die für einen Spieltag gewählte Startelf eines Managers. Leer/keine
@@ -706,13 +733,12 @@ class FantasyLineup {
   final Set<String> playerIds;
 
   factory FantasyLineup.fromJson(Map<String, dynamic> json) => FantasyLineup(
-        managerId: json['manager_id'] as String,
-        round: json['round'] as int,
-        playerIds: {
-          for (final id in (json['player_ids'] as List? ?? const []))
-            id as String
-        },
-      );
+    managerId: json['manager_id'] as String,
+    round: json['round'] as int,
+    playerIds: {
+      for (final id in (json['player_ids'] as List? ?? const [])) id as String,
+    },
+  );
 }
 
 /// Ein getätigter Draft-Pick.
@@ -737,13 +763,13 @@ class DraftPick {
   final bool isAuto;
 
   factory DraftPick.fromJson(Map<String, dynamic> json) => DraftPick(
-        pickNumber: json['pick_number'] as int,
-        round: json['round'] as int,
-        managerId: json['manager_id'] as String,
-        playerId: json['player_id'] as String,
-        isAuto: json['is_auto'] as bool? ?? false,
-        phase: json['phase'] as String? ?? 'startup',
-      );
+    pickNumber: json['pick_number'] as int,
+    round: json['round'] as int,
+    managerId: json['manager_id'] as String,
+    playerId: json['player_id'] as String,
+    isAuto: json['is_auto'] as bool? ?? false,
+    phase: json['phase'] as String? ?? 'startup',
+  );
 }
 
 /// Ein Manager (Mitglied) einer Fantasy-Liga.
@@ -791,19 +817,19 @@ class FantasyManager {
   /// Dieselbe Person mit anderer Draft-Position — auch `null`, anders als
   /// [copyWith].
   FantasyManager mitDraftPosition(int? pos) => FantasyManager(
-        userId: userId,
-        username: username,
-        teamName: teamName,
-        draftPosition: pos,
-        resetPosition: resetPosition,
-        waiverPriority: waiverPriority,
-        vacant: vacant,
-        pending: pending,
-        autoPick: autoPick,
-        avatarUrl: avatarUrl,
-        avatarEmoji: avatarEmoji,
-        avatarColor: avatarColor,
-      );
+    userId: userId,
+    username: username,
+    teamName: teamName,
+    draftPosition: pos,
+    resetPosition: resetPosition,
+    waiverPriority: waiverPriority,
+    vacant: vacant,
+    pending: pending,
+    autoPick: autoPick,
+    avatarUrl: avatarUrl,
+    avatarEmoji: avatarEmoji,
+    avatarColor: avatarColor,
+  );
 
   /// Rollende Waiver-Priorität (1 = zuerst dran), null bis zur ersten
   /// Waiver-Abarbeitung.
@@ -871,9 +897,9 @@ enum WaiverStatus {
   bool get isPending => this == WaiverStatus.pending;
 
   static WaiverStatus fromId(String id) => values.firstWhere(
-        (s) => s.name == id,
-        orElse: () => WaiverStatus.pending,
-      );
+    (s) => s.name == id,
+    orElse: () => WaiverStatus.pending,
+  );
 }
 
 /// Ein Waiver-Antrag: hole [addPlayerId], gib dafür optional [dropPlayerId]
@@ -904,16 +930,16 @@ class WaiverClaim {
   final DateTime createdAt;
 
   factory WaiverClaim.fromJson(Map<String, dynamic> json) => WaiverClaim(
-        id: json['id'] as String,
-        leagueId: json['league_id'] as String,
-        managerId: json['manager_id'] as String,
-        addPlayerId: json['add_player_id'] as String,
-        dropPlayerId: json['drop_player_id'] as String?,
-        rank: json['rank'] as int? ?? 1,
-        status: WaiverStatus.fromId(json['status'] as String? ?? 'pending'),
-        reason: json['reason'] as String?,
-        createdAt: DateTime.parse(json['created_at'] as String),
-      );
+    id: json['id'] as String,
+    leagueId: json['league_id'] as String,
+    managerId: json['manager_id'] as String,
+    addPlayerId: json['add_player_id'] as String,
+    dropPlayerId: json['drop_player_id'] as String?,
+    rank: json['rank'] as int? ?? 1,
+    status: WaiverStatus.fromId(json['status'] as String? ?? 'pending'),
+    reason: json['reason'] as String?,
+    createdAt: DateTime.parse(json['created_at'] as String),
+  );
 }
 
 /// Ein Postgres-`interval` aus PostgREST („00:00:50", „1 day 02:00:00")

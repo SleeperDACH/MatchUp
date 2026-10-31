@@ -11,7 +11,6 @@ import '../logic/naechstes_spiel.dart';
 ///
 /// Vorher stand dort „FCA · Sa 15:30" — Kürzel, Trennpunkt und Zeit in
 /// derselben kleinen, fetten Schrift. Jetzt trägt das **Wappen** den Gegner,
-/// eine kleine Marke davor sagt Heim oder Auswärts (H/A, im Kader das Wort),
 /// und die Zeit steht in normaler Stärke mit gleich breiten Ziffern. Ohne Wappen (kein Spielplan-Team) fällt die
 /// Marke auf das Kürzel zurück.
 class SpielMarke extends StatelessWidget {
@@ -22,7 +21,6 @@ class SpielMarke extends StatelessWidget {
     this.farbe,
     this.groesse = Schrift.label,
     this.mitZeit = true,
-    this.buchstabe = false,
   });
 
   final NaechstesSpiel spiel;
@@ -30,13 +28,8 @@ class SpielMarke extends StatelessWidget {
   final Color? farbe;
   final double groesse;
 
-  /// Tag und Anstoß dahinter (MatchUp). Ohne Zeit (Kader) steht „Heim"
-  /// bzw. „Auswärts" ausgeschrieben statt der Kurzmarke.
+  /// Tag und Anstoß hinter dem Wappen (MatchUp); im Kader nur das Wappen.
   final bool mitZeit;
-
-  /// H/A im Kästchen auch ohne Zeit — für die Zeile unter dem Namensschild
-  /// auf dem Rasen, wo „Auswärts" die Schrift zu klein zwang (21.10.2026).
-  final bool buchstabe;
 
   @override
   Widget build(BuildContext context) {
@@ -49,29 +42,13 @@ class SpielMarke extends StatelessWidget {
       fontFeatures: const [FontFeature.tabularFigures()],
     );
     final team = spiel.gegnerTeam;
-    // **Heim/Auswärts als Marke, nicht als „@"** (19.10.2026, auf Ansage).
-    // Mit Zeit ein Buchstabe im Kästchen (H/A), ohne Zeit das Wort.
-    final marke = (mitZeit || buchstabe)
-        ? Container(
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(3),
-              border: Border.all(color: f.withValues(alpha: 0.5), width: 0.8),
-            ),
-            child: Text(
-              spiel.heim ? 'H' : 'A',
-              style: stil.copyWith(
-                fontSize: Schrift.mikro,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          )
-        : Text(spiel.heim ? 'Heim' : 'Auswärts', style: stil);
+    // **Kein H/A mehr** (31.10.2026, auf Ansage, Punkt 8 der Nutzer-Analyse:
+    // „zu viel auf kleinem Raum"). Vorher stand davor ein Kästchen H/A bzw.
+    // „Heim"/„Auswärts" — eine Auskunft, die beim Aufstellen kaum jemand
+    // braucht und die Zeile um ein Element in 9 Punkt voller machte.
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        marke,
-        const SizedBox(width: 5),
         if (team != null)
           TeamBadge(team: team, size: wappen)
         else

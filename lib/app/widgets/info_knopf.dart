@@ -19,11 +19,22 @@ class InfoKnopf extends StatelessWidget {
     required this.titel,
     required this.text,
     this.groesse = 18,
+    this.frage = false,
+    this.farbe,
   });
 
   final String titel;
   final String text;
   final double groesse;
+
+  /// **Fragezeichen statt ⓘ** — für „Was ist das?" an Begriffen, die ein
+  /// neuer Nutzer nicht kennt (Fantasy, Tippspiel, Globales Tippspiel).
+  /// Das ⓘ bleibt für Regeln an Zahlen und Listen.
+  final bool frage;
+
+  /// Symbolfarbe, wenn der Grund nicht der App-Grund ist (die Startkarten
+  /// mit Foto sind in beiden Modi dunkel). Sonst das leise Grau.
+  final Color? farbe;
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +45,11 @@ class InfoKnopf extends StatelessWidget {
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-      icon: Icon(Icons.info_outline,
-          size: groesse, color: scheme.onSurfaceVariant),
+      icon: Icon(
+        frage ? Icons.help_outline : Icons.info_outline,
+        size: groesse,
+        color: farbe ?? scheme.onSurfaceVariant,
+      ),
     );
   }
 }
@@ -52,21 +66,25 @@ Future<void> zeigeErklaerung(
     showDragHandle: true,
     builder: (ctx) => SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-            Abstand.l, 0, Abstand.l, Abstand.l),
+        padding: const EdgeInsets.fromLTRB(Abstand.l, 0, Abstand.l, Abstand.l),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(titel,
-                style: Theme.of(ctx)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              titel,
+              style: Theme.of(
+                ctx,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: Abstand.s),
-            Text(text,
-                style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant, height: 1.4)),
+            Text(
+              text,
+              style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
           ],
         ),
       ),

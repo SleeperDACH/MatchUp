@@ -154,7 +154,7 @@ void main() {
         findsOneWidget);
     expect(find.text('@MatchUp! und @Leonardo haben getauscht.'),
         findsOneWidget);
-    expect(find.text('F. Uduokhai'), findsOneWidget);
+    expect(find.text('F. UDUOKHAI'), findsOneWidget);
     expect(find.text('ABW · FCU'), findsOneWidget);
 
     // Das Bild trägt Tage relativ zu heute — verglichen wird nur beim

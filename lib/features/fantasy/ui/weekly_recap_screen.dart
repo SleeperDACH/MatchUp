@@ -72,7 +72,8 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     // Beim Öffnen der zuletzt abgepfiffene Spieltag — der, über den es etwas
     // zu berichten gibt. Zurückblättern geht danach frei.
     final veroeffentlicht = ref.watch(veroeffentlichteRueckblickeProvider);
-    final current = ref.watch(fantasyRecapRundeProvider).valueOrNull ??
+    final current =
+        ref.watch(fantasyRecapRundeProvider).valueOrNull ??
         (veroeffentlicht.isEmpty ? null : veroeffentlicht.last) ??
         ref.watch(fantasyCurrentRoundProvider).valueOrNull;
     final round = _round ?? widget.initialRound ?? current ?? 1;
@@ -232,19 +233,23 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
       bool pkt = true,
       bool ich = false,
       Widget? wappen,
+      bool spieler = false,
       required VoidCallback onTap,
     }) {
-      zeilen.add(_AwardZeile(
-        icon: icon,
-        titel: titel,
-        wer: wer,
-        unter: unter,
-        wert: wert,
-        pkt: pkt,
-        ich: ich,
-        wappen: wappen,
-        onTap: onTap,
-      ));
+      zeilen.add(
+        _AwardZeile(
+          icon: icon,
+          titel: titel,
+          wer: wer,
+          spieler: spieler,
+          unter: unter,
+          wert: wert,
+          pkt: pkt,
+          ich: ich,
+          wappen: wappen,
+          onTap: onTap,
+        ),
+      );
     }
 
     void spieler(IconData icon, String titel, PlayerAward a) {
@@ -253,6 +258,7 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
         icon: icon,
         titel: titel,
         wer: p?.name ?? '?',
+        spieler: p != null,
         unter: 'Kader: ${name(a.managerId)}',
         wert: formatPoints(a.points),
         ich: a.managerId == myId,
@@ -348,9 +354,10 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
                 for (final (i, z) in zeilen.indexed) ...[
                   if (i > 0)
                     Divider(
-                        height: 1,
-                        indent: 52,
-                        color: Theme.of(context).dividerColor),
+                      height: 1,
+                      indent: 52,
+                      color: Theme.of(context).dividerColor,
+                    ),
                   z,
                 ],
               ],
@@ -361,7 +368,6 @@ class _WeeklyRecapScreenState extends ConsumerState<WeeklyRecapScreen> {
     ];
   }
 }
-
 
 class _EmptyHint extends StatelessWidget {
   const _EmptyHint(this.text);
@@ -436,8 +442,10 @@ class _TeamDerWoche extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text('höchstes Ergebnis des Spieltags',
-                    style: TextStyle(fontSize: Schrift.label, color: grau)),
+                Text(
+                  'höchstes Ergebnis des Spieltags',
+                  style: TextStyle(fontSize: Schrift.label, color: grau),
+                ),
               ],
             ),
           ),
@@ -453,8 +461,10 @@ class _TeamDerWoche extends StatelessWidget {
                   height: 1,
                 ),
               ),
-              Text('Pkt',
-                  style: TextStyle(fontSize: Schrift.label, color: grau)),
+              Text(
+                'Pkt',
+                style: TextStyle(fontSize: Schrift.label, color: grau),
+              ),
             ],
           ),
         ],
@@ -475,11 +485,16 @@ class _AwardZeile extends StatelessWidget {
     required this.ich,
     required this.wappen,
     required this.onTap,
+    this.spieler = false,
   });
 
   final IconData icon;
   final String titel;
   final String wer;
+
+  /// Ein Spielername steht in Versalien und kursiv (31.10.2026), ein
+  /// Managername nicht.
+  final bool spieler;
   final String? unter;
   final String wert;
   final bool pkt;
@@ -513,12 +528,15 @@ class _AwardZeile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    wer,
+                    spieler ? wer.toUpperCase() : wer,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: Schrift.text,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: spieler
+                          ? Schrift.ueberschriftGewicht
+                          : FontWeight.w700,
+                      fontStyle: spieler ? Schrift.ueberschriftStil : null,
                       color: ich ? context.farben.gruen : null,
                     ),
                   ),
@@ -547,8 +565,10 @@ class _AwardZeile extends StatelessWidget {
                   ),
                 ),
                 if (pkt)
-                  Text('Pkt',
-                      style: TextStyle(fontSize: Schrift.label, color: grau)),
+                  Text(
+                    'Pkt',
+                    style: TextStyle(fontSize: Schrift.label, color: grau),
+                  ),
               ],
             ),
           ],
@@ -684,6 +704,7 @@ class WeeklyRecapCard extends ConsumerWidget {
               _MiniLine(
                 label: 'MVP',
                 value: playerById[mvp.playerId]?.name ?? '?',
+                spieler: true,
                 trailing: '${formatPoints(mvp.points)} Pkt',
               ),
             ],
@@ -699,10 +720,12 @@ class _MiniLine extends StatelessWidget {
     required this.label,
     required this.value,
     required this.trailing,
+    this.spieler = false,
   });
 
   final String label;
   final String value;
+  final bool spieler;
   final String trailing;
 
   @override
@@ -715,16 +738,23 @@ class _MiniLine extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-                fontSize: Schrift.label, color: scheme.onSurfaceVariant),
+              fontSize: Schrift.label,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
         ),
         Expanded(
           child: Text(
-            value,
+            spieler ? value.toUpperCase() : value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-                fontSize: Schrift.text, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: Schrift.text,
+              fontWeight: spieler
+                  ? Schrift.ueberschriftGewicht
+                  : FontWeight.w700,
+              fontStyle: spieler ? Schrift.ueberschriftStil : null,
+            ),
           ),
         ),
         Text(

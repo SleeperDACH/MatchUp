@@ -759,12 +759,16 @@ class _PlayerRow extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: start ? Alignment.centerLeft : Alignment.centerRight,
+                // Versalien und kursiv (31.10.2026, auf Ansage). Kursiv gibt
+                // es nur als ExtraBold-Schnitt; „mein Spieler" sagen die
+                // grünen Punkte daneben.
                 child: Text(
-                  shortPlayerName(player.name),
+                  shortPlayerName(player.name).toUpperCase(),
                   maxLines: 1,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
-                    fontWeight: mine ? FontWeight.w800 : FontWeight.w600,
+                    fontWeight: Schrift.ueberschriftGewicht,
+                    fontStyle: Schrift.ueberschriftStil,
                   ),
                 ),
               ),
@@ -1080,9 +1084,13 @@ class _BenchSection extends StatelessWidget {
                           children: [
                             Flexible(
                               child: Text(
-                                shortPlayerName(p.name),
+                                shortPlayerName(p.name).toUpperCase(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: Schrift.ueberschriftGewicht,
+                                  fontStyle: Schrift.ueberschriftStil,
+                                ),
                               ),
                             ),
                             if (ausfaelle[p.id] != null) ...[
@@ -1281,27 +1289,7 @@ class _SpielZeileText extends StatelessWidget {
             style: basis,
           ),
           const SizedBox(width: 5),
-          // Dieselbe H/A-Marke wie vor dem Anpfiff (`SpielMarke`).
-          Container(
-            margin: const EdgeInsets.only(right: 5),
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(3),
-              border: Border.all(
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
-                width: 0.8,
-              ),
-            ),
-            child: Text(
-              s.heim ? 'H' : 'A',
-              style: basis.copyWith(
-                fontSize: Schrift.mikro,
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurfaceVariant,
-                height: 1.0,
-              ),
-            ),
-          ),
+          // Kein H/A mehr (31.10.2026, auf Ansage) — wie in `SpielMarke`.
           if (team != null)
             TeamBadge(team: team, size: 14)
           else
@@ -1341,7 +1329,9 @@ class _FehlendePosition extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: context.farben.gold.withValues(alpha: 0.12),
-              border: Border.all(color: context.farben.gold.withValues(alpha: 0.55)),
+              border: Border.all(
+                color: context.farben.gold.withValues(alpha: 0.55),
+              ),
             ),
             child: Icon(
               Icons.priority_high_outlined,

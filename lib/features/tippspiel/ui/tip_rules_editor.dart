@@ -1,3 +1,4 @@
+import '../../../app/erklaerungen.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/typografie.dart';
@@ -10,6 +11,10 @@ import '../models/tip.dart';
 /// Tipprunde. Genutzt beim Erstellen und in den Liga-Einstellungen. Meldet
 /// jede Änderung als komplette [ScoringRules] über [onChanged]; Name und
 /// Wettbewerb liegen bewusst außerhalb (die sind nicht Teil der Wertung).
+/// Welcher Teil gezeigt wird — beim Anlegen in Schritten stehen Punkte und
+/// Modi auf verschiedenen Seiten (29.10.2026).
+enum TipRulesTeil { alles, punkte, modi }
+
 class TipRulesEditor extends StatefulWidget {
   const TipRulesEditor({
     super.key,
@@ -17,7 +22,14 @@ class TipRulesEditor extends StatefulWidget {
     required this.onChanged,
     this.lockedBonusTips = const {},
     this.oddsAvailable = true,
+    this.teil = TipRulesTeil.alles,
   });
+
+  /// Nur Punkte, nur Modi oder beides. Zwei Editoren für dieselben Regeln
+  /// (je ein Teil) bleiben gleich, weil jeder ein neues [initial] übernimmt
+  /// (`didUpdateWidget`) — sonst schriebe der eine die Werte des anderen mit
+  /// seinem alten Stand zurück.
+  final TipRulesTeil teil;
 
   final ScoringRules initial;
   final ValueChanged<ScoringRules> onChanged;
@@ -80,6 +92,31 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
     bonusPoints: _bonusPoints,
   );
 
+  @override
+  void didUpdateWidget(TipRulesEditor alt) {
+    super.didUpdateWidget(alt);
+    if (identical(alt.initial, widget.initial)) return;
+    final r = widget.initial;
+    _exact = r.exact;
+    _goalDiff = r.goalDiff;
+    _tendency = r.tendency;
+    _wrongTip = r.wrongTip;
+    _oddsBonus = r.oddsBonus;
+    _odds1 = r.oddsOdds1;
+    _points1 = r.oddsPoints1;
+    _odds2 = r.oddsOdds2;
+    _points2 = r.oddsPoints2;
+    _solo = r.solo > 0;
+    _headToHead = r.headToHead;
+    _bonusTips = r.bonusTips.isNotEmpty;
+    if (r.bonusTips.isNotEmpty) {
+      _bonusTipKeys
+        ..clear()
+        ..addAll(r.bonusTips);
+    }
+    _bonusPoints = r.bonusPoints;
+  }
+
   /// setState + Änderung nach oben melden.
   void _set(VoidCallback change) {
     setState(change);
@@ -97,68 +134,72 @@ class _TipRulesEditorState extends State<TipRulesEditor> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FormSection(
-          titel: 'Punkte je Tipp',
-          kinder: [
-            _punkte('Exaktes Ergebnis', _exact, (v) => _exact = v),
-            const EinstellungsTrenner(),
-            _punkte('Tordifferenz', _goalDiff, (v) => _goalDiff = v),
-            const EinstellungsTrenner(),
-            _punkte('Tendenz', _tendency, (v) => _tendency = v),
-            const EinstellungsTrenner(),
-            _punkte(
-              'Falscher Tipp',
-              _wrongTip,
-              (v) => _wrongTip = v,
-              min: -5,
-              max: 0,
-            ),
-          ],
-        ),
-        FormSection(
-          titel: 'Modi',
-          kinder: [
-            // Quoten-Bonus nur, wenn die gewählten Wettbewerbe Quoten haben
-            // (DFB-Pokal: keine Quoten → Modus ausgeblendet).
-            if (widget.oddsAvailable) ...[
-              EinstellungsSchalter(
-                label: 'Quoten-Bonus',
-                unter: 'Extrapunkte für Außenseiter',
-                wert: _oddsBonus,
-                onChanged: (v) => _set(() => _oddsBonus = v),
-              ),
-              if (_oddsBonus) ..._quotenZeilen(),
+        if (widget.teil != TipRulesTeil.modi)
+          FormSection(
+            titel: 'Punkte je Tipp',
+            erklaerung: erklaerungPunkteJeTipp,
+            kinder: [
+              _punkte('Exaktes Ergebnis', _exact, (v) => _exact = v),
               const EinstellungsTrenner(),
+              _punkte('Tordifferenz', _goalDiff, (v) => _goalDiff = v),
+              const EinstellungsTrenner(),
+              _punkte('Tendenz', _tendency, (v) => _tendency = v),
+              const EinstellungsTrenner(),
+              _punkte(
+                'Falscher Tipp',
+                _wrongTip,
+                (v) => _wrongTip = v,
+                min: -5,
+                max: 0,
+              ),
             ],
-            EinstellungsSchalter(
-              label: 'Alleinstellungs-Bonus',
-              unter: '+$_soloValue für den einzigen exakten Tipp',
-              wert: _solo,
-              onChanged: (v) => _set(() => _solo = v),
-            ),
-            const EinstellungsTrenner(),
-            EinstellungsSchalter(
-              label: 'Head-to-Head',
-              unter: 'Jeder Spieltag ein Duell',
-              wert: _headToHead,
-              onChanged: (v) => _set(() => _headToHead = v),
-            ),
-            const EinstellungsTrenner(),
-            EinstellungsSchalter(
-              label: 'Bonustipps',
-              unter: widget.lockedBonusTips.isEmpty
-                  ? 'Saison-Prognosen'
-                  : 'Aktiv — weitere lassen sich ergänzen',
-              wert: _bonusTips,
-              // Wenn schon Bonustipps aktiv sind, lässt sich der Modus nicht
-              // mehr abschalten (nur hinzufügen).
-              onChanged: widget.lockedBonusTips.isEmpty
-                  ? (v) => _set(() => _bonusTips = v)
-                  : null,
-            ),
-            if (_bonusTips) ..._bonusTippZeilen(),
-          ],
-        ),
+          ),
+        if (widget.teil != TipRulesTeil.punkte)
+          FormSection(
+            titel: 'Modi',
+            erklaerung: erklaerungModi,
+            kinder: [
+              // Quoten-Bonus nur, wenn die gewählten Wettbewerbe Quoten haben
+              // (DFB-Pokal: keine Quoten → Modus ausgeblendet).
+              if (widget.oddsAvailable) ...[
+                EinstellungsSchalter(
+                  label: 'Quoten-Bonus',
+                  unter: 'Extrapunkte für Außenseiter',
+                  wert: _oddsBonus,
+                  onChanged: (v) => _set(() => _oddsBonus = v),
+                ),
+                if (_oddsBonus) ..._quotenZeilen(),
+                const EinstellungsTrenner(),
+              ],
+              EinstellungsSchalter(
+                label: 'Alleinstellungs-Bonus',
+                unter: '+$_soloValue für den einzigen exakten Tipp',
+                wert: _solo,
+                onChanged: (v) => _set(() => _solo = v),
+              ),
+              const EinstellungsTrenner(),
+              EinstellungsSchalter(
+                label: 'Head-to-Head',
+                unter: 'Jeder Spieltag ein Duell',
+                wert: _headToHead,
+                onChanged: (v) => _set(() => _headToHead = v),
+              ),
+              const EinstellungsTrenner(),
+              EinstellungsSchalter(
+                label: 'Bonustipps',
+                unter: widget.lockedBonusTips.isEmpty
+                    ? 'Saison-Prognosen'
+                    : 'Aktiv — weitere lassen sich ergänzen',
+                wert: _bonusTips,
+                // Wenn schon Bonustipps aktiv sind, lässt sich der Modus nicht
+                // mehr abschalten (nur hinzufügen).
+                onChanged: widget.lockedBonusTips.isEmpty
+                    ? (v) => _set(() => _bonusTips = v)
+                    : null,
+              ),
+              if (_bonusTips) ..._bonusTippZeilen(),
+            ],
+          ),
       ],
     );
   }

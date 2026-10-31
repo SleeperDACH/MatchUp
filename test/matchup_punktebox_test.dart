@@ -196,7 +196,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 120));
     }
 
-    await tester.tap(find.text('Urbig').first);
+    await tester.tap(find.text('URBIG').first);
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 120));
     }

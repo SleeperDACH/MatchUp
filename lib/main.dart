@@ -1,3 +1,6 @@
+import 'features/favorites/favorites.dart';
+import 'features/favorites/ui/vereinswahl_screen.dart';
+import 'features/einladung/einladung.dart';
 import 'app/darstellung.dart';
 import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -89,12 +92,16 @@ Future<void> main() async {
   // Die Darstellung vor dem ersten Frame lesen, sonst blitzt im hellen
   // Modus beim Start erst Schwarz auf.
   final darstellung = await ladeDarstellung();
-  runApp(ProviderScope(
-    overrides: [
-      darstellungProvider.overrideWith((ref) => DarstellungNotifier(darstellung)),
-    ],
-    child: const FantasyApp(),
-  ));
+  runApp(
+    ProviderScope(
+      overrides: [
+        darstellungProvider.overrideWith(
+          (ref) => DarstellungNotifier(darstellung),
+        ),
+      ],
+      child: const FantasyApp(),
+    ),
+  );
 }
 
 /// Läuft in einem **eigenen Isolate**, wenn eine Benachrichtigung eintrifft,
@@ -126,6 +133,9 @@ Future<void> _pruefeRecoveryStartlink() async {
     if (uri != null && _istRecoveryLink(uri)) {
       passwordRecoveryMode.value = true;
     }
+    // Einladungslink (`app.matchup.mobile://einladung?code=…`): merken, die
+    // App-Hülle fragt nach dem Start, ob man beitreten will.
+    if (uri != null) await einladungAusStartLink(uri);
   } catch (e) {
     debugPrint('Start-Link konnte nicht gelesen werden: $e');
   }
@@ -148,12 +158,10 @@ void _beobachteRecoveryLinks() {
   if (kIsWeb) return;
   // `AppLinks()` ist ein Singleton mit Broadcast-Stream — diese Anmeldung
   // kommt der internen von supabase_flutter nicht in die Quere.
-  AppLinks().uriLinkStream.listen(
-    (uri) {
-      if (_istRecoveryLink(uri)) passwordRecoveryMode.value = true;
-    },
-    onError: (Object e) => debugPrint('Deep-Link-Stream: $e'),
-  );
+  AppLinks().uriLinkStream.listen((uri) {
+    if (_istRecoveryLink(uri)) passwordRecoveryMode.value = true;
+    einladungAusLink(uri);
+  }, onError: (Object e) => debugPrint('Deep-Link-Stream: $e'));
 }
 
 class FantasyApp extends ConsumerWidget {
@@ -162,7 +170,7 @@ class FantasyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'Tippspiel',
+      title: 'MatchUp',
       // Dunkel ist der Standard; hell ist eine Wahl unter Profil ›
       // Darstellung (`darstellung.dart`).
       theme: buildAppTheme(brightness: Brightness.light),
@@ -183,14 +191,20 @@ class _RootGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user =
-        AppConfig.isSupabaseConfigured ? ref.watch(currentUserProvider) : null;
+    final user = AppConfig.isSupabaseConfigured
+        ? ref.watch(currentUserProvider)
+        : null;
+    // Beim ersten Start (kein Lieblingsverein im Konto) zuerst die
+    // Vereinsauswahl — Punkt 5 der Nutzer-Analyse.
+    final vereinsWahl = user != null && ref.watch(vereinsWahlNoetigProvider);
     return ValueListenableBuilder<bool>(
       valueListenable: passwordRecoveryMode,
       builder: (context, recovery, _) {
         if (kDebugMode) {
-          debugPrint('[AUTH] Gate baut: user=${user?.email} '
-              'recovery=$recovery konfiguriert=${AppConfig.isSupabaseConfigured}');
+          debugPrint(
+            '[AUTH] Gate baut: user=${user?.email} '
+            'recovery=$recovery konfiguriert=${AppConfig.isSupabaseConfigured}',
+          );
         }
         final Widget inhalt;
         if (recovery) {
@@ -198,7 +212,11 @@ class _RootGate extends ConsumerWidget {
         } else if (!AppConfig.isSupabaseConfigured) {
           inhalt = const MainShell();
         } else {
-          inhalt = user == null ? const LoginScreen() : const MainShell();
+          inhalt = user == null
+              ? const LoginScreen()
+              : vereinsWahl
+              ? const VereinsWahlScreen()
+              : const MainShell();
         }
         // Das Gate tauscht nur den Inhalt der ersten Route. Ohne den Reset
         // bleibt beim Kontowechsel alles stehen, was darüber liegt (Profil,

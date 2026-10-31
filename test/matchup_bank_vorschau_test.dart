@@ -120,7 +120,7 @@ void main() {
         reason: 'kein Ausklapper mehr');
     expect(find.text('Bank'), findsOneWidget);
     // Beide Seiten haben denselben Ersatztorwart — zweimal ist also richtig.
-    expect(find.text('Boss'), findsNWidgets(2),
+    expect(find.text('BOSS'), findsNWidgets(2),
         reason: 'die Bankspieler stehen ohne Zutun da, je Seite einer');
 
     await expectLater(find.byType(MatchupLineups),

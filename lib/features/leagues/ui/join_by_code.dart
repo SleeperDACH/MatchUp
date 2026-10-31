@@ -35,23 +35,41 @@ Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
     pruefe: (v) => v.isEmpty ? 'Bitte gib einen Code ein.' : null,
   );
   if (code == null || code.trim().isEmpty) return;
+  if (!context.mounted) return;
+  await beitretenMitCode(context, ref, code);
+}
+
+/// Der Beitritt selbst — vom Code-Dialog und vom Einladungslink benutzt
+/// (`EinladungsWaechter`), damit beide Wege dieselben Fälle kennen: erst
+/// Fantasy-Liga, dann Tipprunde, echte Gründe werden gemeldet.
+Future<void> beitretenMitCode(
+  BuildContext context,
+  WidgetRef ref,
+  String code,
+) async {
   final trimmed = code.trim();
 
   // 1) Als Fantasy-Liga versuchen.
   try {
-    final league =
-        await ref.read(fantasyLeagueRepositoryProvider).joinLeague(trimmed);
+    final league = await ref
+        .read(fantasyLeagueRepositoryProvider)
+        .joinLeague(trimmed);
     ref.invalidate(myFantasyLeaguesProvider);
     if (!context.mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => FantasyLeagueScreen(league: league)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FantasyLeagueScreen(league: league)),
+    );
     // Nach Draft-Start ist man nur „pending" — der Admin muss noch ein freies
     // Team zuweisen. Kurzer Hinweis, damit klar ist, warum kein Kader da ist.
     if (league.draftStatus != DraftStatus.setup && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Beigetreten! Der Draft läuft bereits — der Admin weist '
-            'dir ein Team zu, sobald ein Platz frei ist.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Beigetreten! Der Draft läuft bereits — der Admin weist '
+            'dir ein Team zu, sobald ein Platz frei ist.',
+          ),
+        ),
+      );
     }
     return;
   } catch (e) {
@@ -60,11 +78,15 @@ Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
       // Der Code gehört zu einer Fantasy-Liga, der Beitritt scheiterte aber
       // aus einem anderen Grund (z. B. Draft bereits begonnen).
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg.contains('bereits begonnen')
-            ? 'Der Draft dieser Liga hat bereits begonnen.'
-            : 'Beitritt fehlgeschlagen: $e'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            msg.contains('bereits begonnen')
+                ? 'Der Draft dieser Liga hat bereits begonnen.'
+                : 'Beitritt fehlgeschlagen: $e',
+          ),
+        ),
+      );
       return;
     }
     // Sonst: kein Fantasy-Code -> als Tipprunde weiterversuchen.
@@ -76,15 +98,20 @@ Future<void> joinAnyFlow(BuildContext context, WidgetRef ref) async {
     ref.invalidate(myRoundsProvider);
     activateRound(ref, round);
     if (!context.mounted) return;
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => LeagueScreen(round: round)));
   } catch (e) {
     if (!context.mounted) return;
     final msg = e.toString();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg.contains('Ungültiger Einladungscode')
-          ? 'Dieser Code passt zu keiner Fantasy-Liga und keiner Tipprunde.'
-          : 'Beitritt fehlgeschlagen: $e'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          msg.contains('Ungültiger Einladungscode')
+              ? 'Dieser Code passt zu keiner Fantasy-Liga und keiner Tipprunde.'
+              : 'Beitritt fehlgeschlagen: $e',
+        ),
+      ),
+    );
   }
 }

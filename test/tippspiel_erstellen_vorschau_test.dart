@@ -17,7 +17,7 @@ import 'support/schrift.dart';
 void main() {
   setUpAll(ladeSchrift);
 
-  Future<void> baue(WidgetTester tester, {double hoehe = 1500}) async {
+  Future<void> baue(WidgetTester tester, {double hoehe = 874}) async {
     tester.view.physicalSize = Size(402 * 3, hoehe * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -31,27 +31,58 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Vorschau: Tippspiel erstellen', (tester) async {
+  testWidgets('Vorschau: Tippspiel erstellen in drei Schritten',
+      (tester) async {
     await baue(tester);
-    expect(tester.takeException(), isNull);
-    // Die Erklärsätze und die gerahmten Modus-Kacheln sind weg.
-    expect(find.textContaining('Frei kombinierbar'), findsNothing);
-    expect(find.textContaining('Strafpunkte für einen'), findsNothing);
-    expect(find.text('Quoten-Bonus'), findsOneWidget);
-    expect(find.byType(SwitchListTile), findsWidgets);
+    expect(find.text('Schritt 1 von 3'), findsOneWidget);
+    expect(find.text('Quoten-Bonus'), findsNothing);
     await expectLater(find.byType(CreateTipRoundScreen),
-        matchesGoldenFile('goldens/tippspiel_erstellen.png'));
+        matchesGoldenFile('goldens/tippspiel_erstellen_1.png'));
+
+    await tester.enterText(find.byType(TextField), 'Büro-Tippspiel');
+    await tester.tap(find.text('Weiter'));
+    await tester.pumpAndSettle();
+    expect(find.text('Schritt 2 von 3'), findsOneWidget);
+    expect(find.text('Exaktes Ergebnis'), findsOneWidget);
+    expect(find.text('Quoten-Bonus'), findsNothing);
+    await expectLater(find.byType(CreateTipRoundScreen),
+        matchesGoldenFile('goldens/tippspiel_erstellen_2.png'));
+
+    await tester.tap(find.text('Weiter'));
+    await tester.pumpAndSettle();
+    expect(find.text('Schritt 3 von 3'), findsOneWidget);
+    expect(find.text('Quoten-Bonus'), findsOneWidget);
+    expect(find.text('Öffentlich'), findsOneWidget);
+    expect(find.text('Tipprunde erstellen'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await expectLater(find.byType(CreateTipRoundScreen),
+        matchesGoldenFile('goldens/tippspiel_erstellen_3.png'));
   });
 
-  testWidgets('Vorschau: Modi mit Untereinstellungen', (tester) async {
-    await baue(tester, hoehe: 2300);
+  testWidgets('Punkte und Modi auf zwei Seiten überschreiben sich nicht',
+      (tester) async {
+    await baue(tester, hoehe: 1600);
+    await tester.enterText(find.byType(TextField), 'Büro-Tippspiel');
+    await tester.tap(find.text('Weiter'));
+    await tester.pumpAndSettle();
+    // Exakt von 4 auf 5.
+    await tester.tap(find.byTooltip('Exaktes Ergebnis erhöhen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Weiter'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Quoten-Bonus'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Bonustipps'));
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
     expect(find.text('Außenseiter ab Quote'), findsOneWidget);
     expect(find.text('Punkte je Bonustipp'), findsOneWidget);
+    // Zurück auf die Punkte: die 5 steht noch.
+    await tester.tap(find.text('Zurück'));
+    await tester.pumpAndSettle();
+    expect(find.text('5'), findsOneWidget);
+    await tester.tap(find.text('Weiter'));
+    await tester.pumpAndSettle();
+    expect(find.text('Außenseiter ab Quote'), findsOneWidget);
     await expectLater(find.byType(CreateTipRoundScreen),
         matchesGoldenFile('goldens/tippspiel_erstellen_modi.png'));
   });

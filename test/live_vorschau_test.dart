@@ -7,6 +7,7 @@ import 'package:matchup/app/live_screen.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
+import 'package:matchup/features/auth/ui/live_vorschau_screen.dart';
 import 'package:matchup/features/tippspiel/providers.dart';
 
 import 'support/schrift.dart';
@@ -224,5 +225,62 @@ void main() {
     if (!autoUpdateGoldenFiles) return;
     await expectLater(find.byType(LiveScreen),
         matchesGoldenFile('goldens/live_vorschau_ruhig.png'));
+  });
+
+  testWidgets('Vorschau ohne Konto: keine Glocke, unten „Konto erstellen"',
+      (tester) async {
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+    tester.view.physicalSize = const Size(402 * 3, 874 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final n = DateTime.now();
+    bool? antwort;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          leagueSeasonFixturesProvider.overrideWith(
+            (ref, id) async => id == 'bundesliga'
+                ? [
+                    _fx('v1', 'bundesliga', 'VfB Stuttgart', '1. FC Köln',
+                        DateTime(n.year, n.month, n.day, 20, 30)),
+                  ]
+                : const <Fixture>[],
+          ),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () async => antwort = await Navigator.of(context)
+                    .push<bool>(MaterialPageRoute(
+                        builder: (_) => const LiveVorschauScreen())),
+                child: const Text('reinschauen'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('reinschauen'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    expect(find.text('Vorschau'), findsOneWidget);
+    expect(find.byTooltip('Live-Benachrichtigungen für Vereine und Ligen'),
+        findsNothing);
+    expect(find.textContaining('Stuttgart'), findsWidgets);
+    if (autoUpdateGoldenFiles) {
+      await expectLater(find.byType(LiveVorschauScreen),
+          matchesGoldenFile('goldens/live_ohne_konto.png'));
+    }
+    await tester.tap(find.text('Konto erstellen'));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    expect(antwort, isTrue);
   });
 }

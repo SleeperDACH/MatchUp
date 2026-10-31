@@ -109,7 +109,8 @@ class SpielerKachel extends ConsumerWidget {
             context.istHell
                 ? context.farben.auswahlFlaeche
                 : Colors.white.withValues(alpha: 0.10),
-            Theme.of(context).cardColor)
+            Theme.of(context).cardColor,
+          )
         : Theme.of(context).cardColor;
 
     final karte = AnimatedContainer(
@@ -142,12 +143,13 @@ class SpielerKachel extends ConsumerWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    kurzerName(spieler.name),
+                    kurzerName(spieler.name).toUpperCase(),
                     maxLines: 1,
                     softWrap: false,
                     style: TextStyle(
                       fontSize: klein ? Schrift.text : Schrift.text,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
                       height: 1.05,
                       color: vg,
                     ),

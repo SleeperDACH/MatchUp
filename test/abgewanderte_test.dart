@@ -183,8 +183,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
     }
 
-    expect(find.text('Marius Wolf'), findsOneWidget);
-    expect(find.text('Serhou Guirassy'), findsNothing,
+    expect(find.text('MARIUS WOLF'), findsOneWidget);
+    expect(find.text('SERHOU GUIRASSY'), findsNothing,
         reason: 'Er ist nicht mehr zu holen — auch nicht mit Suche und Filter');
   });
 }

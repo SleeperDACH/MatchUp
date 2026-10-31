@@ -59,10 +59,12 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
     // Lädt den Pool nach, wenn eine Elf einen Spieler enthält, den er nicht
     // kennt — sonst fehlten dessen Punkte nur auf diesem Gerät.
     ref.watch(poolVollstaendigProvider(league.id));
-    final roster = ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
+    final roster =
+        ref.watch(leagueRosterProvider(league.id)).valueOrNull ??
         const <RosterEntry>[];
     final seasonStatsAsync = ref.watch(seasonStatsProvider);
-    final lineups = ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
+    final lineups =
+        ref.watch(leagueLineupsProvider(league.id)).valueOrNull ??
         const <FantasyLineup>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
@@ -76,15 +78,18 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
     }
     final playerById = {for (final p in pool) p.id: p};
     final nameOf = {for (final m in managers) m.userId: m.display};
-    final seasonStats = seasonStatsAsync.valueOrNull ??
+    final seasonStats =
+        seasonStatsAsync.valueOrNull ??
         const <int, Map<String, PlayerMatchStats>>{};
 
     if (managers.length < 2) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Text('Die Tabelle braucht mindestens zwei Manager.',
-              textAlign: TextAlign.center),
+          child: Text(
+            'Die Tabelle braucht mindestens zwei Manager.',
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
@@ -102,26 +107,30 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
     );
     final ids = grundlage.ids;
     final totalsByRound = grundlage.summen;
-    final standings =
-        h2hStandings(ids, totalsByRound, remisGrenze: grundlage.remis);
+    final standings = h2hStandings(
+      ids,
+      totalsByRound,
+      remisGrenze: grundlage.remis,
+      bilanz: grundlage.bilanz,
+    );
     final nonePlayed = standings.every((r) => r.played == 0);
 
     // Nur veröffentlichte Rückblicke (seit 19.10.2026: ab dem Wechsel auf
     // den nächsten Spieltag).
     final veroeffentlicht = ref.watch(veroeffentlichteRueckblickeProvider);
-    final rueckblick = _rueckblick ??
-        (veroeffentlicht.isEmpty ? null : veroeffentlicht.last);
+    final rueckblick =
+        _rueckblick ?? (veroeffentlicht.isEmpty ? null : veroeffentlicht.last);
 
     // Zeile und Trennlinie stehen als Helfer da, weil die Tabelle seit dem
     // Podest **zwei** Schleifen hat (die ersten drei auf gemeinsamer Fläche,
     // der Rest darunter) — zwei Kopien derselben Zeile wären die nächste
     // Stelle, an der etwas auseinanderläuft.
     Widget trenner() => Divider(
-          height: 1,
-          indent: 12,
-          endIndent: 12,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.07),
-        );
+      height: 1,
+      indent: 12,
+      endIndent: 12,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.07),
+    );
 
     // **Bewegung seit dem vorigen Spieltag**: dieselbe Tabelle ohne den
     // zuletzt gewerteten Spieltag. Erst ab zwei gewerteten Spieltagen — beim
@@ -129,10 +138,15 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
     final gewertet = totalsByRound.keys.toList()..sort();
     final vorher = gewertet.length < 2
         ? null
-        : h2hStandings(ids, {
-            for (final e in totalsByRound.entries)
-              if (e.key != gewertet.last) e.key: e.value,
-          }, remisGrenze: grundlage.remis);
+        : h2hStandings(
+            ids,
+            {
+              for (final e in totalsByRound.entries)
+                if (e.key != gewertet.last) e.key: e.value,
+            },
+            remisGrenze: grundlage.remis,
+            bilanz: grundlage.bilanz,
+          );
     final rangVorher = vorher == null
         ? null
         : {for (final (i, r) in vorher.indexed) r.managerId: i + 1};
@@ -154,10 +168,13 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
         serie: serie(verlauf),
         bewegung: alt == null ? null : alt - (i + 1),
         me: r.managerId == myId,
-        onTap: () => showManagerProfile(context,
-            league: league,
-            managerId: r.managerId,
-            managerName: nameOf[r.managerId] ?? '?'),
+        bilanz: grundlage.bilanz,
+        onTap: () => showManagerProfile(
+          context,
+          league: league,
+          managerId: r.managerId,
+          managerName: nameOf[r.managerId] ?? '?',
+        ),
       );
     }
 
@@ -174,29 +191,33 @@ class _FantasyTableBodyState extends ConsumerState<FantasyTableBody> {
           _Marke('Spieltag $runde'),
           LigaDuelleBand(league: league),
         ],
-        _Marke('Tabelle', info: (
-          'So wird gewertet',
-          'Je Spieltag ein Duell mit der effektiven Startelf — 3 Punkte für '
-              'einen Sieg, 1 für ein Unentschieden. '
-              '${league.remisGrenze == null ? 'Unentschieden ist ein Duell nur bei exakt gleicher Punktzahl.' : 'Unentschieden ist ein Duell, wenn höchstens ${formatPoints(league.remisGrenze!)} Punkte dazwischen liegen.'} '
-              'Bei Gleichstand in der Tabelle zählen die erzielten '
-              'Spielerpunkte.\n\nØ ist der Schnitt je Duell; spielfreie '
-              'Spieltage zählen nicht mit.',
-        )),
+        _Marke(
+          'Tabelle',
+          info: (
+            'So wird gewertet',
+            'Je Spieltag ein Duell mit der effektiven Startelf — 3 Punkte für '
+                'einen Sieg, 1 für ein Unentschieden. '
+                '${league.remisGrenze == null ? 'Unentschieden ist ein Duell nur bei exakt gleicher Punktzahl.' : 'Unentschieden ist ein Duell, wenn höchstens ${formatPoints(league.remisGrenze!)} Punkte dazwischen liegen.'} '
+                'Bei Gleichstand in der Tabelle zählen die erzielten '
+                'Spielerpunkte.\n\nØ ist der Schnitt je Duell; spielfreie '
+                'Spieltage zählen nicht mit.',
+          ),
+        ),
         if (nonePlayed)
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
             child: Text(
               'Noch keine gewerteten Spieltage — die Bilanz startet bei 0.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         // **Kopfzeile statt Erklärabsatz.** Vorher stand unter der Tabelle ein
         // fünfzeiliger Text, der erklärte, wofür S, U, N und „erzielt" stehen —
         // an der Stelle, an der ihn niemand liest. Jetzt steht es über den
         // Spalten, wo es hingehört.
-        const _TabellenKopf(),
+        _TabellenKopf(bilanz: grundlage.bilanz),
         // **Ohne Kasten** (16.10.2026, nach dem Vorbild Sleeper): Die
         // Zeilen stehen auf dem Grund, Haarlinien trennen sie. Der Rahmen um
         // die ganze Tabelle sagte nichts, was die Linien nicht schon sagen.
@@ -250,9 +271,9 @@ class _Marke extends StatelessWidget {
   // (Design-Ideen Punkt 3, 15.10.2026).
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Kapitelmarke(wort, obenLuft: 14, info: info),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    child: Kapitelmarke(wort, obenLuft: 14, info: info),
+  );
 }
 
 /// Spaltenköpfe der Tabelle.
@@ -260,10 +281,14 @@ class _Marke extends StatelessWidget {
 /// Die Breiten müssen zu [_TabellenZeile] passen — sie stehen deshalb als
 /// Konstanten an einer Stelle, nicht zweimal als Zahl im Layout.
 class _TabellenKopf extends StatelessWidget {
-  const _TabellenKopf();
+  const _TabellenKopf({this.bilanz = false});
+
+  /// Remis-Regel aus: rechts die Bilanz statt der Punkte.
+  final bool bilanz;
 
   static const rangBreite = 30.0;
   static const bildBreite = 36.0;
+
   /// **Zwei Zahlenspalten, beide groß** (auf Ansage, 16.10.2026): „Für" und
   /// „Gegen" sind raus, damit Punkte und Schnitt Platz und Größe bekommen —
   /// in vier Spalten à 14 Punkt war keine auf einen Blick zu lesen.
@@ -274,6 +299,9 @@ class _TabellenKopf extends StatelessWidget {
   /// haben.
   static const schnittBreite = 64.0;
 
+  /// Luft vor der Bilanz — „5-2" läuft sonst in den Schnitt davor.
+  static const bilanzLuecke = 14.0;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -283,19 +311,25 @@ class _TabellenKopf extends StatelessWidget {
       letterSpacing: 0.8,
       color: scheme.onSurfaceVariant,
     );
-    Widget zahl(String t, double b) =>
-        SizedBox(width: b, child: Text(t, style: stil, textAlign: TextAlign.end));
+    Widget zahl(String t, double b) => SizedBox(
+      width: b,
+      child: Text(t, style: stil, textAlign: TextAlign.end),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
       child: Row(
         children: [
-          SizedBox(width: rangBreite, child: Text('#', style: stil)),
+          SizedBox(
+            width: rangBreite,
+            child: Text('#', style: stil),
+          ),
           const SizedBox(width: bildBreite + 10),
           Expanded(child: Text('TEAM', style: stil)),
           // Ø links, die Punkte ganz rechts (auf Ansage, 16.10.2026): Die
           // Zahl, nach der sortiert wird, steht an der Außenkante.
           zahl('Ø', schnittBreite),
-          zahl('PKT', punkteBreite),
+          if (bilanz) const SizedBox(width: bilanzLuecke),
+          zahl(bilanz ? 'S-N' : 'PKT', punkteBreite),
         ],
       ),
     );
@@ -330,16 +364,16 @@ class _SpieltagWahl extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            tooltip:
-                frueher == null ? 'Zurück' : 'Zurück zu Spieltag $frueher',
+            tooltip: frueher == null ? 'Zurück' : 'Zurück zu Spieltag $frueher',
             onPressed: frueher == null ? null : () => onWahl(frueher),
             icon: const Icon(Icons.chevron_left),
           ),
-          Text('Spieltag $gewaehlt',
-              style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            'Spieltag $gewaehlt',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
           IconButton(
-            tooltip:
-                spaeter == null ? 'Weiter' : 'Weiter zu Spieltag $spaeter',
+            tooltip: spaeter == null ? 'Weiter' : 'Weiter zu Spieltag $spaeter',
             onPressed: spaeter == null ? null : () => onWahl(spaeter),
             icon: const Icon(Icons.chevron_right),
           ),
@@ -365,8 +399,11 @@ class _BracketButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => PlayoffBracketScreen(league: league))),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PlayoffBracketScreen(league: league),
+            ),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
@@ -377,12 +414,15 @@ class _BracketButton extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Playoff-Bracket',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Playoff-Bracket',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       Text(
                         'Winner- & Loser-Bracket — alle Abschlussplätze',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant),
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -420,7 +460,12 @@ class _TabellenZeile extends StatelessWidget {
     required this.bewegung,
     required this.me,
     required this.onTap,
+    this.bilanz = false,
   });
+
+  /// Remis-Regel aus (30.10.2026): rechts groß „5-2" wie in der NFL statt
+  /// der Tabellenpunkte; unter dem Namen dann nur die Serie.
+  final bool bilanz;
 
   final int rank;
   final FantasyManager? manager;
@@ -432,7 +477,6 @@ class _TabellenZeile extends StatelessWidget {
   final int? bewegung;
   final bool me;
   final VoidCallback onTap;
-
 
   @override
   Widget build(BuildContext context) {
@@ -452,13 +496,13 @@ class _TabellenZeile extends StatelessWidget {
       fontFeatures: const [FontFeature.tabularFigures()],
     );
     Widget zahl(String t, double b, {TextStyle? stil}) => SizedBox(
-          width: b,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerRight,
-            child: Text(t, style: stil ?? zahlStil, textAlign: TextAlign.end),
-          ),
-        );
+      width: b,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerRight,
+        child: Text(t, style: stil ?? zahlStil, textAlign: TextAlign.end),
+      ),
+    );
 
     final (pfeil, buchstabe, serieFarbe) = switch (serie?.ausgang) {
       DuellAusgang.sieg => ('▲', 'S', context.farben.gruen),
@@ -549,18 +593,23 @@ class _TabellenZeile extends StatelessWidget {
                     ),
                   const SizedBox(height: 2),
                   Text.rich(
-                    TextSpan(children: [
-                      // Reihenfolge Sieg – Unentschieden – Niederlage.
-                      TextSpan(text: '${r.wins}-${r.ties}-${r.losses}'),
-                      if (serie != null) ...[
-                        const TextSpan(text: ' · '),
-                        TextSpan(
-                          text: '$pfeil${serie!.anzahl}$buchstabe',
-                          style: TextStyle(
-                              color: serieFarbe, fontWeight: FontWeight.w800),
-                        ),
+                    TextSpan(
+                      children: [
+                        // Reihenfolge Sieg – Unentschieden – Niederlage.
+                        if (!bilanz)
+                          TextSpan(text: '${r.wins}-${r.ties}-${r.losses}'),
+                        if (serie != null) ...[
+                          if (!bilanz) const TextSpan(text: ' · '),
+                          TextSpan(
+                            text: '$pfeil${serie!.anzahl}$buchstabe',
+                            style: TextStyle(
+                              color: serieFarbe,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ],
-                    ]),
+                    ),
                     maxLines: 1,
                     style: TextStyle(
                       fontSize: Schrift.label,
@@ -576,13 +625,20 @@ class _TabellenZeile extends StatelessWidget {
               r.played == 0 ? '–' : formatPoints(r.pointsFor / r.played),
               _TabellenKopf.schnittBreite,
               stil: zahlStil.copyWith(
-                  fontSize: Schrift.titel,
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurfaceVariant),
+                fontSize: Schrift.titel,
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurfaceVariant,
+              ),
             ),
-            zahl('${record.points}', _TabellenKopf.punkteBreite,
-                stil: zahlStil.copyWith(
-                    fontSize: Schrift.gross, fontWeight: FontWeight.w800)),
+            if (bilanz) const SizedBox(width: _TabellenKopf.bilanzLuecke),
+            zahl(
+              bilanz ? record.nflBilanz : '${record.points}',
+              _TabellenKopf.punkteBreite,
+              stil: zahlStil.copyWith(
+                fontSize: Schrift.gross,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ],
         ),
       ),

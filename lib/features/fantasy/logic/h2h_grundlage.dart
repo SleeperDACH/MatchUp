@@ -19,6 +19,10 @@ typedef H2HGrundlage = ({
   /// hier, damit jede Ansicht, die aus der Grundlage wertet, dieselbe Regel
   /// bekommt.
   num remis,
+
+  /// Remis-Regel aus: Tabelle als Bilanz (Siege-Niederlagen) wie in der NFL
+  /// statt nach Punkten 3/1/0 (30.10.2026).
+  bool bilanz,
 });
 
 H2HGrundlage h2hGrundlage({
@@ -57,5 +61,10 @@ H2HGrundlage h2hGrundlage({
           rosterConfig: league.roster,
         ),
   };
-  return (ids: ids, summen: summen, remis: league.remisGrenze ?? 0);
+  return (
+    ids: ids,
+    summen: summen,
+    remis: league.remisGrenze ?? 0,
+    bilanz: league.remisGrenze == null,
+  );
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app/typografie.dart';
+import '../../app/erklaerungen.dart';
+import '../../app/widgets/info_knopf.dart';
 import '../../app/widgets/mit_ladekreis.dart';
 
 /// Ein Abschnitt in einem Formular oder einer Einstellungsliste: kleine
@@ -19,6 +21,7 @@ class FormSection extends StatelessWidget {
     required this.kinder,
     this.hinweis,
     this.gefahr = false,
+    this.erklaerung,
   }) : _alsZeilen = false;
 
   /// Antippbare Zeilen, durch feine Linien getrennt und ohne Innenabstand —
@@ -29,6 +32,7 @@ class FormSection extends StatelessWidget {
     required this.kinder,
     this.hinweis,
     this.gefahr = false,
+    this.erklaerung,
   }) : _alsZeilen = true;
 
   final String titel;
@@ -38,6 +42,10 @@ class FormSection extends StatelessWidget {
 
   /// Rot abgesetzt (Löschen, Verlassen).
   final bool gefahr;
+
+  /// Ein Fragezeichen hinter der Überschrift, das den Abschnitt erklärt —
+  /// statt eines Satzes darunter, den man genau einmal liest.
+  final Erklaerung? erklaerung;
 
   final List<Widget> kinder;
 
@@ -55,25 +63,48 @@ class FormSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            titel.toUpperCase(),
-            // Schräg wie jede Überschrift der App (18.10.2026).
-            style: TextStyle(
-              color: farbe,
-              fontSize: Schrift.label,
-              fontWeight: Schrift.ueberschriftGewicht,
-              fontStyle: Schrift.ueberschriftStil,
-              letterSpacing: 1.3,
-            ),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  titel.toUpperCase(),
+                  // Schräg wie jede Überschrift der App (18.10.2026).
+                  style: TextStyle(
+                    color: farbe,
+                    fontSize: Schrift.label,
+                    fontWeight: Schrift.ueberschriftGewicht,
+                    fontStyle: Schrift.ueberschriftStil,
+                    letterSpacing: 1.3,
+                  ),
+                ),
+              ),
+              if (erklaerung != null)
+                // Die volle Tastfläche, ohne die Überschrift hochzudrücken.
+                SizedBox(
+                  width: 36,
+                  height: 14,
+                  child: OverflowBox(
+                    maxHeight: 44,
+                    maxWidth: 44,
+                    child: InfoKnopf(
+                      titel: erklaerung!.titel,
+                      text: erklaerung!.text,
+                      frage: true,
+                      groesse: 15,
+                    ),
+                  ),
+                ),
+            ],
           ),
           if (hinweis != null) ...[
             const SizedBox(height: 2),
             Text(
               hinweis!,
               style: TextStyle(
-                  color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
-                  fontSize: 11,
-                  height: 1.3),
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                fontSize: 11,
+                height: 1.3,
+              ),
             ),
           ],
           const SizedBox(height: 8),
@@ -84,16 +115,17 @@ class FormSection extends StatelessWidget {
           for (var i = 0; i < kinder.length; i++) ...[
             if (i > 0 && _alsZeilen)
               Divider(
-                  height: 1,
-                  indent: 34,
-                  color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                height: 1,
+                indent: 34,
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
             kinder[i],
           ],
           const SizedBox(height: 10),
           Divider(
-              height: 1,
-              color: scheme.outlineVariant
-                  .withValues(alpha: gefahr ? 0.0 : 0.45)),
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: gefahr ? 0.0 : 0.45),
+          ),
         ],
       ),
     );
@@ -121,7 +153,9 @@ class FormError extends StatelessWidget {
         children: [
           Icon(Icons.error_outline, size: 20, color: scheme.error),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: TextStyle(color: scheme.error))),
+          Expanded(
+            child: Text(text, style: TextStyle(color: scheme.error)),
+          ),
         ],
       ),
     );
@@ -152,8 +186,8 @@ class FormActionBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         border: Border(
-            top: BorderSide(
-                color: scheme.outlineVariant.withValues(alpha: 0.7))),
+          top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+        ),
       ),
       child: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 10, 16, 10),

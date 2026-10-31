@@ -54,7 +54,12 @@ class _LiveItem {
 /// Rand. Was daran nicht trug, steht in `design/live/` — die Diagnose und die
 /// drei Richtungen, aus denen „B — Tafel" gewählt wurde.
 class LiveScreen extends ConsumerStatefulWidget {
-  const LiveScreen({super.key});
+  const LiveScreen({super.key, this.vorschau = false});
+
+  /// **Vorschau ohne Konto** (vom Anmeldeschirm, 29.10.2026): ohne Glocke —
+  /// Live-Meldungen brauchen ein Konto — und ohne den Platz für die
+  /// Navileiste, die es dort nicht gibt.
+  final bool vorschau;
 
   @override
   ConsumerState<LiveScreen> createState() => _LiveScreenState();
@@ -188,7 +193,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             // Kopfzeile: der gewählte Tag, und rechts, was gerade läuft. Der
             // Titel „Live" stand hier als größte Schrift des Schirms und trug
             // keine Information — in welchem Tab man ist, sagt die Navileiste.
-            _Kopf(tag: _selectedDay, live: liveHeute),
+            _Kopf(
+              tag: _selectedDay,
+              live: liveHeute,
+              mitGlocke: !widget.vorschau,
+            ),
             _DateStrip(
               days: days,
               today: today,
@@ -212,13 +221,14 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             // dieser Column (`extendBody` in der MainShell), ihr Platz muss
             // hier also selbst frei gehalten werden.
             SizedBox(
-              height:
-                  math.max(
-                    MediaQuery.viewPaddingOf(context).bottom,
-                    navBarBottomInset,
-                  ) +
-                  navBarHeight +
-                  _navBarGap,
+              height: widget.vorschau
+                  ? MediaQuery.viewPaddingOf(context).bottom + 8
+                  : math.max(
+                          MediaQuery.viewPaddingOf(context).bottom,
+                          navBarBottomInset,
+                        ) +
+                        navBarHeight +
+                        _navBarGap,
             ),
           ],
         ),
@@ -475,10 +485,11 @@ class _ZeitKopf extends StatelessWidget {
 /// die rechte Seite beantwortet die Frage, für die es den Tab gibt. Läuft
 /// nichts, bleibt sie leer: eine „0 live" wäre eine Meldung über nichts.
 class _Kopf extends StatelessWidget {
-  const _Kopf({required this.tag, required this.live});
+  const _Kopf({required this.tag, required this.live, this.mitGlocke = true});
 
   final DateTime tag;
   final int live;
+  final bool mitGlocke;
 
   @override
   Widget build(BuildContext context) {
@@ -515,14 +526,18 @@ class _Kopf extends StatelessWidget {
           // **Meldungen für Vereine und Ligen** (20.10.2026, auf Ansage):
           // Hier sieht man die Spiele, also stellt man hier ein, für welche
           // eine Push-Meldung kommt — auch ohne Favorit.
-          const SizedBox(width: 4),
-          IconButton(
-            tooltip: 'Live-Benachrichtigungen für Vereine und Ligen',
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.notifications_none_outlined),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const LiveAbosScreen())),
-          ),
+          if (mitGlocke) ...[
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: 'Live-Benachrichtigungen für Vereine und Ligen',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.notifications_none_outlined),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const LiveAbosScreen())),
+            ),
+          ] else
+            const SizedBox(width: 12),
         ],
       ),
     );
@@ -712,7 +727,9 @@ class _SpielZeile extends StatelessWidget {
                               color: live
                                   ? context.farben.rot
                                   : scheme.onSurfaceVariant,
-                              fontFeatures: const [FontFeature.tabularFigures()],
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
                             ),
                           ),
                         )
@@ -736,7 +753,9 @@ class _SpielZeile extends StatelessWidget {
                           'beendet',
                           style: TextStyle(
                             fontSize: 11,
-                            color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                            color: scheme.onSurfaceVariant.withValues(
+                              alpha: 0.8,
+                            ),
                           ),
                         ),
                     ],
@@ -952,110 +971,113 @@ class _DateStripState extends State<_DateStrip> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return LayoutBuilder(builder: (context, c) {
-      final breite = c.maxWidth - 16;
-      final zelle = breite / _DateStrip.sichtbar;
-      // Heute beim ersten Aufbau in der Mitte.
-      final heute = widget.days.indexWhere((d) => _sameDay(d, widget.today));
-      _controller ??= ScrollController(
-        initialScrollOffset:
-            ((heute - _DateStrip.sichtbar ~/ 2) * zelle).clamp(0, 1e9),
-      );
-      return SizedBox(
-        height: 78,
-        child: ListView.builder(
-          controller: _controller,
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          itemExtent: zelle,
-          itemCount: widget.days.length,
-          itemBuilder: (context, i) {
-            final d = widget.days[i];
-            final sel = _sameDay(d, widget.selected);
-            final isToday = _sameDay(d, widget.today);
-            final hatSpiele = widget.mitSpielen.any((t) => _sameDay(t, d));
-            final hatLive = widget.mitLive.any((t) => _sameDay(t, d));
-            // Der Punkt beantwortet: Wird an dem Tag gespielt? Rot heißt,
-            // dort läuft gerade etwas.
-            final punkt = hatLive
-                ? context.farben.rot
-                : (hatSpiele
-                    ? scheme.onSurfaceVariant
-                    : Colors.transparent);
-            final wochentag = isToday
-                ? 'HEUTE'
-                : DateFormat('EEE', 'de_DE')
-                    .format(d)
-                    .replaceAll('.', '')
-                    .toUpperCase();
-            return Semantics(
-              button: true,
-              selected: sel,
-              label: [
-                DateFormat('EEEE, d. MMMM', 'de_DE').format(d),
-                if (hatLive) 'Spiele laufen' else if (hatSpiele) 'Spieltag',
-              ].join(', '),
-              excludeSemantics: true,
-              child: GestureDetector(
-                onTap: () => widget.onSelect(d),
-                behavior: HitTestBehavior.opaque,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      wochentag,
-                      style: TextStyle(
-                        fontSize: Schrift.label,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
-                        color: isToday
-                            ? scheme.onSurface
-                            : scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    // Ausgewählt ist hell, nicht grün: Auf einer Tafel, deren
-                    // einzige Farbe „hier läuft etwas" heißt, wäre ein grüner
-                    // Kreis ein Signal ohne Anlass.
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      width: 36,
-                      height: 36,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: sel ? scheme.onSurface : Colors.transparent,
-                      ),
-                      child: Text(
-                        '${d.day}',
+    return LayoutBuilder(
+      builder: (context, c) {
+        final breite = c.maxWidth - 16;
+        final zelle = breite / _DateStrip.sichtbar;
+        // Heute beim ersten Aufbau in der Mitte.
+        final heute = widget.days.indexWhere((d) => _sameDay(d, widget.today));
+        _controller ??= ScrollController(
+          initialScrollOffset: ((heute - _DateStrip.sichtbar ~/ 2) * zelle)
+              .clamp(0, 1e9),
+        );
+        return SizedBox(
+          height: 78,
+          child: ListView.builder(
+            controller: _controller,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemExtent: zelle,
+            itemCount: widget.days.length,
+            itemBuilder: (context, i) {
+              final d = widget.days[i];
+              final sel = _sameDay(d, widget.selected);
+              final isToday = _sameDay(d, widget.today);
+              final hatSpiele = widget.mitSpielen.any((t) => _sameDay(t, d));
+              final hatLive = widget.mitLive.any((t) => _sameDay(t, d));
+              // Der Punkt beantwortet: Wird an dem Tag gespielt? Rot heißt,
+              // dort läuft gerade etwas.
+              final punkt = hatLive
+                  ? context.farben.rot
+                  : (hatSpiele ? scheme.onSurfaceVariant : Colors.transparent);
+              final wochentag = isToday
+                  ? 'HEUTE'
+                  : DateFormat(
+                      'EEE',
+                      'de_DE',
+                    ).format(d).replaceAll('.', '').toUpperCase();
+              return Semantics(
+                button: true,
+                selected: sel,
+                label: [
+                  DateFormat('EEEE, d. MMMM', 'de_DE').format(d),
+                  if (hatLive) 'Spiele laufen' else if (hatSpiele) 'Spieltag',
+                ].join(', '),
+                excludeSemantics: true,
+                child: GestureDetector(
+                  onTap: () => widget.onSelect(d),
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        wochentag,
                         style: TextStyle(
-                          fontSize: Schrift.titel,
-                          fontWeight: FontWeight.w800,
-                          color: sel
-                              ? scheme.surface
-                              : (hatSpiele
-                                  ? scheme.onSurface
-                                  : scheme.onSurfaceVariant
-                                      .withValues(alpha: 0.55)),
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                          fontSize: Schrift.label,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: isToday
+                              ? scheme.onSurface
+                              : scheme.onSurfaceVariant,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration:
-                          BoxDecoration(color: punkt, shape: BoxShape.circle),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      // Ausgewählt ist hell, nicht grün: Auf einer Tafel, deren
+                      // einzige Farbe „hier läuft etwas" heißt, wäre ein grüner
+                      // Kreis ein Signal ohne Anlass.
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: sel ? scheme.onSurface : Colors.transparent,
+                        ),
+                        child: Text(
+                          '${d.day}',
+                          style: TextStyle(
+                            fontSize: Schrift.titel,
+                            fontWeight: FontWeight.w800,
+                            color: sel
+                                ? scheme.surface
+                                : (hatSpiele
+                                      ? scheme.onSurface
+                                      : scheme.onSurfaceVariant.withValues(
+                                          alpha: 0.55,
+                                        )),
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: punkt,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
-      );
-    });
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 }
 

@@ -1,3 +1,6 @@
+import 'erklaerungen.dart';
+import 'widgets/info_knopf.dart';
+import '../features/einladung/einladung.dart';
 import 'farben.dart';
 import 'package:flutter/material.dart';
 import '../core/logic/vereins_kuerzel.dart';
@@ -70,6 +73,17 @@ class HomeScreen extends ConsumerWidget {
         // Die übrigen drei Wege stehen jetzt bei ihrem Abschnitt (Suchen und
         // Neu bei „Meine Ligen", Transfers bei den News), beschriftet.
         actions: [
+          // **Freunde einladen** (29.10.2026, auf Ansage: „ein kleiner Invite
+          // Button auf dem Homescreen"): teilt einen Link zur App über das
+          // Teilen-Menü des Handys — WhatsApp, iMessage, was man hat.
+          if (configured && user != null)
+            Builder(
+              builder: (knopf) => IconButton(
+                tooltip: 'Freunde einladen',
+                onPressed: () => teileEinladung(knopf),
+                icon: const Icon(Icons.person_add_alt_1_outlined, size: 24),
+              ),
+            ),
           if (configured && user != null) const _NachrichtenKnopf(),
           const SizedBox(width: 4),
         ],
@@ -114,8 +128,7 @@ class HomeScreen extends ConsumerWidget {
               if (_beideLeer(ref)) ...[
                 const _Appear(delayMs: 80, child: _NoLeaguesHero()),
                 const SizedBox(height: 18),
-              ]
-              else ...[
+              ] else ...[
                 // Der Abschnitt mit Inhalt steht oben. Wer nur ein Tippspiel
                 // hat, sah sonst zuerst eine leere Ligareihe, in der nur die
                 // große „+"-Karte stand.
@@ -185,6 +198,7 @@ class HomeScreen extends ConsumerWidget {
         context,
         'Meine Ligen',
         count: list?.length,
+        erklaerung: erklaerungFantasy,
         aktionen: [
           (
             'Suchen',
@@ -260,7 +274,12 @@ class HomeScreen extends ConsumerWidget {
     final rounds = ref.watch(myRoundsProvider);
     final standalone = _standaloneRounds(ref);
     return [
-      abschnittsKopf(context, 'Tippspiel', count: standalone?.length),
+      abschnittsKopf(
+        context,
+        'Tippspiel',
+        count: standalone?.length,
+        erklaerung: erklaerungTippspiel,
+      ),
       // Dieselbe Regel wie bei den Ligen darüber: erst wenn nichts da ist.
       if (rounds.hasError && standalone == null)
         _InfoCard(
@@ -346,6 +365,7 @@ Widget abschnittsKopf(
   String? moreLabel,
   VoidCallback? onMore,
   List<(String wort, String ansage, VoidCallback onTap)> aktionen = const [],
+  Erklaerung? erklaerung,
 }) {
   final scheme = Theme.of(context).colorScheme;
   // **Bei großer Systemschrift ohne Linie.** Titel, Linie und Zusatz passen
@@ -393,7 +413,17 @@ Widget abschnittsKopf(
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          // Das Fragezeichen direkt hinter dem Titel: Es erklärt den Begriff,
+          // der dort steht (Punkt 3 der Nutzer-Analyse).
+          if (erklaerung != null)
+            InfoKnopf(
+              titel: erklaerung.titel,
+              text: erklaerung.text,
+              frage: true,
+              groesse: 16,
+            )
+          else
+            const SizedBox(width: 10),
           if (gross)
             const Spacer()
           else
@@ -1857,16 +1887,17 @@ class _FuerAlleState extends ConsumerState<_FuerAlle> {
 
   Future<void> _oeffnen(TipRound runde) async {
     activateRound(ref, runde);
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => LeagueScreen(round: runde)),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => LeagueScreen(round: runde)));
   }
 
   Future<void> _mitspielen() async {
     setState(() => _laeuft = true);
     try {
-      final runde =
-          await ref.read(tipRoundRepositoryProvider).tippligaBeitreten();
+      final runde = await ref
+          .read(tipRoundRepositoryProvider)
+          .tippligaBeitreten();
       ref.invalidate(myRoundsProvider);
       if (!mounted) return;
       await _oeffnen(runde);
@@ -1962,7 +1993,7 @@ class _FuerAlleState extends ConsumerState<_FuerAlle> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        abschnittsKopf(context, 'Für alle'),
+        abschnittsKopf(context, 'Für alle', erklaerung: erklaerungGlobal),
         Material(
           color: Colors.transparent,
           child: InkWell(
@@ -2356,6 +2387,7 @@ class _CreateOrJoinScreen extends StatelessWidget {
                   farbe: MatchUpColors.green,
                   bild: 'assets/images/fantasy_bg.jpg',
                   titel: 'Fantasy',
+                  erklaerung: erklaerungFantasy,
                   onTap: () => Navigator.of(context).pop('fantasy'),
                 ),
               ),
@@ -2365,6 +2397,7 @@ class _CreateOrJoinScreen extends StatelessWidget {
                   farbe: _kTipGold,
                   bild: 'assets/images/tippspiel_bg.jpg',
                   titel: 'Tippspiel',
+                  erklaerung: erklaerungTippspiel,
                   onTap: () => Navigator.of(context).pop('tip'),
                 ),
               ),
@@ -2386,18 +2419,45 @@ class _StartKarte extends StatelessWidget {
     required this.farbe,
     required this.bild,
     required this.titel,
+    required this.erklaerung,
     required this.onTap,
   });
 
   final Color farbe;
   final String bild;
   final String titel;
+  final Erklaerung erklaerung;
   final VoidCallback onTap;
 
   static final _radius = BorderRadius.circular(22);
 
   @override
   Widget build(BuildContext context) {
+    // **Ein Fragezeichen oben rechts** (Punkt 3 der Nutzer-Analyse): Wer
+    // nicht weiß, was Fantasy oder Tippspiel ist, fragt hier, bevor er
+    // wählt. Es liegt *neben* der Karte im Stapel, nicht in ihr — die Karte
+    // ist für die Vorlesehilfe ein einziger Knopf und schlösse es sonst aus.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _karte(context),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: InfoKnopf(
+            titel: erklaerung.titel,
+            text: erklaerung.text,
+            frage: true,
+            groesse: 22,
+            // Die Karte ist ein Foto unter dunklem Schleier — in beiden Modi.
+            farbe: Colors.white.withValues(alpha: 0.85),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _karte(BuildContext context) {
     return Semantics(
       button: true,
       label: '$titel erstellen',

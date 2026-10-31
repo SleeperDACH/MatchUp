@@ -1,3 +1,6 @@
+import '../../../core/ui/schritt_formular.dart';
+import '../../../app/erklaerungen.dart';
+import '../../../app/widgets/info_knopf.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,8 +14,9 @@ import '../models/tip.dart';
 import '../providers.dart';
 import 'tip_rules_editor.dart';
 
-/// Erstellen einer Tipprunde: Name, Wettbewerb und (über [TipRulesEditor])
-/// Basiswertung samt der frei kombinierbaren Modi.
+/// Erstellen einer Tipprunde **in drei Schritten** (29.10.2026, auf Ansage):
+/// Tippspiel (Name, Wettbewerbe) · Punkte · Extras (Modi, Sichtbarkeit),
+/// zuletzt „Tipprunde erstellen". Dieselbe Form wie bei der Fantasy-Liga.
 ///
 /// Ist [fantasyLeagueId] gesetzt, wird die Runde als **ligainternes Tippspiel**
 /// an die Fantasy-Liga gekoppelt: Sichtbarkeit entfällt (Mitglieder = aktive
@@ -114,109 +118,140 @@ class _CreateTipRoundScreenState extends ConsumerState<CreateTipRoundScreen> {
     }
   }
 
+  String? _pruefeStart() {
+    if (!_linked && _name.text.trim().length < 3) {
+      return 'Bitte einen Namen mit mind. 3 Zeichen wählen.';
+    }
+    if (_selectedLeagues.isEmpty) {
+      return 'Bitte mindestens einen Wettbewerb wählen.';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final oeffentlich = _visibility == 'public';
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text(_linked ? 'Ligainternes Tippspiel' : 'Tippspiel erstellen'),
-      ),
-      // **Dieselbe Form wie „Fantasy-Liga erstellen"** (18.10.2026): eine
-      // Zeile je Einstellung, keine Erklärsätze, keine gerahmten Kästen.
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          // Ligainternes Tippspiel übernimmt den Liga-Namen — kein eigenes
-          // Namensfeld nötig.
-          if (!_linked)
-            FormSection(
-              titel: 'Tippspiel',
-              kinder: [
-                TextField(
-                  controller: _name,
-                  textCapitalization: TextCapitalization.words,
-                  style: einstellungsStil,
-                  decoration: const InputDecoration(
-                    hintText: 'Name, z. B. Büro-Tippspiel',
-                    // Der Abschnitt ist die Fläche; das Feld bringt keine
-                    // zweite mit.
-                    filled: false,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ],
-            ),
-          FormSection(
-            titel: 'Wettbewerbe',
-            kinder: [
-              CompetitionPicker(
-                leagues: Leagues.tippspiel,
-                selected: _leagueIds,
-                onToggle: (id) => setState(() {
-                  if (!_leagueIds.remove(id)) {
-                    _leagueIds.add(id);
-                  } else if (_leagueIds.isEmpty) {
-                    // Mindestens einer muss bleiben — sonst gäbe es keine
-                    // Spiele zu tippen.
-                    _leagueIds.add(id);
-                  }
-                }),
-              ),
-            ],
-          ),
-          TipRulesEditor(
-            initial: _rules,
-            // Quoten-Modi nur, wenn ein Wettbewerb mit Quoten dabei ist
-            // (Bundesliga/2. Bundesliga); DFB-Pokal hat keine Quoten.
-            oddsAvailable: _selectedLeagues.any((l) => l.oddsSportKey != null),
-            onChanged: (r) => _rules = r,
-          ),
-          if (_linked)
-            const FormSection(
-              titel: 'Mitglieder',
-              kinder: [
-                EinstellungsZeile(
-                  label: 'Alle Mitglieder der Fantasy-Liga',
-                  rechts: SizedBox.shrink(),
-                ),
-              ],
-            )
-          else
-            FormSection(
-              titel: 'Sichtbarkeit',
-              kinder: [
-                EinstellungsSchalter(
-                  label: 'Öffentlich',
-                  unter: 'In der Suche findbar',
-                  wert: oeffentlich,
-                  onChanged: (v) =>
-                      setState(() => _visibility = v ? 'public' : 'private'),
-                ),
-                if (oeffentlich) ...[
-                  const EinstellungsTrenner(),
-                  EinstellungsSchalter(
-                    label: 'Nur auf Einladung',
-                    unter: 'Beitritt nach deiner Bestätigung',
-                    wert: _joinPolicy == 'invite',
-                    onChanged: (v) =>
-                        setState(() => _joinPolicy = v ? 'invite' : 'open'),
+    // Quoten-Modi nur, wenn ein Wettbewerb mit Quoten dabei ist
+    // (Bundesliga/2. Bundesliga); DFB-Pokal hat keine Quoten.
+    final quoten = _selectedLeagues.any((l) => l.oddsSportKey != null);
+    return SchrittFormular(
+      titel: _linked ? 'Ligainternes Tippspiel' : 'Tippspiel erstellen',
+      abschluss: _linked ? 'Tippspiel aktivieren' : 'Tipprunde erstellen',
+      busy: _busy,
+      fehler: _error,
+      onAbschluss: _create,
+      aktionen: [
+        InfoKnopf(
+          titel: erklaerungTippspiel.titel,
+          text: erklaerungTippspiel.text,
+          frage: true,
+          groesse: 22,
+        ),
+        const SizedBox(width: 4),
+      ],
+      schritte: [
+        Schritt(
+          titel: 'Tippspiel',
+          pruefe: _pruefeStart,
+          inhalt: [
+            // Ligainternes Tippspiel übernimmt den Liga-Namen.
+            if (!_linked)
+              FormSection(
+                titel: 'Name',
+                kinder: [
+                  Padding(
+                    // **Ein Feld, das man als Feld erkennt** (30.10.2026, auf
+                    // Ansage): eigener Rahmen und Beschriftung statt eines
+                    // grauen Beispieltexts auf der Fläche.
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: TextField(
+                      controller: _name,
+                      textCapitalization: TextCapitalization.words,
+                      style: einstellungsStil,
+                      decoration: const InputDecoration(
+                        labelText: 'Name des Tippspiels',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                   ),
                 ],
+              ),
+            FormSection(
+              titel: 'Wettbewerbe',
+              kinder: [
+                CompetitionPicker(
+                  leagues: Leagues.tippspiel,
+                  selected: _leagueIds,
+                  onToggle: (id) => setState(() {
+                    if (!_leagueIds.remove(id)) {
+                      _leagueIds.add(id);
+                    } else if (_leagueIds.isEmpty) {
+                      // Mindestens einer muss bleiben.
+                      _leagueIds.add(id);
+                    }
+                  }),
+                ),
               ],
             ),
-          if (_error != null) ...[
-            const SizedBox(height: 14),
-            FormError(text: _error!),
           ],
-        ],
-      ),
-      bottomNavigationBar: FormActionBar(
-        label: _linked ? 'Tippspiel aktivieren' : 'Tipprunde erstellen',
-        busy: _busy,
-        onPressed: _busy ? null : _create,
-      ),
+        ),
+        Schritt(
+          titel: 'Punkte',
+          inhalt: [
+            TipRulesEditor(
+              teil: TipRulesTeil.punkte,
+              initial: _rules,
+              oddsAvailable: quoten,
+              onChanged: (r) => setState(() => _rules = r),
+            ),
+          ],
+        ),
+        Schritt(
+          titel: 'Extras',
+          inhalt: [
+            TipRulesEditor(
+              teil: TipRulesTeil.modi,
+              initial: _rules,
+              oddsAvailable: quoten,
+              onChanged: (r) => setState(() => _rules = r),
+            ),
+            if (!_linked)
+              FormSection(
+                titel: 'Sichtbarkeit',
+                erklaerung: erklaerungSichtbarkeit,
+                kinder: [
+                  EinstellungsSchalter(
+                    label: 'Öffentlich',
+                    unter: 'In der Suche findbar',
+                    wert: oeffentlich,
+                    onChanged: (v) =>
+                        setState(() => _visibility = v ? 'public' : 'private'),
+                  ),
+                  if (oeffentlich) ...[
+                    const EinstellungsTrenner(),
+                    EinstellungsSchalter(
+                      label: 'Nur auf Einladung',
+                      unter: 'Beitritt nach deiner Bestätigung',
+                      wert: _joinPolicy == 'invite',
+                      onChanged: (v) =>
+                          setState(() => _joinPolicy = v ? 'invite' : 'open'),
+                    ),
+                  ],
+                ],
+              )
+            else
+              const FormSection(
+                titel: 'Mitglieder',
+                kinder: [
+                  EinstellungsZeile(
+                    label: 'Alle Mitglieder der Fantasy-Liga',
+                    rechts: SizedBox.shrink(),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

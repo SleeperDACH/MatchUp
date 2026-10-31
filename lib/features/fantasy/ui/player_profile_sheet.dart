@@ -1367,12 +1367,13 @@ class _Feldspieler extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              spieler.offen ? 'frei' : _kurzerName(spieler.name),
+              spieler.offen ? 'frei' : _kurzerName(spieler.name).toUpperCase(),
               maxLines: 1,
               style: TextStyle(
                 fontSize: 11,
                 height: 1.15,
-                fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
+                fontWeight: Schrift.ueberschriftGewicht,
+                fontStyle: spieler.offen ? null : Schrift.ueberschriftStil,
                 color: schnee.withValues(
                   alpha: spieler.offen ? 0.6 : (hervor ? 1 : 0.85),
                 ),
@@ -1519,12 +1520,13 @@ class _Uebriger extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                spieler.name,
+                spieler.name.toUpperCase(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: Schrift.text,
-                  fontWeight: hervor ? FontWeight.w800 : FontWeight.w600,
+                  fontWeight: Schrift.ueberschriftGewicht,
+                  fontStyle: Schrift.ueberschriftStil,
                 ),
               ),
             ),

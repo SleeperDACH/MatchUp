@@ -6181,6 +6181,13 @@ Standardwertung 4/3/2, Admin ist SFV03.
   eine gekoppelte (kein Liga-Reiter, Regeln übers Zahnrad).
 - **Nicht löschbar**, auch nicht vom Admin (Delete-Policy und kein
   „Löschen" in den Einstellungen); kein Einladungscode in den Einstellungen.
+- **Wertung, Wettbewerb und Sichtbarkeit sind fest** (0152, auf Ansage:
+  „Wertung ist im Globalen Tippspiel fix"): Die Einstellungen bieten „Wertung
+  & Modi" und „Sichtbarkeit" nicht an, die Regeln stehen für alle über
+  „Regeln & Punkteverteilung"; der Trigger `tip_rounds_global_fest` lehnt
+  Änderungen auch direkt ab. Er schließt dabei eine Lücke: `ist_global` war
+  über die Update-Policy frei setzbar — setzen darf es jetzt nur, wer ohne
+  Nutzer-Kontext läuft (Migrationen). Name und Logo bleiben änderbar.
 - **Homescreen: eigener Abschnitt „Für alle"** (`_FuerAlle`), unter den
   eigenen Tippspielen und vor „Mein Wochenende" — **getrennt von den eigenen
   Ligen und klein** (auf Ansage; ein erster Wurf stand als großer goldener
@@ -6196,6 +6203,258 @@ Standardwertung 4/3/2, Admin ist SFV03.
 Rollback-Probe als Nutzer ohne Liga: Runde sichtbar über `tippliga()`
 (1 Spieler), eigene Runden 0 → nach Beitritt 1, zweiter Beitritt ändert die
 Zahl nicht, Chatnachricht abgelehnt.
+
+### Einladen per Link (29.10.2026)
+
+Punkt 2 der Nutzer-Analyse: Einladungen gingen nur an Leute, die die App
+schon hatten (Direktnachricht) oder als Code in den Einstellungen. Jetzt
+teilt man über das **Teilen-Menü des Handys** (`share_plus`) einen
+**Web-Link** — `https://sleeperdach.github.io/MatchUp/einladung/?code=…&name=…`
+(`lib/features/einladung/einladung.dart`).
+
+- **Warum ein Web-Link:** WhatsApp & Co. machen nur `https` anklickbar; ein
+  `app.matchup.mobile://…` stünde dort als toter Text.
+- **Die Seite** (`web/einladung/index.html`, wird beim Web-Build nach
+  `build/web/einladung/` kopiert und muss auf `gh-pages` liegen): Einladung
+  mit Namen, „In MatchUp öffnen" (`app.matchup.mobile://einladung?code=…`),
+  Download-Wege, der Code groß zum Kopieren. Die Download-Links stehen oben im
+  Skript (`LINKS`); Android ist der Play-Testlink
+  (`play.google.com/apps/testing/app.matchup.mobile`), iPhone der öffentliche
+  TestFlight-Link (`testflight.apple.com/join/3pqwEdg1`). Bleibt ein Eintrag
+  leer, steht statt des Knopfs ein Hinweis da. Ohne `code` ist es die allgemeine
+  App-Einladung.
+- **Die App öffnet den Link:** `main.dart` reicht Start- und Warm-Links an
+  `einladungAusLink`; die App-Hülle (`MainShell._einladungPruefen`) fragt nach
+  dem Ladeschirm „Einladung annehmen?" und tritt über `beitretenMitCode` bei
+  (derselbe Weg wie der Code-Dialog: erst Fantasy, dann Tipprunde). Wer noch
+  kein Konto hat, verliert die Einladung nicht — sie wartet, bis jemand
+  angemeldet ist. Android braucht dafür den Intent-Filter mit Host
+  `einladung`; iOS nimmt das Schema für jeden Host.
+- **Wo man teilt:** oben auf „Spieler einladen" (Fantasy) und „Mitglieder
+  einladen" (Tipprunde) der Knopf „Einladungslink teilen"; auf dem
+  Homescreen oben rechts neben den Nachrichten ein kleines Symbol „Freunde
+  einladen" (allgemeine Einladung ohne Code).
+- **Der Startlink fragt nur einmal** (gemeldet: „Warum kommt jedes Mal
+  dieses Fenster?"): iOS meldet den Link, mit dem die App geöffnet wurde, bei
+  jedem neuen Lauf von `main()` wieder — im Simulator bei jedem Hot Restart.
+  `einladungAusStartLink` merkt sich den zuletzt behandelten Startlink in
+  SharedPreferences; die Wiederholung im Linkstrom wird einmal übersprungen,
+  ein später neu angetippter Link fragt wieder.
+- **Was es nicht gibt:** Wer die App erst installiert, landet danach nicht
+  automatisch in der Liga (bräuchte einen Dienst für „deferred deep links").
+  Deshalb steht der Code im geteilten Text und groß auf der Seite.
+
+Gehalten von `test/einladung_test.dart` (Link, Text, Erkennung eingehender
+Links, Passwort-Link ist keine Einladung). Am Simulator geprüft:
+`xcrun simctl openurl <udid> "app.matchup.mobile://einladung?code=…&name=…"`
+zeigt die Rückfrage.
+
+### Erklärungen hinter dem Fragezeichen (29.10.2026)
+
+Punkt 3 der Nutzer-Analyse — „keine langen Texte, lieber ein kleines
+Fragezeichen, wo Erklärungen aufpoppen". `InfoKnopf(frage: true)` zeigt ein
+Fragezeichen statt ⓘ (ⓘ bleibt für Regeln an Zahlen und Listen) und öffnet
+dasselbe Blatt. Die Texte stehen an **einer** Stelle, `app/erklaerungen.dart`
+(Fantasy-Liga, Draft, Tippspiel, Globales Tippspiel), je Titel und höchstens
+drei Sätze — derselbe Begriff wird überall gleich erklärt.
+
+Wo es steht: Homescreen-Köpfe „Meine Ligen", „Tippspiel", „Für alle"
+(`abschnittsKopf(erklaerung:)`), die Karten auf „Neu starten" (oben rechts,
+**neben** der Karte im Stapel, weil die Karte für die Vorlesehilfe ein
+einziger Knopf ist; weiß, weil die Karte in beiden Modi ein dunkles Foto
+ist), die Kopfleisten von „Fantasy-Liga erstellen" und „Tippspiel
+erstellen", und der Kasten „Als Nächstes" vor dem Draft (Draft erklärt; der
+Knopf hat 44 Punkte Tastfläche, die Zeile bleibt per `OverflowBox` flach).
+
+### Ruhigere Spielerzeilen (31.10.2026, Punkt 8)
+
+Auf Ansage, als erster Schritt gegen „zu viel auf kleinem Raum":
+- **Kein H/A mehr**, weder vor dem Anpfiff (`SpielMarke`, im MatchUp und
+  unter den Namensschildern im Kader) noch danach neben dem Ergebnis im
+  MatchUp. Den Gegner sagt das Wappen; `SpielMarke.buchstabe` ist entfallen.
+- **Spielernamen in Versalien und kursiv** (ExtraBold kursiv, der einzige
+  kursive Fettschnitt) — MatchUp-Zeilen, MatchUp-Bank, Namensschilder auf
+  Rasen und Bank, Spielerwahl im Kader. In der MatchUp-Zeile ist der Name
+  damit immer ExtraBold; „mein Spieler" sagen die grünen Punkte. Tests
+  suchen Namen deshalb in Versalien („URBIG", „SPIELER DEF5").
+- Der Ø bleibt in der Zeile (entschieden 31.10.2026).
+- **Seit dem 31.10.2026 in der ganzen Fantasy-Welt**: Free Agency und
+  Leaders, Draft-Raum und Draft-Board, Trade-Schirm und Angebote,
+  `SpielerKachel` (Transfers, Angebote), Kaderbewegungen im Chat,
+  Spielerprofil (Aufstellung, Kaderliste), Managerprofil, Bestätigungsblatt
+  der Free Agency, Admin-Listen, Waiver-Anträge, Wochenrückblick
+  (Spieler-Auszeichnungen und MVP; Managernamen bleiben normal). Nicht
+  angefasst: Snackbars, Rückfrage-Titel, Vorlese-Namen (`Semantics`) und
+  der Live-/Vereinsbereich (echte Spielberichte).
+
+### Der Draft ist kein Termin (30.10.2026, Punkt 9)
+
+„Viele denken bei Draft, alle müssten gleichzeitig online sein." Zwei Texte
+an `DraftPickTime`, die überall benutzt werden, wo über den Draft
+entschieden wird: `ablauf` (kurz, unter „Zeit je Pick": „Kein Termin nötig"
+bzw. „Alle gleichzeitig online" — statt der Fachwörter Live-/Slow-Draft)
+und `ablaufSatz` mit der eingestellten Zeit („Kein Termin nötig: Jeder hat
+8 Stunden je Pick, sonst wählt die App automatisch."). Bei kurzer Zeit nennt
+der Satz den Ausweg (mehr Zeit, bis zu einem Tag, dann kein Termin).
+Steht im Anlegen-Schritt Draft, im Start-Blatt (auch Reset-Draft), im
+„Als Nächstes"-Kasten, wenn alle dabei sind, und in den
+Draft-Einstellungen. Gehalten von `test/draft_ablauf_test.dart`.
+
+### Kleinigkeiten mit Wirkung (30.10.2026, Punkt 10)
+
+- `MaterialApp.title` war noch „Tippspiel" — Android zeigt ihn in der
+  Übersicht der offenen Apps. Jetzt „MatchUp" (Manifest, Info.plist und Web
+  trugen den Namen schon).
+- **Die frische Liga sagt, was als Nächstes passiert** (`_NaechsterSchritt`):
+  „Noch 1 Platz frei" im Singular, darunter ein Satz — solange Plätze frei
+  sind: einladen, Draft starten, wenn alle dabei sind (danach steht die
+  Teamzahl fest). Sind alle dabei, heißt der Kasten „Alle Teams sind dabei",
+  „Draft starten" ist der Hauptknopf, und der Satz nimmt die Draft-Hürde:
+  „Kein gemeinsamer Termin nötig: Jeder hat 1 Minute je Pick, sonst wählt die
+  App." Nicht-Admins lesen, dass der Ersteller startet. Vorschauen
+  `liga_vor_dem_draft.png`, `liga_alle_dabei.png`.
+
+### Vereins-Limit, Bilanz-Tabelle, Tippspiel beim Anlegen (30.10.2026)
+
+Auf Ansage, vier Dinge:
+
+- **Vereins-Limit** (0153): `RosterConfig.maxJeVerein` (JSONB `maxJeVerein`,
+  fehlt = ohne). Erzwungen in `fantasy_kaderlimit_pruefen` (aufgeschobener
+  Trigger, deckt Draft, Free Agency, Waiver, Admin und Trades) und im
+  Auto-Pick (`fantasy_autopick_if_expired` wählt keinen, der es reißt).
+  Verglichen wird `players.club`. Einstellbar beim Anlegen (Schritt Draft)
+  und unter Spielregeln › Kader-Limits (`VereinsLimitEditor`, 1–15,
+  Vorschlag 3). Die App prüft nicht vorab — wie bei den Positionslimits
+  steht die Meldung des Servers da. Rollback-Probe: Limit 1, zweiter Kölner
+  abgelehnt, Spieler eines anderen Vereins angenommen.
+- **Unentschieden aus = Bilanz wie in der NFL**: `h2hStandings(bilanz:)`
+  sortiert nach Siegquote (Unentschieden halb), die Tabelle zeigt rechts
+  „5-2" (`H2HRecord.nflBilanz`, Kopf „S-N") statt PKT, der MatchUp-Kasten
+  „P1 · 5-2". Exakter Gleichstand bleibt ein Unentschieden.
+  `H2HGrundlage.bilanz` = `remisGrenze == null`. Stand 30.10.: nur MatchUp!
+  #1 hat die Regel an, alle Testligen zeigen jetzt die Bilanz.
+- **Tippspiel beim Anlegen konfigurieren**: Ist „Ligainternes Tippspiel" an,
+  stehen Wettbewerbe und `TipRulesEditor` direkt darunter (Schritt 4 heißt
+  „Mitspieler & Tippspiel"); die Runde wird mit der Liga angelegt und
+  gekoppelt (`link_fantasy_tip_round`). Scheitert das, steht die Liga, und
+  das Tippspiel wird wie bisher auf der Übersicht angeboten.
+- Namensfeld beim Anlegen mit Rahmen und Beschriftung („Name der Liga"),
+  ohne Beispieltext; Glossar je Bereich alphabetisch (`glossarSchluessel`,
+  Umlaute wie Grundlaut; „Ø (Schnitt)" heißt „Schnitt (Ø)").
+
+Gehalten von `test/bilanz_und_vereinslimit_test.dart` und den Vorschauen.
+
+### Anlegen in Schritten (29.10.2026, ersetzt den Abschnitt darunter)
+
+Auf Ansage („die Nutzer müssen alles sofort sehen, sonst übersehen sie
+Funktionen"): Zuklappen ist zurückgenommen, `WeitereEinstellungen` gelöscht.
+`SchrittFormular` (`core/ui/schritt_formular.dart`): Segmentleiste oben
+(antippbar für besuchte Schritte), Seitentitel und „Schritt n von m",
+unten Zurück/Weiter, auf der letzten Seite der Abschluss; Zurück-Geste geht
+eine Seite zurück; `IndexedStack` hält Eingaben; `pruefe` je Schritt, vor dem
+Abschluss alle. **Fantasy:** Liga (Name, Teams) · Draft (Zeit je Pick, Runden,
+Reihenfolge, Kader-Limits) · Saison (Unentschieden, Playoffs mit
+Trade-Deadline, Winterpause) · Mitspieler (Sichtbarkeit, Tippspiel). Draft-
+und Playoff-Werte gab es vorher nur nachträglich. **Tippspiel:** Tippspiel
+(Name, Wettbewerbe) · Punkte · Extras (Modi, Sichtbarkeit).
+`TipRulesEditor(teil:)` zeigt nur Punkte oder Modi; zwei Editoren bleiben
+über `didUpdateWidget` synchron. Vorschauen `liga_erstellen_1–4.png`,
+`tippspiel_erstellen_1–3.png`.
+
+### Anlegen: das Nötige oben, der Rest zugeklappt (29.10.2026)
+
+Punkt 4 der Nutzer-Analyse, mit der Vorgabe „alle Einstellungen müssen beim
+Erstellen vorhanden bleiben". Beide Erstellen-Schirme zeigen oben nur, was
+zum Anlegen nötig ist — **Fantasy:** Name und Teams; **Tippspiel:** Name und
+Wettbewerbe. Alles andere liegt vollständig unter `WeitereEinstellungen`
+(`core/ui/weitere_einstellungen.dart`): eine Zeile mit Titel und einem Satz,
+**was gerade gilt** („Privat · Unentschieden bis 10 Punkte · ohne
+Winterpause-Reset · ohne Kader-Limits · ohne Tippspiel" bzw. „Punkte 4/3/2 ·
+keine Extras · Privat"), ein Tipp klappt auf.
+
+- Die Zusammenfassung rechnet sich aus dem Zustand (`_zusammenfassung`), sie
+  zieht bei jeder Änderung mit — dafür meldet der `TipRulesEditor` seine
+  Änderungen jetzt per `setState` nach oben.
+- **Ein Fehler darin klappt auf** (`offenErzwingen`): Kader-Limits, die den
+  Kader nicht tragen, stünden sonst hinter einer zugeklappten Zeile.
+- Jeder Abschnitt darunter trägt ein Fragezeichen (`FormSection(erklaerung:)`,
+  Texte in `erklaerungen.dart`); „Punkte je Tipp" und „Modi" zeigen es auch in
+  den Tipprunden-Einstellungen, weil der Editor derselbe ist.
+- Vorschauen: `liga_erstellen_einfach.png`, `tippspiel_erstellen_einfach.png`
+  (zugeklappt) neben den bisherigen (aufgeklappt); die Tests prüfen die
+  Zusammenfassung wörtlich.
+
+### Erster Start: Vereine wählen, dann die Push-Frage (29.10.2026)
+
+Punkt 5 der Nutzer-Analyse, auf Ansage: Beim ersten Start wählt man seine
+Lieblingsvereine (**mindestens einer**), danach fragt der Homescreen nach
+Benachrichtigungen.
+
+- **Gate in `main.dart`** (`_RootGate`): angemeldet und
+  `vereinsWahlNoetigProvider` wahr → `VereinsWahlScreen`
+  (`features/favorites/ui/vereinswahl_screen.dart`) statt `MainShell`. Wahr
+  heißt: Favoriten **geladen** und kein Team-Favorit darunter. Ein Ladefehler
+  zählt nicht als „keine Favoriten" (`FavoritesNotifier.fertig`), sonst
+  stünde jeder bei Funkloch wieder vor der Auswahl. Der Ladeschirm wartet auf
+  `favoritenFertigProvider`, damit Homescreen und Auswahl nicht
+  nacheinander aufblitzen.
+- **Der Schirm:** Chevron, „WÄHLE DEINE VEREINE", ein Satz, `PillSelector`
+  Bundesliga / 2. Liga / 3. Liga, Wappenraster (gewählt: `auswahlFlaeche`,
+  grüne Kante, Haken), unten „N Vereine gewählt" und „Weiter" — aus bis zum
+  ersten Verein. Gespeichert wird **erst bei „Weiter"**, sonst schaltete das
+  Gate schon beim ersten Wappen um. Scheitert das Speichern, bleibt der
+  Schirm mit Hinweis stehen.
+- **Die Systemabfrage kommt nicht mehr beim ersten Homescreen.** Vorher rief
+  `MainShell` sofort `_pushAnmelden()` — wer da „Nicht erlauben" tippt,
+  bekommt die iOS-Abfrage nie wieder. Jetzt `_pushPruefen()` nach dem
+  Ladeschirm: schon erlaubt → Token melden; abgelehnt → nichts;
+  unentschieden → erst das eigene Blatt `zeigePushFrage`
+  (`features/push/push_frage.dart`, „NICHTS VERPASSEN", nennt den ersten
+  Lieblingsverein, drei Punkte, Verweis auf Profil › Benachrichtigungen).
+  „Benachrichtigungen erlauben" → Systemabfrage; „Später" → zwei Wochen Ruhe
+  (`push_frage_spaeter_bis`), die Systemabfrage bleibt unverbraucht. Eine
+  offene Einladungs-Rückfrage hat Vorrang.
+- `PushDienst.erlaubnisStatus()` liest `getNotificationSettings()`, ohne zu
+  fragen.
+
+Gehalten von `test/vereinswahl_test.dart` (`vereinswahl.png`) und
+`test/push_frage_test.dart` (`push_frage.png`).
+
+### Anmeldeschirm: neu oder zurück, und erst mal reinschauen (29.10.2026)
+
+Punkt 6 der Nutzer-Analyse: Jeder las „Willkommen zurück", „Registrieren"
+stand klein ganz unten, und ohne Konto sah man nichts von der App.
+
+- **Ein Umschalter „Registrieren | Anmelden" oben in der Glaskarte**
+  (`PillSelector`), statt der Textzeile unter dem Formular. Wer auf dem Gerät
+  schon angemeldet war (gemerkte E-Mail oder Biometrie), startet auf
+  „Anmelden" mit „Willkommen zurück", alle anderen auf „Registrieren" mit
+  „Konto erstellen". Hat man selbst umgeschaltet, bleibt es dabei.
+- **„Weiter mit Google / Apple"** statt „Mit … anmelden" — die Knöpfe legen
+  auch neue Konten an.
+- **„Erst mal reinschauen"** unter der Karte öffnet `LiveVorschauScreen`
+  (`features/auth/ui/`): der Live-Tab (`LiveScreen(vorschau: true)`, ohne
+  Glocke und ohne Platz für die Navileiste), unten „Konto erstellen", das
+  zurück auf Registrieren schaltet. **Geht ohne Sitzung**: Die Function
+  `sportmonks` nimmt den Publishable-Key (nachgemessen: `kind: live` → 200).
+  Vereinsseiten und Spieldetails sind von dort erreichbar; der
+  Favoriten-Stern tut ohne Nutzer nichts (`FavoritesNotifier._repo` ist null).
+- Logo 64 statt 88, damit der Vorschau-Link auf einem iPhone ohne Scrollen
+  im Bild steht — `login_social_preview_test` misst das mit echten
+  Safe-Area-Rändern (`login_iphone.png`), dazu `login_zurueck.png` und
+  `live_ohne_konto.png` (in `live_vorschau_test`).
+
+### Glossar im Profil (29.10.2026)
+
+Punkt 7 der Nutzer-Analyse („viel Fachsprache, oft auf Englisch"). Profil ›
+App › **Glossar** öffnet `GlossarScreen` (`app/glossar_screen.dart`):
+Suchfeld, darunter die Begriffe unter den Kapitelmarken Fantasy, Tippspiel,
+Allgemein — Begriff fett, zwei, drei Sätze grau, Haarlinien, kein Aufklappen.
+Die Einträge stehen in `app/glossar.dart`; **wo es schon ein Fragezeichen
+gibt, steht dieselbe `Erklaerung`** aus `erklaerungen.dart` (ein Begriff,
+eine Erklärung). Keine Zahlen, die eine Liga selbst einstellt. Neuer Begriff
+in der App → Eintrag hier. Gehalten von `test/glossar_test.dart` (eindeutige
+Titel, höchstens vier Sätze, Suche; `glossar.png`).
 
 ### Zonen in der Ligatabelle (19.10.2026)
 

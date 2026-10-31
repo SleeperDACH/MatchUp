@@ -165,9 +165,9 @@ void main() {
       )))
         ?w.data,
     };
-    expect(aufDemFeld, isNot(contains('goetze')),
+    expect(aufDemFeld, isNot(contains('GOETZE')),
         reason: 'der Bankspieler darf nicht von selbst in die Elf rücken');
-    expect(aufDemFeld, containsAll(['mid1', 'mid2', 'mid3']));
+    expect(aufDemFeld, containsAll(['MID1', 'MID2', 'MID3']));
     expect(
       find.byWidgetPredicate((w) => w.runtimeType.toString() == '_LeererPlatz'),
       findsOneWidget,

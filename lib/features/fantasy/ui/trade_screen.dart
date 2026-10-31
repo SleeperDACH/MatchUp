@@ -150,7 +150,8 @@ class TradePartnerList extends ConsumerWidget {
 
         // Ø je Spieltag nach der Wertung dieser Liga — dieselbe Zahl wie im
         // Angebot, damit man schon bei der Partnerwahl vergleichen kann.
-        final stats = ref.watch(seasonStatsProvider).valueOrNull ??
+        final stats =
+            ref.watch(seasonStatsProvider).valueOrNull ??
             const <int, Map<String, PlayerMatchStats>>{};
         final schnitt = <String, double>{};
         for (final r in roster) {
@@ -165,7 +166,8 @@ class TradePartnerList extends ConsumerWidget {
           if (sp.hatDaten) schnitt[p.id] = sp.schnitt;
         }
         // Picks für den Reset-Draft je Team, solange die Liga einen hat.
-        final slots = league.resetAktiv &&
+        final slots =
+            league.resetAktiv &&
                 !(league.draftPhase == 'reset' &&
                     league.draftStatus == DraftStatus.done)
             ? ref.watch(resetPicksProvider(league.id))
@@ -289,36 +291,40 @@ class _ParticipantColumn extends StatelessWidget {
     if (picks != null && picks!.isNotEmpty) {
       zeilen
         ..add(_marke(context, 'Picks · Reset-Draft'))
-        ..add(Padding(
-          padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-          child: Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              for (final pk in picks!)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: scheme.onSurface.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    pk.fest
-                        ? pk.code
-                        : pk.ursprung == manager.userId
-                        ? 'R${pk.runde}'
-                        : 'R${pk.runde} · ${nameVon[pk.ursprung] ?? '?'}',
-                    style: const TextStyle(
-                      fontSize: Schrift.label,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: [FontFeature.tabularFigures()],
+        ..add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+            child: Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final pk in picks!)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.onSurface.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      pk.fest
+                          ? pk.code
+                          : pk.ursprung == manager.userId
+                          ? 'R${pk.runde}'
+                          : 'R${pk.runde} · ${nameVon[pk.ursprung] ?? '?'}',
+                      style: const TextStyle(
+                        fontSize: Schrift.label,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ));
+        );
     }
 
     return Container(
@@ -404,17 +410,17 @@ class _ParticipantColumn extends StatelessWidget {
   }
 
   Widget _marke(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-        child: Text(
-          text.toUpperCase(),
-          style: TextStyle(
-            fontSize: Schrift.label,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+    child: Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: Schrift.label,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 
   Widget _zeile(BuildContext context, FantasyPlayer p) {
     final scheme = Theme.of(context).colorScheme;
@@ -430,12 +436,13 @@ class _ParticipantColumn extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(
-                _shortName(p.name),
+                _shortName(p.name).toUpperCase(),
                 maxLines: 1,
                 softWrap: false,
                 style: const TextStyle(
                   fontSize: Schrift.text,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: Schrift.ueberschriftGewicht,
+                  fontStyle: Schrift.ueberschriftStil,
                 ),
               ),
             ),
@@ -690,15 +697,18 @@ class _TradeComposeScreenState extends ConsumerState<TradeComposeScreen> {
           final theirPicks = slots == null
               ? const <PickSlot>[]
               : picksVon(slots, widget.partner.userId);
-          final offerPickSel =
-              myPicks.where((p) => _offerPicks.contains(p.key)).toList();
-          final requestPickSel =
-              theirPicks.where((p) => _requestPicks.contains(p.key)).toList();
+          final offerPickSel = myPicks
+              .where((p) => _offerPicks.contains(p.key))
+              .toList();
+          final requestPickSel = theirPicks
+              .where((p) => _requestPicks.contains(p.key))
+              .toList();
           final offerSel = mine.where((p) => _offer.contains(p.id)).toList();
           final requestSel = theirs
               .where((p) => _request.contains(p.id))
               .toList();
-          final canSend = (_offer.isNotEmpty ||
+          final canSend =
+              (_offer.isNotEmpty ||
                   _request.isNotEmpty ||
                   offerPickSel.isNotEmpty ||
                   requestPickSel.isNotEmpty) &&
@@ -873,8 +883,13 @@ class _ConfirmOfferSheet extends StatelessWidget {
             const SizedBox(height: 8),
             Icon(Icons.swap_vert, color: scheme.onSurfaceVariant),
             const SizedBox(height: 8),
-            _side(context, '$partnerName gibt', request, requestPicks,
-                scheme.tertiary),
+            _side(
+              context,
+              '$partnerName gibt',
+              request,
+              requestPicks,
+              scheme.tertiary,
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: messageController,
@@ -1254,16 +1269,16 @@ class _Geschaeft extends StatelessWidget {
       children: [
         _kacheln(context, spieler, picks, links),
         if (spieler.isNotEmpty) ...[
-        const SizedBox(height: 4),
-        Text(
-          'Ø ${formatPoints(summe)} Punkte',
-          style: TextStyle(
-            fontSize: Schrift.label,
-            fontWeight: FontWeight.w700,
-            fontFeatures: const [FontFeature.tabularFigures()],
-            color: scheme.onSurfaceVariant,
+          const SizedBox(height: 4),
+          Text(
+            'Ø ${formatPoints(summe)} Punkte',
+            style: TextStyle(
+              fontSize: Schrift.label,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: scheme.onSurfaceVariant,
+            ),
           ),
-        ),
         ],
       ],
     );
@@ -1297,10 +1312,11 @@ class _Geschaeft extends StatelessWidget {
                 ClubBadge(club: p.club, iconUrl: clubIcons[p.club], size: 16),
                 const SizedBox(width: 5),
                 Text(
-                  SpielerKachel.kurzerName(p.name),
+                  SpielerKachel.kurzerName(p.name).toUpperCase(),
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: Schrift.ueberschriftGewicht,
+                    fontStyle: Schrift.ueberschriftStil,
                     color: scheme.onSurface,
                   ),
                 ),
@@ -1317,8 +1333,11 @@ class _Geschaeft extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.confirmation_number_outlined,
-                    size: 13, color: scheme.onSurfaceVariant),
+                Icon(
+                  Icons.confirmation_number_outlined,
+                  size: 13,
+                  color: scheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   p.fest
@@ -1767,7 +1786,9 @@ class TradeCard extends ConsumerWidget {
         // Picks für den Reset-Draft (0145) mit ihrer Nummer nach der
         // aktuellen Tabelle, soweit sie schon berechnet ist.
         final slots = ref.watch(resetPicksProvider(trade.leagueId));
-        final codeVon = {for (final s in slots ?? const <PickSlot>[]) s.key: s.code};
+        final codeVon = {
+          for (final s in slots ?? const <PickSlot>[]) s.key: s.code,
+        };
         final offeredPicks = [
           for (final p in d.picks)
             if (p.giver == trade.fromManager) p,
@@ -1802,14 +1823,14 @@ class TradeCard extends ConsumerWidget {
             m.userId: m.display,
         };
         Widget pickKachel(TradePick p) => PickKachel(
-              runde: p.runde,
-              team: nameVon[p.ursprung] ?? '?',
-              code: codeVon[p.key],
-              fest: slots?.firstOrNull?.fest ?? false,
-              hervor: true,
-              hoehe: 46,
-              breite: 152,
-            );
+          runde: p.runde,
+          team: nameVon[p.ursprung] ?? '?',
+          code: codeVon[p.key],
+          fest: slots?.firstOrNull?.fest ?? false,
+          hervor: true,
+          hoehe: 46,
+          breite: 152,
+        );
         final untertitel = gegen == null
             ? leagueName
             : ['Trade-Angebot', ?leagueName].join(' · ');
@@ -1920,8 +1941,12 @@ class TradeCard extends ConsumerWidget {
                       // Rot, und ohne Grün verliert Rot sein Gegenüber.
                       child: FilledButton(
                         style: FilledButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary,
                         ),
                         onPressed: () => _respond(context, ref, trade, true),
                         child: const Text('Annehmen'),

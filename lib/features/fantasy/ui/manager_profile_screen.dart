@@ -479,10 +479,15 @@ class ManagerProfileScreen extends ConsumerWidget {
                   ],
                   Flexible(
                     child: Text(
-                      _short(p.name),
+                      _short(p.name).toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: Schrift.ueberschriftGewicht,
+                        fontStyle: Schrift.ueberschriftStil,
+                      ),
                     ),
                   ),
                 ],
@@ -581,8 +586,23 @@ class ManagerProfileScreen extends ConsumerWidget {
                             label: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  '${_short(p.name)} · ${formatPoints(points[p] ?? 0)}',
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: _short(p.name).toUpperCase(),
+                                        style: const TextStyle(
+                                          fontWeight:
+                                              Schrift.ueberschriftGewicht,
+                                          fontStyle: Schrift.ueberschriftStil,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text:
+                                            ' · ${formatPoints(points[p] ?? 0)}',
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 if (ausfaelle[p.id] != null) ...[
                                   const SizedBox(width: 5),

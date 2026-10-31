@@ -36,49 +36,115 @@ void main() {
         ),
       );
 
-  testWidgets('Vorschau: Liga erstellen mit Kader-Limits', (tester) async {
+  Future<void> takt(WidgetTester tester) async {
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+  }
+
+  testWidgets('Vorschau: Liga erstellen in vier Schritten', (tester) async {
     final vorher = AppConfig.supabaseInitialized;
     AppConfig.supabaseInitialized = true;
     addTearDown(() => AppConfig.supabaseInitialized = vorher);
 
-    tester.view.physicalSize = const Size(402 * 3, 1500 * 3);
+    tester.view.physicalSize = const Size(402 * 3, 874 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(rahmen());
-    for (var i = 0; i < 6; i++) {
-      await tester.pump(const Duration(milliseconds: 200));
-    }
+    await takt(tester);
 
-    // Der Abschnitt ist da, und im Grundzustand ist nichts begrenzt — eine
-    // stillschweigend eingeführte Obergrenze wäre eine Regel, die niemand
-    // gewählt hat.
-    // Seit dem 18.10.2026 sagen das die Zeilen selbst („ohne Limit" je
-    // Position), der Satz darunter steht nur noch, wenn die Summe nicht
-    // aufgeht.
-    expect(find.text('KADER-LIMITS'), findsOneWidget);
-    expect(find.text('ohne Limit'), findsNWidgets(4));
-    expect(find.textContaining('Keine Position ist begrenzt'), findsNothing);
-    // Die Erklärsätze sind weg.
-    expect(find.textContaining('So viele Manager passen'), findsNothing);
-    expect(find.textContaining('Draft- und Playoff-Einstellungen'),
-        findsNothing);
-
+    // **Schritt 1: Name und Teams** — und man sieht, wo man steht.
+    expect(find.text('Schritt 1 von 4'), findsOneWidget);
+    expect(find.text('LIGA'), findsOneWidget);
+    expect(find.text('Zurück'), findsNothing);
+    // Das Namensfeld ist ein beschriftetes Feld, kein grauer Beispieltext.
+    expect(find.text('Name der Liga'), findsOneWidget);
+    expect(find.textContaining('z. B.'), findsNothing);
     await expectLater(find.byType(CreateFantasyLeagueScreen),
-        matchesGoldenFile('goldens/liga_erstellen_limits_aus.png'));
+        matchesGoldenFile('goldens/liga_erstellen_1.png'));
 
-    // Torhüter begrenzen: Der Vorschlag beim Einschalten ist die
-    // Startelf-Obergrenze plus eine Reserve.
+    // Ohne Namen geht es nicht weiter — mit Grund.
+    await tester.tap(find.text('Weiter'));
+    await takt(tester);
+    expect(find.text('Schritt 1 von 4'), findsOneWidget);
+    expect(find.textContaining('mind. 3 Zeichen'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Büro-Liga');
+    await tester.tap(find.text('Weiter'));
+    await takt(tester);
+
+    // **Schritt 2: Draft** samt Kader-Limits — im Grundzustand nichts
+    // begrenzt.
+    expect(find.text('Schritt 2 von 4'), findsOneWidget);
+    expect(find.text('Zeit je Pick'), findsOneWidget);
+    expect(find.text('Runden'), findsOneWidget);
+    // Vier Positionen plus Vereins-Limit, alle offen.
+    expect(find.text('ohne Limit'), findsNWidgets(5));
+    expect(find.text('Spieler je Verein'), findsOneWidget);
+    await expectLater(find.byType(CreateFantasyLeagueScreen),
+        matchesGoldenFile('goldens/liga_erstellen_2.png'));
+
+    // Zurück führt auf Schritt 1, der Name ist noch da.
+    await tester.tap(find.text('Zurück'));
+    await takt(tester);
+    expect(find.text('Schritt 1 von 4'), findsOneWidget);
+    expect(find.text('Büro-Liga'), findsOneWidget);
+
+    await tester.tap(find.text('Weiter'));
+    await takt(tester);
+    await tester.tap(find.text('Weiter'));
+    await takt(tester);
+
+    // **Schritt 3: Saison** — Unentschieden, Playoffs, Winterpause.
+    expect(find.text('Schritt 3 von 4'), findsOneWidget);
+    expect(find.text('Playoff-Teams'), findsOneWidget);
+    expect(find.text('Reset'), findsOneWidget);
+    await expectLater(find.byType(CreateFantasyLeagueScreen),
+        matchesGoldenFile('goldens/liga_erstellen_3.png'));
+
+    await tester.tap(find.text('Weiter'));
+    await takt(tester);
+
+    // **Schritt 4: Mitspieler**, und erst hier steht „Liga erstellen".
+    expect(find.text('Schritt 4 von 4'), findsOneWidget);
+    expect(find.text('Ligainternes Tippspiel'), findsOneWidget);
+    expect(find.text('Liga erstellen'), findsOneWidget);
+    expect(find.text('Weiter'), findsNothing);
+    // Tippspiel einschalten: Die Konfiguration steht sofort darunter.
+    expect(find.text('Exaktes Ergebnis'), findsNothing);
+    await tester.tap(find.text('Ligainternes Tippspiel'));
+    await takt(tester);
+    expect(find.text('WETTBEWERBE'), findsOneWidget);
+    expect(find.text('Exaktes Ergebnis'), findsOneWidget);
+    expect(find.text('Quoten-Bonus'), findsOneWidget);
+    await expectLater(find.byType(CreateFantasyLeagueScreen),
+        matchesGoldenFile('goldens/liga_erstellen_4.png'));
+
+    // Ein Tipp auf das erste Segment springt zurück zum Anfang.
+    await tester.tap(find.bySemanticsLabel('Schritt 1: Liga'));
+    await takt(tester);
+    expect(find.text('Schritt 1 von 4'), findsOneWidget);
+  });
+
+  testWidgets('Kader-Limits begrenzen einzeln, der Rest bleibt offen',
+      (tester) async {
+    final vorher = AppConfig.supabaseInitialized;
+    AppConfig.supabaseInitialized = true;
+    addTearDown(() => AppConfig.supabaseInitialized = vorher);
+    tester.view.physicalSize = const Size(402 * 3, 1400 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(rahmen());
+    await takt(tester);
+    await tester.enterText(find.byType(TextField), 'Büro-Liga');
+    await tester.tap(find.text('Weiter'));
+    await takt(tester);
     await tester.tap(find.text('ohne Limit').first);
-    for (var i = 0; i < 6; i++) {
-      await tester.pump(const Duration(milliseconds: 200));
-    }
-    // Die offenen Positionen stehen weiter als „ohne Limit" in ihrer Zeile.
-    expect(find.text('ohne Limit'), findsNWidgets(3),
+    await takt(tester);
+    expect(find.text('ohne Limit'), findsNWidgets(4),
         reason: 'Die offenen Positionen müssen erkennbar bleiben');
-
-    await expectLater(find.byType(CreateFantasyLeagueScreen),
-        matchesGoldenFile('goldens/liga_erstellen_limits_teilweise.png'));
   });
 
   test('die Summenregel gilt erst, wenn alle vier gedeckelt sind', () {

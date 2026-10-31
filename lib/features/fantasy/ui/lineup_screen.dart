@@ -1550,13 +1550,7 @@ class _SpielerAufRasen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (spiel != null)
-            SpielMarke(
-              spiel: spiel!,
-              farbe: leise,
-              mitZeit: false,
-              buchstabe: true,
-              wappen: 12,
-            )
+            SpielMarke(spiel: spiel!, farbe: leise, mitZeit: false, wappen: 12)
           else
             Text(
               'frei',
@@ -1676,7 +1670,10 @@ class _SpielerAufRasen extends StatelessWidget {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        nachname,
+                        // Spielernamen in Versalien und kursiv (31.10.2026,
+                        // auf Ansage) — wie Überschriften, nur ExtraBold
+                        // liegt kursiv als Schnitt bei.
+                        nachname.toUpperCase(),
                         maxLines: 1,
                         softWrap: false,
                         style: TextStyle(
@@ -1684,7 +1681,8 @@ class _SpielerAufRasen extends StatelessWidget {
                               ? vorne.withValues(alpha: 0.6)
                               : vorne,
                           fontSize: Schrift.text,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: Schrift.ueberschriftGewicht,
+                          fontStyle: Schrift.ueberschriftStil,
                           height: 1.0,
                         ),
                       ),
@@ -2099,9 +2097,13 @@ class _PlayerPicker extends ConsumerWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              p.name,
+                              p.name.toUpperCase(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: Schrift.ueberschriftGewicht,
+                                fontStyle: Schrift.ueberschriftStil,
+                              ),
                             ),
                           ),
                           if (ausfall != null) ...[

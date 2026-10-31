@@ -14,7 +14,6 @@ import 'club_badge.dart';
 import 'player_profile_sheet.dart';
 import 'trade_screen.dart';
 
-
 /// Kleiner Aktions-Button für einen Spieler (Free Agency & Spielersuche):
 /// grün „Holen" (frei), gelb „Waiver" (auf dem Wire), rot „Trade" (in fremdem
 /// Kader). Der eigene Kader zeigt eine dezente Markierung, gesperrte Spieler
@@ -591,7 +590,9 @@ class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
 
     final gewaehlt = auswahl == true;
     return Material(
-      color: gewaehlt ? context.farben.rot.withValues(alpha: 0.12) : Colors.transparent,
+      color: gewaehlt
+          ? context.farben.rot.withValues(alpha: 0.12)
+          : Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -608,7 +609,9 @@ class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
                 Icon(
                   gewaehlt ? Icons.check_circle : Icons.radio_button_unchecked,
                   size: 22,
-                  color: gewaehlt ? context.farben.rot : scheme.onSurfaceVariant,
+                  color: gewaehlt
+                      ? context.farben.rot
+                      : scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 12),
               ],
@@ -620,12 +623,13 @@ class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      p.name,
+                      p.name.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: Schrift.text,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: Schrift.ueberschriftGewicht,
+                        fontStyle: Schrift.ueberschriftStil,
                       ),
                     ),
                     Text(
@@ -664,7 +668,11 @@ class _Marke extends StatelessWidget {
     padding: const EdgeInsets.only(top: 18, bottom: 4),
     child: Row(
       children: [
-        Icon(farbe == context.farben.gruen ? Icons.add : Icons.remove, size: 16, color: farbe),
+        Icon(
+          farbe == context.farben.gruen ? Icons.add : Icons.remove,
+          size: 16,
+          color: farbe,
+        ),
         const SizedBox(width: 6),
         Text(
           text.toUpperCase(),

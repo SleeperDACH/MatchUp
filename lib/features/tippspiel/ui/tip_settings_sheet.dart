@@ -358,7 +358,8 @@ class _TipSettingsScreen extends ConsumerWidget {
             }
           },
         ),
-      if (isCreator)
+      // Das Globale Tippspiel ist immer offen für alle (0150).
+      if (isCreator && !round.istGlobal)
         _Zeile(
           icon: round.isPublic ? Icons.public_outlined : Icons.lock_outline,
           titel: 'Sichtbarkeit & Beitritt',
@@ -394,7 +395,9 @@ class _TipSettingsScreen extends ConsumerWidget {
     ];
 
     final wertung = <Widget>[
-      if (isCreator)
+      // **Die Wertung des Globalen Tippspiels ist fest** (4/3/2, auf Ansage;
+      // serverseitig gesperrt in 0152) — auch der Admin ändert sie nicht.
+      if (isCreator && !round.istGlobal)
         _Zeile(
           icon: Icons.tune_outlined,
           titel: 'Wertung & Modi',
@@ -405,9 +408,9 @@ class _TipSettingsScreen extends ConsumerWidget {
             ),
           ),
         ),
-      // Gekoppelte Tippspiele haben keinen eigenen Liga-Tab — die Regeln
-      // sind daher nur hier erreichbar.
-      if (round.isFantasyLinked)
+      // Gekoppelte Tippspiele und das Globale Tippspiel haben keinen eigenen
+      // Liga-Tab — die Regeln sind daher nur hier erreichbar.
+      if (round.isFantasyLinked || round.istGlobal)
         _Zeile(
           icon: Icons.gavel_outlined,
           titel: 'Regeln & Punkteverteilung',

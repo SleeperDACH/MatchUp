@@ -42,21 +42,20 @@ class KaderLimitsEditor extends StatelessWidget {
   /// Untergrenze je Position: Unter der Startelf-Mindestzahl wäre keine
   /// gültige Aufstellung mehr möglich.
   static int minFuer(RosterConfig r, PlayerPosition pos) => switch (pos) {
-        PlayerPosition.gk => r.gk,
-        PlayerPosition.def => r.defMin,
-        PlayerPosition.mid => r.midMin,
-        PlayerPosition.fwd => r.fwdMin,
-      };
+    PlayerPosition.gk => r.gk,
+    PlayerPosition.def => r.defMin,
+    PlayerPosition.mid => r.midMin,
+    PlayerPosition.fwd => r.fwdMin,
+  };
 
   /// Vorschlag beim Einschalten: die Startelf-Obergrenze plus eine Reserve.
   /// Erlaubt jede gültige Formation und verhindert trotzdem das Horten.
-  static int vorschlagFuer(RosterConfig r, PlayerPosition pos) =>
-      switch (pos) {
-        PlayerPosition.gk => r.gk + 1,
-        PlayerPosition.def => r.defMax + 1,
-        PlayerPosition.mid => r.midMax + 1,
-        PlayerPosition.fwd => r.fwdMax + 1,
-      };
+  static int vorschlagFuer(RosterConfig r, PlayerPosition pos) => switch (pos) {
+    PlayerPosition.gk => r.gk + 1,
+    PlayerPosition.def => r.defMax + 1,
+    PlayerPosition.mid => r.midMax + 1,
+    PlayerPosition.fwd => r.fwdMax + 1,
+  };
 
   /// Trägt die Summe den Kader?
   ///
@@ -64,16 +63,18 @@ class KaderLimitsEditor extends StatelessWidget {
   /// Position offen, nimmt sie jede Restmenge auf; „zusammen 12 von 16" wäre
   /// dann eine Warnung vor einem Problem, das es nicht gibt.
   static bool reichtFuerKader(
-      RosterConfig r, Map<PlayerPosition, int?> limits) {
-    final alle = limits.length == PlayerPosition.values.length &&
+    RosterConfig r,
+    Map<PlayerPosition, int?> limits,
+  ) {
+    final alle =
+        limits.length == PlayerPosition.values.length &&
         limits.values.every((v) => v != null);
     if (!alle) return true;
     return limits.values.fold(0, (int a, v) => a + (v ?? 0)) >= r.squadSize;
   }
 
   /// Was unter den Zeilen steht — drei Lagen, nicht eine.
-  static String hinweisText(
-      RosterConfig r, Map<PlayerPosition, int?> limits) {
+  static String hinweisText(RosterConfig r, Map<PlayerPosition, int?> limits) {
     final gesetzt = limits.values.where((v) => v != null).length;
     if (gesetzt == 0) {
       return 'Keine Position ist begrenzt — es gilt keine Obergrenze.';
@@ -90,8 +91,8 @@ class KaderLimitsEditor extends StatelessWidget {
     return reichtFuerKader(r, limits)
         ? 'Zusammen $summe Plätze bei ${r.squadSize} Kaderplätzen.'
         : 'Zusammen nur $summe Plätze, der Kader hat aber ${r.squadSize}. '
-            'So findet der Draft irgendwann keinen erlaubten Spieler mehr und '
-            'bricht ab.';
+              'So findet der Draft irgendwann keinen erlaubten Spieler mehr und '
+              'bricht ab.';
   }
 
   void _setze(PlayerPosition pos, int? wert) =>
@@ -117,6 +118,32 @@ class KaderLimitsEditor extends StatelessWidget {
       ],
     );
   }
+}
+
+/// **Vereins-Limit** (0153): höchstens so viele Spieler desselben Vereins
+/// im Kader. Dieselbe Zeile wie die Positionslimits — „ohne Limit" als
+/// Knopf, eingeschaltet ein Stepper von 1 bis 15 (Vorschlag 3).
+class VereinsLimitEditor extends StatelessWidget {
+  const VereinsLimitEditor({
+    super.key,
+    required this.wert,
+    required this.onChanged,
+  });
+
+  final int? wert;
+  final ValueChanged<int?> onChanged;
+
+  static const vorschlag = 3;
+
+  @override
+  Widget build(BuildContext context) => _LimitZeile(
+    label: 'Spieler je Verein',
+    wert: wert,
+    min: 1,
+    onEin: () => onChanged(vorschlag),
+    onAus: () => onChanged(null),
+    onWert: onChanged,
+  );
 }
 
 /// Eine Positionszeile der Kader-Limits.
@@ -158,15 +185,20 @@ class _LimitZeile extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label,
-                style: const TextStyle(
-                    fontSize: Schrift.text, fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: Schrift.text,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           if (wert == null)
             TextButton(
               onPressed: onEin,
               style: TextButton.styleFrom(
-                  foregroundColor: scheme.onSurfaceVariant),
+                foregroundColor: scheme.onSurfaceVariant,
+              ),
               child: const Text('ohne Limit'),
             )
           else ...[

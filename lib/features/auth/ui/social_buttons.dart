@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart' show AppleLogoPainter;
+import 'package:sign_in_with_apple/sign_in_with_apple.dart'
+    show AppleLogoPainter;
 
 /// Die Anmeldeknöpfe von Google und Apple.
 ///
@@ -21,7 +22,9 @@ class SocialDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final farbe = Theme.of(context).colorScheme.onSurfaceVariant;
-    final linie = Expanded(child: Divider(color: farbe.withValues(alpha: 0.35)));
+    final linie = Expanded(
+      child: Divider(color: farbe.withValues(alpha: 0.35)),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Row(
@@ -31,10 +34,9 @@ class SocialDivider extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               'oder',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: farbe),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: farbe),
             ),
           ),
           linie,
@@ -66,15 +68,17 @@ class _AnbieterKnopf extends StatelessWidget {
           backgroundColor: Colors.white,
           foregroundColor: const Color(0xFF1F1F1F),
           disabledBackgroundColor: Colors.white.withValues(alpha: 0.4),
-          disabledForegroundColor: const Color(0xFF1F1F1F).withValues(alpha: 0.4),
+          disabledForegroundColor: const Color(
+            0xFF1F1F1F,
+          ).withValues(alpha: 0.4),
           // Nicht `const TextStyle(...)`: `styleFrom` **ersetzt** den Stil des
           // Knopfes, statt ihn zu ergänzen. Ohne Familie fiele die
           // Beschriftung auf die Systemschrift zurück und stünde als einzige
           // Zeile der App in einer fremden Schrift da.
-          textStyle: Theme.of(context)
-              .textTheme
-              .labelLarge
-              ?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
         child: Row(
@@ -111,7 +115,7 @@ class GoogleSignInButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return _AnbieterKnopf(
       logo: SvgPicture.string(_googleG, width: 20, height: 20),
-      text: 'Mit Google anmelden',
+      text: 'Weiter mit Google',
       onPressed: onPressed,
     );
   }
@@ -134,11 +138,12 @@ class AppleSignInButton extends StatelessWidget {
         padding: EdgeInsets.only(bottom: 2),
         child: AspectRatio(
           aspectRatio: 25 / 31,
-          child:
-              CustomPaint(painter: AppleLogoPainter(color: Color(0xFF1F1F1F))),
+          child: CustomPaint(
+            painter: AppleLogoPainter(color: Color(0xFF1F1F1F)),
+          ),
         ),
       ),
-      text: 'Mit Apple anmelden',
+      text: 'Weiter mit Apple',
       onPressed: onPressed,
     );
   }

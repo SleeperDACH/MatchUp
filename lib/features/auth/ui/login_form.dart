@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widgets/liquid_glass.dart';
 import '../../../app/widgets/matchup_logo.dart';
+import '../../../app/widgets/pill_selector.dart';
 import '../../../core/ui/eingabe_blatt.dart';
 import '../auth_repository.dart';
 import '../providers.dart';
+import 'live_vorschau_screen.dart';
 import 'social_buttons.dart';
 
 /// Login/Registrierung — eingebettet im Runden-Tab, solange niemand
@@ -23,14 +25,22 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _username = TextEditingController();
-  bool _registerMode = false;
+
+  /// Neu hier oder zurück? Wer auf diesem Gerät schon einmal angemeldet war
+  /// (gemerkte E-Mail oder Biometrie), landet auf „Anmelden", alle anderen
+  /// auf „Registrieren" (29.10.2026, Punkt 6: vorher stand für jeden
+  /// „Willkommen zurück" da, und „Registrieren" klein ganz unten).
+  bool _registerMode = true;
+  bool _bekannt = false;
+  bool _modusGewaehlt = false;
   bool _busy = false;
   String? _error;
 
   // Schnellanmeldung per Face ID / Fingerabdruck (nur nativ).
   bool _bioSupported = false; // Gerät hat Biometrie-Hardware (Setup anbieten)
   bool _hasSavedCreds = false; // Zugangsdaten hinterlegt + nutzbar -> Button
-  bool _enableBio = false; // Nutzer will Biometrie beim nächsten Login einrichten
+  bool _enableBio =
+      false; // Nutzer will Biometrie beim nächsten Login einrichten
   String _bioLabel = 'Biometrie';
 
   @override
@@ -53,6 +63,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       if (email != null && email.isNotEmpty && _email.text.isEmpty) {
         _email.text = email;
       }
+      _bekannt = (email != null && email.isNotEmpty) || hasCreds;
+      if (!_modusGewaehlt) _registerMode = !_bekannt;
       _bioSupported = supported;
       _hasSavedCreds = hasCreds;
       _bioLabel = label;
@@ -87,8 +99,10 @@ class _LoginFormState extends ConsumerState<LoginForm> {
         await auth.signIn(email: email, password: password);
       }
       if (kDebugMode) {
-        debugPrint('[AUTH] signIn/signUp durch, '
-            'mounted=$mounted registerMode=$_registerMode');
+        debugPrint(
+          '[AUTH] signIn/signUp durch, '
+          'mounted=$mounted registerMode=$_registerMode',
+        );
       }
       // Erfolg: zuletzt genutzte E-Mail merken, dem System die Anmeldedaten
       // zum Speichern anbieten und – falls gewünscht – die Biometrie-
@@ -176,7 +190,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
         if (mounted) {
           setState(() {
             _busy = false;
-            _error = '$_bioLabel hat nicht geklappt. Bitte mit E-Mail und '
+            _error =
+                '$_bioLabel hat nicht geklappt. Bitte mit E-Mail und '
                 'Passwort anmelden.';
           });
         }
@@ -232,11 +247,14 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     try {
       await ref.read(authRepositoryProvider).resetPassword(email);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
               'Falls ein Konto zu dieser E-Mail existiert, ist der '
-              'Reset-Link unterwegs.'),
-        ));
+              'Reset-Link unterwegs.',
+            ),
+          ),
+        );
       }
     } on AuthFailure catch (e) {
       setState(() => _error = e.message);
@@ -259,7 +277,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
 
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
           child: AutofillGroup(
@@ -268,13 +286,21 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Großes Marken-Logo als Hero.
-                const Center(child: MatchUpLogo(chevronSize: 88, vertical: true)),
-                const SizedBox(height: 18),
+                const Center(
+                  child: MatchUpLogo(chevronSize: 64, vertical: true),
+                ),
+                const SizedBox(height: 12),
                 Text(
-                  _registerMode ? 'Konto erstellen' : 'Willkommen zurück',
+                  _registerMode
+                      ? 'Konto erstellen'
+                      : _bekannt
+                      ? 'Willkommen zurück'
+                      : 'Anmelden',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -282,15 +308,26 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                   'gegeneinander gewinnen.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.66)),
+                    color: Colors.white.withValues(alpha: 0.66),
+                  ),
                 ),
-                const SizedBox(height: 26),
+                const SizedBox(height: 20),
                 // Formular in einer Glaskarte (neuer Liquid-Glass-Look).
                 LiquidGlass(
                   borderRadius: 22,
                   blur: 18,
                   padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
                   child: _buildFormBody(context, showBioButton, showBioSetup),
+                ),
+                const SizedBox(height: 6),
+                TextButton.icon(
+                  onPressed: _busy ? null : _vorschau,
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('Erst mal reinschauen'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white.withValues(alpha: 0.82),
+                    minimumSize: const Size.fromHeight(44),
+                  ),
                 ),
               ],
             ),
@@ -300,9 +337,27 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     );
   }
 
+  void _modus(bool registrieren) => setState(() {
+    _registerMode = registrieren;
+    _modusGewaehlt = true;
+    _error = null;
+  });
+
+  /// Der Live-Tab ohne Konto; „Konto erstellen" darin kommt als `true`
+  /// zurück und schaltet hier auf Registrieren.
+  Future<void> _vorschau() async {
+    final registrieren = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const LiveVorschauScreen()));
+    if (registrieren == true && mounted) _modus(true);
+  }
+
   /// Eingabefelder, Aktions- und Wechsel-Buttons (innerhalb der Glaskarte).
   Widget _buildFormBody(
-      BuildContext context, bool showBioButton, bool showBioSetup) {
+    BuildContext context,
+    bool showBioButton,
+    bool showBioSetup,
+  ) {
     // Nur zeigen, was auf dieser Plattform auch funktioniert — fehlt die
     // Client-ID, führte der Knopf in eine Fehlermeldung statt in ein Konto.
     final zeigeGoogle = ref.watch(googleSignInAvailableProvider);
@@ -312,117 +367,113 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Neu oder zurück: gleich groß und ganz oben, nicht als kleine
+        // Textzeile unter dem Formular.
+        PillSelector<bool>(
+          options: const {true: 'Registrieren', false: 'Anmelden'},
+          value: _registerMode,
+          onSelect: _busy ? (_) {} : _modus,
+        ),
+        const SizedBox(height: 18),
         // Die Anbieter stehen oben: Wer ein Google- oder Apple-Konto benutzt,
         // soll nicht erst an zwei Feldern vorbei, die er nie ausfüllen wird.
         if (zeigeGoogle)
           GoogleSignInButton(
-            onPressed:
-                _busy ? null : () => _socialLogin(
-                        ref.read(socialAuthProvider).signInWithGoogle),
+            onPressed: _busy
+                ? null
+                : () => _socialLogin(
+                    ref.read(socialAuthProvider).signInWithGoogle,
+                  ),
           ),
         if (zeigeGoogle && zeigeApple) const SizedBox(height: 10),
         if (zeigeApple)
           AppleSignInButton(
-            onPressed:
-                _busy ? null : () => _socialLogin(
-                        ref.read(socialAuthProvider).signInWithApple),
+            onPressed: _busy
+                ? null
+                : () => _socialLogin(
+                    ref.read(socialAuthProvider).signInWithApple,
+                  ),
           ),
         if (zeigeGoogle || zeigeApple) const SocialDivider(),
         if (_registerMode) ...[
           TextField(
             controller: _username,
-                    autofillHints: const [AutofillHints.newUsername],
-                    decoration: const InputDecoration(
-                      labelText: 'Nutzername',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                TextField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
-                  autofillHints: const [
-                    AutofillHints.username,
-                    AutofillHints.email,
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'E-Mail',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  autofillHints: [
-                    _registerMode
-                        ? AutofillHints.newPassword
-                        : AutofillHints.password,
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'Passwort',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  onSubmitted: (_) => _busy ? null : _submit(),
-                ),
-                if (showBioSetup)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: CheckboxListTile(
-                      value: _enableBio,
-                      onChanged: _busy
-                          ? null
-                          : (v) => setState(() => _enableBio = v ?? false),
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      dense: true,
-                      title: Text('Künftig mit $_bioLabel anmelden'),
-                    ),
-                  ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(_registerMode ? 'Registrieren' : 'Anmelden'),
-                ),
-                if (showBioButton) ...[
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : _biometricLogin,
-                    icon: const Icon(Icons.fingerprint_outlined),
-                    label: Text('Mit $_bioLabel anmelden'),
-                  ),
-                ],
-                if (!_registerMode)
-                  TextButton(
-                    onPressed: _busy ? null : _forgotPassword,
-                    child: const Text('Passwort vergessen?'),
-                  ),
-                TextButton(
-                  onPressed: _busy
-                      ? null
-                      : () => setState(() {
-                            _registerMode = !_registerMode;
-                            _error = null;
-                          }),
-                  child: Text(_registerMode
-                      ? 'Du hast schon ein Konto? Anmelden'
-                      : 'Du hast noch kein Konto? Registrieren'),
-                ),
+            autofillHints: const [AutofillHints.newUsername],
+            decoration: const InputDecoration(
+              labelText: 'Nutzername',
+              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        TextField(
+          controller: _email,
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          autofillHints: const [AutofillHints.username, AutofillHints.email],
+          decoration: const InputDecoration(
+            labelText: 'E-Mail',
+            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _password,
+          obscureText: true,
+          autofillHints: [
+            _registerMode ? AutofillHints.newPassword : AutofillHints.password,
+          ],
+          decoration: const InputDecoration(
+            labelText: 'Passwort',
+            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          ),
+          onSubmitted: (_) => _busy ? null : _submit(),
+        ),
+        if (showBioSetup)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: CheckboxListTile(
+              value: _enableBio,
+              onChanged: _busy
+                  ? null
+                  : (v) => setState(() => _enableBio = v ?? false),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              dense: true,
+              title: Text('Künftig mit $_bioLabel anmelden'),
+            ),
+          ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+        const SizedBox(height: 20),
+        FilledButton(
+          onPressed: _busy ? null : _submit,
+          child: _busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(_registerMode ? 'Registrieren' : 'Anmelden'),
+        ),
+        if (showBioButton) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _biometricLogin,
+            icon: const Icon(Icons.fingerprint_outlined),
+            label: Text('Mit $_bioLabel anmelden'),
+          ),
+        ],
+        if (!_registerMode)
+          TextButton(
+            onPressed: _busy ? null : _forgotPassword,
+            child: const Text('Passwort vergessen?'),
+          ),
       ],
     );
   }

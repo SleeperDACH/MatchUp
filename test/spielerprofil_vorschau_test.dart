@@ -577,8 +577,8 @@ void main() {
     // stehen, sein Ersatz schon, und der Hinweis muss sagen, woher die Elf
     // kommt.
     expect(find.text('Elf des 2. Spieltags'), findsOneWidget);
-    expect(find.text('J. Brandt'), findsNothing);
-    expect(find.text('E. Can'), findsOneWidget);
+    expect(find.text('J. BRANDT'), findsNothing);
+    expect(find.text('E. CAN'), findsOneWidget);
 
     await expectLater(
       find.byType(BottomSheet),
@@ -750,10 +750,10 @@ void main() {
         reason: 'Neben dem Namen stehen die Minuten aus dem letzten Spiel');
     // Ein Ersatzspieler, der auf keiner gemeldeten Bank steht, gehoert
     // trotzdem in die Liste — das ist der ganze Unterschied.
-    expect(find.text('Yan Couto'), findsOneWidget);
-    expect(find.text('Marcel Sabitzer'), findsOneWidget);
+    expect(find.text('YAN COUTO'), findsOneWidget);
+    expect(find.text('MARCEL SABITZER'), findsOneWidget);
     // Wer in der Elf steht, steht nicht darunter.
-    expect(find.text('Julian Brandt'), findsNothing);
+    expect(find.text('JULIAN BRANDT'), findsNothing);
 
     await expectLater(
       find.byType(BottomSheet),
@@ -893,7 +893,7 @@ void main() {
     // Die Elf des gelaufenen Spieltags steht da — nicht der Leerzustand.
     expect(find.text('Noch keine Aufstellung'), findsNothing,
         reason: 'die Elf des Spieltags ist verfügbar und bleibt stehen');
-    expect(find.textContaining('N. Schlotterbeck'), findsWidgets);
+    expect(find.textContaining('N. SCHLOTTERBECK'), findsWidgets);
     // **Über einem Spiel von gestern steht kein „voraussichtlich".**
     expect(find.textContaining('Voraussichtlich'), findsNothing);
     expect(find.text('In der Startelf'), findsOneWidget);

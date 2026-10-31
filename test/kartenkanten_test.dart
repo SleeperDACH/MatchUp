@@ -102,6 +102,10 @@ void main() {
       1,
       'Auswahl-Hervorhebung der Spielerkachel — ein Zustand.'
     ),
+    'features/favorites/ui/vereinswahl_screen.dart': (
+      1,
+      'Gewählter Verein beim ersten Start — ein Zustand, mit Haken.'
+    ),
   };
 
   test('keine farbigen Kanten an Karten', () {

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../app/typografie.dart';
 import '../../../core/ui/rueckfrage.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -420,7 +422,13 @@ class AdminRosterEditor extends ConsumerWidget {
               for (final p in players)
                 ListTile(
                   leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
-                  title: Text(p.name),
+                  title: Text(
+                    p.name.toUpperCase(),
+                    style: const TextStyle(
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
+                    ),
+                  ),
                   subtitle: Text('${p.position.short} · ${p.club}'),
                   trailing: IconButton(
                     icon: Icon(
@@ -535,7 +543,13 @@ class _FreePlayerPickerState extends ConsumerState<_FreePlayerPicker> {
                         club: p.club,
                         iconUrl: clubIcons[p.club],
                       ),
-                      title: Text(p.name),
+                      title: Text(
+                        p.name.toUpperCase(),
+                        style: const TextStyle(
+                          fontWeight: Schrift.ueberschriftGewicht,
+                          fontStyle: Schrift.ueberschriftStil,
+                        ),
+                      ),
                       subtitle: Text('${p.position.short} · ${p.club}'),
                       onTap: () => Navigator.of(context).pop(p),
                     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/typografie.dart';
 import '../../auth/providers.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
@@ -16,11 +17,13 @@ class WaiverClaimsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final claims = ref.watch(myWaiverClaimsProvider(league.id)).valueOrNull ??
+    final claims =
+        ref.watch(myWaiverClaimsProvider(league.id)).valueOrNull ??
         const <WaiverClaim>[];
-    final pool = ref.watch(playerPoolProvider).valueOrNull ??
-        const <FantasyPlayer>[];
-    final managers = ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
+    final pool =
+        ref.watch(playerPoolProvider).valueOrNull ?? const <FantasyPlayer>[];
+    final managers =
+        ref.watch(fantasyManagersProvider(league.id)).valueOrNull ??
         const <FantasyManager>[];
     final myId = ref.watch(currentUserProvider)?.id;
 
@@ -75,17 +78,23 @@ class WaiverClaimsScreen extends ConsumerWidget {
   }
 
   Future<void> _cancel(
-      BuildContext context, WidgetRef ref, WaiverClaim claim) async {
+    BuildContext context,
+    WidgetRef ref,
+    WaiverClaim claim,
+  ) async {
     try {
-      await ref.read(fantasyLeagueRepositoryProvider).cancelWaiverClaim(claim.id);
+      await ref
+          .read(fantasyLeagueRepositoryProvider)
+          .cancelWaiverClaim(claim.id);
       // Realtime liefert UPDATE-Events auf Antrags-Zeilen nicht zuverlässig
       // (RPC/SECURITY DEFINER + Replica-Identity) — sonst bliebe der stornierte
       // Antrag sichtbar und wirkte, als ließe er sich nicht löschen. Darum die
       // Liste hier aktiv neu ziehen.
       ref.invalidate(myWaiverClaimsProvider(league.id));
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Antrag storniert')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Antrag storniert')));
       }
     } catch (e) {
       // War der Antrag schon storniert/abgearbeitet (z. B. doppelt getippt),
@@ -95,8 +104,9 @@ class WaiverClaimsScreen extends ConsumerWidget {
         return;
       }
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fehlgeschlagen: $e')));
       }
     }
   }
@@ -117,11 +127,12 @@ class _PriorityHeader extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            priority == null ? 'Waiver-Priorität: noch offen' : 'Priorität $priority',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(color: scheme.primary),
+            priority == null
+                ? 'Waiver-Priorität: noch offen'
+                : 'Priorität $priority',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: scheme.primary),
           ),
           const SizedBox(height: 4),
           Text(
@@ -129,10 +140,9 @@ class _PriorityHeader extends StatelessWidget {
             'die Anträge in Prioritätsreihenfolge abgearbeitet. Nach einem '
             'Zuschlag rutschst du ans Ende.',
             textAlign: TextAlign.center,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -147,11 +157,14 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        child: Text(text,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      );
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 class _ClaimTile extends StatelessWidget {
@@ -172,7 +185,7 @@ class _ClaimTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sub = StringBuffer('Rang ${claim.rank}');
-    if (dropName != null) sub.write(' · gibt $dropName ab');
+    if (dropName != null) sub.write(' · gibt ${dropName!.toUpperCase()} ab');
     if (claim.reason != null) sub.write(' · ${claim.reason}');
 
     return ListTile(
@@ -184,8 +197,22 @@ class _ClaimTile extends StatelessWidget {
             const SizedBox(width: 6),
           ],
           Expanded(
-            child: Text('Holen: $addName',
-                maxLines: 1, overflow: TextOverflow.ellipsis),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(text: 'Holen: '),
+                  TextSpan(
+                    text: addName.toUpperCase(),
+                    style: const TextStyle(
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
+                    ),
+                  ),
+                ],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

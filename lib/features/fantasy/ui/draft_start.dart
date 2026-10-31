@@ -36,11 +36,15 @@ Future<bool> draftStartenMitBestaetigung(
   // **Reset-Draft** (0143): Die Reihenfolge steht fest — Tabellenletzter
   // zuerst. Sie kommt aus derselben Tabelle, die die App anzeigt.
   final reset = league.draftStatus == DraftStatus.reset;
-  final resetFolge =
-      reset ? ref.read(resetReihenfolgeProvider(league.id)) : null;
+  final resetFolge = reset
+      ? ref.read(resetReihenfolgeProvider(league.id))
+      : null;
   if (reset && resetFolge == null) {
-    messenger.showSnackBar(const SnackBar(
-        content: Text('Die Tabelle lädt noch — gleich noch einmal versuchen.')));
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Die Tabelle lädt noch — gleich noch einmal versuchen.'),
+      ),
+    );
     return false;
   }
   // **Ein Blatt statt eines Material-Dialogs** (19.10.2026), und seit
@@ -73,8 +77,9 @@ Future<bool> draftStartenMitBestaetigung(
           );
     }
     if (reset) {
-      await repo.startResetDraft(
-          league.id, [for (final m in resetFolge!) m.userId]);
+      await repo.startResetDraft(league.id, [
+        for (final m in resetFolge!) m.userId,
+      ]);
     } else {
       await repo.startDraft(league.id);
     }
@@ -130,7 +135,6 @@ class _StartBlatt extends StatefulWidget {
 }
 
 class _StartBlattState extends State<_StartBlatt> {
-
   late DraftPickTime _pickTime = widget.league.pickTime;
   late int _runden = widget.league.rounds.clamp(
     _StartBlatt.minRunden,
@@ -157,11 +161,24 @@ class _StartBlattState extends State<_StartBlatt> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              widget.resetFolge != null ? 'RESET-DRAFT STARTEN?' : 'DRAFT STARTEN?',
+              widget.resetFolge != null
+                  ? 'RESET-DRAFT STARTEN?'
+                  : 'DRAFT STARTEN?',
               style: TextStyle(
                 fontSize: Schrift.gross,
                 fontWeight: Schrift.ueberschriftGewicht,
                 fontStyle: Schrift.ueberschriftStil,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Punkt 9: Der Draft ist kein Termin — das steht hier, wo
+            // gestartet wird, und zieht mit der gewählten Zeit mit.
+            Text(
+              _pickTime.ablaufSatz,
+              style: TextStyle(
+                fontSize: Schrift.text,
+                height: 1.35,
+                color: scheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
@@ -174,7 +191,7 @@ class _StartBlattState extends State<_StartBlatt> {
             ],
             EinstellungsZeile(
               label: 'Zeit je Pick',
-              unter: _pickTime.isLive ? 'Live-Draft' : 'Slow-Draft',
+              unter: _pickTime.ablauf,
               rechts: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -226,36 +243,36 @@ class _StartBlattState extends State<_StartBlatt> {
               ),
               _ResetFolge(folge: folge),
             ] else ...[
-            EinstellungsZeile(
-              label: 'Reihenfolge',
-              // Feste Breite: Der Umschalter teilt seinen Platz auf und
-              // bekäme in der Zeile sonst keine Grenze.
-              rechts: SizedBox(
-                width: 190,
-                child: PillSelector<String>(
-                  options: const {'auto': 'Zufällig', 'manual': 'Manuell'},
-                  value: _reihenfolge,
-                  onSelect: (v) => setState(() => _reihenfolge = v),
-                ),
-              ),
-            ),
-            if (_reihenfolge == 'manual')
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'Reihenfolge festlegen',
-                  style: einstellungsStil,
-                ),
-                trailing: Icon(
-                  Icons.chevron_right,
-                  color: scheme.onSurfaceVariant,
-                ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => DraftOrderPage(league: widget.league),
+              EinstellungsZeile(
+                label: 'Reihenfolge',
+                // Feste Breite: Der Umschalter teilt seinen Platz auf und
+                // bekäme in der Zeile sonst keine Grenze.
+                rechts: SizedBox(
+                  width: 190,
+                  child: PillSelector<String>(
+                    options: const {'auto': 'Zufällig', 'manual': 'Manuell'},
+                    value: _reihenfolge,
+                    onSelect: (v) => setState(() => _reihenfolge = v),
                   ),
                 ),
               ),
+              if (_reihenfolge == 'manual')
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Reihenfolge festlegen',
+                    style: einstellungsStil,
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DraftOrderPage(league: widget.league),
+                    ),
+                  ),
+                ),
             ],
             const SizedBox(height: 14),
             Row(
@@ -266,7 +283,7 @@ class _StartBlattState extends State<_StartBlatt> {
                   child: Text(
                     widget.resetFolge != null
                         ? 'Die Tabelle bleibt. Bis zum Ende des Drafts sind '
-                            'keine Transfers möglich.'
+                              'keine Transfers möglich.'
                         : 'Danach lassen sich Reihenfolge und Teams nicht mehr ändern.',
                     style: TextStyle(
                       fontSize: Schrift.label,
@@ -290,9 +307,11 @@ class _StartBlattState extends State<_StartBlatt> {
                 foregroundColor: scheme.surface,
                 minimumSize: hoch,
               ),
-              child: Text(widget.resetFolge != null
-                  ? 'Reset-Draft starten'
-                  : 'Draft starten'),
+              child: Text(
+                widget.resetFolge != null
+                    ? 'Reset-Draft starten'
+                    : 'Draft starten',
+              ),
             ),
             const SizedBox(height: 8),
             TextButton(
@@ -322,7 +341,8 @@ class _ResetFolge extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return ConstrainedBox(
       constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.28),
+        maxHeight: MediaQuery.sizeOf(context).height * 0.28,
+      ),
       child: ListView(
         shrinkWrap: true,
         padding: const EdgeInsets.only(bottom: 4),
