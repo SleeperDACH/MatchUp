@@ -21,6 +21,7 @@ import 'club_badge.dart';
 import 'player_action_buttons.dart';
 import 'player_profile_sheet.dart';
 import 'waiver_claims_screen.dart';
+import 'spieler_name.dart';
 
 /// Free Agency & Waiver-Wire.
 ///
@@ -311,15 +312,7 @@ class _FreeAgencyScreenState extends ConsumerState<FreeAgencyScreen> {
                 // unterscheidet, gehört nicht in die Zeile.
                 title: Row(
                   children: [
-                    Expanded(
-                      child: Text(
-                        p.name.toUpperCase(),
-                        style: const TextStyle(
-                          fontWeight: Schrift.ueberschriftGewicht,
-                          fontStyle: Schrift.ueberschriftStil,
-                        ),
-                      ),
-                    ),
+                    Expanded(child: GestufterSpielerName(p.name)),
                     if (punkte[p.id] != null) ...[
                       const SizedBox(width: 8),
                       Punktzahl(

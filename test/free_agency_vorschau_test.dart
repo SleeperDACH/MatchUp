@@ -11,6 +11,7 @@ import 'package:matchup/features/fantasy/models/fantasy_models.dart';
 import 'package:matchup/features/fantasy/models/player_absence.dart';
 import 'package:matchup/features/fantasy/providers.dart';
 import 'package:matchup/features/fantasy/ui/free_agency_screen.dart';
+import 'package:matchup/features/fantasy/ui/spieler_name.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import 'support/schrift.dart';
@@ -178,7 +179,7 @@ void main() {
     List<String?> namen() => tester
         .widgetList<ListTile>(find.byType(ListTile))
         .map((t) => ((t.title as Row).children.first as Expanded).child)
-        .map((w) => (w as Text).data)
+        .map((w) => (w as GestufterSpielerName).name.toUpperCase())
         .toList();
 
     // **Verfügbar** (seit 16.10.2026 ein eigener Reiter): nur freie Spieler,

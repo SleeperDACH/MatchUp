@@ -32,6 +32,7 @@ import '../logic/spieler_schnitt.dart';
 import '../logic/laufende_runde.dart';
 import '../logic/rueckkehr.dart';
 import '../logic/naechstes_spiel.dart';
+import 'spieler_name.dart';
 
 /// Öffnet das Spielerprofil (Kopf + Leistungstabelle je Spieltag; für eigene
 /// Spieler zusätzlich „Droppen"). [isMine] steuert den Drop-Button.
@@ -1518,18 +1519,7 @@ class _Uebriger extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                spieler.name.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: Schrift.text,
-                  fontWeight: Schrift.ueberschriftGewicht,
-                  fontStyle: Schrift.ueberschriftStil,
-                ),
-              ),
-            ),
+            Expanded(child: GestufterSpielerName(spieler.name)),
             if (minuten != null)
               Padding(
                 padding: const EdgeInsets.only(right: 8),

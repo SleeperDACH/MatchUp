@@ -6286,6 +6286,14 @@ Auf Ansage, als erster Schritt gegen „zu viel auf kleinem Raum":
   (Spieler-Auszeichnungen und MVP; Managernamen bleiben normal). Nicht
   angefasst: Snackbars, Rückfrage-Titel, Vorlese-Namen (`Semantics`) und
   der Live-/Vereinsbereich (echte Spielberichte).
+- **Voller Name gestuft** (31.10.2026, auf Ansage: „Vornamen kleiner,
+  Nachnamen größer"): `GestufterSpielerName` (`ui/spieler_name.dart`,
+  `namensTeile` = letzter Teil ist der Nachname) — Vorname klein, normal,
+  grau; Nachname groß in ExtraBold, beide versal und kursiv, eine Zeile.
+  Free Agency/Leaders, Draft-Raum (Liste, Wunschliste, Pick-Rückfrage),
+  Spielerwahl im Kader, Bestätigungsblatt, Kaderliste im Spielerprofil,
+  Admin-Listen. Draft-Board und Profilkopf trennten schon vorher. Die
+  Testschrift lädt dafür auch `Inter-Italic.ttf`.
 
 ### Der Draft ist kein Termin (30.10.2026, Punkt 9)
 

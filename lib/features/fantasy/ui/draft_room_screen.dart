@@ -29,6 +29,7 @@ import '../logic/fantasy_scoring_rules.dart';
 import 'club_badge.dart';
 import 'pitch_painter.dart';
 import '../../../app/widgets/segmented_tab_bar.dart';
+import 'spieler_name.dart';
 
 /// Live-Draft-Raum: Snake-Reihenfolge, Pick-Timer (kurz = Live, lang =
 /// Slow), Auto-Pick bei Ablauf und Picks in Echtzeit. Die Reihenfolge
@@ -194,13 +195,10 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  player.name.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: Schrift.titel,
-                    fontWeight: Schrift.ueberschriftGewicht,
-                    fontStyle: Schrift.ueberschriftStil,
-                  ),
+                GestufterSpielerName(
+                  player.name,
+                  nachnameGroesse: Schrift.gross,
+                  vornameGroesse: Schrift.text,
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1172,13 +1170,7 @@ class _AvailableTabState extends State<_AvailableTab> {
                           ),
                         ],
                       ),
-                      title: Text(
-                        p.name.toUpperCase(),
-                        style: const TextStyle(
-                          fontWeight: Schrift.ueberschriftGewicht,
-                          fontStyle: Schrift.ueberschriftStil,
-                        ),
-                      ),
+                      title: GestufterSpielerName(p.name),
                       // **Position und Schnitt statt Vereinsname** (19.10.2026,
                       // auf Ansage): Das Wappen sagt den Verein; der Punkt
                       // allein sagte fast nichts.
@@ -1316,13 +1308,7 @@ class _QueueTab extends StatelessWidget {
                     style: TextStyle(fontSize: 11, color: scheme.primary),
                   ),
                 ),
-                title: Text(
-                  p.name.toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: Schrift.ueberschriftGewicht,
-                    fontStyle: Schrift.ueberschriftStil,
-                  ),
-                ),
+                title: GestufterSpielerName(p.name),
                 subtitle: Text(schnitt.zeile(p)),
                 onTap: canPick ? () => onPick(p) : null,
                 trailing: Row(

@@ -13,6 +13,7 @@ import '../providers.dart';
 import 'club_badge.dart';
 import 'player_profile_sheet.dart';
 import 'trade_screen.dart';
+import 'spieler_name.dart';
 
 /// Kleiner Aktions-Button für einen Spieler (Free Agency & Spielersuche):
 /// grün „Holen" (frei), gelb „Waiver" (auf dem Wire), rot „Trade" (in fremdem
@@ -622,16 +623,7 @@ class _RosterMoveSheetState extends ConsumerState<_RosterMoveSheet> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      p.name.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: Schrift.text,
-                        fontWeight: Schrift.ueberschriftGewicht,
-                        fontStyle: Schrift.ueberschriftStil,
-                      ),
-                    ),
+                    GestufterSpielerName(p.name),
                     Text(
                       unter,
                       style: TextStyle(

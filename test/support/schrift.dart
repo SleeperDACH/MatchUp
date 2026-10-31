@@ -19,6 +19,7 @@ Future<void> ladeSchrift() async {
     'assets/fonts/Inter-SemiBold.ttf',
     'assets/fonts/Inter-Bold.ttf',
     'assets/fonts/Inter-ExtraBold.ttf',
+    'assets/fonts/Inter-Italic.ttf',
     'assets/fonts/Inter-ExtraBoldItalic.ttf',
   ];
   for (final d in dateien) {

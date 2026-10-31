@@ -37,6 +37,7 @@ import 'pitch_painter.dart';
 import 'player_profile_sheet.dart';
 import '../logic/formation_luecke.dart';
 import '../logic/formation_fuer_elf.dart';
+import 'spieler_name.dart';
 
 /// Aufstellung als Fußballfeld: Startelf je Spieltag visuell auf dem Platz
 /// wählen. Oben Chips für gültige Formationen (flexibel, Min/Max je Position
@@ -2095,17 +2096,7 @@ class _PlayerPicker extends ConsumerWidget {
                       ),
                       title: Row(
                         children: [
-                          Flexible(
-                            child: Text(
-                              p.name.toUpperCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: Schrift.ueberschriftGewicht,
-                                fontStyle: Schrift.ueberschriftStil,
-                              ),
-                            ),
-                          ),
+                          Flexible(child: GestufterSpielerName(p.name)),
                           if (ausfall != null) ...[
                             const SizedBox(width: 6),
                             AusfallZeichen(ausfall: ausfall, size: 14),

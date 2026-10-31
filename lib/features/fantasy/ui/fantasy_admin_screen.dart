@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/typografie.dart';
 import '../../../core/ui/rueckfrage.dart';
 import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +8,7 @@ import '../../../core/ui/app_avatar.dart';
 import '../models/fantasy_models.dart';
 import '../providers.dart';
 import 'club_badge.dart';
+import 'spieler_name.dart';
 
 /// Admin-Bereich (nur Ersteller): Teilnehmer kicken, verwaiste Teams neuen
 /// Nutzern zuweisen und fremde Kader bearbeiten (Commissioner).
@@ -422,13 +422,7 @@ class AdminRosterEditor extends ConsumerWidget {
               for (final p in players)
                 ListTile(
                   leading: ClubBadge(club: p.club, iconUrl: clubIcons[p.club]),
-                  title: Text(
-                    p.name.toUpperCase(),
-                    style: const TextStyle(
-                      fontWeight: Schrift.ueberschriftGewicht,
-                      fontStyle: Schrift.ueberschriftStil,
-                    ),
-                  ),
+                  title: GestufterSpielerName(p.name),
                   subtitle: Text('${p.position.short} · ${p.club}'),
                   trailing: IconButton(
                     icon: Icon(
@@ -543,13 +537,7 @@ class _FreePlayerPickerState extends ConsumerState<_FreePlayerPicker> {
                         club: p.club,
                         iconUrl: clubIcons[p.club],
                       ),
-                      title: Text(
-                        p.name.toUpperCase(),
-                        style: const TextStyle(
-                          fontWeight: Schrift.ueberschriftGewicht,
-                          fontStyle: Schrift.ueberschriftStil,
-                        ),
-                      ),
+                      title: GestufterSpielerName(p.name),
                       subtitle: Text('${p.position.short} · ${p.club}'),
                       onTap: () => Navigator.of(context).pop(p),
                     );
