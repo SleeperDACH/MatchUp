@@ -204,8 +204,15 @@ class _Reiter extends StatelessWidget {
                             letterSpacing: versalien ? 0.8 : null,
                             // Das Gewicht trägt die Auskunft mit; die Marke
                             // allein wäre bei vier Reitern zu wenig.
-                            fontWeight:
-                                aktiv ? FontWeight.w800 : FontWeight.w600,
+                            // **Versalien kursiv wie die Überschriften**
+                            // (31.10.2026, auf Ansage). Kursiv liegt nur als
+                            // ExtraBold-Schnitt bei; ruhende Reiter trennt
+                            // dann allein die gedämpfte Farbe.
+                            fontWeight: versalien
+                                ? Schrift.ueberschriftGewicht
+                                : (aktiv ? FontWeight.w800 : FontWeight.w600),
+                            fontStyle:
+                                versalien ? Schrift.ueberschriftStil : null,
                             color: farbe,
                           ),
                           child: Text(

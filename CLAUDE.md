@@ -3311,6 +3311,17 @@ fremder Pick abgelehnt, nach Annahme die Rechte getauscht, im simulierten
 Reset-Draft zieht A an Bs Platz in Runde 1 und B an As Platz in Runde 2.
 Gehalten von `test/picks_handeln_test.dart` (`picks_handeln.png`).
 
+### Auto-Pick gilt nur für einen Draft (0160, 31.10.2026)
+
+Gemeldet: „manche haben noch Auto-Pick vom vorherigen Draft drin".
+`fantasy_league_members.auto_pick` wurde nie zurückgesetzt (MatchUp! #1:
+12 von 18 nach dem ersten Draft) und hätte im Reset-Draft automatisch
+gepickt. Der Trigger `fantasy_autopick_zuruecksetzen` setzt ihn bei
+`draft_status → done` und `→ reset` für alle zurück; der Bestand ist
+bereinigt. Das Board zeigt „AUTO" im Spaltenkopf nur noch, solange der
+Draft läuft (`DraftBoard.draftLaeuft`); das „AUTO" am einzelnen Pick
+(`draft_picks.is_auto`) bleibt als Herkunft stehen.
+
 ### Der Admin kann den Draft pausieren (0140, 19.10.2026)
 
 Auf Ansage („der Admin braucht die Möglichkeit, den Draft stoppen zu
@@ -4456,8 +4467,9 @@ das Wort dort die einzige Auskunft.
 
 ### Minuspunkte stehen rot da
 
-**Laufende Spiele stehen grün** (27.10.2026, auf Ansage: „die Punktzahlen bei
-Spielern, die gerade spielen, andersfarbig"): MatchUp-Zeile (`spielZeile
+**Laufende Spiele standen grün** (27.10.2026) — **seit dem 03.11.2026
+wieder weiß** (auf Ansage: „warum ist 0 Punkte grün? nur negative Zahlen
+rot, sonst alles weiß"). Der Absatz beschreibt den Stand davor: MatchUp-Zeile (`spielZeile
 .laeuft`) und Kader-Feld/Bank (`NaechstesSpiel.status == live`). Grün heißt
 „hier läuft etwas"; Rot bleibt für Minus und gewinnt. Gehalten in
 `matchup_punktebox_test.dart` (live grün, abgepfiffen nicht).
@@ -8420,6 +8432,9 @@ Zuständen keinen Kopf.
   durch ist, sonst auf der Übersicht — davor stünde der MatchUp-Reiter leer
   (`LigaReiter.start`). Positionen nie als Zahl, immer über `LigaReiter`; der
   Sprung vom Duell-Kasten in den MatchUp-Reiter liest von dort.
+  **Seit dem 31.10.2026 kursiv** (auf Ansage): Versal-Leisten (Liga,
+  Spieler) stehen in ExtraBold kursiv wie die Überschriften; ruhende Reiter
+  trennt nur die gedämpfte Farbe (kursiv gibt es nur als w400/w800).
   **Seit dem 14.10.2026 trägt die Liga-Leiste keine Symbole mehr**, sondern
   nur die Wörter in Versalien (`versalien: true`, 13 Punkt, leicht gesperrt —
   die Schreibweise der Kapitelmarken), auf Ansage. Die Leiste ist damit

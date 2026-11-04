@@ -685,11 +685,8 @@ class _PlayerRow extends StatelessWidget {
     // Spalte an derselben Stelle steht, unabhängig von ihrer Stellenzahl.
     final schnitt = schnitte[player.id];
     final zeile = spielZeile(spiel, jetzt: jetzt);
-    // **Läuft sein Spiel, stehen die Punkte grün** (27.10.2026, auf Ansage:
-    // „die Punktzahlen bei Spielern, die gerade spielen, andersfarbig").
-    // Grün heißt in dieser App „hier läuft etwas"; Rot ist für Minuspunkte
-    // vergeben und gewinnt weiter ([Punktzahl.negativRot]).
-    final laeuft = zeile?.laeuft ?? false;
+    // Punkte weiß, Minus rot ([Punktzahl.negativRot]). Das Grün für
+    // laufende Spiele (27.10.2026) ist am 03.11.2026 auf Ansage entfallen.
     final ptsBox = SizedBox(
       width: 40,
       child: Column(
@@ -706,9 +703,10 @@ class _PlayerRow extends StatelessWidget {
               fontSize: Schrift.titel,
               fontWeight: FontWeight.w800,
               height: 1.1,
-              color: laeuft && gespielt
-                  ? context.farben.gruen
-                  : gespielt
+              // **Kein Grün mehr für laufende Spiele** (03.11.2026, auf
+              // Ansage: „warum ist 0 Punkte grün? nur negative Zahlen rot,
+              // sonst alles weiß"). Rot setzt `_punkte` bei Minus selbst.
+              color: gespielt
                   ? scheme.onSurface
                   : scheme.onSurfaceVariant.withValues(alpha: 0.6),
             ),

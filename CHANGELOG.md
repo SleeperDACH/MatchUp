@@ -8,6 +8,70 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.8.1+13 — 4. November 2026
+
+23 Commits seit 1.8.0+12. Der Schwerpunkt: **leichterer Einstieg** —
+reinschauen ohne Konto, Lieblingsvereine beim ersten Start, Liga anlegen in
+Schritten, Freunde per Link einladen —, dazu ein **Tippspiel für alle**, der
+**helle Modus** und deutlich zuverlässigere **Live-Meldungen**.
+
+### Neu
+
+- **Heller Modus.** Unter *Profil › Darstellung*. Dunkel bleibt Standard.
+- **Globales Tippspiel.** Ein Tippspiel für alle MatchUp-Nutzer zur
+  1. Bundesliga, mit fester Wertung (exakt 4, Tordifferenz 3, Sieger 2).
+  Auf dem Homescreen unter *Für alle* — ein Tipp auf *Mitspielen* genügt.
+- **Freunde einladen per Link.** Über WhatsApp und Co., aus jeder Liga und
+  jedem Tippspiel und oben auf dem Homescreen. Der Link öffnet die App und
+  fragt, ob man beitreten will.
+- **Erst mal reinschauen.** Ohne Konto ist der Live-Tab voll nutzbar.
+- **Erster Start.** Neue Nutzer wählen zuerst ihre Lieblingsvereine, danach
+  fragt die App, ob sie bei Toren und vor dem Tippen Bescheid geben darf.
+- **Liga und Tippspiel anlegen in Schritten.** Fantasy in vier Schritten
+  (Liga, Draft, Saison, Mitspieler), Tippspiel in drei. Zeit je Pick,
+  Runden, Reihenfolge und Playoffs gibt es jetzt schon beim Anlegen, und
+  das ligainterne Tippspiel lässt sich gleich mit einrichten.
+- **Vereins-Limit.** Höchstens so viele Spieler desselben Vereins pro Kader
+  — beim Anlegen und in den Liga-Einstellungen.
+- **Bilanz statt Punkte.** Ist *Unentschieden* aus, zählen nur Siege und
+  Niederlagen, und die Tabelle steht nach Bilanz („5-2") wie in der NFL.
+- **Glossar** im Profil, alphabetisch und mit Suche, dazu kurze Erklärungen
+  hinter den Fragezeichen.
+- **Form auf der Tippkarte.** Die letzten fünf Spiele beider Teams (S/U/N);
+  ein Tipp aufs Team zeigt Spielplan und Tabelle.
+- **Englische Woche.** Spiele unter der Woche (Pokal, Nachholspiele) stehen
+  auf dem Homescreen, bis Freitag *Mein Wochenende* übernimmt.
+- **„❌ VAR"**: Wird ein Tor zurückgenommen, kommt eine eigene Meldung.
+
+### Geändert
+
+- **Live-Meldungen** kommen schneller (Abgleich alle 10 Sekunden) und kürzer:
+  „⚽ Dortmund (34. Bellingham)", darunter der Stand mit Kurznamen.
+- **Tipp-Erinnerung** einmal je Anstoß für alle Tippspiele zusammen:
+  „Noch nicht getippt (5 Spiele, 15:30)".
+- **Anmeldeschirm**: Umschalter *Registrieren / Anmelden*, „Weiter mit
+  Google / Apple".
+- **Spielernamen** in Versalien und kursiv, beim vollen Namen der Nachname
+  groß; im MatchUp und Kader ohne H/A. Die Leiste in den Ligen ist kursiv.
+- **Punkte** weiß, nur Minuspunkte rot. Nach dem Spieltag zeigt der
+  MatchUp-Kasten nur noch das Ergebnis.
+- **Draft**: Ein Satz sagt, dass kein gemeinsamer Termin nötig ist. Eine neue
+  Liga erklärt, was als Nächstes kommt.
+- **News-Bilder** in voller Auflösung.
+- **App-Name** unter Android jetzt „MatchUp".
+
+### Behoben
+
+- Die Anpfiff-Meldung kam bei gleichzeitigem Anstoß mehrfach.
+- Ein Tor kam doppelt, wenn die Datenquelle es neu anlegte, und nach einem
+  VAR-Entscheid fehlte das nächste Tor.
+- Wer eine Fantasy-Liga verließ, bekam weiter Tipp-Erinnerungen ihres
+  Tippspiels.
+- Auto-Pick aus einem früheren Draft galt im nächsten weiter.
+- Nach dem Löschen des Kontos blieb der Bildschirm schwarz.
+- Ausfälle: Steht ein Spieler im offiziellen Kader, gilt seine Verletzung
+  als beendet; ein Fehler der Quelle löscht keine Ausfälle mehr.
+
 ## 1.8.0+12 — 21. Oktober 2026
 
 15 Commits seit 1.7.1+11. Der Schwerpunkt: **Reset zur Winterpause** — eine

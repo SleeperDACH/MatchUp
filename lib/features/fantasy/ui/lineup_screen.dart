@@ -1530,15 +1530,13 @@ class _SpielerAufRasen extends StatelessWidget {
 
     final Widget unten;
     if (zeigePunkte) {
-      // Läuft sein Spiel, grün (27.10.2026); Minus bleibt rot.
-      final laeuft = spiel?.status == FixtureStatus.live;
+      // Minus rot, sonst weiß (03.11.2026, auf Ansage; das Grün für
+      // laufende Spiele vom 27.10. ist raus).
       unten = Text(
         formatPoints(punkte ?? 0),
         style: TextStyle(
           color: (punkte ?? 0) < 0
               ? (hellBank ? farben.rot : const Color(0xFFF23030))
-              : laeuft
-              ? (hellBank ? farben.gruen : MatchUpColors.green)
               : vorne,
           fontSize: Schrift.label,
           fontWeight: FontWeight.w800,

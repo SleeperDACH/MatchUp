@@ -642,6 +642,7 @@ class _DraftRoomScreenState extends ConsumerState<DraftRoomScreen>
                   // Platzhalter nur im Setup; ab Draft-Start zählen nur die
                   // echten Teams (Pick-Nummern folgen der echten Draftorder).
                   showPlaceholders: league.draftStatus == DraftStatus.setup,
+                  draftLaeuft: league.draftStatus == DraftStatus.drafting,
                   rechte: rechte,
                   clubIcons: clubIcons,
                   aktuellerPick: league.draftStatus == DraftStatus.drafting
@@ -1775,7 +1776,15 @@ class DraftBoard extends StatelessWidget {
     this.rechte,
     this.aktuellerPick,
     this.clubIcons = const {},
+    this.draftLaeuft = false,
   });
+
+  /// **„AUTO" im Kopf nur, solange dieser Draft läuft** (31.10.2026,
+  /// gemeldet: „manche haben noch Auto-Pick vom vorherigen Draft drin").
+  /// Der Schalter sagt, wie jemand im laufenden Draft pickt — im Nachschau-
+  /// Board und vor dem Start ist er keine Auskunft. Das „AUTO" an einzelnen
+  /// Picks bleibt: Es sagt, wie dieser Pick zustande kam.
+  final bool draftLaeuft;
 
   /// Wappen je Verein (`clubIconsProvider`) — klein oben rechts in der Zelle.
   final Map<String, String?> clubIcons;
@@ -1836,7 +1845,7 @@ class DraftBoard extends StatelessWidget {
           label: m.display,
           userId: m.userId,
           mine: m.userId == myId,
-          autoPick: m.autoPick,
+          autoPick: draftLaeuft && m.autoPick,
         ),
     ];
     final target =

@@ -291,7 +291,8 @@ void main() {
     expect(_punkteBox('Jonas Urbig'), findsNothing);
   });
 
-  testWidgets('Läuft sein Spiel, stehen die Punkte grün', (tester) async {
+  testWidgets('Läuft sein Spiel, bleiben die Punkte weiß — nur Minus ist rot',
+      (tester) async {
     tester.view.physicalSize = const Size(402 * 3, 1200 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -322,8 +323,12 @@ void main() {
     final plus =
         tester.widgetList<Text>(inPunktzahl).where((t) => t.data == '12');
     expect(plus, isNotEmpty);
+    // Kein Grün mehr für laufende Spiele (03.11.2026, auf Ansage).
+    final weiss = Theme.of(tester.element(find.byType(MatchupLineups)))
+        .colorScheme
+        .onSurface;
     for (final t in plus) {
-      expect(t.style?.color, MatchUpColors.green);
+      expect(t.style?.color, weiss);
     }
     // Minus bleibt rot, auch während des Spiels.
     final rot = Theme.of(tester.element(find.byType(MatchupLineups)))
