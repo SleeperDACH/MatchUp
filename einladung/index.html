@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Einladung zu MatchUp</title>
+<meta name="description" content="Fantasy-Fußball und Tippspiel zur Bundesliga — mit deinen Freunden.">
+<meta property="og:title" content="Einladung zu MatchUp">
+<meta property="og:description" content="Fantasy-Fußball und Tippspiel zur Bundesliga — mit deinen Freunden.">
+<meta name="theme-color" content="#000000">
+<!--
+  Einladungsseite (lib/features/einladung/einladung.dart).
+  Geteilt wird https://sleeperdach.github.io/MatchUp/einladung/?code=…&name=…
+  Ohne code: allgemeine Einladung zur App.
+
+  Die Download-Links stehen in LINKS unten. Solange MatchUp nur als Test
+  verteilt wird, sind es die öffentlichen Testlinks; der TestFlight-Link
+  enthält einen Code, den nur der Betreiber kennt — leer = für iPhone
+  steht stattdessen ein Hinweis da.
+-->
+<style>
+  :root {
+    --grund: #000000; --flaeche: #121212; --kante: #2a2a2a;
+    --text: #edeff4; --leise: #aaaaaa; --gruen: #4ade6a; --rot: #f23030;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--grund); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 440px; margin: 0 auto;
+    padding: calc(40px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom)); }
+  .marke { display: flex; align-items: center; gap: 10px; font-weight: 800;
+    font-style: italic; letter-spacing: .4px; font-size: 22px; margin-bottom: 36px; }
+  .marke svg { width: 34px; height: 34px; }
+  .marke .up { color: var(--gruen); }
+  h1 { font-size: 30px; line-height: 1.15; margin: 0 0 10px; font-weight: 800; font-style: italic; text-transform: uppercase; }
+  p { color: var(--leise); font-size: 16px; line-height: 1.45; margin: 0 0 24px; }
+  .knopf { display: block; width: 100%; text-align: center; text-decoration: none;
+    border-radius: 14px; padding: 16px; font-size: 17px; font-weight: 800; margin-bottom: 12px; border: 0; cursor: pointer; }
+  .haupt { background: var(--text); color: var(--grund); }
+  .neben { background: var(--flaeche); color: var(--text); border: 1px solid var(--kante); }
+  .marke-titel { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: var(--leise);
+    text-transform: uppercase; margin: 32px 0 12px; }
+  .code { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--flaeche); border: 1px solid var(--kante); border-radius: 14px; padding: 14px 16px; }
+  .code b { font-size: 24px; letter-spacing: 2px; font-family: ui-monospace, Menlo, monospace; }
+  .code button { background: none; border: 1px solid var(--kante); color: var(--text);
+    border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 700; }
+  .klein { font-size: 13px; color: var(--leise); margin-top: 10px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="marke">
+    <svg viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M6 22 L20 8 L34 22" fill="none" stroke="#4ade6a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M6 34 L20 20 L34 34" fill="none" stroke="#f23030" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>MATCH<span class="up">UP</span></span>
+  </div>
+
+  <h1 id="titel">Du bist eingeladen</h1>
+  <p id="text">Fantasy-Fußball und Tippspiel zur Bundesliga — mit deinen Freunden.</p>
+
+  <a id="oeffnen" class="knopf haupt" href="app.matchup.mobile://einladung">In MatchUp öffnen</a>
+
+  <div class="marke-titel">Noch keine App?</div>
+  <a id="ios" class="knopf neben" href="#" hidden>Für iPhone laden</a>
+  <p id="ios-hinweis" class="klein" hidden>Für iPhone gibt es MatchUp gerade als Testversion — frag die Person, die dich eingeladen hat, nach dem TestFlight-Link.</p>
+  <a id="android" class="knopf neben" href="#">Für Android laden</a>
+
+  <div id="code-block" hidden>
+    <div class="marke-titel">Einladungscode</div>
+    <div class="code"><b id="code"></b><button id="kopieren" type="button">Kopieren</button></div>
+    <p class="klein">Nach der Installation in der App unter <b>Neu › Mit Code beitreten</b> eingeben.</p>
+  </div>
+</main>
+<script>
+  // Download-Wege. Leer = nicht anzeigen.
+  var LINKS = {
+    testflight: 'https://testflight.apple.com/join/3pqwEdg1',
+    android: 'https://play.google.com/apps/testing/app.matchup.mobile'
+  };
+
+  var q = new URLSearchParams(location.search);
+  var code = (q.get('code') || '').trim();
+  var name = (q.get('name') || '').trim();
+
+  var app = 'app.matchup.mobile://einladung';
+  if (code) {
+    var p = new URLSearchParams({ code: code });
+    if (name) p.set('name', name);
+    app += '?' + p.toString();
+    document.getElementById('titel').textContent = name ? 'Komm in „' + name + '“' : 'Du bist eingeladen';
+    document.getElementById('text').textContent = 'Du wurdest zu MatchUp eingeladen — Fantasy-Fußball und Tippspiel zur Bundesliga.';
+    document.getElementById('code').textContent = code;
+    document.getElementById('code-block').hidden = false;
+  }
+  document.getElementById('oeffnen').href = app;
+
+  if (LINKS.testflight) {
+    var ios = document.getElementById('ios');
+    ios.href = LINKS.testflight; ios.hidden = false;
+  } else {
+    document.getElementById('ios-hinweis').hidden = false;
+  }
+  var android = document.getElementById('android');
+  if (LINKS.android) { android.href = LINKS.android; } else { android.hidden = true; }
+
+  document.getElementById('kopieren').addEventListener('click', function () {
+    var knopf = this;
+    var fertig = function () { knopf.textContent = 'Kopiert'; };
+    if (navigator.clipboard) navigator.clipboard.writeText(code).then(fertig, function () {});
+  });
+</script>
+</body>
+</html>
