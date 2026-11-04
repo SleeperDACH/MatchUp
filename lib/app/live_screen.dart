@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import '../core/logic/vereins_kuerzel.dart';
 import 'widgets/skelett.dart';
 import 'widgets/aufleuchten.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +21,7 @@ import 'widgets/league_logo.dart';
 import 'widgets/pulsing_dot.dart';
 import '../core/data/neu_laden.dart';
 import '../features/push/ui/live_abos_screen.dart';
+import 'widgets/vereins_name.dart';
 
 /// Signaturfarbe je Wettbewerb — im Quadrat vor dem Liganamen, in der
 /// Wettbewerbszeile unten und im Auswahl-Sheet.
@@ -690,11 +690,12 @@ class _SpielZeile extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    vereinsKurzname(f.home.name),
+                    vereinsName(f.home.name),
                     maxLines: 1,
                     style: const TextStyle(
                       fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
                     ),
                   ),
                 ),
@@ -768,12 +769,13 @@ class _SpielZeile extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerRight,
                   child: Text(
-                    vereinsKurzname(f.away.name),
+                    vereinsName(f.away.name),
                     maxLines: 1,
                     textAlign: TextAlign.end,
                     style: const TextStyle(
                       fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
                     ),
                   ),
                 ),

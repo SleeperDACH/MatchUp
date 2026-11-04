@@ -7,12 +7,12 @@ import '../../../app/typografie.dart';
 import '../../../app/widgets/matchup_chevron.dart';
 import '../../../app/widgets/pill_selector.dart';
 import '../../../app/widgets/skelett.dart';
-import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../core/models/models.dart';
 import '../../tippspiel/ui/team_badge.dart';
 import '../../../app/home_favorites.dart';
 import '../../../core/util/club_logos.dart';
 import '../favorites.dart';
+import '../../../app/widgets/vereins_name.dart';
 
 /// **Vereinsauswahl beim ersten Start** (29.10.2026, Punkt 5 der
 /// Nutzer-Analyse, auf Ansage: „beim ersten Mal starten soll der Nutzer seine
@@ -262,13 +262,12 @@ class _VereinKachel extends StatelessWidget {
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            vereinsKurzname(team.name),
+                            vereinsName(team.name),
                             maxLines: 1,
                             style: TextStyle(
                               fontSize: Schrift.label + 1,
-                              fontWeight: gewaehlt
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
+                              fontWeight: Schrift.ueberschriftGewicht,
+                              fontStyle: Schrift.ueberschriftStil,
                               color: gewaehlt
                                   ? scheme.onSurface
                                   : scheme.onSurfaceVariant,

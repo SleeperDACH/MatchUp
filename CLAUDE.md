@@ -6203,6 +6203,24 @@ Was das Bild sofort zeigte:
   flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
   ist die Beschriftung, das Ergebnis die Auskunft.
 
+### Vereinsnamen überall gleich (04.11.2026)
+
+Auf Ansage: „im Tippspiel, Live-Tab und den Vereinsprofilen die
+Vereinsnamen immer komplett groß und kursiv — überall gleich".
+`vereinsName()` (`app/widgets/vereins_name.dart`) = `vereinsKurzname` in
+Versalien, Stil ExtraBold kursiv. Gilt in Live-Tab, Spielplan-Zeilen,
+Homescreen (Kopfkarte, Mein Wochenende, Favoritenwahl), Wettbewerbs-
+Übersicht samt Torjägern, Spieldetail, Tabellen (`LigaTabelle`,
+Übersicht — **jetzt auch dort der Kurzname** statt des vollen), Vereinsseite
+(Kopf), Tippkarte, Vereinsauswahl und Spielerprofil. Wo vorher das Gewicht
+den eigenen Verein hervorhob (Tabelle, Spielkarte im Profil), trägt das
+jetzt die Farbe. Vorlese-Namen bleiben voll. Tests suchen Vereine in
+Versalien („FREIBURG").
+
+**MatchUp-Kasten auf Hell:** Die Linienzeichnung steht dort mit 12 % statt
+100 % (gemeldet: „Namen und Daten schlecht zu sehen"); die Kopfkarte der
+Startseite behält die klaren Linien.
+
 ### Vereinsnamen auf der Tippkarte wie im Live-Tab (04.11.2026)
 
 Auf Ansage („so klein geschrieben"): eine Zeile in 17 Punkt (w600) wie die

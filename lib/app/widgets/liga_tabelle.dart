@@ -10,6 +10,8 @@ import '../../core/models/models.dart';
 import '../../features/tippspiel/providers.dart';
 import '../../features/tippspiel/ui/team_badge.dart';
 import 'tabellen_punkte.dart';
+import 'vereins_name.dart';
+import '../typografie.dart';
 
 /// **Die Ligatabelle — einmal gebaut, überall dieselbe.**
 ///
@@ -135,11 +137,17 @@ class TabellenZeile extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              row.team.name,
+              vereinsName(row.team.name),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              // Alle Namen ExtraBold kursiv (04.11.2026); der eigene Verein
+              // hebt sich jetzt über die Farbe ab statt über das Gewicht.
               style: TextStyle(
-                fontWeight: eigene ? FontWeight.bold : FontWeight.normal,
+                fontWeight: Schrift.ueberschriftGewicht,
+                fontStyle: Schrift.ueberschriftStil,
+                color: eigene
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),

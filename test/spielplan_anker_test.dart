@@ -74,9 +74,9 @@ void main() {
         reason: 'die Trennstelle ist der Anfang des Schirms');
     expect(kopf, greaterThanOrEqualTo(0));
 
-    expect(tester.getTopLeft(find.text('Naechstes')).dy, greaterThan(kopf));
+    expect(tester.getTopLeft(find.text('NAECHSTES')).dy, greaterThan(kopf));
     expect(
-      find.text('Juengstes'),
+      find.text('JUENGSTES'),
       findsNothing,
       reason: 'das Ergebnis liegt über der Trennstelle, also außer Sicht',
     );
@@ -109,9 +109,9 @@ void main() {
     await tester.pumpAndSettle();
 
     final marke = tester.getTopLeft(find.text('VORHERIGE SPIELE')).dy;
-    final alt = tester.getTopLeft(find.text('Aeltestes')).dy;
-    final mitte = tester.getTopLeft(find.text('Mittleres')).dy;
-    final jung = tester.getTopLeft(find.text('Juengstes')).dy;
+    final alt = tester.getTopLeft(find.text('AELTESTES')).dy;
+    final mitte = tester.getTopLeft(find.text('MITTLERES')).dy;
+    final jung = tester.getTopLeft(find.text('JUENGSTES')).dy;
 
     expect(marke, lessThan(alt), reason: 'die Marke steht über den Spielen');
     expect(alt, lessThan(mitte));

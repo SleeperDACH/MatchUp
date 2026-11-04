@@ -29,6 +29,7 @@ import '../providers.dart';
 import '../../tippspiel/ui/team_badge.dart';
 import 'club_badge.dart';
 import 'punkte_aufschluesselung.dart';
+import '../../../app/widgets/vereins_name.dart';
 
 const _versalSchraeg = TextStyle(
   fontWeight: Schrift.ueberschriftGewicht,
@@ -94,7 +95,10 @@ class SpielerProfilKopf extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     vereinsKurzname(player.club).toUpperCase(),
-                    style: _versalSchraeg.copyWith(color: context.farben.vorne, fontSize: Schrift.titel),
+                    style: _versalSchraeg.copyWith(
+                      color: context.farben.vorne,
+                      fontSize: Schrift.titel,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -147,7 +151,10 @@ class SpielerProfilKopf extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       vorname.toUpperCase(),
-                      style: _versalSchraeg.copyWith(color: context.farben.vorne, fontSize: Schrift.titel),
+                      style: _versalSchraeg.copyWith(
+                        color: context.farben.vorne,
+                        fontSize: Schrift.titel,
+                      ),
                     ),
                   ),
                 // Schrumpfen statt kappen — „SCHLOTTERBECK" in 230 Punkten.
@@ -156,7 +163,10 @@ class SpielerProfilKopf extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     nachname.toUpperCase(),
-                    style: _versalSchraeg.copyWith(color: context.farben.vorne, fontSize: Schrift.gross),
+                    style: _versalSchraeg.copyWith(
+                      color: context.farben.vorne,
+                      fontSize: Schrift.gross,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -589,12 +599,16 @@ class _SpielKarte extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              vereinsKurzname(team.name),
+              vereinsName(team.name),
+              // Der eigene Verein hell, der Gegner gedämpft (04.11.2026: alle
+              // Vereinsnamen ExtraBold kursiv, das Gewicht trennt nicht mehr).
               style: TextStyle(
                 fontSize: Schrift.titel,
-                fontWeight: vereinKanonisch(team.name) == meiner
-                    ? FontWeight.w800
-                    : FontWeight.w500,
+                fontWeight: Schrift.ueberschriftGewicht,
+                fontStyle: Schrift.ueberschriftStil,
+                color: vereinKanonisch(team.name) == meiner
+                    ? scheme.onSurface
+                    : scheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -681,7 +695,7 @@ class _GegnerKarte extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        '${heim ? '' : '@ '}${vereinsKurzname(gegner.name)}',
+                        '${heim ? '' : '@ '}${vereinsName(gegner.name)}',
                         style: const TextStyle(
                           fontSize: Schrift.text,
                           fontWeight: FontWeight.w700,

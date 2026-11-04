@@ -2,7 +2,6 @@ import 'farben.dart';
 import 'package:flutter/material.dart';
 import '../core/logic/tabellen_zonen.dart';
 import 'widgets/zonen_rang.dart';
-import '../core/logic/vereins_kuerzel.dart';
 import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +19,8 @@ import 'widgets/segmented_tab_bar.dart';
 import 'widgets/tabellen_punkte.dart';
 import '../core/data/neu_laden.dart';
 import 'vorwaermen.dart';
+import 'widgets/vereins_name.dart';
+import 'typografie.dart';
 
 /// Liga-Übersicht mit Tabs: Spieltage, Tabelle, Torjäger und liga-spezifische
 /// News. Aufgerufen über die Liga-Buttons im Live-Tab.
@@ -417,9 +418,13 @@ class _TableRowTile extends StatelessWidget {
               team: row.team,
               leagueId: leagueId,
               child: Text(
-                row.team.name,
+                vereinsName(row.team.name),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: Schrift.ueberschriftGewicht,
+                  fontStyle: Schrift.ueberschriftStil,
+                ),
               ),
             ),
           ),
@@ -742,9 +747,13 @@ class _SlotGame extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      vereinsKurzname(f.home.name),
+                      vereinsName(f.home.name),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: Schrift.ueberschriftGewicht,
+                        fontStyle: Schrift.ueberschriftStil,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -778,10 +787,14 @@ class _SlotGame extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      vereinsKurzname(f.away.name),
+                      vereinsName(f.away.name),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        fontWeight: Schrift.ueberschriftGewicht,
+                        fontStyle: Schrift.ueberschriftStil,
+                      ),
                     ),
                   ),
                 ],
@@ -937,7 +950,7 @@ class _ScorerTile extends StatelessWidget {
                 ),
                 if (scorer.teamName != null)
                   Text(
-                    scorer.teamName!,
+                    vereinsName(scorer.teamName!),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(

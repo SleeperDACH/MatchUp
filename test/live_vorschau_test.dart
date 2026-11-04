@@ -259,7 +259,7 @@ void main() {
     }
     // Start auf Live: Spiele da, keine Glocke (Live-Meldungen brauchen ein
     // Konto), die Navileiste wie angemeldet.
-    expect(find.textContaining('Stuttgart'), findsWidgets);
+    expect(find.textContaining('STUTTGART'), findsWidgets);
     expect(find.byTooltip('Live-Benachrichtigungen für Vereine und Ligen'),
         findsNothing);
     expect(find.bySemanticsLabel('Favoriten'), findsOneWidget);

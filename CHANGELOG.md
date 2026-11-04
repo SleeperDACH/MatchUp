@@ -58,8 +58,11 @@ Schritten, Freunde per Link einladen —, dazu ein **Tippspiel für alle**, der
 - **Draft**: Ein Satz sagt, dass kein gemeinsamer Termin nötig ist. Eine neue
   Liga erklärt, was als Nächstes kommt.
 - **News-Bilder** in voller Auflösung.
-- **Live-Tab**: Das Datum oben in Versalien und kursiv. Im **Tippspiel**
-  stehen die Vereinsnamen so groß wie im Live-Tab.
+- **Vereinsnamen überall gleich**: ein Wort je Verein, in Versalien und
+  kursiv — im Live-Tab, im Tippspiel, auf den Vereinsseiten, in Tabellen und
+  Spielplänen. Das Datum oben im Live-Tab steht genauso.
+- **Heller Modus**: Im MatchUp-Kasten sind Namen, Platz und Bilanz wieder
+  gut lesbar — die Linien des Stadions stehen dort nur noch angedeutet.
 - **App-Name** unter Android jetzt „MatchUp".
 
 ### Behoben

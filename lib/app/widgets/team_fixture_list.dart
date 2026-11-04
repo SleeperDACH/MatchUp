@@ -1,6 +1,5 @@
 import '../farben.dart';
 import 'package:flutter/material.dart';
-import '../../core/logic/vereins_kuerzel.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/models/models.dart';
@@ -9,6 +8,8 @@ import '../../features/tippspiel/ui/team_badge.dart';
 import '../match_detail_screen.dart';
 import 'karte.dart';
 import 'pulsing_dot.dart';
+import 'vereins_name.dart';
+import '../typografie.dart';
 
 /// Gemeinsame Darstellung eines Team-Spielplans: Datums-Überschriften und
 /// Spiel-Boxen mit Wettbewerbslogo, Spieltag, beiden Wappen und Ergebnis.
@@ -82,7 +83,7 @@ class _SpielplanAnsichtState extends State<SpielplanAnsicht> {
   Widget build(BuildContext context) {
     final kommend = [
       for (final f in widget.fixtures)
-        if (f.status != FixtureStatus.finished) f
+        if (f.status != FixtureStatus.finished) f,
     ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
     // **Aufsteigend, nicht absteigend.** Die Ergebnisse stehen über der
     // Trennstelle und lesen sich von oben nach unten wie der Rest der App:
@@ -90,7 +91,7 @@ class _SpielplanAnsichtState extends State<SpielplanAnsicht> {
     // nächsten Spiel.
     final vergangen = [
       for (final f in widget.fixtures)
-        if (f.status == FixtureStatus.finished) f
+        if (f.status == FixtureStatus.finished) f,
     ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
 
     // Steht nichts mehr an, gibt es nichts zu verstecken: Dann ist die
@@ -102,12 +103,14 @@ class _SpielplanAnsichtState extends State<SpielplanAnsicht> {
     if (vergangen.isNotEmpty) {
       if (offen) {
         oben.add(const FixtureSectionLabel('Vorherige Spiele'));
-        oben.add(SpielFlaeche(
-          children: fixturesWithDateHeaders(
-            vergangen,
-            hauptWettbewerb: widget.hauptWettbewerb,
+        oben.add(
+          SpielFlaeche(
+            children: fixturesWithDateHeaders(
+              vergangen,
+              hauptWettbewerb: widget.hauptWettbewerb,
+            ),
           ),
-        ));
+        );
       } else {
         oben.add(
           _VorherigeSpieleKnopf(
@@ -257,13 +260,15 @@ List<Widget> fixturesWithDateHeaders(
     final neuerBlock = letzterAnstoss == null || letzterAnstoss != anstoss;
     if (i > 0) out.add(const _Trennlinie());
     if (neuerBlock) {
-      out.add(FixtureDateHeader(
-        date: anstoss,
-        fixture: mitWettbewerb ? f : null,
-        mitZeit: true,
-        hauptWettbewerb: hauptWettbewerb,
-        zeitOffen: anstossOffen(f.kickoff),
-      ));
+      out.add(
+        FixtureDateHeader(
+          date: anstoss,
+          fixture: mitWettbewerb ? f : null,
+          mitZeit: true,
+          hauptWettbewerb: hauptWettbewerb,
+          zeitOffen: anstossOffen(f.kickoff),
+        ),
+      );
       letzterAnstoss = anstoss;
     }
     out.add(TeamFixtureCard(fixture: f, zeitImKopf: true));
@@ -327,7 +332,8 @@ class FixtureDateHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final label = DateFormat('E, d. MMM', 'de_DE').format(date);
     final f = fixture;
-    final eigener = f != null &&
+    final eigener =
+        f != null &&
         hauptWettbewerb != null &&
         f.leagueName.toLowerCase() == hauptWettbewerb!.toLowerCase();
     final zusatz = f == null
@@ -384,7 +390,6 @@ class FixtureDateHeader extends StatelessWidget {
   }
 }
 
-
 class FixtureSectionLabel extends StatelessWidget {
   const FixtureSectionLabel(this.text, {super.key});
   final String text;
@@ -421,7 +426,6 @@ class FixtureSectionLabel extends StatelessWidget {
   }
 }
 
-
 /// Spieltag- bzw. Pokalrunden-Bezeichnung eines Team-Spiels (null = unbekannt).
 String? matchdayLabel(TeamFixture f) {
   if (f.round <= 0) return null;
@@ -439,7 +443,6 @@ String? matchdayLabel(TeamFixture f) {
   }
   return '${f.round}. Spieltag';
 }
-
 
 /// Ein Spiel des Team-Spielplans als **Zeile**, nicht als Karte.
 ///
@@ -490,11 +493,12 @@ class TeamFixtureCard extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    vereinsKurzname(f.home.name),
+                    vereinsName(f.home.name),
                     maxLines: 1,
                     style: const TextStyle(
                       fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
                     ),
                   ),
                 ),
@@ -552,12 +556,13 @@ class TeamFixtureCard extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerRight,
                   child: Text(
-                    vereinsKurzname(f.away.name),
+                    vereinsName(f.away.name),
                     maxLines: 1,
                     textAlign: TextAlign.end,
                     style: const TextStyle(
                       fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
                     ),
                   ),
                 ),
@@ -581,8 +586,6 @@ class TeamFixtureCard extends StatelessWidget {
   }
 }
 
-
-
 /// **Die Quelle kennt die Anstoßzeit noch nicht.** Sportmonks setzt dann
 /// Mitternacht UTC — in der App stand „01:00" bzw. „02:00" da, als wäre das
 /// ein Anstoß. Kein Spiel einer deutschen Liga beginnt um Mitternacht UTC.
@@ -602,13 +605,13 @@ class SpielFlaeche extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.only(bottom: 4),
-        decoration: kartenDeko(context),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
-        ),
-      );
+    margin: const EdgeInsets.only(top: 8),
+    padding: const EdgeInsets.only(bottom: 4),
+    decoration: kartenDeko(context),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    ),
+  );
 }

@@ -82,10 +82,10 @@ void main() {
     expect(find.text('Mindestens einen Verein wählen'), findsOneWidget);
     expect(weiter().onPressed, isNull);
 
-    await tester.tap(find.text('Hannover').evaluate().isEmpty
-        ? find.text('Hamburg')
-        : find.text('Hannover'));
-    await tester.tap(find.text('Freiburg'));
+    await tester.tap(find.text('HANNOVER').evaluate().isEmpty
+        ? find.text('HAMBURG')
+        : find.text('HANNOVER'));
+    await tester.tap(find.text('FREIBURG'));
     await tester.pumpAndSettle();
     expect(find.text('2 Vereine gewählt'), findsOneWidget);
     expect(weiter().onPressed, isNotNull);
@@ -122,7 +122,7 @@ void main() {
       child: const MaterialApp(home: VereinsWahlScreen()),
     ));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Freiburg'));
+    await tester.tap(find.text('FREIBURG'));
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Weiter'));
     await tester.pump(const Duration(milliseconds: 50));

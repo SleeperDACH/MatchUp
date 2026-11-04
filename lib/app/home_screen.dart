@@ -3,7 +3,6 @@ import 'widgets/info_knopf.dart';
 import '../features/einladung/einladung.dart';
 import 'farben.dart';
 import 'package:flutter/material.dart';
-import '../core/logic/vereins_kuerzel.dart';
 import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -48,6 +47,7 @@ import 'widgets/league_logo.dart';
 import 'widgets/matchup_chevron.dart';
 import 'widgets/pulsing_dot.dart';
 import '../features/favorites/logic/next_favorite_fixtures.dart';
+import 'widgets/vereins_name.dart';
 
 /// Startbildschirm. Fantasy ist der Hauptfokus und steht oben; das
 /// Tippspiel folgt als zweiter Bereich darunter.
@@ -801,13 +801,14 @@ class _HeroVerein extends StatelessWidget {
         // **Ein Wort je Verein** (auf Ansage, 16.10.2026): „Gladbach",
         // „Hamburg", „Schalke" — nicht „Borussia Mönchengladbach". Zwei
         // Zeilen bleiben erlaubt für den seltenen langen Namen.
-        vereinsKurzname(team.name),
+        vereinsName(team.name),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
         style: const TextStyle(
           fontSize: 14,
-          fontWeight: FontWeight.w600,
+          fontWeight: Schrift.ueberschriftGewicht,
+          fontStyle: Schrift.ueberschriftStil,
           height: 1.1,
         ),
       ),
@@ -1022,12 +1023,13 @@ class _FavoritSpielZeile extends StatelessWidget {
                 // „Borussia Mönchengladbach" nicht zu „Borussia M…" wird.
                 Expanded(
                   child: Text(
-                    vereinsKurzname(fixture.home.name),
+                    vereinsName(fixture.home.name),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
                       height: 1.1,
                     ),
                   ),
@@ -1068,13 +1070,14 @@ class _FavoritSpielZeile extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    vereinsKurzname(fixture.away.name),
+                    vereinsName(fixture.away.name),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
                     style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
                       height: 1.1,
                     ),
                   ),

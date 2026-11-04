@@ -1,6 +1,5 @@
 import '../../../app/farben.dart';
 import 'package:flutter/material.dart';
-import '../../../core/logic/vereins_kuerzel.dart';
 import '../../../app/widgets/skelett.dart';
 import '../../../app/widgets/mit_ladekreis.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +21,7 @@ import '../../../app/typografie.dart';
 import '../../../app/widgets/kapitelmarke.dart';
 import '../../../app/widgets/karte.dart';
 import '../../../core/data/neu_laden.dart';
+import '../../../app/widgets/vereins_name.dart';
 
 /// Tippen-Tab: In Runden mit mehreren Wettbewerben ein gemeinsamer
 /// Wochen-Feed (alle Ligen zusammen, Woche für Woche); sonst die klassische
@@ -684,12 +684,13 @@ class _TeamLabel extends ConsumerWidget {
           fit: BoxFit.scaleDown,
           alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
           child: Text(
-            vereinsKurzname(team.name),
+            vereinsName(team.name),
             maxLines: 1,
             textAlign: alignEnd ? TextAlign.right : TextAlign.left,
             style: const TextStyle(
               fontSize: Schrift.titel,
-              fontWeight: FontWeight.w600,
+              fontWeight: Schrift.ueberschriftGewicht,
+              fontStyle: Schrift.ueberschriftStil,
             ),
           ),
         ),

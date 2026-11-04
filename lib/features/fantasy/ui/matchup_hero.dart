@@ -324,10 +324,16 @@ class HeroShell extends StatelessWidget {
                 // nur im dunklen Modus: Das Foto ist fast schwarz.
                 // Im hellen Modus dasselbe Bild unter einem weißen Schleier —
                 // sichtbar, aber hell (29.10.2026, auf Ansage).
+                // **Auf Hell nur noch angedeutet** (04.11.2026, gemeldet: „im
+                // hellen Modus sieht man oben in der Karte die Namen und
+                // Daten schlecht"). Mit voller Deckkraft liefen die schwarzen
+                // Feldlinien mitten durch Name, Platz und Bilanz. Die
+                // Kopfkarte der Startseite behält die klaren Linien — dort
+                // stehen Wappen und Uhrzeit, keine kleinen Zeilen.
                 Positioned.fill(
                   child: IgnorePointer(
                     child: Opacity(
-                      opacity: context.istHell ? 1 : 0.30,
+                      opacity: context.istHell ? 0.12 : 0.30,
                       child: context.istHell
                           ? Image.asset(
                               'assets/images/spiel_linien.png',

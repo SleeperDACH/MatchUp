@@ -16,6 +16,8 @@ import 'widgets/liga_tabelle.dart';
 import 'widgets/segmented_tab_bar.dart';
 import '../core/data/neu_laden.dart';
 import 'vorwaermen.dart';
+import 'widgets/vereins_name.dart';
+import 'typografie.dart';
 
 /// Vereinsseite: Spielplan, Tabelle, Kader und News eines Klubs.
 ///
@@ -59,8 +61,9 @@ class ClubScreen extends ConsumerWidget {
       holt: (ref) {
         ref.read(teamFixturesProvider(_teamId));
         ref.read(teamSquadProvider(_teamId));
-        ref.read(teamNewsProvider(
-            (teamId: _teamId, name: team.name, leagueId: liga)));
+        ref.read(
+          teamNewsProvider((teamId: _teamId, name: team.name, leagueId: liga)),
+        );
         // Die Vereinstabelle rechnet live: Sie braucht Tabelle **und**
         // Spielplan (`liveLeagueTableProvider`). Nur die halbe Quelle
         // vorzuwärmen hieße, den Reiter trotzdem warten zu lassen.
@@ -70,24 +73,31 @@ class ClubScreen extends ConsumerWidget {
         }
       },
       child: DefaultTabController(
-      length: tabs.length,
-      child: Scaffold(
-        appBar: AppBar(
-          titleSpacing: 8,
-          title: Row(
-            children: [
-              TeamBadge(team: team, size: 26),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(team.name,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-              ),
-            ],
+        length: tabs.length,
+        child: Scaffold(
+          appBar: AppBar(
+            titleSpacing: 8,
+            title: Row(
+              children: [
+                TeamBadge(team: team, size: 26),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    vereinsName(team.name),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: Schrift.ueberschriftGewicht,
+                      fontStyle: Schrift.ueberschriftStil,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            bottom: SegmentedTabBar(tabs: tabs),
           ),
-          bottom: SegmentedTabBar(tabs: tabs),
+          body: TabBarView(children: views),
         ),
-        body: TabBarView(children: views),
-      ),
       ),
     );
   }
@@ -131,7 +141,8 @@ class _SpielplanTab extends ConsumerWidget {
         return SpielplanAnsicht(
           fixtures: fixtures,
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-          onRefresh: () => neuLaden(() => ref.invalidate(teamFixturesProvider(teamId))),
+          onRefresh: () =>
+              neuLaden(() => ref.invalidate(teamFixturesProvider(teamId))),
         );
       },
     );
@@ -171,7 +182,8 @@ class _KaderTab extends ConsumerWidget {
         }
 
         return RefreshIndicator(
-          onRefresh: () => neuLaden(() => ref.invalidate(teamSquadProvider(teamId))),
+          onRefresh: () =>
+              neuLaden(() => ref.invalidate(teamSquadProvider(teamId))),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -190,19 +202,23 @@ class _GruppenKopf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
-        child: Row(
-          children: [
-            Text(titel,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(width: 8),
-            Text('$anzahl',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ],
+    padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
+    child: Row(
+      children: [
+        Text(
+          titel,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
-      );
+        const SizedBox(width: 8),
+        Text(
+          '$anzahl',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _KaderZeile extends StatelessWidget {
@@ -226,22 +242,31 @@ class _KaderZeile extends StatelessWidget {
           member.jerseyNumber?.toString() ?? '–',
           textAlign: TextAlign.center,
           style: TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 17, color: gedaempft),
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+            color: gedaempft,
+          ),
         ),
       ),
       title: Row(
         children: [
           Flexible(
-            child: Text(member.name,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
+            child: Text(
+              member.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           if (member.captain) ...[
             const SizedBox(width: 6),
-            Text('C',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                    color: context.farben.gruen)),
+            Text(
+              'C',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+                color: context.farben.gruen,
+              ),
+            ),
           ],
         ],
       ),
@@ -271,7 +296,8 @@ class _NewsTab extends ConsumerWidget {
       data: (items) {
         if (items.isEmpty) return const _Leer('Aktuell keine Meldungen.');
         return RefreshIndicator(
-          onRefresh: () => neuLaden(() => ref.invalidate(teamNewsProvider(args))),
+          onRefresh: () =>
+              neuLaden(() => ref.invalidate(teamNewsProvider(args))),
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
@@ -282,14 +308,18 @@ class _NewsTab extends ConsumerWidget {
               final datum = n.publishedAt;
               return ListTile(
                 title: Text(n.title),
-                subtitle: Text([
-                  if (n.source != null && n.source!.isNotEmpty) n.source!,
-                  if (datum != null)
-                    DateFormat('d. MMM', 'de_DE').format(datum.toLocal()),
-                ].join(' · ')),
+                subtitle: Text(
+                  [
+                    if (n.source != null && n.source!.isNotEmpty) n.source!,
+                    if (datum != null)
+                      DateFormat('d. MMM', 'de_DE').format(datum.toLocal()),
+                  ].join(' · '),
+                ),
                 trailing: const Icon(Icons.open_in_new, size: 18),
-                onTap: () => launchUrl(Uri.parse(n.url),
-                    mode: LaunchMode.externalApplication),
+                onTap: () => launchUrl(
+                  Uri.parse(n.url),
+                  mode: LaunchMode.externalApplication,
+                ),
               );
             },
           ),
@@ -308,15 +338,15 @@ class _Fehler extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(text, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: onRetry, child: const Text('Erneut laden')),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(text, textAlign: TextAlign.center),
+        const SizedBox(height: 12),
+        FilledButton(onPressed: onRetry, child: const Text('Erneut laden')),
+      ],
+    ),
+  );
 }
 
 class _Leer extends StatelessWidget {
@@ -325,10 +355,11 @@ class _Leer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Text(text,
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      );
+    child: Text(
+      text,
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+    ),
+  );
 }
 
 // --- Navigation von einem Wappen aus --------------------------------------
@@ -337,9 +368,11 @@ class _Leer extends StatelessWidget {
 /// sind keine echten Vereine und werden ignoriert.
 void oeffneVerein(BuildContext context, TeamRef team, {String? leagueId}) {
   if (isPlaceholderTeam(team) || !team.id.startsWith('sportmonks:')) return;
-  Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => ClubScreen(team: team, leagueId: leagueId),
-  ));
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => ClubScreen(team: team, leagueId: leagueId),
+    ),
+  );
 }
 
 /// Macht ein beliebiges Wappen antippbar.
@@ -372,9 +405,31 @@ class ClubLink extends StatelessWidget {
 /// Vereinspräfixe. Ohne die würde „Borussia Dortmund" auf „Borussia
 /// Mönchengladbach" passen.
 const _namensBallast = {
-  'fc', 'sv', 'sc', 'vfb', 'vfl', 'tsg', 'fsv', 'rb', 'sg', 'tsv', 'bv',
-  'borussia', 'eintracht', 'sportverein', 'verein', '1', '04', '05', '07',
-  '09', '1846', '1899', '1900', 'du', 'die',
+  'fc',
+  'sv',
+  'sc',
+  'vfb',
+  'vfl',
+  'tsg',
+  'fsv',
+  'rb',
+  'sg',
+  'tsv',
+  'bv',
+  'borussia',
+  'eintracht',
+  'sportverein',
+  'verein',
+  '1',
+  '04',
+  '05',
+  '07',
+  '09',
+  '1846',
+  '1899',
+  '1900',
+  'du',
+  'die',
 };
 
 Set<String> _kennTokens(String name) => name
@@ -398,14 +453,13 @@ Set<String> _kennTokens(String name) => name
 /// **Bleibt die Zuordnung mehrdeutig oder leer, gibt es keinen Treffer** — das
 /// Wappen ist dann schlicht nicht antippbar. Lieber kein Link als der falsche
 /// Verein.
-final clubTeamRefProvider =
-    Provider.family<TeamRef?, String>((ref, clubName) {
+final clubTeamRefProvider = Provider.family<TeamRef?, String>((ref, clubName) {
   final teams = ref.watch(leagueTeamsProvider('bundesliga')).valueOrNull;
   if (teams == null) return null;
   final gesucht = _kennTokens(clubName);
   if (gesucht.isEmpty) return null;
-  final treffer =
-      teams.where((t) => _kennTokens(t.name).intersection(gesucht).isNotEmpty);
+  final treffer = teams.where(
+    (t) => _kennTokens(t.name).intersection(gesucht).isNotEmpty,
+  );
   return treffer.length == 1 ? treffer.first : null;
 });
-

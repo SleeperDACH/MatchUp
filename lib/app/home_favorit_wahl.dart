@@ -25,7 +25,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/logic/vereins_kuerzel.dart';
 import '../core/models/models.dart';
 import '../features/auth/providers.dart';
 import '../features/favorites/favorites.dart';
@@ -33,7 +32,7 @@ import '../features/favorites/ui/favorites_manage_screen.dart';
 import '../features/tippspiel/ui/team_badge.dart';
 import 'typografie.dart';
 import 'widgets/karte.dart';
-
+import 'widgets/vereins_name.dart';
 
 /// Ob die Leiste erscheint — rein, damit es prüfbar ist.
 bool zeigeFavoritWahl({
@@ -143,7 +142,7 @@ class _Wappen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = vereinsKurzname(team.name);
+    final name = vereinsName(team.name);
     return Semantics(
       button: true,
       label: '${team.name} als Favorit wählen',
@@ -166,7 +165,8 @@ class _Wappen extends StatelessWidget {
                   maxLines: 1,
                   style: TextStyle(
                     fontSize: Schrift.label,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: Schrift.ueberschriftGewicht,
+                    fontStyle: Schrift.ueberschriftStil,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),

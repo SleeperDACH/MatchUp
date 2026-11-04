@@ -33,6 +33,7 @@ import '../logic/laufende_runde.dart';
 import '../logic/rueckkehr.dart';
 import '../logic/naechstes_spiel.dart';
 import 'spieler_name.dart';
+import '../../../app/widgets/vereins_name.dart';
 
 /// Öffnet das Spielerprofil (Kopf + Leistungstabelle je Spieltag; für eigene
 /// Spieler zusätzlich „Droppen"). [isMine] steuert den Drop-Button.
@@ -1561,7 +1562,7 @@ class _PrognoseKopf extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${vereinsKurzname(spiel.home.name)} – ${vereinsKurzname(spiel.away.name)}',
+            '${vereinsName(spiel.home.name)} – ${vereinsName(spiel.away.name)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(

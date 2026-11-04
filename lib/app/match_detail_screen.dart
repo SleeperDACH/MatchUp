@@ -4,7 +4,6 @@ import 'dart:async';
 import '../core/logic/tabellen_zonen.dart';
 import 'widgets/zonen_rang.dart';
 import 'package:flutter/material.dart';
-import '../core/logic/vereins_kuerzel.dart';
 import 'widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -21,6 +20,8 @@ import 'widgets/jersey_icon.dart';
 import 'widgets/segmented_tab_bar.dart';
 import 'widgets/tabellen_punkte.dart';
 import '../core/data/neu_laden.dart';
+import 'widgets/vereins_name.dart';
+import 'typografie.dart';
 
 /// Spiel-Detailansicht mit Tabs: Übersicht (Ergebnis, Spielverlauf,
 /// Torschützen), Aufstellung, Statistik und (Live-)Tabelle. Quelle: Sportmonks.
@@ -232,7 +233,7 @@ class _TeamColumn extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          vereinsKurzname(team.name),
+          vereinsName(team.name),
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -823,11 +824,12 @@ class _SideLabel extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                vereinsKurzname(team.name),
+                vereinsName(team.name),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: Schrift.ueberschriftGewicht,
+                  fontStyle: Schrift.ueberschriftStil,
                 ),
               ),
               if (formation != null && formation!.isNotEmpty) ...[
@@ -1095,13 +1097,14 @@ class _TeamColumnHeader extends StatelessWidget {
       const SizedBox(width: 6),
       Flexible(
         child: Text(
-          vereinsKurzname(team.name),
+          vereinsName(team.name),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: alignEnd ? TextAlign.end : TextAlign.start,
           style: TextStyle(
             fontSize: 11,
-            fontWeight: FontWeight.bold,
+            fontWeight: Schrift.ueberschriftGewicht,
+            fontStyle: Schrift.ueberschriftStil,
             color: scheme.onSurface,
           ),
         ),
