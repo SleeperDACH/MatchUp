@@ -58,6 +58,8 @@ Schritten, Freunde per Link einladen —, dazu ein **Tippspiel für alle**, der
 - **Draft**: Ein Satz sagt, dass kein gemeinsamer Termin nötig ist. Eine neue
   Liga erklärt, was als Nächstes kommt.
 - **News-Bilder** in voller Auflösung.
+- **Live-Tab**: Das Datum oben in Versalien und kursiv. Im **Tippspiel**
+  stehen die Vereinsnamen so groß wie im Live-Tab.
 - **App-Name** unter Android jetzt „MatchUp".
 
 ### Behoben

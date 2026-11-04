@@ -143,7 +143,8 @@ class _FixtureList extends ConsumerWidget {
       data: (list) => _FixtureListBody(
         list: list,
         odds: ref.watch(roundOddsProvider(round)),
-        onRefresh: () => neuLaden(() => ref.invalidate(roundFixturesProvider(round))),
+        onRefresh: () =>
+            neuLaden(() => ref.invalidate(roundFixturesProvider(round))),
       ),
     );
   }
@@ -340,9 +341,7 @@ class _FixtureCardState extends ConsumerState<FixtureCard> {
                   children: [
                     Expanded(child: _TeamLabel(fixture: fixture, heim: true)),
                     center,
-                    Expanded(
-                      child: _TeamLabel(fixture: fixture, heim: false),
-                    ),
+                    Expanded(child: _TeamLabel(fixture: fixture, heim: false)),
                   ],
                 ),
                 if (odds != null && !locked) ...[
@@ -602,7 +601,9 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
             FilledButton(
               onPressed: _saving ? null : _save,
               child: MitLadekreis(
-                  laedt: _saving, child: const Text('Tipps speichern')),
+                laedt: _saving,
+                child: const Text('Tipps speichern'),
+              ),
             ),
             if (_errors.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -669,34 +670,56 @@ class _TeamLabel extends ConsumerWidget {
     // Der Name bleibt zweizeilig, damit auch „Borussia Mönchengladbach"
     // lesbar bleibt; das Wappen darf dabei nicht schrumpfen, deshalb steht
     // es außerhalb des flexiblen Teils.
+    // **So groß wie im Live-Tab** (04.11.2026, auf Ansage: „die
+    // Vereinsnamen sind so klein"). Eine Zeile in 17 Punkt; ein langer Name
+    // schrumpft, statt umzubrechen.
     final name = Flexible(
-      child: Text(
-        vereinsKurzname(team.name),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-        style: Theme.of(context).textTheme.bodyMedium,
+      child: Padding(
+        // Luft zum Tippfeld in der Mitte.
+        padding: EdgeInsets.only(
+          left: alignEnd ? 8 : 0,
+          right: alignEnd ? 0 : 8,
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
+          child: Text(
+            vereinsKurzname(team.name),
+            maxLines: 1,
+            textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+            style: const TextStyle(
+              fontSize: Schrift.titel,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
     final badge = TeamBadge(team: team, size: _badgeSize);
-    final form = ref.watch(teamFormProvider((
-      leagueId: fixture.leagueId,
-      teamId: team.id,
-      vor: fixture.kickoff,
-    )));
+    final form = ref.watch(
+      teamFormProvider((
+        leagueId: fixture.leagueId,
+        teamId: team.id,
+        vor: fixture.kickoff,
+      )),
+    );
     // Im Pokal gibt es keine Pokaltabelle — die Vereinsseite leitet die Liga
     // dann selbst ab.
-    final liga = fixture.leagueId == Leagues.dfbPokal.id ? null : fixture.leagueId;
+    final liga = fixture.leagueId == Leagues.dfbPokal.id
+        ? null
+        : fixture.leagueId;
     return ClubLink(
       team: team,
       leagueId: liga,
       child: Column(
-        crossAxisAlignment:
-            alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: alignEnd
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment:
-                alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: alignEnd
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             children: alignEnd
                 ? [name, const SizedBox(width: 7), badge]
                 : [badge, const SizedBox(width: 7), name],
@@ -726,17 +749,18 @@ class FormLeiste extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     Color farbe(FormErgebnis e) => switch (e) {
-          FormErgebnis.sieg => context.farben.gruen,
-          FormErgebnis.niederlage => scheme.error,
-          FormErgebnis.remis => scheme.onSurfaceVariant,
-        };
+      FormErgebnis.sieg => context.farben.gruen,
+      FormErgebnis.niederlage => scheme.error,
+      FormErgebnis.remis => scheme.onSurfaceVariant,
+    };
     String wort(FormErgebnis e) => switch (e) {
-          FormErgebnis.sieg => 'Sieg',
-          FormErgebnis.remis => 'Unentschieden',
-          FormErgebnis.niederlage => 'Niederlage',
-        };
+      FormErgebnis.sieg => 'Sieg',
+      FormErgebnis.remis => 'Unentschieden',
+      FormErgebnis.niederlage => 'Niederlage',
+    };
     return Semantics(
-      label: 'Form der letzten ${ergebnisse.length} Spiele: '
+      label:
+          'Form der letzten ${ergebnisse.length} Spiele: '
           '${ergebnisse.map(wort).join(', ')}',
       child: ExcludeSemantics(
         child: Row(
@@ -755,11 +779,11 @@ class FormLeiste extends StatelessWidget {
                 child: Text(
                   ergebnisse[i].buchstabe,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: Schrift.label,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                        color: farbe(ergebnisse[i]),
-                      ),
+                    fontSize: Schrift.label,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                    color: farbe(ergebnisse[i]),
+                  ),
                 ),
               ),
             ],

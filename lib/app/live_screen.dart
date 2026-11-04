@@ -493,15 +493,21 @@ class _Kopf extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // **Versalien und kursiv wie die Überschriften** (04.11.2026, auf
+          // Ansage: „SAMSTAG, 31. OKTOBER"). Lange Tage („DONNERSTAG,
+          // 31. DEZEMBER") schrumpfen, statt abgeschnitten zu werden.
           Expanded(
-            child: Text(
-              DateFormat('EEEE, d. MMM', 'de_DE').format(tag),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                DateFormat('EEEE, d. MMMM', 'de_DE').format(tag).toUpperCase(),
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: Schrift.titel,
+                  fontWeight: Schrift.ueberschriftGewicht,
+                  fontStyle: Schrift.ueberschriftStil,
+                ),
               ),
             ),
           ),

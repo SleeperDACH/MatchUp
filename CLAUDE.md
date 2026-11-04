@@ -6203,6 +6203,13 @@ Was das Bild sofort zeigte:
   flucht, und die Paarung im Spaltenkopf leiser als das Ergebnis: Die Paarung
   ist die Beschriftung, das Ergebnis die Auskunft.
 
+### Vereinsnamen auf der Tippkarte wie im Live-Tab (04.11.2026)
+
+Auf Ansage („so klein geschrieben"): eine Zeile in 17 Punkt (w600) wie die
+Spielzeile im Live-Tab, lange Namen schrumpfen (`FittedBox`), 8 Punkt Luft
+zum Tippfeld. Im Live-Tab steht das Datum oben seit demselben Tag in
+Versalien und kursiv mit vollem Monat („SAMSTAG, 31. OKTOBER").
+
 ### Form und Vereinsseite auf der Tippkarte (29.10.2026)
 
 Auf Ansage: unter jedem Team die Form der letzten fünf Spiele (S/U/N), und
