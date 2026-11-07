@@ -1339,6 +1339,22 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
   Rollback-Probe mit dem echten Ablauf: Tor → (neue ID: nichts) → Kein Tor →
   Tor Bayern (sobald das Ereignis da ist) → nächstes Dortmund-Tor mit dem
   richtigen Namen → Eigentor bei der richtigen Seite.
+  **Torschütze über den Stand** (0161, 06.11.2026, gemeldet an
+  Dresden–Fürth: 1:0 ohne Namen, 2:0 mit dem Namen des 1:0, 3:0 mit dem
+  des 2:0). Die Quelle lieferte jedes Tor-Ereignis erst nach dem nächsten
+  Stand, und „neuestes unbenutztes Ereignis" griff zum vorigen Tor. Jetzt
+  bekommt das k-te Tor einer Seite nur das Ereignis, dessen `stand` auf
+  dieser Seite k zeigt (Sportmonks `result`, auch beim Eigentor); fehlt es,
+  45 s warten (vorher 25), dann ohne Namen. Ereignisse ganz ohne Stand →
+  alte Regel. Rollback-Proben: Dresden-Ablauf und Bayern–Dortmund richtig.
+  **Messung und Minute** (0162, 06.11.2026, auf Ansage): Die Tabelle
+  `live_tor_messung` hält je Tor fest, wann der Stand kam
+  (`stand_gesehen`), wann das passende Tor-Ereignis (`ereignis_gesehen`),
+  wann gemeldet wurde und ob ein Ereignis dabei war (`mit_name`). Läuft für
+  alle Ligen; ausgewertet werden soll 1. und 2. Liga nach dem Wochenende
+  7./8.11.2026, um die Wartezeit (45 s) zu entscheiden. **3. Liga und
+  Frauen-Bundesliga nennen nur die Minute** („⚽ Ingolstadt (31.)"), die Liga
+  kommt über `fixtures.league_id`.
   **Form seit 0159** (auf Ansage; 0158 brachte den Ball statt „Tor"):
   Minute vorn, nur der Nachname (`push_nachname`, letzter Namensteil wie
   `namensTeile` in der App), „VAR" statt „Kein Tor" — „⚽ Dortmund (34.
@@ -5433,6 +5449,17 @@ Rollback-Probe: sichtbar 98 → 97 (Zentner). **Was bleibt:** Die Quelle
 meldet Verletzungen spät und unvollständig; besser als ihre Meldungen plus
 die eigenen Beobachtungen (Auswechslung, Kader, Minuten) wird es ohne eine
 redaktionelle Quelle nicht.
+
+### Wer für ein Spiel fehlt, fehlt (06.11.2026)
+
+Gemeldet: „bei Nicolas, dem Torwart von Gladbach, fehlt die Verletzung".
+Sportmonks setzte seinen Ausfall (27.10.–09.11.) auf `completed`, die
+Vereinsliste (`teams/seasons/…?include=sidelined`) ließ ihn deshalb weg —
+die Ausfallliste **des Spiels** (`fixtures/…?include=sidelined.sideline`)
+führte ihn weiter, und im Kader stand er nicht. `sync-absences` liest
+zusätzlich die Bundesliga-Spiele von vor 3 Stunden bis in 4 Tagen: Wer dort
+steht und in der Vereinsliste fehlt, gilt bis zum Spieltag als Ausfall
+(`bis` mindestens Spieltag). Antwortfeld `ausSpielen`.
 
 ### Verletzt ausgewechselt zählt als Ausfall (0122)
 

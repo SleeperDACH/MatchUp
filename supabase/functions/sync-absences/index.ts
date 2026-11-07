@@ -107,6 +107,69 @@ Deno.serve(async (req) => {
     }
   }
 
+  // 2b) **Wer für ein Spiel fehlt, fehlt** (06.11.2026, gemeldet: „bei
+  //     Nicolas, dem Torwart von Gladbach, fehlt die Verletzung"). Die
+  //     Vereinsliste hatte ihn nicht mehr: Die Quelle setzte seinen Ausfall
+  //     auf `completed`, obwohl er bis 09.11. lief und er im Kader fehlte.
+  //     Die Ausfallliste **des Spiels** (`fixtures/…?include=sidelined`)
+  //     führte ihn weiter. Deshalb zusätzlich die Spiele von vor drei Stunden
+  //     bis in vier Tagen: Wer dort steht, gilt bis zum Spieltag als
+  //     Ausfall — auch wenn die Vereinsliste ihn schon gesund meldet. Ein
+  //     Request je 25 Spiele (meist einer).
+  const schonGefunden = new Set(zeilen.map((z) => z.id));
+  const vonZeit = new Date(Date.now() - 3 * 3600_000).toISOString();
+  const bisZeit = new Date(Date.now() + 4 * 86400_000).toISOString();
+  const { data: spiele } = await supabase
+    .from("fixtures")
+    .select("id, kickoff")
+    .eq("league_id", "bundesliga")
+    .like("id", "sportmonks:%")
+    .gte("kickoff", vonZeit)
+    .lte("kickoff", bisZeit);
+  const spielIds = (spiele ?? []).map((f: { id: string }) =>
+    f.id.replace("sportmonks:", "")
+  );
+  let ausSpielen = 0;
+  for (let i = 0; i < spielIds.length; i += 25) {
+    const teil = spielIds.slice(i, i + 25);
+    try {
+      const res = await smGet(
+        `/football/fixtures/multi/${teil.join(",")}?include=sidelined.sideline`,
+      );
+      requests += 1;
+      for (const f of res?.data ?? []) {
+        const spieltag = String(f.starting_at ?? "").slice(0, 10) || null;
+        for (const s of f.sidelined ?? []) {
+          const sl = s.sideline ?? {};
+          const pid = s.player_id ?? sl.player_id;
+          if (pid == null || sl.id == null || schonGefunden.has(sl.id)) {
+            continue;
+          }
+          // Endet der Ausfall laut Quelle vor dem Spiel (oder steht er auf
+          // erledigt), gilt er trotzdem bis zum Spieltag.
+          const bis = sl.end_date && spieltag && sl.end_date >= spieltag
+            ? sl.end_date
+            : spieltag;
+          zeilen.push({
+            id: sl.id,
+            player_id: `sportmonks:${pid}`,
+            kategorie: sl.category === "suspended" ? "suspended" : "injury",
+            type_id: sl.type_id ?? null,
+            seit: sl.start_date ?? null,
+            bis,
+            spiele_verpasst: sl.games_missed ?? null,
+            updated_at: jetzt,
+          });
+          schonGefunden.add(sl.id);
+          if (sl.type_id != null) typIds.add(sl.type_id);
+          ausSpielen += 1;
+        }
+      }
+    } catch (_) {
+      // Die Vereinsliste allein ist der bisherige Stand — kein Abbruch.
+    }
+  }
+
   // 3) Nur Spieler, die unser Pool kennt — der Rest ist fuer Fantasy
   //    bedeutungslos und wuerde am Fremdschluessel scheitern.
   const { data: pool } = await supabase.from("players").select("id");
@@ -203,6 +266,7 @@ Deno.serve(async (req) => {
     imPool: gefiltert.length,
     verletzt: gefiltert.filter((z) => z.kategorie === "injury").length,
     gesperrt: gefiltert.filter((z) => z.kategorie === "suspended").length,
+    ausSpielen,
     neueTypen: neueTypen.length,
     ohneDeutsch: (ohneDe ?? []).map((t: { id: number; name: string }) =>
       `${t.id} ${t.name}`
