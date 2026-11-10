@@ -161,10 +161,16 @@ class _TipSettingsScreen extends ConsumerWidget {
       final confirmed = await rueckfrage(
         context,
         titel: 'Tippspiel verlassen?',
-        text:
-            'Du verlässt „${round.name}". Deine Tipps in dieser '
-            'Liga werden entfernt. Über einen Einladungslink kannst du '
-            'später wieder beitreten.',
+        // Ins Globale Tippspiel führt kein Einladungslink zurück, sondern
+        // „Mitspielen" auf dem Startbildschirm.
+        text: round.istGlobal
+            ? 'Du verlässt „${round.name}" und stehst nicht mehr in der '
+                  'Tabelle. Deine Tipps werden entfernt, Erinnerungen kommen '
+                  'keine mehr. Über „Mitspielen" auf dem Startbildschirm '
+                  'kannst du jederzeit wieder einsteigen.'
+            : 'Du verlässt „${round.name}". Deine Tipps in dieser '
+                  'Liga werden entfernt. Über einen Einladungslink kannst du '
+                  'später wieder beitreten.',
         ja: 'Verlassen',
         nein: 'Abbrechen',
         gefahr: true,
@@ -173,6 +179,8 @@ class _TipSettingsScreen extends ConsumerWidget {
       try {
         await ref.read(tipRoundRepositoryProvider).leaveRound(round.id);
         ref.invalidate(myRoundsProvider);
+        // Der Startbildschirm zeigt danach wieder „Mitspielen".
+        if (round.istGlobal) ref.invalidate(tippligaProvider);
         navigator.popUntil((r) => r.isFirst);
         messenger.showSnackBar(
           const SnackBar(content: Text('Tippspiel verlassen.')),
@@ -486,11 +494,19 @@ class _TipSettingsScreen extends ConsumerWidget {
               _Zeile(
                 icon: Icons.logout_outlined,
                 titel: 'Tippspiel verlassen',
-                untertitel: isCreator
+                // **Im Globalen Tippspiel ohne Übergabe** (09.11.2026, 0164):
+                // Es gehört allen, der Ersteller bleibt Betreiber. Vorher
+                // hätte er die Runde aller Nutzer an einen Zufälligen
+                // abgeben müssen, um selbst nicht mehr mitzutippen.
+                untertitel: round.istGlobal
+                    ? 'Nicht mehr mittippen; „Mitspielen" holt dich zurück'
+                    : isCreator
                     ? 'Adminrechte an ein Mitglied übergeben und austreten'
                     : 'Entfernt dich aus der Liga; deine Tipps werden gelöscht',
                 gefahr: true,
-                onTap: isCreator ? confirmLeaveAsAdmin : confirmLeave,
+                onTap: isCreator && !round.istGlobal
+                    ? confirmLeaveAsAdmin
+                    : confirmLeave,
               ),
               // Die Tippliga gehört allen und ist nicht löschbar (auch
               // serverseitig, Migration 0150).

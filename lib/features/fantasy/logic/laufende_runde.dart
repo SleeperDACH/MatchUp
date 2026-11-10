@@ -54,9 +54,11 @@ Map<int, Map<String, PlayerMatchStats>> mitLaufenderRunde({
 
   final meiner = vereinKanonisch(verein);
   final sein = dieser
-      .where((f) =>
-          vereinKanonisch(f.home.name) == meiner ||
-          vereinKanonisch(f.away.name) == meiner)
+      .where(
+        (f) =>
+            vereinKanonisch(f.home.name) == meiner ||
+            vereinKanonisch(f.away.name) == meiner,
+      )
       .firstOrNull;
   final fertig = sein != null ? durch(sein) : dieser.every(durch);
 
@@ -69,4 +71,35 @@ Map<int, Map<String, PlayerMatchStats>> mitLaufenderRunde({
   final seine = quelle[spielerId];
   aus[runde] = {spielerId: ?seine};
   return aus;
+}
+
+/// **Läuft sein Spiel gerade?** Angepfiffen, aber noch nicht durch — dieselbe
+/// Abpfiff-Regel wie [mitLaufenderRunde] (Status oder zwei Stunden nach
+/// Anpfiff), damit eine Zeile nie zugleich live und gewertet ist.
+///
+/// Gemeldet: „Die Live-Punkte der Spieler im Leistung-Tab funktionieren
+/// nicht." [mitLaufenderRunde] lässt die Runde bis zum Abpfiff bewusst weg —
+/// für Summe und Schnitt richtig, für die Tabelle nicht: Dort soll die Zahl
+/// mitlaufen, rot wie überall, wo etwas live ist.
+bool seinSpielLaeuft({
+  required int? runde,
+  required String verein,
+  required List<Fixture> spiele,
+  DateTime? jetzt,
+}) {
+  if (runde == null) return false;
+  final uhr = jetzt ?? DateTime.now();
+  final meiner = vereinKanonisch(verein);
+  final sein = spiele
+      .where(
+        (f) =>
+            f.round == runde &&
+            (vereinKanonisch(f.home.name) == meiner ||
+                vereinKanonisch(f.away.name) == meiner),
+      )
+      .firstOrNull;
+  if (sein == null) return false;
+  if (sein.status == FixtureStatus.finished) return false;
+  return !uhr.isBefore(sein.kickoff) &&
+      uhr.isBefore(sein.kickoff.add(const Duration(hours: 2)));
 }

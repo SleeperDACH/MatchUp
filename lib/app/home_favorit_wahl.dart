@@ -40,7 +40,11 @@ bool zeigeFavoritWahl({
   required bool geladen,
   required List<Favorite> favoriten,
 }) =>
-    angemeldet && geladen && !favoriten.any((f) => f.type == FavoriteType.team);
+        angemeldet &&
+    geladen &&
+    // Eine Nationalmannschaft ersetzt keinen Verein: Die Leiste fragt nach
+    // dem Verein, dessen Spiele die Kopfkarte das ganze Jahr trägt.
+    !favoriten.any((f) => f.type == FavoriteType.team && !isNationFavorite(f));
 
 class FavoritWahl extends ConsumerWidget {
   const FavoritWahl({super.key});

@@ -15,12 +15,14 @@ import '../logic/tip_weeks.dart';
 import '../models/tip.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
-import 'bonus_tips_screen.dart';
-import 'bonus_tips_table_screen.dart';
 import 'round_selector.dart';
 import 'tip_member_profile_sheet.dart';
 import '../../../app/widgets/karte.dart';
 import '../../../app/widgets/punktzahl.dart';
+import '../../../app/typografie.dart';
+import '../../../app/widgets/kapitelmarke.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
+import 'package:intl/intl.dart';
 import '../../../core/data/sportmonks/sportmonks_provider.dart';
 
 /// Signalfarbe für laufende Spiele (Spielstand & vorläufige Punkte).
@@ -28,8 +30,10 @@ import '../../../core/data/sportmonks/sportmonks_provider.dart';
 /// Feste Höhen für die zwei nebeneinanderliegenden Tabellenhälften
 /// (eingefrorene Namen + scrollende Ergebnisse) — nur so fluchten die
 /// Zeilen über die Trennlinie hinweg.
-const double _headingHeight = 52;
-const double _rowHeight = 48;
+const double _kopfHoehe = 52;
+const double _zeilenHoehe = 50;
+const double _spaltenBreite = 54;
+const double _namenBreite = 178;
 
 /// Tipp-Tabelle à la Kicktipp: alle Mitglieder als Zeilen, die Spiele
 /// der gewählten Runde als Spalten. Fremde Tipps erscheinen erst nach
@@ -287,13 +291,6 @@ class _TableBodyState extends ConsumerState<_TableBody> {
           )
         : const <String, int>{};
 
-    // **Die eigene Zeile wird gehoben, nicht gefärbt.** Eine grüne Fläche
-    // sagte dasselbe wie der fette Name — zweimal, und in der Farbe, die
-    // sonst „läuft gerade" heißt.
-    Color? rowColor(String userId) => userId == myUserId
-        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
-        : null;
-
     final tipByMemberAndFixture = {
       for (final t in tips) '${t.userId}|${t.fixtureId}': t,
     };
@@ -302,153 +299,140 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     // löst selbst keinen Rebuild aus).
     _syncAutoRefresh(fixtures.any((f) => f.status == FixtureStatus.live));
 
-    return RefreshIndicator(
-      onRefresh: () async => _refresh(),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(8, 0, 8, 24),
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          if (round.scoring.bonusTips.isNotEmpty) _BonusTipsEntry(round: round),
-          Karte(
-            padding: EdgeInsets.zero,
-            // Zwei fluchtende Tabellen: links der eingefrorene Namens-/Pkt.-
-            // Block (scrollt nicht mit), rechts die Ergebnis-Spalten als
-            // horizontaler Scroll. Gleiche feste Zeilenhöhen halten beide
-            // Hälften zeilengenau auf einer Linie.
+    final spiele = [...fixtures]
+      ..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+    final scheme = Theme.of(context).colorScheme;
+    final linie = scheme.onSurface.withValues(alpha: 0.07);
+    final ichFlaeche = scheme.onSurface.withValues(alpha: 0.05);
+
+    // **Zwei fluchtende Hälften in einer Karte** (Format seit jeher, Aussehen
+    // seit 10.11.2026): links Platz, Name und Summe eingefroren, rechts die
+    // Spiele zum Querwischen. Gleiche feste Höhen halten die Zeilen über die
+    // Trennlinie hinweg auf einer Linie. Eigene Zeilen statt `DataTable` —
+    // dessen Kopf, Abstände und Linien ließen sich nicht an die App anpassen.
+    BoxDecoration zeile(String userId, {bool erste = false}) => BoxDecoration(
+          color: userId == myUserId ? ichFlaeche : null,
+          border: erste ? null : Border(top: BorderSide(color: linie)),
+        );
+
+    final links = Column(
+      children: [
+        SizedBox(
+          height: _kopfHoehe,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      right: BorderSide(color: Theme.of(context).dividerColor),
-                    ),
-                  ),
-                  child: DataTable(
-                    columnSpacing: 4,
-                    horizontalMargin: 6,
-                    headingRowHeight: _headingHeight,
-                    // **Kein gefüllter Kopfbalken.** Der hellgraue Block war
-                    // das einzige Material-Element auf dem Schirm, das seine
-                    // Herkunft nicht verbarg. Die Trennung übernimmt die
-                    // Haarlinie, die `DataTable` ohnehin zieht.
-                    headingRowColor: const WidgetStatePropertyAll(
-                      Colors.transparent,
-                    ),
-                    dataRowMinHeight: _rowHeight,
-                    dataRowMaxHeight: _rowHeight,
-                    columns: const [
-                      DataColumn(label: Text('Spieler')),
-                      DataColumn(label: Text('Pkt.'), numeric: true),
-                    ],
-                    rows: [
-                      for (final member in members)
-                        DataRow(
-                          color: WidgetStatePropertyAll(
-                            rowColor(member.userId),
-                          ),
-                          cells: [
-                            DataCell(
-                              _NameCell(
-                                rank: currentRanks[member.userId] ?? 0,
-                                movement: hasPrior
-                                    ? (priorRanks[member.userId] ?? 0) -
-                                          (currentRanks[member.userId] ?? 0)
-                                    : null,
-                                username: member.display,
-                                isMe: member.userId == myUserId,
-                                avatar: (
-                                  url: member.avatarUrl,
-                                  emoji: member.avatarEmoji,
-                                  color: member.avatarColor,
-                                ),
-                              ),
-                              onTap: () => showTipMemberProfile(
-                                context,
-                                round: round,
-                                member: member,
-                              ),
-                            ),
-                            DataCell(
-                              // Die Gesamtpunkte sind der Anker der Zeile —
-                              // sie stehen kräftig, aber nicht grün. Und mit
-                              // gleichbreiten Ziffern, damit die Spalte
-                              // untereinander flucht.
-                              Text(
-                                '${totals[member.userId] ?? 0}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontFeatures: gleichbreiteZiffern,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                if (fixtures.isNotEmpty)
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: DataTable(
-                        columnSpacing: 10,
-                        horizontalMargin: 6,
-                        headingRowHeight: _headingHeight,
-                        headingRowColor: const WidgetStatePropertyAll(
-                          Colors.transparent,
-                        ),
-                        dataRowMinHeight: _rowHeight,
-                        dataRowMaxHeight: _rowHeight,
-                        columns: [
-                          for (final fixture in fixtures)
-                            DataColumn(label: _FixtureHeader(fixture: fixture)),
-                        ],
-                        rows: [
-                          for (final member in members)
-                            DataRow(
-                              color: WidgetStatePropertyAll(
-                                rowColor(member.userId),
-                              ),
-                              cells: [
-                                for (final fixture in fixtures)
-                                  DataCell(
-                                    _TipCell(
-                                      tip:
-                                          tipByMemberAndFixture['${member.userId}|${fixture.id}'],
-                                      fixture: fixture,
-                                      hasHiddenTip: tipPresence.contains(
-                                        '${member.userId}|${fixture.id}',
-                                      ),
-                                      rules: rules,
-                                      odds: frozenOdds[fixture.id],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
+                Expanded(child: _KopfText('Spieler')),
+                _KopfText('Pkt.'),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Text(
-              'Punkte: ${rules.exact} Ergebnis · ${rules.goalDiff} Tordifferenz '
-              '· ${rules.tendency} Tendenz'
-              '${rules.oddsBonus ? ' · ★ Quoten-Bonus' : ''} — '
-              'fremde Tipps ab Anstoß sichtbar',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        for (final m in members)
+          InkWell(
+            onTap: () =>
+                showTipMemberProfile(context, round: round, member: m),
+            child: Container(
+              height: _zeilenHoehe,
+              padding: const EdgeInsets.only(left: 10, right: 10),
+              decoration: zeile(m.userId),
+              child: _NameCell(
+                rank: currentRanks[m.userId] ?? 0,
+                movement: hasPrior
+                    ? (priorRanks[m.userId] ?? 0) -
+                          (currentRanks[m.userId] ?? 0)
+                    : null,
+                username: m.display,
+                isMe: m.userId == myUserId,
+                avatar: (
+                  url: m.avatarUrl,
+                  emoji: m.avatarEmoji,
+                  color: m.avatarColor,
+                ),
+                punkte: totals[m.userId] ?? 0,
               ),
             ),
           ),
-          if (round.scoring.bonusTips.isNotEmpty)
-            _BonusTableEntry(round: round),
+      ],
+    );
+
+    final rechts = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Column(
+        children: [
+          SizedBox(
+            height: _kopfHoehe,
+            child: Row(
+              children: [
+                for (final f in spiele) _FixtureHeader(fixture: f),
+              ],
+            ),
+          ),
+          for (final m in members)
+            Container(
+              height: _zeilenHoehe,
+              decoration: zeile(m.userId),
+              child: Row(
+                children: [
+                  for (final f in spiele)
+                    SizedBox(
+                      width: _spaltenBreite,
+                      child: _TipCell(
+                        tip: tipByMemberAndFixture['${m.userId}|${f.id}'],
+                        fixture: f,
+                        hasHiddenTip: tipPresence.contains(
+                          '${m.userId}|${f.id}',
+                        ),
+                        rules: rules,
+                        odds: frozenOdds[f.id],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+
+    return RefreshIndicator(
+      onRefresh: () async => _refresh(),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          Kapitelmarke(
+            'Tabelle',
+            obenLuft: Abstand.s,
+            info: (
+              'Punkte',
+              'Exaktes Ergebnis ${rules.exact}, richtige Tordifferenz '
+                  '${rules.goalDiff}, richtige Tendenz ${rules.tendency}'
+                  '${rules.oddsBonus ? ', dazu der Quoten-Bonus (★)' : ''}. '
+                  'Die Tipps der anderen sind ab Anstoß sichtbar — vorher '
+                  'zeigt ein Schloss, dass schon getippt ist.',
+            ),
+          ),
+          Container(
+            decoration: kartenDeko(context),
+            clipBehavior: Clip.antiAlias,
+            child: Material(
+              color: Colors.transparent,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: _namenBreite,
+                    decoration: BoxDecoration(
+                      border: Border(right: BorderSide(color: linie)),
+                    ),
+                    child: links,
+                  ),
+                  if (spiele.isNotEmpty) Expanded(child: rechts),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -470,14 +454,32 @@ class _TableBodyState extends ConsumerState<_TableBody> {
   }
 }
 
-/// Namens-Zelle der Tabelle: Platzierung, Bewegungspfeil (ggü. dem Stand vor
-/// dem Spieltag) und Spielername. Platz 1 wird golden hervorgehoben.
+/// Spaltenkopf-Beschriftung („Spieler", „Pkt.").
+class _KopfText extends StatelessWidget {
+  const _KopfText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Text(
+        text,
+        style: TextStyle(
+          fontSize: Schrift.label,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      );
+}
+
+/// Namens-Zelle: Platz (1 in Gold), Bewegung, Profilbild, Name — und die
+/// Summe am rechten Rand, kräftig und mit gleichbreiten Ziffern.
 class _NameCell extends StatelessWidget {
   const _NameCell({
     required this.rank,
     required this.movement,
     required this.username,
     required this.isMe,
+    required this.punkte,
     this.avatar,
   });
 
@@ -487,81 +489,80 @@ class _NameCell extends StatelessWidget {
   final int? movement;
   final String username;
   final bool isMe;
+  final int punkte;
   final AvatarInfo? avatar;
-
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: 118,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 14,
+    return Row(
+      children: [
+        SizedBox(
+          width: 16,
+          child: Text(
+            '$rank',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: Schrift.label,
+              color: rank == 1 ? context.farben.gold : scheme.onSurfaceVariant,
+              fontFeatures: gleichbreiteZiffern,
+            ),
+          ),
+        ),
+        SizedBox(width: 10, child: _arrow(context)),
+        AppAvatar(
+          imageUrl: avatar?.url,
+          emoji: avatar?.emoji,
+          colorHex: avatar?.color,
+          fallbackText: username,
+          size: 22,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          // **Namen schrumpfen, sie brechen nicht ab** — man soll Leute
+          // wiedererkennen; lieber eine Spur kleiner als „Spitzenr…".
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: Text(
-              '$rank',
-              textAlign: TextAlign.center,
+              username,
+              maxLines: 1,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-                color: rank == 1 ? context.farben.gold : scheme.onSurfaceVariant,
+                fontSize: Schrift.text,
+                fontWeight: isMe ? FontWeight.w800 : FontWeight.w500,
               ),
             ),
           ),
-          SizedBox(width: 12, child: _arrow(context)),
-          AppAvatar(
-            imageUrl: avatar?.url,
-            emoji: avatar?.emoji,
-            colorHex: avatar?.color,
-            fallbackText: username,
-            size: 20,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '$punkte',
+          style: const TextStyle(
+            fontSize: Schrift.text,
+            fontWeight: FontWeight.w800,
+            fontFeatures: gleichbreiteZiffern,
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            // **Namen schrumpfen, sie brechen nicht ab.** „Spitzenreiter04"
-            // stand hier als „Spitzenr…", „lennartruepke" als „lennartr…" —
-            // in einer Tabelle, in der man Leute wiedererkennen soll. Dieselbe
-            // Regel wie im Fantasy-Bereich: lieber eine Spur kleiner als
-            // halbiert.
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                username,
-                maxLines: 1,
-                style: isMe
-                    ? const TextStyle(fontWeight: FontWeight.bold)
-                    : null,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _arrow(BuildContext context) {
     final m = movement;
-    if (m == null) return const SizedBox.shrink();
-    if (m > 0) {
-      return Icon(Icons.arrow_drop_up, color: context.farben.gruen, size: 20);
-    }
-    if (m < 0) {
-      return Icon(Icons.arrow_drop_down, color: context.farben.rot, size: 20);
-    }
-    return const Icon(Icons.remove, color: Colors.grey, size: 10);
+    if (m == null || m == 0) return const SizedBox.shrink();
+    return Icon(
+      m > 0 ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+      color: m > 0 ? context.farben.gruen : context.farben.rot,
+      size: 18,
+    );
   }
 }
 
-/// Spaltenkopf: Teamkürzel + Spielstand.
+/// Spaltenkopf: Vereinskürzel als Beschriftung, darunter der Stand.
 ///
-/// **Rot sagt „läuft", ohne es hinzuschreiben.** Unter dem Stand stand
-/// zusätzlich „● LIVE" in 9 Punkt — dieselbe Auskunft ein zweites Mal, und in
-/// einer Kopfzeile, die schon Paarung und Ergebnis trägt, war es die dritte
-/// Zeile für zwei Angaben. Gemeldet als „das Live bitte wegnehmen, es reicht,
-/// wenn das Ergebnis rot ist". Derselbe Grund, aus dem im Live-Tab „LIVE" aus
-/// der Kopfzeile geflogen ist und „Anstoß" unter der Anstoßzeit.
+/// **Rot sagt „läuft", ohne es hinzuschreiben** (gemeldet: „das Live bitte
+/// wegnehmen, es reicht, wenn das Ergebnis rot ist"). Ohne Stand steht der
+/// Anstoßtag — eine Spalte voller Schlösser sagt sonst nicht, wann es losgeht.
 class _FixtureHeader extends StatelessWidget {
   const _FixtureHeader({required this.fixture});
 
@@ -569,36 +570,42 @@ class _FixtureHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final small = Theme.of(context).textTheme.labelSmall;
-    final live = fixture.status == FixtureStatus.live;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Die Paarung ist die **Beschriftung** der Spalte, das Ergebnis die
-        // Auskunft. Vorher standen beide gleich laut übereinander.
-        Text(
-          '${fixture.home.shortName} – ${fixture.away.shortName}',
-          style: small?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+    final scheme = Theme.of(context).colorScheme;
+    final f = fixture;
+    final live = f.status == FixtureStatus.live;
+    return SizedBox(
+      width: _spaltenBreite,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (final name in [f.home.name, f.away.name])
+            Text(
+              vereinsKuerzel(name),
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: Schrift.mikro,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+                height: 1.25,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          const SizedBox(height: 2),
+          Text(
+            f.hasScore
+                ? '${f.homeScore}:${f.awayScore}'
+                : DateFormat('E', 'de_DE').format(f.kickoff.toLocal()),
+            style: TextStyle(
+              fontSize: f.hasScore ? Schrift.text : Schrift.label,
+              fontWeight: f.hasScore ? FontWeight.w800 : FontWeight.w600,
+              color: live
+                  ? context.farben.rot
+                  : (f.hasScore ? null : scheme.onSurfaceVariant),
+              fontFeatures: gleichbreiteZiffern,
+            ),
           ),
-          textAlign: TextAlign.center,
-        ),
-        // Ein Stand, eine Zeile. Rot heißt „läuft"; steht noch kein Stand
-        // fest, bleibt der Strich — auch für ein laufendes Spiel, denn „LIVE"
-        // statt einer Zahl wäre wieder ein Wort an der Stelle eines
-        // Ergebnisses.
-        Text(
-          fixture.hasScore
-              ? '${fixture.homeScore}:${fixture.awayScore}'
-              : '–',
-          style: small?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: live ? context.farben.rot : null,
-            fontFeatures: gleichbreiteZiffern,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -622,26 +629,36 @@ class _TipCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Kein sichtbarer Tipp: hat der Gegner (verborgen) getippt -> Schloss,
-    // sonst leere Zelle — wie bei Kicktipp.
+    final scheme = Theme.of(context).colorScheme;
+    // Kein sichtbarer Tipp: verborgen getippt → Schloss, sonst ein leiser
+    // Strich (eine leere Zelle sah aus wie ein Ladefehler).
     if (tip == null) {
-      return hasHiddenTip
-          ? Center(
-              child: Icon(
+      return Center(
+        child: hasHiddenTip
+            ? Icon(
                 Icons.lock_outline,
                 size: 14,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: scheme.onSurfaceVariant,
+              )
+            : Text(
+                '–',
+                style: TextStyle(
+                  color: scheme.onSurface.withValues(alpha: 0.25),
+                ),
               ),
-            )
-          : const SizedBox.shrink();
+      );
     }
-    final scheme = Theme.of(context).colorScheme;
 
-    final text = Text('${tip!.homeGoals}:${tip!.awayGoals}');
+    final text = Text(
+      '${tip!.homeGoals}:${tip!.awayGoals}',
+      style: const TextStyle(
+        fontSize: Schrift.text,
+        fontWeight: FontWeight.w700,
+        fontFeatures: gleichbreiteZiffern,
+      ),
+    );
     if (!fixture.hasScore) return Center(child: text);
 
-    // Live-Spiele werten vorläufig mit; Punkte erscheinen orange, bis
-    // das Spiel beendet ist.
     final live = fixture.status == FixtureStatus.live;
     final base = scoreTip(
       tipHome: tip!.homeGoals,
@@ -663,100 +680,40 @@ class _TipCell extends StatelessWidget {
           )
         : 0;
     final points = base + bonus;
-    // **Grün nur für den Volltreffer.** Vorher trug jede Zeile mit Punkten das
-    // Markengrün — bei sechs Mitgliedern und vier Spielen glühte die halbe
-    // Tabelle, obwohl Grün in dieser App „hier läuft gerade etwas" heißt und
-    // hier nichts läuft. Jetzt: das exakte Ergebnis grün, alles andere ruhig,
-    // null Punkte gedämpft. Der Unterschied zwischen 3 und 2 Punkten steht in
-    // der Zahl; er braucht keine zweite Spur.
+    // **Grün nur für den Volltreffer**, null Punkte gedämpft, laufend rot.
+    // Die Punkte stehen als kleine Marke unter dem Tipp: getönte Fläche in
+    // der Signalfarbe, damit der Blick über eine Spalte die Treffer findet.
     final exakt = base >= rules.exact;
-    final color = live
+    final farbe = live
         ? context.farben.rot
         : points == 0
         ? scheme.onSurfaceVariant
         : exakt
-        ? scheme.primary
+        ? context.farben.gruen
         : scheme.onSurface;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           text,
-          Text(
-            // Der Quoten-Bonus wird mit einem Stern markiert (z. B. „+9 ★").
-            bonus > 0 ? '+$points ★' : '+$points',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: color,
+          const SizedBox(height: 2),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: points == 0 ? null : farbe.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              bonus > 0 ? '+$points ★' : '+$points',
+              style: TextStyle(
+                fontSize: Schrift.mikro,
+                fontWeight: FontWeight.w800,
+                color: farbe,
+                fontFeatures: gleichbreiteZiffern,
+              ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Einstiegskarte zu den Bonustipps (nur wenn die Runde welche hat).
-class _BonusTipsEntry extends StatelessWidget {
-  const _BonusTipsEntry({required this.round});
-
-  final TipRound round;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // **Kein farbiger Rand auf farbiger Fläche.** Die Karte trug beides —
-    // Grün bei 10 % gefüllt und Grün bei 40 % als Rahmen — und rief damit
-    // lauter als alles andere auf dem Schirm. Tiefe entsteht auf dunklem Grund
-    // über die Fläche; die Zugehörigkeit trägt der Hauch aus der Ecke,
-    // dieselbe Behandlung wie bei den Ligakarten und im Fantasy-Bereich.
-    return Karte(
-      hauch: scheme.primary,
-      padding: EdgeInsets.zero,
-      onTap: () => Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => BonusTipsScreen(round: round))),
-      child: ListTile(
-        leading: Icon(Icons.emoji_events_outlined, color: scheme.primary),
-        title: const Text(
-          'Bonustipps',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: const Text(
-          'Saison-Prognosen abgeben — vor dem ersten Spieltag.',
-        ),
-        trailing: const Icon(Icons.chevron_right),
-      ),
-    );
-  }
-}
-
-/// Einstiegskarte zur Bonustipp-Tabelle (2. Tabelle, extra Fenster).
-class _BonusTableEntry extends StatelessWidget {
-  const _BonusTableEntry({required this.round});
-
-  final TipRound round;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Karte(
-      padding: EdgeInsets.zero,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => BonusTipsTableScreen(round: round)),
-      ),
-      child: ListTile(
-        leading: Icon(
-          Icons.leaderboard_outlined,
-          color: scheme.onSurfaceVariant,
-        ),
-        title: const Text(
-          'Bonustipp-Tabelle',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: const Text('Die Saison-Prognosen aller Mitglieder.'),
-        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }

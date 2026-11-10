@@ -87,12 +87,15 @@ class _MatchUpSplashState extends ConsumerState<MatchUpSplash>
 
   late final AnimationController _intro = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1250),
+    // 850 statt 1250 ms (07.11.2026, „die Ladezeit dauert mir zu lange"):
+    // Seit die Daten gleichzeitig laden, sind sie nach rund einer Sekunde da —
+    // die Animation war damit die Untergrenze des Startschirms.
+    duration: const Duration(milliseconds: 850),
   )..forward();
 
   late final AnimationController _abblende = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 320),
+    duration: const Duration(milliseconds: 250),
   );
 
   Timer? _notbremse;

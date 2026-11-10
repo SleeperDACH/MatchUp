@@ -262,6 +262,7 @@ class SupabaseSportmonksProvider implements SportsDataProvider {
       status: status,
       homeScore: (j['home_score'] as num?)?.toInt(),
       awayScore: (j['away_score'] as num?)?.toInt(),
+      minute: (j['minute'] as num?)?.toInt(),
     );
   }
 

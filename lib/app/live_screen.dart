@@ -31,6 +31,7 @@ Color leagueColor(String leagueId) => switch (leagueId) {
   'liga3' => const Color(0xFFEF7D00), // Orange
   'dfb_pokal' => const Color(0xFFFFC83D), // Pokal-Gold
   'frauen_bundesliga' => const Color(0xFFE0218A), // Magenta
+  'deutschland' => const Color(0xFF8A8A8A), // neutral, das Logo trägt
   _ => const Color(0xFF4ADE6A),
 };
 
@@ -110,7 +111,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     final now = DateTime.now();
     final live = ref.read(liveFixturesProvider).valueOrNull ?? const {};
     final betroffen = <String>[];
-    for (final l in Leagues.all) {
+    for (final l in Leagues.liveTab) {
       final fx = ref.read(leagueSeasonFixturesProvider(l.id)).valueOrNull;
       if (fx == null) continue;
       if (fx.any((f) {
@@ -123,8 +124,13 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     }
     if (betroffen.isEmpty) return;
     ref.invalidate(liveFixturesProvider);
-    if (++_takte % _spielplanAlleTakte == 0) {
-      for (final id in betroffen) {
+    final voll = ++_takte % _spielplanAlleTakte == 0;
+    for (final id in betroffen) {
+      // OpenLigaDB-Wettbewerbe (Länderspiele) haben keinen Live-Takt der
+      // Edge Function: Ihr Stand steckt im Spielplan selbst. Deshalb alle
+      // drei Takte (30 s) neu — ein einziger, kostenloser Abruf.
+      final eigenerStand = Leagues.byId(id).providerId == 'openligadb';
+      if (voll || (eigenerStand && _takte % 3 == 0)) {
         ref.invalidate(leagueSeasonFixturesProvider(id));
       }
     }
@@ -134,7 +140,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   Widget build(BuildContext context) {
     // Der Live-Tab zeigt immer alle Wettbewerbe (in Registry-Reihenfolge) —
     // kein Filtern/Sortieren nach Favoriten mehr.
-    final leagueIds = [for (final l in Leagues.all) l.id];
+    final leagueIds = [for (final l in Leagues.liveTab) l.id];
 
     // Fixtures der relevanten Ligen einsammeln (best effort).
     final items = <_LiveItem>[];
@@ -265,7 +271,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     // Reihenfolge der Boxen = Registry-Reihenfolge (1. BL, 2. BL, 3. Liga, …),
     // nicht die zufällige Reihenfolge der Anstoßzeiten.
     final leagueIds = [
-      for (final l in Leagues.all)
+      for (final l in Leagues.liveTab)
         if (byLeague.containsKey(l.id)) l.id,
     ];
 
@@ -313,35 +319,25 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // **Je Anstoßzeit ein Block, nicht je Zeile eine
-                          // Uhrzeit.** An einem vollen Samstag standen fünfmal
-                          // „15:30" und dreimal „beendet" untereinander — eine
-                          // Wiederholung, die die Zeilen nicht unterscheidet
-                          // und die Mitte jeder Zeile besetzt hält. Dieselbe
-                          // Entscheidung wie im Tippspiel-Tab.
-                          for (final block in _zeitbloecke(byLeague[id]!)) ...[
-                            _ZeitKopf(block: block),
-                            for (var i = 0; i < block.spiele.length; i++) ...[
-                              if (i > 0)
-                                Divider(
-                                  height: 0.8,
-                                  thickness: 0.8,
-                                  indent: 12,
-                                  endIndent: 12,
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.07),
-                                ),
-                              _SpielZeile(
-                                item: block.spiele[i],
-                                // „beendet" steht schon im Kopf des Blocks;
-                                // ein zweites Mal je Zeile wäre genau die
-                                // Wiederholung, die hier abgeschafft wurde.
-                                zustandImKopf:
-                                    block.zustand != _Blockzustand.offen,
+                          // **Die Uhrzeit steht zwischen den Wappen, nicht
+                          // über dem Block** (09.11.2026, auf Ansage). Vorher
+                          // gab es je Anstoßzeit einen Kopf („15:30 · läuft")
+                          // und in der Zeile einen Strich. Jetzt trägt die
+                          // Mitte der Zeile, was gerade zählt: vor dem Anpfiff
+                          // die Uhrzeit, danach nur noch das Ergebnis.
+                          for (final (i, e) in byLeague[id]!.indexed) ...[
+                            if (i > 0)
+                              Divider(
+                                height: 0.8,
+                                thickness: 0.8,
+                                indent: 12,
+                                endIndent: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.07),
                               ),
-                            ],
+                            _SpielZeile(item: e),
                           ],
-                          const SizedBox(height: 4),
                         ],
                       ),
                     ),
@@ -356,120 +352,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     // Ausdrücklich frisch: Der Live-Tab ist die Stelle, an der ein veralteter
     // Spielstand am meisten stört.
     neuLaden(() {
-      for (final l in Leagues.all) {
+      for (final l in Leagues.liveTab) {
         ref.invalidate(leagueSeasonFixturesProvider(l.id));
       }
     });
-  }
-}
-
-/// Was ein Zeitblock als Ganzes sagt.
-enum _Blockzustand {
-  /// Kein Spiel hat angefangen — der Kopf nennt nur die Uhrzeit.
-  offen,
-
-  /// Mindestens eins läuft. „läuft" schlägt „beendet": Es ist die Auskunft,
-  /// für die es diesen Tab gibt.
-  laeuft,
-
-  /// Alle Spiele des Blocks sind abgepfiffen.
-  beendet,
-}
-
-/// Alle Spiele eines Wettbewerbs mit **demselben Anstoß**.
-class _Zeitblock {
-  const _Zeitblock(this.anstoss, this.spiele, this.zustand);
-
-  final DateTime anstoss;
-  final List<_LiveItem> spiele;
-  final _Blockzustand zustand;
-}
-
-/// Schneidet die (nach Anstoß sortierte) Liste eines Wettbewerbs in Blöcke.
-///
-/// Verglichen wird auf die **Minute**, nicht auf den Zeitstempel: Dieselbe
-/// Partie steht je nach Quelle mit unterschiedlichen Sekunden im Spielplan,
-/// und zwei Spiele um 15:30 gehören zusammen, auch wenn eine Quelle
-/// 15:30:00 und die andere 15:30:07 liefert.
-List<_Zeitblock> _zeitbloecke(List<_LiveItem> spiele) {
-  final blocks = <_Zeitblock>[];
-  var offen = <_LiveItem>[];
-  DateTime? aktuell;
-
-  void abschliessen() {
-    if (offen.isEmpty) return;
-    final zustand = offen.any((e) => e.fixture.status == FixtureStatus.live)
-        ? _Blockzustand.laeuft
-        : offen.every((e) => e.fixture.status == FixtureStatus.finished)
-        ? _Blockzustand.beendet
-        : _Blockzustand.offen;
-    blocks.add(_Zeitblock(aktuell!, offen, zustand));
-    offen = <_LiveItem>[];
-  }
-
-  for (final e in spiele) {
-    final k = e.fixture.kickoff.toLocal();
-    final minute = DateTime(k.year, k.month, k.day, k.hour, k.minute);
-    if (aktuell == null || minute != aktuell) {
-      abschliessen();
-      aktuell = minute;
-    }
-    offen.add(e);
-  }
-  abschliessen();
-  return blocks;
-}
-
-/// Der Kopf eines Zeitblocks: die Anstoßzeit, und was der Block gerade tut.
-///
-/// Er ist bewusst leiser als der Wettbewerbskopf darüber — zwei gleich laute
-/// Überschriften übereinander ergeben keine Ordnung, sondern zwei Anfänge.
-class _ZeitKopf extends StatelessWidget {
-  const _ZeitKopf({required this.block});
-
-  final _Zeitblock block;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final laeuft = block.zustand == _Blockzustand.laeuft;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
-      child: Row(
-        children: [
-          Text(
-            DateFormat('HH:mm').format(block.anstoss),
-            style: TextStyle(
-              fontSize: Schrift.label,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.2,
-              fontFeatures: const [FontFeature.tabularFigures()],
-              color: laeuft
-                  ? context.farben.rot
-                  : scheme.onSurface.withValues(alpha: 0.72),
-            ),
-          ),
-          if (block.zustand != _Blockzustand.offen) ...[
-            const SizedBox(width: 7),
-            if (laeuft) ...[
-              const PulsingDot(size: 6),
-              const SizedBox(width: 5),
-            ],
-            Text(
-              laeuft ? 'läuft' : 'beendet',
-              style: TextStyle(
-                fontSize: Schrift.label,
-                fontWeight: FontWeight.w600,
-                color: laeuft
-                    ? context.farben.rot
-                    : scheme.onSurfaceVariant.withValues(alpha: 0.75),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }
 
@@ -644,20 +530,15 @@ class _LigaKopf extends StatelessWidget {
 /// „Anstoß" unter der Uhrzeit ist weg — das sagte dasselbe zweimal. „beendet"
 /// bleibt, denn einem 3:2 sieht man nicht an, ob es das Endergebnis ist.
 class _SpielZeile extends StatelessWidget {
-  const _SpielZeile({required this.item, this.zustandImKopf = false});
+  const _SpielZeile({required this.item});
 
   final _LiveItem item;
-
-  /// Sagt der Kopf des Zeitblocks schon „läuft" oder „beendet", trägt die
-  /// Zeile es nicht noch einmal.
-  final bool zustandImKopf;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final f = item.fixture;
     final live = f.status == FixtureStatus.live;
-    final finished = f.status == FixtureStatus.finished;
 
     // **Keine rote Wäsche mehr über der ganzen Zeile.** Sie sollte laufende
     // Spiele hervorheben und tat an einem echten Samstag das Gegenteil: Fünf
@@ -665,7 +546,7 @@ class _SpielZeile extends StatelessWidget {
     // und hervorgehoben war damit nichts mehr — derselbe Fehler wie in der
     // Tipp-Tabelle, die einmal komplett grün war. „Läuft" sagen jetzt drei
     // Dinge, die auch nebeneinander tragen: das rote Ergebnis, der pulsierende
-    // Punkt am Rand und der Kopf des Zeitblocks.
+    // Punkt am Rand.
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -673,7 +554,7 @@ class _SpielZeile extends StatelessWidget {
           MaterialPageRoute(builder: (_) => MatchDetailScreen(fixtureId: f.id)),
         ),
         child: Padding(
-          // **Enger als vorher (12 → 10).** Die Zeitköpfe kosten Höhe, und
+          // **Enger als vorher (12 → 10).** Damals kosteten Zeitköpfe Höhe, und
           // die soll nicht zulasten dessen gehen, was auf den Schirm passt:
           // An einem vollen Samstag standen 3. Liga und Frauen-Bundesliga
           // sonst komplett unterhalb des Bildes.
@@ -736,28 +617,17 @@ class _SpielZeile extends StatelessWidget {
                           ),
                         )
                       else
-                        // **Kein zweites „18:30" in der Zeile.** Die Uhrzeit
-                        // steht im Kopf des Blocks; hier bliebe sonst dieselbe
-                        // Zahl so oft stehen, wie der Block Spiele hat. Der
-                        // Strich hält die Spalte besetzt, damit die Namen über
-                        // alle Zeilen fluchten — und er ist in dieser App
-                        // ohnehin das Zeichen für „hat noch nicht gespielt".
+                        // **Vor dem Anpfiff die Uhrzeit** an der Stelle, an
+                        // der später das Ergebnis steht. Sobald gespielt
+                        // wird, interessiert sie niemanden mehr — dann nur
+                        // noch der Stand, auch nach dem Abpfiff.
                         Text(
-                          '–',
+                          DateFormat('HH:mm').format(f.kickoff.toLocal()),
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: Schrift.text,
                             fontWeight: FontWeight.w700,
-                            color: scheme.onSurface.withValues(alpha: 0.28),
-                          ),
-                        ),
-                      if (finished && !zustandImKopf)
-                        Text(
-                          'beendet',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant.withValues(
-                              alpha: 0.8,
-                            ),
+                            color: scheme.onSurfaceVariant,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                     ],

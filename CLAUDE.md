@@ -112,9 +112,32 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   Steuerelemente darin bringen **keine eigene Fläche** mit (`filled: false`
   bei Textfeldern), sonst steht ein Kasten im Kasten.
 - **Navigation:** App-Shell `MainShell` mit unterer Leiste **Home / Live /
-  Profil**. Eine Tipprunde öffnet `LeagueScreen` mit Tabs **Tippen / Tabelle
-  / Liga** (`LeagueHubScreen` = ligainterner Chat + Regeln-Sheet); der
-  Start-Tab ist die **Tabelle**. Beim Einstieg in eine Liga `activateRound()`
+  Profil**. Eine Tipprunde öffnet `LeagueScreen` mit **Reitern oben**
+  (`LeiseReiter`, Versalien) **Übersicht / Tippen / Tabelle / [Duelle]** —
+  „Richtung B" vom 09.11.2026, wie bei Fantasy; die untere Leiste der Runde
+  ist weg. Start-Reiter ist die **Übersicht** (`TippUebersichtTab`, Zahlen
+  aus dem puren `TippUebersicht.berechnen`, dieselbe Wertung und Do–Mi-Woche
+  wie Tabelle und Tippen): goldene „Als nächstes"-Karte, **kompakt** (seit
+  10.11.2026 auf Ansage halb so hoch: Titel und kleiner Knopf in einer Zeile,
+  darunter Fortschritt und Frist), darunter Platz/Punkte/Woche als Zahlen
+  ohne Kasten, die Kurztabelle (Top 3 + ich) und unter „Liga" die Zeilen
+  Bonustipps, Regeln und Liga-Chat (`TipRundenChat`, eigener Schirm).
+  **Einladen steht nur im Zahnrad** („Mitglieder einladen" samt Code) — in
+  der Saison braucht man es fast nie, auf Ansage aus der Übersicht genommen
+  (Zeilen: `Zeilengruppe`/`LigaZeile` aus `app/widgets/liga_zeilen.dart`,
+  geteilt mit Fantasy). Push-Ziele: `tipps` → Tippen, `runden_chat`/`nachrichten` →
+  Übersicht + Chat. Der Name der globalen Runde steht in Versalien.
+  Vorschau `tipp_uebersicht_vorschau_test.dart`. **Der Tabelle-Reiter**
+  bleibt die Kicktipp-Matrix (Spiele als Spalten zum Querwischen, Namen
+  eingefroren) — **ein Umbau zu „Rangliste + je Spiel eine Karte mit allen
+  Tipps" ist am 10.11.2026 verworfen**: Im globalen Tippspiel stehen
+  womöglich Tausende, je Spiel alle Tipps aufzulisten geht dort nicht. Nur
+  das Aussehen ist neu: eine Karte unter der Kapitelmarke „Tabelle"
+  (Punkteregel hinter ⓘ), eigene Zeilen statt `DataTable`, Summe in der
+  Namensspalte, Spaltenkopf mit Vereinskürzeln übereinander und Stand bzw.
+  Anstoßtag, Punkte als getönte Marke unter dem Tipp (Grün nur exakt,
+  laufend rot, 0 ohne Fläche), fehlender Tipp „–". Bonustipp-Einstiege nur
+  noch in der Übersicht. Vorschau `tipp_tabelle_vorschau_test.dart`. Beim Einstieg in eine Liga `activateRound()`
   benutzen (setzt Runde + Wettbewerb zusammen). Tippen gibt es nur in einer
   Liga (mit Konto) — den früheren lokalen Schnelltipp-Modus gibt es nicht mehr.
 - **Deadlines serverseitig.** Tipp-Abgabe nur vor Anstoß wird per RLS in
@@ -197,6 +220,28 @@ gelten:
    tragen kein Symbol** — das Wort sagt es schon. Wo im Symbolplatz der
    Ladekreis saß, steht er jetzt über `MitLadekreis` vor dem Wort.
    Ausnahme: die Anmeldeknöpfe mit Google- und Apple-Logo.
+
+## Live-Spieler im MatchUp: Hauch & Uhr (10.11.2026)
+
+Auf Ansage nach einem Sleeper-Screenshot, gewählt aus drei Entwürfen
+(Richtung **C**; die erste Fassung — graue Fläche mit Schatten — war „überhaupt
+nicht modern"). In der Startelf-Gegenüberstellung (`_PlayerRow` in
+`matchup_lineups.dart`):
+
+- **Spielt sein Verein gerade** (`spielZeile(...).laeuft`): roter Hauch aus der
+  **äußeren** oberen Ecke (Heim links, Gast rechts — dieselbe Sprache wie die
+  Startkarten), darunter die Minute klein in Rot unter den Punkten und eine
+  **Spieluhr**: 2-Punkt-Strich am unteren Rand, von außen so lang wie gespielt
+  (90' = voll).
+- **Gespielt:** ruhige Karte (`surfaceContainerLow`). **Noch offen:** eine Stufe
+  dunkler (`surfaceContainerLowest`), Name und Zahl grau.
+- Kante überall die Haarlinie (`kartenkanten_test.dart`).
+
+**Die Minute kommt aus Sportmonks `periods`** (`Fixture.minute`,
+`NaechstesSpiel.minute`). Die Function `sportmonks` lädt `periods` dafür in der
+`live`-Abfrage mit und reicht `minute` in `mitLiveStand` durch — **erst nach dem
+Deploy der Function** ist sie in der App; bis dahin fehlen Minute und Uhr, der
+Hauch steht trotzdem. Vorschau `matchup_tab.png`.
 
 ## Der Grund ist schwarz
 
@@ -1999,6 +2044,19 @@ Drei Dinge, die daran hängen:
   vom Montag 15:00 einen Tag ab und ließ die Spanne am Sonntag enden — er
   verschwieg damit genau den Tag, um den die Änderung ging. Im Bild sofort zu
   sehen, im Code nicht.
+
+**In der Pause trägt die Kopfkarte das nächste Spiel** (10.11.2026, auf
+Ansage): Liegt kein Spiel im Fenster (Länderspiel-, Winterpause), nimmt
+`kopfkartenSpiele` den nächsten Anpfiff, egal wie weit weg; „Mein
+Wochenende" filtert ihn wieder heraus. **Nationalmannschaften als Favorit**
+(gleicher Tag): `Favorite.nation` mit Schlüssel `nation:<leagueId>`
+(vorerst nur `Leagues.deutschland`, OpenLigaDB `DFBN`), gewählt unter
+„Team favorisieren" › Nationalmannschaften. Die Spiele kommen aus
+`leagueSeasonFixturesProvider`, nicht aus Sportmonks (Länderspiele stecken
+nicht im Abo). `isResolvableTeamFavorite` lässt den Schlüssel durchfallen,
+deshalb erscheint er nicht im Favoriten-Tab und nicht in den Vereinsrängen,
+und er ersetzt in `zeigeFavoritWahl` keinen Verein. Gehalten von
+`kopfkarte_pause_test.dart`.
 
 **Englische Woche seit dem 27.10.2026** (auf Ansage: „diese Woche
 DFB-Pokal, der wird mir nicht angezeigt … es soll die Liga und auch der Pokal

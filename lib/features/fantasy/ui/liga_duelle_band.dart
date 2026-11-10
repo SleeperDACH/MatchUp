@@ -140,6 +140,7 @@ class LigaDuelleBand extends ConsumerWidget {
         jetzt: jetzt,
       );
       final chance = prognose.siegchanceHeim;
+      final entschieden = prognose.heimFertig && prognose.gastFertig;
       _DuellSeite daten(String id, double? erwartet, double? c, double gegner) =>
           _DuellSeite(
             manager: byId[id],
@@ -155,9 +156,11 @@ class LigaDuelleBand extends ConsumerWidget {
         heim: daten(hId, prognose.heimErwartet, chance, totals[aId] ?? 0),
         gast: daten(aId, prognose.gastErwartet,
             chance == null ? null : 1 - chance, totals[hId] ?? 0),
+        // Sind alle 22 durch, ist dieses Duell entschieden — auch wenn der
+        // Spieltag noch läuft (siehe `elfDurch`).
         started: started,
-        beendet: beendet,
-        live: live,
+        beendet: beendet || (started && entschieden),
+        live: live && !entschieden,
         onTap: () {
           // Auf genau diese Paarung im MatchUp-Reiter: Seite merken, Sprung
           // auslösen (setzt den Spieltag zurück auf den aktuellen), Reiter

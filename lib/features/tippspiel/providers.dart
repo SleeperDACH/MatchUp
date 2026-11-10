@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/data/laenderspiel/laenderspiel_daten.dart';
 import '../../core/data/odds/frozen_odds.dart';
 import '../../core/data/odds/match_odds.dart';
 import '../../core/data/odds/odds_matching.dart';
@@ -95,7 +96,13 @@ final matchDetailProvider =
   if (id == null) {
     throw ArgumentError('Ungültige Fixture-ID: $fixtureId');
   }
-  return OpenLigaDbProvider().getMatchDetail(id);
+  final basis = OpenLigaDbProvider().getMatchDetail(id);
+  if (!AppConfig.isSupabaseConfigured) return basis;
+  return basis.then(
+    (d) => istLaenderspiel(d)
+        ? mitLaenderspielDaten(d, Supabase.instance.client)
+        : d,
+  );
 });
 
 /// Baut den passenden Daten-Adapter für eine Liga. Sportmonks läuft über die

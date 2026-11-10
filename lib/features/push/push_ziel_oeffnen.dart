@@ -8,6 +8,7 @@ import '../fantasy/providers.dart';
 import '../fantasy/ui/fantasy_league_screen.dart';
 import '../messaging/ui/conversation_screen.dart';
 import '../tippspiel/providers.dart';
+import '../tippspiel/ui/tipp_uebersicht_tab.dart';
 import 'push_dienst.dart';
 
 /// Öffnet den Schirm, auf den eine angetippte Benachrichtigung zeigt.
@@ -53,13 +54,13 @@ Future<void> pushZielOeffnen(
         navigator.push(MaterialPageRoute(
           builder: (_) => LeagueScreen(
             round: runde,
-            // Offene Tipps führen auf den Tippen-Reiter, ein Chat auf den
-            // Liga-Reiter; sonst bleibt es bei der Tabelle.
-            initialTab: switch (ziel.kategorie) {
-              'tipps' => 0,
-              'runden_chat' || 'nachrichten' => 2,
-              _ => 1,
-            },
+            // Offene Tipps führen auf den Tippen-Reiter, ein Chat öffnet den
+            // Liga-Chat über der Übersicht; sonst die Übersicht.
+            initialTab: ziel.kategorie == 'tipps'
+                ? TippReiter.tippen
+                : TippReiter.uebersicht,
+            chatOeffnen: ziel.kategorie == 'runden_chat' ||
+                ziel.kategorie == 'nachrichten',
           ),
         ));
 

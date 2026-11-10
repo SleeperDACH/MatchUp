@@ -1,7 +1,7 @@
 /// **Was ein Tabellenplatz bedeutet** (19.10.2026, auf Ansage): Meister,
 /// Champions League, Europa League, Conference League, Relegation, Abstieg —
-/// die europäischen Plätze nur in der Bundesliga, in der 2. und 3. Liga
-/// Aufstieg, Relegation und Abstieg.
+/// die europäischen Plätze in der Bundesliga und der Frauen-Bundesliga, in
+/// der 2. und 3. Liga Aufstieg, Relegation und Abstieg.
 ///
 /// **Die Regelplätze, nicht der Einzelfall.** Gewinnt der Siebte den
 /// DFB-Pokal, rückt er in die Europa League — das hängt am Pokal und an der
@@ -55,6 +55,16 @@ TabellenZone? tabellenZone(String? leagueId, int rang, int teams) {
       if (rang <= 2) return TabellenZone.aufstieg;
       if (rang == 3) return TabellenZone.relegation;
       if (vonUnten <= 3) return TabellenZone.abstieg;
+      return null;
+    case 'frauen_bundesliga':
+      // Nachgetragen 09.11.2026 (gemeldet: „fehlt bei der Frauen-
+      // Bundesliga"). Deutschland stellt drei Plätze in der Champions League
+      // der Frauen: der Meister direkt, Zweiter und Dritter über die
+      // Qualifikation. Abwärts gehen die letzten beiden (14 Vereine seit
+      // 2025/26, Plätze 13 und 14), eine Relegation gibt es nicht.
+      if (rang == 1) return TabellenZone.meister;
+      if (rang <= 3) return TabellenZone.championsLeague;
+      if (vonUnten <= 1) return TabellenZone.abstieg;
       return null;
   }
   return null;

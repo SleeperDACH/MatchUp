@@ -92,6 +92,7 @@ class Fixture {
     required this.status,
     this.homeScore,
     this.awayScore,
+    this.minute,
   });
 
   /// Provider-übergreifend eindeutig: `<providerId>:<externeId>`.
@@ -109,10 +110,16 @@ class Fixture {
   final int? homeScore;
   final int? awayScore;
 
+  /// Laufende Spielminute (Sportmonks `periods`, z. B. 63 oder 47 in der
+  /// Nachspielzeit der 1. Halbzeit) — nur, solange das Spiel tickt.
+  final int? minute;
+
   bool get hasStarted => DateTime.now().toUtc().isAfter(kickoff.toUtc());
 
   bool get hasResult =>
-      status == FixtureStatus.finished && homeScore != null && awayScore != null;
+      status == FixtureStatus.finished &&
+      homeScore != null &&
+      awayScore != null;
 
   /// Ein (vorläufiger) Spielstand liegt vor — live oder endgültig.
   /// Grundlage für die Live-Wertung in der Tabelle.
@@ -216,6 +223,36 @@ abstract final class Leagues {
     sportmonksKey: '1740',
   );
 
+  /// **Die Spiele der Nationalmannschaft** (09.11.2026, auf Ansage: „erstmal
+  /// nur die Deutschlandspiele"). Kostenlos über OpenLigaDB, Liste `DFBN`
+  /// („DFB Nationalspiele": Nations League, Qualifikation, Testspiele).
+  /// Sportmonks führt Länderspiele in unserem Abo nicht — nachgefragt: der
+  /// Zeitraum 24.09.–05.10.2026 lieferte acht Spiele, keins davon ein
+  /// Länderspiel.
+  ///
+  /// **Steht bewusst nicht in [all]**: Dort hängen Tabelle, Teams,
+  /// Vereinsseiten und die Wettbewerbs-Kacheln dran — eine Bundesliga-Tabelle
+  /// der Nationalmannschaft gibt es nicht. Sichtbar ist sie im Live-Tab
+  /// ([liveTab]) und im Spiel-Detail (Tore mit Minute; Aufstellungen,
+  /// Wechsel und Karten liefert OpenLigaDB nicht).
+  ///
+  /// **Das Jahr steht fest**, weil die Liste beim Anbieter je Kalenderjahr
+  /// angelegt wird (`DFBN/2026`), nicht je Saison. Für 2027 nachziehen,
+  /// sobald die Liste dort steht.
+  static const deutschland = LeagueInfo(
+    id: 'deutschland',
+    sport: Sport.football,
+    name: 'Deutschland',
+    roundLabel: 'Spiel',
+    providerId: 'openligadb',
+    providerLeagueKey: 'DFBN',
+    fixedSeason: 2026,
+  );
+
+  /// Was der Live-Tab zeigt: die Nationalmannschaft zuerst — an
+  /// Länderspieltagen ruht der Ligabetrieb ohnehin weitgehend.
+  static const liveTab = [deutschland, ...all];
+
   static const all = [
     bundesliga,
     bundesliga2,
@@ -230,7 +267,7 @@ abstract final class Leagues {
   static const tippspiel = [bundesliga, bundesliga2, dfbPokal];
 
   static LeagueInfo byId(String id) =>
-      all.firstWhere((l) => l.id == id, orElse: () => bundesliga);
+      liveTab.firstWhere((l) => l.id == id, orElse: () => bundesliga);
 
   /// Liga zur Sportmonks-League-ID (z. B. „82" → Bundesliga); null wenn unbekannt.
   static LeagueInfo? bySportmonksKey(String? key) {

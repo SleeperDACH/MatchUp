@@ -90,6 +90,35 @@ List<TeamFixture> wochenendSpiele({
   return drin;
 }
 
+/// Was Kopfkarte und „Mein Wochenende" bekommen: die Spiele des Fensters
+/// ([wochenendSpiele]) — und **in der Pause das nächste Spiel**, egal wie
+/// weit weg (10.11.2026, auf Ansage: „wenn eine längere Pause ist … muss es
+/// auf der Karte vorne trotzdem den nächsten Spieltag anzeigen"). Ohne Spiel
+/// im Fenster (Länderspiel-, Winterpause) stand oben vorher nichts. Bei
+/// gleicher Anstoßzeit kommen alle zurück, der Favoritenrang entscheidet
+/// danach. „Mein Wochenende" filtert selbst wieder aufs Fenster.
+List<TeamFixture> kopfkartenSpiele({
+  required List<TeamFixture> fixtures,
+  required DateTime jetzt,
+}) {
+  final imFenster = wochenendSpiele(fixtures: fixtures, jetzt: jetzt);
+  if (imFenster.isNotEmpty) return imFenster;
+  final gesehen = <String>{};
+  final kommend = [
+    for (final f in fixtures)
+      if (gesehen.add(f.id) &&
+          f.status != FixtureStatus.finished &&
+          f.kickoff.isAfter(jetzt))
+        f,
+  ]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+  if (kommend.isEmpty) return const [];
+  final erster = kommend.first.kickoff;
+  return [
+    for (final f in kommend)
+      if (f.kickoff == erster) f,
+  ];
+}
+
 bool _imFenster(TeamFixture f, DateTime von, DateTime bis) {
   // Ortszeit, sonst rutscht ein Anstoß um 20:30 in UTC auf den Folgetag und
   // der Freitagabend fiele aus dem Fenster.

@@ -10,6 +10,7 @@ import '../../auth/providers.dart';
 import '../logic/fantasy_scoring_engine.dart';
 import '../logic/h2h_grundlage.dart';
 import '../logic/hochrechnung.dart';
+import '../../../core/logic/vereins_kuerzel.dart';
 import '../logic/naechstes_spiel.dart';
 import '../logic/playoff.dart' show kRegularSeasonMatchdays;
 import '../logic/saisonverlauf.dart';
@@ -240,6 +241,8 @@ class MatchupHero extends ConsumerWidget {
       homeErwartet: prognose.heimErwartet,
       awayErwartet: prognose.gastErwartet,
       siegchanceHeim: prognose.siegchanceHeim,
+      homeFertig: prognose.heimFertig,
+      awayFertig: prognose.gastFertig,
       onTap: onTap,
     );
   }
@@ -495,7 +498,41 @@ typedef DuellPrognose = ({
   double? heimErwartet,
   double? gastErwartet,
   double? siegchanceHeim,
+  // Haben alle Spieler der Elf ihr Spiel hinter sich? Siehe [elfDurch].
+  bool heimFertig,
+  bool gastFertig,
 });
+
+/// **Hat die ganze Elf gespielt?** Jeder Starter, dessen Verein an diesem
+/// Spieltag spielt, hat sein Spiel abgepfiffen (Status oder
+/// [spielDauerSicher] nach Anpfiff); wer keinen Gegner hat, zählt als fertig.
+///
+/// Gemeldet (08.11.2026): „Prognose" stand bis zum Ende des ganzen
+/// Spieltags da, obwohl bei einem Team alle 11 längst gespielt hatten — und
+/// ein MatchUp, dessen 22 Spieler alle durch waren, blieb rot und zeigte
+/// „100 % Sieg" für eine Seite, obwohl nach der Remis-Regel schon ein
+/// Unentschieden feststand.
+bool elfDurch({
+  required MatchupSideData seite,
+  required List<Fixture> spiele,
+  required int round,
+  required DateTime jetzt,
+}) {
+  for (final p in seite.starters) {
+    final verein = vereinKanonisch(p.club);
+    final spiel = spiele
+        .where((f) =>
+            f.round == round &&
+            (vereinKanonisch(f.home.name) == verein ||
+                vereinKanonisch(f.away.name) == verein))
+        .firstOrNull;
+    if (spiel == null) continue;
+    final durch = spiel.status == FixtureStatus.finished ||
+        jetzt.isAfter(spiel.kickoff.add(spielDauerSicher));
+    if (!durch) return false;
+  }
+  return true;
+}
 
 /// **Was der Kasten über ein Duell sagt, das noch nicht entschieden ist.**
 ///
@@ -530,7 +567,21 @@ DuellPrognose duellPrognose({
   required double? wochenStreuung,
   required DateTime jetzt,
 }) {
-  const nichts = (heimErwartet: null, gastErwartet: null, siegchanceHeim: null);
+  final heimFertig = elfDurch(
+    seite: heim,
+    spiele: spiele,
+    round: round,
+    jetzt: jetzt,
+  );
+  final gastFertig = gast != null &&
+      elfDurch(seite: gast, spiele: spiele, round: round, jetzt: jetzt);
+  final nichts = (
+    heimErwartet: null,
+    gastErwartet: null,
+    siegchanceHeim: null,
+    heimFertig: heimFertig,
+    gastFertig: gastFertig,
+  );
 
   final dieser = [
     for (final f in spiele)
@@ -594,6 +645,8 @@ DuellPrognose duellPrognose({
       gast: g,
       wochenStreuung: wochenStreuung,
     ),
+    heimFertig: heimFertig,
+    gastFertig: gastFertig,
   );
 }
 
@@ -686,7 +739,16 @@ class MatchupBanner extends StatelessWidget {
     this.onHomeName,
     this.onAwayName,
     this.remisGrenze = 0,
+    this.homeFertig = false,
+    this.awayFertig = false,
   });
+
+  /// Alle Spieler der Elf haben gespielt (siehe [elfDurch]). Dann steht dort
+  /// keine Prognose mehr; sind **beide** Seiten durch, ist das MatchUp
+  /// entschieden — grün, mit Sieg, Niederlage oder Unentschieden, auch wenn
+  /// der Spieltag noch läuft.
+  final bool homeFertig;
+  final bool awayFertig;
 
   /// Höchster Abstand, der noch Unentschieden ist (Ligaeinstellung) — damit
   /// „Sieg" im Kasten dasselbe meint wie in der Tabelle.
@@ -731,6 +793,10 @@ class MatchupBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final entschieden = awayName != null && homeFertig && awayFertig;
+    // Ein entschiedenes MatchUp läuft nicht mehr, auch wenn andere Spiele
+    // des Spieltags noch laufen.
+    final live = this.live && !entschieden;
     final accent = live ? context.farben.rot : context.farben.gruen;
     final beendet = started && !live;
 
@@ -800,6 +866,7 @@ class MatchupBanner extends StatelessWidget {
               chance: chanceLinks,
               started: started,
               beendet: beendet,
+              fertig: homeFertig,
               remisGrenze: remisGrenze,
               bilanz: homeBilanz,
               onName: onHomeName,
@@ -818,6 +885,7 @@ class MatchupBanner extends StatelessWidget {
               chance: chanceRechts,
               started: started,
               beendet: beendet,
+              fertig: awayFertig,
               remisGrenze: remisGrenze,
               bilanz: awayBilanz,
               onName: onAwayName,
@@ -845,9 +913,13 @@ class _Seite extends StatelessWidget {
     required this.bilanz,
     this.onName,
     this.remisGrenze = 0,
+    this.fertig = false,
   });
 
   final num remisGrenze;
+
+  /// Die ganze Elf dieser Seite hat gespielt: keine Prognose mehr.
+  final bool fertig;
 
   final bool links;
   final String name;
@@ -912,7 +984,7 @@ class _Seite extends StatelessWidget {
     // **Nach dem Spieltag nur die Zahl** (27.10.2026, auf Ansage: erst die
     // Prognose von vorher weg, dann auch das Wort „Endstand"). Dass es der
     // Endstand ist, sagt SIEG/NIEDERLAGE darunter.
-    final klein = beendet
+    final klein = beendet || fertig
         ? ''
         : started
         ? (erwartet == null ? 'Live' : 'Prognose ${formatPoints(erwartet!)}')

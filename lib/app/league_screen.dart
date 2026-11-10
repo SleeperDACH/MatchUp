@@ -3,31 +3,55 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/tippspiel/models/tip_round.dart';
 import '../features/tippspiel/providers.dart';
+import 'widgets/leise_reiter.dart';
 import 'widgets/vibrant_league_title.dart';
 import '../features/tippspiel/ui/league_hub_screen.dart';
 import '../features/tippspiel/ui/matchday_screen.dart';
 import '../features/tippspiel/ui/tip_duels_tab.dart';
 import '../features/tippspiel/ui/tip_settings_sheet.dart';
+import '../features/tippspiel/ui/tipp_uebersicht_tab.dart';
 import '../features/tippspiel/ui/tips_table_tab.dart';
 
-/// Ansicht einer Tipprunde mit Tabs: Tippen, Tabelle und Liga (Chat + Regeln).
+/// Ansicht einer Tipprunde: Reiter **oben** wie bei Fantasy — Übersicht,
+/// Tippen, Tabelle und im Head-to-Head-Modus Duelle (09.11.2026, „Richtung
+/// B" aus dem Redesign). Vorher eine untere Leiste Tippen · Tabelle · Liga;
+/// der Liga-Reiter (Chat mit Regeln) steht jetzt als Zeile in der Übersicht.
 class LeagueScreen extends ConsumerStatefulWidget {
-  const LeagueScreen({super.key, required this.round, this.initialTab = 1});
+  const LeagueScreen({
+    super.key,
+    required this.round,
+    this.initialTab = TippReiter.uebersicht,
+    this.chatOeffnen = false,
+  });
 
   final TipRound round;
 
-  /// Start-Tab: 0 = Tippen, 1 = Tabelle (Standard), 2 = Liga. Die Jetzt-Karte
-  /// auf dem Homescreen springt direkt auf Tippen.
+  /// Start-Reiter, siehe [TippReiter]. Standard ist die Übersicht.
   final int initialTab;
+
+  /// Gleich den Liga-Chat öffnen (Push auf eine Chatnachricht). Er ist kein
+  /// Reiter mehr, also legt der Schirm die Chat-Seite nach dem ersten Bild
+  /// darüber — zurück führt dann in die Übersicht.
+  final bool chatOeffnen;
 
   @override
   ConsumerState<LeagueScreen> createState() => _LeagueScreenState();
 }
 
 class _LeagueScreenState extends ConsumerState<LeagueScreen> {
-  // Beim Öffnen zuerst die Tabelle, nicht die Tippabgabe — außer der Aufrufer
-  // will ausdrücklich woanders hin.
-  late int _index = widget.initialTab;
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.round;
+    if (widget.chatOeffnen && !r.isFantasyLinked && !r.istGlobal) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => TipRundenChat(round: r)),
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,89 +62,52 @@ class _LeagueScreenState extends ConsumerState<LeagueScreen> {
         (active != null && active.id == widget.round.id) ? active : widget.round;
     final league = ref.watch(selectedLeagueProvider);
 
-    // Ligainternes Tippspiel (an eine Fantasy-Liga gekoppelt) nutzt den Chat
-    // der Liga — daher hier kein eigener Liga-/Chat-Tab. Die Regeln stehen
-    // stattdessen in den Einstellungen (Zahnrad).
-    // Die MatchUp Tippliga hat ebenfalls keinen Chat (Migration 0150: Fremde
-    // schreiben sich nicht, es gibt keine Moderation) — dieselbe Behandlung.
-    final linked = round.isFantasyLinked || round.istGlobal;
-
-    // Im Head-to-Head-Modus liegt zwischen Tabelle und Liga ein „Duelle"-Tab.
+    // Im Head-to-Head-Modus kommt ein vierter Reiter „Duelle" dazu.
     final h2h = round.scoring.headToHead;
-    final tabs = <Widget>[
-      const MatchdayScreen(),
-      TipsTableTab(round: round),
-      if (h2h) TipDuelsTab(round: round),
-      if (!linked) LeagueHubScreen(round: round),
-    ];
-    // Der Liga-Tab (Chat) ist – falls vorhanden – immer der letzte.
-    final ligaIndex = tabs.length - 1;
+    final titel = ['Übersicht', 'Tippen', 'Tabelle', if (h2h) 'Duelle'];
 
-    // Hinweis am Liga-Symbol bei ungelesenen Chat-Nachrichten. Auf dem
-    // Liga-Tab selbst wird alles als gelesen markiert.
-    var ligaUnread = false;
-    if (!linked && _index == ligaIndex) {
-      final msgs = ref.watch(roundMessagesProvider(round.id)).valueOrNull;
-      if (msgs != null && msgs.isNotEmpty) {
-        final latest =
-            msgs.map((m) => m.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ref.read(chatLastReadProvider(round.id).notifier).markRead(latest);
-        });
-      }
-    } else if (!linked) {
-      ligaUnread = ref.watch(unreadChatProvider(round.id));
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 12,
-        title: VibrantLeagueTitle(
-          name: round.name,
-          subtitle: league.name,
-          logoUrl: round.logoUrl,
-          logoEmoji: round.logoEmoji,
-          logoColor: round.logoColor,
+    return DefaultTabController(
+      // Der Schlüssel baut den Controller neu, wenn „Duelle" an- oder
+      // abgeschaltet wird — sonst passte seine Länge nicht mehr.
+      key: ValueKey(titel.length),
+      length: titel.length,
+      initialIndex: widget.initialTab.clamp(0, titel.length - 1),
+      child: Scaffold(
+        appBar: AppBar(
+          titleSpacing: 12,
+          title: VibrantLeagueTitle(
+            // **Das globale Tippspiel in Versalien** (09.11.2026, gemeldet:
+            // „beim globalen Tippspiel ist oben der Name nicht in
+            // Großbuchstaben"). Auf der Startseite steht es als
+            // „GLOBALES TIPPSPIEL" — eigene Runden heißen dort, wie sie
+            // eingegeben wurden, und bleiben es hier auch.
+            name: round.istGlobal ? round.name.toUpperCase() : round.name,
+            subtitle: league.name,
+            logoUrl: round.logoUrl,
+            logoEmoji: round.logoEmoji,
+            logoColor: round.logoColor,
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Einstellungen',
+              onPressed: () => showTipSettings(context, round),
+            ),
+          ],
+          bottom: LeiseReiter(
+            titel: titel,
+            horizontal: 12,
+            versalien: true,
+          ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Einstellungen',
-            onPressed: () => showTipSettings(context, round),
-          ),
-        ],
-      ),
-      body: IndexedStack(
-          index: _index.clamp(0, tabs.length - 1), children: tabs),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index.clamp(0, tabs.length - 1),
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.sports_soccer_outlined),
-            label: 'Tippen',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.table_chart_outlined),
-            selectedIcon: Icon(Icons.table_chart),
-            label: 'Tabelle',
-          ),
-          if (h2h)
-            const NavigationDestination(
-              icon: Icon(Icons.bolt_outlined),
-              selectedIcon: Icon(Icons.bolt),
-              label: 'Duelle',
-            ),
-          if (!linked)
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: ligaUnread,
-                child: const Icon(Icons.forum_outlined),
-              ),
-              selectedIcon: const Icon(Icons.forum),
-              label: 'Liga',
-            ),
-        ],
+        body: TabBarView(
+          children: [
+            TippUebersichtTab(round: round),
+            const MatchdayScreen(),
+            TipsTableTab(round: round),
+            if (h2h) TipDuelsTab(round: round),
+          ],
+        ),
       ),
     );
   }

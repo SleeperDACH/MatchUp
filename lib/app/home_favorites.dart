@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../core/models/team_fixture.dart';
-import '../features/tippspiel/providers.dart' show liveFixturesProvider;
+import '../features/tippspiel/providers.dart'
+    show leagueSeasonFixturesProvider, liveFixturesProvider;
 import '../features/favorites/favorites.dart';
 import '../features/favorites/logic/favorite_order.dart';
 import '../features/favorites/logic/next_favorite_fixtures.dart';
@@ -28,28 +29,47 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
   // (`openligadb:100`) wird zu `100` gekürzt — und diese ID gibt es bei
   // Sportmonks, nur gehört sie einem **fremden** Verein. Ungefiltert stand
   // hier das Spiel eines Vereins, den nie jemand favorisiert hat.
-  final teams = ref
-      .watch(favoritesProvider)
+  final favoriten = ref.watch(favoritesProvider);
+  final teams = favoriten
       .where((f) => f.type == FavoriteType.team && isResolvableTeamFavorite(f))
       .toList();
-  if (teams.isEmpty) return const [];
+  // Nationalmannschaften kommen aus dem Spielplan ihres Wettbewerbs
+  // (Deutschland = OpenLigaDB `DFBN`), nicht aus Sportmonks.
+  final nationen = [
+    for (final f in favoriten)
+      if (isNationFavorite(f) && f.leagueId != null) f.leagueId!,
+  ];
+  if (teams.isEmpty && nationen.isEmpty) return const [];
 
-  final alle = <TeamFixture>[];
-  for (final t in teams) {
-    try {
-      // `teamIdOf`: der Favoriten-Schlüssel trägt das `sportmonks:`-Präfix,
-      // der Spielplan-Endpunkt will die nackte ID.
-      alle.addAll(
-        await ref.watch(teamFixturesProvider(teamIdOf(t.key)).future),
-      );
-    } catch (_) {
-      continue; // Ein Verein ohne Spielplan darf die Zeile nicht leeren.
-    }
-  }
-  final tagesspiele = wochenendSpiele(
-    fixtures: alle,
-    jetzt: DateTime.now(),
-  );
+  // **Alle Vereine gleichzeitig** (07.11.2026, gemeldet: „Die Ladezeit, wenn
+  // man in die App geht, dauert mir zu lange"). Vorher wartete die Schleife
+  // jeden Spielplan ab, bevor sie den nächsten anfragte — ein Abruf über die
+  // Edge Function je Verein, hintereinander. Gemessen war das die langsamste
+  // der sechs Quellen, auf die der Startschirm wartet (≈ 1,5 s gegen ≈ 0,6 s
+  // für alle anderen). Die Abrufe werden jetzt alle vor dem ersten `await`
+  // angestoßen (und vor ihm beobachtet, wie Riverpod es will).
+  //
+  // `teamIdOf`: der Favoriten-Schlüssel trägt das `sportmonks:`-Präfix, der
+  // Spielplan-Endpunkt will die nackte ID.
+  final abrufe = [
+    for (final t in teams)
+      ref
+          .watch(teamFixturesProvider(teamIdOf(t.key)).future)
+          // Ein Verein ohne Spielplan darf die Zeile nicht leeren.
+          .catchError((Object _) => const <TeamFixture>[]),
+  ];
+  final laenderAbrufe = [
+    for (final id in nationen)
+      ref
+          .watch(leagueSeasonFixturesProvider(id).future)
+          .then((l) => [for (final f in l) _alsTeamSpiel(f)])
+          .catchError((Object _) => const <TeamFixture>[]),
+  ];
+  final alle = [
+    for (final l in await Future.wait([...abrufe, ...laenderAbrufe])) ...l,
+  ];
+  final jetzt = DateTime.now();
+  final tagesspiele = kopfkartenSpiele(fixtures: alle, jetzt: jetzt);
 
   // Vorn steht das Spiel des **obersten Favoriten**, nicht das früheste: Die
   // Kopfkarte des Homescreens nimmt sich den ersten Eintrag, der Abschnitt
@@ -66,7 +86,7 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
   final mitLive = [for (final f in tagesspiele) _mitLiveStand(f, live[f.id])];
   _planeLiveTakt(ref, mitLive);
 
-  final raenge = favoritenRaenge(ref.watch(favoritesProvider));
+  final raenge = favoritenRaenge(favoriten);
   return favoritenSpielZuerst(
     spiele: mitLive,
     rang: (f) {
@@ -79,6 +99,19 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
     },
   );
 });
+
+/// Ein Länderspiel aus dem Wettbewerbs-Spielplan in der Form des
+/// Vereins-Spielplans.
+TeamFixture _alsTeamSpiel(Fixture f) => TeamFixture(
+      id: f.id,
+      kickoff: f.kickoff,
+      status: f.status,
+      leagueName: 'Länderspiel',
+      home: f.home,
+      away: f.away,
+      homeScore: f.homeScore,
+      awayScore: f.awayScore,
+    );
 
 /// Stand, Zustand und Anstoß aus dem Live-Abruf — alles andere (Wettbewerb,
 /// Logo, Spieltag) bleibt, wie der Spielplan es kennt.

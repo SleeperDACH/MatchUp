@@ -108,6 +108,15 @@ class PlayerAbsence {
   String get grund {
     // Die Beobachtung nennt, was man weiß: Spieltag und Minute. Einen Grund
     // hat sie nicht, und einen zu erfinden wäre schlimmer als keiner.
+    if (fehlteSeither) {
+      final n = spieleVerpasst!;
+      final r = runde;
+      final wann = n == 1 && r != null
+          ? 'Fehlte am ${r + 1}. Spieltag'
+          : 'Fehlte zuletzt in $n Spielen';
+      final vorher = r == null ? '' : ', verletzt ausgewechselt am $r. Spieltag';
+      return '$wann$vorher';
+    }
     if (ausgewechselt) {
       final m = minute == null ? '' : ' in der $minute. Minute';
       final r = runde == null ? '' : ' am $runde. Spieltag';
@@ -127,17 +136,29 @@ class PlayerAbsence {
   /// zu viel.
   String get kurz => gesperrt
       ? 'gesperrt'
-      : ausgewechselt
-          ? 'angeschlagen'
-          : 'verletzt';
+      : fehlteSeither
+          ? 'fehlte'
+          : ausgewechselt
+              ? 'angeschlagen'
+              : 'verletzt';
 
   /// Was über dem Grund steht. Eine Beobachtung sagt nicht „Verletzt“ —
   /// das behauptete eine Diagnose, die niemand gestellt hat.
   String get kopf => gesperrt
       ? 'Gesperrt'
-      : ausgewechselt
-          ? 'Vermutlich verletzt'
-          : 'Verletzt';
+      : fehlteSeither
+          ? 'Fehlte zuletzt'
+          : ausgewechselt
+              ? 'Vermutlich verletzt'
+              : 'Verletzt';
+
+  /// **Der neue Stand nach der Auswechslung** (Migration 0163).
+  ///
+  /// Gemeldet: El-Faouzi ging am 7. Spieltag verletzt raus, fehlte am 8. — und
+  /// stand zwei Wochen später noch als „Vermutlich verletzt" da. Fehlt er im
+  /// offiziell gemeldeten Kader eines späteren Spiels, ist das die jüngere
+  /// und härtere Auskunft; sie ersetzt die Vermutung.
+  bool get fehlteSeither => ausgewechselt && (spieleVerpasst ?? 0) > 0;
 
   static const _deutsch = <String, String>{
     'Achilles tendon problems': 'Achillessehnen-Probleme',

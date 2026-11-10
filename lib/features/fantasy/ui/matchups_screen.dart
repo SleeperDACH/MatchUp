@@ -456,6 +456,8 @@ class _MatchupsBodyState extends ConsumerState<MatchupsBody> {
                             homeErwartet: prognose.heimErwartet,
                             awayErwartet: prognose.gastErwartet,
                             siegchanceHeim: prognose.siegchanceHeim,
+                            homeFertig: prognose.heimFertig,
+                            awayFertig: prognose.gastFertig,
                             // **Kein Tipp-Ziel im MatchUp-Tab.** Er öffnete
                             // die Detailseite — dasselbe Duell noch einmal,
                             // in einem abgeschlossenen Bereich. Man ist hier

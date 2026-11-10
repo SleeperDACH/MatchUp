@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:matchup/app/theme.dart';
 import 'package:matchup/core/config/app_config.dart';
 import 'package:matchup/core/models/models.dart';
@@ -51,6 +52,7 @@ void main() {
   setUpAll(ladeSchrift);
 
   testWidgets('Vorschau: Tipp-Tabelle', (tester) async {
+    await initializeDateFormatting('de_DE');
     final vorher = AppConfig.supabaseInitialized;
     AppConfig.supabaseInitialized = true;
     addTearDown(() => AppConfig.supabaseInitialized = vorher);

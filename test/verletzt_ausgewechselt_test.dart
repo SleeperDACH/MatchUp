@@ -157,4 +157,51 @@ void main() {
       expect(knapp.grund, 'Verletzt ausgewechselt');
     });
   });
+
+  group('neuer Stand nach verpasstem Spiel (0163)', () {
+    // Gemeldet: El-Faouzi ging am 7. Spieltag verletzt raus, fehlte am 8. im
+    // offiziellen Kader — und stand zwei Wochen später noch als „Vermutlich
+    // verletzt" da.
+    PlayerAbsence elFaouzi(int? verpasst) => _ausJson({
+          'player_id': 'sportmonks:37537951',
+          'kategorie': 'injury',
+          'seit': '2026-10-24',
+          'quelle': 'ausgewechselt',
+          'runde': 7,
+          'minute': 43,
+          'spiele_verpasst': verpasst,
+        });
+
+    test('ohne verpasstes Spiel bleibt es die Vermutung', () {
+      final a = elFaouzi(null);
+      expect(a.fehlteSeither, isFalse);
+      expect(a.kopf, 'Vermutlich verletzt');
+    });
+
+    test('ein verpasstes Spiel löst die Vermutung ab', () {
+      final a = elFaouzi(1);
+      expect(a.fehlteSeither, isTrue);
+      expect(a.kopf, 'Fehlte zuletzt');
+      expect(a.kurz, 'fehlte');
+      expect(a.grund,
+          'Fehlte am 8. Spieltag, verletzt ausgewechselt am 7. Spieltag');
+    });
+
+    test('mehrere verpasste Spiele werden gezählt', () {
+      expect(elFaouzi(3).grund,
+          'Fehlte zuletzt in 3 Spielen, verletzt ausgewechselt am 7. Spieltag');
+    });
+
+    test('eine gemeldete Verletzung bleibt unberührt', () {
+      final g = _ausJson({
+        'player_id': 'sportmonks:9',
+        'kategorie': 'injury',
+        'grund_quelle': 'Knee Injury',
+        'quelle': 'gemeldet',
+        'spiele_verpasst': 4,
+      });
+      expect(g.fehlteSeither, isFalse);
+      expect(g.kopf, 'Verletzt');
+    });
+  });
 }

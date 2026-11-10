@@ -143,6 +143,7 @@ class OpenLigaDbProvider implements SportsDataProvider {
     final goalsRaw =
         (m['goals'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
     final goals = <MatchGoal>[];
+    final events = <MatchEvent>[];
     var prevH = 0, prevA = 0;
     for (final g in goalsRaw) {
       final h = g['scoreTeam1'] as int? ?? prevH;
@@ -158,6 +159,8 @@ class OpenLigaDbProvider implements SportsDataProvider {
         penalty: g['isPenalty'] as bool? ?? false,
         ownGoal: g['isOwnGoal'] as bool? ?? false,
       ));
+      final ereignis = torAlsEreignis(g, heimTraf: h > prevH);
+      if (ereignis != null) events.add(ereignis);
       prevH = h;
       prevA = a;
     }
@@ -189,8 +192,51 @@ class OpenLigaDbProvider implements SportsDataProvider {
       afterExtraTime: extra,
       penalties: byType(5),
       goals: goals,
+      events: events,
       stadium: loc?['locationStadium'] as String?,
       city: loc?['locationCity'] as String?,
+    );
+  }
+
+  /// **Ein Tor als Ereignis des Spielverlaufs.** Der Spielverlauf im
+  /// Spiel-Detail liest nur Ereignisse (Sportmonks-Form); OpenLigaDB liefert
+  /// Tore als eigene Liste. Ohne diese Brücke stand bei jedem Länderspiel
+  /// „Keine Verlaufsdaten verfügbar", obwohl Torschütze und Minute da sind.
+  ///
+  /// `isOvertime` heißt im Feed **Nachspielzeit**: Gakpos 1:1 gegen
+  /// Deutschland (24.09.2026) steht als Minute 92 mit `isOvertime` in einem
+  /// Gruppenspiel ohne Verlängerung. Daraus wird „90+2". Ohne Minute kein
+  /// Ereignis — eine erfundene Minute wäre schlimmer als keine Zeile.
+  static MatchEvent? torAlsEreignis(
+    Map<String, dynamic> g, {
+    required bool heimTraf,
+  }) {
+    final minute = g['matchMinute'] as int?;
+    if (minute == null) return null;
+    final nachspiel = g['isOvertime'] as bool? ?? false;
+    var basis = minute;
+    int? extra;
+    if (nachspiel && minute > 90 && minute <= 105) {
+      basis = 90;
+      extra = minute - 90;
+    } else if (nachspiel && minute > 45 && minute <= 60) {
+      basis = 45;
+      extra = minute - 45;
+    }
+    final eigentor = g['isOwnGoal'] as bool? ?? false;
+    final elfmeter = g['isPenalty'] as bool? ?? false;
+    final name = (g['goalGetterName'] as String?)?.trim();
+    final h = g['scoreTeam1'] as int?;
+    final a = g['scoreTeam2'] as int?;
+    return MatchEvent(
+      minute: basis,
+      extra: extra,
+      type: eigentor ? 'Own Goal' : (elfmeter ? 'Penalty' : 'Goal'),
+      // Beim Eigentor steht das Ereignis bei der Seite, die den Punkt bekam —
+      // so ordnet auch Sportmonks es ein.
+      forHomeTeam: heimTraf,
+      player: (name == null || name.isEmpty) ? null : name,
+      result: (h == null || a == null) ? null : '$h-$a',
     );
   }
 

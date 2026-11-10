@@ -3,6 +3,7 @@ import '../../../app/widgets/skelett.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/widgets/competition_emblem.dart';
+import '../../../app/widgets/kapitelmarke.dart';
 import '../../../app/widgets/league_logo.dart';
 import '../../../core/models/models.dart';
 import '../../tippspiel/ui/team_badge.dart';
@@ -11,7 +12,7 @@ import '../favorites.dart';
 /// Teams favorisieren: erst einen Wettbewerb wählen, dann in dessen Team-Liste
 /// die gewünschten Teams mit dem Stern markieren. Wird vom Favoriten-Tab über
 /// einen eigenen Button geöffnet.
-class FavoritesManageScreen extends StatelessWidget {
+class FavoritesManageScreen extends ConsumerWidget {
   const FavoritesManageScreen({super.key});
 
   // Wettbewerbe, aus denen Teams favorisiert werden können (echte Ligen —
@@ -24,7 +25,10 @@ class FavoritesManageScreen extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favoriten = ref.watch(favoritesProvider);
+    final notifier = ref.read(favoritesProvider.notifier);
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(centerTitle: true, title: const Text('Team favorisieren')),
       body: ListView(
@@ -54,6 +58,40 @@ class FavoritesManageScreen extends StatelessWidget {
                     builder: (_) => _LeagueTeamsPicker(league: league))),
               ),
             ),
+          // **Nationalmannschaften** (10.11.2026, auf Ansage): direkt mit
+          // Stern, ohne Zwischenschirm — es gibt (noch) nur eine.
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Kapitelmarke('Nationalmannschaften'),
+          ),
+          for (final nation in nationen)
+            Builder(builder: (context) {
+              final fav = Favorite.nation(nation);
+              final an = favoriten.any((f) => f.key == fav.key);
+              return Card(
+                child: ListTile(
+                  leading: LeagueLogo(
+                    leagueId: nation.id,
+                    size: 38,
+                    fallback: CompetitionEmblem(leagueId: nation.id, size: 38),
+                  ),
+                  title: Text(nation.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Alle Länderspiele'),
+                  trailing: IconButton(
+                    tooltip: an
+                        ? '${nation.name} aus Favoriten entfernen'
+                        : '${nation.name} zu Favoriten hinzufügen',
+                    icon: Icon(
+                      an ? Icons.star : Icons.star_border,
+                      color: an ? scheme.primary : scheme.onSurfaceVariant,
+                    ),
+                    onPressed: () => notifier.toggle(fav),
+                  ),
+                  onTap: () => notifier.toggle(fav),
+                ),
+              );
+            }),
         ],
       ),
     );

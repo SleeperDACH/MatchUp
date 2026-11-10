@@ -45,7 +45,7 @@ final _jetzt = DateTime.now();
 
 List<Fixture> _spielplan() {
   Fixture f(int runde, int i, DateTime anpfiff, FixtureStatus status,
-          [int? h, int? a]) =>
+          [int? h, int? a, int? minute]) =>
       Fixture(
         id: 'sportmonks:$runde$i',
         leagueId: 'bundesliga',
@@ -58,6 +58,7 @@ List<Fixture> _spielplan() {
         status: status,
         homeScore: h,
         awayScore: a,
+        minute: minute,
       );
   return [
     for (var r = 1; r <= 2; r++)
@@ -67,8 +68,9 @@ List<Fixture> _spielplan() {
     // Spieltag 3: beendet · läuft · steht aus.
     f(3, 0, _jetzt.subtract(const Duration(hours: 3)), FixtureStatus.finished,
         2, 1),
+    // Mit Spielminute: die Spieluhr der Live-Karten (Richtung C).
     f(3, 1, _jetzt.subtract(const Duration(minutes: 40)), FixtureStatus.live,
-        1, 0),
+        1, 0, 38),
     f(3, 2, _jetzt.add(const Duration(hours: 3)), FixtureStatus.scheduled),
   ];
 }

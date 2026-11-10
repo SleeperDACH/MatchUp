@@ -23,7 +23,12 @@ class NaechstesSpiel {
     this.eigeneTore,
     this.gegnerTore,
     this.gegnerTeam,
+    this.minute,
   });
+
+  /// Laufende Spielminute, solange das Spiel tickt — die Spieluhr der
+  /// MatchUp-Karte. `null` vor/nach dem Spiel und in der Pause.
+  final int? minute;
 
   /// Der Gegner als Team — für sein **Wappen** (`SpielMarke`). `null`, wo
   /// das Spiel nicht aus dem Spielplan kommt (Tests, alte Aufrufer).
@@ -63,7 +68,8 @@ NaechstesSpiel? naechstesSpiel(
           heim: true,
           status: f.status,
           eigeneTore: f.homeScore,
-          gegnerTore: f.awayScore);
+          gegnerTore: f.awayScore,
+          minute: f.minute);
     }
     if (vereinKanonisch(f.away.name) == vereinKanonisch(verein)) {
       return NaechstesSpiel(
@@ -73,7 +79,8 @@ NaechstesSpiel? naechstesSpiel(
           heim: false,
           status: f.status,
           eigeneTore: f.awayScore,
-          gegnerTore: f.homeScore);
+          gegnerTore: f.homeScore,
+          minute: f.minute);
     }
   }
   return null;

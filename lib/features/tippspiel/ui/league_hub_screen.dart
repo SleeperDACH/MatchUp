@@ -28,9 +28,14 @@ void showTipRoundRules(
 /// (Punkteverteilung, Tippabgabe). Ersetzt in Server-Ligen die frühere
 /// „Meine Punkte"-Ansicht.
 class LeagueHubScreen extends ConsumerStatefulWidget {
-  const LeagueHubScreen({super.key, required this.round});
+  const LeagueHubScreen({super.key, required this.round, this.mitRegeln = true});
 
   final TipRound round;
+
+  /// Der Regel-Einstieg über dem Chat. Auf der eigenen Chat-Seite
+  /// ([TipRundenChat]) fällt er weg — dort stehen die Regeln eine Ebene
+  /// höher in der Übersicht.
+  final bool mitRegeln;
 
   @override
   ConsumerState<LeagueHubScreen> createState() => _LeagueHubScreenState();
@@ -65,7 +70,7 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
 
     return Column(
       children: [
-        _RulesBanner(onTap: _openRules),
+        if (widget.mitRegeln) _RulesBanner(onTap: _openRules),
         Expanded(
           child: LeagueChat(
             messages: messages,
@@ -80,6 +85,33 @@ class _LeagueHubScreenState extends ConsumerState<LeagueHubScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// **Der Chat einer Tipprunde als eigene Seite** (09.11.2026). Er war ein
+/// Reiter in der unteren Leiste; seit die Runde Reiter oben wie Fantasy trägt,
+/// steht er als Zeile in der Übersicht — wie der Liga-Chat bei Fantasy.
+/// Gelesen markiert wird, solange die Seite offen ist (vorher: solange der
+/// Reiter offen war).
+class TipRundenChat extends ConsumerWidget {
+  const TipRundenChat({super.key, required this.round});
+
+  final TipRound round;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final msgs = ref.watch(roundMessagesProvider(round.id)).valueOrNull;
+    if (msgs != null && msgs.isNotEmpty) {
+      final latest =
+          msgs.map((m) => m.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(chatLastReadProvider(round.id).notifier).markRead(latest);
+      });
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Liga-Chat')),
+      body: LeagueHubScreen(round: round, mitRegeln: false),
     );
   }
 }

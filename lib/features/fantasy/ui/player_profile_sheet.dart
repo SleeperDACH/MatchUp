@@ -129,6 +129,17 @@ class _PlayerProfileSheet extends ConsumerWidget {
     final live = runde == null
         ? null
         : ref.watch(roundStatsProvider(runde)).valueOrNull;
+    // Seine Zahlen aus dem laufenden Spiel — Übersicht und Leistungsreiter
+    // lesen dieselben, sonst stünden dort verschiedene Zwischenstände.
+    final liveStats =
+        seinSpielLaeuft(
+          runde: runde,
+          verein: player.club,
+          spiele: spiele,
+          jetzt: jetzt,
+        )
+        ? (live?[player.id] ?? const PlayerMatchStats())
+        : null;
     // Einmal gerechnet, im Kopf, in der Übersicht und im Leistungsreiter
     // benutzt — sonst stünden dort verschiedene Zahlen.
     final saison = statsAsync.valueOrNull == null
@@ -206,11 +217,20 @@ class _PlayerProfileSheet extends ConsumerWidget {
                             clubIcon: clubIcon,
                             saison: saison,
                             spiele: spiele,
+                            aktuell: runde,
+                            liveStats: liveStats,
+                            jetzt: jetzt,
                           ),
                         if (saison == null)
                           _laedtOderFehler(statsAsync)
                         else
-                          _table(context, saison, spiele),
+                          _table(
+                            context,
+                            saison,
+                            spiele,
+                            aktuell: runde,
+                            liveStats: liveStats,
+                          ),
                         _Prognose(league: league, player: player),
                         _Spielplan(club: player.club),
                         _Tabelle(club: player.club),
@@ -416,8 +436,10 @@ class _PlayerProfileSheet extends ConsumerWidget {
   Widget _table(
     BuildContext context,
     Map<int, Map<String, PlayerMatchStats>> season,
-    List<Fixture> spiele,
-  ) {
+    List<Fixture> spiele, {
+    int? aktuell,
+    PlayerMatchStats? liveStats,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     final defensive =
         player.position == PlayerPosition.gk ||
@@ -448,7 +470,12 @@ class _PlayerProfileSheet extends ConsumerWidget {
 
     final rows = [
       for (final r in runden)
-        (r, season[r]?[player.id] ?? const PlayerMatchStats()),
+        (
+          r,
+          r == aktuell && liveStats != null
+              ? liveStats
+              : season[r]?[player.id] ?? const PlayerMatchStats(),
+        ),
     ];
     final gewertet = [
       for (final e in rows)
@@ -498,12 +525,21 @@ class _PlayerProfileSheet extends ConsumerWidget {
                   stats: st,
                   defensive: defensive,
                   gegner: gegner[r],
+                  aktuell: r == aktuell,
+                  // **Live zählt nicht in Summe und Schnitt** (die Leiste
+                  // oben rechnet weiter ohne die laufende Runde), steht aber
+                  // in seiner Zeile, mit „LÄUFT" neben dem Gegner.
+                  live: r == aktuell && liveStats != null,
                   // Ein Spieltag, der noch nicht gewertet ist, hat keine
                   // Punktzahl — auch keine 0.
-                  punkte: season.containsKey(r)
+                  punkte:
+                      season.containsKey(r) ||
+                          (r == aktuell && liveStats != null)
                       ? scorePlayer(st, player.position, league.scoring)
                       : null,
-                  onTap: season.containsKey(r)
+                  onTap:
+                      season.containsKey(r) ||
+                          (r == aktuell && liveStats != null)
                       ? () => _zeigeAufschluesselung(context, r, st)
                       : null,
                 ),
@@ -706,9 +742,19 @@ class _LeistungZeile extends StatelessWidget {
     required this.punkte,
     required this.onTap,
     required this.gegner,
+    this.aktuell = false,
+    this.live = false,
   });
 
   final int runde;
+
+  /// Der laufende Spieltag — die Zeile steht auf eigener Fläche, damit man
+  /// in 34 Zeilen sofort sieht, wo die Saison gerade ist.
+  final bool aktuell;
+
+  /// Sein Spiel läuft: Die Punktzahl ist ein Zwischenstand, neben dem Gegner
+  /// steht „LÄUFT".
+  final bool live;
   final PlayerMatchStats stats;
   final bool defensive;
 
@@ -737,70 +783,114 @@ class _LeistungZeile extends StatelessWidget {
       width: _LeistungKopf.zahl,
       child: Text(t, style: stil, textAlign: TextAlign.center),
     );
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            SizedBox(
-              width: _LeistungKopf.spT,
-              child: Text(
-                '$runde.',
-                style: stil.copyWith(fontWeight: FontWeight.w700),
+    final farben = context.farben;
+    return Material(
+      color: aktuell ? farben.auswahlFlaeche : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              SizedBox(
+                width: _LeistungKopf.spT,
+                child: Row(
+                  children: [
+                    Text(
+                      '$runde.',
+                      style: stil.copyWith(
+                        fontWeight: aktuell ? FontWeight.w900 : FontWeight.w700,
+                        color: aktuell ? scheme.onSurface : stil.color,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // **Gegen wen.** Ohne den Gegner ist eine Zeile mit lauter
-            // Strichen nur ein leerer Spieltag; mit ihm ist sie der Spielplan
-            // — die Frage vor einem Trade lautet „wen hat er noch?".
-            Expanded(
-              child: Text(
-                gegner == null
-                    ? '–'
-                    : '${gegner!.heim ? '' : '@ '}${gegner!.kuerzel}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: stil.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurfaceVariant.withValues(
-                    alpha: offen ? 0.7 : 0.95,
+              // **Gegen wen.** Ohne den Gegner ist eine Zeile mit lauter
+              // Strichen nur ein leerer Spieltag; mit ihm ist sie der Spielplan
+              // — die Frage vor einem Trade lautet „wen hat er noch?".
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        gegner == null
+                            ? '–'
+                            : '${gegner!.heim ? '' : '@ '}${gegner!.kuerzel}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: stil.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurfaceVariant.withValues(
+                            alpha: offen ? 0.7 : 0.95,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // **„Läuft" als Wort, nicht als Farbe** (07.11.2026, auf
+                    // Ansage): Rot steht in dieser Tabelle schon für Minus-
+                    // punkte, ein roter Punkt daneben „sah doof aus". Eine
+                    // kleine umrandete Marke neben dem Gegner sagt es, ohne
+                    // eine zweite Bedeutung für Rot aufzumachen.
+                    if (live) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: farben.auswahlKante),
+                        ),
+                        child: Text(
+                          'LÄUFT',
+                          style: TextStyle(
+                            fontSize: Schrift.mikro,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              // Nicht gespielt zeigt „–", nicht „0" — dieselbe Regel wie im
+              // MatchUp: Eine Null ist sonst doppeldeutig.
+              z(gespielt ? '${stats.minutes}' : '–'),
+              z(gespielt ? '${stats.goals}' : '–'),
+              z(gespielt ? '${stats.assists}' : '–'),
+              // **Kein „✓" als Zeichen.** Rajdhani hat es nicht, und in
+              // der Vorschau stand dort ein leeres Kästchen; auf dem Gerät hinge
+              // die Anzeige an einer Schrift-Ersatzkette. Ein Symbol aus der
+              // Icon-Schrift ist beides nicht.
+              if (defensive)
+                SizedBox(
+                  width: _LeistungKopf.zahl,
+                  child: !gespielt || !stats.cleanSheet
+                      ? Text('–', style: stil, textAlign: TextAlign.center)
+                      : Icon(Icons.check, size: 15, color: stil.color),
+                ),
+              SizedBox(
+                width: _LeistungKopf.punkte,
+                child: Text(
+                  gespielt && punkte != null ? formatPoints(punkte!) : '–',
+                  textAlign: TextAlign.right,
+                  // Dieselbe Auszeichnung wie in der Aufschlüsselung darunter:
+                  // Rot markiert den Abzug, der Normalfall braucht keine Farbe.
+                  style: stil.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: gespielt && (punkte ?? 0) < 0
+                        ? Theme.of(context).colorScheme.error
+                        : stil.color,
                   ),
                 ),
               ),
-            ),
-            // Nicht gespielt zeigt „–", nicht „0" — dieselbe Regel wie im
-            // MatchUp: Eine Null ist sonst doppeldeutig.
-            z(gespielt ? '${stats.minutes}' : '–'),
-            z(gespielt ? '${stats.goals}' : '–'),
-            z(gespielt ? '${stats.assists}' : '–'),
-            // **Kein „✓" als Zeichen.** Rajdhani hat es nicht, und in
-            // der Vorschau stand dort ein leeres Kästchen; auf dem Gerät hinge
-            // die Anzeige an einer Schrift-Ersatzkette. Ein Symbol aus der
-            // Icon-Schrift ist beides nicht.
-            if (defensive)
-              SizedBox(
-                width: _LeistungKopf.zahl,
-                child: !gespielt || !stats.cleanSheet
-                    ? Text('–', style: stil, textAlign: TextAlign.center)
-                    : Icon(Icons.check, size: 15, color: stil.color),
-              ),
-            SizedBox(
-              width: _LeistungKopf.punkte,
-              child: Text(
-                gespielt && punkte != null ? formatPoints(punkte!) : '–',
-                textAlign: TextAlign.right,
-                // Dieselbe Auszeichnung wie in der Aufschlüsselung darunter:
-                // Rot markiert den Abzug, der Normalfall braucht keine Farbe.
-                style: stil.copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                  color: gespielt && (punkte ?? 0) < 0
-                      ? Theme.of(context).colorScheme.error
-                      : stil.color,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

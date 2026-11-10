@@ -92,4 +92,44 @@ void main() {
     expect(mit(FixtureStatus.live).containsKey(5), isFalse);
     expect(mit(FixtureStatus.finished).containsKey(5), isTrue);
   });
+
+  group('seinSpielLaeuft — die Live-Zeile im Leistungsreiter', () {
+    bool laeuft(DateTime jetzt, FixtureStatus stand) => seinSpielLaeuft(
+          runde: 5,
+          verein: '1. FC Köln',
+          spiele: [_f('FC Köln', 'Hamburger SV', stand)],
+          jetzt: jetzt,
+        );
+
+    test('vor dem Anpfiff nicht', () {
+      expect(laeuft(DateTime(2026, 10, 10, 15, 0), FixtureStatus.scheduled),
+          isFalse);
+    });
+
+    test('nach dem Anpfiff ja — auch wenn der Spielplan noch „geplant" sagt',
+        () {
+      expect(laeuft(DateTime(2026, 10, 10, 16, 0), FixtureStatus.live), isTrue);
+      expect(laeuft(DateTime(2026, 10, 10, 16, 0), FixtureStatus.scheduled),
+          isTrue);
+    });
+
+    test('abgepfiffen nicht mehr — dann steht die Zeile gewertet da', () {
+      expect(laeuft(DateTime(2026, 10, 10, 17, 0), FixtureStatus.finished),
+          isFalse);
+      expect(laeuft(DateTime(2026, 10, 10, 17, 31), FixtureStatus.live),
+          isFalse);
+    });
+
+    test('Verein hat frei: nichts läuft', () {
+      expect(
+        seinSpielLaeuft(
+          runde: 5,
+          verein: 'SC Freiburg',
+          spiele: [_f('FC Köln', 'Hamburger SV', FixtureStatus.live)],
+          jetzt: DateTime(2026, 10, 10, 16, 0),
+        ),
+        isFalse,
+      );
+    });
+  });
 }

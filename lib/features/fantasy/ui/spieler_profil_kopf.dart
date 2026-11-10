@@ -245,11 +245,25 @@ class SpielerUebersicht extends ConsumerWidget {
     required this.clubIcon,
     required this.saison,
     required this.spiele,
+    this.aktuell,
+    this.liveStats,
+    this.jetzt,
   });
+
+  /// Stellbare Uhr für die Vorschau (siehe `SpielerProfilSheet.jetzt`).
+  final DateTime? jetzt;
 
   final FantasyLeague league;
   final FantasyPlayer player;
   final String? clubIcon;
+
+  /// Der laufende Fantasy-Spieltag. Spielt sein Verein darin, zeigt die
+  /// Übersicht **dieses** Spiel — vorher Anstoß, währenddessen den
+  /// Zwischenstand, danach das Ergebnis.
+  final int? aktuell;
+
+  /// Seine Zahlen aus dem laufenden Spiel, `null` wenn es nicht läuft.
+  final PlayerMatchStats? liveStats;
 
   /// Spieltag → Spieler → Stats, wie im Leistungsreiter (mit laufender Runde).
   final Map<int, Map<String, PlayerMatchStats>> saison;
@@ -288,19 +302,36 @@ class SpielerUebersicht extends ConsumerWidget {
     final rangPos = rang(true);
     final rangAlle = rang(false);
 
-    // Letzter Spieltag mit Daten für ihn — sonst der letzte gewertete.
+    // **Der aktuelle Spieltag, sobald er umgesetzt ist** (07.11.2026,
+    // gemeldet: „in der Übersicht wird immer noch das Spiel vom letzten
+    // Spieltag angezeigt"). Vorher stand hier der letzte Spieltag mit
+    // Einsatz — bis zum Abpfiff des neuen also das Spiel der Vorwoche. Hat
+    // sein Verein im aktuellen Spieltag frei, bleibt es bei der alten Regel.
     final runden = saison.keys.toList()..sort();
-    final letzte =
-        runden.reversed
-            .where((r) => (saison[r]?[player.id]?.minutes ?? 0) > 0)
-            .firstOrNull ??
-        runden.lastOrNull;
+    final aktuelleRunde = aktuell;
+    final imAktuellen =
+        aktuelleRunde != null &&
+        _spielDesVereins(spiele, aktuelleRunde, player.club) != null;
+    final letzte = imAktuellen
+        ? aktuelleRunde
+        : runden.reversed
+                  .where((r) => (saison[r]?[player.id]?.minutes ?? 0) > 0)
+                  .firstOrNull ??
+              runden.lastOrNull;
+    // Zahlen gibt es erst ab Anpfiff: live aus der laufenden Runde, nach dem
+    // Abpfiff aus der Saison. Davor steht nur das Spiel mit Anstoßzeit.
+    final laeuft = imAktuellen && liveStats != null;
+    final leistung = laeuft ? liveStats : saison[letzte]?[player.id];
+    final mitLeistung =
+        letzte != null && (laeuft || saison.containsKey(letzte));
 
-    // Die nächsten drei Spieltage, die noch nicht abgepfiffen sind.
+    // Die nächsten drei Spieltage, die noch nicht abgepfiffen sind — ohne
+    // den, der oben schon steht.
     final alleRunden = {for (final f in spiele) f.round}.toList()..sort();
     final kommende = [
       for (final r in alleRunden)
-        if (!abgepfiffen.contains(r) && !saison.containsKey(r)) r,
+        if (!abgepfiffen.contains(r) && !saison.containsKey(r) && r != letzte)
+          r,
     ].take(3).toList();
 
     return ListView(
@@ -341,18 +372,25 @@ class SpielerUebersicht extends ConsumerWidget {
           ],
         ),
         if (letzte != null) ...[
-          const Kapitelmarke('Leistung'),
-          _LeistungKarte(
-            league: league,
-            player: player,
-            clubIcon: clubIcon,
-            runde: letzte,
-            stats: saison[letzte]?[player.id],
-          ),
-          if (_spielDesVereins(spiele, letzte, player.club) case final f?) ...[
+          Kapitelmarke(mitLeistung ? 'Leistung' : 'Nächstes Spiel'),
+          if (mitLeistung) ...[
+            _LeistungKarte(
+              league: league,
+              player: player,
+              clubIcon: clubIcon,
+              runde: letzte,
+              stats: leistung,
+            ),
             const SizedBox(height: 10),
-            _SpielKarte(runde: letzte, spiel: f, verein: player.club),
           ],
+          if (_spielDesVereins(spiele, letzte, player.club) case final f?)
+            _SpielKarte(
+              runde: letzte,
+              spiel: f,
+              verein: player.club,
+              laeuft: laeuft,
+              jetzt: jetzt,
+            ),
         ],
         // **Spielplan statt Prognose** (19.10.2026, auf Ansage): nur die
         // nächsten Gegner. Die Prognose je Spieltag war eine einzige Zahl
@@ -575,20 +613,37 @@ class _SpielKarte extends StatelessWidget {
     required this.runde,
     required this.spiel,
     required this.verein,
+    this.laeuft = false,
+    this.jetzt,
   });
+
+  final DateTime? jetzt;
 
   final int runde;
   final Fixture spiel;
   final String verein;
 
+  /// Läuft nach der Uhr, auch wenn der gespiegelte Status noch hinterherhängt.
+  final bool laeuft;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final zustand = switch (spiel.status) {
-      FixtureStatus.finished => 'Ende',
-      FixtureStatus.live => 'Live',
-      _ => anpfiffKurz(spiel.kickoff),
-    };
+    final live = laeuft || spiel.status == FixtureStatus.live;
+    final zustand = live
+        ? 'Live'
+        : switch (spiel.status) {
+            FixtureStatus.finished => 'Ende',
+            // Der gespiegelte Status hängt nach dem Abpfiff manchmal; zwei
+            // Stunden nach Anpfiff ist jedes Spiel durch (wie
+            // `mitLaufenderRunde`).
+            _
+                when (jetzt ?? DateTime.now()).isAfter(
+                  spiel.kickoff.add(const Duration(hours: 2)),
+                ) =>
+              'Ende',
+            _ => anpfiffKurz(spiel.kickoff),
+          };
     final meiner = vereinKanonisch(verein);
 
     Widget zeile(TeamRef team, int? tore) => Padding(
@@ -638,9 +693,7 @@ class _SpielKarte extends StatelessWidget {
                   fontSize: Schrift.label,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1,
-                  color: spiel.status == FixtureStatus.live
-                      ? scheme.error
-                      : scheme.onSurfaceVariant,
+                  color: live ? scheme.error : scheme.onSurfaceVariant,
                 ),
               ),
             ],

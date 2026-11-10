@@ -20,6 +20,8 @@ String? leagueLogoUrl(String leagueId) => switch (leagueId) {
         'https://cdn.sportmonks.com/images/soccer/leagues/13/109.png',
       'frauen_bundesliga' =>
         'https://cdn.sportmonks.com/images/soccer/leagues/12/1740.png',
+      // Die Flagge, wie OpenLigaDB sie für Deutschland führt (UEFA-CDN).
+      'deutschland' => 'https://img.uefa.com/imgml/flags/140x140/FRG.png',
       _ => null,
     };
 

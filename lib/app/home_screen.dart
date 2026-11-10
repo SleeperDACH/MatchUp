@@ -700,6 +700,14 @@ class _NaechstesSpiel extends ConsumerWidget {
                                 farbe: context.farben.rot,
                                 pulsiert: true,
                               )
+                            // **Ein beendetes Spiel ist nicht „heute"**
+                            // (08.11.2026): Gold heißt „hier steht etwas an",
+                            // nach dem Abpfiff steht nichts mehr an.
+                            else if (fixture.status == FixtureStatus.finished)
+                              _Marke(
+                                text: 'ENDE',
+                                farbe: scheme.onSurfaceVariant,
+                              )
                             else if (_istHeute(anstoss))
                               _Marke(text: 'HEUTE', farbe: context.farben.gold),
                           ],
@@ -717,23 +725,38 @@ class _NaechstesSpiel extends ConsumerWidget {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    zahl,
-                                    maxLines: 1,
-                                    style: TextStyle(
-                                      fontSize: 38,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -1,
-                                      height: 1.0,
-                                      color: laeuft
-                                          ? context.farben.rot
-                                          : scheme.onSurface,
-                                      // Tabellenziffern: die Zahl steht mittig
-                                      // zwischen zwei Wappen und darf beim
-                                      // Umspringen von 20:30 auf 1:1 nicht wandern.
-                                      fontFeatures: const [
-                                        FontFeature.tabularFigures(),
-                                      ],
+                                  // Flutter hängt die Sperrung auch hinter
+                                  // das letzte Zeichen; links dieselbe Breite,
+                                  // damit die Zahl mittig bleibt.
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4),
+                                    child: Text(
+                                      zahl,
+                                      maxLines: 1,
+                                      // **In der Sprache der Karte** (08.11.2026,
+                                      // gemeldet: „passt nicht zum Gesamtdesign"):
+                                      // ExtraBold kursiv wie die Vereinsnamen
+                                      // links und rechts und die Wortmarke —
+                                      // vorher stand eine aufrechte Bold-Zahl
+                                      // zwischen zwei schrägen Namen.
+                                      style: TextStyle(
+                                        fontSize: 40,
+                                        fontWeight: Schrift.ueberschriftGewicht,
+                                        fontStyle: Schrift.ueberschriftStil,
+                                        // Etwas Luft zwischen den Ziffern
+                                        // (08.11.2026, auf Ansage).
+                                        letterSpacing: 4,
+                                        height: 1.0,
+                                        color: laeuft
+                                            ? context.farben.rot
+                                            : scheme.onSurface,
+                                        // Tabellenziffern: die Zahl steht mittig
+                                        // zwischen zwei Wappen und darf beim
+                                        // Umspringen von 20:30 auf 1:1 nicht wandern.
+                                        fontFeatures: const [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 3),
@@ -742,16 +765,19 @@ class _NaechstesSpiel extends ConsumerWidget {
                                     // die liefert der Vereins-Spielplan nicht mit,
                                     // und für sie einen zweiten Abruf je Spiel zu
                                     // machen wäre der Zeile nicht wert.
+                                    // Versalien wie der Wettbewerb oben links
+                                    // und das Datum im Live-Tab.
                                     DateFormat(
                                       'EEEE, d. MMM',
                                       'de_DE',
-                                    ).format(anstoss),
+                                    ).format(anstoss).toUpperCase(),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: scheme.onSurfaceVariant,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
+                                      fontSize: Schrift.label,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1.2,
                                     ),
                                   ),
                                 ],
@@ -901,7 +927,11 @@ class _FavoritenSpiele extends ConsumerWidget {
     // Ohne Favoriten oder solange nichts geladen ist, fällt der Abschnitt weg
     // — eine leere Überschrift wäre schlechter als gar keine.
     if (alle == null || alle.isEmpty) return const SizedBox.shrink();
-    final spiele = [...alle]..sort((a, b) => a.kickoff.compareTo(b.kickoff));
+    // In der Pause liefert der Provider das nächste Spiel außerhalb des
+    // Fensters (für die Kopfkarte) — das gehört nicht unter „Mein
+    // Wochenende". `wochenendSpiele` filtert aufs Fenster und sortiert.
+    final spiele = wochenendSpiele(fixtures: alle, jetzt: DateTime.now());
+    if (spiele.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     // **Der Zusatz nennt die Spanne, nicht den Tag.** Der Abschnitt läuft über
     // vier Tage; ein einzelnes Datum darüber wäre für drei davon falsch.

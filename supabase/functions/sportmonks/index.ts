@@ -293,7 +293,7 @@ async function liveFenster() {
   for (let page = 1; page <= 4; page++) {
     const r = await smGet(
       `/fixtures/between/${von}/${bis}?filters=fixtureLeagues:${ligen}` +
-        `&include=participants;scores;state;round;stage&per_page=50&page=${page}`,
+        `&include=participants;scores;state;round;stage;periods&per_page=50&page=${page}`,
     );
     for (const f of r?.data ?? []) {
       all.push({ ...normFixture(f), league_key: String(f.league_id) });
@@ -332,6 +332,9 @@ function mitLiveStand(fixtures: any[], live: any[]): any[] {
       starting_at: l.starting_at ?? f.starting_at,
       home_score: l.home_score,
       away_score: l.away_score,
+      // Spielminute (10.11.2026): `live` lädt dafür `periods` mit — nur die
+      // Tage um jetzt, also wenige Partien. Für die Spieluhr im MatchUp.
+      minute: l.minute ?? null,
     };
   });
 }

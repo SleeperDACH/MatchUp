@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
@@ -53,6 +56,19 @@ class Favorite {
     leagueId: leagueId,
     shortName: team.shortName,
     iconUrl: team.iconUrl,
+  );
+
+  /// **Nationalmannschaft** (10.11.2026, auf Ansage). Kein Sportmonks-Team
+  /// — Länderspiele stecken nicht im Abo —, sondern ein Wettbewerb aus der
+  /// `Leagues`-Registry (Deutschland = OpenLigaDB `DFBN`). Schlüssel
+  /// `nation:<leagueId>`; [isResolvableTeamFavorite] lässt ihn bewusst
+  /// durchfallen, damit ihn nichts als Vereins-ID liest.
+  factory Favorite.nation(LeagueInfo nation) => Favorite(
+    type: FavoriteType.team,
+    key: 'nation:${nation.id}',
+    label: nation.name,
+    leagueId: nation.id,
+    shortName: nation.name,
   );
 
   factory Favorite.league(LeagueInfo league) =>
@@ -134,13 +150,18 @@ final favoritesProvider =
           ref.watch(currentUserProvider) != null;
       return FavoritesNotifier(
         enabled ? ref.read(favoritesRepositoryProvider) : null,
+        userId: enabled ? ref.read(currentUserProvider)?.id : null,
       );
     });
 
 class FavoritesNotifier extends StateNotifier<List<Favorite>> {
-  FavoritesNotifier(this._repo) : super(const []) {
+  FavoritesNotifier(this._repo, {this.userId}) : super(const []) {
     if (_repo != null) _load();
   }
+
+  /// Für den Gerätespeicher: je Konto ein eigener Eintrag, damit nach einem
+  /// Kontowechsel nie die Vereine des Vorgängers aufblitzen.
+  final String? userId;
 
   /// `null` = kein Server oder niemand angemeldet; die Favoritenliste bleibt
   /// dann leer und Änderungen sind wirkungslos statt fehlerhaft.
@@ -157,22 +178,50 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
   /// trotzdem nicht fest.
   bool fertig = false;
 
+  /// **Erst der Gerätespeicher, dann der Server** (07.11.2026, auf Ansage:
+  /// „die Favoriten lokal zu speichern sollte allgemein von Vorteil sein").
+  ///
+  /// Gemessen hing beim Start alles, was an den Vereinen hängt — Kopfkarte,
+  /// „Mein Wochenende", Vereins-News —, rund eine halbe Sekunde an dieser
+  /// einen Abfrage, bevor es selbst anfragen konnte. Mit dem gespeicherten
+  /// Stand geht das sofort los. Der Server bleibt die Wahrheit: Seine Antwort
+  /// ersetzt den lokalen Stand und wird wieder gespeichert — aber nur, wenn
+  /// sie **abweicht**. Eine gleiche Liste neu zu setzen ließe jeden davon
+  /// abhängigen Abruf ein zweites Mal laden.
+  ///
+  /// Offline ist das gleich mit gelöst: Ohne Netz stehen die zuletzt
+  /// bekannten Vereine da statt einer leeren Liste.
   Future<void> _load() async {
-    try {
-      final geladeneListe = await _repo!.load();
+    final ausSpeicher = await favoritenAusSpeicher(userId);
+    if (ausSpeicher != null && mounted) {
       geladen = true;
       fertig = true;
-      // Immer eine neue Liste: Wer auf „geladen" hört (Vereinsauswahl beim
-      // ersten Start), erführe sonst bei einer leeren Liste nichts davon —
-      // die Notifier melden nur, wenn sich der Zustand ändert.
-      state = [...geladeneListe];
+      state = [...ausSpeicher];
+    }
+    try {
+      final geladeneListe = await _repo!.load();
+      if (!mounted) return;
+      final neu = !geladen || !gleicheFavoriten(state, geladeneListe);
+      geladen = true;
+      fertig = true;
+      // Immer eine neue Liste beim ersten Laden: Wer auf „geladen" hört
+      // (Vereinsauswahl beim ersten Start), erführe sonst bei einer leeren
+      // Liste nichts davon — die Notifier melden nur, wenn sich der Zustand
+      // ändert.
+      if (neu) state = [...geladeneListe];
+      if (neu || ausSpeicher == null) _speichern();
     } catch (_) {
-      // Offline o. ä.: Die Liste bleibt leer, gilt aber nicht als geladen —
-      // eine Aufforderung „wähle einen Verein" wäre dann eine falsche Auskunft.
+      if (!mounted) return;
+      // Offline o. ä.: Ohne gespeicherten Stand bleibt die Liste leer, gilt
+      // aber nicht als geladen — eine Aufforderung „wähle einen Verein" wäre
+      // dann eine falsche Auskunft.
+      if (fertig) return;
       fertig = true;
       state = [...state]; // meldet „fertig" an alle, die zuhören
     }
   }
+
+  void _speichern() => favoritenSpeichern(userId, state);
 
   /// **Alle** gespeicherten Zeilen zu Typ und Schlüssel — bei Teams über die
   /// reine Team-ID ([teamIdOf]) verglichen. Mehrzahl mit Absicht: Zu einem
@@ -211,6 +260,7 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
       } else {
         await repo.add(fav);
       }
+      _speichern();
     } catch (_) {
       state = previous; // bei Fehler zurückrollen
     }
@@ -227,11 +277,49 @@ class FavoritesNotifier extends StateNotifier<List<Favorite>> {
     ];
     try {
       await repo.reorder(ordered);
+      _speichern();
     } catch (_) {
       state = previous;
     }
   }
 }
+
+String _speicherSchluessel(String userId) => 'favoriten_$userId';
+
+/// Der zuletzt bekannte Stand vom Gerät, `null` wenn es keinen gibt (oder er
+/// unlesbar ist — dann zählt allein der Server).
+Future<List<Favorite>?> favoritenAusSpeicher(String? userId) async {
+  if (userId == null) return null;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final roh = prefs.getString(_speicherSchluessel(userId));
+    if (roh == null) return null;
+    return [
+      for (final r in jsonDecode(roh) as List)
+        Favorite.fromRow((r as Map).cast<String, dynamic>()),
+    ];
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Speichert den Stand fürs nächste Öffnen. Ein Fehlschlag ist egal: Dann
+/// lädt der nächste Start eben wieder vom Server.
+Future<void> favoritenSpeichern(String? userId, List<Favorite> liste) async {
+  if (userId == null) return;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _speicherSchluessel(userId),
+      jsonEncode([for (final f in liste) f.toRow(userId)]),
+    );
+  } catch (_) {}
+}
+
+/// Gleiche Vereine und Ligen in gleicher Reihenfolge mit gleichen Angaben.
+bool gleicheFavoriten(List<Favorite> a, List<Favorite> b) =>
+    jsonEncode([for (final f in a) f.toRow('')]) ==
+    jsonEncode([for (final f in b) f.toRow('')]);
 
 /// Hat das Konto noch keinen Lieblingsverein? Dann kommt nach der Anmeldung
 /// die Vereinsauswahl (`VereinsWahlScreen`). `false`, solange nicht geladen
@@ -313,6 +401,13 @@ final leaguePickerTeamsProvider =
 /// werden — sonst steht ihr Wappen im Favoriten-Tab, während darunter alles
 /// leer bleibt. Migration `0075_favorites_drop_openligadb.sql` löscht die
 /// Bestandszeilen; diese Prüfung hält die Anzeige auch ohne sie richtig.
+/// Ist das eine Nationalmannschaft ([Favorite.nation])?
+bool isNationFavorite(Favorite f) =>
+    f.type == FavoriteType.team && f.key.startsWith('nation:');
+
+/// Wählbare Nationalmannschaften — vorerst nur Deutschland.
+const nationen = [Leagues.deutschland];
+
 bool isResolvableTeamFavorite(Favorite f) =>
     f.type != FavoriteType.team || f.key.startsWith('sportmonks:');
 

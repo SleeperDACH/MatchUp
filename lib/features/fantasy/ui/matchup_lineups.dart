@@ -23,7 +23,6 @@ import 'punkte_aufschluesselung.dart';
 import '../logic/naechstes_spiel.dart';
 import '../../../core/models/models.dart';
 import '../../../app/typografie.dart';
-import '../../../app/widgets/karte.dart';
 import '../../../app/widgets/positions_strich.dart';
 import '../../../app/widgets/aufleuchten.dart';
 
@@ -685,6 +684,9 @@ class _PlayerRow extends StatelessWidget {
     // Spalte an derselben Stelle steht, unabhängig von ihrer Stellenzahl.
     final schnitt = schnitte[player.id];
     final zeile = spielZeile(spiel, jetzt: jetzt);
+    final live = zeile?.laeuft ?? false;
+    // Noch nicht angepfiffen: Name und Zahl treten zurück (Richtung C).
+    final offen = spielplanDa && !gespielt && !live;
     // Punkte weiß, Minus rot ([Punktzahl.negativRot]). Das Grün für
     // laufende Spiele (27.10.2026) ist am 03.11.2026 auf Ansage entfallen.
     final ptsBox = SizedBox(
@@ -711,6 +713,19 @@ class _PlayerRow extends StatelessWidget {
                   : scheme.onSurfaceVariant.withValues(alpha: 0.6),
             ),
           ),
+          // **Spieluhr, Teil 1** (Richtung C, 10.11.2026): die Minute klein
+          // unter den Punkten, solange sein Spiel tickt.
+          if (live && spiel?.minute != null)
+            Text(
+              "${spiel!.minute}'",
+              style: TextStyle(
+                fontSize: Schrift.mikro,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.4,
+                color: context.farben.rot,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
           // **Der Schnitt steht nicht mehr hier** (17.10.2026, auf Ansage):
           // Punkte und Ø standen übereinander in derselben Box und lasen sich
           // wie eine Zahl mit Fußnote. Die Box trägt jetzt nur die Punkte; der
@@ -763,10 +778,11 @@ class _PlayerRow extends StatelessWidget {
                 child: Text(
                   shortPlayerName(player.name).toUpperCase(),
                   maxLines: 1,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: Schrift.ueberschriftGewicht,
                     fontStyle: Schrift.ueberschriftStil,
+                    color: offen ? scheme.onSurfaceVariant : null,
                   ),
                 ),
               ),
@@ -857,8 +873,71 @@ class _PlayerRow extends StatelessWidget {
               // (auf Ansage, 14.10.2026).
               height: 66,
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: kartenDeko(context, radius: 14),
-              child: Row(children: children),
+              // **Richtung C — Hauch & Uhr** (10.11.2026, auf Ansage aus drei
+              // Entwürfen; die erste Fassung „graue Fläche mit Schatten" sah
+              // „überhaupt nicht modern" aus). Spielt sein Verein gerade,
+              // trägt die Karte einen **roten Hauch aus der äußeren Ecke** —
+              // dieselbe Sprache wie Gold/Grün auf den Startkarten — und unten
+              // läuft die Spieluhr. Gespielt: ruhige dunkle Karte. Noch offen:
+              // eine Stufe dunkler, Name und Zahl grau. Die Kante bleibt die
+              // Haarlinie (`kartenkanten_test.dart`).
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Theme.of(context).dividerColor),
+                color: live
+                    ? null
+                    : (offen
+                        ? scheme.surfaceContainerLowest
+                        : scheme.surfaceContainerLow),
+                gradient: live
+                    ? RadialGradient(
+                        center: start ? Alignment.topLeft : Alignment.topRight,
+                        radius: 1.6,
+                        stops: const [0, 0.45, 0.8],
+                        colors: [
+                          Color.alphaBlend(
+                            context.farben.rot.withValues(
+                              alpha: context.istHell ? 0.14 : 0.22,
+                            ),
+                            Theme.of(context).cardColor,
+                          ),
+                          Color.alphaBlend(
+                            context.farben.rot.withValues(alpha: 0.06),
+                            Theme.of(context).cardColor,
+                          ),
+                          Theme.of(context).cardColor,
+                        ],
+                      )
+                    : null,
+              ),
+              child: Stack(
+                // Der Strich reicht über das Innenmaß hinaus bis an die
+                // Kartenkante; abgeschnitten wird an der Karte selbst.
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(child: Row(children: children)),
+                  // **Spieluhr, Teil 2:** ein 2-Punkt-Strich am unteren Rand,
+                  // von der Außenkante her so lang, wie gespielt ist (90' =
+                  // voll; Nachspielzeit bleibt voll).
+                  if (live && spiel?.minute != null)
+                    Positioned(
+                      bottom: 0,
+                      left: -10,
+                      right: -10,
+                      child: Align(
+                        alignment: start
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: FractionallySizedBox(
+                          widthFactor:
+                              (spiel!.minute! / 90).clamp(0.0, 1.0).toDouble(),
+                          child: Container(height: 2, color: context.farben.rot),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

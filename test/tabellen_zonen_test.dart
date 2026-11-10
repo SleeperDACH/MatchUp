@@ -8,8 +8,9 @@ import 'package:matchup/core/models/models.dart';
 
 import 'support/schrift.dart';
 
-/// Zonen der Ligatabelle (19.10.2026): Europa nur in der Bundesliga, in der
-/// 2. und 3. Liga Aufstieg, Relegation, Abstieg.
+/// Zonen der Ligatabelle (19.10.2026): Europa in der Bundesliga (seit
+/// 09.11.2026 auch in der Frauen-Bundesliga), in der 2. und 3. Liga Aufstieg,
+/// Relegation, Abstieg.
 void main() {
   setUpAll(ladeSchrift);
 
@@ -49,12 +50,20 @@ void main() {
     expect(z.sublist(16), everyElement(TabellenZone.abstieg));
   });
 
+  test('Frauen-Bundesliga: Meister, zwei CL-Plätze, zwei Absteiger', () {
+    final z = zonen('frauen_bundesliga', 14);
+    expect(z[0], TabellenZone.meister);
+    expect(z.sublist(1, 3), everyElement(TabellenZone.championsLeague));
+    expect(z.sublist(3, 12), everyElement(isNull));
+    expect(z.sublist(12), everyElement(TabellenZone.abstieg));
+    expect(z, isNot(contains(TabellenZone.relegation)));
+  });
+
   test('Aufstieg trägt das Gold des Meisters', () {
     expect(TabellenZone.aufstieg.farbe, TabellenZone.meister.farbe);
   });
 
   test('Andere Wettbewerbe haben keine Zonen', () {
-    expect(zonen('frauen_bundesliga', 12), everyElement(isNull));
     expect(zonen('dfb_pokal', 18), everyElement(isNull));
     expect(tabellenZone(null, 1, 18), isNull);
   });
