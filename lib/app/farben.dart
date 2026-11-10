@@ -95,7 +95,10 @@ class MatchUpFarben extends ThemeExtension<MatchUpFarben> {
     // soll sich um keinen Pixel ändern.
     auswahlFlaeche: Color.from(alpha: 0.14, red: 237 / 255, green: 239 / 255, blue: 244 / 255),
     auswahlKante: Color.from(alpha: 0.55, red: 237 / 255, green: 239 / 255, blue: 244 / 255),
-    naviGlas: Color.from(alpha: 0.58, red: 0, green: 0, blue: 0),
+    // 88 % wie im hellen Modus (10.11.2026): Bei 58 % schien das helle Foto
+    // der ersten News-Karte durch die Leiste und wirkte wie ein weißes
+    // Leuchten am unteren Rand.
+    naviGlas: Color.from(alpha: 0.88, red: 0, green: 0, blue: 0),
     schimmer: Color.from(alpha: 0.08, red: 1, green: 1, blue: 1),
     vorne: Color(0xFFFFFFFF),
   );
