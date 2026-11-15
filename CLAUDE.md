@@ -1403,9 +1403,10 @@ Der Weg einer Benachrichtigung hat vier Stationen, und jede hat einen Grund:
   **Ausgewertet und entschieden** (0166, 15.11.2026, auf Ansage „pauschal
   genau 1 Minute nach Meldung"): Torschütze nach dem Stand, Median/90 %/Max
   in s — 1. BL 20/42/254, 2. BL 31/52/60, 3. Liga 30/50/552, Frauen-BL
-  40/70/101. Seitdem wartet **jedes** Tor 60 s ab dem ersten Sehen des
-  Stands, auch wenn das Ereignis schon da ist; der Takt (10 s) macht daraus
-  60–70 s. Ein binnen der Minute zurückgenommenes Tor meldet gar nichts.
+  40/70/101. **Regel seit 0167:** Ist das Tor-Ereignis (Torschütze) schon
+  da, geht die Mitteilung sofort raus; sonst höchstens 60 s darauf warten
+  (Takt 10 s → 60–70 s), dann ohne Namen. 0166 (pauschal 60 s für jedes
+  Tor) war ein Missverständnis und ist damit ersetzt.
   **Form seit 0159** (auf Ansage; 0158 brachte den Ball statt „Tor"):
   Minute vorn, nur der Nachname (`push_nachname`, letzter Namensteil wie
   `namensTeile` in der App), „VAR" statt „Kein Tor" — „⚽ Dortmund (34.
