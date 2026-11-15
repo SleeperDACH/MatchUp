@@ -812,34 +812,47 @@ class _HeroVerein extends StatelessWidget {
   final TeamRef team;
 
   @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      // **Das Wappen groß und ohne Hof.** Hinter ihm lag ein radialer
-      // Schimmer in der Vereinsfarbe; er stammt aus der Zeit, als die Karte
-      // eine graue Fläche war und Farbe brauchte. Seit das Stadion dahinter
-      // liegt, ist er ein zweiter Lichtkreis auf einem Bild, das schon eins
-      // hat — und er nahm dem Wappen die Fläche, die es jetzt bekommt
-      // (56 statt 44 Punkte). Die Vereinsfarbe bleibt an den Kartenrändern.
-      TeamBadge(team: team, size: 56),
-      const SizedBox(height: 3),
-      Text(
+  Widget build(BuildContext context) {
+    final name = vereinsName(team.name);
+    const stil = TextStyle(
+      fontSize: 14,
+      fontWeight: Schrift.ueberschriftGewicht,
+      fontStyle: Schrift.ueberschriftStil,
+      height: 1.1,
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // **Das Wappen groß und ohne Hof.** Hinter ihm lag ein radialer
+        // Schimmer in der Vereinsfarbe; er stammt aus der Zeit, als die Karte
+        // eine graue Fläche war und Farbe brauchte. Seit das Stadion dahinter
+        // liegt, ist er ein zweiter Lichtkreis auf einem Bild, das schon eins
+        // hat — und er nahm dem Wappen die Fläche, die es jetzt bekommt
+        // (56 statt 44 Punkte). Die Vereinsfarbe bleibt an den Kartenrändern.
+        TeamBadge(team: team, size: 56),
+        const SizedBox(height: 3),
         // **Ein Wort je Verein** (auf Ansage, 16.10.2026): „Gladbach",
         // „Hamburg", „Schalke" — nicht „Borussia Mönchengladbach". Zwei
         // Zeilen bleiben erlaubt für den seltenen langen Namen.
-        vereinsName(team.name),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: Schrift.ueberschriftGewicht,
-          fontStyle: Schrift.ueberschriftStil,
-          height: 1.1,
-        ),
-      ),
-    ],
-  );
+        //
+        // **Ein einzelnes Wort bricht nie mitten durch** (15.11.2026):
+        // „DEUTSCHLAN / D" stand in der Kopfkarte. Ein Wort ohne Leerzeichen
+        // bleibt einzeilig und wird nur so weit verkleinert, wie es muss.
+        name.contains(' ')
+            ? Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: stil,
+              )
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(name, maxLines: 1, style: stil),
+              ),
+      ],
+    );
+  }
 }
 
 /// Kleine Marke am oberen Rand der Kopfkarte („HEUTE", „LIVE").
