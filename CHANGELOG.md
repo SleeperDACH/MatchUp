@@ -8,6 +8,39 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
+## 1.8.2+14 — 17. November 2026
+
+8 Commits seit 1.8.1+13. Kleines Update: **Länderspiele**, ein
+aufgeräumtes **Tippspiel** und **Live-Spieler im MatchUp** auf einen Blick.
+
+### Neu
+
+- **Länderspiele.** Deutschland im Live-Tab mit Aufstellungen, Ereignissen
+  und Statistiken. Unter *Favoriten › Nationalmannschaften* lässt sich
+  Deutschland auswählen, dann stehen die Spiele auch auf dem Homescreen.
+- **Live im MatchUp.** Spieler, deren Spiel gerade läuft, bekommen einen
+  roten Schimmer, die Spielminute und eine Spieluhr am unteren Rand.
+- **Tippspiel neu sortiert.** Reiter Übersicht, Tippen, Tabelle und Duelle;
+  oben eine kompakte „Als nächstes"-Karte mit Fortschritt („2 von 5
+  getippt"). Einladen sitzt jetzt im Zahnrad.
+
+### Verbessert
+
+- **Tipp-Tabelle** moderner: eigene Zeile hervorgehoben, Punkte als
+  Plaketten, laufende Spiele rot — alle Tipps aller Mitspieler bleiben
+  sichtbar.
+- **Kopfkarte in der Pause** zeigt das nächste Spiel statt nichts.
+- **Tor-Mitteilungen** nennen den richtigen Torschützen; ist er schon
+  bekannt, kommt die Meldung sofort, sonst nach höchstens einer Minute.
+- **Trikotfarben für Nationalteams** in den Aufstellungen.
+- **Frauen-Bundesliga:** Tabellenzonen für Champions League und Abstieg.
+
+### Behoben
+
+- Weißes Leuchten unten an der Navigationsleiste.
+- Lange Namen in der Kopfkarte brachen mitten im Wort um
+  („DEUTSCHLAN / D").
+
 ## 1.8.1+13 — 4. November 2026
 
 23 Commits seit 1.8.0+12. Der Schwerpunkt: **leichterer Einstieg** —
