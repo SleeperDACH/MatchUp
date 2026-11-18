@@ -18,6 +18,7 @@ class LeagueInfo {
     required this.providerLeagueKey,
     this.sportmonksKey,
     this.fixedSeason,
+    this.calendarYear = false,
     this.oddsSportKey,
   });
 
@@ -45,6 +46,15 @@ class LeagueInfo {
   /// Für Turniere (WM, EM): festes Jahr statt rollierender Saison.
   final int? fixedSeason;
 
+  /// Wettbewerbe, die der Anbieter **je Kalenderjahr** führt (Länderspiele,
+  /// `DFBN/2026`): Die Saison ist das laufende Jahr. Vorher stand dort ein
+  /// festes Jahr, das jeden Januar von Hand hätte nachgezogen werden müssen.
+  final bool calendarYear;
+
+  /// Ein Wettbewerb ohne Ligasaison (Turnier oder Kalenderjahr): Er hat keine
+  /// offizielle Tabelle, sondern zeigt Gruppen.
+  bool get ohneLigasaison => fixedSeason != null || calendarYear;
+
   /// Sport-Key bei der Quoten-Quelle (The Odds API), z. B.
   /// `soccer_germany_bundesliga`. `null` = keine Wettquoten für diese Liga.
   final String? oddsSportKey;
@@ -52,7 +62,8 @@ class LeagueInfo {
   /// Saison-Startjahr zu einem Zeitpunkt: Turniere haben ein festes Jahr,
   /// Vereinsligen wechseln im Juli (Saison 2025/26 → 2025).
   int seasonFor(DateTime now) =>
-      fixedSeason ?? (now.month >= 7 ? now.year : now.year - 1);
+      fixedSeason ??
+      (calendarYear ? now.year : (now.month >= 7 ? now.year : now.year - 1));
 }
 
 /// Eine Runde im Spielplan (Spieltag, Gruppenphase, Achtelfinale, …).
@@ -236,9 +247,9 @@ abstract final class Leagues {
   /// ([liveTab]) und im Spiel-Detail (Tore mit Minute; Aufstellungen,
   /// Wechsel und Karten liefert OpenLigaDB nicht).
   ///
-  /// **Das Jahr steht fest**, weil die Liste beim Anbieter je Kalenderjahr
-  /// angelegt wird (`DFBN/2026`), nicht je Saison. Für 2027 nachziehen,
-  /// sobald die Liste dort steht.
+  /// **Das Jahr ist das Kalenderjahr** ([calendarYear]), weil die Liste beim
+  /// Anbieter je Jahr angelegt wird (`DFBN/2026`), nicht je Saison. Bis
+  /// 18.11.2026 stand hier fest 2026.
   static const deutschland = LeagueInfo(
     id: 'deutschland',
     sport: Sport.football,
@@ -246,7 +257,7 @@ abstract final class Leagues {
     roundLabel: 'Spiel',
     providerId: 'openligadb',
     providerLeagueKey: 'DFBN',
-    fixedSeason: 2026,
+    calendarYear: true,
   );
 
   /// Was der Live-Tab zeigt: die Nationalmannschaft zuerst — an

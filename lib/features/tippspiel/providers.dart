@@ -26,8 +26,9 @@ import 'models/tip_round.dart';
 import 'logic/live_table.dart';
 
 /// Aktiver Wettbewerb; umschaltbar über den Titel der App-Bar.
-final selectedLeagueProvider =
-    StateProvider<LeagueInfo>((ref) => Leagues.bundesliga);
+final selectedLeagueProvider = StateProvider<LeagueInfo>(
+  (ref) => Leagues.bundesliga,
+);
 
 /// Saison-Startjahr des aktiven Wettbewerbs (Turniere: festes Jahr,
 /// Vereinsligen: Saisonwechsel im Juli).
@@ -65,8 +66,10 @@ final selectedRoundProvider = StateProvider<int?>((ref) {
   return null;
 });
 
-final roundFixturesProvider =
-    FutureProvider.family<List<Fixture>, int>((ref, round) {
+final roundFixturesProvider = FutureProvider.family<List<Fixture>, int>((
+  ref,
+  round,
+) {
   final league = ref.watch(selectedLeagueProvider);
   final season = ref.watch(seasonProvider);
   return ref.watch(sportsDataProvider).getRoundFixtures(league, season, round);
@@ -83,8 +86,10 @@ final seasonFixturesProvider = FutureProvider<List<Fixture>>((ref) {
 /// Detaildaten eines einzelnen Spiels (Ergebnis, Torschützen, Spielort) —
 /// für die Spiel-Detailansicht. Family-Key ist die Fixture-ID
 /// (z. B. `openligadb:80140`).
-final matchDetailProvider =
-    FutureProvider.family<MatchDetail, String>((ref, fixtureId) {
+final matchDetailProvider = FutureProvider.family<MatchDetail, String>((
+  ref,
+  fixtureId,
+) {
   // Provider aus dem ID-Präfix ableiten (`sportmonks:…` / `openligadb:…`).
   if (fixtureId.startsWith('sportmonks:')) {
     if (!AppConfig.isSupabaseConfigured) {
@@ -110,38 +115,63 @@ final matchDetailProvider =
 SportsDataProvider sportsProviderFor(LeagueInfo league) =>
     switch (league.providerId) {
       'openligadb' => OpenLigaDbProvider(),
-      'sportmonks' => AppConfig.isSupabaseConfigured
-          ? SupabaseSportmonksProvider()
-          : throw StateError(
-              'Sportmonks-Daten brauchen die Server-Verbindung.'),
+      'sportmonks' =>
+        AppConfig.isSupabaseConfigured
+            ? SupabaseSportmonksProvider()
+            : throw StateError(
+                'Sportmonks-Daten brauchen die Server-Verbindung.',
+              ),
       _ => throw StateError('Unbekannter Datenprovider: ${league.providerId}'),
     };
 
 final leagueSeasonFixturesProvider =
     FutureProvider.family<List<Fixture>, String>((ref, leagueId) {
-  final league = Leagues.byId(leagueId);
-  final season = league.seasonFor(DateTime.now());
-  return sportsProviderFor(league).getSeasonFixtures(league, season);
-});
+      final league = Leagues.byId(leagueId);
+      final season = league.seasonFor(DateTime.now());
+      return sportsProviderFor(league).getSeasonFixtures(league, season);
+    });
+
+/// Spielplan eines Kalenderjahr-Wettbewerbs (Länderspiele) für ein **bestimmtes**
+/// Jahr — für die Kopfkarte, die ab Oktober auch ins Folgejahr schauen muss:
+/// Das nächste Länderspiel nach dem November steht schon in `DFBN/2027`.
+/// Ein Jahr, das der Anbieter noch nicht angelegt hat, ergibt eine leere Liste.
+final leagueYearFixturesProvider =
+    FutureProvider.family<List<Fixture>, ({String leagueId, int year})>((
+      ref,
+      k,
+    ) async {
+      final league = Leagues.byId(k.leagueId);
+      try {
+        return await sportsProviderFor(
+          league,
+        ).getSeasonFixtures(league, k.year);
+      } catch (_) {
+        return const <Fixture>[];
+      }
+    });
 
 /// Form einer Mannschaft vor einem Spiel (letzte fünf Ergebnisse, älteste
 /// zuerst) — gelesen aus den Saison-Spielplänen, die der Tippen-Tab ohnehin
 /// lädt; kein zusätzlicher Abruf je Verein. `null`, solange kein passender
 /// Spielplan geladen ist oder die Mannschaft darin nicht vorkommt: Dann steht
 /// keine Formzeile da, statt einer leeren, die wie „keine Spiele" aussähe.
-final teamFormProvider = Provider.family<List<FormErgebnis>?,
-    ({String leagueId, String teamId, DateTime vor})>((ref, k) {
-  for (final id in formQuellen(k.leagueId)) {
-    if (!Leagues.all.any((l) => l.id == id)) continue;
-    final spiele = ref.watch(leagueSeasonFixturesProvider(id)).valueOrNull;
-    if (spiele == null) continue;
-    final kennt =
-        spiele.any((f) => f.home.id == k.teamId || f.away.id == k.teamId);
-    if (!kennt) continue;
-    return formVor(spiele, k.teamId, k.vor);
-  }
-  return null;
-});
+final teamFormProvider =
+    Provider.family<
+      List<FormErgebnis>?,
+      ({String leagueId, String teamId, DateTime vor})
+    >((ref, k) {
+      for (final id in formQuellen(k.leagueId)) {
+        if (!Leagues.all.any((l) => l.id == id)) continue;
+        final spiele = ref.watch(leagueSeasonFixturesProvider(id)).valueOrNull;
+        if (spiele == null) continue;
+        final kennt = spiele.any(
+          (f) => f.home.id == k.teamId || f.away.id == k.teamId,
+        );
+        if (!kennt) continue;
+        return formVor(spiele, k.teamId, k.vor);
+      }
+      return null;
+    });
 
 /// Die aktuellen Stände aller Sportmonks-Ligen, nach Fixture-ID — für den
 /// Takt im Live-Tab, der sie über die Saison-Spielpläne legt. Leer ohne
@@ -152,8 +182,10 @@ final liveFixturesProvider = FutureProvider<Map<String, Fixture>>((ref) {
 });
 
 /// Tabelle einer beliebigen Liga (per ID) — für die Liga-Übersicht.
-final leagueTableProvider =
-    FutureProvider.family<List<StandingRow>, String>((ref, leagueId) {
+final leagueTableProvider = FutureProvider.family<List<StandingRow>, String>((
+  ref,
+  leagueId,
+) {
   final league = Leagues.byId(leagueId);
   final season = league.seasonFor(DateTime.now());
   return sportsProviderFor(league).getTable(league, season);
@@ -162,12 +194,12 @@ final leagueTableProvider =
 /// Torjägerliste einer Liga (nur Sportmonks-Ligen; braucht Server-Verbindung).
 final leagueTopScorersProvider =
     FutureProvider.family<TopScorersResult, String>((ref, leagueId) {
-  final league = Leagues.byId(leagueId);
-  if (league.sportmonksKey == null || !AppConfig.isSupabaseConfigured) {
-    return const TopScorersResult(current: true, scorers: []);
-  }
-  return SupabaseSportmonksProvider().getTopScorers(league);
-});
+      final league = Leagues.byId(leagueId);
+      if (league.sportmonksKey == null || !AppConfig.isSupabaseConfigured) {
+        return const TopScorersResult(current: true, scorers: []);
+      }
+      return SupabaseSportmonksProvider().getTopScorers(league);
+    });
 
 // ---------------------------------------------------------------------
 // Wettquoten (the-odds-api.com) — nur Anzeige
@@ -194,8 +226,10 @@ final leagueOddsProvider = FutureProvider<List<MatchOdds>>((ref) async {
 
 /// Quoten einer Runde, fertig auf Fixture-IDs gematcht. Leeres Map, solange
 /// Quoten/Spiele noch laden oder nichts passt — die UI bleibt dann ohne.
-final roundOddsProvider =
-    Provider.family<Map<String, MatchOdds>, int>((ref, round) {
+final roundOddsProvider = Provider.family<Map<String, MatchOdds>, int>((
+  ref,
+  round,
+) {
   final sportKey = ref.watch(selectedLeagueProvider).oddsSportKey;
   if (sportKey == null) return const {};
   final odds = ref.watch(leagueOddsProvider).valueOrNull;
@@ -207,8 +241,10 @@ final roundOddsProvider =
 /// Quoten einer beliebigen Liga (per ID) — wie [leagueOddsProvider], aber nicht
 /// an den aktuell gewählten Wettbewerb gebunden. Für den Wochen-Feed, der
 /// Spiele mehrerer Wettbewerbe gemischt zeigt.
-final leagueOddsByIdProvider =
-    FutureProvider.family<List<MatchOdds>, String>((ref, leagueId) async {
+final leagueOddsByIdProvider = FutureProvider.family<List<MatchOdds>, String>((
+  ref,
+  leagueId,
+) async {
   final sportKey = Leagues.byId(leagueId).oddsSportKey;
   final available = AppConfig.isSupabaseConfigured || AppConfig.hasOdds;
   if (sportKey == null || !available) return const [];
@@ -242,8 +278,10 @@ final selectedWeekProvider = StateProvider<int?>((ref) {
 /// Auf Fixture-IDs gematchte Quoten aller Spiele einer Spielwoche (über die
 /// Wettbewerbe hinweg). Leer, solange etwas lädt oder nichts passt — die
 /// Quotenzeile ist optional und blockiert den Feed nicht.
-final weekOddsProvider =
-    Provider.family<Map<String, MatchOdds>, int>((ref, weekIndex) {
+final weekOddsProvider = Provider.family<Map<String, MatchOdds>, int>((
+  ref,
+  weekIndex,
+) {
   final round = ref.watch(activeRoundProvider);
   if (round == null) return const {};
   final weeks = ref.watch(roundWeeksProvider).valueOrNull;
@@ -275,7 +313,8 @@ final weekOddsProvider =
 // ---------------------------------------------------------------------
 
 final tipRoundRepositoryProvider = Provider<TipRoundRepository>(
-    (ref) => TipRoundRepository(Supabase.instance.client));
+  (ref) => TipRoundRepository(Supabase.instance.client),
+);
 
 /// Zum Anstoß eingefrorene Quoten je Fixture — Grundlage für den
 /// Quoten-Bonus in der Wertung. Nur mit Backend; im lokalen Modus leer
@@ -320,8 +359,9 @@ final myTipStatsProvider = FutureProvider<TipStats>((ref) async {
   for (final r in rounds) {
     tipsByRound[r.id] = await ref.watch(allRoundTipsProvider(r.id).future);
     if (loadedLeagues.add(r.leagueId)) {
-      final fixtures =
-          await ref.watch(leagueSeasonFixturesProvider(r.leagueId).future);
+      final fixtures = await ref.watch(
+        leagueSeasonFixturesProvider(r.leagueId).future,
+      );
       for (final f in fixtures) {
         fixturesById[f.id] = f;
       }
@@ -348,27 +388,34 @@ final activeRoundProvider = StateProvider<TipRound?>((ref) {
 void activateRound(WidgetRef ref, TipRound round) {
   // Primärer Wettbewerb der Runde (bei Multi-Wettbewerb der erste); im
   // Tippen-Tab kann zwischen den Wettbewerben der Runde gewechselt werden.
-  ref.read(selectedLeagueProvider.notifier).state =
-      Leagues.byId(round.competitions.first);
+  ref.read(selectedLeagueProvider.notifier).state = Leagues.byId(
+    round.competitions.first,
+  );
   ref.read(activeRoundProvider.notifier).state = round;
 }
 
 /// Mitglieder einer Liga (inkl. Mitglieder ohne Tipps).
-final roundMembersProvider =
-    FutureProvider.family<List<RoundMember>, String>((ref, roundId) {
+final roundMembersProvider = FutureProvider.family<List<RoundMember>, String>((
+  ref,
+  roundId,
+) {
   return ref.watch(tipRoundRepositoryProvider).members(roundId);
 });
 
 /// Die mit einer Fantasy-Liga gekoppelte Tipprunde (oder null) — Grundlage für
 /// den „Ligainternes Tippspiel"-Button auf der Fantasy-Übersicht.
-final fantasyTipRoundProvider =
-    FutureProvider.family<TipRound?, String>((ref, fantasyLeagueId) {
+final fantasyTipRoundProvider = FutureProvider.family<TipRound?, String>((
+  ref,
+  fantasyLeagueId,
+) {
   return ref.watch(tipRoundRepositoryProvider).fantasyTipRound(fantasyLeagueId);
 });
 
 /// Live-Stream der Chat-Nachrichten einer Liga (älteste zuerst).
-final roundMessagesProvider =
-    StreamProvider.family<List<ChatMessage>, String>((ref, roundId) {
+final roundMessagesProvider = StreamProvider.family<List<ChatMessage>, String>((
+  ref,
+  roundId,
+) {
   return ref.watch(tipRoundRepositoryProvider).messageStream(roundId);
 });
 
@@ -376,7 +423,8 @@ final roundMessagesProvider =
 /// Gerät gespeichert (SharedPreferences). `null` = noch nie geöffnet.
 final chatLastReadProvider =
     StateNotifierProvider.family<ChatReadNotifier, DateTime?, String>(
-        (ref, roundId) => ChatReadNotifier(roundId));
+      (ref, roundId) => ChatReadNotifier(roundId),
+    );
 
 class ChatReadNotifier extends StateNotifier<DateTime?> {
   ChatReadNotifier(this.roundId) : super(null) {
@@ -409,33 +457,97 @@ final unreadChatProvider = Provider.family<bool, String>((ref, roundId) {
   final lastRead = ref.watch(chatLastReadProvider(roundId));
   final messages =
       ref.watch(roundMessagesProvider(roundId)).valueOrNull ?? const [];
-  return messages.any((m) =>
-      m.userId != myId && (lastRead == null || m.createdAt.isAfter(lastRead)));
+  return messages.any(
+    (m) =>
+        m.userId != myId && (lastRead == null || m.createdAt.isAfter(lastRead)),
+  );
 });
 
 /// Alle sichtbaren Tipps einer Liga (fremde erst nach Anstoß).
-final allRoundTipsProvider =
-    FutureProvider.family<List<MemberTip>, String>((ref, roundId) {
+final allRoundTipsProvider = FutureProvider.family<List<MemberTip>, String>((
+  ref,
+  roundId,
+) {
   return ref.watch(tipRoundRepositoryProvider).allTips(roundId);
 });
 
+/// Nur meine Tipps einer Runde — für Zählungen wie „3 Tipps offen", die
+/// keine fremden Tipps brauchen.
+final meineRundenTippsProvider =
+    FutureProvider.family<List<MemberTip>, String>((ref, roundId) {
+  final myId = ref.watch(currentUserProvider)?.id;
+  if (myId == null) return const <MemberTip>[];
+  return ref
+      .watch(tipRoundRepositoryProvider)
+      .allTips(roundId, nur: {myId});
+});
+
 /// Abgegebene Bonustipp-Antworten einer Runde (alle Mitglieder).
-final bonusAnswersProvider =
-    FutureProvider.family<List<BonusAnswer>, String>((ref, roundId) {
+final bonusAnswersProvider = FutureProvider.family<List<BonusAnswer>, String>((
+  ref,
+  roundId,
+) {
   return ref.watch(tipRoundRepositoryProvider).bonusAnswers(roundId);
 });
 
+/// **Tabellen-Ausschnitt des Globalen Tippspiels** (18.11.2026): Rangliste
+/// vom Server (`tipp_rangliste`, 0169), und nur für die Nutzer darin
+/// Mitglieder, Tipps und Schloss-Auskunft. Bei Tausenden Mitgliedern lädt die
+/// App so ein gutes Dutzend Zeilen statt aller Tipps aller Spieler.
+/// [vor]: Stichzeit für die Bewegungspfeile (Beginn der gezeigten Woche bzw.
+/// des Spieltags).
+final globalerAusschnittProvider =
+    FutureProvider.family<
+      TabellenAusschnitt,
+      ({String roundId, DateTime? vor})
+    >((ref, k) async {
+      ref.watch(currentUserProvider);
+      final repo = ref.watch(tipRoundRepositoryProvider);
+      final zeilen = await repo.rangliste(k.roundId, vor: k.vor);
+      final ids = {for (final z in zeilen) z.userId};
+      final (members, tips, presence) = await (
+        repo.members(k.roundId, nur: ids),
+        repo.allTips(k.roundId, nur: ids),
+        repo.tipPresence(k.roundId, nur: ids),
+      ).wait;
+      return TabellenAusschnitt(
+        zeilen: zeilen,
+        members: members,
+        tips: tips,
+        presence: presence,
+      );
+    });
+
+class TabellenAusschnitt {
+  const TabellenAusschnitt({
+    required this.zeilen,
+    required this.members,
+    required this.tips,
+    required this.presence,
+  });
+
+  final List<RanglistenZeile> zeilen;
+  final List<RoundMember> members;
+  final List<MemberTip> tips;
+  final Set<String> presence;
+
+  int get mitglieder => zeilen.isEmpty ? 0 : zeilen.first.mitglieder;
+}
+
 /// Existenz abgegebener Tipps (`userId|fixtureId`) — für das Schloss-Symbol
 /// vor Anstoß (Gegner hat getippt), ohne den Tipp selbst zu zeigen.
-final tipPresenceProvider =
-    FutureProvider.family<Set<String>, String>((ref, roundId) {
+final tipPresenceProvider = FutureProvider.family<Set<String>, String>((
+  ref,
+  roundId,
+) {
   ref.watch(currentUserProvider);
   return ref.watch(tipRoundRepositoryProvider).tipPresence(roundId);
 });
 
 /// Punkteschema der aktiven Tipprunde, sonst Kicktipp-Standard.
 final scoringRulesProvider = Provider<ScoringRules>((ref) {
-  return ref.watch(activeRoundProvider)?.scoring ?? ScoringRules.kicktippDefault;
+  return ref.watch(activeRoundProvider)?.scoring ??
+      ScoringRules.kicktippDefault;
 });
 
 // ---------------------------------------------------------------------
@@ -448,10 +560,10 @@ final scoringRulesProvider = Provider<ScoringRules>((ref) {
 /// fremde Runde übertragen werden.
 final tipDraftProvider =
     StateNotifierProvider<TipDraftNotifier, Map<String, TipDraftEntry>>((ref) {
-  ref.watch(activeRoundProvider);
-  ref.watch(selectedLeagueProvider);
-  return TipDraftNotifier();
-});
+      ref.watch(activeRoundProvider);
+      ref.watch(selectedLeagueProvider);
+      return TipDraftNotifier();
+    });
 
 /// Heim-/Auswärts-Feldinhalt eines noch nicht gespeicherten Tipps.
 class TipDraftEntry {
@@ -475,14 +587,16 @@ class TipDraftNotifier extends StateNotifier<Map<String, TipDraftEntry>> {
   }
 }
 
-final tipsProvider =
-    StateNotifierProvider<TipsNotifier, Map<String, Tip>>((ref) {
+final tipsProvider = StateNotifierProvider<TipsNotifier, Map<String, Tip>>((
+  ref,
+) {
   final activeRound = ref.watch(activeRoundProvider);
   final user = ref.watch(currentUserProvider);
 
   if (AppConfig.isSupabaseConfigured && activeRound != null && user != null) {
     return TipsNotifier(
-        SupabaseTipStore(Supabase.instance.client, activeRound.id));
+      SupabaseTipStore(Supabase.instance.client, activeRound.id),
+    );
   }
   // Außerhalb einer Liga (kein aktiver Round/Login) gibt es kein Tippen.
   return TipsNotifier(const EmptyTipStore());
@@ -505,7 +619,10 @@ class TipsNotifier extends StateNotifier<Map<String, Tip>> {
   Future<void> setTip(String fixtureId, int homeGoals, int awayGoals) async {
     final previous = state;
     final tip = Tip(
-        fixtureId: fixtureId, homeGoals: homeGoals, awayGoals: awayGoals);
+      fixtureId: fixtureId,
+      homeGoals: homeGoals,
+      awayGoals: awayGoals,
+    );
     state = {...state, fixtureId: tip};
     try {
       await _store.save(tip);
@@ -535,10 +652,9 @@ class TipsNotifier extends StateNotifier<Map<String, Tip>> {
 /// Punktabzügen). Fällt der Spielplan aus, bleibt die API-Tabelle stehen.
 final liveLeagueTableProvider =
     Provider.family<AsyncValue<List<StandingRow>>, String>((ref, leagueId) {
-  final table = ref.watch(leagueTableProvider(leagueId));
-  final fixtures = ref.watch(leagueSeasonFixturesProvider(leagueId));
-  return table.whenData((rows) => mergeLiveResults(
-        rows,
-        fixtures.valueOrNull ?? const [],
-      ));
-});
+      final table = ref.watch(leagueTableProvider(leagueId));
+      final fixtures = ref.watch(leagueSeasonFixturesProvider(leagueId));
+      return table.whenData(
+        (rows) => mergeLiveResults(rows, fixtures.valueOrNull ?? const []),
+      );
+    });

@@ -76,7 +76,9 @@ final offeneTippsProvider = FutureProvider.family<OffeneTipps, String>((
         .toList();
     if (offen.isEmpty) return OffeneTipps.leer;
 
-    final tips = await ref.watch(allRoundTipsProvider(roundId).future);
+    // Nur die eigenen Tipps — im Globalen Tippspiel wären es sonst die aller
+    // Mitspieler.
+    final tips = await ref.watch(meineRundenTippsProvider(roundId).future);
     final meine = <String>{
       for (final t in tips)
         if (t.userId == myId) t.fixtureId,

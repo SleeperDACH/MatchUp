@@ -67,33 +67,42 @@ class TipRoundRepository {
   /// Aktualisiert Wertung & Modi einer Runde (nur der Ersteller, per RLS).
   Future<void> updateScoring(String roundId, ScoringRules rules) => _client
       .from('tip_rounds')
-      .update({'scoring': rules.toJson()}).eq('id', roundId);
+      .update({'scoring': rules.toJson()})
+      .eq('id', roundId);
 
   /// Sichtbarkeit / Beitrittsmodus setzen (nur Ersteller, RLS).
   Future<void> updateVisibility(
     String roundId, {
     required String visibility,
     required String joinPolicy,
-  }) =>
-      _client.from('tip_rounds').update({
+  }) => _client
+      .from('tip_rounds')
+      .update({
         'visibility': visibility,
         'join_policy': visibility == 'public' ? joinPolicy : 'open',
-      }).eq('id', roundId);
+      })
+      .eq('id', roundId);
 
   Future<TipRound> joinRound(String inviteCode) async {
     final roundId = await _client.rpc<String>(
       'join_tip_round',
       params: {'p_invite_code': inviteCode.trim()},
     );
-    final row =
-        await _client.from('tip_rounds').select().eq('id', roundId).single();
+    final row = await _client
+        .from('tip_rounds')
+        .select()
+        .eq('id', roundId)
+        .single();
     return TipRound.fromJson(row);
   }
 
   /// Einzelne Runde laden (für Mitglieder per RLS lesbar).
   Future<TipRound> fetchRound(String roundId) async {
-    final row =
-        await _client.from('tip_rounds').select().eq('id', roundId).single();
+    final row = await _client
+        .from('tip_rounds')
+        .select()
+        .eq('id', roundId)
+        .single();
     return TipRound.fromJson(row);
   }
 
@@ -111,15 +120,18 @@ class TipRoundRepository {
   /// Koppelt eine frisch erstellte Tipprunde an eine Fantasy-Liga und übernimmt
   /// deren aktive Mitglieder (nur der Fantasy-Admin, per SECURITY-DEFINER-RPC).
   Future<void> linkFantasyTipRound(String roundId, String fantasyLeagueId) =>
-      _client.rpc('link_fantasy_tip_round',
-          params: {'p_round_id': roundId, 'p_league_id': fantasyLeagueId});
+      _client.rpc(
+        'link_fantasy_tip_round',
+        params: {'p_round_id': roundId, 'p_league_id': fantasyLeagueId},
+      );
 
   /// Freier Beitritt zu einer öffentlichen Runde (join_policy `open`).
   Future<TipRound> joinPublic(String roundId) async {
-    final id = await _client
-        .rpc<String>('join_public_tip_round', params: {'p_id': roundId});
-    final row =
-        await _client.from('tip_rounds').select().eq('id', id).single();
+    final id = await _client.rpc<String>(
+      'join_public_tip_round',
+      params: {'p_id': roundId},
+    );
+    final row = await _client.from('tip_rounds').select().eq('id', id).single();
     return TipRound.fromJson(row);
   }
 
@@ -139,48 +151,112 @@ class TipRoundRepository {
     String roundId,
     String userId, {
     required bool accept,
-  }) =>
-      _client.rpc<void>('respond_tip_join_request', params: {
-        'p_round': roundId,
-        'p_user': userId,
-        'p_accept': accept,
-      });
+  }) => _client.rpc<void>(
+    'respond_tip_join_request',
+    params: {'p_round': roundId, 'p_user': userId, 'p_accept': accept},
+  );
 
   /// Alle Mitglieder der Liga — auch die, die noch keinen Tipp abgegeben
   /// haben (wichtig: neue Mitglieder sollen sofort sichtbar sein).
-  Future<List<RoundMember>> members(String roundId) async {
-    final rows = await _client
-        .from('tip_round_members')
-        .select('user_id, team_name, profiles(username, avatar_url, avatar_emoji, avatar_color)')
-        .eq('round_id', roundId);
+  ///
+  /// [nur] beschränkt auf diese Nutzer — für den Tabellen-Ausschnitt des
+  /// Globalen Tippspiels, das nicht alle Mitglieder lädt.
+  Future<List<RoundMember>> members(String roundId, {Set<String>? nur}) async {
+    if (nur != null && nur.isEmpty) return const [];
+    final rows = await _alleSeiten((von, bis) {
+      var q = _client
+          .from('tip_round_members')
+          .select(
+            'user_id, team_name, profiles(username, avatar_url, avatar_emoji, avatar_color)',
+          )
+          .eq('round_id', roundId);
+      if (nur != null) q = q.inFilter('user_id', nur.toList());
+      return q.order('user_id').range(von, bis);
+    });
     return rows.map(RoundMember.fromJson).toList();
+  }
+
+  /// Ausschnitt der Rangliste vom Server (0169): die ersten [oben] Plätze und
+  /// [umfeld] Plätze um mich herum, mit Platz vor [vor] für die Pfeile.
+  Future<List<RanglistenZeile>> rangliste(
+    String roundId, {
+    int oben = 10,
+    int umfeld = 2,
+    DateTime? vor,
+  }) async {
+    final rows = await _client.rpc<List<dynamic>>(
+      'tipp_rangliste',
+      params: {
+        'p_round': roundId,
+        'p_oben': oben,
+        'p_umfeld': umfeld,
+        'p_vor': vor?.toUtc().toIso8601String(),
+      },
+    );
+    return [
+      for (final r in rows) RanglistenZeile.fromJson(r as Map<String, dynamic>),
+    ];
+  }
+
+  /// **Alle Seiten einer Abfrage.** Der Server liefert je Abfrage höchstens
+  /// 1000 Zeilen (`max_rows`) und schneidet still ab. Gefunden am
+  /// 18.11.2026: Ein Tippspiel mit 4 Mitgliedern hätte gegen Saisonende mehr
+  /// als 1000 Tipps, und die Tabelle hätte die überzähligen nie gesehen.
+  /// [abfrage] muss stabil sortiert sein, sonst überlappen die Seiten.
+  Future<List<Map<String, dynamic>>> _alleSeiten(
+    PostgrestTransformBuilder<List<Map<String, dynamic>>> Function(
+      int von,
+      int bis,
+    )
+    abfrage,
+  ) async {
+    const seite = 1000;
+    final alle = <Map<String, dynamic>>[];
+    for (var von = 0; ; von += seite) {
+      final rows = await abfrage(von, von + seite - 1);
+      alle.addAll(rows);
+      if (rows.length < seite) return alle;
+    }
   }
 
   /// Setzt den eigenen ligaspezifischen Teamnamen (leer = löschen). Nur der
   /// eigene Eintrag wird geändert (RPC, security definer).
   Future<void> setTeamName(String roundId, String name) => _client.rpc(
-      'tip_set_team_name', params: {'p_round_id': roundId, 'p_name': name});
+    'tip_set_team_name',
+    params: {'p_round_id': roundId, 'p_name': name},
+  );
 
   /// Alle für mich sichtbaren Tipps der Liga: eigene immer, fremde
   /// erst nach Anstoß (erzwingt die RLS-Policy serverseitig).
-  Future<List<MemberTip>> allTips(String roundId) async {
-    final rows = await _client
-        .from('tips')
-        .select('user_id, fixture_id, home_goals, away_goals')
-        .eq('round_id', roundId);
+  ///
+  /// [nur] beschränkt auf diese Nutzer (Ausschnitt des Globalen Tippspiels).
+  Future<List<MemberTip>> allTips(String roundId, {Set<String>? nur}) async {
+    if (nur != null && nur.isEmpty) return const [];
+    final rows = await _alleSeiten((von, bis) {
+      var q = _client
+          .from('tips')
+          .select('user_id, fixture_id, home_goals, away_goals')
+          .eq('round_id', roundId);
+      if (nur != null) q = q.inFilter('user_id', nur.toList());
+      return q.order('user_id').order('fixture_id').range(von, bis);
+    });
     return rows.map(MemberTip.fromJson).toList();
   }
 
   /// Existenz-Auskunft: Set aus `userId|fixtureId` aller bereits abgegebenen
   /// Tipps der Runde — ohne die Tipp-Werte. Für das Schloss-Symbol vor
   /// Anstoß (Gegner hat getippt). Serverseitig nur für Mitglieder.
-  Future<Set<String>> tipPresence(String roundId) async {
-    final rows = await _client
-        .rpc('round_tip_presence', params: {'p_round_id': roundId}) as List;
-    return {
-      for (final r in rows)
-        '${(r as Map)['user_id']}|${r['fixture_id']}',
-    };
+  Future<Set<String>> tipPresence(String roundId, {Set<String>? nur}) async {
+    if (nur != null && nur.isEmpty) return const {};
+    final rows = await _alleSeiten((von, bis) {
+      var q = _client.rpc<List<Map<String, dynamic>>>(
+        'round_tip_presence',
+        params: {'p_round_id': roundId},
+      );
+      if (nur != null) q = q.inFilter('user_id', nur.toList());
+      return q.order('user_id').order('fixture_id').range(von, bis);
+    });
+    return {for (final r in rows) '${r['user_id']}|${r['fixture_id']}'};
   }
 
   /// Zum Anstoß eingefrorene Quoten je Fixture (für den Quoten-Bonus).
@@ -227,8 +303,11 @@ class TipRoundRepository {
 
   /// Schreibt eine Nachricht in den Liga-Chat (nur als Mitglied erlaubt,
   /// erzwingt die RLS-Policy serverseitig).
-  Future<void> sendMessage(String roundId, String body,
-      {String? replyTo}) async {
+  Future<void> sendMessage(
+    String roundId,
+    String body, {
+    String? replyTo,
+  }) async {
     final userId = _client.auth.currentUser!.id;
     await _client.from('tip_round_messages').insert({
       'round_id': roundId,
@@ -252,40 +331,55 @@ class TipRoundRepository {
   /// Übergibt die Adminrechte an ein anderes Mitglied und verlässt danach
   /// die Runde (atomar, per SECURITY-DEFINER-RPC). Nur der Ersteller.
   Future<void> transferAndLeaveRound(String roundId, String newOwnerId) =>
-      _client.rpc('transfer_and_leave_tip_round',
-          params: {'p_round_id': roundId, 'p_new_owner': newOwnerId});
+      _client.rpc(
+        'transfer_and_leave_tip_round',
+        params: {'p_round_id': roundId, 'p_new_owner': newOwnerId},
+      );
 
   /// Übergibt nur die Adminrechte an ein anderes Mitglied (ohne selbst
   /// auszutreten). Nur der Ersteller, per SECURITY-DEFINER-RPC.
   Future<void> transferOwnership(String roundId, String newOwnerId) =>
-      _client.rpc('transfer_tip_round_ownership',
-          params: {'p_round_id': roundId, 'p_new_owner': newOwnerId});
+      _client.rpc(
+        'transfer_tip_round_ownership',
+        params: {'p_round_id': roundId, 'p_new_owner': newOwnerId},
+      );
 
   /// Benennt eine Tipprunde um (nur der Ersteller, per RLS). 3–64 Zeichen.
-  Future<void> renameRound(String roundId, String name) =>
-      _client.from('tip_rounds').update({'name': name.trim()}).eq('id', roundId);
+  Future<void> renameRound(String roundId, String name) => _client
+      .from('tip_rounds')
+      .update({'name': name.trim()})
+      .eq('id', roundId);
 
   /// Setzt das Runden-Logo (Bild-URL oder Emoji+Farbe; alles `null` =
   /// entfernen). Nur der Ersteller darf ändern (RLS).
-  Future<void> setLogo(String roundId,
-          {String? url, String? emoji, String? color}) =>
-      _client.from('tip_rounds').update({
-        'logo_url': url,
-        'logo_emoji': emoji,
-        'logo_color': color,
-      }).eq('id', roundId);
+  Future<void> setLogo(
+    String roundId, {
+    String? url,
+    String? emoji,
+    String? color,
+  }) => _client
+      .from('tip_rounds')
+      .update({'logo_url': url, 'logo_emoji': emoji, 'logo_color': color})
+      .eq('id', roundId);
 
   /// Trägt einen Tipp für ein Mitglied nach (nur der Ersteller, auch nach
   /// Anstoß) — per SECURITY-DEFINER-RPC.
-  Future<void> adminSetTip(String roundId, String userId, String fixtureId,
-          int home, int away) =>
-      _client.rpc('tip_admin_set_tip', params: {
-        'p_round_id': roundId,
-        'p_user': userId,
-        'p_fixture_id': fixtureId,
-        'p_home': home,
-        'p_away': away,
-      });
+  Future<void> adminSetTip(
+    String roundId,
+    String userId,
+    String fixtureId,
+    int home,
+    int away,
+  ) => _client.rpc(
+    'tip_admin_set_tip',
+    params: {
+      'p_round_id': roundId,
+      'p_user': userId,
+      'p_fixture_id': fixtureId,
+      'p_home': home,
+      'p_away': away,
+    },
+  );
 
   /// Mehrere Tipps eines Mitglieds **in einem Rutsch** nachtragen.
   ///
@@ -302,14 +396,17 @@ class TipRoundRepository {
     List<({String fixtureId, int home, int away})> tipps,
   ) async {
     if (tipps.isEmpty) return 0;
-    final res = await _client.rpc('tip_admin_set_tips', params: {
-      'p_round_id': roundId,
-      'p_user': userId,
-      'p_tipps': [
-        for (final t in tipps)
-          {'fixture_id': t.fixtureId, 'home': t.home, 'away': t.away},
-      ],
-    });
+    final res = await _client.rpc(
+      'tip_admin_set_tips',
+      params: {
+        'p_round_id': roundId,
+        'p_user': userId,
+        'p_tipps': [
+          for (final t in tipps)
+            {'fixture_id': t.fixtureId, 'home': t.home, 'away': t.away},
+        ],
+      },
+    );
     return (res as num?)?.toInt() ?? tipps.length;
   }
 

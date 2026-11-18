@@ -8961,3 +8961,27 @@ nicht erst auf Nachfrage:
 - **Web-Demo:** mit dem Build-/Deploy-Ablauf oben neu nach `gh-pages` pushen
   und live verifizieren (md5 von `main.dart.js` gegen den Build vergleichen;
   GitHub Pages propagiert ~15–60 s).
+
+## Tipp-Tabelle bei vielen Mitspielern (18.11.2026)
+
+- **1000-Zeilen-Grenze:** PostgREST liefert je Abfrage höchstens 1000 Zeilen
+  und schneidet still ab. `TipRoundRepository._alleSeiten` lädt Mitglieder,
+  Tipps und Schloss-Auskunft seitenweise (stabil sortiert). Neue Listen-
+  Abfragen, die über 1000 wachsen können, gehören durch diesen Helfer.
+- **Globales Tippspiel rechnet auf dem Server:** `tipp_rangliste(round, oben,
+  umfeld, vor)` (0169) liefert die ersten 10 und ±2 Plätze um mich, mit
+  Platz vor `vor` (Pfeile) und Mitgliederzahl. Gewertet nur exakt /
+  Tordifferenz / Tendenz / falsch aus `scoring` — kein Quoten- oder
+  Alleinstellungs-Bonus; das Globale Tippspiel hat beides nicht (fest, 0152).
+  App: `globalerAusschnittProvider` lädt nur für diese Nutzer Mitglieder,
+  Tipps und Schlösser; Tabelle und Übersicht nehmen Reihenfolge und Plätze
+  vom Server, die Punkte (inkl. laufender Spiele) rechnet weiter die App.
+  Alle anderen Runden rechnen unverändert in der App.
+- **Eigene Tipps:** `meineRundenTippsProvider` für Zählungen wie „3 Tipps
+  offen" auf dem Homescreen — nie alle Tipps einer Runde dafür laden.
+- **Länderspiele nach Kalenderjahr:** `LeagueInfo.calendarYear` (Deutschland,
+  `DFBN/<Jahr>`), `ohneLigasaison` ersetzt die Abfrage `fixedSeason != null`.
+  Die Kopfkarte lädt ab Oktober zusätzlich das Folgejahr
+  (`leagueYearFixturesProvider`).
+- **Tipp-Erinnerung** zählt seit 0168 alle Wettbewerbe einer Runde
+  (`league_ids`), nicht nur `league_id`.

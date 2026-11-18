@@ -69,6 +69,10 @@ class TippUebersicht {
     required DateTime jetzt,
     Map<String, FrozenOdds> frozenOdds = const {},
     int oben = 3,
+    // Globales Tippspiel: Plätze und Mitgliederzahl vom Server (0169), weil
+    // [members] dort nur der Ausschnitt ist.
+    Map<String, int>? raenge,
+    int? mitgliederGesamt,
   }) {
     final totals = totalPointsByMember(
       members: members,
@@ -77,7 +81,7 @@ class TippUebersicht {
       rules: rules,
       frozenOdds: frozenOdds,
     );
-    final ranks = ranksByPoints(members, totals);
+    final ranks = raenge ?? ranksByPoints(members, totals);
     final sortiert = [...members]
       ..sort((a, b) {
         final r = (ranks[a.userId] ?? 0) - (ranks[b.userId] ?? 0);
@@ -146,7 +150,7 @@ class TippUebersicht {
 
     return TippUebersicht(
       rang: ich == null ? null : ranks[ich.userId],
-      mitglieder: members.length,
+      mitglieder: mitgliederGesamt ?? members.length,
       punkte: ich == null ? 0 : (totals[ich.userId] ?? 0),
       wochePunkte: wochePunkte,
       offen: offen,

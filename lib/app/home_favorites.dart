@@ -6,7 +6,10 @@ import '../core/config/app_config.dart';
 import '../core/models/models.dart';
 import '../core/models/team_fixture.dart';
 import '../features/tippspiel/providers.dart'
-    show leagueSeasonFixturesProvider, liveFixturesProvider;
+    show
+        leagueSeasonFixturesProvider,
+        leagueYearFixturesProvider,
+        liveFixturesProvider;
 import '../features/favorites/favorites.dart';
 import '../features/favorites/logic/favorite_order.dart';
 import '../features/favorites/logic/next_favorite_fixtures.dart';
@@ -58,12 +61,26 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
           // Ein Verein ohne Spielplan darf die Zeile nicht leeren.
           .catchError((Object _) => const <TeamFixture>[]),
   ];
+  // Länderspiele führt der Anbieter je Kalenderjahr. **Ab Oktober auch das
+  // Folgejahr**, sonst fände die Kopfkarte nach dem letzten Spiel im
+  // November kein nächstes mehr — das steht schon in der Liste fürs neue Jahr.
+  final heute = DateTime.now();
   final laenderAbrufe = [
-    for (final id in nationen)
+    for (final id in nationen) ...[
       ref
           .watch(leagueSeasonFixturesProvider(id).future)
           .then((l) => [for (final f in l) _alsTeamSpiel(f)])
           .catchError((Object _) => const <TeamFixture>[]),
+      if (heute.month >= 10)
+        ref
+            .watch(
+              leagueYearFixturesProvider((
+                leagueId: id,
+                year: heute.year + 1,
+              )).future,
+            )
+            .then((l) => [for (final f in l) _alsTeamSpiel(f)]),
+    ],
   ];
   final alle = [
     for (final l in await Future.wait([...abrufe, ...laenderAbrufe])) ...l,
@@ -103,15 +120,15 @@ final favoritenSpieleProvider = FutureProvider<List<TeamFixture>>((ref) async {
 /// Ein Länderspiel aus dem Wettbewerbs-Spielplan in der Form des
 /// Vereins-Spielplans.
 TeamFixture _alsTeamSpiel(Fixture f) => TeamFixture(
-      id: f.id,
-      kickoff: f.kickoff,
-      status: f.status,
-      leagueName: 'Länderspiel',
-      home: f.home,
-      away: f.away,
-      homeScore: f.homeScore,
-      awayScore: f.awayScore,
-    );
+  id: f.id,
+  kickoff: f.kickoff,
+  status: f.status,
+  leagueName: 'Länderspiel',
+  home: f.home,
+  away: f.away,
+  homeScore: f.homeScore,
+  awayScore: f.awayScore,
+);
 
 /// Stand, Zustand und Anstoß aus dem Live-Abruf — alles andere (Wettbewerb,
 /// Logo, Spieltag) bleibt, wie der Spielplan es kennt.
@@ -143,11 +160,13 @@ TeamFixture _mitLiveStand(TeamFixture f, Fixture? l) => l == null
 /// beim Nachladen der Live-Punkte.
 void _planeLiveTakt(Ref ref, List<TeamFixture> spiele) {
   final jetzt = DateTime.now();
-  final laeuft = spiele.any((f) =>
-      f.status == FixtureStatus.live ||
-      (f.status == FixtureStatus.scheduled &&
-          !f.kickoff.isAfter(jetzt) &&
-          jetzt.difference(f.kickoff) < const Duration(hours: 3)));
+  final laeuft = spiele.any(
+    (f) =>
+        f.status == FixtureStatus.live ||
+        (f.status == FixtureStatus.scheduled &&
+            !f.kickoff.isAfter(jetzt) &&
+            jetzt.difference(f.kickoff) < const Duration(hours: 3)),
+  );
   Duration? warte;
   if (laeuft) {
     warte = const Duration(seconds: 30);

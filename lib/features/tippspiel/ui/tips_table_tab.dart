@@ -177,8 +177,14 @@ class _TableBodyState extends ConsumerState<_TableBody> {
   Widget build(BuildContext context) {
     final round = widget.round;
     final weekMode = widget.weekFixtures != null;
-    final membersAsync = ref.watch(roundMembersProvider(round.id));
-    final tipsAsync = ref.watch(allRoundTipsProvider(round.id));
+    // **Globales Tippspiel: nur ein Ausschnitt** (18.11.2026). Die Rangliste
+    // rechnet der Server (0169); geladen werden nur die Zeilen, die die
+    // Tabelle zeigt — die ersten zehn und die Plätze um mich herum.
+    final global = round.istGlobal;
+    final membersAsync = global
+        ? null
+        : ref.watch(roundMembersProvider(round.id));
+    final tipsAsync = global ? null : ref.watch(allRoundTipsProvider(round.id));
     // Spalten-Spiele: im Wochen-Pfad die übergebenen Fixtures, sonst der
     // Spieltag des einzelnen Wettbewerbs.
     final fixturesAsync = weekMode
@@ -191,6 +197,22 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         ref.watch(leagueSeasonFixturesProvider(id)),
     ];
     final seasonFehlt = seasonAsyncs.any((a) => a.valueOrNull == null);
+    // Stichzeit für die Pfeile: Beginn der Woche bzw. erster Anstoß des
+    // Spieltags — dieselbe Grenze wie `priorFixtures` unten.
+    DateTime? vor;
+    if (weekMode) {
+      vor = widget.weekStart;
+    } else {
+      final fx = fixturesAsync!.valueOrNull;
+      if (fx != null && fx.isNotEmpty) {
+        vor = fx.map((f) => f.kickoff).reduce((a, b) => a.isBefore(b) ? a : b);
+      }
+    }
+    final ausschnittAsync =
+        global && (weekMode || fixturesAsync!.valueOrNull != null)
+        ? ref.watch(globalerAusschnittProvider((roundId: round.id, vor: vor)))
+        : null;
+    final ausschnitt = ausschnittAsync?.valueOrNull;
     final seasonError = seasonAsyncs
         .map((a) => a.error)
         .firstWhere((e) => e != null, orElse: () => null);
@@ -199,15 +221,18 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     // „liegen Daten vor?", nicht „lädt gerade etwas?" — sonst fällt der Schirm
     // bei jedem Nachladen auf einen leeren Kreis zurück, und die Tipps laden
     // an einem Spieltag alle 30 Sekunden nach.
-    if (membersAsync.valueOrNull == null ||
-        tipsAsync.valueOrNull == null ||
+    if ((global
+            ? ausschnitt == null
+            : (membersAsync!.valueOrNull == null ||
+                  tipsAsync!.valueOrNull == null)) ||
         (fixturesAsync != null && fixturesAsync.valueOrNull == null) ||
         seasonFehlt) {
       return const Skelett();
     }
     final error =
-        membersAsync.error ??
-        tipsAsync.error ??
+        ausschnittAsync?.error ??
+        membersAsync?.error ??
+        tipsAsync?.error ??
         fixturesAsync?.error ??
         seasonError;
     if (error != null) {
@@ -232,8 +257,10 @@ class _TableBodyState extends ConsumerState<_TableBody> {
       );
     }
 
-    final members = [...membersAsync.requireValue];
-    final tips = tipsAsync.requireValue;
+    final members = [
+      ...(global ? ausschnitt!.members : membersAsync!.requireValue),
+    ];
+    final tips = global ? ausschnitt!.tips : tipsAsync!.requireValue;
     final fixtures = weekMode
         ? widget.weekFixtures!
         : fixturesAsync!.requireValue;
@@ -248,9 +275,10 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         ref.watch(frozenOddsProvider).valueOrNull ??
         const <String, FrozenOdds>{};
     // Wer hat (verborgen) getippt? Nur Existenz, für das Schloss-Symbol.
-    final tipPresence =
-        ref.watch(tipPresenceProvider(round.id)).valueOrNull ??
-        const <String>{};
+    final tipPresence = global
+        ? ausschnitt!.presence
+        : ref.watch(tipPresenceProvider(round.id)).valueOrNull ??
+              const <String>{};
 
     final totals = totalPointsByMember(
       members: members,
@@ -259,15 +287,27 @@ class _TableBodyState extends ConsumerState<_TableBody> {
       rules: rules,
       frozenOdds: frozenOdds,
     );
-    members.sort((a, b) {
-      final byPoints = (totals[b.userId] ?? 0) - (totals[a.userId] ?? 0);
-      return byPoints != 0
-          ? byPoints
-          : a.display.toLowerCase().compareTo(b.display.toLowerCase());
-    });
+    if (global) {
+      // Reihenfolge und Plätze vom Server — die App kennt nur den Ausschnitt.
+      final reihe = {
+        for (final (i, z) in ausschnitt!.zeilen.indexed) z.userId: i,
+      };
+      members.sort(
+        (a, b) => (reihe[a.userId] ?? 1 << 30) - (reihe[b.userId] ?? 1 << 30),
+      );
+    } else {
+      members.sort((a, b) {
+        final byPoints = (totals[b.userId] ?? 0) - (totals[a.userId] ?? 0);
+        return byPoints != 0
+            ? byPoints
+            : a.display.toLowerCase().compareTo(b.display.toLowerCase());
+      });
+    }
 
     // Platzierung + Bewegung ggü. dem Stand vor dem gewählten Spieltag.
-    final currentRanks = ranksByPoints(members, totals);
+    final currentRanks = global
+        ? {for (final z in ausschnitt!.zeilen) z.userId: z.platz}
+        : ranksByPoints(members, totals);
     // Bewegungspfeile: Stand vor der aktuellen Ansicht. Im Wochen-Pfad alle
     // Spiele vor Wochenbeginn, sonst alle Spiele früherer Spieltage.
     final priorFixtures = [
@@ -278,8 +318,11 @@ class _TableBodyState extends ConsumerState<_TableBody> {
           f,
     ];
     final hasPrior = priorFixtures.any((f) => f.hasScore);
-    final priorRanks = hasPrior
-        ? ranksByPoints(
+    final priorRanks = !hasPrior
+        ? const <String, int>{}
+        : global
+        ? {for (final z in ausschnitt!.zeilen) z.userId: z.platzVorher}
+        : ranksByPoints(
             members,
             totalPointsByMember(
               members: members,
@@ -288,8 +331,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
               rules: rules,
               frozenOdds: frozenOdds,
             ),
-          )
-        : const <String, int>{};
+          );
 
     final tipByMemberAndFixture = {
       for (final t in tips) '${t.userId}|${t.fixtureId}': t,
@@ -311,9 +353,9 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     // Trennlinie hinweg auf einer Linie. Eigene Zeilen statt `DataTable` —
     // dessen Kopf, Abstände und Linien ließen sich nicht an die App anpassen.
     BoxDecoration zeile(String userId, {bool erste = false}) => BoxDecoration(
-          color: userId == myUserId ? ichFlaeche : null,
-          border: erste ? null : Border(top: BorderSide(color: linie)),
-        );
+      color: userId == myUserId ? ichFlaeche : null,
+      border: erste ? null : Border(top: BorderSide(color: linie)),
+    );
 
     final links = Column(
       children: [
@@ -331,8 +373,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
         ),
         for (final m in members)
           InkWell(
-            onTap: () =>
-                showTipMemberProfile(context, round: round, member: m),
+            onTap: () => showTipMemberProfile(context, round: round, member: m),
             child: Container(
               height: _zeilenHoehe,
               padding: const EdgeInsets.only(left: 10, right: 10),
@@ -364,9 +405,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
           SizedBox(
             height: _kopfHoehe,
             child: Row(
-              children: [
-                for (final f in spiele) _FixtureHeader(fixture: f),
-              ],
+              children: [for (final f in spiele) _FixtureHeader(fixture: f)],
             ),
           ),
           for (final m in members)
@@ -433,6 +472,18 @@ class _TableBodyState extends ConsumerState<_TableBody> {
               ),
             ),
           ),
+          if (global && ausschnitt!.mitglieder > members.length)
+            Padding(
+              padding: const EdgeInsets.only(top: Abstand.s, left: 4),
+              child: Text(
+                'Die ersten 10 und deine Plätze rundherum · '
+                '${ausschnitt.mitglieder} Mitspieler',
+                style: TextStyle(
+                  fontSize: Schrift.label,
+                  color: scheme.onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -443,6 +494,7 @@ class _TableBodyState extends ConsumerState<_TableBody> {
     ref.invalidate(roundMembersProvider(widget.round.id));
     ref.invalidate(allRoundTipsProvider(widget.round.id));
     ref.invalidate(tipPresenceProvider(widget.round.id));
+    ref.invalidate(globalerAusschnittProvider);
     if (widget.weekFixtures != null) {
       ref.invalidate(roundWeeksProvider);
     } else {
@@ -462,13 +514,13 @@ class _KopfText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: TextStyle(
-          fontSize: Schrift.label,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      );
+    text,
+    style: TextStyle(
+      fontSize: Schrift.label,
+      fontWeight: FontWeight.w600,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    ),
+  );
 }
 
 /// Namens-Zelle: Platz (1 in Gold), Bewegung, Profilbild, Name — und die
@@ -635,11 +687,7 @@ class _TipCell extends StatelessWidget {
     if (tip == null) {
       return Center(
         child: hasHiddenTip
-            ? Icon(
-                Icons.lock_outline,
-                size: 14,
-                color: scheme.onSurfaceVariant,
-              )
+            ? Icon(Icons.lock_outline, size: 14, color: scheme.onSurfaceVariant)
             : Text(
                 '–',
                 style: TextStyle(

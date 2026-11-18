@@ -90,4 +90,23 @@ void main() {
     expect(u.offen, 0);
     expect(u.kurztabelle.length, 3);
   });
+
+  test('Globales Tippspiel: Platz und Mitglieder kommen vom Server', () {
+    // Die App kennt nur den Ausschnitt (ana, ich); der Server weiß, dass
+    // „ich" auf Platz 812 von 3000 steht.
+    final u = TippUebersicht.berechnen(
+      members: [m('ana'), m('ich')],
+      tips: tipps,
+      seasonFixtures: fixtures,
+      rules: const ScoringRules(),
+      myId: 'ich',
+      jetzt: jetzt,
+      raenge: const {'ana': 1, 'ich': 812},
+      mitgliederGesamt: 3000,
+    );
+    expect(u.rang, 812);
+    expect(u.mitglieder, 3000);
+    expect(u.punkte, 2);
+    expect(u.kurztabelle.map((p) => p.rang), [1, 812]);
+  });
 }

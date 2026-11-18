@@ -104,7 +104,7 @@ class _TableTab extends ConsumerWidget {
     final league = Leagues.byId(leagueId);
     // Turniere mit Gruppenphase (WM/EM): Tabelle nach Gruppen, abgeleitet aus
     // dem Gruppen-Spielplan. Sonst die offizielle (flache) Ligatabelle.
-    if (league.fixedSeason != null) {
+    if (league.ohneLigasaison) {
       return _GroupTables(leagueId: leagueId);
     }
 

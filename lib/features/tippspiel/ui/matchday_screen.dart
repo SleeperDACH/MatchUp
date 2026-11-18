@@ -558,6 +558,8 @@ class _SaveTipsBarState extends ConsumerState<_SaveTipsBar> {
     if (geaendert && roundId != null) {
       ref.invalidate(allRoundTipsProvider(roundId));
       ref.invalidate(tipPresenceProvider(roundId));
+      ref.invalidate(meineRundenTippsProvider(roundId));
+      ref.invalidate(globalerAusschnittProvider);
     }
 
     if (!mounted) return;

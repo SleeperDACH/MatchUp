@@ -314,7 +314,7 @@ class _RulesSheet extends StatelessWidget {
                         'Tabelle („Bonustipps abgeben").',
                       ),
                     ],
-                    if (league.fixedSeason != null) ...[
+                    if (league.ohneLigasaison) ...[
                       const SizedBox(height: 24),
                       Text('K.-o.-Runde', style: textTheme.titleMedium),
                       const SizedBox(height: 8),

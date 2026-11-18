@@ -43,8 +43,18 @@ class TippUebersichtTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final membersAsync = ref.watch(roundMembersProvider(round.id));
-    final tipsAsync = ref.watch(allRoundTipsProvider(round.id));
+    // Globales Tippspiel: nur der Ausschnitt vom Server (0169), nicht alle
+    // Tipps aller Mitspieler.
+    final ausschnittAsync = round.istGlobal
+        ? ref.watch(globalerAusschnittProvider((roundId: round.id, vor: null)))
+        : null;
+    final ausschnitt = ausschnittAsync?.valueOrNull;
+    final membersAsync = round.istGlobal
+        ? ausschnittAsync!.whenData((a) => a.members)
+        : ref.watch(roundMembersProvider(round.id));
+    final tipsAsync = round.istGlobal
+        ? ausschnittAsync!.whenData((a) => a.tips)
+        : ref.watch(allRoundTipsProvider(round.id));
     final seasonAsyncs = [
       for (final id in round.competitions)
         ref.watch(leagueSeasonFixturesProvider(id)),
@@ -73,6 +83,7 @@ class TippUebersichtTab extends ConsumerWidget {
                   onPressed: () {
                     ref.invalidate(roundMembersProvider(round.id));
                     ref.invalidate(allRoundTipsProvider(round.id));
+                    ref.invalidate(globalerAusschnittProvider);
                   },
                   child: const Text('Erneut laden'),
                 ),
@@ -94,6 +105,10 @@ class TippUebersichtTab extends ConsumerWidget {
       myId: ref.watch(currentUserProvider)?.id,
       jetzt: DateTime.now(),
       frozenOdds: ref.watch(frozenOddsProvider).valueOrNull ?? const {},
+      raenge: ausschnitt == null
+          ? null
+          : {for (final z in ausschnitt.zeilen) z.userId: z.platz},
+      mitgliederGesamt: ausschnitt?.mitglieder,
     );
 
     void go(Widget screen) =>
@@ -107,6 +122,7 @@ class TippUebersichtTab extends ConsumerWidget {
       onRefresh: () async {
         ref.invalidate(roundMembersProvider(round.id));
         ref.invalidate(allRoundTipsProvider(round.id));
+        ref.invalidate(globalerAusschnittProvider);
         for (final id in round.competitions) {
           ref.invalidate(leagueSeasonFixturesProvider(id));
         }
