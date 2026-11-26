@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/farben.dart';
 import '../../../app/home_tip_status.dart' show kurzeFrist;
@@ -10,6 +11,7 @@ import '../../../app/widgets/liga_zeilen.dart';
 import '../../../app/widgets/skelett.dart';
 import '../../../core/models/models.dart';
 import '../../auth/providers.dart';
+import '../logic/tip_weeks.dart';
 import '../logic/tipp_uebersicht.dart';
 import '../models/tip_round.dart';
 import '../providers.dart';
@@ -64,7 +66,8 @@ class TippUebersichtTab extends ConsumerWidget {
     if (members == null ||
         tips == null ||
         seasonAsyncs.any((a) => a.valueOrNull == null)) {
-      final fehler = membersAsync.error ??
+      final fehler =
+          membersAsync.error ??
           tipsAsync.error ??
           seasonAsyncs.map((a) => a.error).nonNulls.firstOrNull;
       if (fehler != null) {
@@ -144,6 +147,29 @@ class TippUebersichtTab extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
               child: _Stand(daten: daten),
             ),
+          if (daten.spieltag.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Kapitelmarke(
+                spieltagTitel(daten.spieltagWoche!),
+                info: const (
+                  'Spieltag',
+                  'Die Punkte aller Teilnehmer aus den Spielen dieser '
+                      'Woche, laufende Spiele eingerechnet. 24 Stunden vor '
+                      'dem ersten Spiel des nächsten Spieltags beginnt die '
+                      'Anzeige wieder bei null.',
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              child: _Kurztabelle(
+                plaetze: daten.spieltag,
+                onTap: () => reiter(TippReiter.tabelle),
+                fuss: null,
+              ),
+            ),
+          ],
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 14),
             child: Kapitelmarke('Tabelle'),
@@ -218,8 +244,8 @@ class _AlsNaechstes extends StatelessWidget {
         : (offen == 1 ? '1 Tipp offen' : '$offen Tipps offen');
     final unter = fertig
         ? (daten.anstehend == 1
-            ? 'Ein Spiel steht diese Woche noch an'
-            : '${daten.anstehend} Spiele stehen diese Woche noch an')
+              ? 'Ein Spiel steht diese Woche noch an'
+              : '${daten.anstehend} Spiele stehen diese Woche noch an')
         : kurzeFrist(daten.frist!, DateTime.now());
 
     // Kompakt (10.11.2026, auf Ansage: „ein bisschen kleiner"): Titel und
@@ -272,8 +298,9 @@ class _AlsNaechstes extends StatelessWidget {
                     : FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor: gold,
-                          foregroundColor:
-                              context.istHell ? Colors.white : Colors.black,
+                          foregroundColor: context.istHell
+                              ? Colors.white
+                              : Colors.black,
                           padding: const EdgeInsets.symmetric(horizontal: 18),
                           textStyle: const TextStyle(
                             fontFamily: Schrift.familie,
@@ -326,16 +353,15 @@ class _Stand extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _Zahl(
-            wert: '${daten.rang}.',
-            text: 'von ${daten.mitglieder}',
-          ),
+          child: _Zahl(wert: '${daten.rang}.', text: 'von ${daten.mitglieder}'),
         ),
-        Expanded(child: _Zahl(wert: '${daten.punkte}', text: 'Punkte')),
+        Expanded(
+          child: _Zahl(wert: '${daten.punkte}', text: 'Punkte'),
+        ),
         Expanded(
           child: _Zahl(
             wert: woche > 0 ? '+$woche' : '$woche',
-            text: 'diese Woche',
+            text: 'Spieltag',
             farbe: woche > 0 ? context.farben.gruen : null,
           ),
         ),
@@ -381,10 +407,21 @@ class _Zahl extends StatelessWidget {
 /// Die ersten drei und man selbst. Die ganze Karte führt in den
 /// Tabellen-Reiter — dort steht alles, hier nur, wo man steht.
 class _Kurztabelle extends StatelessWidget {
-  const _Kurztabelle({required this.plaetze, required this.onTap});
+  const _Kurztabelle({
+    required this.plaetze,
+    required this.onTap,
+    this.fuss = 'Ganze Tabelle',
+  });
+
+  /// Noch niemand hat Punkte (Spieltag frisch zurückgesetzt): dann „–" statt
+  /// fünfmal ein goldener Platz 1.
+  bool get _ohnePlaetze => plaetze.every((p) => p.punkte == 0);
 
   final List<UebersichtPlatz> plaetze;
   final VoidCallback onTap;
+
+  /// Letzte Zeile mit Pfeil; `null` lässt sie weg (Spieltag-Liste).
+  final String? fuss;
 
   @override
   Widget build(BuildContext context) {
@@ -415,11 +452,11 @@ class _Kurztabelle extends StatelessWidget {
                       SizedBox(
                         width: 26,
                         child: Text(
-                          '${p.rang}',
+                          _ohnePlaetze ? '–' : '${p.rang}',
                           style: TextStyle(
                             fontSize: Schrift.text,
                             fontWeight: FontWeight.w700,
-                            color: p.rang == 1
+                            color: p.rang == 1 && !_ohnePlaetze
                                 ? context.farben.gold
                                 : scheme.onSurfaceVariant,
                             fontFeatures: const [FontFeature.tabularFigures()],
@@ -433,8 +470,9 @@ class _Kurztabelle extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: Schrift.text,
-                            fontWeight:
-                                p.ich ? FontWeight.w800 : FontWeight.w500,
+                            fontWeight: p.ich
+                                ? FontWeight.w800
+                                : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -450,36 +488,51 @@ class _Kurztabelle extends StatelessWidget {
                   ),
                 ),
               ],
-              linie,
-              SizedBox(
-                height: 42,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Ganze Tabelle',
-                          style: TextStyle(
-                            fontSize: Schrift.text,
-                            fontWeight: FontWeight.w600,
-                            color: scheme.onSurfaceVariant,
+              if (fuss != null) ...[
+                linie,
+                SizedBox(
+                  height: 42,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            fuss!,
+                            style: TextStyle(
+                              fontSize: Schrift.text,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                      ),
-                      Icon(
-                        Icons.chevron_right,
-                        size: 18,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ],
+                        Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// Kapitelmarke des Spieltags mit seinen Tagen, z. B. „Spieltag · 27.–30.11."
+/// — damit man sieht, welches Wochenende gerade zählt.
+String spieltagTitel(TipWeek w) {
+  final von = w.fixtures.first.kickoff.toLocal();
+  final bis = w.fixtures.last.kickoff.toLocal();
+  final tag = DateFormat('d.M.', 'de_DE');
+  if (von.year == bis.year && von.month == bis.month && von.day == bis.day) {
+    return 'Spieltag · ${tag.format(von)}';
+  }
+  final links = von.month == bis.month ? '${von.day}.' : tag.format(von);
+  return 'Spieltag · $links–${tag.format(bis)}';
 }

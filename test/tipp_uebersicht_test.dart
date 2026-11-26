@@ -109,4 +109,76 @@ void main() {
     expect(u.punkte, 2);
     expect(u.kurztabelle.map((p) => p.rang), [1, 812]);
   });
+
+  group('Spieltag (26.11.2026)', () {
+    test('Punkte aller Teilnehmer der Woche, beste zuerst', () {
+      final st = rechne().spieltag;
+      expect([for (final p in st) p.mitglied.userId],
+          ['ana', 'max', 'ich', 'jojo', 'zoe']);
+      expect([for (final p in st) p.punkte], [4, 3, 2, 0, 0]);
+      expect([for (final p in st) p.rang], [1, 2, 3, 4, 4],
+          reason: 'gleiche Punkte, gleicher Platz');
+      expect(st.singleWhere((p) => p.ich).mitglied.userId, 'ich');
+    });
+
+    test('nach dem Wochenende bleibt der Spieltag stehen …', () {
+      // Dienstag nach dem Wochenende: die Woche ist um, die nächste beginnt
+      // erst am Samstag darauf.
+      final naechste = spiel('next', DateTime(2026, 11, 14, 15, 30));
+      final u = TippUebersicht.berechnen(
+        members: mitglieder,
+        tips: tipps,
+        seasonFixtures: [...fixtures, naechste],
+        rules: const ScoringRules(),
+        myId: 'ich',
+        jetzt: DateTime(2026, 11, 13, 15, 29),
+      );
+      expect(u.spieltagWoche!.start, DateTime(2026, 11, 5));
+      expect(u.spieltag.first.punkte, 4);
+      expect(u.wochePunkte, 2);
+    });
+
+    test('… und beginnt 24 Stunden vor dem nächsten bei null', () {
+      final naechste = spiel('next', DateTime(2026, 11, 14, 15, 30));
+      final u = TippUebersicht.berechnen(
+        members: mitglieder,
+        tips: tipps,
+        seasonFixtures: [...fixtures, naechste],
+        rules: const ScoringRules(),
+        myId: 'ich',
+        jetzt: DateTime(2026, 11, 13, 15, 30),
+      );
+      expect(u.spieltagWoche!.start, DateTime(2026, 11, 12));
+      expect(u.spieltag.every((p) => p.punkte == 0), isTrue);
+      expect(u.wochePunkte, 0);
+    });
+
+    test('vor dem ersten Spieltag: keine Anzeige', () {
+      final u = TippUebersicht.berechnen(
+        members: mitglieder,
+        tips: tipps,
+        seasonFixtures: fixtures,
+        rules: const ScoringRules(),
+        myId: 'ich',
+        jetzt: DateTime(2026, 10, 29),
+      );
+      expect(u.spieltagWoche, isNull);
+      expect(u.spieltag, isEmpty);
+    });
+
+    test('Globales Tippspiel: keine Spieltag-Liste aus dem Ausschnitt', () {
+      final u = TippUebersicht.berechnen(
+        members: [m('ana'), m('ich')],
+        tips: tipps,
+        seasonFixtures: fixtures,
+        rules: const ScoringRules(),
+        myId: 'ich',
+        jetzt: jetzt,
+        raenge: const {'ana': 1, 'ich': 812},
+        mitgliederGesamt: 3000,
+      );
+      expect(u.spieltag, isEmpty);
+      expect(u.wochePunkte, 2);
+    });
+  });
 }

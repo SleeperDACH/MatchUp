@@ -38,6 +38,8 @@ class TippUebersicht {
     required this.anstehend,
     required this.frist,
     required this.kurztabelle,
+    this.spieltag = const [],
+    this.spieltagWoche,
   });
 
   /// Eigener Platz; `null`, wenn man (noch) nicht Mitglied ist.
@@ -45,7 +47,7 @@ class TippUebersicht {
   final int mitglieder;
   final int punkte;
 
-  /// Punkte aus den Spielen der aktuellen Woche, laufende eingerechnet.
+  /// Eigene Punkte am [spieltagWoche], laufende Spiele eingerechnet.
   final int wochePunkte;
 
   /// Noch nicht getippte Spiele der Woche, die noch nicht angepfiffen sind.
@@ -59,6 +61,15 @@ class TippUebersicht {
 
   /// Die ersten drei, und der eigene Platz, falls er nicht dabei ist.
   final List<UebersichtPlatz> kurztabelle;
+
+  /// **Punkte aller Teilnehmer am Spieltag** (26.11.2026), beste zuerst.
+  /// Leer beim Globalen Tippspiel — die App kennt dort nur einen Ausschnitt
+  /// der Mitglieder, eine Spieltagswertung daraus wäre falsch.
+  final List<UebersichtPlatz> spieltag;
+
+  /// Die Woche, deren Punkte [spieltag] und [wochePunkte] zeigen — ab 24 h
+  /// vor ihrem ersten Anstoß (siehe [aktuelleSpieltagWoche]); `null` vor der Saison.
+  final TipWeek? spieltagWoche;
 
   static TippUebersicht berechnen({
     required List<RoundMember> members,
@@ -112,6 +123,37 @@ class TippUebersicht {
 
     // Die Woche, die auch der Tippen-Reiter öffnet.
     final wochen = buildWeeks(seasonFixtures);
+
+    // Spieltag: eigene Woche mit eigenem Wechsel (24 h vor dem nächsten).
+    final stWoche = aktuelleSpieltagWoche(wochen, jetzt);
+    final stPunkte = stWoche == null
+        ? <String, int>{}
+        : totalPointsByMember(
+            members: members,
+            tips: tips,
+            fixtures: stWoche.fixtures,
+            rules: rules,
+            frozenOdds: frozenOdds,
+          );
+    final spieltag = <UebersichtPlatz>[];
+    if (stWoche != null && raenge == null) {
+      final stRaenge = ranksByPoints(members, stPunkte);
+      final reihe = [...members]..sort((a, b) {
+          final r = (stRaenge[a.userId] ?? 0) - (stRaenge[b.userId] ?? 0);
+          return r != 0
+              ? r
+              : a.display.toLowerCase().compareTo(b.display.toLowerCase());
+        });
+      for (final m in reihe) {
+        spieltag.add(UebersichtPlatz(
+          rang: stRaenge[m.userId] ?? 0,
+          mitglied: m,
+          punkte: stPunkte[m.userId] ?? 0,
+          ich: m.userId == myId,
+        ));
+      }
+    }
+
     var wochePunkte = 0;
     var offen = 0;
     var anstehend = 0;
@@ -124,14 +166,9 @@ class TippUebersicht {
         (w) => w.index == nummer,
         orElse: () => wochen.last,
       );
-      wochePunkte = totalPointsByMember(
-            members: [ich],
-            tips: tips,
-            fixtures: woche.fixtures,
-            rules: rules,
-            frozenOdds: frozenOdds,
-          )[ich.userId] ??
-          0;
+      // Dieselbe Zahl wie in der Spieltag-Liste, nicht die Tipp-Woche —
+      // sonst stünde dort „+5" und darüber „0 diese Woche".
+      wochePunkte = stPunkte[ich.userId] ?? 0;
       final meine = {
         for (final t in tips)
           if (t.userId == ich.userId) t.fixtureId,
@@ -157,6 +194,8 @@ class TippUebersicht {
       anstehend: anstehend,
       frist: frist,
       kurztabelle: kurz,
+      spieltag: spieltag,
+      spieltagWoche: stWoche,
     );
   }
 }

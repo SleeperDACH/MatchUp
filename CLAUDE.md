@@ -119,8 +119,14 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   aus dem puren `TippUebersicht.berechnen`, dieselbe Wertung und Do–Mi-Woche
   wie Tabelle und Tippen): goldene „Als nächstes"-Karte, **kompakt** (seit
   10.11.2026 auf Ansage halb so hoch: Titel und kleiner Knopf in einer Zeile,
-  darunter Fortschritt und Frist), darunter Platz/Punkte/Woche als Zahlen
-  ohne Kasten, die Kurztabelle (Top 3 + ich) und unter „Liga" die Zeilen
+  darunter Fortschritt und Frist), darunter Platz/Punkte/Spieltag als Zahlen
+  ohne Kasten, **der Spieltag** (26.11.2026, auf Ansage: Punkte aller
+  Teilnehmer in den Spielen der Do–Mi-Woche, beste zuerst; die Woche gilt
+  ab **24 h vor ihrem ersten Anstoß** — `aktuelleSpieltagWoche`, nicht
+  `currentWeekIndex`, das nach dem letzten Abpfiff sofort weiterspringt —,
+  bei lauter Nullen „–" statt Plätzen; beim Globalen Tippspiel ausgeblendet,
+  weil die App dort nur den Ausschnitt kennt), die Kurztabelle (Top 3 + ich)
+  und unter „Liga" die Zeilen
   Bonustipps, Regeln und Liga-Chat (`TipRundenChat`, eigener Schirm).
   **Einladen steht nur im Zahnrad** („Mitglieder einladen" samt Code) — in
   der Saison braucht man es fast nie, auf Ansage aus der Übersicht genommen

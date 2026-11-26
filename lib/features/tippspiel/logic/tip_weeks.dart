@@ -79,3 +79,28 @@ int currentWeekIndex(List<TipWeek> weeks, DateTime now) {
   }
   return weeks.last.index;
 }
+
+/// **Spieltag der Übersicht** (26.11.2026, auf Ansage: „Punkte der Teilnehmer
+/// an dem jeweiligen Spieltag … wird immer 24 Stunden vor dem nächsten
+/// Spieltag genullt").
+///
+/// Eine Woche gilt ab [vorlauf] vor ihrem ersten Anstoß und bleibt stehen,
+/// bis die nächste Woche so weit ist. Anders als [currentWeekIndex], das
+/// nach dem letzten Abpfiff sofort weiterspringt: So bleibt das Ergebnis des
+/// Wochenendes bis kurz vor dem nächsten sichtbar, und die Anzeige beginnt
+/// erst dann wieder bei null. Vor der ersten Woche: `null`.
+TipWeek? aktuelleSpieltagWoche(
+  List<TipWeek> weeks,
+  DateTime now, {
+  Duration vorlauf = const Duration(hours: 24),
+}) {
+  final nowUtc = now.toUtc();
+  TipWeek? aktuell;
+  for (final w in weeks) {
+    if (w.fixtures.isEmpty) continue;
+    final ab = w.fixtures.first.kickoff.toUtc().subtract(vorlauf);
+    if (ab.isAfter(nowUtc)) break;
+    aktuell = w;
+  }
+  return aktuell;
+}
