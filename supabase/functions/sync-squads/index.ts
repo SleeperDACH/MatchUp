@@ -57,6 +57,17 @@ const POS: Record<string, string> = {
 // unvollständiger Daten zu löschen.
 const MIN_SQUAD = 15;
 
+// **Hochgezogene Spieler** (26.11.2026, gemeldet an Noah Codjo-Evora: „war
+// mit im Bayernkader, fehlt aber in Fantasy"). Sportmonks führt Spieler der
+// zweiten Mannschaft oder der U19 nur in deren Kader (`/squads/teams/…` von
+// Bayern II), auch wenn sie bei den Profis auf dem Spielberichtsbogen stehen.
+// Deshalb zählt zusätzlich jeder, der in den letzten LINEUP_TAGE Tagen in einem
+// Spieltagskader (Startelf oder Bank) eines unserer Vereine stand — in
+// Bundesliga oder Pokal. Fällt er danach aus dem Fenster und steht in keinem
+// Profikader, geht er wie jeder Abgang aus dem Pool.
+const LINEUP_TAGE = 42;
+const LINEUP_LIGEN = ["bundesliga", "dfb_pokal"];
+
 type Row = {
   id: string;
   name: string;
@@ -109,6 +120,48 @@ function rowFor(entry: any, club: string): Row | null {
   };
 }
 
+// Spieltagskader der jüngsten Spiele: bis zu 25 Partien je Request
+// (`/fixtures/multi`), Spieler samt Position und Nationalität.
+async function lineupRows(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  token: string,
+  clubByTeam: Map<number, string>,
+): Promise<{ rows: Row[]; fixtures: number }> {
+  const seit = new Date(Date.now() - LINEUP_TAGE * 86400_000).toISOString();
+  const { data, error } = await supabase
+    .from("fixtures")
+    .select("id")
+    .in("league_id", LINEUP_LIGEN)
+    .gte("kickoff", seit)
+    .lte("kickoff", new Date().toISOString());
+  if (error) throw new Error(`Fixtures: ${error.message}`);
+  const ids = (data ?? [])
+    .map((f: { id: string }) => f.id)
+    .filter((id: string) => id.startsWith("sportmonks:"))
+    .map((id: string) => id.slice("sportmonks:".length));
+  const rows: Row[] = [];
+  for (let i = 0; i < ids.length; i += 25) {
+    const url = `${BASE}/fixtures/multi/${ids.slice(i, i + 25).join(",")}` +
+      `?include=lineups.player.position;lineups.player.nationality`;
+    const res = await fetch(url, {
+      headers: { Authorization: token, Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(`Lineups HTTP ${res.status}`);
+    const json = await res.json();
+    for (const f of json.data ?? []) {
+      for (const l of f.lineups ?? []) {
+        const club = clubByTeam.get(l.team_id);
+        if (!club) continue;
+        const row = rowFor(l, club);
+        if (row) rows.push(row);
+      }
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return { rows, fixtures: ids.length };
+}
+
 Deno.serve(async (req) => {
   const secret = Deno.env.get("SYNC_SECRET");
   if (!secret || req.headers.get("x-sync-secret") !== secret) {
@@ -154,6 +207,30 @@ Deno.serve(async (req) => {
     await new Promise((r) => setTimeout(r, 150)); // sanft zur API
   }
 
+  // Hochgezogene Spieler ergänzen. Wer im Profikader steht, behält dessen
+  // Zeile (Verein aus dem Kader, nicht aus einem älteren Spiel). Scheitert
+  // dieser Teil, wird nicht geprunt — sonst flögen die Hochgezogenen raus.
+  const imKader = new Set(rows.map((r) => r.id));
+  let hochgezogen: string[] = [];
+  let lineupSpiele = 0;
+  try {
+    const clubByTeam = new Map(
+      Object.entries(TEAM_IDS).map(([club, id]) => [id, club]),
+    );
+    const l = await lineupRows(supabase, token, clubByTeam);
+    lineupSpiele = l.fixtures;
+    for (const r of l.rows) {
+      if (imKader.has(r.id)) continue;
+      imKader.add(r.id);
+      rows.push(r);
+      hochgezogen.push(`${r.name} (${r.club})`);
+    }
+  } catch (e) {
+    allClubsOk = false;
+    hochgezogen = [];
+    console.error(`Spieltagskader-Fehler: ${e}`);
+  }
+
   // Zugänge/Aktualisierungen einspielen. `is_foreign_newcomer` wird bewusst
   // NICHT mitgeschickt: bei INSERT greift der Default (false), bei UPDATE bleibt
   // der bestehende Wert erhalten (wie im Python-Import).
@@ -195,7 +272,14 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ upserted, pruned, pruneSkippedReason, perClub }),
+    JSON.stringify({
+      upserted,
+      pruned,
+      pruneSkippedReason,
+      perClub,
+      lineupSpiele,
+      hochgezogen,
+    }),
     { headers: { "content-type": "application/json" } },
   );
 });

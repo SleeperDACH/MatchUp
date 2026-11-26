@@ -593,7 +593,18 @@ gilt das Raster ab sofort.
   laufenden Runde steht, bleibt bis zum Abpfiff — sonst verlöre er
   rückwirkend Punkte, die er am Samstag geholt hat. Offene Anträge, Wunsch-
   listen und schwebende Trades auf ihn werden mit aufgeräumt; ein
-  `before insert`-Trigger auf `fantasy_rosters` lässt ihn nicht zurück. In der
+  `before insert`-Trigger auf `fantasy_rosters` lässt ihn nicht zurück.
+  **Hochgezogene Spieler zählen mit** (26.11.2026, gemeldet an Noah
+  Codjo-Evora: auf der Bank der Bayern gegen Köln, in Fantasy nicht da).
+  Sportmonks führt Spieler der zweiten Mannschaft oder U19 nur im Kader
+  **dieser** Mannschaft (Bayern II, Team 3464), nie in `/squads/teams/503`.
+  `sync-squads` liest deshalb zusätzlich die Spieltagskader (Startelf und
+  Bank) aller Bundesliga- und Pokalspiele der letzten **42 Tage**
+  (`/fixtures/multi`, 25 je Request, ~3 Requests) und nimmt jeden auf, der
+  dort für einen unserer Vereine steht; der Profikader gewinnt bei
+  Widerspruch. Fällt er aus dem Fenster und steht in keinem Profikader, geht
+  er wie jeder Abgang. Scheitert dieser Teil, wird nicht geprunt. Erster
+  Lauf: 15 Hochgezogene (Antwortfeld `hochgezogen`). In der
   App blendet ihn `FantasyPlayer.abgewandert` überall aus, wo man jemanden
   holen kann (Free Agency, Draft, Aktionsknopf) — geladen bleibt er.
   **Der Zeitplan ist der eigentliche Punkt** (Migration 0076, täglich 04:17
