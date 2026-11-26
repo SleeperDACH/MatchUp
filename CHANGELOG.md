@@ -8,13 +8,18 @@ Sortiert nach dem, was sich an der App ändert, nicht nach der Reihenfolge, in
 der es entstand. Zwischenstände, die es nie in ein Release geschafft haben,
 stehen deshalb nicht drin — wer 1.1.0 benutzt hat, hat sie nie gesehen.
 
-## 1.8.2+14 — 17. November 2026
+## 1.8.2+15 — 26. November 2026
 
-8 Commits seit 1.8.1+13. Kleines Update: **Länderspiele**, ein
-aufgeräumtes **Tippspiel** und **Live-Spieler im MatchUp** auf einen Blick.
+11 Commits seit 1.8.1+13. Kleines Update: **Länderspiele**, ein
+aufgeräumtes **Tippspiel** mit **Spieltagswertung** und **Live-Spieler im
+MatchUp** auf einen Blick. (Build 14 wurde zurückgezogen und hat die Nutzer
+nie erreicht; sein Inhalt steckt vollständig in 15.)
 
 ### Neu
 
+- **Spieltag in der Tippspiel-Übersicht.** Die Punkte aller Mitspieler am
+  aktuellen Spieltag, Bester oben. 24 Stunden vor dem nächsten Spieltag
+  geht es wieder bei null los.
 - **Länderspiele.** Deutschland im Live-Tab mit Aufstellungen, Ereignissen
   und Statistiken. Unter *Favoriten › Nationalmannschaften* lässt sich
   Deutschland auswählen, dann stehen die Spiele auch auf dem Homescreen.
@@ -34,10 +39,20 @@ aufgeräumtes **Tippspiel** und **Live-Spieler im MatchUp** auf einen Blick.
   bekannt, kommt die Meldung sofort, sonst nach höchstens einer Minute.
 - **Trikotfarben für Nationalteams** in den Aufstellungen.
 - **Frauen-Bundesliga:** Tabellenzonen für Champions League und Abstieg.
+- **Große Tippspiele** laden schnell: Die Tabelle des Globalen Tippspiels
+  kommt vom Server, die App holt nur die Spitze und die Plätze um dich.
+- **Tipp-Erinnerung** gilt für alle Wettbewerbe einer Runde, nicht nur den
+  ersten.
+- **Fantasy:** Spieler, die aus der zweiten Mannschaft oder U19 bei den
+  Profis im Kader stehen, sind jetzt auch im Spielerpool.
 
 ### Behoben
 
 - Weißes Leuchten unten an der Navigationsleiste.
+- Länderspiele ab Oktober: Die Kopfkarte findet auch die Spiele des
+  nächsten Jahres.
+- In Runden mit sehr vielen Mitspielern fehlten Tipps (Grenze von 1000
+  Zeilen je Abfrage).
 - Lange Namen in der Kopfkarte brachen mitten im Wort um
   („DEUTSCHLAN / D").
 
