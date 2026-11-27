@@ -48,6 +48,8 @@ void main() {
     final spiele = [
       fx('a', jetzt.subtract(const Duration(days: 8)), h: 2, a: 1),
       fx('b', jetzt.subtract(const Duration(days: 8)), h: 0, a: 0),
+      // Gewertet in der laufenden Woche, damit der Spieltag Balken zeigt.
+      fx('c', jetzt.subtract(const Duration(hours: 3)), h: 2, a: 1),
       for (var i = 0; i < 5; i++)
         fx('n$i', morgen.add(Duration(hours: i))),
     ];
@@ -63,6 +65,10 @@ void main() {
       const MemberTip(userId: 'm1', fixtureId: 'b', homeGoals: 1, awayGoals: 1),
       const MemberTip(userId: 'm2', fixtureId: 'a', homeGoals: 3, awayGoals: 1),
       const MemberTip(userId: 'm1', fixtureId: 'n0', homeGoals: 2, awayGoals: 0),
+      const MemberTip(userId: 'm0', fixtureId: 'c', homeGoals: 2, awayGoals: 1),
+      const MemberTip(userId: 'm1', fixtureId: 'c', homeGoals: 1, awayGoals: 0),
+      const MemberTip(userId: 'm2', fixtureId: 'c', homeGoals: 1, awayGoals: 1),
+      const MemberTip(userId: 'm4', fixtureId: 'c', homeGoals: 3, awayGoals: 0),
       const MemberTip(userId: 'm1', fixtureId: 'n1', homeGoals: 1, awayGoals: 1),
     ];
     const runde = TipRound(
@@ -105,11 +111,11 @@ void main() {
     }
 
     expect(find.text('3 Tipps offen'), findsOneWidget);
-    expect(find.textContaining('2 von 5 getippt'), findsOneWidget);
+    expect(find.textContaining('2 von 5'), findsOneWidget);
     expect(find.text('Jetzt tippen'), findsOneWidget);
-    expect(find.text('2.'), findsOneWidget, reason: 'ana 4+4, ich 3+?');
-    expect(find.text('Liga-Chat'), findsOneWidget);
-    expect(find.text('Neue Nachrichten'), findsOneWidget);
+    expect(find.text('PLATZ'), findsOneWidget, reason: 'Anzeigetafel');
+    expect(find.text('Ganze Tabelle'), findsOneWidget, reason: 'Podest');
+    expect(find.text('Liga-Chat'), findsOneWidget, reason: 'Kachel');
     expect(find.text('Spieler einladen'), findsNothing,
         reason: 'Einladen steht im Zahnrad, nicht in der Übersicht');
 

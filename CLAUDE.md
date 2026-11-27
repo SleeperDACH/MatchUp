@@ -117,7 +117,15 @@ und Code-Kommentare: Deutsch. Live-Demo: https://sleeperdach.github.io/MatchUp/
   „Richtung B" vom 09.11.2026, wie bei Fantasy; die untere Leiste der Runde
   ist weg. Start-Reiter ist die **Übersicht** (`TippUebersichtTab`, Zahlen
   aus dem puren `TippUebersicht.berechnen`, dieselbe Wertung und Do–Mi-Woche
-  wie Tabelle und Tippen): goldene „Als nächstes"-Karte, **kompakt** (seit
+  wie Tabelle und Tippen). **Seit 27.11.2026 „A + B"** (auf Ansage: „alles
+  eine Farbe, so grau … wenig Abwechslung", gewählt aus drei Entwürfen,
+  Artefakt „Tippspiel-Übersicht Redesign"): jeder Bereich hat eine eigene
+  Form — **Anzeigetafel** (Platz gold / Punkte / Spieltag grün, darunter
+  offene Tipps mit Ring und goldenem Knopf), **Spieltag als Balken** (gold
+  der Führende, grün ich, sonst grau), **Tabelle als Podest** (2 · 1 · 3 mit
+  Bild und Medaillenfarbe, eigene Zeile darunter, falls nicht oben) und die
+  **Liga-Wege als Kacheln** (drei je Reihe). Der Absatz ab hier beschreibt
+  den Stand davor: goldene „Als nächstes"-Karte, **kompakt** (seit
   10.11.2026 auf Ansage halb so hoch: Titel und kleiner Knopf in einer Zeile,
   darunter Fortschritt und Frist), darunter Platz/Punkte/Spieltag als Zahlen
   ohne Kasten, **der Spieltag** (26.11.2026, auf Ansage: Punkte aller
